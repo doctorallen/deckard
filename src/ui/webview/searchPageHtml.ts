@@ -12,11 +12,13 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
   getQueryEditorCss,
   getQueryEditorScript,
-  getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
+import { ENABLED } from './selectors';
 
 /**
  * Builds a search page: the search box, the tag or entity a one-tag search is
@@ -84,20 +86,31 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.hub-header, .hub-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hub-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* A tag with no hub note offers one in a line under its title: text, not a
+   panel, since it is an offer and not a part of the page. */
+.hub-offer { margin: var(--space-1) 0 0; }
+.hub-offer-button.hub-offer-button { min-height: 0; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-sm) var(--font-display); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
+.hub-offer-button.hub-offer-button:hover, .hub-offer-button.hub-offer-button:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
 .hub > summary { cursor: pointer; list-style: none; }
 .hub > summary::-webkit-details-marker { display: none; }
 .hub > summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .hub-title { display: inline-flex; align-items: center; gap: 8px; }
 .hub-toggle { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--amber); transition: transform 120ms ease; }
 .hub[open] .hub-toggle { transform: rotate(90deg); }
-.hub-empty { color: var(--muted); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
 .hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
+/* A tag's page's quiet lines under its hub, and what they mark on cards. */
+.tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
+.tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.tag-note-tag { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: var(--text-sm) var(--font-mono); cursor: pointer; }
+.tag-note-tag:hover${ENABLED} { color: var(--hover-fg); text-decoration: underline; }
+.tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+.card-via { margin-left: 6px; color: var(--muted); font-size: var(--text-xs); font-style: italic; }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: var(--text-sm); }
 .empty-action { margin: 12px 0 0; }
 .pagination .page-size { font-size: var(--text-sm); }
@@ -111,11 +124,26 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
    positioned against. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
+/* Three lines of each result, or of the paragraph its words are in, and
+   Show all for the rest. The clamp is Chromium's; the height is the guard. */
+.card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.card-body.is-clamped > .rendered { max-height: 4.65em; }
+.card-snippet-lead { margin-top: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.card-snippet-lead + .rendered, .card-snippet-lead + .markdown { margin-top: var(--space-1); }
+/* A text button: words that open the rest, drawn as words. */
+.card-more.card-more { display: inline-block; min-height: 0; margin: var(--space-2) 0 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-xs) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
+.card-more.card-more:hover, .card-more.card-more:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
+/* A result's file, line, and headings fold under it on hover, as the
+   sidebar's notes do, and Show all waits for hover too: on every card at
+   rest they were noise. Show all keeps its room, so appearing moves
+   nothing; focus on the card shows it, so Tab reaches it next. */
+.card .card-more.card-more { visibility: hidden; opacity: 0; transition: opacity 120ms ease, visibility 0s linear 120ms; }
+.card:hover .card-more.card-more, .card:focus-within .card-more.card-more { visibility: visible; opacity: 1; transition: opacity 120ms ease; }
 ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading search...</div></main>
+${loadingHtml('Loading search…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
@@ -164,7 +192,7 @@ ${getQueryEditorScript()}
     // in the split layout, where there are no tabs.
     countElsewhere: function () { return Boolean(state && state.layout !== 'split'); },
     actions: function (hasText) {
-      return '<button data-action="save-filter" data-query-needs-text title="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-filter" data-query-needs-text data-tip="Keep this search, named, on Home" data-tip-disabled="Type a search to save it"' + (hasText ? '' : ' aria-disabled="true"') + '>Save</button>';
     },
   });
 
@@ -227,9 +255,7 @@ ${getQueryEditorScript()}
   function renderHub() {
     if (!state.tag) return '';
     const hub = state.hub;
-    if (!hub) {
-      return '<section class="hub hub-empty" aria-label="Hub note"><span>No note describes ' + escapeHtml(state.tag.label) + ' yet.</span><button data-action="create-hub" title="Create a note whose describes: front matter names this tag">Create hub note</button></section>';
-    }
+    if (!hub) return '';
     const properties = hub.properties.length
       ? '<dl class="hub-properties">' + hub.properties.map(function (property) {
         return '<div><dt>' + escapeHtml(property.name) + '</dt><dd>' + property.values.map(function (value) {
@@ -247,15 +273,74 @@ ${getQueryEditorScript()}
       : '';
     // deckard.tagOverview.hubNoteExpanded sets how the hub starts.
     const open = hubOpen === undefined ? hub.expanded !== false : hubOpen;
-    return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" title="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
+    return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" data-tip="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
   }
 
-  function renderCard(section) {
+  /**
+   * The quiet lines under a tag's page's hub: how else the tag is reached.
+   * Only a one-tag page has them.
+   */
+  function renderTagNotes() {
+    if (!state.tag || !state.tagPage) return '';
+    const notes = [];
+    const page = state.tagPage;
+    if (parkedTagKeys.has(String(state.tag.key).toLowerCase())) {
+      notes.push('<p class="tag-note"><strong>Parked.</strong> Its notes and tasks are left out of the Tasks view, the Task board, and Related Notes. <button type="button" class="tag-note-action" data-action="unpark-tag" data-tag-key="' + escapeHtml(state.tag.key) + '" data-tip="Take ' + escapeHtml(state.tag.label) + ' out of the parked tags">Unpark</button></p>');
+    }
+    (page.lookalikes || []).forEach(function (other) {
+      const labelOf = function (key) { return key === other.key ? other.label : state.tag.label; };
+      notes.push('<p class="tag-note">Also written as <button type="button" class="tag-note-tag" data-action="open-tag" data-tag-key="' + escapeHtml(other.key) + '" data-tip="Open ' + escapeHtml(other.label) + '">' + escapeHtml(other.label) + '</button> (' + other.count + ' ' + (other.count === 1 ? 'entry' : 'entries') + '). '
+        + '<button type="button" class="tag-note-action" data-action="include-lookalike" data-tag-key="' + escapeHtml(other.key) + '" data-tip="Search for both spellings">Include in search</button> '
+        + '<button type="button" class="tag-note-action" data-action="merge-lookalike" data-source-key="' + escapeHtml(other.sourceKey) + '" data-target-key="' + escapeHtml(other.targetKey) + '" data-tip="' + escapeHtml('Merge ' + labelOf(other.sourceKey) + ' into ' + labelOf(other.targetKey) + ', after showing what changes') + '">Merge</button></p>');
+    });
+    if (page.hubLinkCount > 0 && page.hubTitle) {
+      notes.push('<p class="tag-note">Also listing ' + page.hubLinkCount + ' ' + (page.hubLinkCount === 1 ? 'entry that links' : 'entries that link') + ' to ' + escapeHtml(page.hubTitle) + ' without the tag. <button type="button" class="tag-note-action" data-action="exclude-hub-links" data-tip="List only the entries that carry the tag">Leave them out</button></p>');
+    }
+    if (page.mention && page.mention.count > 0) {
+      notes.push('<p class="tag-note">' + page.mention.count + ' ' + (page.mention.count === 1 ? 'entry mentions' : 'entries mention') + ' "' + escapeHtml(page.mention.word) + '" without the tag. <button type="button" class="tag-note-action" data-action="show-mentions" data-tip="Search for them; Bulk edit → Add a tag tags them all">Show them</button></p>');
+    }
+    return notes.length ? '<div class="tag-notes">' + notes.join('') + '</div>' : '';
+  }
+
+  /** Cards opened with Show all, by id, until the search changes. */
+  let openedCards = new Set();
+  let openedFor;
+
+  /** A body as the Format row draws it. */
+  function drawBody(rawContent, renderedHtml) {
+    if (!rawContent) return '';
+    return state.renderMode === 'html' ? '<div class="rendered">' + renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(rawContent) + '</pre>';
+  }
+
+  /**
+   * A card's body as the Preview row asks: nothing, three lines with Show
+   * all, or the whole of it. On a search of words, the three lines are the
+   * paragraph the first word is in, when it sits further down.
+   */
+  function renderCardBody(section, position) {
+    const preview = state.preview || 'lines';
+    if (preview === 'none') return '';
+    const opened = openedCards.has(section.id);
+    const clamped = preview === 'lines' && !opened;
+    const snippet = clamped && section.snippet;
+    const body = snippet
+      ? '<div class="card-snippet-lead"><span aria-hidden="true">…</span><span class="visually-hidden">From further down the entry:</span></div>' + drawBody(section.snippet.rawContent, section.snippet.renderedHtml)
+      : drawBody(section.rawContent, section.renderedHtml);
+    if (!body) return '';
+    const id = 'card-body-' + position;
+    const title = String(section.heading || '').trim();
+    const more = preview === 'lines' && section.long
+      ? '<button type="button" class="card-more" data-action="toggle-card-body" data-card-id="' + escapeHtml(section.id) + '" aria-expanded="' + opened + '" aria-controls="' + id + '" aria-label="' + escapeHtml((opened ? 'Show less of ' : 'Show all of ') + title) + '">' + (opened ? 'Show less' : 'Show all') + '</button>'
+      : '';
+    return '<div class="card-body' + (clamped ? ' is-clamped' : '') + '" id="' + id + '">' + body + '</div>' + more;
+  }
+
+  function renderCard(section, position) {
     const fileName = section.filePath.split('/').pop() || section.filePath;
     // Where the entry sits in its note, under the file and line, as the
     // Related Notes sidebar shows it.
     const pathHtml = renderHeadingPath(section.headingPath, fileName, section.heading);
-    const content = section.rawContent ? (state.renderMode === 'html' ? '<div class="rendered">' + section.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(section.rawContent) + '</pre>') : '';
+    const content = renderCardBody(section, position);
     const titleHtml = state.tagTitleDisplayMode === 'inline'
       ? renderInlineTitle(section.heading, section.titleTags)
       : escapeHtml(section.heading);
@@ -263,13 +348,20 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '</div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '" data-parked="' + (section.parked ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + (section.parked ? renderParkedLabel() : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + (section.via === 'hubLink' ? ' <span class="card-via">Links the hub note</span>' : '') + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '</div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */
   function renderTask(item) {
-    return renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })
+    let html = renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })
       .replace('<div class="row task-row', '<div data-search-entry="tasks" class="row task-row');
+    if (item.via === 'hubLink') {
+      // Said after the task's location, as a card says it in its source row.
+      const at = html.indexOf('<span class="task-source">');
+      const end = at >= 0 ? html.indexOf('</span>', at) : -1;
+      if (end >= 0) html = html.slice(0, end + 7) + '<span class="card-via">Links the hub note</span>' + html.slice(end + 7);
+    }
+    return html;
   }
 
   /** Lay the result grids out in their columns; a style attribute is not allowed here. */
@@ -301,11 +393,16 @@ ${getQueryEditorScript()}
       filePath: card.dataset.filePath,
       line: Number(card.dataset.line),
       pinned: card.dataset.pinned === 'true',
+      parked: card.dataset.parked === 'true',
     };
     openContextMenu(event, [
       {
         action: 'pin-note',
         label: cardContext.pinned ? 'Unpin from Home' : 'Pin to Home',
+      },
+      {
+        action: 'park-note',
+        label: cardContext.parked ? 'Unpark note' : 'Park note',
       },
     ]);
   }
@@ -319,13 +416,26 @@ ${getQueryEditorScript()}
   function exportResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Export these tasks' : 'Export these notes';
-    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">' + (kind === 'tasks' ? 'Export tasks' : 'Export notes') + '</button>';
+    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" data-tip="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">' + (kind === 'tasks' ? 'Export tasks' : 'Export notes') + '</button>';
   }
 
   function editResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
-    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
+    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" data-tip="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
+  }
+
+  /**
+   * Back and forward through the searches this page has shown, as a
+   * browser's are. The mouse's own buttons already did this; nothing on the
+   * page said so, and the keyboard could not.
+   */
+  function renderHistoryButtons() {
+    const history = state.history || {};
+    return '<span class="history-buttons" role="group" aria-label="Search history">'
+      + renderIconButton({ action: 'history-back', label: 'Back to the search before', key: 'Alt+←', icon: '‹', disabledReason: history.back ? '' : 'No search before this one' })
+      + renderIconButton({ action: 'history-forward', label: 'Forward to the search after', key: 'Alt+→', icon: '›', disabledReason: history.forward ? '' : 'No search after this one' })
+      + '</span>';
   }
 
   function render() {
@@ -346,6 +456,10 @@ ${getQueryEditorScript()}
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : (state.tag ? state.tag.label : 'Search');
     const titleHtml = focus ? renderOverviewTagLink(focus, title) : escapeHtml(title);
+    // No note describes the tag yet: one line offers to write it.
+    const hubOffer = state.tag && !state.hub
+      ? '<p class="hub-offer"><button type="button" class="hub-offer-button" data-action="create-hub" data-tip="' + escapeHtml('Create a note whose describes: front matter names ' + state.tag.label) + '">Create hub note</button></p>'
+      : '';
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + renderOverviewTagLink(focus, state.entity.label) + '</div>'
       : '';
@@ -367,7 +481,7 @@ ${getQueryEditorScript()}
       return '<p class="empty-action"><button data-action="show-other-results" data-tab="' + other + '">Show ' + otherCount + ' matching ' + escapeHtml(noun) + '</button></p>';
     };
     const cards = state.sections.length
-      ? state.sections.map(renderCard).join('')
+      ? state.sections.map(function (section, position) { return renderCard(section, position); }).join('')
       : '<div class="empty">' + (state.tag && !drafting ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
@@ -388,15 +502,18 @@ ${getQueryEditorScript()}
         { id: 'notes', label: 'Notes', count: notesCount },
         { id: 'tasks', label: 'Tasks', count: tasksCount },
       ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + resultPanelAttributes('notes') + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + resultPanelAttributes('tasks') + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
-    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks">${layoutTabsIcon}</button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%">${layoutSplitIcon}</button></div>';
-    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown">${renderedIcon}</button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown">${sourceIcon}</button></div>';
+    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" data-tip="Tabs: switch between Notes and Tasks">${layoutTabsIcon}</button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" data-tip="Side by side: Notes 60%, Tasks 40%">${layoutSplitIcon}</button></div>';
+    const previewControls = renderViewOptionChoices('set-preview', [['none', 'None'], ['lines', '3 lines'], ['full', 'Full']], state.preview || 'lines', 'Result preview');
+    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" data-tip="Source: show the original Markdown">${sourceIcon}</button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" data-tip="Rendered: show formatted Markdown">${renderedIcon}</button></div>';
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select>${sortIcon}</span></label>';
     const viewOptions = renderViewOptions([
       { label: 'Sort', html: sortControl.replace('>Sort:<span', '><span') },
       { label: 'Layout', html: layoutControls },
       { label: 'Format', html: formatControls },
+      { label: 'Preview', html: previewControls },
       { label: 'Note columns', html: columnChoices('notes', state.noteColumns) },
       { label: 'Task columns', html: columnChoices('tasks', state.taskColumns) },
+      renderThemeOption(),
       renderZenOption(),
     ]);
     const savedViewName = state.savedViewName
@@ -415,8 +532,15 @@ ${getQueryEditorScript()}
     const suggestion = !invalid && state.suggestion
       ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + hubOffer + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + renderTagNotes() + staleNotice + suggestion + layoutContent;
     applyColumns();
+    // A clamped body that fits its three lines has nothing more to show.
+    document.querySelectorAll('.card-body.is-clamped').forEach(function (body) {
+      const inner = body.lastElementChild;
+      if (body.querySelector('.card-snippet-lead') || !inner || !(inner.clientHeight > 0) || inner.scrollHeight > inner.clientHeight + 1) return;
+      const more = body.nextElementSibling;
+      if (more && more.classList.contains('card-more')) more.remove();
+    });
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
     announce(notesCount + (notesCount === 1 ? ' note' : ' notes') + ' and ' + tasksCount + (tasksCount === 1 ? ' task' : ' tasks') + ' match this search.');
@@ -425,7 +549,10 @@ ${getQueryEditorScript()}
   /** Keep the page's own view state across a window reload. */
   function saveState() {
     if (!state) return;
+    const previous = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const saved = { query: state.query.text, origin: state.originQuery };
+    // The scroll position belongs to the search it was scrolled in.
+    if (previous.query === saved.query && typeof previous.scrollY === 'number') saved.scrollY = previous.scrollY;
     // The host reads this same record to restore a page, so the tab is added
     // only once it is the reader's own choice.
     if (tabChosen) saved.tab = activeTab;
@@ -433,6 +560,9 @@ ${getQueryEditorScript()}
   }
 
   installViewOptions();
+  if (typeof vscode.getState === 'function') {
+    rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
+  }
 
   document.addEventListener('mousedown', function (event) {
     editor.handleMousedown(event);
@@ -458,8 +588,14 @@ ${getQueryEditorScript()}
       if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
         vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
       }
+      if ((contextAction.dataset.contextAction === 'park-tag' || contextAction.dataset.contextAction === 'unpark-tag') && tagKey) {
+        vscode.postMessage({ type: contextAction.dataset.contextAction === 'park-tag' ? 'parkTag' : 'unparkTag', tagKey: tagKey });
+      }
       if (contextAction.dataset.contextAction === 'pin-note' && card) {
         vscode.postMessage({ type: card.pinned ? 'unpinNote' : 'pinNote', filePath: card.filePath, line: card.line });
+      }
+      if (contextAction.dataset.contextAction === 'park-note' && card) {
+        vscode.postMessage({ type: card.parked ? 'unparkNote' : 'parkNote', filePath: card.filePath });
       }
       return;
     }
@@ -472,6 +608,14 @@ ${getQueryEditorScript()}
       const action = target.dataset.action;
       if (action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
       if (action === 'set-layout') vscode.postMessage({ type: 'setTagOverviewLayout', layout: target.dataset.layout });
+      if (action === 'set-preview') vscode.postMessage({ type: 'setSearchPreview', preview: target.dataset.value });
+      if (action === 'toggle-card-body') {
+        const id = target.dataset.cardId;
+        if (openedCards.has(id)) openedCards.delete(id);
+        else openedCards.add(id);
+        renderKeepingPlace(render);
+        return;
+      }
       if (action === 'edit-results') vscode.postMessage({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'export-results') vscode.postMessage({ type: 'exportResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'set-columns') {
@@ -494,15 +638,21 @@ ${getQueryEditorScript()}
       }
       if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
+      if (action === 'history-back' || action === 'history-forward') vscode.postMessage({ type: 'navigateSearchHistory', direction: action === 'history-back' ? 'back' : 'forward' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
-      if (action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
+      if (action === 'exclude-hub-links') vscode.postMessage({ type: 'excludeHubLinks' });
+      if (action === 'unpark-tag' && target.dataset.tagKey) vscode.postMessage({ type: 'unparkTag', tagKey: target.dataset.tagKey });
+      if (action === 'show-mentions' && state.tagPage && state.tagPage.mention) vscode.postMessage({ type: 'setOverviewQuery', query: state.tagPage.mention.query });
+      if (action === 'include-lookalike' && state.tag) vscode.postMessage({ type: 'setOverviewQuery', query: state.tag.key + ' OR ' + target.dataset.tagKey });
+      if (action === 'merge-lookalike') vscode.postMessage({ type: 'mergeTags', sourceKey: target.dataset.sourceKey, targetKey: target.dataset.targetKey });
+      if (action === 'open-source') vscode.postMessage(openSourceMessage(target, event));
       if (action === 'open-tag') vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       return;
     }
     const entry = event.target.closest('.card, .task-row');
     if (entry && !event.target.closest('button, input, a')) {
-      vscode.postMessage({ type: 'openSource', filePath: entry.dataset.filePath, line: Number(entry.dataset.line) });
+      vscode.postMessage(openSourceMessage(entry, event));
     }
   });
   document.addEventListener('contextmenu', function (event) {
@@ -517,6 +667,11 @@ ${getQueryEditorScript()}
     if (card) openCardContextMenu(event, card);
   });
   document.addEventListener('keydown', function (event) {
+    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !(event.target.closest && event.target.closest('input, textarea'))) {
+      event.preventDefault();
+      vscode.postMessage({ type: 'navigateSearchHistory', direction: event.key === 'ArrowLeft' ? 'back' : 'forward' });
+      return;
+    }
     if (editor.handleKeydown(event)) return;
     if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
       closeTagContextMenu();
@@ -527,7 +682,7 @@ ${getQueryEditorScript()}
     const entry = event.target.closest('.card, .task-row');
     if (entry) {
       event.preventDefault();
-      vscode.postMessage({ type: 'openSource', filePath: entry.dataset.filePath, line: Number(entry.dataset.line) });
+      vscode.postMessage(openSourceMessage(entry, event));
     }
   });
   document.addEventListener('change', function (event) {
@@ -535,16 +690,30 @@ ${getQueryEditorScript()}
     const target = event.target;
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
     if (target.dataset.action === 'set-results-per-page') vscode.postMessage({ type: 'setResultsPerPage', size: Number(target.value) });
-    if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
   });
   document.addEventListener('input', function (event) {
     editor.handleInput(event);
   });
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
+      const first = !state;
       state = event.data.data;
+      setParkedTags(state.parkedTags);
+      // Cards opened with Show all stay open through a save, and close when
+      // the search changes.
+      const searched = state.query && state.query.text || '';
+      if (searched !== openedFor) {
+        openedFor = searched;
+        openedCards = new Set();
+      }
       editor.receive();
-      render();
+      renderKeepingPlace(render);
+      if (first) restoreScroll(typeof vscode.getState === 'function' ? vscode.getState() : undefined);
+      markWords(document.getElementById('app'), editor.previewWords(state.query && state.query.text || ''));
       saveState();
     }
   });

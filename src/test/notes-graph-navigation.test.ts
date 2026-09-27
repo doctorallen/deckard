@@ -12,7 +12,7 @@ import {
   SidebarNotesSnapshot,
 } from '../core/types';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
-import { NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
+import { aroundNoteScope, NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 
 const defaultPreferences: PersistedPreferences = {
@@ -37,6 +37,7 @@ const defaultPreferences: PersistedPreferences = {
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
   renderMode: 'markdown',
+  searchPreview: 'lines',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: 30,
@@ -110,6 +111,84 @@ suite('Notes graph navigation', () => {
           (connection) => connection.node.kind === 'tag',
         ),
       );
+    } finally {
+      graph.dispose();
+    }
+  });
+
+  test('is not redrawn by a save that changes nothing it draws, and is by one that does', () => {
+    const text = '# Atlas #project/atlas\n\nSome words about [[relay]].\n';
+    const relay = parseMarkdown('notes/relay.md', '# Relay #project/atlas');
+    const indexOf = (atlasText: string) => {
+      const atlas = parseMarkdown('notes/atlas.md', atlasText);
+      return buildWorkspaceIndex(new Map([[atlas.filePath, atlas], [relay.filePath, relay]]));
+    };
+    let current = indexOf(text);
+    const listeners: Array<() => void> = [];
+    const indexer = {
+      onDidUpdate: (listener: () => void) => {
+        listeners.push(listener);
+        return { dispose: () => undefined };
+      },
+      getSnapshot: () => current,
+      getFilePath: () => 'notes/not-active.md',
+      isNotesFile: () => true,
+    } as unknown as WorkspaceIndexer;
+    const posted: Array<{ type: string }> = [];
+    const graph = new NotesGraphPanel(indexer, vscode.Uri.file(process.cwd()), () => undefined);
+    try {
+      const controller = graph as unknown as { panel: unknown; refresh(): void };
+      controller.panel = {
+        active: false,
+        visible: true,
+        dispose: () => undefined,
+        webview: {
+          postMessage: async (message: { type: string }) => {
+            posted.push(message);
+            return true;
+          },
+        },
+      };
+      controller.refresh();
+      const states = () => posted.filter((message) => message.type === 'state').length;
+      assert.strictEqual(states(), 1);
+
+      current = indexOf(text.replace('Some words', 'Some other words'));
+      listeners.forEach((listener) => listener());
+      assert.strictEqual(states(), 1, 'a prose-only save sends nothing');
+
+      current = indexOf(text.replace('# Atlas #project/atlas', '# Atlas #project/atlas #topic/maps'));
+      listeners.forEach((listener) => listener());
+      assert.strictEqual(states(), 2, 'a new tag redraws');
+    } finally {
+      graph.dispose();
+    }
+  });
+
+  test('opens around one note from its menu without choosing a scope for later', () => {
+    assert.deepStrictEqual(
+      aroundNoteScope({ local: false, depth: 3, skipPeriodic: true }),
+      { local: true, depth: 1, skipPeriodic: true },
+    );
+    const graph = new NotesGraphPanel(
+      createIndexer(buildWorkspaceIndex(new Map())),
+      vscode.Uri.file(process.cwd()),
+      () => undefined,
+    );
+    try {
+      const controller = graph as unknown as {
+        scopeChosen: boolean;
+        createPanel(): void;
+        refresh(): void;
+      };
+      // No webview in this test: only the state showAround leaves behind.
+      controller.createPanel = () => undefined;
+      controller.refresh = () => undefined;
+      void graph.showAround('notes/atlas.md');
+      const state = graph as unknown as { scope: { local: boolean; depth: number }; focusPath: string };
+      assert.strictEqual(state.focusPath, 'notes/atlas.md');
+      assert.deepStrictEqual([state.scope.local, state.scope.depth], [true, 1]);
+      assert.strictEqual(controller.scopeChosen, false);
     } finally {
       graph.dispose();
     }

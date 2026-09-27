@@ -7,6 +7,7 @@ import { PreferencesStore } from '../core/storage/preferences';
 import { SearchPageSize, SearchPageSnapshot } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { renderedIcon, sourceIcon } from '../ui/webview/icons';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
@@ -83,6 +84,69 @@ suite('Search page behavior', () => {
     }
     return open(notes, '#project/atlas', options);
   };
+
+  test('shows three lines of a result, and Show all opens the rest', () => {
+    const long = ['Line one.', 'Line two.', 'Line three.', 'Line four.', 'Line five.'].join('\n');
+    const { page, snapshot } = open({ 'notes/a.md': `# Long #work\n${long}` }, '#work');
+    const body = page.find('.card .card-body');
+    assert.ok(body.classList.contains('is-clamped'), 'three lines by default');
+    const more = page.find('.card [data-action="toggle-card-body"]');
+    assert.strictEqual(more.textContent, 'Show all');
+    assert.strictEqual(more.getAttribute('aria-expanded'), 'false');
+    assert.strictEqual(more.getAttribute('aria-controls'), body.id);
+    page.click('.card [data-action="toggle-card-body"]');
+    assert.ok(!page.find('.card .card-body').classList.contains('is-clamped'), 'opened');
+    assert.strictEqual(page.text('.card [data-action="toggle-card-body"]'), 'Show less');
+    assert.strictEqual(page.find('.card [data-action="toggle-card-body"]').getAttribute('aria-expanded'), 'true');
+    page.send(snapshot);
+    assert.ok(!page.find('.card .card-body').classList.contains('is-clamped'), 'a redraw keeps it open');
+    assert.strictEqual(page.lastPosted('openSource'), undefined, 'Show all does not open the note');
+  });
+
+  test('a result whose words are further down shows their paragraph, led by an ellipsis', () => {
+    const body = ['Intro one.', 'Intro two.', 'Intro three.', '', 'The vendor review is late.'].join('\n');
+    const { page } = open({ 'notes/a.md': `# Entry #work\n${body}` }, 'vendor');
+    assert.ok(page.find('.card .card-snippet-lead'), 'the lead says it is from further down');
+    assert.match(page.text('.card .card-body') ?? '', /vendor review/);
+    assert.doesNotMatch(page.text('.card .card-body') ?? '', /Intro one/);
+    page.click('.card [data-action="toggle-card-body"]');
+    assert.match(page.text('.card .card-body') ?? '', /Intro one/, 'Show all shows the whole entry');
+  });
+
+  test('the gear\'s Preview shows no body, or all of it', () => {
+    const long = ['One.', 'Two.', 'Three.', 'Four.'].join('\n');
+    const { page, snapshot } = open({ 'notes/a.md': `# Long #work\n${long}` }, '#work');
+    page.click('[data-action="set-preview"][data-value="none"]');
+    assert.deepStrictEqual(page.lastPosted('setSearchPreview'), { type: 'setSearchPreview', preview: 'none' });
+    page.send({ ...snapshot, preview: 'none' });
+    assert.strictEqual(page.findAll('.card .card-body').length, 0);
+    page.send({ ...snapshot, preview: 'full' });
+    assert.ok(!page.find('.card .card-body').classList.contains('is-clamped'));
+    assert.strictEqual(page.findAll('.card [data-action="toggle-card-body"]').length, 0);
+  });
+
+  test('Refine shows five values of a facet, and the rest on request', () => {
+    const notes: Record<string, string> = {};
+    for (let index = 0; index < 12; index += 1) {notes[`notes/n${index}.md`] = `# Note ${index} #work #t${index}`;}
+    const { page, snapshot } = open(notes, '#work');
+    const facet = () => page.find('.query-facet-more').closest('.query-facet') as Element;
+    const values = () => facet().querySelectorAll('.query-facet-value').length;
+    const total = snapshot.query.facets.find((candidate) => candidate.values.length > 5)?.values.length ?? 0;
+    assert.ok(total > 5, 'a facet with more than five values');
+    assert.strictEqual(values(), 5);
+    const more = page.find('.query-facet-more');
+    assert.strictEqual(more.textContent, `+${total - 5} more`);
+    assert.strictEqual(more.getAttribute('aria-expanded'), 'false');
+    page.click('.query-facet-more');
+    assert.strictEqual(values(), total);
+    assert.strictEqual(page.text('.query-facet-more'), 'Show fewer');
+    page.send(snapshot);
+    assert.strictEqual(values(), total, 'a redraw keeps it open');
+    assert.ok(
+      page.findAll('.query-facet').every((group) => group.querySelectorAll('.query-facet-value').length > 5 || !group.querySelector('.query-facet-more')),
+      'a facet of five or fewer has no control',
+    );
+  });
 
   test('draws the notes and tasks a search found', () => {
     const { page } = open(
@@ -325,6 +389,19 @@ suite('Search page behavior', () => {
     });
   });
 
+  test('each format button carries the icon of its own mode', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    // Parsed by the same document, so both sides are serialized alike.
+    const drawn = (icon: string): string => {
+      const holder = page.find('body').ownerDocument.createElement('div');
+      holder.innerHTML = icon;
+      return holder.innerHTML;
+    };
+    assert.strictEqual(page.find('[data-mode="markdown"]').innerHTML, drawn(sourceIcon));
+    assert.strictEqual(page.find('[data-mode="html"]').innerHTML, drawn(renderedIcon));
+  });
+
   test('marks the control a reader is already using', () => {
     const { page } = open(NOTES, '#project/atlas');
 
@@ -375,14 +452,14 @@ suite('Search page behavior', () => {
     assert.ok(page.find('.view-options [data-action="set-sort"]'), 'Sort sits in the gear with the other view options');
   });
 
-  test('marks a search box that holds a term, so its hint can stay while it is in use', () => {
+  test('marks a search box that holds a term, and shows its hint', () => {
     const { page } = open(NOTES, '#project/atlas');
     assert.strictEqual(
       page.find('.query-workspace').hasAttribute('data-has-text'),
       true,
       'a search page opens on its tag, which is a term',
     );
-    assert.ok(page.find('.query-hint'), 'and the hint is in the page for the sheet to show or hide');
+    assert.ok(page.find('.query-hint'), 'and the hint is in the page');
   });
 
   test('the result tabs behave as tabs from the keyboard', () => {
@@ -466,7 +543,8 @@ suite('Search page behavior', () => {
       { 'notes/one.md': '# One #risk/vendor\nProse.' },
       '#risk/vendor',
     ).page;
-    assert.match(without.text('.hub-empty') ?? '', /No note describes/);
+    assert.strictEqual(without.findAll('.hub').length, 0, 'no panel for a hub that is not there');
+    assert.strictEqual(without.text('header .hub-offer [data-action="create-hub"]'), 'Create hub note', 'a line under the title offers one');
 
     without.click('[data-action="create-hub"]');
     assert.deepStrictEqual(without.lastPosted('createHubNote'), {

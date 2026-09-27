@@ -100,30 +100,57 @@ export function formatTasks(rows: readonly TaskRow[], format: ExportFormat): str
   }
 }
 
-/** Asks how, and where, and does it. `text` is made only once the reader has chosen. */
+/** Copy as live query block: the one choice that is not a format. */
+export const LIVE_QUERY_BLOCK_LABEL = 'Copy as live query block';
+
+/**
+ * Asks how, and where, and does it. `text` is made only once the reader has
+ * chosen. `liveBlock`, given for a page with a search, makes the first
+ * choice a query block of the search, which a note keeps up to date.
+ */
 export async function exportResults(
   what: string,
   count: number,
   text: (format: ExportFormat) => string,
+  liveBlock?: () => string,
 ): Promise<void> {
   if (count === 0) {
     void vscode.window.showInformationMessage(`There are no ${what} to export.`);
     return;
   }
+  const live = liveBlock
+    ? [{ label: LIVE_QUERY_BLOCK_LABEL, description: 'Stays up to date', live: true, choice: undefined as ExportChoice | undefined, extension: 'md' }]
+    : [];
   const picked = await vscode.window.showQuickPick(
-    FORMATS.flatMap((entry) => [
-      { label: `Copy as ${entry.label}`, description: entry.detail, choice: { format: entry.format, to: 'clipboard' } as ExportChoice, extension: entry.extension },
-      { label: `Save as ${entry.label}…`, description: entry.detail, choice: { format: entry.format, to: 'file' } as ExportChoice, extension: entry.extension },
-    ]),
+    [
+      ...live,
+      ...FORMATS.flatMap((entry) => [
+        { label: `Copy as ${entry.label}`, description: entry.detail, live: false, choice: { format: entry.format, to: 'clipboard' } as ExportChoice | undefined, extension: entry.extension },
+        { label: `Save as ${entry.label}…`, description: entry.detail, live: false, choice: { format: entry.format, to: 'file' } as ExportChoice | undefined, extension: entry.extension },
+      ]),
+    ],
     { title: `Export ${count} ${what}`, placeHolder: 'Everything the search found, not only the page on screen' },
   );
   if (!picked) {
     return;
   }
+  if (picked.live || !picked.choice) {
+    await vscode.env.clipboard.writeText(liveBlock ? liveBlock() : '');
+    vscode.window.setStatusBarMessage(
+      "$(check) Copied a live query block. Paste it into a note to keep this search's results there.",
+      5000,
+    );
+    return;
+  }
   const body = text(picked.choice.format);
   if (picked.choice.to === 'clipboard') {
     await vscode.env.clipboard.writeText(body);
-    void vscode.window.showInformationMessage(`Copied ${count} ${what} as ${picked.label.replace(/^Copy as /, '')}.`);
+    // A copy has nothing to follow up, so it is said in the status bar, where
+    // it fades, rather than in a notification that waits to be closed.
+    vscode.window.setStatusBarMessage(
+      `$(check) Copied ${count} ${what} as ${picked.label.replace(/^Copy as /, '')}`,
+      5000,
+    );
     return;
   }
   const target = await vscode.window.showSaveDialog({
@@ -135,7 +162,14 @@ export async function exportResults(
     return;
   }
   await vscode.workspace.fs.writeFile(target, Buffer.from(body, 'utf8'));
-  void vscode.window.showInformationMessage(`Saved ${count} ${what} to ${target.fsPath}.`);
+  // A saved file is worth a notification only for the way to open it.
+  void vscode.window
+    .showInformationMessage(`Saved ${count} ${what} to ${target.fsPath}.`, 'Open')
+    .then((choice) => {
+      if (choice === 'Open') {
+        void vscode.window.showTextDocument(target, { preview: false });
+      }
+    });
 }
 
 /** RFC 4180: a field with a comma, a quote, or a line break is quoted, and a quote is doubled. */

@@ -2,9 +2,7 @@ import { TaskPriority } from '../types';
 import {
   BLOCK_ID_PATTERN,
   formatTaskMetadata,
-  formatIsoDate,
   parseTaskMetadata,
-  startOfDay,
   TaskDateField,
   TaskMetadataFormat,
 } from './taskMetadata';
@@ -146,92 +144,4 @@ export function describeTaskDraftField(
     return value.join(', ');
   }
   return typeof value === 'string' ? value : '';
-}
-
-/**
- * A date written the way people write one: a day, a weekday, or a distance
- * from today.
- *
- * Returns the date as `YYYY-MM-DD`, or `{ date: undefined }` for an empty
- * value, which clears the field. Undefined means it could not be read, which
- * is what the input box reports rather than guessing a day.
- */
-export function parseTaskDateInput(
-  written: string,
-  now: number = Date.now(),
-): { date: string | undefined } | undefined {
-  const text = written.trim().toLowerCase();
-  if (!text) {
-    return { date: undefined };
-  }
-  const today = startOfDay(now);
-  const day = (offset: number): { date: string } => ({
-    date: formatIsoDate(today + offset * 24 * 60 * 60 * 1000),
-  });
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    const [year, month, date] = text.split('-').map(Number);
-    const made = new Date(year, month - 1, date);
-    return made.getFullYear() === year &&
-      made.getMonth() === month - 1 &&
-      made.getDate() === date
-      ? { date: text }
-      : undefined;
-  }
-  if (text === 'today') {
-    return day(0);
-  }
-  if (text === 'tomorrow') {
-    return day(1);
-  }
-  if (text === 'yesterday') {
-    return day(-1);
-  }
-
-  // "in 3 days", "+2w", "3 weeks"
-  const distance = /^(?:in[ \t]+|\+)?(\d+)[ \t]*(d|w|m|days?|weeks?|months?)$/.exec(
-    text,
-  );
-  if (distance) {
-    const count = Number(distance[1]);
-    const unit = distance[2][0];
-    if (unit === 'd') {
-      return day(count);
-    }
-    if (unit === 'w') {
-      return day(count * 7);
-    }
-    const date = new Date(today);
-    date.setMonth(date.getMonth() + count);
-    return { date: formatIsoDate(date.getTime()) };
-  }
-
-  // "friday", "next friday": the next one to come, and never today.
-  const weekday = /^(?:next[ \t]+)?(sun|mon|tues?|wed(?:nes)?|thur?s?|fri|sat(?:ur)?)(?:day)?$/.exec(
-    text,
-  );
-  if (weekday) {
-    const wanted = WEEKDAYS.findIndex((name) => name.startsWith(weekday[1].slice(0, 3)));
-    const current = new Date(today).getDay();
-    const offset = ((wanted - current + 7) % 7) || 7;
-    return day(offset);
-  }
-  return undefined;
-}
-
-const WEEKDAYS = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-];
-
-/** A date as the editor shows it back: `Friday 2026-09-25`. */
-export function describeTaskDate(date: string): string {
-  const [year, month, day] = date.split('-').map(Number);
-  const made = new Date(year, month - 1, day);
-  return `${WEEKDAYS[made.getDay()].replace(/^./, (letter) => letter.toUpperCase())} ${date}`;
 }

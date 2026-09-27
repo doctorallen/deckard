@@ -4,17 +4,20 @@ import {
   extractTags,
   getEntityNamespaceAliases,
   getPersonMarker,
+  hasAtxHeadingClosingHashes,
 } from '../../core/markdown/parser';
 import {
-  createNextOccurrence,
+  CompletionWrite,
   formatIsoDate,
   setTaskDate,
   setTaskLineCompletion,
+  writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
 import { applyWorkspaceWrite } from './workspaceWrites';
+import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
 
 /**
  * One edit made to many results at once.
@@ -30,6 +33,8 @@ import { applyWorkspaceWrite } from './workspaceWrites';
 export type BulkEdit =
   | { kind: 'complete'; completed: boolean }
   | { kind: 'due'; date: string | undefined }
+  /** A due date of its own for each task, by task id, as a spread writes. */
+  | { kind: 'dueEach'; dates: ReadonlyMap<string, string> }
   | { kind: 'tag'; tag: string };
 
 /** One result an edit can be made to. */
@@ -40,10 +45,18 @@ export type BulkEntry =
 export interface BulkEditResult {
   /** Lines the edit changed. */
   changed: number;
-  /** Results left alone: already as asked, or changed since indexing. */
+  /** Results left alone: `unchanged` and `stale` together. */
   skipped: number;
+  /** Results already as asked. */
+  unchanged?: number;
+  /** Results whose line changed since indexing, or whose note is unreadable. */
+  stale?: number;
+  /** The notes those stale results are in, so a message can name them. */
+  staleUris?: vscode.Uri[];
   /** Notes the edit reached. */
   notes: number;
+  /** Repeating tasks completed whose 🔁 rule Deckard could not read. */
+  unreadRules?: number;
 }
 
 /** What a bulk edit is called, in the preview and in the Undo prompt. */
@@ -56,6 +69,8 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
       return edit.date
         ? `setting the due date of ${count} to ${edit.date}`
         : `clearing the due date of ${count}`;
+    case 'dueEach':
+      return `spreading the due dates of ${count}`;
     default:
       return `adding ${edit.tag} to ${count}`;
   }
@@ -64,8 +79,9 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
 /**
  * Writes a tag at the end of a line, unless the line already carries it.
  *
- * The tag goes last, where a tag written by hand goes, and the sentence in
- * front of it is left exactly as it was.
+ * The tag goes last, where a tag written by hand goes, ahead only of a
+ * block id or a heading's closing hashes, and the sentence in front of it is
+ * left exactly as it was.
  */
 export function appendTagToLine(
   line: string,
@@ -88,7 +104,24 @@ export function appendTagToLine(
   if (carried.some((candidate) => candidate.key === written[0].key)) {
     return line;
   }
-  return `${line.replace(/[ \t]+$/, '')} ${written[0].label}`;
+  // The tag goes before what must stay last: a trailing `^block-id`, which
+  // is read as one only at the end of a line, and a heading's closing `#`s,
+  // which would otherwise stop closing it.
+  let head = line.replace(/[ \t]+$/, '');
+  let tail = '';
+  const blockId = /[ \t]+\^[\w-]+$/.exec(head);
+  if (blockId) {
+    tail = blockId[0] + tail;
+    head = head.slice(0, blockId.index);
+  }
+  if (hasAtxHeadingClosingHashes(head)) {
+    const closing = /[ \t]+#+$/.exec(head);
+    if (closing) {
+      tail = closing[0] + tail;
+      head = head.slice(0, closing.index);
+    }
+  }
+  return `${head} ${written[0].label}${tail}`;
 }
 
 /**
@@ -104,7 +137,16 @@ export async function applyBulkEdit(
   const workspaceEdit = new vscode.WorkspaceEdit();
   const paths = new Set<string>();
   let changed = 0;
-  let skipped = 0;
+  let unchanged = 0;
+  let stale = 0;
+  const staleNotes = new Map<string, vscode.Uri>();
+  const markStale = (count: number, uri?: vscode.Uri) => {
+    stale += count;
+    if (uri) {
+      staleNotes.set(uri.toString(), uri);
+    }
+  };
+  let unreadRules = 0;
 
   const byPath = new Map<string, BulkEntry[]>();
   entries.forEach((entry) => {
@@ -116,14 +158,14 @@ export async function applyBulkEdit(
   for (const [filePath, fileEntries] of byPath) {
     const uri = await resolveSourceUri(filePath);
     if (!uri) {
-      skipped += fileEntries.length;
+      markStale(fileEntries.length);
       continue;
     }
     let document: vscode.TextDocument;
     try {
       document = await vscode.workspace.openTextDocument(uri);
     } catch {
-      skipped += fileEntries.length;
+      markStale(fileEntries.length, uri);
       continue;
     }
     const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
@@ -132,7 +174,7 @@ export async function applyBulkEdit(
     fileEntries.forEach((entry) => {
       const line = entry.kind === 'task' ? entry.task.lineNumber : entry.section.startLine;
       if (line < 1 || line > document.lineCount) {
-        skipped += 1;
+        markStale(1, uri);
         return;
       }
       const source = document.lineAt(line - 1);
@@ -141,10 +183,10 @@ export async function applyBulkEdit(
           ? entry.task.sourceLineText
           : firstLine(entry.section.rawContent);
       if (source.text !== expected) {
-        skipped += 1;
+        markStale(1, uri);
         return;
       }
-      const replacement = rewrite(entry, edit, source.text, {
+      const rewritten = rewrite(entry, edit, source.text, {
         eol,
         format: readTaskMetadataFormat(configuration),
         addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
@@ -155,25 +197,35 @@ export async function applyBulkEdit(
           configuration.get<unknown>('personMarker', '@'),
         ),
       });
+      const replacement = rewritten?.text;
       if (replacement === undefined || replacement === source.text) {
-        skipped += 1;
+        unchanged += 1;
         return;
       }
       workspaceEdit.replace(uri, source.range, replacement);
       paths.add(filePath);
       changed += 1;
+      if (rewritten?.unreadRule !== undefined) {
+        unreadRules += 1;
+      }
     });
   }
 
+  const left = {
+    skipped: unchanged + stale,
+    unchanged,
+    stale,
+    staleUris: [...staleNotes.values()],
+  };
   if (changed === 0) {
-    return { changed: 0, skipped, notes: 0 };
+    return { changed: 0, ...left, notes: 0, unreadRules: 0 };
   }
   const written = await applyWorkspaceWrite(workspaceEdit, {
     label: describeBulkEdit(edit, changed),
     description: describeBulkEdit(edit, changed),
   });
   return written.applied
-    ? { changed, skipped, notes: written.notes.length }
+    ? { changed, ...left, notes: written.notes.length, unreadRules }
     : undefined;
 }
 
@@ -191,9 +243,9 @@ function rewrite(
   edit: BulkEdit,
   line: string,
   options: RewriteOptions,
-): string | undefined {
+): CompletionWrite | undefined {
   if (edit.kind === 'tag') {
-    return appendTagToLine(line, edit.tag, options);
+    return { text: appendTagToLine(line, edit.tag, options) };
   }
   // Only a task has a checkbox or a due date; a note section keeps its own.
   if (entry.kind !== 'task') {
@@ -201,13 +253,15 @@ function rewrite(
   }
   const task = entry.task;
   if (edit.kind === 'due') {
-    return setTaskDate(
-      line,
-      task.checkboxColumn,
-      'due',
-      edit.date,
-      options.format,
-    );
+    return {
+      text: setTaskDate(line, task.checkboxColumn, 'due', edit.date, options.format),
+    };
+  }
+  if (edit.kind === 'dueEach') {
+    const date = edit.dates.get(task.id);
+    return date === undefined
+      ? undefined
+      : { text: setTaskDate(line, task.checkboxColumn, 'due', date, options.format) };
   }
   if (task.completed === edit.completed) {
     return undefined;
@@ -221,12 +275,11 @@ function rewrite(
     options.format,
   );
   if (!edit.completed) {
-    return completed;
+    return { text: completed };
   }
   // A repeating task is replaced by its next occurrence here too, so a bulk
   // completion leaves the same notes behind as one checkbox would.
-  const next = createNextOccurrence(line, task.checkboxColumn, now);
-  return next === undefined ? completed : `${next}${options.eol}${completed}`;
+  return writeCompletion(completed, task.checkboxColumn, now, options.eol);
 }
 
 function firstLine(content: string): string {
@@ -238,8 +291,14 @@ export function describeBulkEditResult(
   edit: BulkEdit,
   result: BulkEditResult,
 ): string {
+  const stale = result.stale ?? 0;
+  const unchanged = result.unchanged ?? result.skipped - stale;
   if (result.changed === 0) {
-    return `Nothing to change: every result is already as you asked, or has changed since it was indexed.`;
+    return stale === 0
+      ? 'Nothing to change: every result is already as you asked.'
+      : describeStale(
+          result.staleUris?.length ? result.staleUris.map(noteName) : ['The note'],
+        );
   }
   const verb =
     edit.kind === 'complete'
@@ -250,12 +309,59 @@ export function describeBulkEditResult(
         ? edit.date
           ? `Set the due date to ${edit.date} on`
           : 'Cleared the due date on'
-        : `Added ${edit.tag} to`;
+        : edit.kind === 'dueEach'
+          ? 'Set a due date on'
+          : `Added ${edit.tag} to`;
   const left =
-    result.skipped === 0
+    (unchanged === 0
       ? ''
-      : ` ${result.skipped} ${result.skipped === 1 ? 'was' : 'were'} left as they are.`;
+      : ` ${unchanged} ${unchanged === 1 ? 'was' : 'were'} already as you asked.`) +
+    (stale === 0
+      ? ''
+      : ` ${stale} ${stale === 1 ? 'result' : 'results'} changed after Deckard last read ${
+          stale === 1 ? 'it and was left as it is' : 'them and were left as they are'
+        }.`);
+  const unread = result.unreadRules ?? 0;
+  const rules =
+    unread === 0
+      ? ''
+      : ` Deckard could not read the repeat rule on ${
+          unread === 1 ? 'one' : unread
+        } of them, so no next one was added.`;
   return `${verb} ${result.changed} ${
     result.changed === 1 ? 'result' : 'results'
-  } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}`;
+  } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}${rules}`;
+}
+
+/**
+ * How heavy a bulk edit's message is: nothing written because the notes
+ * changed is an error; written, but with results left out, a warning.
+ */
+export function bulkEditSeverity(result: BulkEditResult): 'info' | 'warning' | 'error' {
+  const stale = result.stale ?? 0;
+  if (result.changed === 0) {
+    return stale > 0 ? 'error' : 'info';
+  }
+  return stale > 0 || (result.unreadRules ?? 0) > 0 ? 'warning' : 'info';
+}
+
+/** Says what a bulk edit did, at the weight of what happened. */
+export function reportBulkEditResult(
+  edit: BulkEdit,
+  result: BulkEditResult,
+  more = '',
+): void {
+  const text = describeBulkEditResult(edit, result) + more;
+  const severity = bulkEditSeverity(result);
+  if (severity === 'error') {
+    const uris = result.staleUris ?? [];
+    void reportFailure({
+      outcome: text,
+      ...(uris.length === 1 ? { action: openNoteAction(uris[0]) } : {}),
+    });
+  } else if (severity === 'warning') {
+    void vscode.window.showWarningMessage(text);
+  } else {
+    void vscode.window.showInformationMessage(text);
+  }
 }

@@ -23,6 +23,57 @@ const RETIRED: Array<[RegExp, string]> = [
   [/>Customize Home</, 'Customize'],
 ];
 
+/**
+ * The host's sources: the places a notification, a quick pick, or a view
+ * message is written. Webview page builders (`*Html.ts`) are read above.
+ */
+function hostSources(): Array<readonly [string, string]> {
+  const src = path.join(root, 'src');
+  const files = [path.join(src, 'extension.ts')];
+  for (const folder of ['ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state']) {
+    const dir = path.join(src, folder);
+    if (!fs.existsSync(dir)) {
+      continue;
+    }
+    for (const name of fs.readdirSync(dir)) {
+      if (name.endsWith('.ts') && !/Html\.ts$/.test(name)) {
+        files.push(path.join(dir, name));
+      }
+    }
+  }
+  return files.map((file) => [path.relative(root, file), fs.readFileSync(file, 'utf8')] as const);
+}
+
+/** The argument text of every call to `name(`, parentheses balanced. */
+function callBodies(source: string, name: RegExp): string[] {
+  const bodies: string[] = [];
+  for (const match of source.matchAll(new RegExp(name.source + '\\(', 'g'))) {
+    let depth = 1;
+    let at = (match.index ?? 0) + match[0].length;
+    const start = at;
+    while (at < source.length && depth > 0) {
+      const char = source[at];
+      depth += char === '(' ? 1 : char === ')' ? -1 : 0;
+      at++;
+    }
+    bodies.push(source.slice(start, at - 1));
+  }
+  return bodies;
+}
+
+const NOTIFICATION = /show(?:Information|Warning|Error)Message/;
+
+/** Every quoted string in a source, with `${…}` taken out of templates. */
+function literals(source: string): string[] {
+  const code = source.replace(/^\s*(?:\/\/|\*).*$/gm, '').replace(/\s\/\/\s.*$/gm, '');
+  return [...code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)].map(
+    (match) => (match[1] ?? match[2] ?? match[3] ?? '').replace(/\$\{[^}]*\}/g, ''),
+  )
+    // A backtick inside a regular expression pairs with the next template's;
+    // what lies between them is code, which ends a statement somewhere.
+    .filter((literal) => !/;\n/.test(literal));
+}
+
 function staticButtonLabels(source: string): string[] {
   // Labels written as literal text between a button's tags; labels built from
   // data are checked where they are built.
@@ -62,11 +113,11 @@ suite('Naming', () => {
 
   test('commands open rather than show, and say when they will ask', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as {
-      contributes: { commands: Array<{ command: string; title: string }> };
+      contributes: { commands: Array<{ command: string; title: string; category?: string }> };
     };
     const titles = manifest.contributes.commands.map((command) => command.title);
     assert.deepStrictEqual(
-      titles.filter((title) => /^Deckard: Show /.test(title)),
+      titles.filter((title) => /^Show /.test(title)),
       [],
       'a command that opens a page or view says Open',
     );
@@ -78,8 +129,110 @@ suite('Naming', () => {
     const tagPage = titles.filter((title) => /Tag's Search Page/.test(title));
     assert.ok(tagPage.length >= 2, 'the palette and the context menu both offer it');
     assert.ok(
-      tagPage.every((title) => title.endsWith('…') && title.replace(/^Deckard: /, '') === tagPage[0].replace(/^Deckard: /, '')),
+      tagPage.every((title) => title.endsWith('…') && title === tagPage[0]),
       'under one title, ending with the ellipsis of a command that asks',
     );
+  });
+
+  test('commands carry their category rather than writing it into the title', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as {
+      contributes: { commands: Array<{ command: string; title: string; category?: string }> };
+    };
+    assert.deepStrictEqual(
+      manifest.contributes.commands.filter((command) => command.title.startsWith('Deckard')).map((command) => command.command),
+      [],
+      'the palette writes "Deckard:" from the category; a title that repeats it reads twice in view toolbars',
+    );
+  });
+
+  suite('Messages', () => {
+    const hosts = hostSources();
+
+    test('a notification never carries a raw error', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const body of callBodies(source, NOTIFICATION)) {
+          if (/String\(error\)|error\.message|\.message\b\s*:/.test(body)) {
+            offenders.push(`${name}: ${body.trim().slice(0, 80)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'the raw error goes to the log through reportFailure, with Open Log');
+    });
+
+    test('a setting is named in words', () => {
+      const offenders: string[] = [];
+      // Check My Setup is a report of the settings as written, IDs and all.
+      for (const [name, source] of hosts.filter(([file]) => !file.endsWith('checkSetup.ts'))) {
+        for (const literal of literals(source)) {
+          if (/\s/.test(literal) && /\bdeckard\.[a-z]\w*(\.\w+)*\b/.test(literal) && !/[<>]/.test(literal)) {
+            offenders.push(`${name}: ${literal.slice(0, 100)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'say the "Exclude" setting, with Open Setting, as settingLabel names it');
+    });
+
+    test('a toast button opens rather than shows', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const match of source.matchAll(/(?:choice|confirm) === '([^']+)'|title: '(Show [^']*)',\s*run:/g)) {
+          const label = match[1] ?? match[2];
+          if (/^Show /.test(label)) {
+            offenders.push(`${name}: ${label}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'a button that opens a place says Open');
+    });
+
+    test('a saved search is a search', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const literal of literals(source)) {
+          if (/saved filter|Deckard filter|as a view/i.test(literal)) {
+            offenders.push(`${name}: ${literal.slice(0, 80)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, []);
+    });
+
+    test('entity stays in the code', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        const shown = [
+          ...[...source.matchAll(/\b(?:label|placeHolder|placeholder|description|prompt|tooltip):\s*(['"`])((?:(?!\1)[^\\]|\\.)*)\1/g)].map(
+            (match) => match[2],
+          ),
+          ...callBodies(source, NOTIFICATION).flatMap(literals),
+        ];
+        for (const text of shown) {
+          if (/\bentit(y|ies)\b/i.test(text)) {
+            offenders.push(`${name}: ${text.slice(0, 80)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'say person, project, or namespaced tag');
+    });
+
+    test('a message that wrote nothing is an error, and a changed note is said one way', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const body of callBodies(source, /show(?:Information|Warning)Message/)) {
+          if (/could not/.test(body) && /nothing was written/.test(body)) {
+            offenders.push(`${name}: ${body.trim().slice(0, 80)}`);
+          }
+        }
+        if (!name.endsWith('notify.ts')) {
+          for (const literal of literals(source)) {
+            if (/changed after Deckard last read (it|them), so nothing was written/.test(literal)) {
+              offenders.push(`${name}: ${literal.slice(0, 80)} (use describeStale)`);
+            }
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, []);
+    });
   });
 });

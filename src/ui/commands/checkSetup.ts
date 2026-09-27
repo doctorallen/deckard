@@ -30,6 +30,8 @@ export interface SetupFacts {
   excludePatterns: string[];
   unreadable: UnreadableNote[];
   indexed: { files: number; sections: number; tasks: number; tags: number };
+  /** How many notes their folder parks, and how many a front-matter tag does. */
+  parked?: { byFolder: number; byTag: number };
   personMarker: string;
   /** How many people the index knows, by the marker or `#person/`. */
   people: number;
@@ -92,6 +94,9 @@ export async function collectSetupFacts(
       tasks: index.tasks.size,
       tags: index.tags.size,
     },
+    ...(index.parked
+      ? { parked: { byFolder: index.parked.byFolder, byTag: index.parked.byTag } }
+      : {}),
     personMarker,
     people,
     me,
@@ -141,9 +146,9 @@ export function buildSetupReport(facts: SetupFacts, now = new Date()): string {
   }
   if (scan.excluded > 0) {
     const share = scan.found > 0 ? Math.round((scan.excluded / scan.found) * 100) : 0;
-    const text = `${scan.excluded} of ${scan.found} kept out by exclude patterns (${facts.excludePatterns.map((p) => `\`${p}\``).join(', ') || '`files.exclude`'}).`;
+    const text = `${scan.excluded} of ${scan.found} kept out by exclude patterns (${facts.excludePatterns.map((p) => `\`${p}\``).join(', ') || '`files.exclude` or `search.exclude`'}).`;
     if (share >= 50) {
-      warn(`${text} That is ${share}% of what was found.`, 'Check `deckard.exclude` and `files.exclude`; one pattern may be wider than meant.');
+      warn(`${text} That is ${share}% of what was found.`, 'Check `deckard.exclude`, `files.exclude`, and `search.exclude`; one pattern may be wider than meant.');
     } else {
       lines.push(`- ℹ️ ${text}`);
     }
@@ -162,6 +167,17 @@ export function buildSetupReport(facts: SetupFacts, now = new Date()): string {
   ok(`${indexed.files} notes, ${indexed.sections} entries, ${indexed.tasks} tasks, ${indexed.tags} tags.`);
   if (indexed.files > 0 && indexed.tags === 0) {
     warn('No tags were found in any note.', 'Write a tag such as `#project/atlas` on a heading or a task. Tags are what Deckard connects notes by.');
+  }
+  const parked = (facts.parked?.byFolder ?? 0) + (facts.parked?.byTag ?? 0);
+  if (parked > 0 && parked >= indexed.files) {
+    warn(
+      'Every note is parked, so the Tasks view and Related Notes will be empty.',
+      'Check `deckard.parked.folders`.',
+    );
+  } else if (parked > 0) {
+    lines.push(
+      `- ℹ️ ${parked} ${parked === 1 ? 'note is' : 'notes are'} parked: ${facts.parked?.byFolder ?? 0} by \`deckard.parked.folders\` and ${facts.parked?.byTag ?? 0} by a parked tag.`,
+    );
   }
 
   lines.push('', '## People', '');

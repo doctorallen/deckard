@@ -7,6 +7,7 @@ import {
   getWikiLinkCompletionContext,
   WikiLinkCompletionProvider,
 } from '../ui/commands/linkSuggestions';
+import { describeDay, parseDatePhrase } from '../core/markdown/dates';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
@@ -27,6 +28,20 @@ suite('Wiki link suggestions', () => {
 
     assert.deepStrictEqual(items.map((item) => item.label), ['Atlas Planning']);
     assert.strictEqual(items[0].insertText, 'Atlas Planning]]');
+    provider.dispose();
+  });
+
+  test('offers no links in a Markdown file that is not a note', async () => {
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => createIndex(['notes/Atlas Planning.md']),
+      isNotesFile: () => false,
+    });
+    const document = createDocument('/tmp/deckard/node_modules/pkg/README.md', 'See [[atl');
+    assert.deepStrictEqual(
+      await provider.provideCompletionItems(document, new vscode.Position(0, 9)),
+      [],
+    );
     provider.dispose();
   });
 
@@ -56,6 +71,71 @@ suite('Wiki link suggestions', () => {
       items.map((item) => [item.label, item.detail, item.insertText]),
       [['Atlas Program', 'Alias of notes/Atlas.md', 'Atlas Program]]']],
     );
+    provider.dispose();
+  });
+
+  test('completes a note\'s headings after #, and every note\'s after ##', async () => {
+    const index = indexOf({
+      'notes/Launch plan.md': '# Launch plan\n## December review #project/atlas\n## Budget\n',
+      'notes/Harbor.md': '# Harbor\n## December offsite\n',
+    });
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+      getFilePath: () => 'notes/Harbor.md',
+    });
+    const complete = async (text: string) =>
+      provider.provideCompletionItems(
+        createDocument('/tmp/deckard/notes/Harbor.md', text),
+        new vscode.Position(0, text.length),
+      );
+
+    const inNote = await complete('See [[Launch plan#Dec');
+    assert.deepStrictEqual(
+      inNote.map((item) => [item.label, item.insertText]),
+      [['December review', 'Launch plan#December review]]']],
+      'the heading as a link names it, tags taken out',
+    );
+    const here = await complete('See [[#off');
+    assert.deepStrictEqual(here.map((item) => item.insertText), ['#December offsite]]'], 'this note, when no note is named');
+    const everywhere = await complete('See [[##december');
+    assert.deepStrictEqual(
+      everywhere.map((item) => item.insertText).sort(),
+      ['Harbor#December offsite]]', 'Launch plan#December review]]'],
+    );
+    provider.dispose();
+  });
+
+  test('ranks notes as Find does, opened ones first, and offers a day by name', async () => {
+    const index = buildWorkspaceIndex(
+      new Map(
+        ['Atlas', 'Budget', 'Cedar'].map((name) => [
+          `notes/${name}.md`,
+          parseMarkdown(`notes/${name}.md`, `# ${name}\n`),
+        ]),
+      ),
+    );
+    const cedar = [...index.sections.values()].find((section) => section.filePath === 'notes/Cedar.md');
+    const provider = new WikiLinkCompletionProvider(
+      { ready: Promise.resolve(), getSnapshot: () => index },
+      { value: { sectionAccessCounts: { [cedar!.id]: 4 }, sectionAccessTimes: { [cedar!.id]: Date.now() } } },
+    );
+    const complete = async (text: string) =>
+      provider.provideCompletionItems(
+        createDocument('/tmp/deckard/notes/case.md', text),
+        new vscode.Position(0, text.length),
+      );
+    const empty = await complete('See [[');
+    assert.strictEqual(empty[0].label, 'Cedar', 'with nothing typed, the note opened lately comes first');
+    const days = await complete('See [[tomorrow');
+    assert.strictEqual(days.length, 1);
+    assert.match(String(days[0].insertText), /^\d{4}-\d{2}-\d{2}\]\]$/, 'a day links to its daily note');
+    const october = await complete('See [[oct 3');
+    const expected = parseDatePhrase('oct 3')!.date!;
+    assert.strictEqual(october[0].label, expected, 'a month and day links to that day');
+    assert.strictEqual(october[0].detail, `${describeDay(expected)}, that day's note`);
+    const atlas = await complete('See [[Atlas');
+    assert.ok(atlas.every((item) => !/^\d{4}-/.test(String(item.label))), 'a name is not a day');
     provider.dispose();
   });
 

@@ -8,8 +8,9 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { formatIsoDate } from '../core/markdown/taskMetadata';
 import { createDailyNote } from '../ui/commands/dailyNote';
 import {
+  describeExtractFailure,
   extractHeadingNote,
-  findTaggedHeadingAtLine,
+  findHeadingAtLine,
   getExtractedNoteFileName,
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
@@ -413,8 +414,10 @@ suite('Source commands', () => {
     );
 
     const parsed = parseMarkdown('notes/source.md', sourceContent);
-    const section = findTaggedHeadingAtLine(parsed.sections, 7);
+    const section = findHeadingAtLine(parsed.sections, 7);
     assert.strictEqual(section?.heading, 'Detail #detail');
+    // Any heading, tagged or not, is found under the cursor.
+    assert.strictEqual(findHeadingAtLine(parsed.sections, 11)?.heading, 'Next');
 
     const extractedUri = await extractHeadingNote(
       parsed.sections[1],
@@ -484,6 +487,45 @@ suite('Source commands', () => {
     );
 
     await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('keeps the new note when the old one could not be saved or put back', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const notesUri = vscode.Uri.joinPath(temporaryRoot, 'notes');
+    const sourceUri = vscode.Uri.joinPath(notesUri, 'source.md');
+    const content = '# Case #case\nIntro.\n\n## Lead #clue\nLead details.';
+    await vscode.workspace.fs.createDirectory(notesUri);
+    await vscode.workspace.fs.writeFile(sourceUri, Buffer.from(content, 'utf8'));
+    const parsed = parseMarkdown('notes/source.md', content);
+    const exists = async (uri: vscode.Uri) =>
+      vscode.workspace.fs.stat(uri).then(() => true, () => false);
+
+    assert.strictEqual(
+      await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'half', async () => 'half'),
+      undefined,
+    );
+    assert.ok(
+      await exists(vscode.Uri.joinPath(notesUri, 'half.md')),
+      'the heading stays in the new note while the old note is unsaved',
+    );
+
+    await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'undone', async () => 'unchanged');
+    assert.ok(
+      !(await exists(vscode.Uri.joinPath(notesUri, 'undone.md'))),
+      'nothing changed, so the new note goes',
+    );
+    await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('says what became of each note when extracting fails', () => {
+    assert.strictEqual(
+      describeExtractFailure('unchanged', 'save', 'source.md', 'lead.md'),
+      'Deckard could not save source.md, so the heading was not extracted and nothing was written.',
+    );
+    assert.strictEqual(
+      describeExtractFailure('half', 'remove', 'source.md', 'lead.md'),
+      'Deckard wrote lead.md but could not remove the heading from source.md, so the heading is in both notes. source.md is open with the link in its place: save it to finish, or undo the change in it and delete lead.md.',
+    );
   });
 
   test('rejects unsafe extraction names and preserves conflicts', async () => {

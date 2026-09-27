@@ -262,6 +262,81 @@ suite('Tag overview query builder', () => {
     ]);
   });
 
+  test('builds a link row from [[Atlas plan]] typed in a new row, and writes its brackets once', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '';
+    state.query.builder = { join: 'and', items: [] };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    const row = (path: string) => ({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p' + path, path } });
+    view.key(view.type(row('0'), '[[Atlas plan]]'), 'Enter');
+    view.key(view.type(row('1'), '-[[Budget]]'), 'Enter');
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'link = [[Atlas plan]] AND link != [[Budget]]');
+  });
+
+  test('writes a link row as link = [[…]] whether or not its value has brackets', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = 'link = [[Atlas]]';
+    state.query.builder = {
+      join: 'and',
+      items: [{ field: 'link', operator: 'eq', value: 'Atlas', supported: true, text: 'link = [[Atlas]]' }],
+    };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    assert.match(view.html(), /placeholder="Atlas#Decision"/);
+    const input = view.type({ dataset: { action: 'builder-set-value', suggestKey: 'p0', field: 'link', path: '0' } }, '[[Atlas plan]]');
+    view.key(input, 'Enter');
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'link = [[Atlas plan]]');
+  });
+
+  test('shows [[Atlas plan]] as one chip with one remove', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '[[Atlas plan]] -[[Budget]]';
+    state.query.terms = [
+      { text: '[[Atlas plan]]', without: '-[[Budget]]' },
+      { text: '-[[Budget]]', without: '[[Atlas plan]]' },
+    ];
+    view.send(state);
+    const html = view.html();
+    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 2);
+    assert.match(html, /class="query-chip is-negated" data-action="remove-term" data-without="\[\[Atlas plan\]\]"/);
+  });
+
+  test('completes a note after [[ in the bar and in a new row', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: { text: string; builder: unknown; suggestions: { values: Record<string, unknown> } } };
+    state.query.text = '';
+    state.query.builder = { join: 'and', items: [] };
+    state.query.suggestions.values.link = [
+      { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 3 notes' },
+      { value: 'Budget', label: '[[Budget]]', detail: 'Linked from 1 note' },
+    ];
+    view.send(state);
+
+    const bar = view.type({ dataset: { action: 'query-input', suggestKey: 'query' } }, 'is:open [[Atl');
+    const rendered = view.suggestionsFor('query');
+    assert.match(rendered, /\[\[Atlas plan\]\]/);
+    assert.match(rendered, /Linked from 3 notes/);
+    assert.doesNotMatch(rendered, /Budget/);
+    view.key(bar, 'ArrowDown');
+    view.key(bar, 'Enter');
+    let last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'is:open [[Atlas plan]]');
+
+    view.click({ action: 'toggle-builder' });
+    const row = view.type({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p0', path: '0' } }, '-[[Bud');
+    assert.match(view.suggestionsFor('p0'), /-\[\[Budget\]\]/);
+    view.key(row, 'ArrowDown');
+    view.key(row, 'Enter');
+    last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'link != [[Budget]]');
+  });
+
   test('removes an empty row with Backspace', () => {
     const view = mountTagOverview();
     view.send(createState());
@@ -440,6 +515,11 @@ suite('Tag overview query builder', () => {
     assert.match(view.html(), /class="tag-weight-rail"/, 'a related tag shows its strength');
     assert.match(view.html(), /related 2 of 3/);
 
+    // Given the results it is a share of, the chip says so.
+    const shared = [{ ...facets[0], values: [{ ...facets[0].values[0], count: 6, total: 13, strength: 6 / 13 }] }];
+    view.send(createState('#project/atlas', { facets: shared }));
+    assert.match(view.html(), /in 6 of 13 results/);
+
     view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
     assert.doesNotMatch(view.html(), /data-clause="#team\/harbor"/);
     assert.match(view.html(), /In the Related Notes sidebar\./);
@@ -465,7 +545,7 @@ suite('Tag overview query builder', () => {
 
     // Clear is always drawn, disabled while the box holds only the page's
     // own tag, so nothing appears beside the box when typing starts.
-    assert.match(html, /data-action="clear-query" data-query-clears[^>]*disabled/);
+    assert.match(html, /data-action="clear-query" data-query-clears[^>]*aria-disabled="true"/);
     // Builder sits under the box, not beside it.
     assert.ok(
       html.indexOf('data-action="toggle-builder"') > html.indexOf('class="query-status"'),
@@ -659,6 +739,7 @@ function createStubElement(tagName: string): any {
     classList: { contains: () => false, add: () => undefined, remove: () => undefined },
     appendChild: (child: unknown) => child,
     setAttribute: () => undefined,
+    removeAttribute: () => undefined,
     getAttribute: () => null,
     focus: () => undefined,
     setSelectionRange: () => undefined,
@@ -699,6 +780,7 @@ function createState(
     tasks: [],
     taskCounts: { all: 0, active: 0, completed: 0 },
     renderMode: 'markdown',
+    preview: 'lines',
     sortMode: 'alphabetical',
     layout: 'tabs',
     tagTitleDisplayMode: 'inline',

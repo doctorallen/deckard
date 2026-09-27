@@ -24,3 +24,6 @@ test/**
 scripts/**
 *.vsix
 **/.DS_Store
+
+# The guide ships, for Help's Read more; its screenshots load from GitHub.
+!docs/guide/**

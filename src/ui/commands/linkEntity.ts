@@ -21,24 +21,22 @@ interface EntityKindChoice extends vscode.QuickPickItem {
 /**
  * Lets the user explicitly attach the current heading to a canonical entity.
  */
+const HEADING_FIRST = 'Put the cursor on a heading in a note to tag it with a person or project.';
+
 export async function linkCurrentHeading(
   indexer: WorkspaceIndexer,
 ): Promise<void> {
   await indexer.ready;
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
-    void vscode.window.showWarningMessage(
-      'Open a Markdown heading before linking it to an entity.',
-    );
+    void vscode.window.showInformationMessage(HEADING_FIRST);
     return;
   }
 
   const line = editor.document.lineAt(editor.selection.active.line);
   const heading = line.text.match(/^ {0,3}#{1,6}[ \t]+(.+?)\s*$/);
   if (!heading) {
-    void vscode.window.showWarningMessage(
-      'Place the cursor on a Markdown heading before linking it to an entity.',
-    );
+    void vscode.window.showInformationMessage(HEADING_FIRST);
     return;
   }
 
@@ -62,12 +60,12 @@ export async function linkCurrentHeading(
           entity,
         })),
       {
-        label: '$(add) Create a new entity',
-        description: 'Insert a canonical tag in this heading',
+        label: '$(add) A new person, project, or topic…',
+        description: 'Writes its tag at the end of the heading',
         create: true,
       },
     ],
-    { placeHolder: `Link "${headingName}" to an entity` },
+    { placeHolder: `Tag "${headingName}" with a person, project, or other namespaced tag` },
   );
   if (!choice) {
     return;
@@ -84,7 +82,7 @@ export async function linkCurrentHeading(
     )
   ) {
     void vscode.window.showInformationMessage(
-      `${entity.label} is already linked to this heading.`,
+      `The heading is already tagged ${entity.label}.`,
     );
     return;
   }
@@ -110,7 +108,7 @@ async function createEntity(
   ];
   const kind = await vscode.window.showQuickPick<EntityKindChoice>(
     kinds,
-    { placeHolder: 'Choose entity type' },
+    { placeHolder: 'What is it?' },
   );
   if (!kind) {
     return undefined;

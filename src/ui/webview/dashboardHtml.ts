@@ -4,9 +4,10 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
   getQueryEditorCss,
   getQueryEditorScript,
-  getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 import {
@@ -19,6 +20,7 @@ import {
   sortIcon,
   strokeIcon,
 } from './icons';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -44,14 +46,19 @@ export function getDashboardHtml(
 <style nonce="${nonce}">${getBaseCss()}
 ${getQueryEditorCss()}
 .tag-name, .telemetry-line, .section-readout { font-family: var(--font-mono); }
-.metric::before { content: attr(data-code); display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
+/* The first step, on a Home with no notes to show yet. */
+.home-start { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); padding: var(--space-4); border: var(--edge) solid var(--amber); background: var(--panel); }
+.home-start h2 { margin: 0; }
+.home-start p { margin: 0; color: var(--muted); }
+.home-start-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.metric::before { content: attr(data-code); content: attr(data-code) / ""; display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
 .dashboard-header-actions .view-options { order: 2; }
 .saved-filters { padding-top: 16px; }
 .dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
 .dashboard-tabs button + button { margin-left: -1px; }
-.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }
+.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }
 .dashboard-panel { min-width: 0; padding-top: 16px; }
 .dashboard-panel[hidden] { display: none; }
 section { min-width: 0; }
@@ -96,7 +103,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
   font: var(--text-xs)/16px var(--font-mono);
   overflow-wrap: anywhere;
 }
-.saved-filter-remove { min-height: 26px; text-transform: none; }
+.saved-filter-remove, .saved-filter-show { min-height: 26px; text-transform: none; }
+.saved-filter-actions { display: inline-flex; gap: var(--space-1); }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-kind { color: var(--muted); font: var(--text-xs) var(--font-mono); }
@@ -107,6 +115,9 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
 .tag-main { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .tag-name { overflow-wrap: anywhere; color: var(--cyan-bright); }
+/* A tag row is a row, not a token: its name wraps rather than shortening. */
+.tag-name .tag-label, .tag-name .tag-label > .tag-namespace { display: inline; white-space: normal; }
+.tag-name .tag-namespace-text, .tag-name .tag-label > .tag-value { overflow: visible; white-space: normal; }
 .tag-count { color: var(--muted); font-family: var(--font-mono); }
 .tag-actions { display: flex; align-items: center; gap: 5px; }
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
@@ -174,6 +185,9 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group:first-child { margin-top: 0; }
 .home-widget-empty { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.home-widget-footer { margin: 10px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-widget-footer .text-button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; }
+.home-widget-footer .text-button:hover, .home-widget-footer .text-button:focus-visible { color: var(--text); }
 .home-widget-paging { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 0; border-top: 1px solid var(--line); padding-top: 8px; font-size: var(--text-xs); }
 .home-widget-paging .page-range { color: var(--muted); font-family: var(--font-mono); }
 .home-widget-paging .control-label { gap: 4px; font-size: var(--text-xs); }
@@ -181,7 +195,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-steps { display: flex; align-items: center; gap: 6px; }
 .home-widget-steps .page-range { margin-right: 2px; }
 .home-widget-steps button { display: grid; width: 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
-.home-widget-steps button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.home-widget-steps button:hover${ENABLED}:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .home-widget-steps button[disabled] { color: var(--muted); cursor: default; opacity: 0.45; }
 .home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .home-widget .query-workspace { margin-top: 0; }
@@ -191,6 +205,8 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 /* The resting hint is a quiet line, not the dashed frame of edit mode. */
 .home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: var(--text-xs); }
+.try-next-text { margin: 0 0 var(--space-2, 8px); color: var(--text); }
+.try-next-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); }
 .home-hint-actions { display: inline-flex; gap: 6px; }
 .home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: var(--text-xs); line-height: 1.35; white-space: normal; }
 .home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
@@ -202,7 +218,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-options summary:hover { border-color: var(--amber-bright); }
 .home-widget-options summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .home-widget-options .settings-icon { width: 14px; height: 14px; }
-.home-widget-options-menu { position: absolute; z-index: 4; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
+.home-widget-options-menu { position: absolute; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; }
 .home-widget-form { display: flex; gap: 4px; }
 .home-widget-form input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .home-widget-form button { min-height: 26px; padding: 2px 8px; }
@@ -237,7 +253,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading index...</div></main>
+${loadingHtml('Loading index…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
@@ -298,8 +314,9 @@ ${getQueryEditorScript()}
     tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
     unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
-    quietPeople: { label: 'People gone quiet', description: 'People you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
+    quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
+    tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
   };
 
   /**
@@ -372,20 +389,7 @@ ${getQueryEditorScript()}
    * next keystroke can land on the page instead of the field.
    */
   function renderKeepingFocus() {
-    const active = document.activeElement;
-    const isTextField = Boolean(active && active.matches && active.matches('input[type="search"], input[type="text"]'));
-    const action = isTextField ? active.dataset.action : undefined;
-    const widgetId = isTextField ? active.dataset.widgetId : undefined;
-    const selectionStart = isTextField ? active.selectionStart : null;
-    const selectionEnd = isTextField ? active.selectionEnd : null;
-    render();
-    if (!action) return;
-    const field = Array.from(document.querySelectorAll('input[data-action="' + action + '"]')).find(function (input) {
-      return input.dataset.widgetId === widgetId;
-    });
-    if (!field) return;
-    field.focus();
-    if (selectionStart !== null && selectionEnd !== null) field.setSelectionRange(selectionStart, selectionEnd);
+    renderKeepingPlace(render);
   }
 
   /**
@@ -429,6 +433,8 @@ ${getQueryEditorScript()}
 
   function setEditingHome(editing) {
     editingHome = editing;
+    // Leaving customizing withdraws a pending Undo: the widgets are settled.
+    if (!editing) widgetUndo.clear();
     openWidgetOptions = undefined;
     saveDashboardViewState();
     render();
@@ -480,6 +486,9 @@ ${getQueryEditorScript()}
   function widgetConfig() {
     return (state.widgetConfig || []).map(function (widget) { return Object.assign({}, widget); });
   }
+
+  /** Undo for a widget removed while customizing. */
+  const widgetUndo = createUndoNotice(function () { renderKeepingPlace(render); });
 
   /** Save Home's widgets. The host answers with what each shows. */
   function sendWidgets(widgets) {
@@ -551,13 +560,14 @@ ${getQueryEditorScript()}
       else if (kind === 'entity') rankEntity(key, reorder);
       else rankTag(key, reorder);
     },
-    menuActions: function (kind) {
+    menuActions: function (kind, key) {
       return kind === 'tag'
-        ? ['<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>']
+        ? [renderMenuItem('rename-tag', 'Rename tag'), renderMenuItem('park-tag', parkedTagKeys.has(String(key).toLowerCase()) ? 'Unpark tag' : 'Park tag')]
         : [];
     },
     onMenuAction: function (action, kind, key) {
       if (action === 'rename-tag') send({ type: 'renameTag', tagKey: key });
+      if (action === 'park-tag') send({ type: parkedTagKeys.has(String(key).toLowerCase()) ? 'unparkTag' : 'parkTag', tagKey: key });
     },
   });
 
@@ -611,13 +621,32 @@ ${getQueryEditorScript()}
     // The criteria are the row's own child, not wrapped with the name: the
     // frame they open in is inherited, and a wrapper has none to give.
     return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div>'
-      + (removable ? '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button>' : '<span></span>')
+      + (removable
+        ? '<span class="saved-filter-actions">'
+          // A search Home does not list yet offers to list it there.
+          + (filter.onHome ? '' : '<button type="button" class="saved-filter-show" data-action="add-saved-search-widget" data-saved-filter-id="' + escapeHtml(filter.id) + '" data-tip="Add a widget to Home that lists what this search finds" aria-label="Show the results of ' + escapeHtml(filter.name) + ' on Home">Show results</button>')
+          + '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button></span>'
+        : '<span></span>')
       + '<div class="saved-filter-tags">' + detail + '</div></div>';
   }
 
   /** A row that opens something: a tag, a search, or a note. */
   function renderHomeRow(action, attributes, labelHtml, detail) {
     return '<button type="button" class="row saved-filter-row home-row" data-action="' + action + '" ' + attributes + '><span class="home-row-label">' + labelHtml + '</span>' + (detail ? '<span class="home-row-detail">' + escapeHtml(detail) + '</span>' : '') + '</button>';
+  }
+
+  /**
+   * The line under the Tasks view widget: what was finished today, and how
+   * many tasks need a new date, which opens them. Nothing when both are 0.
+   */
+  function renderAgendaFooter(widget) {
+    const parts = [];
+    if (widget.doneToday) parts.push('<span>' + widget.doneToday + ' done today</span>');
+    if (widget.needsNewDate) {
+      const label = widget.needsNewDate + (widget.needsNewDate === 1 ? ' needs' : ' need') + ' a new date';
+      parts.push('<button type="button" class="text-button" data-action="open-search" data-query="' + escapeHtml(widget.needsNewDateQuery || 'is:needs-date') + '" data-tip="Search the tasks more than a month past their due date">' + escapeHtml(label) + '</button>');
+    }
+    return parts.length ? '<p class="home-widget-footer">' + parts.join(' · ') + '</p>' : '';
   }
 
   function renderHomeTasks(tasks, emptyText) {
@@ -632,7 +661,7 @@ ${getQueryEditorScript()}
   }
 
   function renderRowAction(action, attributes, label, title) {
-    return '<button type="button" class="home-row-action" data-action="' + action + '" ' + attributes + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
+    return '<button type="button" class="home-row-action" data-action="' + action + '" ' + attributes + ' data-tip="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
   }
 
   /**
@@ -666,7 +695,7 @@ ${getQueryEditorScript()}
       ? '<div class="home-list">' + pairs.map(function (pair) {
         const query = pair.tags[0].key + ' AND ' + pair.tags[1].key;
         const label = '<span class="home-tag-pair">' + renderTagLabel(pair.tags[0].label) + '<span class="home-tag-pair-join">+</span>' + renderTagLabel(pair.tags[1].label) + '</span>';
-        return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
+        return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" data-tip="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
       }).join('') + '</div>'
       : '<p class="home-widget-empty">Two tags carried by the same note or task show up here.</p>';
   }
@@ -686,6 +715,15 @@ ${getQueryEditorScript()}
   /** What one widget shows. */
   function renderWidgetBody(widget) {
     switch (widget.kind) {
+      case 'tryNext': {
+        const next = widget.tryNext;
+        if (!next) return '<p class="empty">Nothing to suggest yet. A suggestion appears here when your notes are ready for one.</p>';
+        const key = 'data-key="' + escapeHtml(next.key) + '"';
+        return '<p class="try-next-text">' + escapeHtml(next.text) + '</p><div class="try-next-actions">'
+          + '<button type="button" class="active" data-action="run-try-next" ' + key + '>' + escapeHtml(next.action.label) + '</button>'
+          + '<button type="button" data-action="snooze-try-next" ' + key + ' data-tip="Put it off for a week">Not now</button>'
+          + '<button type="button" data-action="retire-try-next" ' + key + '>Do not suggest this</button></div>';
+      }
       case 'search':
         return searchEditor.renderBar('');
       case 'tasks':
@@ -694,11 +732,12 @@ ${getQueryEditorScript()}
           : renderHomeTasks(widget.tasks, 'No tasks match ' + (widget.query || 'this search') + '.');
       case 'agenda': {
         const groups = (widget.agenda || []).filter(function (group) { return group.count > 0; });
-        return groups.length
+        const body = groups.length
           ? groups.map(function (group) {
             return '<h3 class="home-widget-group">' + escapeHtml(group.label) + ' <span class="tag-count">' + group.count + '</span></h3>' + renderHomeTasks(group.tasks, '');
           }).join('')
           : '<p class="home-widget-empty">Nothing is overdue or due soon.</p>';
+        return body + renderAgendaFooter(widget);
       }
       case 'favoriteTags':
         return renderHomeTags(widget.tags, 'Favorite a tag on the Tags tab to keep it here.');
@@ -707,13 +746,13 @@ ${getQueryEditorScript()}
       case 'savedSearches':
         return widget.savedFilters && widget.savedFilters.length
           ? '<div class="saved-filter-list">' + widget.savedFilters.map(function (filter) { return renderSavedFilterRow(filter, true); }).join('') + '</div>'
-          : '<p class="home-widget-empty">Save a search from a search page to keep it here.</p>';
+          : '<p class="home-widget-empty">Save a search from a search page to keep it here. <button type="button" data-action="open-search-page">Open a search page</button></p>';
       case 'recentSearches':
         return widget.queries && widget.queries.length
           ? '<div class="home-list">' + widget.queries.map(function (query) {
             return renderHomeRow('open-search', 'data-query="' + escapeHtml(query) + '"', '<code>' + escapeHtml(query) + '</code>', '');
           }).join('') + '</div>'
-          : '<p class="home-widget-empty">The searches you run show up here.</p>';
+          : '<p class="home-widget-empty">The searches you run show up here. <button type="button" data-action="open-search-page">Open a search page</button></p>';
       case 'recentNotes':
         return renderHomeNotes(widget.notes, 'The notes you open from Deckard show up here.');
       case 'stats':
@@ -745,8 +784,17 @@ ${getQueryEditorScript()}
         return renderHomeTags(widget.tags, 'No tag was first seen in the last ' + (widget.days || 14) + ' days.', function (tag) {
           return renderRowAction('rename-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Rename', 'Rename ' + tag.label + ' everywhere');
         });
-      case 'quietPeople':
-        return renderHomeTags(widget.tags, 'Everyone you write about has come up in the last ' + (widget.days || 90) + ' days.');
+      case 'quietPeople': {
+        const namespace = widget.namespace || 'person';
+        const kind = namespace === 'person' ? 'person' : namespace;
+        const empty = widget.noOpenTasks
+          ? 'Every ' + kind + ' tag written in the last ' + (widget.days || 90) + ' days has an open task.'
+          : 'Every ' + kind + ' tag has come up in the last ' + (widget.days || 90) + ' days.';
+        // A tag with nothing open is a stuck project: offer its next action.
+        return renderHomeTags(widget.tags, empty, widget.noOpenTasks ? function (tag) {
+          return renderRowAction('add-next-action', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Add next action', 'Capture a next action for ' + tag.label);
+        } : undefined);
+      }
       case 'pinnedNotes':
         // Home lists pins and lets go of them; pinning happens where the
         // note is: the editor, a search result, or the command.
@@ -806,6 +854,13 @@ ${getQueryEditorScript()}
     if (traits.days) {
       groups.push('<div class="view-options-group"><span>' + (widget.kind === 'newTags' ? 'Seen within' : 'Unchanged for') + '</span>' + renderViewOptionChoices('set-widget-days', traits.days, widget.days || traits.defaultDays, 'Days', attribute) + '</div>');
     }
+    if (widget.kind === 'quietPeople') {
+      const namespaces = widget.namespaces && widget.namespaces.length ? widget.namespaces : ['person'];
+      groups.push('<div class="view-options-group is-stacked"><span>Namespace</span><select data-action="set-widget-namespace" ' + attribute + ' aria-label="Namespace to watch">' + namespaces.map(function (name) {
+        return '<option value="' + escapeHtml(name) + '"' + (name === (widget.namespace || 'person') ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
+      }).join('') + '</select></div>');
+      groups.push('<div class="view-options-group"><label class="control-label"><input type="checkbox" data-action="set-widget-no-open-tasks" ' + attribute + (widget.noOpenTasks ? ' checked' : '') + '> Only those with no open tasks</label></div>');
+    }
     if (widget.kind === 'tasks') {
       const draft = widgetQueryDrafts[widget.id] !== undefined ? widgetQueryDrafts[widget.id] : (widget.query || '');
       groups.push('<div class="view-options-group is-stacked"><span>Search</span><form class="home-widget-form" data-form="widget-query" ' + attribute + '><input type="text" data-action="widget-query-draft" ' + attribute + ' value="' + escapeHtml(draft) + '" placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" spellcheck="false"><button type="submit">Save</button></form></div>');
@@ -820,10 +875,13 @@ ${getQueryEditorScript()}
       groups.unshift('<div class="view-options-group is-stacked"><span>About</span><p class="home-widget-about">' + escapeHtml(description) + '</p></div>');
     }
     if (!groups.length) return '';
-    return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" title="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu">' + groups.join('') + '</div></details>';
+    return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" data-tip="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu popover is-dropdown">' + groups.join('') + '</div></details>';
   }
 
   function renderWidget(widget) {
+    // Try next with nothing to suggest is not an empty box: it is nothing,
+    // until Home is being arranged.
+    if (widget.kind === 'tryNext' && !widget.tryNext && !editingHome) return '';
     const listed = WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].listed;
     // Each kind lists its own sort of entry, so the shown count is whichever
     // list the widget carries.
@@ -836,9 +894,9 @@ ${getQueryEditorScript()}
     const actions = editingHome
       ? renderViewOptionChoices('set-widget-width', [['half', '½', 'Half width'], ['full', 'Full', 'Full width']], widget.width, 'Width', 'data-widget-id="' + escapeHtml(widget.id) + '"')
         + renderWidgetOptions(widget)
-        + '<button type="button" class="home-remove" data-action="remove-widget" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Remove ' + escapeHtml(widget.title) + '" title="Remove widget">&#215;</button>'
+        + '<button type="button" class="home-remove" data-action="remove-widget" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Remove ' + escapeHtml(widget.title) + '" data-tip="Remove widget">&#215;</button>'
       : renderWidgetOpen(widget);
-    return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" title="Drag to move, or press the menu key (Shift+F10) to move it first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
+    return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
       + '<div class="home-widget-header"><h2 class="home-widget-title">' + (editingHome ? '<span class="home-widget-grip" aria-hidden="true">&#10303;</span>' : '') + escapeHtml(widget.title) + count + '</h2><div class="home-widget-actions">' + actions + '</div></div>'
       + renderWidgetBody(widget)
       + renderWidgetPaging(widget)
@@ -860,7 +918,7 @@ ${getQueryEditorScript()}
     const step = function (page, label, side, enabled) {
       return '<button type="button" data-action="set-widget-page" data-page="' + page + '" ' + attribute
         + (enabled ? '' : ' disabled')
-        + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" title="' + label + ' page">'
+        + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" data-tip="' + label + ' page">'
         + (side === 'left' ? '${chevronLeftIcon}' : '${chevronRightIcon}') + '</button>';
     };
     // The sizes on offer, and whatever this widget is already set to, so a
@@ -898,24 +956,32 @@ ${getQueryEditorScript()}
 
   function renderHome() {
     // The widgets arrive once the host knows Home is showing.
-    if (!state.widgets) return '<div class="empty">Loading Home…</div>';
+    if (!state.widgets) return renderLoading('Loading Home…');
     const widgets = state.widgets;
     const bar = editingHome
       ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
-        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset widgets</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
-        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
+        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="cancel-reset-widgets">Keep them</button><button type="button" class="danger" data-action="confirm-reset-widgets">Reset widgets</button></span>'
+        : '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
       // few times and skipped after. Customize stays in the gear throughout.
       // It is not the customizing bar, and does not share its class: that
       // one means "Home is being edited".
+      // What's new comes first, and takes the line while it has something to say.
+      : state.whatsNew
+        ? '<div class="home-hint-bar whats-new-bar"><span>Updated to Deckard ' + escapeHtml(state.whatsNew.version) + '.</span><span class="home-hint-actions"><button type="button" data-action="open-whats-new">What&#39;s new</button><button type="button" data-action="dismiss-whats-new" data-tip="Stop saying so">Dismiss</button></span></div>'
       : (state.homeArranged || homeHintDismissed)
         ? ''
-        : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" title="Stop saying so">Dismiss</button></span></div>';
+        : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" data-tip="Stop saying so">Dismiss</button></span></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
       : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize</button></div>';
-    return bar + grid;
+    // A workspace with no notes yet gets the next step, not a grid of empty
+    // widgets each saying there is nothing to show.
+    const start = state.totalNoteCount === 0 && !editingHome
+      ? '<section class="home-start" aria-label="Get started"><h2>No notes here yet</h2><p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or take the tour: a sample workspace of notes that show what Deckard does and say what to try.</p><div class="home-start-actions"><button type="button" class="active" data-action="open-daily-note">Create today’s note</button><button type="button" data-action="open-view" data-view="sampleWorkspace">Create a sample workspace</button><button type="button" data-action="open-view" data-view="checkSetup">Check my setup</button></div></section>'
+      : '';
+    return bar + start + grid;
   }
 
   /** Re-render from a snapshot while preserving scroll and filter affordances. */
@@ -962,7 +1028,9 @@ ${getQueryEditorScript()}
     };
     const favoriteTags = filteredTags.filter(function (tag) { return tag.isFavorite; });
     const otherTags = filteredTags.filter(function (tag) { return !tag.isFavorite; });
-    const tagContent = filteredTags.length
+    // The Tags tab is drawn only while it is open: Home redraws on every
+    // save, and a row per tag was built each time for a panel kept hidden.
+    const tagContent = dashboardMode !== 'browse' ? '' : filteredTags.length
       ? (favoriteTags.length
         ? '<div class="tag-group" data-tag-group="favorites"><h3>Favorites <span class="tag-count">(' + favoriteTags.length + ')</span></h3><div class="tag-list">' + favoriteTags.map(renderTag).join('') + '</div></div>'
         : '') + (otherTags.length ? '<div class="tag-group" data-tag-group="other"><h3>Other tags <span class="tag-count">(' + otherTags.length + ')</span></h3><div class="tag-list">' + otherTags.map(renderTag).join('') + '</div></div>' : '')
@@ -982,16 +1050,20 @@ ${getQueryEditorScript()}
         }).join('') + '</select>' + filterIcon + '</span></label>'
       : '';
     const tagColumnChoices = renderViewOptionChoices('set-columns', [1, 2, 3, 4].map(function (columns) { return [columns, String(columns), columns + ' columns']; }), state.tagColumns, 'Tag columns', 'data-section="tags"');
-    // One vocabulary everywhere: notes are the headed entries, tasks, and
-    // tags. Stats and the graph count the same things under the same names.
-    const metrics = '<div class="metrics" aria-label="Workspace totals">' +
-      '<div class="metric" data-code="IDX.NTE // 01"><span class="metric-value">' + state.totalNoteCount + '</span><span class="metric-label">notes</span></div>' +
-      '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
-      '<div class="metric" data-code="SYS.TAG // 1982-AZ"><span class="metric-value">' + state.tags.length + '</span><span class="metric-label">tags</span></div>' +
+    // What wants doing, not how much is written: the Tasks view's Overdue
+    // and Today and every open task, each a search. Totals are on Stats.
+    // The values stay neutral; the label says Overdue.
+    const glance = state.taskGlance || { overdue: 0, today: 0, open: 0, overdueQuery: 'is:overdue -is:needs-date', todayQuery: 'is:today', openQuery: 'is:open' };
+    const metrics = '<div class="metrics" role="group" aria-label="Tasks at a glance">' +
+      renderMetric('Overdue', glance.overdue, glance.overdueQuery, 'Search the overdue tasks', 'TSK.OVR // 01') +
+      renderMetric('Due today', glance.today, glance.todayQuery, 'Search what is due today', 'TSK.DUE // 02') +
+      renderMetric('Open', glance.open, glance.openQuery, 'Search every open task', 'TSK.OPN // 03') +
       '</div>';
     const dashboardOptions = renderViewOptions([
       { label: 'Home', html: '<button type="button" class="' + (editingHome ? 'active' : '') + '" data-action="' + (editingHome ? 'finish-customizing' : 'customize-home') + '" aria-pressed="' + editingHome + '">' + (editingHome ? 'Done customizing' : 'Customize') + '</button>' },
       { label: 'Tag columns', html: tagColumnChoices },
+      { label: 'Get started', html: '<button type="button" data-action="open-view" data-view="walkthrough">Walkthrough</button>' },
+      renderThemeOption(),
       renderZenOption(),
     ]);
     const home = dashboardMode === 'home' ? renderHome() : '';
@@ -1053,6 +1125,21 @@ ${getQueryEditorScript()}
         setEditingHome(false);
         return;
       }
+      if (action === 'run-try-next' || action === 'snooze-try-next' || action === 'retire-try-next') {
+        vscode.postMessage({
+          type: action === 'run-try-next' ? 'runTryNext' : action === 'snooze-try-next' ? 'snoozeTryNext' : 'retireTryNext',
+          key: target.getAttribute('data-key'),
+        });
+        return;
+      }
+      if (action === 'open-whats-new') {
+        vscode.postMessage({ type: 'openWhatsNew' });
+        return;
+      }
+      if (action === 'dismiss-whats-new') {
+        vscode.postMessage({ type: 'dismissWhatsNew' });
+        return;
+      }
       if (action === 'dismiss-home-hint') {
         homeHintDismissed = true;
         saveDashboardViewState();
@@ -1075,7 +1162,24 @@ ${getQueryEditorScript()}
         return;
       }
       if (action === 'remove-widget') {
-        sendWidgets(widgetConfig().filter(function (widget) { return widget.id !== target.dataset.widgetId; }));
+        // Removed at once, with Undo for 8 seconds: it goes back where it
+        // was, with its width and its options.
+        const widgets = widgetConfig();
+        const index = widgets.findIndex(function (widget) { return widget.id === target.dataset.widgetId; });
+        if (index < 0) return;
+        const removed = widgets[index];
+        const shown = (state.widgets || []).find(function (widget) { return widget.id === removed.id; });
+        sendWidgets(widgets.filter(function (widget) { return widget.id !== removed.id; }));
+        widgetUndo.show('Removed ' + ((shown && shown.title) || 'the widget') + '.', 'undo-remove-widget', { widget: removed, index: index });
+        return;
+      }
+      if (action === 'undo-remove-widget') {
+        const undone = widgetUndo.take();
+        if (!undone) return;
+        const widgets = widgetConfig();
+        widgets.splice(Math.min(undone.index, widgets.length), 0, undone.widget);
+        sendWidgets(widgets);
+        render();
         return;
       }
       if (action === 'set-widget-width') {
@@ -1103,22 +1207,25 @@ ${getQueryEditorScript()}
       }
       if (action === 'open-daily-note') send({ type: 'openDailyNote' });
       if (action === 'create-tag-hub') send({ type: 'createTagHub', tagKey: target.dataset.tagKey });
+      if (action === 'add-next-action') send({ type: 'addNextAction', tagKey: target.dataset.tagKey });
       if (action === 'rename-tag') send({ type: 'renameTag', tagKey: target.dataset.tagKey });
       if (action === 'open-note') send({ type: 'openNote', filePath: target.dataset.filePath });
       if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath || ' ', pinKey: target.dataset.pinKey });
       if (action === 'open-search') send({ type: 'openSearch', query: target.dataset.query || '' });
       if (action === 'open-task-board') send({ type: 'openTaskBoard', query: target.dataset.query || '' });
       if (action === 'open-view') send({ type: 'openView', view: target.dataset.view });
+      if (action === 'open-search-page') send({ type: 'openSearch', query: '' });
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
+      if (action === 'add-saved-search-widget') send({ type: 'addSavedSearchWidget', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
-      if (action === 'open-source') send({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
+      if (action === 'open-source') send(openSourceMessage(target, event));
       return;
     }
     if (event.target.closest('button, input, select, a, summary')) return;
     const taskRow = event.target.closest('.task-row');
-    if (taskRow) send({ type: 'openSource', filePath: taskRow.dataset.filePath, line: Number(taskRow.dataset.line) });
+    if (taskRow) send(openSourceMessage(taskRow, event));
     const entityRow = event.target.closest('.entity-row');
     if (entityRow) send({ type: 'openTag', tagKey: entityRow.dataset.entityKey });
     const tagRow = event.target.closest('.tag-row');
@@ -1174,7 +1281,7 @@ ${getQueryEditorScript()}
     const row = event.target.closest('.task-row, .entity-row, .tag-row, .saved-filter-row[data-saved-filter-id]');
     if (!row) return;
     event.preventDefault();
-    if (row.classList.contains('task-row')) send({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+    if (row.classList.contains('task-row')) send(openSourceMessage(row, event));
     else if (row.classList.contains('entity-row')) send({ type: 'openTag', tagKey: row.dataset.entityKey });
     else if (row.classList.contains('tag-row')) send({ type: 'openTag', tagKey: row.dataset.tagKey });
     else send({ type: 'openSavedFilter', filterId: row.dataset.savedFilterId });
@@ -1193,10 +1300,15 @@ ${getQueryEditorScript()}
     }
     if (target.dataset.action === 'add-widget' && target.value) addWidget(target.value);
     if (target.dataset.action === 'set-widget-filter') updateWidget(target.dataset.widgetId, { filterId: target.value });
+    if (target.dataset.action === 'set-widget-namespace') updateWidget(target.dataset.widgetId, { namespace: target.value === 'person' ? undefined : target.value, page: 1 });
+    if (target.dataset.action === 'set-widget-no-open-tasks') updateWidget(target.dataset.widgetId, { noOpenTasks: target.checked ? true : undefined, page: 1 });
     // A different page size is a different set of pages, so the list is read
     // again from its top.
     if (target.dataset.action === 'set-widget-page-size') updateWidget(target.dataset.widgetId, { count: Number(target.value), page: 1 });
-    if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
   });
 
   document.addEventListener('input', function (event) {
@@ -1229,6 +1341,7 @@ ${getQueryEditorScript()}
     }
     if (event.data && event.data.type === 'state') {
       const incomingState = event.data.data;
+      setParkedTags(incomingState.parkedTags);
       tagColumns = incomingState.tagColumns ?? tagColumns ?? 2;
       if (incomingState.viewState) {
         dashboardMode = incomingState.viewState.mode === 'browse' ? 'browse' : 'home';

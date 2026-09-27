@@ -63,7 +63,8 @@ export type DashboardWidgetKind =
   | 'unhubbedTags'
   | 'newTags'
   | 'quietPeople'
-  | 'pinnedNotes';
+  | 'pinnedNotes'
+  | 'tryNext';
 
 /** Whether a widget takes one of Home's two columns or both. */
 export type DashboardWidgetWidth = 'half' | 'full';
@@ -92,11 +93,17 @@ export interface DashboardWidgetConfig {
    * unchanged, or how recently a new tag was first seen.
    */
   days?: number;
+  /** The namespace Gone quiet watches: `person` by default, or `project`. */
+  namespace?: string;
+  /** Whether Gone quiet lists only the tags with no open task. */
+  noOpenTasks?: boolean;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
 
 export type RenderMode = 'markdown' | 'html';
+/** How much of each result a search page shows: none, three lines, or all. */
+export type SearchPreview = 'none' | 'lines' | 'full';
 
 export type BuiltInEntityKind =
   | 'person'
@@ -219,6 +226,20 @@ export interface Task {
   sourceLineText: string;
   createdAt?: number;
   updatedAt?: number;
+  /** The task this one is a step of: the checkbox it is indented under. */
+  parentTaskId?: string;
+  /** This task's own steps, the checkboxes indented directly under it. */
+  steps?: TaskSteps;
+}
+
+/** How far along a task's direct steps are. */
+export interface TaskSteps {
+  /** The steps' task ids, in the order they are written. */
+  ids: string[];
+  total: number;
+  done: number;
+  /** The first open step's title, as the index holds it. */
+  next?: string;
 }
 
 export interface ParsedFile {
@@ -282,6 +303,24 @@ export interface TagInfo {
   hubFilePaths?: string[];
 }
 
+/** The tag a search page is about, as the page draws it. */
+export interface SearchPageTag {
+  key: string;
+  label: string;
+  count: number;
+  isFavorite: boolean;
+  hubFilePaths?: string[];
+}
+
+/** The entity a search page is about, as the page draws it. */
+export interface SearchPageEntity {
+  key: string;
+  label: string;
+  kind: EntityKind;
+  name: string;
+  count: number;
+}
+
 export interface TagAssociation {
   associatedTag: TagReference;
   sectionIds: string[];
@@ -308,8 +347,31 @@ export interface WorkspaceIndex {
   tags: Map<string, TagInfo>;
   entities: Map<string, Entity>;
   /** Tag key -> weighted co-occurrence and heading-proximity associations. */
-  tagAssociations?: Map<string, TagAssociation[]>;
+  tagAssociations?: ReadonlyMap<string, TagAssociation[]>;
+  /** What `deckard.parked` parks, set by the indexer; absent means nothing. */
+  parked?: ParkedState;
   updatedAt: number;
+}
+
+/**
+ * What is parked in one index, worked out once per snapshot.
+ *
+ * A note, heading, or task is parked when it is in a parked folder, or when a
+ * search for a parked tag would find it.
+ */
+export interface ParkedState {
+  /** Notes parked whole: by their folder, or by a tag in their front matter. */
+  files: Set<string>;
+  sections: Set<string>;
+  tasks: Set<string>;
+  /** Tags every use of which is parked. */
+  tags: Set<string>;
+  /** Notes parked by a front-matter tag and not by their folder. */
+  taggedFiles: Set<string>;
+  /** How many notes their folder parks. */
+  byFolder: number;
+  /** How many notes a front-matter tag parks and their folder does not. */
+  byTag: number;
 }
 
 export interface PersistedPreferences {
@@ -329,11 +391,23 @@ export interface PersistedPreferences {
   dashboardTagColumns: DashboardColumnCount;
   dashboardViewState: DashboardViewState;
   renderMode: RenderMode;
+  /** Set once Format is chosen; a stored Source without it reads as Rendered. */
+  renderModeChosen?: true;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
   /** How many notes, and how many tasks, a search page shows at a time. */
   searchPageSize: SearchPageSize;
+  /** How much of each result a search page shows. */
+  searchPreview: SearchPreview;
   relatedNotesSortMode: RelatedNotesSortMode;
+  /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
+  hideDailyNotes?: true;
+  /** Lines of excerpt on a Related Notes card, when not the default 1. */
+  relatedNotesPreviewLines?: 0 | 2;
+  /** The results chosen in Find for what was typed, which it offers first. */
+  findChoices?: FindChoice[];
+  /** The headings Capture and Move to… went under last, newest first. */
+  recentHeadings?: PinnedNote[];
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
   /** When each tag was last opened, in epoch milliseconds, for frecency. */
@@ -350,6 +424,8 @@ export interface PersistedPreferences {
   taskTableSort?: TableSort;
   /** What the Task Board's columns group tasks by. */
   taskBoardGroup: TaskBoardGroupBy;
+  /** The namespace whose tags are the board's columns when grouped by tag. */
+  taskBoardGroupNamespace?: string;
 
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];
@@ -383,6 +459,8 @@ export interface DashboardSavedFilter {
   id: string;
   name: string;
   tags: TagReference[];
+  /** Whether Home already has a widget listing what it finds. */
+  onHome?: boolean;
   /** Present when reopening this view should restore an advanced query. */
   query?: string;
   /** Set when the search reopens on the Task Board. */
@@ -391,6 +469,10 @@ export interface DashboardSavedFilter {
 
 export interface DashboardTask {
   task: Task;
+  /** Listed on a tag's page because it links to the tag's hub note. */
+  via?: 'hubLink';
+  /** In a parked folder or under a parked tag: listed last, and said so. */
+  parked?: true;
   renderedTitle: string;
   titleTags: TagReference[];
   sectionHeading?: string;
@@ -404,18 +486,45 @@ export interface DashboardTask {
   dueLabel?: string;
   /** Whether the due date has passed; set with `dueLabel`. */
   overdue?: boolean;
+  /** Whether it passed so long ago the task needs a new date; drawn muted. */
+  stale?: boolean;
+  /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
+  stepsLabel?: string;
 }
 
 export interface DashboardNote extends TagOverviewCard {
   fileName: string;
 }
 
+/** A tag as the Dashboard draws it: its name, count, and heart. */
+export interface DashboardTag {
+  key: string;
+  label: string;
+  count: number;
+  isFavorite: boolean;
+}
+
+/** An entity as the Dashboard ranks it. */
+export interface DashboardEntity {
+  key: string;
+  label: string;
+  kind: EntityKind;
+  count: number;
+  isFavorite: boolean;
+}
+
 export interface DashboardSnapshot {
-  tags: TagInfo[];
-  entities: Entity[];
+  tags: DashboardTag[];
+  entities: DashboardEntity[];
   totalSectionCount: number;
   totalNoteCount: number;
   totalTaskCount: number;
+  /**
+   * Home's three tiles: the Tasks view's Overdue and Today counts and every
+   * open task, of what `deckard.agenda.query` lists, each with the search
+   * it opens, so a tile's number and its search agree.
+   */
+  taskGlance?: TaskGlance;
   tagColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
@@ -432,6 +541,8 @@ export interface DashboardSnapshot {
    * do not, Home says it can be arranged; once they do, the reader knows.
    */
   homeArranged?: boolean;
+  /** After a feature update, the version Home says it was updated to, such as `1.23`. */
+  whatsNew?: { version: string };
 }
 
 /** A tag a Home widget lists, with what searching for it finds. */
@@ -490,6 +601,14 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   queries?: string[];
   savedFilters?: DashboardSavedFilter[];
   agenda?: DashboardWidgetAgendaGroup[];
+  /** The namespaces Gone quiet can watch, for its gear. */
+  namespaces?: string[];
+  /** Open tasks past `needsNewDateAfterDays`, which the agenda leaves out. */
+  needsNewDate?: number;
+  /** Tasks completed today, said under the Tasks view widget's list. */
+  doneToday?: number;
+  /** The search that lists them, scoped by `deckard.agenda.query`. */
+  needsNewDateQuery?: string;
   stats?: Array<{ label: string; value: number }>;
   /** A saved-search widget's search. */
   savedQuery?: string;
@@ -507,6 +626,17 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   today?: DashboardWidgetToday;
   /** The note a related-notes widget ranks by. */
   sourceNote?: DashboardWidgetNote;
+  /** Try next's one suggestion; absent, the widget draws nothing outside Customize. */
+  tryNext?: DashboardTryNext;
+}
+
+/** One thing Home suggests trying, and the button that does it. */
+export interface DashboardTryNext {
+  id: string;
+  /** What the page posts back to run, put off, or retire it. */
+  key: string;
+  text: string;
+  action: { label: string };
 }
 
 /**
@@ -537,11 +667,15 @@ export interface ResultPaging {
 }
 
 export interface SearchPageSnapshot {
+  /** Whether the page has a search to go back to, and one to go forward to. */
+  history?: { back: boolean; forward: boolean };
   /** The tag the page is about, when the search is that one tag. */
-  tag?: TagInfo;
-  entity?: Entity;
+  tag?: SearchPageTag;
+  entity?: SearchPageEntity;
   /** The note that describes the tag. */
   hub?: TagOverviewHub;
+  /** What a tag's page says under its hub: how else it is reached. */
+  tagPage?: SearchPageTagNotes;
   /** The search box's state, and the facets that could narrow it. */
   query: QueryViewState;
   /** The search the page was opened with, which Clear returns to. */
@@ -561,6 +695,8 @@ export interface SearchPageSnapshot {
     completed: number;
   };
   renderMode: RenderMode;
+  /** How much of each result the page shows. */
+  preview: SearchPreview;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
   /** The page sizes the reader can choose between. */
@@ -585,6 +721,30 @@ export interface SearchPageSnapshot {
   draftWords?: string[];
 }
 
+/** The quiet lines under a tag's page's hub. */
+export interface SearchPageTagNotes {
+  /** Other spellings of the tag, most confusable first, at most three. */
+  lookalikes: Array<{
+    key: string;
+    label: string;
+    count: number;
+    /** The merge Stats offers: the rarer spelling into the more used. */
+    sourceKey: string;
+    targetKey: string;
+  }>;
+  /** Entries listed because they link to a hub note without the tag. */
+  hubLinkCount: number;
+  /** The hub note they link to, by title. */
+  hubTitle?: string;
+  /** Entries that write the tag's name as a plain word, without the tag. */
+  mention?: {
+    word: string;
+    count: number;
+    /** The search that lists them. */
+    query: string;
+  };
+}
+
 export interface TagOverviewHub {
   filePath: string;
   fileName: string;
@@ -602,6 +762,10 @@ export interface TagOverviewCard {
   id: string;
   filePath: string;
   heading: string;
+  /** Listed on a tag's page because it links to the tag's hub note. */
+  via?: 'hubLink';
+  /** In a parked folder or under a parked tag: listed last, and said so. */
+  parked?: true;
   /** Whether this entry is pinned to Home, so a menu says which it offers. */
   pinned?: boolean;
   titleTags: TagReference[];
@@ -614,6 +778,14 @@ export interface TagOverviewCard {
   accessCount: number;
   /** The headings down to this entry, top down, tags stripped. */
   headingPath?: string[];
+  /**
+   * The body from the paragraph holding the first searched word, when that
+   * word sits below the three lines a card shows. `line` is its first line
+   * in the note.
+   */
+  snippet?: { rawContent: string; renderedHtml: string; line: number };
+  /** Whether the body runs past three lines, so a card offers Show all. */
+  long?: boolean;
 }
 
 export interface HeadingTagSpan extends TagReference {
@@ -623,6 +795,16 @@ export interface HeadingTagSpan extends TagReference {
 }
 
 export interface RankedNote {
+  /** Parked: listed only beside a parked note, after the rest. */
+  parked?: true;
+  /**
+   * The first lines of what a section says, up to 240 characters, from where
+   * it shares a word with the note being read. Not on a task or an inline
+   * tagged line, whose title is its whole text.
+   */
+  excerpt?: string;
+  /** Listed for its wording alone, under a note with no tags: never strong. */
+  kind?: 'wording';
   sectionId?: string;
   filePath: string;
   title: string;
@@ -742,10 +924,85 @@ export interface DeckardStatsSnapshot {
   orphanNotes: StatsNoteItem[];
   /** How many such notes there are, listed or not. */
   orphanNoteCount: number;
+  /** How many notes hold something parked, and how many open tasks are; absent when nothing is. */
+  parked?: { notes: number; openTasks: number };
   /** Tags that look like two spellings of one idea: the clearest first. */
   lookalikeTags: TagMergeCandidate[];
   /** How many such pairs there are, listed or not. */
   lookalikeTagCount: number;
+  /** Names links write that open no note, most linked first. */
+  missingLinkTargets: StatsMissingLink[];
+  /** How many such names there are, listed or not. */
+  missingLinkTargetCount: number;
+  /** How the Notes, Tasks, and Open tasks totals moved over twelve weeks. */
+  trends: { notes: StatsTrend; tasks: StatsTrend; openTasks: StatsTrend };
+  /** How many tags are used how often, and the tags used once. */
+  tagUsage: StatsTagUsage;
+  /** How often the most-used tags are written on the same entry. */
+  tagPairs: StatsTagPairs;
+}
+
+/**
+ * The most-used tags, [key, label, entries], and for each two of them, i
+ * before j, `pairs[i][j]`: how many notes and tasks carry both.
+ */
+export interface StatsTagPairs {
+  tags: [string, string, number][];
+  pairs: number[][];
+}
+
+/** Tags by how many entries carry them, in six bands. */
+export interface StatsTagUsage {
+  bands: StatsTagBand[];
+  /** The tags on one entry, by label, with a lookalike when one is found. */
+  usedOnce: StatsUsedOnceTag[];
+  /** How many tags are used once, listed or not. */
+  usedOnceCount: number;
+}
+
+export interface StatsTagBand {
+  label: string;
+  min: number;
+  /** Absent for the last band, which has no upper end. */
+  max?: number;
+  /** How many tags fall in the band. */
+  count: number;
+}
+
+export interface StatsUsedOnceTag {
+  key: string;
+  label: string;
+  /** The tag it looks like, which a merge would keep. */
+  lookalike?: { key: string; label: string };
+}
+
+/**
+ * A total as it stood 84, 77, … 7, and 0 days ago: thirteen points, the
+ * last the total now. `change` is the last point less the one before.
+ */
+export interface StatsTrend {
+  points: number[];
+  change: number;
+}
+
+/** A name links write that no note carries, as Stats lists it. */
+export interface StatsMissingLink {
+  name: string;
+  /** How many links write it. */
+  count: number;
+  /** The first three notes the links are in, by title. */
+  sources: string[];
+  /** How many notes the links are in. */
+  sourceCount: number;
+  /** Whether the name can be a file name, so Create can make its note. */
+  creatable: boolean;
+}
+
+/** Stats' Create and Create all: notes for links that open none. */
+export interface CreateMissingNotesMessage {
+  type: 'createMissingNotes';
+  /** The names to create; empty means every creatable one. */
+  names: string[];
 }
 
 /** Messages from the Stats page, which only opens what it lists. */
@@ -761,27 +1018,166 @@ export interface MergeTagsMessage {
   targetKey: string;
 }
 
+/**
+ * Stats' Tags and Namespaced tags totals, and its tag-use bars: choose a
+ * tag to open, among those used from `min` to `max` times when given.
+ */
+export interface OpenTagListMessage {
+  type: 'openTagList';
+  namespaced: boolean;
+  min?: number;
+  max?: number;
+}
+
+/** Stats' Merge into…: merge a tag into one the reader chooses. */
+export interface MergeTagIntoMessage {
+  type: 'mergeTagInto';
+  sourceKey: string;
+}
+
+/** Stats' Wiki links total: the graph, drawing only the links written. */
+export interface OpenStatsNotesGraphMessage {
+  type: 'openNotesGraph';
+  onlyWrittenLinks: true;
+}
+
 export type StatsMessage =
+  | OpenTagListMessage
+  | MergeTagIntoMessage
+  | OpenStatsNotesGraphMessage
   | OpenTagMessage
   | OpenSourceMessage
   | OpenSearchMessage
   | ReindexWorkspaceMessage
-  | MergeTagsMessage;
+  | MergeTagsMessage
+  | CreateMissingNotesMessage;
 
 /** Messages from the sidebar calendar. The host finds each note itself. */
 export type CalendarMessage =
   | { type: 'ready' }
   | { type: 'openMonth' }
-  | { type: 'showMonth'; month: string }
+  /** With a date, the day chosen in that month. */
+  | { type: 'showMonth'; month: string; date?: string }
   | { type: 'openDay'; date: string }
-  | { type: 'openWeek'; date: string };
+  | { type: 'openWeek'; date: string }
+  | { type: 'selectDay'; date: string }
+  | { type: 'createDay'; date: string }
+  | { type: 'openNote'; filePath: string }
+  | { type: 'openTask'; taskId: string }
+  | { type: 'toggleTask'; taskId: string; completed: boolean }
+  | { type: 'moveTask'; taskId: string; field: 'due' | 'scheduled'; date: string }
+  | { type: 'searchCreated'; date: string };
+
+/** A line in another note that links to, or names, the note being read. */
+export interface NoteLinkEntry {
+  filePath: string;
+  /** The note the line is in. */
+  title: string;
+  /** One-based. */
+  line: number;
+  /** The line as written, for context. */
+  text: string;
+  /** The headings the line sits under, outermost first. */
+  headingPath: string[];
+  /**
+   * The rest of the section the line is in, as plain text, cut at 15 lines
+   * or 1,500 characters, for a link row to unfold.
+   */
+  sectionText?: string;
+}
+
+/** The lines of one note that link to the note being read. */
+export interface NoteLinkGroup {
+  filePath: string;
+  title: string;
+  updatedAt?: number;
+  /** When the note was last updated, in words: `3 days ago`. */
+  updatedLabel?: string;
+  /** The lines listed, in the order they are written. */
+  entries: NoteLinkEntry[];
+  /** How many links the note has here, listed or not. */
+  linkCount: number;
+  /** The linking note is parked: listed after the rest, and said so. */
+  parked?: true;
+}
+
+/** A mention of the note's name without a link, which can be made one. */
+export interface NoteMention extends NoteLinkEntry {
+  startColumn: number;
+  endColumn: number;
+  /** The name as written, which the link keeps. */
+  name: string;
+}
+
+/** Related Notes' Link on one mention: make that mention a link. */
+export interface LinkMentionMessage {
+  type: 'linkMention';
+  filePath: string;
+  line: number;
+  startColumn: number;
+}
+
+/** Related Notes' Hide daily notes. */
+export interface SetHideDailyNotesMessage {
+  type: 'setHideDailyNotes';
+  hide: boolean;
+}
+
+/** A tag offered to an untagged note: write it where the cursor is. */
+export interface AddSuggestedTagMessage {
+  type: 'addSuggestedTag';
+  tagKey: string;
+}
+
+/** Related Notes' gear: how many lines of each result's excerpt to show. */
+export interface SetRelatedNotesPreviewLinesMessage {
+  type: 'setRelatedNotesPreviewLines';
+  lines: 0 | 1 | 2;
+}
+
+/** Related Notes' Open as search: every entry that links to the note. */
+export interface OpenLinksSearchMessage {
+  type: 'openLinksSearch';
+}
+
+/** Related Notes' Link all: every mention of the note, as one write. */
+export interface LinkAllMentionsMessage {
+  type: 'linkAllMentions';
+}
+
+/** What points at the note being read. */
+export interface NoteLinks {
+  /** The notes that link here, newest updated first, each with its lines. */
+  linkedFromNotes: NoteLinkGroup[];
+  /** How many links there are, listed or not. */
+  linkedFromCount: number;
+  /** How many notes they are in. */
+  linkedFromNoteCount: number;
+  /** Daily, weekly, and monthly notes left out of Linked from. */
+  hiddenDailyNoteCount?: number;
+  mentions: NoteMention[];
+  mentionCount: number;
+}
 
 export interface SidebarNotesSnapshot {
+  /** How far the first scan has got, while the state is loading. */
+  progress?: { completed: number; total: number };
+  /** What links to the note being read, and what names it without a link. */
+  links?: NoteLinks;
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
+  /** Whether daily notes are left out of the list and of Linked from. */
+  hideDailyNotes?: boolean;
+  /** How many lines of each result's excerpt the cards show, 0 for none. */
+  previewLines?: 0 | 1 | 2;
+  /**
+   * For a note with no tags: entries worded like it, kept apart from the
+   * related notes, and the tags those entries use.
+   */
+  similar?: { notes: RankedNote[]; tags: SuggestedTag[] };
   tagTitleDisplayMode: TagTitleDisplayMode;
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
@@ -810,6 +1206,14 @@ export interface SearchRefineState {
   resultKinds: Array<'notes' | 'tasks'>;
 }
 
+/** A tag the entries worded like an untagged note use, offered to add. */
+export interface SuggestedTag {
+  key: string;
+  label: string;
+  /** How many of the similar entries carry it. */
+  entryCount: number;
+}
+
 export interface SidebarTag extends TagReference {
   /** Relative contribution used when ranking Related Notes. */
   weight: number;
@@ -835,8 +1239,28 @@ export interface NotesGraphNode {
   line?: number;
   /** Canonical tag keys carried by this node; empty for tag nodes. */
   tagKeys: string[];
-  /** Precomputed edge count; drives node radius in the webview. */
+  /**
+   * Every indexed edge the node has, whatever the page draws, so its size
+   * and tooltip do not change with how many links are shown.
+   */
   degree: number;
+  /** Its edges by kind, workspace-wide; kinds with none are left out. */
+  links?: NotesGraphLinkCounts;
+  /** Parked, or a tag only parked notes carry: hidden unless Show parked is on. */
+  parked?: true;
+}
+
+/**
+ * A node's edges by kind: wiki links, heading-and-sub-heading edges, the
+ * tags a note or task carries (or, on a tag, the notes and tasks carrying
+ * it), and on a tag the tags written with it. An edge of two kinds counts
+ * once in each.
+ */
+export interface NotesGraphLinkCounts {
+  wiki?: number;
+  heading?: number;
+  tag?: number;
+  related?: number;
 }
 
 export interface NotesGraphEdge {
@@ -862,6 +1286,22 @@ export interface NotesGraphSnapshot {
 }
 
 /**
+ * An edge as the page receives it: without its id, which is its two ends and
+ * which the page puts back, since at 5,000 notes the ids alone were about a
+ * fifth of the message.
+ */
+export type NotesGraphWireEdge = Omit<NotesGraphEdge, 'id'> & { id?: string };
+
+/** The graph as the page receives it: only the kinds of node it shows. */
+export interface NotesGraphWireSnapshot extends Omit<NotesGraphSnapshot, 'edges'> {
+  edges: NotesGraphWireEdge[];
+  /** Notes and tasks left out because the page hides their kind. */
+  hiddenNodeCount?: number;
+  /** How many edges the graph holds before any were left out. */
+  edgeCount?: number;
+}
+
+/**
  * What a local graph is centered on: the note last open in an editor, how far
  * out it reaches, and whether the graph on screen is that neighborhood or
  * the whole workspace.
@@ -871,6 +1311,8 @@ export interface NotesGraphFocus {
   local: boolean;
   /** How many hops out from the note the local graph reaches. */
   depth: number;
+  /** Whether daily and periodic notes are passed through rather than drawn. */
+  skipPeriodic?: boolean;
   /** The note it is drawn around, when one is open. */
   filePath?: string;
   title?: string;
@@ -893,6 +1335,9 @@ export interface NotesGraphOpenSourceMessage {
   type: 'openSource';
   filePath: string;
   line: number;
+  /** Alt-click: open beside the graph. */
+  beside?: boolean;
+  pin?: boolean;
 }
 
 export interface NotesGraphOpenTagMessage {
@@ -914,6 +1359,15 @@ export interface NotesGraphSetScopeMessage {
   type: 'setGraphScope';
   local: boolean;
   depth: number;
+  /** Pass through daily and periodic notes rather than drawing them. */
+  skipPeriodic?: boolean;
+}
+
+/** Which kinds of node the page shows, so the host sends only those. */
+export interface NotesGraphSetFilterMessage {
+  type: 'setGraphFilter';
+  showNotes: boolean;
+  showTasks: boolean;
 }
 
 export type NotesGraphMessage =
@@ -921,7 +1375,8 @@ export type NotesGraphMessage =
   | NotesGraphOpenTagMessage
   | NotesGraphSelectNodeMessage
   | NotesGraphClearSelectionMessage
-  | NotesGraphSetScopeMessage;
+  | NotesGraphSetScopeMessage
+  | NotesGraphSetFilterMessage;
 
 export interface OpenSourceMessage {
   type: 'openSource';
@@ -929,6 +1384,8 @@ export interface OpenSourceMessage {
   line: number;
   /** Open beside the current editor rather than replacing it. */
   beside?: boolean;
+  /** Keep the tab, from a double-click, rather than previewing in it. */
+  pin?: boolean;
 }
 
 /**
@@ -992,6 +1449,11 @@ export interface CreateHubNoteMessage {
   type: 'createHubNote';
 }
 
+/** A tag's page's Leave them out: stop listing what only links the hub. */
+export interface ExcludeHubLinksMessage {
+  type: 'excludeHubLinks';
+}
+
 export interface SetDashboardColumnsMessage {
   type: 'setDashboardColumns';
   section: 'tags';
@@ -1039,6 +1501,12 @@ export interface CreateTagHubMessage {
   tagKey: string;
 }
 
+/** Captures a next action for a tag that has nothing open. */
+export interface AddNextActionMessage {
+  type: 'addNextAction';
+  tagKey: string;
+}
+
 /**
  * A note pinned to Home: an entry of a file, or the file itself.
  *
@@ -1047,6 +1515,17 @@ export interface CreateTagHubMessage {
  * again rather than as the section's id, which is a hash of the heading's
  * line and text and changes whenever anything above it is written.
  */
+/** What Find learned: the result chosen after typing a search. */
+export interface FindChoice {
+  /** What was typed, trimmed, lowercased, spaces collapsed. */
+  input: string;
+  /** The result, by what it is rather than where it sits. */
+  key: string;
+  count: number;
+  /** When it was last chosen. */
+  at: number;
+}
+
 export interface PinnedNote {
   filePath: string;
   /** The heading it pins, as written; absent when it pins the whole note. */
@@ -1072,10 +1551,21 @@ export interface OpenNoteMessage {
   filePath: string;
 }
 
+/** Runs, puts off for a week, or retires Try next's suggestion. */
+export interface TryNextMessage {
+  type: 'runTryNext' | 'snoozeTryNext' | 'retireTryNext';
+  key: string;
+}
+
+/** Opens Help's What's new, or stops Home saying there is something new. */
+export interface WhatsNewMessage {
+  type: 'openWhatsNew' | 'dismissWhatsNew';
+}
+
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'stats';
+  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
 }
 
 export interface ReorderTagsMessage {
@@ -1100,6 +1590,18 @@ export interface RenameTagMessage {
   tagKey: string;
 }
 
+/** Park Tag or Unpark Tag, from a tag's menu or a tag's page. */
+export interface ParkTagMessage {
+  type: 'parkTag' | 'unparkTag';
+  tagKey: string;
+}
+
+/** Park Note or Unpark Note, from a search card's menu. */
+export interface ParkNoteMessage {
+  type: 'parkNote' | 'unparkNote';
+  filePath: string;
+}
+
 export interface OpenSavedFilterMessage {
   type: 'openSavedFilter';
   filterId: string;
@@ -1107,6 +1609,11 @@ export interface OpenSavedFilterMessage {
 
 export interface RemoveSavedFilterMessage {
   type: 'removeSavedFilter';
+  filterId: string;
+}
+
+export interface AddSavedSearchWidgetMessage {
+  type: 'addSavedSearchWidget';
   filterId: string;
 }
 
@@ -1196,6 +1703,11 @@ export interface SetTagOverviewLayoutMessage {
   layout: TagOverviewLayout;
 }
 
+export interface SetSearchPreviewMessage {
+  type: 'setSearchPreview';
+  preview: SearchPreview;
+}
+
 export interface SetRenderModeMessage {
   type: 'setRenderMode';
   mode: RenderMode;
@@ -1241,6 +1753,11 @@ export interface ExportResultsMessage {
 }
 
 /** The gear's zen row, on every page that has a gear. */
+/** Opens Choose Theme…, from a page's gear. */
+export interface ChooseThemeMessage {
+  type: 'chooseTheme';
+}
+
 export interface SetZenModeMessage {
   type: 'setZenMode';
   enabled: boolean;
@@ -1273,6 +1790,7 @@ export interface ClearEntryRelatedNotesMessage {
 
 export type DashboardMessage =
   | SetZenModeMessage
+  | ChooseThemeMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | ToggleFavoriteMessage
@@ -1286,7 +1804,9 @@ export type DashboardMessage =
   | ReorderEntitiesMessage
   | OpenTagMessage
   | RenameTagMessage
+  | ParkTagMessage
   | OpenSavedFilterMessage
+  | AddSavedSearchWidgetMessage
   | RemoveSavedFilterMessage
   | RecordRecentQueryMessage
   | SetDashboardWidgetsMessage
@@ -1297,19 +1817,26 @@ export type DashboardMessage =
   | OpenDailyNoteMessage
   | QuickAddMessage
   | CreateTagHubMessage
+  | AddNextActionMessage
   | PinNoteMessage
-  | OpenNoteMessage;
+  | OpenNoteMessage
+  | WhatsNewMessage
+  | TryNextMessage;
 
 export type SearchPageMessage =
   | ExportResultsMessage
   | SetZenModeMessage
+  | ChooseThemeMessage
   | PinNoteMessage
   | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | SetRenderModeMessage
+  | SetSearchPreviewMessage
   | OpenTagMessage
   | RenameTagMessage
+  | ParkTagMessage
+  | ParkNoteMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage
   | SetSearchColumnsMessage
@@ -1321,13 +1848,22 @@ export type SearchPageMessage =
   | SetResultsPerPageMessage
   | PreviewSearchMessage
   | EditResultsMessage
-  | CreateHubNoteMessage;
+  | CreateHubNoteMessage
+  | ExcludeHubLinksMessage
+  | MergeTagsMessage;
 
 export type SidebarMessage =
+  | LinkMentionMessage
+  | OpenLinksSearchMessage
+  | SetHideDailyNotesMessage
+  | SetRelatedNotesPreviewLinesMessage
+  | AddSuggestedTagMessage
+  | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage
   | RenameTagMessage
+  | ParkTagMessage
   | OpenDashboardMessage
   | OpenNotesGraphMessage
   | OpenTaskBoardMessage
@@ -1341,7 +1877,7 @@ export type SidebarMessage =
   | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */
-export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee';
+export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee' | 'tag';
 
 export interface TaskBoardCard {
   taskId: string;
@@ -1356,8 +1892,24 @@ export interface TaskBoardCard {
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
   overdue: boolean;
+  /** Past `needsNewDateAfterDays`: its date reads `was due …`, muted. */
+  stale?: boolean;
+  /**
+   * How loudly an overdue card says so: `full` in red, or `quiet`, muted
+   * with a red dot, once most of a column is overdue and only the worst
+   * third keeps the red.
+   */
+  overdueTone?: 'full' | 'quiet';
   /** The headings above the task, top down, tags stripped. */
   headingPath: string[];
+  /**
+   * The move values the task already has, such as `status:doing`,
+   * `priority:high`, `due:today`, or `done`, so its menu can check them.
+   * `due:` is no due date; a date other than today or tomorrow adds none.
+   */
+  current: string[];
+  /** How far along its steps are, `2 of 5 steps`, and the next open one. */
+  steps?: { label: string; next?: string };
 }
 
 export interface TaskBoardColumn {
@@ -1369,6 +1921,10 @@ export interface TaskBoardColumn {
   cards: TaskBoardCard[];
   /** Completed tasks left out of a long Done column. */
   hiddenCount: number;
+  /** Open cards in the column that are overdue; 0 for Done and Overdue. */
+  overdueCount?: number;
+  /** The column's work-in-progress limit, from `deckard.board.limits`. */
+  limit?: number;
 }
 
 /** A task board's columns, whichever page chose its tasks. */
@@ -1383,6 +1939,10 @@ export interface TaskBoardLayout {
    * offers the due-date grouping, which works for any task.
    */
   statusHint?: { withoutStatus: number; open: number };
+  /** The namespace the columns are the tags of, when grouped by tag. */
+  groupNamespace?: string;
+  /** The namespaces open tasks carry, busiest first, for the Tag… menu. */
+  tagNamespaces?: { name: string; openTasks: number }[];
 }
 
 /** The Task Board page, which chooses its tasks with a search. */
@@ -1394,6 +1954,11 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   tasks?: DashboardTask[];
   /** The searched tasks as rows and columns, present when `layout` is `table`. */
   table?: TaskTable;
+  /**
+   * What each listed task's ⋯ menu checks, by task id, present when `layout`
+   * is `list` or `table`: the menu a board card has, for a row.
+   */
+  taskMenus?: Record<string, TaskMenuState>;
   /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
   taskSortMode: TaskSortMode;
@@ -1404,6 +1969,20 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   refineInSidebar?: boolean;
   /** Whether the Tasks view lists this search, so the board can say so. */
   agendaListsThisSearch?: boolean;
+  /** Whether the Tasks view lists every open task, its own default. */
+  agendaQueryIsDefault?: boolean;
+  /** Whether the search asks for is:available, which lights Can start now. */
+  availableOnly?: boolean;
+  /** The search Can start now switches to. */
+  availableToggleQuery?: string;
+}
+
+/** A task's current status, priority, and due choice, as the ⋯ menu marks them. */
+export interface TaskMenuState {
+  /** Column ids the task is in: `status:…`, `priority:…`, `due:…`, `done`. */
+  current: string[];
+  /** Whether the task already has steps, so the menu offers to add more. */
+  steps?: boolean;
 }
 
 /** The Task Board's table: the columns shown, every column there is, and the rows. */
@@ -1428,6 +2007,12 @@ export interface TaskTableRow {
 export interface TaskBoardSettings {
   statuses: string[];
   statusNamespace: string;
+  /**
+   * Every status column the board draws, in its order: the listed ones,
+   * then any other status an open task carries. The gear lists these, so a
+   * column that is on the board is in the list that orders it.
+   */
+  columns?: { status: string; openTasks: number }[];
 }
 
 /** Whether the Task Board shows its tasks as a list or as columns. */
@@ -1497,11 +2082,15 @@ export interface MoveTaskMessage {
   type: 'moveTask';
   taskId: string;
   column: string;
+  /** The column the card was moved from: a task with two tags has two cards. */
+  from?: string;
 }
 
 export interface SetBoardGroupMessage {
   type: 'setBoardGroup';
   groupBy: TaskBoardGroupBy;
+  /** The namespace, when grouping by tag. */
+  namespace?: string;
 }
 
 export interface SetBoardQueryMessage {
@@ -1536,9 +2125,45 @@ export interface ShowColumnRestMessage {
   columnId: string;
 }
 
+/** The board's d key and its menu's Due on a date…: ask the host for one. */
+export interface PickTaskDateMessage {
+  type: 'pickTaskDate';
+  taskId: string;
+}
+
+/** The card menu's Move to…: the task and its steps under another heading. */
+export interface MoveTaskToMessage {
+  type: 'moveTaskTo';
+  taskId: string;
+}
+
+/** The board's e key: the whole task in the task editor. */
+export interface EditTaskMessage {
+  type: 'editTask';
+  taskId: string;
+}
+
+/** The board's s key and its menu's Break into steps…: ask for the steps. */
+export interface BreakIntoStepsMessage {
+  type: 'breakIntoSteps';
+  taskId: string;
+}
+
+/** A column's + Add task: capture a task already in that column. */
+export interface AddTaskToColumnMessage {
+  type: 'addTaskToColumn';
+  column: string;
+}
+
 export type TaskBoardMessage =
+  | PickTaskDateMessage
+  | MoveTaskToMessage
+  | EditTaskMessage
+  | BreakIntoStepsMessage
+  | AddTaskToColumnMessage
   | ExportResultsMessage
   | SetZenModeMessage
+  | ChooseThemeMessage
   | OpenHelpMessage
   | ShowColumnRestMessage
   | SaveBoardSearchMessage
@@ -1557,3 +2182,13 @@ export type TaskBoardMessage =
   | ReorderTasksMessage
   | SetBoardStatusesMessage
   | SetBoardStatusNamespaceMessage;
+
+/** Home's tiles: what is overdue, due today, and open, each a search. */
+export interface TaskGlance {
+  overdue: number;
+  today: number;
+  open: number;
+  overdueQuery: string;
+  todayQuery: string;
+  openQuery: string;
+}

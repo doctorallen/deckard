@@ -1,9 +1,18 @@
+import { describeSteps } from '../../core/markdown/taskSteps';
+import {
+  isParkedFile,
+  isParkedSection,
+  isParkedTask,
+  parkedLast,
+} from '../../core/workspace/parked';
 import {
   DashboardSavedFilter,
   DashboardSnapshot,
   DashboardNote,
   DashboardTask,
   Entity,
+  SearchPageEntity,
+  SearchPreview,
   ParsedFile,
   PersistedPreferences,
   ResultPaging,
@@ -22,11 +31,15 @@ import {
   TaskSortMode,
   WorkspaceIndex,
   DeckardStatsSnapshot,
+  StatsTrend,
+  StatsTagUsage,
+  StatsTagPairs,
+  TagMergeCandidate,
   UnreadableNote,
+  TaskGlance,
 } from '../../core/types';
 import {
-  findDailyNoteDate,
-  isPeriodicNotePath,
+  isPeriodicNoteFile,
   isPersonTag,
   stripTags,
 } from '../../core/markdown/parser';
@@ -41,6 +54,8 @@ import {
 import {
   countTagMatches,
   evaluateQuery,
+  getQueryWeekStart,
+  QueryResults,
 } from '../../core/query/queryEvaluator';
 import {
   collectQueryTagKeys,
@@ -59,13 +74,26 @@ import {
   QUERY_FIELDS,
   QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
-import { describeDueDate } from '../../core/markdown/taskMetadata';
-import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
+import { addDays, describeDueDate } from '../../core/markdown/taskMetadata';
+import {
+  formatMonthDay,
+  formatMonthName,
+  formatShortDay,
+  parseDatePhrase,
+  resolveDatePeriod,
+} from '../../core/markdown/dates';
+import {
+  findMissingLinkTargets,
+  getBacklinkIndex,
+  noteTitle,
+} from '../../core/workspace/backlinks';
+import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
+import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 import { createPinForLine, pinKey } from './pinnedNotes';
-import { findTagMergeCandidates } from './tagHygiene';
+import { findTagLookalikes, findTagMergeCandidates } from './tagHygiene';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -75,10 +103,25 @@ export function createDashboardSnapshot(
   preferences: PersistedPreferences,
   selectedTag?: string,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  options: { agendaQuery?: string; now?: number } = {},
 ): DashboardSnapshot {
   return {
-    tags: sortTags(index.tags.values(), preferences),
-    entities: sortEntities(index.entities.values(), preferences),
+    taskGlance: createTaskGlance(index, options.agendaQuery ?? '', options.now ?? Date.now()),
+    // The page reads a tag's name, count, and heart; the entry lists each
+    // one carried ran to megabytes in a large workspace and were never read.
+    tags: sortTags(index.tags.values(), preferences).map((tag) => ({
+      key: tag.key,
+      label: tag.label,
+      count: tag.count,
+      isFavorite: tag.isFavorite,
+    })),
+    entities: sortEntities(index.entities.values(), preferences).map((entity) => ({
+      key: entity.key,
+      label: entity.label,
+      kind: entity.kind,
+      count: entity.count,
+      isFavorite: entity.isFavorite,
+    })),
     totalSectionCount: index.sections.size,
     totalNoteCount: index.sections.size + listFrontmatterOnlyFiles(index).length,
     totalTaskCount: index.tasks.size,
@@ -94,6 +137,34 @@ export function createDashboardSnapshot(
 }
 
 /**
+ * Home's tiles, counted as the Tasks view and the status bar count: Overdue
+ * and Today are its groups, and Open every open task the agenda's search
+ * lists. Each search is scoped by that search too, so the tile's number and
+ * the page it opens say the same thing.
+ */
+export function createTaskGlance(
+  index: WorkspaceIndex,
+  agendaQuery: string,
+  now: number,
+): TaskGlance {
+  const selected = selectAgendaTasks(index, agendaQuery);
+  const groups = createAgenda(index, now, { tasks: selected.tasks, upcomingDays: 1 });
+  const count = (id: string): number =>
+    groups.find((group) => group.id === id)?.entries.length ?? 0;
+  const scope = normalizeAgendaQuery(agendaQuery);
+  const scoped = (clause: string): string =>
+    scope && !selected.error ? `(${scope}) AND ${clause}` : clause;
+  return {
+    overdue: count('overdue'),
+    today: count('today'),
+    open: selected.tasks.filter((task) => !task.completed).length,
+    overdueQuery: scoped('is:overdue -is:needs-date'),
+    todayQuery: scoped('is:today'),
+    openQuery: scoped('is:open'),
+  };
+}
+
+/**
  * The saved views, with their tags resolved against the index. A saved query
  * keeps its place even when the tags it names are not in the index yet; a
  * saved tag set needs two tags that still exist.
@@ -102,6 +173,13 @@ export function createDashboardSavedFilters(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
 ): DashboardSavedFilter[] {
+  // A search Home already lists does not offer to be listed again.
+  const onHome = new Set(
+    preferences.dashboardWidgets
+      .filter((widget) => widget.kind === 'savedQuery' && widget.filterId)
+      .map((widget) => widget.filterId as string),
+  );
+  const home = (id: string): { onHome?: boolean } => (onHome.has(id) ? { onHome: true } : {});
   return preferences.savedFilters.flatMap((filter) => {
     if (filter.query) {
       return [
@@ -111,6 +189,7 @@ export function createDashboardSavedFilters(
           tags: resolveQueryTags(index, parseQuery(filter.query)),
           query: filter.query,
           ...(filter.page ? { page: filter.page } : {}),
+          ...home(filter.id),
         },
       ];
     }
@@ -118,7 +197,7 @@ export function createDashboardSavedFilters(
       .map((tagKey) => index.tags.get(tagKey))
       .filter((tag): tag is TagInfo => tag !== undefined)
       .map((tag) => ({ key: tag.key, label: tag.label }));
-    return tags.length >= 2 ? [{ id: filter.id, name: filter.name, tags }] : [];
+    return tags.length >= 2 ? [{ id: filter.id, name: filter.name, tags, ...home(filter.id) }] : [];
   });
 }
 
@@ -167,6 +246,16 @@ export interface SearchPageOptions {
    * chose, which is kept in their preferences.
    */
   paged?: boolean;
+  /**
+   * A page size of the caller's own, such as a Home widget's count, in place
+   * of the reader's; it outranks `paged`.
+   */
+  pageSize?: number;
+  /**
+   * On a tag's page, also list the entries that link to its hub note without
+   * the tag, as `deckard.tagOverview.includeHubLinks` says. On unless false.
+   */
+  includeHubLinks?: boolean;
   /** Which page of each list to carry, 1-based and clamped. */
   notePage?: number;
   taskPage?: number;
@@ -196,30 +285,9 @@ export function createSearchPageSnapshot(
   options: SearchPageOptions = {},
 ): SearchPageSnapshot {
   const text = queryText.trim();
-  const parsed = parseQuery(text);
-  // The words being typed narrow the search before they are committed to the
-  // box. They are run as part of the search rather than matched against what
-  // is on screen, so a page of thirty is not what a reader is searching, and
-  // so what the preview finds is exactly what pressing Enter will find.
-  const preview = (options.previewWords ?? [])
-    .map((word) => word.trim())
-    .filter(Boolean);
-  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
+  const page = evaluateSearchPage(index, text, options);
+  const { parsed, drafted, preview, tagKeys, focusTag, hubFile, results, viaHub } = page;
   const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
-  const tagKeys = resolveQueryTagIntersection(index, parsed);
-  const focusTag =
-    tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
-  const hubFile = focusTag?.hubFilePaths?.length
-    ? index.files.get(focusTag.hubFilePaths[0])
-    : undefined;
-
-  const results = drafted.node
-    ? evaluateQuery(index, drafted.node)
-    : {
-        sections: [...index.sections.values()],
-        tasks: [...index.tasks.values()],
-        files: listFrontmatterOnlyFiles(index),
-      };
   // Which entries are pinned, so a card's menu offers pinning or unpinning
   // rather than one word that is wrong half the time.
   const pinnedKeys = new Set(
@@ -240,33 +308,66 @@ export function createSearchPageSnapshot(
         ),
       index.sections,
     );
+  // Every match is sorted and counted by a key, which costs nothing to
+  // build; only the page being shown is drawn. Rendering, the heading path,
+  // and the pin lookup ran for every match before, so an empty search of a
+  // large workspace rendered every entry to show thirty.
+  const sectionKey = (section: Section): NoteKey =>
+    createSectionKey(section, preferences.sectionAccessCounts, tagTitleDisplayMode);
   const plainTerms = getPlainTextTerms(drafted.node);
-  const cards = plainTerms
+  const keys = plainTerms
     ? [
-        ...[...index.sections.values()].map(cardFor),
-        ...listFrontmatterOnlyFiles(index).map(createFileOverviewCard),
-      ].filter((card) => matchesNoteWords(card, plainTerms))
+        ...[...index.sections.values()].map(sectionKey),
+        ...listFrontmatterOnlyFiles(index).map(createFileKey),
+      ].filter((key) => matchesNoteWords(key, plainTerms))
     : [
         ...results.sections
           .filter((section) => section.filePath !== hubFile?.filePath)
-          .map(cardFor),
+          .map(sectionKey),
         ...results.files
           .filter((file) => file.filePath !== hubFile?.filePath)
-          .map(createFileOverviewCard),
+          .map(createFileKey),
       ];
-  const ranked = cards.sort((left, right) =>
-    compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
+  // Parked results are kept, after the rest, so the page before them is the
+  // unparked ones whatever the sort.
+  const keyParked = (key: NoteKey): boolean =>
+    key.section ? isParkedSection(index, key.section.id) : isParkedFile(index, key.filePath);
+  const ranked = parkedLast(
+    keys.sort((left, right) =>
+      compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
+    ),
+    keyParked,
   );
-  const pageSize = options.paged === false ? undefined : preferences.searchPageSize;
+  const pageSize =
+    options.pageSize ??
+    (options.paged === false ? undefined : preferences.searchPageSize);
   const notePaging = createPaging(ranked.length, pageSize, options.notePage);
-  const sections = takePage(ranked, notePaging);
-  const tasks = sortTasks(
-    [...results.tasks],
-    preferences.taskOrder,
-    preferences.taskSortMode,
+  // The words a card's three lines are drawn around: those searched for,
+  // and those being typed.
+  const snippetWords = [...new Set([...getTextWords(drafted.node), ...preview])]
+    .map((word) => word.toLowerCase())
+    .filter((word) => word.length >= 2);
+  const markVia = <T extends object>(item: T, id: string): T =>
+    viaHub.has(id) ? { ...item, via: 'hubLink' as const } : item;
+  const markParked = <T extends object>(item: T, parked: boolean): T =>
+    parked ? { ...item, parked: true } : item;
+  const sections = takePage(ranked, notePaging).map((key) =>
+    withPreview(
+      markParked(
+        key.section
+          ? markVia(cardFor(key.section), key.section.id)
+          : markVia(createFileOverviewCard(key.file as ParsedFile), (key.file as ParsedFile).filePath),
+        keyParked(key),
+      ),
+      preferences.searchPreview,
+      snippetWords,
+    ),
   );
-  const shownTasks = tasks.map((task) => createDashboardTask(task, index.sections));
-  const taskPaging = createPaging(shownTasks.length, pageSize, options.taskPage);
+  const tasks = parkedLast(
+    sortTasks([...results.tasks], preferences.taskOrder, preferences.taskSortMode),
+    (task) => isParkedTask(index, task.id),
+  );
+  const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
@@ -282,21 +383,25 @@ export function createSearchPageSnapshot(
   // satisfies the rest of the search, so the correction is run before it is
   // offered. A second dead end would help nobody.
   const suggestion =
-    corrected !== undefined && findsSomething(index, corrected, cardFor)
+    corrected !== undefined && findsSomething(index, corrected, sectionKey)
       ? corrected
       : undefined;
 
   return {
     ...(focusTag
       ? {
+          // What the page draws of the tag and its entity; their lists of
+          // entries ran to thousands of ids a page never reads.
           tag: {
-            ...focusTag,
-            sectionIds: [...focusTag.sectionIds],
-            taskIds: [...focusTag.taskIds],
-            filePaths: [...focusTag.filePaths],
+            key: focusTag.key,
+            label: focusTag.label,
+            count: focusTag.count,
             isFavorite: preferences.favoriteTags.includes(focusTag.key),
+            ...(focusTag.hubFilePaths?.length ? { hubFilePaths: [...focusTag.hubFilePaths] } : {}),
           },
-          entity: index.entities.get(focusTag.key),
+          ...(index.entities.get(focusTag.key)
+            ? { entity: slimEntity(index.entities.get(focusTag.key) as Entity) }
+            : {}),
           ...(hubFile
             ? {
                 hub: createTagOverviewHub(
@@ -305,6 +410,12 @@ export function createSearchPageSnapshot(
                 ),
               }
             : {}),
+          tagPage: {
+            lookalikes: findTagLookalikes(index, focusTag.key),
+            hubLinkCount: viaHub.size,
+            ...(page.hubTitle ? { hubTitle: page.hubTitle } : {}),
+            ...describeTagMentions(index, focusTag),
+          },
         }
       : {}),
     query: createQueryViewState(
@@ -332,7 +443,12 @@ export function createSearchPageSnapshot(
         : findMatchingSavedQueryName(preferences.savedFilters, parsed),
     sections,
     notePaging,
-    tasks: takePage(shownTasks, taskPaging),
+    tasks: takePage(tasks, taskPaging).map((task) =>
+      markParked(
+        markVia(createDashboardTask(task, index.sections), task.id),
+        isParkedTask(index, task.id),
+      ),
+    ),
     taskPaging,
     taskCounts: {
       all: tasks.length,
@@ -341,11 +457,144 @@ export function createSearchPageSnapshot(
     },
     pageSizes: SEARCH_PAGE_SIZES,
     renderMode: preferences.renderMode,
+    preview: preferences.searchPreview,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
     tagTitleDisplayMode,
+  };
+}
+
+/**
+ * The word a tag names, as it would be written in prose: the part after its
+ * namespace, with `-` and `_` read as spaces. `#project/atlas` is "atlas",
+ * `@dana` is "dana". Undefined for a name too short or only a number.
+ */
+export function tagMentionWord(tagKey: string): string | undefined {
+  const name = tagKey.replace(/^[#@]/, '');
+  const word = name
+    .slice(name.lastIndexOf('/') + 1)
+    .replace(/[-_]+/g, ' ')
+    .trim();
+  return word.length >= 3 && !/^[\d\s]+$/.test(word) ? word : undefined;
+}
+
+/**
+ * How many entries write a tag's name as a plain word without carrying the
+ * tag, leaving out its hub notes, and the search that lists them.
+ */
+function describeTagMentions(
+  index: WorkspaceIndex,
+  tag: TagInfo,
+): { mention?: { word: string; count: number; query: string } } {
+  const word = tagMentionWord(tag.key);
+  if (!word) {
+    return {};
+  }
+  const query = [
+    `text = ${quoteValue(word)}`,
+    `-${tag.key}`,
+    ...(tag.hubFilePaths ?? []).map((filePath) => `NOT path = ${quoteValue(filePath)}`),
+  ].join(' ');
+  const found = evaluateQuery(index, parseQuery(query).node);
+  const count = found.sections.length + found.tasks.length + found.files.length;
+  return count > 0 ? { mention: { word, count, query } } : {};
+}
+
+/** What one search page lists, before it is sorted, paged, and drawn. */
+export interface SearchPageResults {
+  parsed: ParsedQuery;
+  /** The search with the words still being typed. */
+  drafted: ParsedQuery;
+  preview: string[];
+  tagKeys?: string[];
+  focusTag?: TagInfo;
+  hubFile?: ParsedFile;
+  results: QueryResults;
+  /**
+   * What is listed only because it links to the tag's hub note: section and
+   * task ids, and file paths.
+   */
+  viaHub: Set<string>;
+  hubTitle?: string;
+}
+
+/**
+ * Evaluates a search page's search, as the page, Bulk edit, and Export all
+ * need it. A tag's page with a hub note also lists what links to the hub
+ * without carrying the tag, unless `includeHubLinks` is false; the hub notes'
+ * own entries stay out of that, as they are the hub.
+ */
+export function evaluateSearchPage(
+  index: WorkspaceIndex,
+  queryText: string,
+  options: Pick<SearchPageOptions, 'previewWords' | 'includeHubLinks'> = {},
+): SearchPageResults {
+  const text = queryText.trim();
+  const parsed = parseQuery(text);
+  // The words being typed narrow the search before they are committed to the
+  // box. They are run as part of the search rather than matched against what
+  // is on screen, so a page of thirty is not what a reader is searching, and
+  // so what the preview finds is exactly what pressing Enter will find.
+  const preview = (options.previewWords ?? [])
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
+  const tagKeys = resolveQueryTagIntersection(index, parsed);
+  const focusTag =
+    tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
+  const hubPaths = focusTag?.hubFilePaths ?? [];
+  const hubFile = hubPaths.length ? index.files.get(hubPaths[0]) : undefined;
+
+  const results: QueryResults = drafted.node
+    ? evaluateQuery(index, drafted.node)
+    : {
+        sections: [...index.sections.values()],
+        tasks: [...index.tasks.values()],
+        files: listFrontmatterOnlyFiles(index),
+      };
+  const viaHub = new Set<string>();
+  if (!hubFile || options.includeHubLinks === false || !drafted.node) {
+    return { parsed, drafted, preview, tagKeys, focusTag, hubFile, results, viaHub };
+  }
+  const hubs = new Set(hubPaths);
+  const links = hubPaths
+    .map((filePath) => `link = [[${noteTitle(filePath)}]]`)
+    .join(' OR ');
+  const linking = evaluateQuery(
+    index,
+    parseQuery(preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
+  );
+  const sectionIds = new Set(results.sections.map((section) => section.id));
+  const taskIds = new Set(results.tasks.map((task) => task.id));
+  const filePaths = new Set(results.files.map((file) => file.filePath));
+  const sections = linking.sections.filter(
+    (section) => !sectionIds.has(section.id) && !hubs.has(section.filePath),
+  );
+  const tasks = linking.tasks.filter(
+    (task) => !taskIds.has(task.id) && !hubs.has(task.filePath),
+  );
+  const files = linking.files.filter(
+    (file) => !filePaths.has(file.filePath) && !hubs.has(file.filePath),
+  );
+  sections.forEach((section) => viaHub.add(section.id));
+  tasks.forEach((task) => viaHub.add(task.id));
+  files.forEach((file) => viaHub.add(file.filePath));
+  return {
+    parsed,
+    drafted,
+    preview,
+    tagKeys,
+    focusTag,
+    hubFile,
+    results: {
+      sections: [...results.sections, ...sections],
+      tasks: [...results.tasks, ...tasks],
+      files: [...results.files, ...files],
+    },
+    viaHub,
+    hubTitle: noteTitle(hubFile.filePath),
   };
 }
 
@@ -376,8 +625,10 @@ export function resolveQueryTagIntersection(
 
 /**
  * The tags associated with every one of a search's tags, as Refine offers
- * them: each keeps as many results as carry it, and its strength is its
- * association relative to the strongest listed.
+ * them: each keeps as many results as carry it, and its strength is that
+ * share of the results — part of a whole, "in 6 of 13 results", which a
+ * reader can check, where a weight relative to the strongest listed could
+ * not be. Most results first, then the stronger association.
  */
 function createRelatedFacetValues(
   index: WorkspaceIndex,
@@ -389,35 +640,39 @@ function createRelatedFacetValues(
       ? index.tagAssociations?.get(tagKeys[0]) ?? []
       : getSharedTagAssociations(index, [...tagKeys])
   ).filter((association) => !tagKeys.includes(association.associatedTag.key));
-  const strongest = Math.max(
-    0,
-    ...associations.map((association) => association.normalizedWeight),
-  );
+  const total =
+    results.sections.length + results.tasks.length + results.files.length;
   return associations
     .map((association) => {
       const tagKey = association.associatedTag.key;
+      const count =
+        results.sections.filter((section) =>
+          sectionIncludesTag(index, section, tagKey),
+        ).length +
+        results.tasks.filter((task) => taskIncludesTag(index, task, tagKey))
+          .length +
+        results.files.filter((file) => fileIncludesTag(index, file, tagKey))
+          .length;
+      const why = describeAssociation(association);
       return {
-        label: index.tags.get(tagKey)?.label ?? association.associatedTag.label,
-        clause: tagKey,
-        count:
-          results.sections.filter((section) =>
-            sectionIncludesTag(index, section, tagKey),
-          ).length +
-          results.tasks.filter((task) => taskIncludesTag(index, task, tagKey))
-            .length +
-          results.files.filter((file) => fileIncludesTag(index, file, tagKey))
-            .length,
-        strength:
-          strongest > 0 ? association.normalizedWeight / strongest : 0,
-        detail: describeAssociation(association),
+        value: {
+          label: index.tags.get(tagKey)?.label ?? association.associatedTag.label,
+          clause: tagKey,
+          count,
+          strength: total > 0 ? count / total : 0,
+          total,
+          detail: `In ${count} of ${total} results.${why ? ` ${why}` : ''}`,
+        },
+        weight: association.normalizedWeight,
       };
     })
     .sort(
       (left, right) =>
-        right.strength - left.strength ||
-        right.count - left.count ||
-        baseCollator.compare(left.label, right.label),
-    );
+        right.value.count - left.value.count ||
+        right.weight - left.weight ||
+        baseCollator.compare(left.value.label, right.value.label),
+    )
+    .map((entry) => entry.value);
 }
 
 /**
@@ -436,19 +691,163 @@ export function describeAssociation(association: TagAssociation): string {
   return `Written together ${times(association.coOccurrenceCount)}${heading ? `; ${heading}` : ''}`;
 }
 
+/** A card's body lines, past which it is cut to three with Show all. */
+const PREVIEW_LINES = 3;
+/** Characters past which a short body still wraps beyond three lines. */
+const PREVIEW_CHARACTERS = 280;
+
 /**
- * Whether a note card has every word in its title, file name, body, or tags.
+ * A card as the Preview row draws it: whether it runs past three lines, and,
+ * when the searched words sit below them, the paragraph they are in.
  */
-function matchesNoteWords(card: TagOverviewCard, words: readonly string[]): boolean {
-  const text = [
-    card.heading,
-    getFileName(card.filePath) ?? card.filePath,
-    card.rawContent,
-    ...card.tags.map((tag) => tag.label),
-  ]
-    .join(' ')
-    .toLowerCase();
+function withPreview(
+  card: TagOverviewCard,
+  preview: SearchPreview,
+  words: readonly string[],
+): TagOverviewCard {
+  const lines = card.rawContent.split(/\r?\n/);
+  const start = preview === 'lines' && words.length > 0 ? findSnippetStart(lines, words) : undefined;
+  const snippet =
+    start === undefined
+      ? undefined
+      : {
+          rawContent: lines.slice(start).join('\n'),
+          renderedHtml: renderMarkdown(lines.slice(start).join('\n')),
+          line: card.startLine + 1 + start,
+        };
+  const long =
+    lines.length > PREVIEW_LINES ||
+    card.rawContent.length > PREVIEW_CHARACTERS ||
+    snippet !== undefined;
+  return { ...card, ...(snippet ? { snippet } : {}), ...(long ? { long } : {}) };
+}
+
+/**
+ * The line a card's snippet starts on: the start of the paragraph holding
+ * the first line with a searched word, or the fence around it when it is in
+ * code. Nothing when that line is already among the first three.
+ */
+export function findSnippetStart(
+  lines: readonly string[],
+  words: readonly string[],
+): number | undefined {
+  let fence: { marker: string; size: number; start: number } | undefined;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (marker && !fence) {
+      fence = { marker: marker[1][0], size: marker[1].length, start: index };
+      continue;
+    }
+    if (
+      marker &&
+      fence &&
+      marker[1][0] === fence.marker &&
+      marker[1].length >= fence.size &&
+      /^ {0,3}(`{3,}|~{3,})\s*$/.test(line)
+    ) {
+      fence = undefined;
+      continue;
+    }
+    const lower = line.toLowerCase();
+    if (!words.some((word) => lower.includes(word))) {
+      continue;
+    }
+    let start = index;
+    if (fence) {
+      start = fence.start;
+    } else {
+      for (let step = 0; step < 2 && start > 0 && lines[start - 1].trim(); step += 1) {
+        start -= 1;
+      }
+    }
+    return start < PREVIEW_LINES ? undefined : start;
+  }
+  return undefined;
+}
+
+/**
+ * A note as a search sorts, counts, and matches it, before it is drawn: an
+ * entry or a front-matter-only file, with what the sort orders by.
+ */
+interface NoteKey {
+  section?: Section;
+  file?: ParsedFile;
+  heading: string;
+  filePath: string;
+  startLine: number;
+  createdAt?: number;
+  updatedAt?: number;
+  accessCount: number;
+}
+
+function createSectionKey(
+  section: Section,
+  sectionAccessCounts: Record<string, number>,
+  tagTitleDisplayMode: TagTitleDisplayMode,
+): NoteKey {
+  return {
+    section,
+    heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    filePath: section.filePath,
+    startLine: section.startLine,
+    createdAt: section.createdAt,
+    updatedAt: section.updatedAt,
+    accessCount: sectionAccessCounts[section.id] ?? 0,
+  };
+}
+
+function createFileKey(file: ParsedFile): NoteKey {
+  return {
+    file,
+    heading: getFileName(file.filePath) ?? file.filePath,
+    filePath: file.filePath,
+    startLine: 1,
+    createdAt: file.createdAt,
+    updatedAt: file.updatedAt,
+    accessCount: 0,
+  };
+}
+
+/** What a search's plain words are matched against, once per entry. */
+const noteWordText = new WeakMap<Section | ParsedFile, string>();
+
+/**
+ * Whether a note has every word in its title, file name, body, or tags, the
+ * same places the page matches words while they are typed.
+ */
+function matchesNoteWords(key: NoteKey, words: readonly string[]): boolean {
+  const owner = (key.section ?? key.file) as Section | ParsedFile;
+  let body = noteWordText.get(owner);
+  if (body === undefined) {
+    body = (
+      key.section
+        ? [
+            getSectionBody(key.section.rawContent),
+            ...key.section.tags.map((tag) => key.section?.tagLabels[tag] ?? `#${tag}`),
+          ]
+        : [
+            getFrontmatterBody((key.file as ParsedFile).content),
+            ...(key.file as ParsedFile).frontmatterTags.map((tag) => tag.label),
+          ]
+    )
+      .join(' ')
+      .toLowerCase();
+    noteWordText.set(owner, body);
+  }
+  const text = `${key.heading} ${getFileName(key.filePath) ?? key.filePath} ${body}`.toLowerCase();
   return words.every((word) => text.includes(word.toLowerCase()));
+}
+
+/** An entity as a search page draws it: its name, kind, and count. */
+function slimEntity(entity: Entity): SearchPageEntity {
+  return {
+    key: entity.key,
+    label: entity.label,
+    kind: entity.kind,
+    name: entity.name,
+    count: entity.count,
+  };
 }
 
 /**
@@ -458,8 +857,13 @@ export function createDeckardStatsSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   unreadable: readonly UnreadableNote[] = [],
+  now = Date.now(),
 ): DeckardStatsSnapshot {
+  // Every pair, once: Stats lists the clearest, and a tag used once is
+  // offered its lookalike from the same list.
+  const lookalikes = findTagMergeCandidates(index, Number.MAX_SAFE_INTEGER);
   return {
+    trends: createStatsTrends(index, now),
     updatedAt: index.updatedAt,
     unreadable: unreadable.map((note) => ({
       ...note,
@@ -518,7 +922,122 @@ export function createDeckardStatsSnapshot(
       },
     ),
     ...findOrphanNotes(index),
-    ...findLookalikeTags(index),
+    ...findLookalikeTags(lookalikes),
+    tagUsage: createTagUsage(index, lookalikes.candidates),
+    tagPairs: createTagPairs(index, TAG_PAIR_TAGS),
+    ...listMissingLinkTargets(index),
+    ...countParked(index),
+  };
+}
+
+const TREND_WEEK = 7 * 24 * 60 * 60 * 1000;
+/** Twelve rolling seven-day spans: thirteen points, the last one now. */
+const TREND_POINTS = 13;
+
+/**
+ * How the Notes, Tasks, and Open tasks totals stood at the end of each of
+ * the last twelve rolling weeks, ending now, rebuilt from today's notes: an
+ * entry counts from its note's date, a task is open from then until its ✅
+ * date, or its note's last change when it has none. Deleted notes are gone
+ * from past weeks too, and an entry added to an old note counts from that
+ * note's date. One pass over the entries; each adds where it starts, and a
+ * done task takes itself away where it ends.
+ */
+export function createStatsTrends(
+  index: WorkspaceIndex,
+  now = Date.now(),
+): DeckardStatsSnapshot['trends'] {
+  const last = TREND_POINTS - 1;
+  /** The first point at which something dated `at` exists; undated, always. */
+  const firstPoint = (at: number | undefined): number => {
+    if (at === undefined || !Number.isFinite(at)) {
+      return 0;
+    }
+    if (at > now) {
+      return last;
+    }
+    return Math.max(0, last - Math.floor((now - at) / TREND_WEEK));
+  };
+  const notes = new Array<number>(TREND_POINTS + 1).fill(0);
+  const tasks = new Array<number>(TREND_POINTS + 1).fill(0);
+  const open = new Array<number>(TREND_POINTS + 1).fill(0);
+  index.sections.forEach((section) => {
+    notes[firstPoint(section.createdAt)] += 1;
+  });
+  index.tasks.forEach((task) => {
+    const start = firstPoint(task.createdAt);
+    tasks[start] += 1;
+    if (!task.completed) {
+      open[start] += 1;
+      return;
+    }
+    const doneAt = task.doneAt ?? task.updatedAt ?? index.files.get(task.filePath)?.updatedAt;
+    if (doneAt === undefined) {
+      // Done, and no date says when: it is counted open in no past week.
+      return;
+    }
+    const end = Math.max(start, doneAt > now ? last : Math.max(0, last - Math.floor((now - doneAt) / TREND_WEEK)));
+    open[start] += 1;
+    open[end] -= 1;
+  });
+  const levels = (starts: number[], total: number): StatsTrend => {
+    const points: number[] = [];
+    let running = 0;
+    for (let point = 0; point < TREND_POINTS; point += 1) {
+      running += starts[point];
+      points.push(running);
+    }
+    // The last point is the total on the tile, so the two always agree.
+    points[last] = total;
+    return { points, change: points[last] - points[last - 1] };
+  };
+  return {
+    notes: levels(notes, index.sections.size),
+    tasks: levels(tasks, index.tasks.size),
+    openTasks: levels(open, [...index.tasks.values()].filter((task) => !task.completed).length),
+  };
+}
+
+/** How many notes and open tasks are parked, when any are. */
+function countParked(index: WorkspaceIndex): Pick<DeckardStatsSnapshot, 'parked'> {
+  const parked = index.parked;
+  if (!parked || (parked.sections.size === 0 && parked.tasks.size === 0 && parked.files.size === 0)) {
+    return {};
+  }
+  let openTasks = 0;
+  parked.tasks.forEach((id) => {
+    if (index.tasks.get(id)?.completed === false) {
+      openTasks += 1;
+    }
+  });
+  // A note is parked when it is parked whole, or holds a parked entry.
+  const notes = new Set(parked.files);
+  parked.sections.forEach((id) => {
+    const section = index.sections.get(id);
+    if (section) {
+      notes.add(section.filePath);
+    }
+  });
+  return { parked: { notes: notes.size, openTasks } };
+}
+
+/** How many of the names that open no note the Stats page lists. */
+const MISSING_LINK_LIMIT = 50;
+
+/** The names links write that open no note, most linked first. */
+function listMissingLinkTargets(
+  index: WorkspaceIndex,
+): Pick<DeckardStatsSnapshot, 'missingLinkTargets' | 'missingLinkTargetCount'> {
+  const missing = findMissingLinkTargets(index);
+  return {
+    missingLinkTargetCount: missing.length,
+    missingLinkTargets: missing.slice(0, MISSING_LINK_LIMIT).map((target) => ({
+      name: target.name,
+      count: target.count,
+      sources: target.sourcePaths.slice(0, 3).map((filePath) => noteTitle(filePath)),
+      sourceCount: target.sourcePaths.length,
+      creatable: getExtractedNoteFileName(target.name) !== undefined,
+    })),
   };
 }
 
@@ -527,13 +1046,96 @@ const LOOKALIKE_TAG_LIMIT = 12;
 
 /** Tags that look like two spellings of one idea, the clearest pairs first. */
 function findLookalikeTags(
-  index: WorkspaceIndex,
+  { candidates, total }: { candidates: TagMergeCandidate[]; total: number },
 ): Pick<DeckardStatsSnapshot, 'lookalikeTags' | 'lookalikeTagCount'> {
-  const { candidates, total } = findTagMergeCandidates(
-    index,
-    LOOKALIKE_TAG_LIMIT,
-  );
-  return { lookalikeTags: candidates, lookalikeTagCount: total };
+  return { lookalikeTags: candidates.slice(0, LOOKALIKE_TAG_LIMIT), lookalikeTagCount: total };
+}
+
+/** How many of the most-used tags Tags written together pairs. */
+const TAG_PAIR_TAGS = 12;
+
+/**
+ * How often the `limit` most-used tags are written on the same note or
+ * task, as a search for both would find them: a tag a heading carries is
+ * on the entries under it. Only those tags are counted, so twelve tags are
+ * sixty-six pairs, whatever the workspace holds.
+ */
+export function createTagPairs(index: WorkspaceIndex, limit = TAG_PAIR_TAGS): StatsTagPairs {
+  const tags = [...index.tags.values()]
+    .filter((tag) => tag.count > 0)
+    .sort((left, right) => right.count - left.count || baseCollator.compare(left.label, right.label))
+    .slice(0, limit);
+  const pairs = tags.map(() => tags.map(() => 0));
+  const count = (has: (key: string) => boolean): void => {
+    const carried: number[] = [];
+    tags.forEach((tag, position) => {
+      if (has(tag.key)) {
+        carried.push(position);
+      }
+    });
+    for (let left = 0; left < carried.length; left += 1) {
+      for (let right = left + 1; right < carried.length; right += 1) {
+        pairs[carried[left]][carried[right]] += 1;
+      }
+    }
+  };
+  index.sections.forEach((section) => count((key) => sectionIncludesTag(index, section, key)));
+  index.tasks.forEach((task) => count((key) => taskIncludesTag(index, task, key)));
+  return {
+    tags: tags.map((tag): [string, string, number] => [tag.key, tag.label, tag.count]),
+    pairs,
+  };
+}
+
+/** The bands of how often a tag is used: once, twice, 3–5, 6–10, 11–25, 26 or more. */
+const TAG_USE_BANDS: readonly { label: string; min: number; max?: number }[] = [
+  { label: 'Used once', min: 1, max: 1 },
+  { label: 'Used twice', min: 2, max: 2 },
+  { label: 'Used 3–5 times', min: 3, max: 5 },
+  { label: 'Used 6–10 times', min: 6, max: 10 },
+  { label: 'Used 11–25 times', min: 11, max: 25 },
+  { label: 'Used 26 or more times', min: 26 },
+];
+/** How many of the tags used once Stats lists. */
+const USED_ONCE_LIMIT = 100;
+
+/**
+ * How many tags are used how often, by the entries that carry them, and
+ * the tags used once — the likeliest typos and one-offs — each with the tag
+ * it looks like when there is one, so it can be merged there.
+ */
+export function createTagUsage(
+  index: WorkspaceIndex,
+  candidates: readonly TagMergeCandidate[] = findTagMergeCandidates(index, Number.MAX_SAFE_INTEGER).candidates,
+): StatsTagUsage {
+  const bands = TAG_USE_BANDS.map((band) => ({ ...band, count: 0 }));
+  const once: TagInfo[] = [];
+  index.tags.forEach((tag) => {
+    if (tag.count < 1) {
+      return;
+    }
+    const band = bands.find((candidate) => tag.count >= candidate.min && (candidate.max === undefined || tag.count <= candidate.max));
+    if (band) {
+      band.count += 1;
+    }
+    if (tag.count === 1) {
+      once.push(tag);
+    }
+  });
+  const lookalike = new Map<string, { key: string; label: string }>();
+  candidates.forEach((candidate) => {
+    if (!lookalike.has(candidate.sourceKey)) {
+      lookalike.set(candidate.sourceKey, { key: candidate.targetKey, label: candidate.targetLabel });
+    }
+  });
+  const usedOnce = once
+    .sort((left, right) => baseCollator.compare(left.label, right.label))
+    .slice(0, USED_ONCE_LIMIT)
+    .map((tag) => {
+      const like = lookalike.get(tag.key);
+      return like ? { key: tag.key, label: tag.label, lookalike: like } : { key: tag.key, label: tag.label };
+    });
+  return { bands, usedOnce, usedOnceCount: once.length };
 }
 
 /** How many of the notes nothing links to the Stats page names. */
@@ -546,18 +1148,14 @@ const ORPHAN_NOTE_LIMIT = 50;
 function findOrphanNotes(
   index: WorkspaceIndex,
 ): Pick<DeckardStatsSnapshot, 'orphanNotes' | 'orphanNoteCount'> {
-  const backlinks = buildBacklinkIndex(index);
+  const backlinks = getBacklinkIndex(index);
   const orphans = [...index.files.values()]
     .filter(
       (file) =>
         backlinks.toNote(file.filePath).length === 0 &&
-        !isPeriodicNotePath(file.filePath) &&
-        !findDailyNoteDate(
-          file.filePath,
-          file.sections
-            .filter((section) => section.headingLevel === 1)
-            .map((section) => section.heading),
-        ),
+        !isPeriodicNoteFile(file) &&
+        // An archive is expected to be unlinked.
+        !isParkedFile(index, file.filePath),
     )
     .map((file) => ({ filePath: file.filePath, title: noteTitle(file.filePath) }))
     .sort(
@@ -1027,8 +1625,10 @@ export function createDashboardTask(
       ? {
           dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
           overdue: due.overdue,
+          ...(due.stale ? { stale: true } : {}),
         }
       : {}),
+    ...(task.steps ? { stepsLabel: describeSteps(task.steps) } : {}),
   };
 }
 
@@ -1068,7 +1668,7 @@ function createTagOverviewCard(
 
 function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
   const heading = getFileName(file.filePath) ?? file.filePath;
-  const rawContent = getFrontmatterBody(file.content);
+  const rawContent = getFilePreamble(file);
   return {
     id: `frontmatter:${file.filePath}`,
     filePath: file.filePath,
@@ -1174,7 +1774,7 @@ function takePage<T>(entries: T[], paging: ResultPaging): T[] {
 function findsSomething(
   index: WorkspaceIndex,
   text: string,
-  cardFor: (section: Section) => TagOverviewCard,
+  sectionKey: (section: Section) => NoteKey,
 ): boolean {
   const parsed = parseQuery(text);
   if (!parsed.node) {
@@ -1190,10 +1790,10 @@ function findsSomething(
   }
   return (
     [...index.sections.values()].some((section) =>
-      matchesNoteWords(cardFor(section), plainTerms),
+      matchesNoteWords(sectionKey(section), plainTerms),
     ) ||
     listFrontmatterOnlyFiles(index).some((file) =>
-      matchesNoteWords(createFileOverviewCard(file), plainTerms),
+      matchesNoteWords(createFileKey(file), plainTerms),
     )
   );
 }
@@ -1239,9 +1839,15 @@ export function getInlineSource(section: Section): string {
 const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
 const defaultCollator = new Intl.Collator();
 
+/** What the note order reads, whether of a key or a drawn card. */
+type SortableNote = Pick<
+  TagOverviewCard,
+  'heading' | 'filePath' | 'startLine' | 'createdAt' | 'updatedAt' | 'accessCount'
+>;
+
 function compareTagOverviewCards(
-  left: TagOverviewCard,
-  right: TagOverviewCard,
+  left: SortableNote,
+  right: SortableNote,
   sortMode: TagOverviewSortMode,
 ): number {
   if (sortMode === 'created') {
@@ -1320,6 +1926,22 @@ function renderTaskTitle(task: Task): string {
 function getSectionBody(rawContent: string): string {
   const lines = rawContent.split(/\r?\n/);
   return lines.length > 1 ? lines.slice(1).join('\n').replace(/^\n/, '') : '';
+}
+
+/**
+ * What a note's own card shows. A note listed for its front matter tags shows
+ * its body; one listed only because a search by link found a link above its
+ * first heading shows the text above that heading, since each heading below
+ * is an entry of its own.
+ */
+function getFilePreamble(file: ParsedFile): string {
+  const body = getFrontmatterBody(file.content);
+  const firstHeading = file.sections.find((section) => !section.isInline);
+  if (file.frontmatterTags.length > 0 || !firstHeading) {
+    return body;
+  }
+  const lines = file.content.split(/\r?\n/).slice(0, firstHeading.startLine - 1);
+  return getFrontmatterBody(lines.join('\n')).trim();
 }
 
 function getFrontmatterBody(content: string): string {
@@ -1416,6 +2038,7 @@ export function describeTagMatches(
 export function createQuerySuggestions(
   index: WorkspaceIndex,
   recentQueries: readonly string[] = [],
+  now: number = Date.now(),
 ): QuerySuggestions {
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
@@ -1450,12 +2073,35 @@ export function createQuerySuggestions(
     .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
     .map((fileName) => ({ value: fileName, label: fileName }));
 
+  // A week or a month says the days it covers, and a weekday the day it
+  // is, so a value is chosen by what it means today.
+  const weekStart = getQueryWeekStart();
+  const span = (value: string): string => {
+    const range = resolveDatePeriod(value, now, weekStart);
+    if (!range) {
+      return '';
+    }
+    return value.endsWith('-month')
+      ? formatMonthName(range.start, now)
+      : `${formatMonthDay(range.start)} to ${formatMonthDay(addDays(range.end, -1))}`;
+  };
+  const period = (value: string): QuerySuggestion => ({ value, label: value, detail: span(value) });
+  const weekday = (value: string, direction: 'past' | 'future'): QuerySuggestion => {
+    const date = parseDatePhrase(value, now, { direction })?.date;
+    return { value, label: value, detail: date ? formatShortDay(date, now) : undefined };
+  };
+  const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dates: QuerySuggestion[] = [
     { value: 'today', label: 'today' },
     { value: 'yesterday', label: 'yesterday' },
     { value: '7d', label: '7d', detail: 'the last seven days' },
     { value: '30d', label: '30d', detail: 'the last thirty days' },
     { value: '90d', label: '90d', detail: 'the last ninety days' },
+    period('this-week'),
+    period('last-week'),
+    period('this-month'),
+    period('last-month'),
+    ...WEEKDAYS.map((day) => weekday(day, 'past')),
   ];
   const noDate: QuerySuggestion = {
     value: 'none',
@@ -1467,6 +2113,11 @@ export function createQuerySuggestions(
     { value: 'tomorrow', label: 'tomorrow' },
     { value: '7d', label: '7d', detail: 'today and the next six days' },
     { value: '30d', label: '30d', detail: 'the next thirty days' },
+    period('this-week'),
+    period('next-week'),
+    period('this-month'),
+    period('next-month'),
+    ...WEEKDAYS.map((day) => weekday(day, 'future')),
     noDate,
   ];
   const priorities: QuerySuggestion[] = QUERY_PRIORITY_VALUES.map((value) => ({
@@ -1487,6 +2138,7 @@ export function createQuerySuggestions(
       })),
     { value: 'none', label: 'none', detail: 'tasks that name nobody' },
   ];
+  const links = createLinkSuggestions(index);
   const folders: QuerySuggestion[] = collectFolders(filePaths)
     .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
     .map((folder) => ({ value: folder, label: folder }));
@@ -1497,6 +2149,7 @@ export function createQuerySuggestions(
     operators: { ...QUERY_FIELD_OPERATORS },
     values: {
       tag: tags,
+      link: links,
       kind: kinds,
       is: IS_SUGGESTIONS.map((item) => ({
         value: item.value.slice('is:'.length),
@@ -1524,8 +2177,8 @@ export function createQuerySuggestions(
     conditions: [
       ...IS_SUGGESTIONS.map((item) => ({ ...item, label: item.value })),
       ...HAS_SUGGESTIONS.flatMap((value) => [
-        { value: `has:${value}`, label: `has:${value}`, detail: `Tasks with a ${value === 'priority' ? 'priority' : `${value} date`}` },
-        { value: `no:${value}`, label: `no:${value}`, detail: `Tasks without a ${value === 'priority' ? 'priority' : `${value} date`}` },
+        { value: `has:${value}`, label: `has:${value}`, detail: describeHas(value, true) },
+        { value: `no:${value}`, label: `no:${value}`, detail: describeHas(value, false) },
       ]),
       { value: 'priority >= high', label: 'priority >= high', detail: 'High or highest priority tasks' },
       { value: 'updated >= 7d', label: 'updated >= 7d', detail: 'Updated in the last seven days' },
@@ -1544,19 +2197,71 @@ export function createQuerySuggestions(
   };
 }
 
+/** Upper bound on note names offered after `[[`. */
+const QUERY_LINK_SUGGESTION_LIMIT = 200;
+const linkSuggestions = new WeakMap<WorkspaceIndex, QuerySuggestion[]>();
+
+/**
+ * The notes a `[[` completes to, most linked first: each note's title, and
+ * each alias its front matter gives it. `value` is the name without brackets,
+ * which a builder row's value takes; the label is the link as typed.
+ */
+function createLinkSuggestions(index: WorkspaceIndex): QuerySuggestion[] {
+  const cached = linkSuggestions.get(index);
+  if (cached) {
+    return cached;
+  }
+  const backlinks = getBacklinkIndex(index);
+  const linkedFrom = (filePath: string): number =>
+    new Set(backlinks.toNote(filePath).map((link) => link.sourcePath)).size;
+  const candidates: Array<QuerySuggestion & { count: number }> = [];
+  index.files.forEach((file, filePath) => {
+    const title = noteTitle(filePath);
+    const count = linkedFrom(filePath);
+    candidates.push({
+      value: title,
+      label: `[[${title}]]`,
+      detail: `Linked from ${count} ${count === 1 ? 'note' : 'notes'}`,
+      count,
+    });
+    file.aliases?.forEach((alias) =>
+      candidates.push({
+        value: alias,
+        label: `[[${alias}]]`,
+        detail: `alias of ${title}`,
+        count,
+      }),
+    );
+  });
+  const suggestions = candidates
+    .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value))
+    .slice(0, QUERY_LINK_SUGGESTION_LIMIT)
+    .map(({ value, label, detail }) => ({ value, label, detail }));
+  linkSuggestions.set(index, suggestions);
+  return suggestions;
+}
+
 /** Whole `is:` conditions, with what each finds. */
 const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:open', label: 'is:open', detail: 'Open tasks' },
   { value: 'is:done', label: 'is:done', detail: 'Completed tasks' },
   { value: 'is:overdue', label: 'is:overdue', detail: 'Open tasks past their due date' },
   { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
+  { value: 'is:today', label: 'is:today', detail: 'Open tasks due today, or scheduled for today or earlier and started' },
+  { value: 'is:needs-date', label: 'is:needs-date', detail: 'Open tasks more than 30 days past their due date' },
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
   { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
+  { value: 'is:waiting', label: 'is:waiting', detail: 'Open tasks marked #status/waiting, or for someone else' },
+  { value: 'is:available', label: 'is:available', detail: 'Open tasks you can start now: not blocked, started, not waiting or someday' },
   { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
-  { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person deckard.me names' },
+  { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person the "Me" setting names' },
   { value: 'is:assigned', label: 'is:assigned', detail: 'Tasks that name a person' },
   { value: 'is:unassigned', label: 'is:unassigned', detail: 'Tasks that name nobody' },
+  { value: 'is:daily', label: 'is:daily', detail: 'Written in a daily note' },
+  { value: 'is:periodic', label: 'is:periodic', detail: 'Written in a daily, weekly, or monthly note' },
+  { value: 'is:parked', label: 'is:parked', detail: 'Notes and tasks that are parked' },
+  { value: 'is:step', label: 'is:step', detail: 'Tasks written under another task' },
 ];
 
 const HAS_SUGGESTIONS = [
@@ -1567,7 +2272,24 @@ const HAS_SUGGESTIONS = [
   'priority',
   'id',
   'dependsOn',
+  'steps',
 ];
+
+/** What `has:` and `no:` find, for each value they take. */
+function describeHas(value: string, present: boolean): string {
+  switch (value) {
+    case 'priority':
+      return present ? 'Tasks with a priority' : 'Tasks without a priority';
+    case 'id':
+      return present ? 'Tasks with an id (🆔) others can wait for' : 'Tasks without an id (🆔)';
+    case 'dependsOn':
+      return present ? 'Tasks that wait for another task (⛔)' : 'Tasks that wait for no other task';
+    case 'steps':
+      return present ? 'Tasks broken into steps' : 'Tasks with no steps';
+    default:
+      return present ? `Tasks with a ${value} date` : `Tasks without a ${value} date`;
+  }
+}
 
 /**
  * Every folder that holds a note, parents before their children.
@@ -1588,12 +2310,14 @@ export function describeQueryField(field: string): string {
   switch (field) {
     case 'tag':
       return 'A tag, including tags inherited from a parent heading';
+    case 'link':
+      return 'A note the entry links to, as [[Atlas]] or [[Atlas#Decision]]; aliases count';
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:task, is:note, is:blocked, is:blocking, is:mine, is:assigned, or is:unassigned';
+      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, is:parked, or is:step';
     case 'has':
-      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
+      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, dependsOn, and steps';
     case 'in':
       return 'A folder and everything in it, as in in:notes/projects';
     case 'task':

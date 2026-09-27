@@ -1,14 +1,20 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
+import { WorkspaceIndex } from '../../core/types';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt, resolveSourceUri } from '../commands/navigation';
+import { createMissingNotes, reportCreatedNotes } from '../commands/linkHealth';
+import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
+import { findMissingLinkTargets } from '../../core/workspace/backlinks';
 import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
+import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Provides an overview of indexed content and recorded local views. Each
@@ -27,14 +33,18 @@ export class StatsPanel implements vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Stats', priority: () => panelPriority(this.panel) },
+        () => this.refresh(),
+      ),
+    );
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          this.renderHtml();
-          this.refresh();
-        }
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
       }),
     );
   }
@@ -45,7 +55,7 @@ export class StatsPanel implements vscode.Disposable {
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -56,7 +66,7 @@ export class StatsPanel implements vscode.Disposable {
     }
 
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -90,6 +100,7 @@ export class StatsPanel implements vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.panelDisposables = [
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.disposePanelListeners();
@@ -146,9 +157,41 @@ export class StatsPanel implements vscode.Disposable {
       return;
     }
 
+    // The Tags totals open a tag, chosen from the tags they count.
+    if (message.type === 'openTagList') {
+      const tagKey = await pickStatsTag(index, message.namespaced, vscode.window, message);
+      if (tagKey) {
+        await this.onOpenTag(tagKey);
+      }
+      return;
+    }
+
+    // The Wiki links total opens the graph drawing only those links.
+    if (message.type === 'openNotesGraph') {
+      await vscode.commands.executeCommand('deckard.showNotesGraph', {
+        onlyWrittenLinks: true,
+      });
+      return;
+    }
+
+    // A tag used once with no lookalike is merged into one the reader
+    // chooses, by the command that asks for it.
+    if (message.type === 'mergeTagInto') {
+      const sourceKey = resolveIndexedTagKey(index.tags, message.sourceKey);
+      if (sourceKey) {
+        await vscode.commands.executeCommand('deckard.mergeTag', sourceKey);
+      }
+      return;
+    }
+
     // The page is where staleness shows, so it is also where it is fixed.
     if (message.type === 'reindexWorkspace') {
       await vscode.commands.executeCommand('deckard.reindexWorkspace');
+      return;
+    }
+
+    if (message.type === 'createMissingNotes') {
+      await this.createMissingNotes(message.names);
       return;
     }
 
@@ -158,15 +201,67 @@ export class StatsPanel implements vscode.Disposable {
         candidate.startLine === message.line,
     );
     if (section) {
-      await openSourceAt(section.filePath, section.startLine);
+      await openResultAt(section.filePath, section.startLine, message);
       await this.preferences.recordSectionAccess(section.id);
       return;
     }
     // A note listed whole, such as one nothing links to, opens without
     // counting as a view of one of its entries.
     if (index.files.has(message.filePath)) {
-      await openSourceAt(message.filePath, message.line);
+      await openResultAt(message.filePath, message.line, message);
     }
+  }
+
+  /**
+   * Makes the notes links name and no note carries. The names are read
+   * again from the index as it is now, so only a name still missing and
+   * able to be a file name is made; each goes in the notes folder of the
+   * workspace folder its first link is in. Creating every one is confirmed
+   * first.
+   */
+  private async createMissingNotes(requested: readonly string[]): Promise<void> {
+    const wanted = new Set(requested.map((name) => name.toLocaleLowerCase()));
+    const missing = findMissingLinkTargets(this.indexer.getSnapshot()).filter(
+      (target) =>
+        getExtractedNoteFileName(target.name) !== undefined &&
+        (wanted.size === 0 || wanted.has(target.key)),
+    );
+    if (missing.length === 0) {
+      return;
+    }
+    if (wanted.size === 0) {
+      const create = 'Create';
+      const choice = await vscode.window.showWarningMessage(
+        `Create ${missing.length} ${missing.length === 1 ? 'note' : 'notes'} for links that open no note?`,
+        {
+          modal: true,
+          detail: 'Each is an empty note named as the links write it, in the notes folder.',
+        },
+        create,
+      );
+      if (choice !== create) {
+        return;
+      }
+    }
+    const byFolder = new Map<string, { uri: vscode.Uri; names: string[] }>();
+    for (const target of missing) {
+      const uri = await resolveSourceUri(target.sourcePaths[0]);
+      if (!uri) {
+        continue;
+      }
+      const folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.toString() ?? '';
+      const group = byFolder.get(folder) ?? { uri, names: [] };
+      group.names.push(target.name);
+      byFolder.set(folder, group);
+    }
+    if (byFolder.size === 0) {
+      return;
+    }
+    let created = 0;
+    for (const group of byFolder.values()) {
+      created += await createMissingNotes(this.indexer, group.uri, group.names, { report: false });
+    }
+    reportCreatedNotes(created);
   }
 
   private disposePanelListeners(): void {
@@ -203,4 +298,53 @@ export class StatsPanel implements vscode.Disposable {
       ),
     });
   }
+}
+
+/**
+ * The tags a Tags total counts, as a quick pick: every tag, or only the
+ * namespaced ones, most used first, each with how many entries carry it.
+ * Returns the key chosen.
+ */
+export async function pickStatsTag(
+  index: WorkspaceIndex,
+  namespaced: boolean,
+  window: Pick<typeof vscode.window, 'showQuickPick'> = vscode.window,
+  band: { min?: number; max?: number } = {},
+): Promise<string | undefined> {
+  const items = listStatsTags(index, namespaced, band);
+  const banded = band.min !== undefined;
+  const choice = await window.showQuickPick(items, {
+    title: banded ? describeBand(band) : namespaced ? 'Namespaced tags' : 'Tags',
+    placeHolder: namespaced ? 'Choose a namespaced tag to open' : 'Choose a tag to open',
+    matchOnDescription: true,
+  });
+  return choice?.tagKey;
+}
+
+/** The rows of that quick pick. */
+export function listStatsTags(
+  index: WorkspaceIndex,
+  namespaced: boolean,
+  band: { min?: number; max?: number } = {},
+): (vscode.QuickPickItem & { tagKey: string })[] {
+  const rows = namespaced
+    ? [...index.entities.values()].map((entity) => ({ key: entity.key, label: entity.label, count: entity.count }))
+    : [...index.tags.values()].map((tag) => ({ key: tag.key, label: tag.label, count: tag.count }));
+  return rows
+    .filter((row) => (band.min === undefined || row.count >= band.min) && (band.max === undefined || row.count <= band.max))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+    .map((row) => ({
+      label: row.label,
+      description: `${row.count} ${row.count === 1 ? 'entry' : 'entries'}`,
+      tagKey: row.key,
+    }));
+}
+
+/** A band of tag use, as a title: "Tags used 3–5 times". */
+function describeBand(band: { min?: number; max?: number }): string {
+  const { min = 1, max } = band;
+  if (max === min) {
+    return min === 1 ? 'Tags used once' : min === 2 ? 'Tags used twice' : `Tags used ${min} times`;
+  }
+  return max === undefined ? `Tags used ${min} or more times` : `Tags used ${min}–${max} times`;
 }

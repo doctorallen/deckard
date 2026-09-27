@@ -49,6 +49,72 @@ class DelayedFirstWriteMemento extends MemoryMemento {
 }
 
 suite('Preferences store', () => {
+  test('a saved search\'s widget is added to Home once', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    const saved = await store.saveSavedQueryFilter('Open work', 'is:open');
+    assert.ok(saved);
+    assert.strictEqual(await store.addSavedSearchWidget(saved.id), 'added');
+    const widget = store.value.dashboardWidgets[store.value.dashboardWidgets.length - 1];
+    assert.deepStrictEqual({ kind: widget.kind, width: widget.width, count: widget.count, filterId: widget.filterId }, { kind: 'savedQuery', width: 'half', count: 5, filterId: saved.id });
+    assert.strictEqual(await store.addSavedSearchWidget(saved.id), 'present');
+    assert.strictEqual(await store.addSavedSearchWidget('nope'), 'missing');
+  });
+
+  test('remembers whether daily notes are hidden from Related Notes', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    assert.strictEqual(store.value.hideDailyNotes, undefined);
+    await store.setHideDailyNotes(true);
+    assert.strictEqual(store.value.hideDailyNotes, true);
+    await store.setHideDailyNotes(false);
+    assert.strictEqual(store.value.hideDailyNotes, undefined);
+  });
+
+  test('remembers how many lines Related Notes previews, 1 unless told otherwise', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    assert.strictEqual(store.value.relatedNotesPreviewLines ?? 1, 1);
+    await store.setRelatedNotesPreviewLines(2);
+    assert.strictEqual(store.value.relatedNotesPreviewLines, 2);
+    await store.setRelatedNotesPreviewLines(0);
+    assert.strictEqual(store.value.relatedNotesPreviewLines, 0);
+    await store.setRelatedNotesPreviewLines(1);
+    assert.strictEqual(store.value.relatedNotesPreviewLines, undefined);
+  });
+
+  test('keeps what Find learned, at most 200, and forgets a choice whose note is gone', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.recordFindChoice('  Vendor   Contract ', 'note:["a.md","Next",0]', 5);
+    await store.recordFindChoice('vendor contract', 'note:["a.md","Next",0]', 9);
+    await store.recordFindChoice('atlas', 'tag:#project/atlas', 7);
+    await store.recordFindChoice('gone', 'note:["gone.md","",0]', 8);
+    assert.deepStrictEqual(store.value.findChoices?.[0], { input: 'vendor contract', key: 'note:["a.md","Next",0]', count: 2, at: 9 });
+    await store.prune(['#project/atlas'], [], [], [], ['a.md']);
+    assert.deepStrictEqual(store.value.findChoices?.map((choice) => choice.input), ['vendor contract', 'atlas']);
+    for (let n = 0; n < 250; n += 1) {
+      await store.recordFindChoice(`word ${n}`, 'tag:#project/atlas', 100 + n);
+    }
+    assert.strictEqual(store.value.findChoices?.length, 200);
+    await store.removeRecentQuery('nothing');
+  });
+
+  test('search pages start rendered, and Source sticks once it is chosen', async () => {
+    assert.strictEqual(new PreferencesStore(new MemoryMemento()).value.renderMode, 'html', 'a new install is rendered');
+
+    // Every saved blob held Source, chosen or not, so one not chosen since
+    // is switched once.
+    const given = new MemoryMemento();
+    await given.update('deckard.preferences', { renderMode: 'markdown' });
+    assert.strictEqual(new PreferencesStore(given).value.renderMode, 'html');
+
+    const chosen = new MemoryMemento();
+    await chosen.update('deckard.preferences', { renderMode: 'markdown', renderModeChosen: true });
+    assert.strictEqual(new PreferencesStore(chosen).value.renderMode, 'markdown');
+
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.setRenderMode('markdown');
+    assert.strictEqual(store.value.renderMode, 'markdown');
+    assert.strictEqual(store.value.renderModeChosen, true);
+  });
+
   test('a task keeps its place when Deckard rewrites its line', async () => {
     const store = new PreferencesStore(new MemoryMemento());
     await store.setTaskOrder(['task-a', 'task-b', 'task-c']);
@@ -213,7 +279,7 @@ suite('Preferences store', () => {
     });
     assert.deepStrictEqual(
       store.value.dashboardWidgets.map((widget) => widget.kind),
-      ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches'],
+      ['tryNext', 'search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
     );
     assert.strictEqual('dashboardNoteSortMode' in store.value, false);
 
@@ -242,7 +308,7 @@ suite('Preferences store', () => {
     ]);
 
     await store.resetDashboardWidgets();
-    assert.strictEqual(store.value.dashboardWidgets.length, 5);
+    assert.strictEqual(store.value.dashboardWidgets.length, 6);
     await store.setDashboardWidgets([]);
     assert.deepStrictEqual(store.value.dashboardWidgets, [], 'an empty Home stays empty');
 
@@ -473,15 +539,17 @@ suite('Preferences store', () => {
       true,
       'a copy with the same settings is the same layout',
     );
-    const [search, ...rest] = DEFAULT_DASHBOARD_WIDGETS;
-    assert.strictEqual(isDefaultHomeLayout(rest), false, 'a widget removed');
+    // Try next leads and is left alone; the search box is the widget moved.
+    const [tryNext, search, ...rest] = DEFAULT_DASHBOARD_WIDGETS;
+    assert.strictEqual(isDefaultHomeLayout([tryNext, ...rest]), false, 'a widget removed');
     assert.strictEqual(
-      isDefaultHomeLayout([...rest, search]),
+      isDefaultHomeLayout([tryNext, ...rest, search]),
       false,
       'a widget moved',
     );
     assert.strictEqual(
       isDefaultHomeLayout([
+        tryNext,
         search,
         { ...rest[0], width: 'full' },
         ...rest.slice(1),
@@ -491,6 +559,7 @@ suite('Preferences store', () => {
     );
     assert.strictEqual(
       isDefaultHomeLayout([
+        tryNext,
         search,
         { ...rest[0], count: 10 },
         ...rest.slice(1),

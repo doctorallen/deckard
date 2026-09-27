@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+
+import { listedParkedTags } from '../../core/workspace/parked';
+import { describeMissingTag, reportFailure } from '../commands/notify';
+import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { formatQuery } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { measure } from '../../core/timing';
@@ -22,6 +24,7 @@ import {
 import {
   createQueryViewState,
   createSearchPageSnapshot,
+  evaluateSearchPage,
   normalizeTagTitleDisplayMode,
   resolveQueryTagIntersection,
 } from '../state/dashboardState';
@@ -29,14 +32,18 @@ import { isWritten } from '../state/searchFacets';
 import { SearchHistory, SearchHistoryEntry } from '../state/searchHistory';
 import { editResults } from '../commands/bulkEditPrompts';
 import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
+import { formatQueryBlock } from '../state/queryBlockState';
 import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
-import { openSourceAt } from '../commands/navigation';
-import { renameIndexedTag } from '../commands/renameTag';
+import { openResultAt, ResultOpening } from '../commands/navigation';
+import { mergeIndexedTag, renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
+import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
+import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is
@@ -56,7 +63,9 @@ export class SearchPanels implements vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    // A page about a tag that is gone closes at once; each page still open
+    // redraws in a turn of its own.
+    this.disposables.push(indexer.onDidUpdate(() => this.closeMissingTagPages()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       activeSearch.onDidChangeRefineVisibility(() =>
@@ -64,13 +73,15 @@ export class SearchPanels implements vscode.Disposable {
       ),
     );
     this.disposables.push(
+      onDidChangePageChrome(() => {
+        this.panels.forEach((panel) => panel.renderHtml());
+        this.refresh();
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          this.panels.forEach((panel) => panel.renderHtml());
-          this.refresh();
-        } else if (
+        if (
           event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
           event.affectsConfiguration('deckard.tagOverview.hubNoteExpanded') ||
+          event.affectsConfiguration('deckard.tagOverview.includeHubLinks') ||
           event.affectsConfiguration('deckard.enableHeadingTagRelationships')
         ) {
           this.refresh();
@@ -83,15 +94,30 @@ export class SearchPanels implements vscode.Disposable {
    * Opens a tag's page: the search for that one tag.
    */
   public async show(tagKey: string): Promise<void> {
-    await this.indexer.ready;
+    // Before the first scan the page opens at once and says how far it has
+    // got; the tag is looked up once there is an index to look in.
+    if (this.indexer.hasIndexed === false) {
+      const early = this.openWhileIndexing(tagKey);
+      await whenPublished(this.indexer);
+      const found = resolveIndexedTagKey(this.indexer.getSnapshot().tags, tagKey);
+      if (found === tagKey) {
+        this.settle(early);
+        return;
+      }
+      early.dispose();
+      if (!found) {
+        void reportFailure({ outcome: describeMissingTag(tagKey) });
+        return;
+      }
+      await this.showQuery(found);
+      return;
+    }
     const canonicalTagKey = resolveIndexedTagKey(
       this.indexer.getSnapshot().tags,
       tagKey,
     );
     if (!canonicalTagKey) {
-      void vscode.window.showWarningMessage(
-        `Deckard could not find the tag: ${tagKey}`,
-      );
+      void reportFailure({ outcome: describeMissingTag(tagKey) });
       return;
     }
     await this.showQuery(canonicalTagKey);
@@ -102,7 +128,12 @@ export class SearchPanels implements vscode.Disposable {
    * empty search opens a page that lists every note.
    */
   public async showQuery(queryText: string): Promise<void> {
-    await this.indexer.ready;
+    if (this.indexer.hasIndexed === false) {
+      const early = this.openWhileIndexing(queryText.trim());
+      await whenPublished(this.indexer);
+      this.settle(early);
+      return;
+    }
     const text = queryText.trim();
     const index = this.indexer.getSnapshot();
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
@@ -126,7 +157,7 @@ export class SearchPanels implements vscode.Disposable {
     webviewPanel: vscode.WebviewPanel,
     state: unknown,
   ): Promise<void> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const saved = readSerializedSearch(index, state);
     if (saved === undefined) {
@@ -149,10 +180,47 @@ export class SearchPanels implements vscode.Disposable {
     this.panels.clear();
   }
 
+  /** A page opened before the index is ready, showing the scan's progress. */
+  private openWhileIndexing(text: string): SearchPanel {
+    const panel = this.createPanel(text);
+    panel.show();
+    return panel;
+  }
+
+  /**
+   * A page opened while indexing, once the index is ready: it gives way to
+   * a page already showing its search, or records the visit and draws.
+   */
+  private settle(panel: SearchPanel): void {
+    const index = this.indexer.getSnapshot();
+    const key = panel.key();
+    const other = [...this.panels].find((candidate) => candidate !== panel && candidate.key() === key);
+    if (other) {
+      panel.dispose();
+      other.show();
+      return;
+    }
+    const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()));
+    if (tagKeys?.length === 1) {
+      void this.preferences.recordTagAccess(tagKeys[0]);
+      if (index.entities.has(tagKeys[0])) {
+        void this.preferences.recordEntityAccess(tagKeys[0]);
+      }
+    }
+    panel.refresh();
+  }
+
   /**
    * Refreshes every page. A page about a tag that no longer exists closes,
    * as a renamed tag's page is replaced by the new tag's.
    */
+  private closeMissingTagPages(): void {
+    const index = this.indexer.getSnapshot();
+    [...this.panels]
+      .filter((panel) => panel.isForMissingTag(index))
+      .forEach((panel) => panel.dispose());
+  }
+
   private refresh(): void {
     const index = this.indexer.getSnapshot();
     [...this.panels].forEach((panel) => {
@@ -296,10 +364,23 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
     private readonly host: SearchPanelHost,
-  ) {}
+  ) {
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'search page', priority: () => panelPriority(this.panel) },
+        () => this.refresh(),
+      ),
+    );
+  }
 
   public key(): string {
     return getSearchKey(this.indexer.getSnapshot(), this.queryText);
+  }
+
+  /** The search the page shows, as typed. */
+  public searchText(): string {
+    return this.queryText;
   }
 
   /** Whether the page is about one tag the index no longer has. */
@@ -344,6 +425,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // Before the first scan there is nothing to show but how far it has got.
+    if (this.indexer.hasIndexed === false) {
+      return;
+    }
     // A hidden page keeps what it shows and catches up when shown again.
     if (!this.panel.visible) {
       this.isStale = true;
@@ -366,12 +451,17 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       type: 'state',
       data: {
         ...snapshot,
+        parkedTags: listedParkedTags(this.indexer),
         // The Markdown view shows each note's source, which the page's
         // search also reads, so only the HTML view is sent each note rendered.
         sections:
           snapshot.renderMode === 'html'
             ? snapshot.sections
-            : snapshot.sections.map((card) => ({ ...card, renderedHtml: '' })),
+            : snapshot.sections.map((card) => ({
+                ...card,
+                renderedHtml: '',
+                ...(card.snippet ? { snippet: { ...card.snippet, renderedHtml: '' } } : {}),
+              })),
       },
     });
     this.activeSearch.notifyChanged(this);
@@ -430,6 +520,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         notePage: this.notePage,
         taskPage: this.taskPage,
         previewWords: this.previewWords,
+        includeHubLinks: this.includesHubLinks(),
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
@@ -443,6 +534,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     );
     return {
       ...snapshot,
+      history: {
+        back: this.history.canGoBack,
+        forward: this.history.canGoForward,
+      },
       ...(snapshot.hub
         ? { hub: { ...snapshot.hub, expanded: this.isHubNoteExpanded() } }
         : {}),
@@ -465,6 +560,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         : {}),
       refineInSidebar: this.activeSearch.isRefineInSidebar(this),
     };
+  }
+
+  private includesHubLinks(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('tagOverview.includeHubLinks', true);
   }
 
   private isHubNoteExpanded(): boolean {
@@ -491,6 +592,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.disposables.push(
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.dispose();
@@ -588,6 +690,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'setZenMode':
         await setZenMode(message.enabled);
         return;
+      case 'chooseTheme':
+        await vscode.commands.executeCommand('deckard.chooseTheme');
+        return;
       case 'setOverviewQuery':
         await this.applyQuery(message.query, message.remember !== false);
         return;
@@ -638,6 +743,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'setTagOverviewLayout':
         await this.preferences.setTagOverviewLayout(message.layout);
         return;
+      case 'setSearchPreview':
+        await this.preferences.setSearchPreview(message.preview);
+        return;
       case 'setSearchColumns':
         await this.preferences.setDashboardColumns(
           message.section,
@@ -649,6 +757,27 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         return;
       case 'saveTagOverviewFilter':
         await this.saveSearch();
+        return;
+      case 'mergeTags': {
+        // The merge the tag list and Stats run: confirmed, previewed, and
+        // undoable. A page whose tag was merged away follows the one kept.
+        const pageTag = this.currentSnapshot().tag?.key;
+        const kept = await mergeIndexedTag(
+          this.indexer,
+          message.sourceKey,
+          this.preferences,
+          message.targetKey,
+        );
+        if (kept && pageTag && pageTag !== kept.key) {
+          await this.host.openTag(kept.key);
+        }
+        return;
+      }
+      case 'excludeHubLinks':
+        // A preference about every tag's page, so it is the user's.
+        await vscode.workspace
+          .getConfiguration('deckard')
+          .update('tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global);
         return;
       case 'createHubNote': {
         const tagKey = this.currentSnapshot().tag?.key;
@@ -664,6 +793,18 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         );
         if (tagKey) {
           await this.host.openTag(tagKey);
+        }
+        return;
+      }
+      case 'parkTag':
+      case 'unparkTag':
+        await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
+        return;
+      case 'parkNote':
+      case 'unparkNote': {
+        const uri = this.indexer.getUri?.(message.filePath);
+        if (uri) {
+          await vscode.commands.executeCommand(`deckard.${message.type}`, uri);
         }
         return;
       }
@@ -704,17 +845,24 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'exportResults': {
         const results = this.currentResults();
         const index = this.indexer.getSnapshot();
+        // A page with a search can hand it on as a live query block; a
+        // page of every note has none to hand on.
+        const search = this.queryText.trim();
+        const sort = this.preferences.value.tagOverviewSortMode;
+        const liveBlock = search
+          ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
+          : undefined;
         if (message.kind === 'tasks') {
           const rows = taskRows(results.tasks, index);
-          await exportResults('tasks', rows.length, (format) => formatTasks(rows, format));
+          await exportResults('tasks', rows.length, (format) => formatTasks(rows, format), liveBlock);
         } else {
           const rows = noteRows(results.sections);
-          await exportResults('notes', rows.length, (format) => formatNotes(rows, format));
+          await exportResults('notes', rows.length, (format) => formatNotes(rows, format), liveBlock);
         }
         return;
       }
       case 'openSource':
-        await this.openSource(message.filePath, message.line);
+        await this.openSource(message.filePath, message.line, message);
         return;
     }
   }
@@ -744,7 +892,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         }),
       };
     }
-    const results = evaluateQuery(index, node);
+    // The same list the page shows: on a tag's page, what links its hub too.
+    const { results } = evaluateSearchPage(index, this.queryText, {
+      includeHubLinks: this.includesHubLinks(),
+    });
     return {
       // The search is the filter: is:open, is:done, and the rest say which
       // tasks, so the pane shows every task the search found.
@@ -757,14 +908,18 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     return this.lastSnapshot ?? this.createSnapshot();
   }
 
-  private async openSource(filePath: string, line: number): Promise<void> {
+  private async openSource(
+    filePath: string,
+    line: number,
+    how: ResultOpening = {},
+  ): Promise<void> {
     const snapshot = this.currentSnapshot();
     const hub = snapshot.hub;
     if (
       hub &&
       (filePath === hub.filePath || hub.otherFilePaths.includes(filePath))
     ) {
-      await openSourceAt(filePath, line);
+      await openResultAt(filePath, line, how);
       return;
     }
     const card = snapshot.sections.find(
@@ -774,7 +929,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       if (!card.id.startsWith('frontmatter:')) {
         await this.preferences.recordSectionAccess(card.id);
       }
-      await openSourceAt(card.filePath, card.startLine);
+      await openResultAt(card.filePath, card.startLine, how);
       return;
     }
     const task = snapshot.tasks.find(
@@ -783,7 +938,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         candidate.task.lineNumber === line,
     );
     if (task) {
-      await openSourceAt(task.task.filePath, task.task.lineNumber);
+      await openResultAt(task.task.filePath, task.task.lineNumber, how);
     }
   }
 
@@ -800,13 +955,13 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
     const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
     const name = await vscode.window.showInputBox({
-      title: 'Save this search',
+      title: 'Save search',
       prompt: 'Name this search',
       value: isTagSet
         ? tagKeys.map((tagKey) => index.tags.get(tagKey)?.label ?? tagKey).join(' + ')
         : text,
       validateInput: (value) =>
-        value.trim() ? undefined : 'A saved filter needs a name.',
+        value.trim() ? undefined : 'A saved search needs a name.',
     });
     if (name === undefined) {
       return;
@@ -815,9 +970,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       ? await this.preferences.saveSavedFilter(name, tagKeys)
       : await this.preferences.saveSavedQueryFilter(name, text);
     if (saved) {
-      void vscode.window.showInformationMessage(
-        `Saved the search "${saved.name}".`,
-      );
+      void offerSavedSearchOnHome(this.preferences, saved);
     }
   }
 }

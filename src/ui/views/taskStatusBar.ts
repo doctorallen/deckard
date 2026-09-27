@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { listOverdueTasks } from './agendaTree';
+
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
@@ -15,6 +17,10 @@ import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 export interface DueTaskCounts {
   overdue: number;
   today: number;
+  /** Open tasks past `needsNewDateAfterDays`, which the count leaves out. */
+  needsNewDate?: number;
+  /** Tasks completed today, which the hover says and the bar does not. */
+  doneToday?: number;
 }
 
 export function countDueTasks(
@@ -26,10 +32,16 @@ export function countDueTasks(
   const groups = createAgenda(index, now, {
     tasks: selectAgendaTasks(index, query).tasks,
     upcomingDays: 1,
+    doneToday: true,
   });
-  const count = (id: 'overdue' | 'today'): number =>
+  const count = (id: 'overdue' | 'today' | 'needsdate' | 'donetoday'): number =>
     groups.find((group) => group.id === id)?.entries.length ?? 0;
-  return { overdue: count('overdue'), today: count('today') };
+  return {
+    overdue: count('overdue'),
+    today: count('today'),
+    needsNewDate: count('needsdate'),
+    doneToday: count('donetoday'),
+  };
 }
 
 /**
@@ -68,26 +80,64 @@ export function describeDueTasksAtLength(counts: DueTaskCounts): string {
   return 'Nothing is due today.';
 }
 
+/**
+ * The neutral line for tasks past the line: they are named, not counted in
+ * the bar or colored, since a date a month gone is not today's emergency.
+ */
+export function describeNeedsNewDate(count: number | undefined): string | undefined {
+  if (!count) {
+    return undefined;
+  }
+  return count === 1 ? '1 task needs a new date.' : `${count} tasks need a new date.`;
+}
+
 /** Minutes past midnight for an `HH:MM` setting, or nothing when it is off. */
 export function parseReminderTime(value: string): number | undefined {
   const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
   return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
 }
 
-/** How long until the next time of day, in milliseconds. */
-export function millisecondsUntil(minuteOfDay: number, now: Date): number {
-  const next = new Date(now);
-  next.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0);
-  if (next.getTime() <= now.getTime()) {
-    next.setDate(next.getDate() + 1);
-  }
-  return next.getTime() - now.getTime();
+/** The local day a moment falls on, as `YYYY-MM-DD`. */
+function localDate(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 
+/** Where the day of the last reminder is kept, across every window. */
+export const REMINDER_DATE_KEY = 'deckard.lastReminderDate';
+
+/**
+ * Whether the reminder is owed: the hour has come today, and no window has
+ * reminded today yet. A day that has already passed is never reminded, so a
+ * laptop opened in the evening says today's once, not yesterday's too.
+ */
+export function isReminderDue(
+  now: Date,
+  minuteOfDay: number,
+  lastDate: string | undefined,
+): boolean {
+  return (
+    now.getHours() * 60 + now.getMinutes() >= minuteOfDay &&
+    lastDate !== localDate(now)
+  );
+}
+
+/** How often the day and the reminder hour are checked. */
+const CHECK_INTERVAL_MS = 60 * 1000;
+/** The longest a window waits before its first check, so windows opened together do not check at once. */
+const START_SPREAD_MS = 20 * 1000;
+
 interface StatusBarIndexSource {
+  readonly ready: Promise<void>;
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
 }
+
+/** Where the day of the last reminder is kept: VS Code's global state. */
+type ReminderMemory = Pick<vscode.Memento, 'get' | 'update'>;
 
 function readAgendaQuery(): string {
   return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
@@ -95,15 +145,22 @@ function readAgendaQuery(): string {
 
 /** The command that opens the Tasks view, contributed by VS Code per view. */
 const SHOW_AGENDA = 'deckard.agenda.focus';
+const RESCHEDULE_OVERDUE = 'deckard.rescheduleOverdue';
 
 export class TaskStatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly disposables: vscode.Disposable[] = [];
-  private reminder: ReturnType<typeof setTimeout> | undefined;
+  private timer: ReturnType<typeof setInterval> | undefined;
+  private startDelay: ReturnType<typeof setTimeout> | undefined;
+  /** The day the count was last drawn for, so it turns over at midnight. */
+  private lastRefreshDate: string | undefined;
+  private disposed = false;
 
   public constructor(
     private readonly indexer: StatusBarIndexSource,
+    private readonly memory: ReminderMemory,
     private readonly now: () => Date = () => new Date(),
+    options: { startDelayMs?: number } = {},
   ) {
     this.item = vscode.window.createStatusBarItem(
       'deckard.dueTasks',
@@ -125,28 +182,69 @@ export class TaskStatusBar implements vscode.Disposable {
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.statusBar') ||
-          event.affectsConfiguration('deckard.agenda.query')
+          event.affectsConfiguration('deckard.agenda.query') ||
+          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();
         }
-        if (event.affectsConfiguration('deckard.taskReminderTime')) {
-          this.scheduleReminder();
-        }
       }),
     );
-    this.scheduleReminder();
+    // Once the index is there, check now and then once a minute: the count
+    // turns over at midnight, and the reminder is said at the first check on
+    // or after its hour, late after sleep rather than never.
+    void indexer.ready.then(() => {
+      if (this.disposed) {
+        return;
+      }
+      this.startDelay = setTimeout(
+        () => {
+          this.startDelay = undefined;
+          void this.check();
+          this.timer = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
+        },
+        options.startDelayMs ?? Math.random() * START_SPREAD_MS,
+      );
+    });
   }
 
   public dispose(): void {
-    if (this.reminder) {
-      clearTimeout(this.reminder);
-      this.reminder = undefined;
-    }
+    this.disposed = true;
+    clearTimeout(this.startDelay);
+    clearInterval(this.timer);
+    this.startDelay = undefined;
+    this.timer = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+  }
+
+  /**
+   * Redraws the count when the day has changed, and says the reminder when
+   * it is owed. The day is written down before the reminder is shown, so a
+   * second window checking a moment later finds it said.
+   */
+  public async check(): Promise<void> {
+    const now = this.now();
+    const today = localDate(now);
+    if (this.lastRefreshDate !== today) {
+      this.refresh();
+    }
+    const minuteOfDay = parseReminderTime(
+      vscode.workspace
+        .getConfiguration('deckard')
+        .get<string>('taskReminderTime', ''),
+    );
+    if (
+      minuteOfDay === undefined ||
+      !isReminderDue(now, minuteOfDay, this.memory.get<string>(REMINDER_DATE_KEY))
+    ) {
+      return;
+    }
+    await this.memory.update(REMINDER_DATE_KEY, today);
+    await this.remind();
   }
 
   /** Draws the count, or hides the item when nothing is due. */
   public refresh(): void {
+    this.lastRefreshDate = localDate(this.now());
     if (
       !vscode.workspace
         .getConfiguration('deckard')
@@ -166,9 +264,7 @@ export class TaskStatusBar implements vscode.Disposable {
       return;
     }
     this.item.text = `$(checklist) ${text}`;
-    this.item.tooltip = `Deckard: ${describeDueTasksAtLength(
-      counts,
-    )} Select to open Tasks.`;
+    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts), counts);
     // Overdue work is the one state worth coloring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
@@ -178,26 +274,31 @@ export class TaskStatusBar implements vscode.Disposable {
   }
 
   /**
-   * Waits for the hour the setting names, then says what is due and asks
-   * again tomorrow. Nothing is scheduled while the setting is empty.
+   * The sentence, then the first few overdue tasks by name, so a glance
+   * says which ones rather than how many.
    */
-  private scheduleReminder(): void {
-    if (this.reminder) {
-      clearTimeout(this.reminder);
-      this.reminder = undefined;
+  private createTooltip(sentence: string, counts: DueTaskCounts): vscode.MarkdownString {
+    const tooltip = new vscode.MarkdownString(`Deckard: ${sentence}`, true);
+    const overdue = listOverdueTasks(this.indexer.getSnapshot(), this.now().getTime());
+    if (overdue.length > 0) {
+      tooltip.appendMarkdown(
+        '\n\n' +
+          overdue
+            .slice(0, 5)
+            .map((task) => `- $(warning) ${task.title.replace(/[\\`*_[\]<>]/g, '\\$&')}`)
+            .join('\n') +
+          (overdue.length > 5 ? `\n- and ${overdue.length - 5} more` : ''),
+      );
     }
-    const minuteOfDay = parseReminderTime(
-      vscode.workspace
-        .getConfiguration('deckard')
-        .get<string>('taskReminderTime', ''),
-    );
-    if (minuteOfDay === undefined) {
-      return;
+    const needsDate = describeNeedsNewDate(counts.needsNewDate);
+    if (needsDate) {
+      tooltip.appendMarkdown(`\n\n${needsDate}`);
     }
-    this.reminder = setTimeout(() => {
-      void this.remind();
-      this.scheduleReminder();
-    }, millisecondsUntil(minuteOfDay, this.now()));
+    if (counts.doneToday) {
+      tooltip.appendMarkdown(`\n\n${counts.doneToday} done today.`);
+    }
+    tooltip.appendMarkdown('\n\nSelect to open Tasks.');
+    return tooltip;
   }
 
   /** Says what is due, unless nothing is. */
@@ -211,12 +312,30 @@ export class TaskStatusBar implements vscode.Disposable {
     if (counts.overdue + counts.today === 0) {
       return;
     }
+    // What is overdue can be moved on from here, and a reminder that is no
+    // longer wanted can be turned off where it is heard, not in Settings.
+    const choices = counts.overdue > 0
+      ? ['Open Tasks View', 'Reschedule Overdue…', 'Turn Off Reminders']
+      : ['Open Tasks View', 'Turn Off Reminders'];
     const choice = await vscode.window.showInformationMessage(
       `Deckard: ${describeDueTasksAtLength(counts)}`,
-      'Open Tasks',
+      ...choices,
     );
-    if (choice === 'Open Tasks') {
+    if (choice === 'Open Tasks View') {
       await vscode.commands.executeCommand(SHOW_AGENDA);
+    } else if (choice === 'Reschedule Overdue…') {
+      await vscode.commands.executeCommand(RESCHEDULE_OVERDUE);
+    } else if (choice === 'Turn Off Reminders') {
+      // Cleared where it was set, so a workspace's own hour is the one undone.
+      const configuration = vscode.workspace.getConfiguration('deckard');
+      const setting = configuration.inspect<string>('taskReminderTime');
+      await configuration.update(
+        'taskReminderTime',
+        undefined,
+        setting?.workspaceValue !== undefined
+          ? vscode.ConfigurationTarget.Workspace
+          : vscode.ConfigurationTarget.Global,
+      );
     }
   }
 }

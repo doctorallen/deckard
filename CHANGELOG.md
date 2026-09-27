@@ -2,6 +2,885 @@
 
 ## Unreleased
 
+## 1.22.0 - 2026-09-27
+
+### Highlights
+
+- Search pages you can scan: rendered, three lines a result with the paragraph its words are in, five values a Refine facet, and tags on cards as quiet text; a search can become a live query block.
+- Find opens a result beside the editor, links to a note, and creates one it did not find; `[[` completes a note's headings and links a day by name.
+- The Task board works from the keyboard, and Capture reads a date, a priority, and a repeat rule from the words at its end.
+- Nothing is silently lost: a repeating task comes back however it is finished, a copied rollover arrives once, and no section or task vanishes from the index.
+- Every failure says what did not happen and what to do, with **Open Log**; Home says what is new after an update, and Choose Theme… previews each theme.
+
+### Added
+
+- **The sample workspace is a tour you read and do.** `Deckard: Create a
+  Sample Workspace` opens on a Start here README that leads through ten
+  notes, one a topic: tasks, the Task board, repeat rules and dates, search,
+  query blocks, tags and people, links, daily notes and reviews, Capture and
+  parking, and Home, Stats, and the graph. Each says what it holds, holds the
+  tasks, tags, and links that make it show, and ends with **Try it**: the
+  commands, keys, and searches to run, and what each shows. The Search note
+  gives a search for every field and state, and says what each finds. The
+  sample's own settings name you, show the calendar's day panel, and
+  migrate tasks on rollover.
+
+- **Zoomed out, the Notes Graph draws each file as one node, and opens it
+  into its headings as you zoom in.** A workspace of fifty files draws as
+  fifty dots at rest rather than hundreds, each sized by its headings
+  together; **Headings** under Display chooses **By zoom**, **Always**, or
+  **Never**.
+
+- **Stats shows which tags are written together.** Your twelve most-used
+  tags form a triangle whose cells count the notes and tasks carrying both,
+  each opening the search for the pair; **Show as a table** lists the pairs
+  by count.
+
+- **Stats shows how often each tag is used, and merges the tags used
+  once.** Six bars count the tags used once, twice, 3–5, 6–10, 11–25, and
+  26 or more times. **Used once** unfolds those tags, each with the tag it
+  looks like and **Merge**, or **Merge into…**; any other bar offers its
+  tags to open.
+
+- **A related tag in Refine says how many of the results carry it.** Its
+  rail fills by that share, its tip leads with **In 6 of 13 results.**,
+  and a screen reader hears "in 6 of 13 results" rather than a strength
+  measured against the strongest tag listed. Related tags are sorted by how
+  many results carry them, on search pages and in the sidebar's Refine.
+
+- **Stats shows how notes, tasks, and open tasks moved over twelve weeks.**
+  A line under each of those totals draws a point for each rolling seven
+  days, the latest marked, and says **+9 in the last 7 days**; hover a
+  point for its value. The weeks are rebuilt from the dates notes were
+  written and tasks were done.
+
+- **Stats leads with what needs attention, and every total opens what it
+  counts.** Notes Deckard could not read, links that open no note, tags that
+  look alike, and notes nothing links to come first, each with its count,
+  and only when they have rows; with none, one line says so. **Notes**
+  opens `is:note`, **Tags** and **Namespaced tags** offer their tags to
+  open, **Wiki links** opens the Notes Graph showing only the links you
+  wrote, and **Unlinked notes** moves to its list, which shows ten with
+  **Show 40 more**. Empty most-viewed lists fold into one line.
+
+- **The Notes Graph names its groups where they sit.** Zoomed out, each
+  group is labeled over a faint disc after the tags its notes carry more
+  than the rest of the workspace does, so a tag on every note names nothing.
+  Click a name, or choose it from the new **Group** list under Filters, to
+  pick that group out; **Clear tag filters** is now **Clear filters** and
+  lets the group go too. The status line counts groups, and names eight
+  hubs at rest rather than twelve, placed so no two labels overlap.
+
+- **A graph node says what it is joined by.** Its tooltip counts wiki
+  links, headings, and tags (`atlas.md:12 · 4 wiki links · 2 headings · 7
+  tags`), and a tag says how many notes and tasks carry it. A node is sized
+  by everything it is joined to in the index, so neither changes as Links
+  per note moves.
+
+- **The Notes Graph tells its lines apart.** A wiki link you wrote is a
+  solid line, a heading a dashed one, a shared tag a dotted one, and a path
+  through a daily note a dash-dot one, with a sample of each in the legend.
+  **Only links I wrote**, under Filters, draws every wiki link and nothing
+  else, and the status line says how many of the indexed links are drawn.
+
+- **A note with no tags still finds its neighbors.** Related Notes lists up
+  to ten entries with similar wording, marked weak and kept apart from
+  related notes, and the tags those entries use, each with **Add**, which
+  writes it on the heading or line under the cursor, with Undo. For a note
+  with tags, wording alone still never makes a note related.
+
+- **Related Notes previews each result.** A card shows the first line of
+  what the entry says, starting where it shares a word with your note,
+  with those words marked. The sidebar's new gear sets Preview to None, 1
+  line, or 2 lines, and holds **Hide daily notes** as its Daily notes row.
+
+- **Suggest steps.** When a VS Code language model, such as GitHub
+  Copilot, is installed, Break into Steps… offers **Suggest steps**: only
+  the task's words are sent, only when chosen, and the steps are shown to
+  remove, reorder, or change before anything is written.
+  `deckard.tasks.suggestSteps` turns it off.
+
+- **Break a task into steps.** **Break into Steps…** — on the lightbulb,
+  in the palette and the editor's Deckard submenu, on the Tasks view's
+  right-click menu, and on a board card's ⋯ menu or its **s** key — writes
+  `- [ ]` steps under a task, one per line typed, shown beside the steps
+  already written, in one change Undo takes back. The task then says
+  "2 of 5 steps · next: Draft the email" on its card and row, and opens to
+  its steps in the Tasks view. Completing its last open step offers
+  **Complete Task**, and completing a task with open steps offers
+  **Complete Steps**; neither happens unless chosen. A checkbox indented
+  under a task is now one of its steps: `is:step` finds steps, and `has:steps` / `no:steps` find
+  tasks with and without them.
+
+
+- **Parked notes.** A note, folder, or tag can be parked: still indexed and
+  searchable, with `is:parked` and last in Find and on search pages, but
+  left out of the Tasks view, the status bar, the Task board, rollover, the
+  calendar, Related Notes, the Notes Graph, and tag completion. **Park
+  Note** writes `#parked` into the note's front matter; **Park Folder** and
+  **Park Tag** add to `deckard.parked.folders` and `deckard.parked.tags`.
+  Each is in the Explorer, the editor tab, and a tag's menu, with Unpark
+  beside it. Until now the only way to set notes aside was
+  `deckard.exclude`, which hid them from search too.
+
+- **Group tasks by your own tags.** The Tasks view and the Task board
+  group by the tags of any namespace — #project, #context, #area — as well
+  as by due date, priority, status, and person. A tag inherited from a
+  heading or a note's front matter counts, a task with two such tags is in
+  both groups, and dragging between groups rewrites the tag on the task
+  line, refusing to take away one a heading gave it. The README has a
+  recipe for GTD contexts and PARA areas.
+
+- **The calendar counts what is scheduled.** Beside a day's due count, an
+  outlined count marks the tasks scheduled (⏳) for it, and the day's
+  tooltip and label say "2 due, 1 scheduled".
+
+- **A day under the calendar.** With `deckard.calendar.dayPanel` on, or
+  **Open Day Panel** in the Calendar's … menu, a click chooses a day and
+  the panel below the month names it and offers its daily note, Open or
+  Create, and lists the tasks due, scheduled, and done that day with a
+  checkbox and a **Tomorrow** button, and the notes created that day. Double-click or Enter opens the day's note. Off by default, so a
+  click still opens the note.
+
+- **The Outline focuses and filters.** **Focus Section**, on a heading in
+  the Outline, in the editor's Deckard submenu, or in Note Actions, folds
+  the rest of the note away; **Unfold All Sections** brings it back.
+  **Filter Outline by Tag…** shows only the headings that carry a tag, or
+  a tag under it, until it is cleared.
+
+- **The Outline counts.** Beside each heading, **2/5** for the tasks under
+  it that are done and **↩3** for the links that name it, spelled out in
+  its tooltip. Zen hides them; `deckard.outline.showCounts` turns them off.
+
+- **A word count.** While a note is in the editor, the status bar reads
+  **412 words · 2 min**, or **38 of 412 words** for a selection, leaving
+  out front matter, code, link addresses, and task metadata.
+
+- **A repeat rule Deckard cannot read is marked.** An open task's 🔁 rule
+  that Deckard cannot read gets a warning before it is completed, and quick
+  fixes to the nearest rules it can: `every tuesdya` becomes `every
+  tuesday`, `weekly` becomes `every week`. The task editor's warning
+  suggests the same. `deckard.editor.repeatDiagnostics` turns it off.
+
+- **More repeat rules.** `every other week`, `every other Tuesday`,
+  `every 2 weeks on Monday, Thursday`, `every month on the second Tuesday`,
+  and `every month on the last Friday`, as Obsidian Tasks reads them, and
+  Deckard's own `every quarter` and `every weekend`.
+
+- **Task metadata steps back; overdue speaks up.** In a note, a task's
+  dates, priority, repeat rule, ids, and person are drawn fainter than its
+  words, and an open task says **overdue 5 days**, **due today**, or
+  **needs a new date** at the end of its line, its overdue date in the
+  overdue color. `deckard.editor.dimTaskMetadata` and
+  `deckard.editor.taskDueHints` turn them off; zen hides the hints.
+
+- **`[[links]]` and task dates colored by your theme.** In any Markdown
+  file, a link's name and alias, an embed's `!`, a task's dates, repeat
+  rule, and priority, Dataview keys, and a `^block-id` take your theme's
+  colors. Code, front matter, and tags are left as they were.
+
+- **The Explorer knows Deckard.** Right-click a folder for a **Deckard**
+  submenu: **New Note from Template Here…** writes the note into that
+  folder, and **Exclude from Deckard** leaves the folder out of the index
+  (with Undo), while **Include in Deckard** brings it back. Create Daily
+  Note and New Note from Template are in **File → New File…**.
+
+- **A Deckard menu in the editor.** Right-click in a note for a **Deckard**
+  submenu: the task on the line, the heading the cursor is in, Move to…,
+  and Pin or Unpin.
+
+- **Zen from a page's title bar.** Every Deckard page — Home, a search
+  page, the Task board, Stats, Help, and the Notes Graph — has a zen button
+  in its title bar that enters zen, and leaves it again.
+
+- **A Deckard button in a note's title bar.** It opens `Deckard: Note
+  Actions…`, which lists what can be done from where the cursor is: toggle,
+  edit, or add a task, open Related Notes or `Deckard: Open Notes Graph
+  Around This Note`, move the line, and pin the note. A daily note's title
+  bar also has **‹** and **›** to the days before and after, which stay put
+  as the note scrolls.
+
+- **Toggle Task Done from the keyboard.** `Deckard: Toggle Task Done`,
+  <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd>
+  (<kbd>Ctrl</kbd> elsewhere), completes the tasks under every cursor and
+  selection, or reopens them when all are done, with the ✅ date and a
+  repeating task's next occurrence, in one edit that one Undo takes back.
+  It works in a note that is not saved yet.
+
+- **Move to… from the Tasks view, the board, and Find.** A task's context
+  menu in the Tasks view (for one task or several), a board card's menu,
+  and a task's list in Find (<kbd>Cmd</kbd>+<kbd>.</kbd>) offer **Move
+  to…**; a task moved to another note keeps its place on the board.
+
+- **Move to….** `Deckard: Move to…`, or the lightbulb on a task line or a
+  selection, moves a line, a task with its steps, or a selection under
+  another heading, into today's note, or into a new note. A task left
+  behind becomes `- [>] … → [[where it went]]`, anything else a `[[link]]`
+  (`deckard.moveTo.leaveBehind`). Nothing is written if the lines changed
+  while you chose, and **Undo** puts both notes back.
+
+- **Find and Capture start from the selection.** With a few words selected
+  on one line, Find searches them and Capture starts from them; a capture
+  from a note links back to the heading they came from, after the words and
+  before the date, with a button to leave the link off. A selection wins
+  over an earlier draft, which is offered as **Restore what you were
+  typing**.
+
+- **Capture remembers its headings.** Capture Under a Heading lists the
+  five headings it went under last first, the last one highlighted so Enter
+  repeats it, then every heading from the notes you open most.
+
+- **Find offers to capture what it could not find.** When no entry has
+  every word, and what was typed is only words, tags, and people, Find adds
+  **Capture “…” to today's note**, showing the line Capture would write,
+  date and priority read from the words.
+
+- **Find learns what you pick.** Choosing a result after typing `vend`
+  lifts it for `vend`, `ven`, and whatever else starts it, more with each
+  pick and less as the pick ages, but never above a note titled exactly
+  what you typed. It is kept in VS Code's preferences, not in your notes.
+
+- **Find acts without leaving.** A task in Find has **Complete** (or
+  **Reopen**) and **Set due**; Find stays open and redraws the row in place.
+  <kbd>Cmd</kbd>+<kbd>.</kbd> lists everything a row can do, from copying a
+  link to renaming a tag or forgetting a recent search, and Escape returns
+  to Find with its search.
+
+- **Keys inside Find.** <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>
+  elsewhere) opens the highlighted result beside the editor and keeps Find
+  open for the next; <kbd>Alt</kbd>+<kbd>Enter</kbd> inserts a link to it
+  where the cursor was. Each row button's tooltip names its key.
+
+- **Find starts with your pinned notes.** With nothing typed, Find lists
+  your pinned notes first, then the five notes you opened last, then five
+  recent searches, your saved searches, and your tags.
+
+- **A note counts as opened however it was opened.** A note that stays in
+  the editor for a moment counts for Recently opened, Find, and `[[`
+  completion, whether it was opened from Deckard, the Explorer, Quick
+  Open, or a link; the same heading counts again only after ten minutes. A
+  heading keeps its count when lines above it change, where it used to
+  lose it.
+
+- **Stats: Links that open no note.** Stats lists every name a `[[link]]`
+  writes that no note carries, most linked first, saying how many links
+  and from which notes. A row opens the search for those links; **Create**
+  makes the note, and **Create all** makes every one after asking.
+
+- **A tag's page counts plain mentions.** A tag's page says *12 entries
+  mention "atlas" without the tag.* when its name, three letters or more,
+  is written as a plain word elsewhere; **Show them** searches for those
+  entries, ready for **Bulk edit → Add a tag**.
+
+- **A tag's page says how else it is written.** Under the hub, a tag's page
+  names up to three spellings that look like it, from the same pass as
+  Stats' Tags that look alike: *Also written as #proj/atlas (6 entries).*
+  **Include in search** searches both; **Merge** runs the usual confirmed,
+  previewed, undoable merge, and a page whose tag was merged away follows
+  the one kept.
+
+- **A tag's page lists what links to its hub note.** On a tag with a hub
+  note, the page also lists every entry and task that links to the hub
+  without carrying the tag, each marked *Links the hub note*, and says
+  *Also listing 5 entries that link to Atlas plan without the tag.* with
+  **Leave them out**. Counts, pages, Bulk edit, and Export include them;
+  `deckard.tagOverview.includeHubLinks` turns it off.
+
+- **Related Notes can leave out daily notes.** **Hide daily notes**, beside
+  the sort, leaves daily, weekly, and monthly notes out of the related notes
+  and of Linked from, since a daily note links to everything written that
+  day. Linked from says *Hiding 8 daily notes.* with **Show them**, and the
+  choice is remembered.
+
+- **Related Notes: Linked from by note.** Linked from lists the notes that
+  link here, newest updated first, each saying when it was updated and how
+  many links it has, with its lines beneath; the count is of notes. A line
+  unfolds onto the rest of its section, and **Open as search** (or **Open
+  all as a search** past fifty lines) opens every linking entry as a search
+  page, ready for Refine, Bulk edit, Save, and Export.
+
+- **Search: `is:daily` and `is:periodic`.** `is:daily` finds what was
+  written in daily notes, tasks included, and `-is:daily` leaves it out;
+  `is:periodic` adds weekly and monthly notes. Both are in the builder's
+  `is` values. Every place that tells a daily note from another now reads
+  it one way, so a note with a day in its top heading counts on the Notes
+  Graph's **Pass through daily notes** as it does elsewhere.
+
+- **`[[` completes a note, and Refine narrows by links.** Typing `[[` in a
+  search box or a new builder row lists your notes, most linked first, each
+  saying *Linked from 12 notes* or which note it is an alias of. Refine
+  gains **Links to**: the notes the results link to, with how many of them
+  link there.
+
+- **Search: what links to a note.** `[[Atlas]]` in any search box, Find, a
+  query block, or an assistant's query finds the entries that link to the
+  note Atlas, by its name or an alias; `link = [[Atlas#Decision]]` narrows
+  to links to one heading, and `-[[Atlas]]` leaves them out. A link belongs
+  to the entry whose own lines hold it, and a link above a note's first
+  heading lists the note itself. Links to a note not written yet count, so
+  `[[Q4 offsite]]` finds what waits on it. The builder has a **link** row,
+  and `[[Atlas plan]]` is one chip in the search box.
+
+- **Try next.** Home's first widget suggests one thing, when your notes are
+  ready for it: a weekly review after five daily notes last week, merging
+  two tags that look alike, the Task board once there are ten open tasks,
+  or pinning a note you open often. **Not now** puts it off for a week, and
+  **Do not suggest this** for good; with nothing to suggest it takes no room.
+  Homes already arranged find it in **Add widget**.
+
+- **A first index says what it read.** The first scan of a workspace
+  finished in silence; it now says, once, *Deckard read 412 notes: 1,204
+  open tasks (17 overdue) and 185 tags.*, with **Open Dashboard** and **Get
+  Started**. A workspace of 3,000 notes or more hears in the same message how
+  to leave folders out, rather than in a second one.
+
+- **The walkthrough covers tasks and themes.** It had four steps and never
+  mentioned tasks; it now has six: open a note, tag it, **Capture a task**,
+  see the workspace, find anything, and **Make it yours** with Choose Theme…
+  and zen, with screenshots of the Tasks view, Home, a search page, and four
+  themes. `Deckard: Get Started` opens it, and so do Help's Quick start and
+  **Walkthrough** in Home's gear.
+
+- **Choose Theme… previews each theme.** `Deckard: Choose Theme…`, or
+  **Theme** above **Zen** in the gear on Home, a search page, or the Task
+  board, lists the eight themes with what each looks like; moving through
+  them shows each on the open pages, Enter keeps one, and Escape puts back
+  the one in use. Nothing is written to settings until one is kept.
+
+- **What's new, in the product.** After an update that adds features, Home
+  says *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**;
+  a patch says nothing, and there is no pop-up. Help has a **What's new**
+  section listing the highlights of the last five releases, newest first,
+  with those since your update marked **New**, and `Deckard: What's New`
+  opens it. `deckard.showWhatsNew` turns Home's line off.
+
+- **A command named in Help runs from Help.** Every `Deckard: …` name in
+  the guide and its commands table is a button that runs the command, with
+  its shortcut beside it for this platform. A command that acts on the note
+  in the editor is named but not run. Help named `Deckard: Export` and
+  `Deckard: Import`, which do not exist; it now gives their real names.
+
+- **A saved search can show its results on Home.** Saving a search offers
+  **Show Results on Home**, which adds a widget listing what it finds, and
+  **Open Home**; a saved search's row on Home offers **Show results** until
+  Home lists it.
+- **A search becomes a live query block.** **Export** on a search page or
+  the Task Board offers **Copy as live query block** first, which copies the
+  search, with its sort or table columns, as a `deckard` fence that stays up
+  to date in a note. `Deckard: Insert Query Block…` writes one at the cursor
+  from a saved or recent search, or one you type.
+- Related Notes says each shared tag once.
+- A board card's menu is a button that opens a menu.
+- The Help rail marks the section being read.
+- Stats says when the index was refreshed in words.
+- Every theme defers to a high contrast editor theme.
+- The type scale follows the editor's font size.
+- A card's details wrap as a row with gaps.
+- A reason that only names the card's chips goes too.
+- A saved search reads by its name, with its criteria under the pointer.
+- Priority is a badge, told from the date beside it.
+- A Dashboard row's readout folds under the row under the pointer.
+- The headings above an entry, under its file and line, everywhere.
+- A board card folds its file and line, and the headings above, under the card.
+- The palette offers a Deckard command only where it can run.
+- Focus stays where it was through a redraw, and a screen reader hears what changed.
+- Every text field's edge and every tag's namespace read at WCAG AA.
+- A task can be dated from the Tasks view, and every overdue task at once.
+- Capture reads a date, a priority, and a repeat rule from the words at its end.
+- The Task board works from the keyboard.
+- A result opens beside its page or as a preview, and a search page steps back and forward.
+- `[[` completes a note's headings, ranks notes as Find does, and links a day by name.
+- Find opens a result beside the editor, links to a note, and creates one it did not find.
+- Related Notes lists what links to the note, and each mention can be linked on its own.
+- A search result marks the words it was found by, and says where it is written.
+- Zen quiets the editor as well as the pages.
+- A focused Notes Graph passes through daily notes.
+- A search page and the Task board come back scrolled where they were left.
+- A copied export is said in the status bar, and a saved one offers to open.
+- A task, the status bar count, and a calendar day say which, not only how many.
+- A first run offers its next step, indexing says how far it has got, and settings link to each other.
+- **Home leads with what is overdue, due today, and open.** The three
+  figures at the top of the Dashboard were totals of notes, tasks, and tags;
+  they are now Overdue, Due today, and Open, each a button that opens its
+  search, scoped by `deckard.agenda.query` so the number and the page agree.
+  `is:today` finds exactly the Tasks view's Today. A new or reset Home puts
+  the Tasks view widget before the open-tasks list.
+- **Rescheduling can spread tasks over the week, and says how full a day
+  is.** Reschedule All… and Reschedule Overdue Tasks… say how many tasks
+  are already due and scheduled on each day offered, and for several tasks
+  offer **Spread over the next 5 days** and **3 for today, the rest next
+  week**, each one previewed, undoable write. A move of several tasks ends
+  by saying how full the day now is.
+- **A board column counts its overdue cards, keeps red for the worst, and
+  takes a limit.** A column's header reads **40 · 38 overdue**; when most of
+  a column is overdue, only the longest-overdue third keep the red and the
+  rest say *overdue* muted beside a red dot. `deckard.board.limits` sets
+  work-in-progress limits, such as `{ "doing": 3 }`: the header reads
+  **5 / 3** and the column gets a neutral outline. A drop is never refused.
+- **A review looks ahead.** A weekly or monthly review gains **Coming up**:
+  the open tasks due, scheduled, or starting in the next period, each led by
+  its day. Its summary line counts them, and says how many of the tasks due
+  in the period were done on time. `deckard.periodicNote.reviewSections`
+  adds sections of your own, each a title and a search, written as a list.
+- **Gone quiet watches any namespace.** Home's People gone quiet widget is
+  now **Gone quiet**: its gear chooses the namespace, people by default or
+  `project` or any other, and **Only those with no open tasks** lists the
+  stuck ones, each with **Add next action**, which captures a task with the
+  tag to today's note.
+- **Done today.** The Tasks view ends with a folded Done today group of
+  what was finished today; unchecking one reopens it. The status bar's hover
+  and Home's Tasks view widget say how many.
+- **Open Daily Note for Date…** opens the note for any day named in plain
+  words, such as `last friday` or `oct 3`, creating it from the template when
+  there is none. Find offers the same row when what you type is a day.
+
+### Changed
+
+- **A repeating task's steps come back with it.** Completing a task with a
+  🔁 rule now writes its steps, unchecked, under the next occurrence, so a
+  weekly checklist starts fresh; the completed occurrence keeps its own.
+  Obsidian Tasks writes the next occurrence alone.
+
+- **Nested checklists fold into their task.** On the Task board and in the
+  Tasks view — and so Home's agenda and the status bar count — a plain
+  checkbox written under a task now rides on that task's card or row
+  instead of being a card of its own, so an existing note with nested
+  checklists shows fewer, richer cards. A step with its own date,
+  priority, person, or tag is still listed; search pages list every step
+  they find.
+
+- **A save no longer holds VS Code up while Deckard redraws.** A save
+  updates only that note's part of the index — about 20 ms at 5,000 notes,
+  down from about two thirds of a second — and the views on screen redraw
+  one at a time, the one in front first, so other extensions get a turn in
+  between. Hidden views still catch up when they are shown.
+
+- **The Notes Graph costs a save nothing when the save changes nothing it
+  draws.** Editing words inside a line, ticking a task, or changing its due
+  date no longer rebuilds and resends the whole graph (about 1.5 seconds
+  and 50 MB at 5,000 notes). A save that adds a link, heading, tag, or task,
+  or moves one to another line, still redraws it. Hiding notes or tasks
+  leaves them out of what is sent, and each link is sent lighter.
+
+- **Notes are read eight at a time, and a rescan skips notes that did not
+  change.** A rescan after a change to an exclude, folder, or templates
+  setting rereads only the notes whose size or saved time changed — about
+  a quarter of a second at 5,000 notes, down from over half a second.
+  `Deckard: Reindex Workspace` still reads and parses every note.
+
+- **Deckard starts from where it left off.** A workspace Deckard has seen
+  before opens with Home, the board, and the Tasks view drawn at once from
+  the notes as they were when VS Code closed, then Deckard rereads only the
+  notes whose size or saved time changed — under a second to the first
+  display at 5,000 notes, down from nearly three. `Deckard: Reindex
+  Workspace` still rereads everything.
+
+- **The local cache keeps each note as Deckard last read it.** Beside the
+  words search uses, the cache now holds each parsed note, which the next
+  start can show before reading anything. A new version of Deckard, a
+  change to a parsing setting, or a new time zone rebuilds it; before, a
+  new version kept search rows written by the old parser. A note whose
+  created time alone changed is now written again, too.
+
+- **Extract Heading takes any heading.** `Deckard: Extract Tagged
+  Heading` is now `Deckard: Extract Heading`, and moves an untagged heading
+  as readily as a tagged one; its picker lists every heading, naming the
+  tags of those that have some.
+
+- **A capture under a heading goes above its sub-headings.** It went to the
+  end of the heading's last sub-heading; it now goes under the heading's
+  own lines.
+
+- **Rename Tag says what will happen.** The box starts from the old tag
+  with its name selected, and says as you type whether the new name merges
+  into a tag that exists (and how many entries it has), is a new tag, or
+  changes nothing. A bare name with a `/` that would keep the old namespace,
+  such as `project/atlas` for `#proj/atlas`, is a warning.
+
+- **`[[…]]` in a search is a link.** A saved search, query block, or board
+  search that held `[[Atlas]]` searched for the word *atlas*; it now finds
+  the entries that link to Atlas. `text ~ "[[x]]"` still searches for the
+  characters.
+
+- **The sample workspace is dated the day it is made.** Its tasks were due
+  in August and September, so a sample made later was all overdue. Its daily
+  notes now run up to yesterday's and today's. It opens without a folder
+  dialog, from Deckard's own storage,
+  shows its README once the window has reloaded, and carries a
+  `.vscode/settings.json` so your own settings cannot make it look empty.
+
+- **The Notes Graph's link sliders say what they do.** *Connection
+  density* is **Links per note**, from **Fewer** to **More**, and a screen
+  reader hears a word rather than 0.30. *Tag prevalence bias*, *Secondary
+  bridge strength*, and *Show all links* are **Favor rare tags**, **Links
+  between groups**, and **Show every link**, folded under **Advanced**.
+  Related Notes' three tuning settings are described in plain words and
+  marked advanced.
+
+- **A setting is named in words, with a button that opens it.** Messages
+  that named a setting by its ID, such as `deckard.exclude`, name it as the
+  Settings editor does, *the "Exclude" setting*, and offer **Open Setting**.
+  When the Tasks view's search finds nothing, the view says which search and
+  offers **Show every open task**; `Deckard: Clear the Tasks View's Search`
+  does the same from the view's `…` menu.
+
+- **A failure says what did not happen, and what to do.** A message that
+  something failed no longer ends with the raw error: it says what was not
+  written or opened, in plain words, and offers **Open Log**, where the
+  details are. Starting the MCP server on a port in use says so and offers
+  **Open Setting**; an unreadable preferences file says nothing was
+  imported; a sample folder already there offers **Replace** or **Open As It Is**.
+
+- **A long board column shows 100 cards, and the rest on request.** A
+  column of hundreds drew every card; it now draws the first 100 with
+  **Show N more**, as Done already did with its 20, and a card off screen is
+  not laid out until it is scrolled to.
+
+- **Find and search pages open while the workspace is indexing.** They
+  opened only once the first scan finished; now Find opens at once, busy,
+  keeps what is typed, and shows *Indexing this workspace: 412 of 3,760
+  notes read…* until its results arrive, and a search page, Home, the Task
+  board, and Stats show the same count in place of *Loading…*.
+
+- **A moved card moves at once.** A card moved from the keyboard or its ⋯
+  menu, as well as by dragging, goes to its new column straight away, both
+  columns recount, and it shows as pending until the note is written; a
+  note Deckard wrote itself is read back without the 200 ms wait for typing
+  to settle. A move that could not be written says so.
+
+- **List in Tasks view is a switch in the Task board's gear.** It leaves
+  the search bar, shows whether the Tasks view lists the board's search, and
+  selected again gives the Tasks view back every open task.
+
+- **Tags on cards are text.** Search results, task rows, board cards, and
+  Related Notes draw a tag as quiet monospace text that opens it, its
+  namespace muted, with a faint underline under the pointer, rather than a
+  row of boxes that outweighed the title. The editor keeps its tag boxes.
+
+- **A tag with no hub note offers one in a line.** **Create hub note** sits
+  under the tag's title as quiet text, in place of the amber panel that
+  stood above the results.
+
+- **Refine shows five of each.** A facet lists its first five values and
+  **+N more** for the rest, on the search page and in the sidebar, so
+  thirty related tags no longer push the results down the page.
+
+- **Search results you can scan.** A result shows three lines of its entry,
+  or, on a search of words, the paragraph the words are in when they sit
+  further down; **Show all** opens the rest. The gear's new **Preview** row
+  chooses None, 3 lines, or Full.
+
+- **Search pages start rendered.** A result shows its Markdown drawn, not
+  its source. **Everyone is switched to Rendered once**, since a saved
+  preference held Source whether or not it was chosen; choosing Source in
+  the gear's Format row after this update sticks.
+
+- **The Dashboard sends a tag's name and count, not its entries.** At
+  5,000 entries and 471 tags its snapshot drops from 1,674 KB to 75 KB, and
+  Home no longer builds the hidden Tags tab on every redraw.
+
+- **A search page draws only the page it shows.** Every match is sorted
+  and counted as before, but only the thirty on screen are rendered, so an
+  empty search of 5,000 entries takes 29 ms instead of 348, and a search of
+  words 41 ms instead of 279. A Home widget for a saved search draws only
+  its own few entries.
+
+- **Removing a Home widget or a board column can be undone.** While
+  customizing Home, removing a widget says **Removed Tasks view.** with
+  **Undo** for 8 seconds, which puts it back where it was, and removing a
+  status column from the board's gear does the same. **Reset widgets**, which
+  cannot be undone, still asks first, and its button now comes after
+  **Keep them** with a heavier edge.
+
+- **Loading waits before it speaks.** A page that loads quickly shows
+  nothing in the meantime; one that does not says *Loading search…* after
+  0.4 s, in a line rather than an empty box, and tells a screen reader it is
+  busy. A search still running after a second shows a thin bar under the
+  box.
+
+- **A long tag stays on one line.** A tag, a search term, or a Refine value
+  too long for its place shortens, the namespace first, instead of breaking
+  after its slash; the whole tag shows as its tip when it is cut short.
+
+- **A card's menu says what is chosen, and its keys.** The Task board
+  card's ⋯ menu checks the task's status, priority, and due date instead of
+  leaving the current one out, shows the key that makes each change, such
+  as **2** for High, and the keys work while the menu is open.
+
+- **A button that cannot act yet says why.** Save, Clear, Back, and
+  Forward stay in the Tab order while they cannot act, say why when focused
+  (*Type a search to save it*), and no longer light up under the pointer.
+  No disabled control in any theme changes color on hover.
+
+- **A button's tip shows on keyboard focus, and names its key.** Every
+  page's buttons — the search page, the Task board, Home, Related Notes,
+  Stats, the Calendar, and the Notes Graph's controls — explain themselves on
+  focus as well as under the pointer, after a short pause for the pointer;
+  Back and Forward name Alt+← and Alt+→, and Escape puts a tip away.
+
+- **Menus, the gear, and completions look like one family.** The tag menu,
+  a board card's menu, the rank menu, the gear's menu, a Home widget's
+  options, and search completions share one edge, ground, and shadow, and
+  one stacking order, so a dragged row no longer passes under an open menu.
+
+- **Carried tasks go under Carried over, a week back, and migrate rather
+  than copy.** A rollover writes today's carried tasks under a **Carried
+  over** heading at the end of the note, one level below its first heading,
+  and a second run adds to it. `deckard.dailyNote.rolloverDays` now defaults
+  to 7 (it was 0, as far back as the notes go); older dated tasks show under
+  Needs a new date. **`copy` now means `migrate`:** the task is written into
+  today's note and the line left behind becomes `- [>] … → [[2026-09-25]]`,
+  so it stops counting as open. Users of `copy` will see their old notes'
+  lines rewritten this way on the next rollover; Undo takes it back.
+
+- **`is:waiting` now means waiting on someone.** It was an undocumented
+  second spelling of `is:blocked`, so it disagreed with the board's own
+  Waiting column. It now finds open tasks marked `#status/waiting` or
+  assigned to someone other than you; `is:blocked` keeps meaning held up by
+  another task. **A saved search or query block that used `is:waiting` now
+  lists different tasks.** New `is:available` finds what can be started now
+  — not blocked, started, and not on hold by `deckard.tasks.onHoldStatuses`
+  (`waiting`, `someday`) — and the Task board's **Can start now** switch
+  narrows the board to it.
+
+- **Upcoming lists each day on its own.** The Tasks view's Upcoming is a
+  group per day that has tasks — Tomorrow, Mon Sep 28 — so a crowded
+  Thursday shows before Thursday, and a task dropped on a day is due that
+  day.
+
+- **A task a month past its date waits under Needs a new date.** An open
+  task more than 30 days overdue leaves Overdue, the Tasks view's badge, the
+  status bar's count and warning color, and the reminder, for a folded
+  **Needs a new date** group with its own Reschedule All. The status bar's
+  hover says how many. `deckard.tasks.needsNewDateAfterDays` sets the days,
+  and `0` keeps the old behavior. `is:overdue` still finds every one.
+  Wherever such a task is listed — the board, which gives it a muted column
+  of its own, search pages, query blocks, Home, and the calendar — it reads
+  **was due 2026-07-01** in muted text, not red. `is:needs-date` finds them,
+  and Home's Tasks view widget says how many under its list.
+
+- **Overdue lists the most recently slipped task first, five at a time.**
+  A task that slipped yesterday can still be saved, and a month-old one is
+  not news; oldest first put the stalest at the top. **Show 12 more** under
+  the five lists the rest, and the group's count, Reschedule All, and the
+  badge still cover every one.
+
+- **Weeks can start on Monday.** `deckard.calendar.weekStart` is `sunday`,
+  `monday`, or `locale`, and sets the Calendar's rows, weekly notes and their
+  reviews, a search's `this-week`, and *next week* typed as a date. A weekly
+  note written under the old start still opens for the week it mostly
+  covers, and a review written in it covers its own days.
+
+- **One way to write a date.** Every date box — the task editor, Due on a
+  Date, Reschedule, bulk edit, `[[` day links, and Capture — reads month
+  names (`oct 3`), `next week`, `end of month`, `last friday`, `3 days ago`,
+  and your display language's numeric dates (`10/3`), and says back the day
+  it read and how far off it is, such as *Monday 2026-09-28 · in 3 days*.
+  Words it cannot read get one message everywhere. Due Next Week is now
+  **Due Next Monday**, which is what it did; `+1m` from January 31st is
+  February 28th, not March 3rd.
+
+- **Searches name weeks and months.** `created = last-month`,
+  `due <= friday`, `due = this-week`, `created = 2026-08`, and any day in
+  plain words, such as `due <= "oct 3"` or `due <= end-of-month`. Their
+  completions say the days each covers, and Refine gains a **Created**
+  facet by month.
+
+- **The release notes come from this changelog.** Each release now cuts
+  `## Unreleased` into its own dated section, which the GitHub release and
+  the Extensions view's Changelog tab both show. A feature release is not
+  cut until its three Highlights are written.
+
+### Fixed
+
+- **A link to a heading is a link, not a tag.** `[[#Heading]]`, with an
+  alias or as an embed, made `#Heading` a tag, and so did the target of a
+  Markdown link such as `[see](#heading)`. Nothing inside `[[…]]` or a
+  link's target is a tag now: the index, the editor, completion, Rename Tag
+  and Merge, bulk edit, and Move Tags to Front Matter all leave it alone,
+  and a tag written right after the link still counts.
+
+- **A tag written inside inline code is text, not a tag.** `` `#project/x` ``
+  or `` `@dana` `` in a sentence made a real tag, counted, colored, and
+  completed like one; only fenced code was left alone. Code spans of any
+  number of backticks are now skipped everywhere tags are found: the index,
+  the editor's tag colors, links, and hovers, completion, Rename Tag and
+  Merge, bulk edit, Move Tags to Front Matter, and the Task board's status
+  moves. A backtick that nothing closes is plain text, as in CommonMark.
+
+- **Rollover carries a task's steps with it, and never under another
+  task.** A carried task's open steps are written nested under it — with
+  `move`, its done steps and notes too, so nothing is left orphaned — and
+  a step whose task is not carried comes forward at the top level. It used
+  to be written with its old indentation under whichever task came before
+  it in today's note, and two tasks' steps with the same words were merged.
+
+- **Opening a Find result to the side keeps Find open.** It moved focus
+  into the editor, so Find closed whenever the editor won the race; it now
+  leaves focus in Find.
+
+- **Saving a search says search, and places are called by their names.**
+  Find, the search pages, and the Task Board all title the box **Save
+  search** and say *A saved search needs a name.*; Find no longer says
+  "filter" or "view". A query block's lens says **Open search page**; the
+  reminder's button is **Open Tasks View**; the unreadable-note message
+  offers **Open Stats** and **Open Log** and counts files; Home's Workspace
+  widget says **Namespaced tags**, as Stats does; tagging a heading asks
+  about a person, project, or topic rather than an "entity".
+
+- **A message's weight follows one rule.** An error means nothing was
+  written; a warning means it was written with a caveat; a message that only
+  asks for a note or a folder to be open is information, and one that needs
+  a folder offers **Open Folder…**. Capture keeps the words it could not add
+  with **Copy Task**; a note that already exists offers **Open Note**; a
+  heading rename that needs the note saved offers **Save and Rename**; a
+  drag onto several tasks in the Tasks view says its refusals once.
+
+- **A note that changed underneath is said one way, with the note to open.**
+  Nine messages said a note had changed since Deckard read it in seven
+  different ways, some as warnings; each now says *atlas.md changed after
+  Deckard last read it, so nothing was written.* as an error, with **Open
+  Note**. Undoing a review, a rollover, or a write whose notes have all
+  changed says the same. A bulk edit tells results already as asked from
+  results whose notes changed, and says the second as a warning.
+
+- **A screen reader hears a task's whole title.** What the Task board and
+  the search pages announced about a task — *Completed …*, *Moved … to
+  Todo* — dropped every letter s from its title, since a pattern in the
+  page script lost its backslash.
+- **The search page's format buttons show their own mode.** Source shows
+  `<>` and Rendered shows the eye; they were swapped.
+
+- **A query block's Open in search lens names the page it opens.** Its
+  tooltip said the Dashboard's Search tab, which no longer exists; it now
+  says a search page.
+
+- **Refine's Updated counts say which days they cover**: Last 7 days,
+  1–4 weeks ago, and Older. "This week" and "This month" read as calendar
+  spans, but the counts were rolling ones, so a note from last Saturday
+  could sit under This week on a Wednesday.
+
+- **Copied rollover carries a task once.** In `copy` mode each day's note
+  keeps the task it copied forward, so a task that had waited three days
+  arrived three times, and the daily note's Carry in lens counted it three
+  times. Only the newest copy is carried now.
+
+- **Finishing a repeating task in the task editor, or from the assistant,
+  starts the next one**, as a checkbox does. Both wrote the completed line
+  and nothing else, so the task never came back. Both now honor
+  `deckard.tasks.addDoneDate` too.
+
+- **A repeat rule Deckard cannot read is said where the completion is,
+  beside Undo.** A checkbox said "Completed" and then, in a second message,
+  that the rule could not be read. It is now one warning with Undo. Bulk
+  edit, the task editor, and the assistant say it too; before, they said
+  nothing.
+
+- **The section band shows on light themes, and only behind the section the
+  cursor is in.** It was a white tint behind every tagged section at once,
+  invisible on a light theme. Its colors are now the theme colors
+  `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder`.
+  Every tagged entry keeps its Show related notes and Pin to Home hover.
+
+- **`node_modules` stays out of the index.** Deckard now leaves out what
+  `search.exclude` hides, as well as `files.exclude` and `deckard.exclude`,
+  and skips those folders while scanning rather than after reading them.
+  If you keep notes in a folder hidden from search, set its pattern to
+  `false` in `deckard.exclude` to index it again. The hint about large
+  workspaces is now said once per workspace, not once per machine.
+
+- **Tag boxes, lenses, hovers, and completions stay in notes.** In a code
+  repository they appeared in every README, including those under
+  `node_modules` and outside `deckard.notesFolder`, and their tag links led
+  into an index those files are not part of. Edit Task and query blocks
+  still work in any Markdown file, since both are asked for on purpose.
+
+- **The daily reminder comes once a day, late rather than never, and the
+  count turns over at midnight.** Each window kept its own timer, so three
+  windows said it three times, and a laptop asleep at the hour never said
+  it. The reminder is now said by the first window to check on or after the
+  hour, and the status bar's count moves to the new day without waiting for
+  the window to regain focus.
+
+- **Capture stays open when you click away, and keeps what you were
+  typing.** Clicking into the editor closed the box and lost the words, and
+  so did closing the heading picker in Capture Under a Heading. Words not
+  yet written come back the next time the same command opens, and the title
+  says so.
+
+- **Reset graph can be undone.** It discarded every slider, filter, and the
+  camera at once; **Undo** now sits beside it for eight seconds, with the
+  focus on it.
+
+- **Two notes' sections or tasks no longer share an id, and one of them no
+  longer vanishes.** Ids were a 32-bit hash of the note, line, and text;
+  at 5,000 notes about one workspace in five had two entries hash alike,
+  and the index kept only one, so a section or task silently went missing
+  from every view. Ids are now twice as wide. Task order and view counts
+  kept under the old ids are carried over to the new ones.
+
+- **Extract Heading no longer deletes the new note when the old one is left
+  half-written.** When the old note could be neither saved nor put back,
+  Deckard deleted the new note, leaving the heading only in a file whose
+  open editor showed the link, so saving that editor lost it. The new note
+  is now kept, and the message says the heading is in both and what to do.
+  The raw error goes to the log, with Open Log beside the message.
+
+- **A task change that did nothing says so.** Checking a task whose line was
+  now past the end of its note, or whose edit VS Code refused, did nothing
+  and said nothing. Each now has a message, and a change made in the editor
+  but not saved says to save the note, with Open Note.
+
+- **Adding a tag to a heading with closing hashes, or a line ending in a
+  block id, keeps both working.** Bulk edit's Add a tag wrote the tag at the
+  very end of the line, so `## Title ##` stopped being closed and `^id`
+  stopped being a block id, breaking links to it. The tag now goes before
+  them.
+
+- **Stats' Tasks tile opens every task.** It opened a search for
+  `has:task`, which Deckard does not read, so the page opened on an error.
+  It now searches `is:task`.
+
+- **The calendar keeps keyboard focus through an update.** Every save in
+  the workspace redrew the month and dropped the focus, and so did PageUp
+  and PageDown. The focus now stays on its day, and a step into another
+  month lands on the day it stepped to.
+
+- **Help marks the section being read.** Its panel was created without
+  scripts, so the navigation rail's marker had never run in VS Code.
+
+- **Changing Related Notes' Sort re-sorts the list at once.** The new order
+  was saved but not drawn until the next save or cursor move, and a redraw
+  in between put the select back to the old order.
+
+- A configured status named done adds no column beside Done.
+- A date on a board card stays one word.
+- Every text pair reads at 4.5:1, and the contrast baseline is empty.
+- A title that carries the shared tag inline says it once too.
+- Graph labels read the type step as pixels.
+- Overdue keeps its color on LCARS board cards.
+- The sidebar's tag list wraps.
+- The danger red clears 4.5:1 on a hovered card.
+- Function words are not similar terms.
+- A half-width widget is half the width.
+- The mark on a searched Tags tab is the size of a tab.
+- A saved search's criteria open in the row's own frame.
+- The pointer passes through an entry's provenance.
+- A Related Notes path does not repeat what the card says.
+- A task's details sit on one line with the priority badge.
+- A dropped card no longer flickers back to its old column.
+- The provenance frame follows a one-sided border.
+- The frame carried down keeps a theme's rounded corners.
+- Zen mode turns off where a workspace turned it on.
+
+## 1.21.0 - 2026-09-25
+
+### Highlights
+
+- One spacing scale and one layout: board columns read as regions, and a search says its count once.
+- One meaning per color: red is overdue or high priority, and nothing else.
+- Buttons and commands follow one naming table.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
@@ -61,6 +940,17 @@
   the query page is Search Notes and Tasks. The Home widget that mirrors the
   Tasks view is called Tasks view, and every search page's eyebrow says
   search page. The table is in `docs/components.md`, and a test holds it.
+
+## 1.20.0 - 2026-09-24
+
+### Highlights
+
+- A due date says how far from today it is, in words.
+- The Notes Graph opens around the note being written, and names its hubs.
+- Every context menu opens from the keyboard, and no text is under eleven pixels.
+
+### Changed
+
 - **Working labels read as written in every theme.** Column titles on the
   board, group headings in lists, table headers, the Refine label, and the
   labels beside controls were set in tracked capitals in the film themes, a
@@ -164,6 +1054,14 @@
   first number was both groups added together, and the Tasks view it opens
   said 17 and 5. It now reads **17 overdue, 5 due today**, and the reminder
   and hover say the same in a sentence.
+
+## 1.19.1 - 2026-09-23
+
+### Highlights
+
+- A note finds where it is mentioned without a link, and links it.
+- An assistant can add a task, or change one, with Deckard's own safeguards.
+- Favorites, pins, and saved searches are never deleted on their own, and survive opening another folder.
 
 ### Added
 
@@ -305,6 +1203,7 @@
   `(a OR b) AND c` that came back from the builder meaning `a OR (b AND c)`.
   A group emptied of its rows goes with them, rather than staying behind
   as a box with only a head.
+
 - **The search box shows a search the way the builder does.** A search
   whose top level was an OR, or that held a parenthesized group, was one
   chip that could only be removed whole. Now the branches of an OR are
@@ -354,71 +1253,13 @@
   block, where the whole cell is already one link to the task's line and an
   anchor inside an anchor closes the outer one early.
 
-- **A setting that changes how notes are parsed rebuilds the search cache.**
-  The cache compares a scan against what it holds by path, modified time and
-  size, so a settings change left it holding entries that no longer existed:
-  the files had not moved. It records how its notes were parsed and rebuilds
-  when that changes — including a change made while VS Code was closed, which
-  nothing else could have noticed. `deckard.personMarker` and
-  `deckard.entityNamespaceAliases` had the same latent staleness and are
-  covered by the same record.
+## 1.19.0 - 2026-09-22
 
-- **A heading's own text stops at the next heading of any level.** A parent's
-  stored text used to contain its children's, so one sentence sat inside the
-  text of every entry above it — four deep in the sample notes — and was
-  excerpted, indexed and counted once for each. A section now carries its own
-  body as well as the subtree that Extract moves.
+### Highlights
 
-- **Tags written together ranks by the notes and tasks carrying both.** It
-  counted only tags written side by side on one line, which is the strongest
-  case and a rare one: in a workspace where tags are written under headings
-  the count was one for every pair, so the list came out alphabetical and
-  looked sorted the wrong way round, and every pair that never shared a line
-  was left out of it entirely. A pair is now counted over the same entries a
-  search for both tags finds, inherited tags included, so the number beside a
-  pair is the number the row opens — `#project/argent-protocol` and
-  `#person/sable-ortiz` read 8, which is what searching for both shows.
-
-- **A word being typed into a search box survives its own results arriving.**
-  Redrawing the page takes the field out of the document, which the browser
-  reports as the reader leaving it, and what was typed was let go as if they
-  had clicked away. It only showed once typing started searching, because
-  that made the draft's own results the commonest redraw of all. The caret
-  goes back where it was rather than to the end, so a redraw in the middle of
-  a word no longer moves it out from under you. The Task board's search box
-  had the same fault and is fixed with it.
-
-### Changed
-
-- **Typing in a search box narrows the whole search, not the page on screen.**
-  The words used to hide rows of the page the reader was holding, which at
-  200 to a page was nearly the whole search and at 30 was not: a match on
-  another page was never found, the count read as a share of the search when
-  it was a share of the page, and a page whose own rows did not match said
-  nothing matched at all. The words are now run as part of the search, so
-  what a draft finds is exactly what pressing Enter finds, and the counts,
-  the pages and Refine all agree with it.
-
-- **The search cache is written on a thread of its own.** The first build in a
-  new workspace wrote every note on the extension host, the thread shared with
-  every other extension and with every completion, hover, and CodeLens
-  Deckard answers: 159 ms at 940 notes and 1.5 s at 5,000. It now leaves the
-  host 14 ms and 45 ms, both under the threshold the log calls Slow. While
-  the build runs, a search finds a note by its title and tags before it finds
-  it by the words inside it. A rescan that changed nothing still writes
-  nothing, and a workspace with no storage of its own, or a machine where the
-  thread cannot be started, writes on the host as before.
-
-- **A search page shows its results a page at a time.** A search that matched
-  the workspace used to send, and draw, every note and task on every save:
-  about 4.3 MB of card text at 940 notes, growing with the workspace, for the
-  screenful anyone reads. Each list is paged now, with **Previous**, **Next**,
-  the page numbers, and the range being shown under it, and notes and tasks
-  are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results
-  to a page, starting at 30, and the choice is kept, so every search page
-  opens the way the last one was left. Every count on the page is still of
-  the whole search, and a search that shortens under an open page falls back
-  to the last page it still has.
+- Zen mode turns Deckard's own chrome down without taking anything away.
+- The Task Board can be a table, and so can a query block of tasks.
+- The search is the filter on every page, and the Task Board edits the Tasks view's search.
 
 ### Added
 
@@ -438,6 +1279,16 @@
   one switch for every view, and it composes with all eight themes rather
   than replacing one — a theme picks the colors, zen picks how much frame
   is drawn around them.
+
+## 1.18.0 - 2026-09-20
+
+### Highlights
+
+- The Agenda is now the Tasks view, grouped by what you choose, and what is due shows in the status bar.
+- One edit can be made to everything a search found, shown before it lands and taken back afterwards.
+- A new daily note can carry the last one's unfinished tasks in, and a weekly or monthly note opens with its review.
+
+### Added
 
 - **Renaming a note carries its links with it.** A `[[link]]` names a note by
   its title, so renaming one in the Explorer broke every link to it and left
@@ -720,6 +1571,33 @@
   now reads as `heading`, which keeps a line's tags searchable rather than
   dropping them.
 
+### Fixed
+
+- **A setting that changes how notes are parsed rebuilds the search cache.**
+  The cache compares a scan against what it holds by path, modified time and
+  size, so a settings change left it holding entries that no longer existed:
+  the files had not moved. It records how its notes were parsed and rebuilds
+  when that changes — including a change made while VS Code was closed, which
+  nothing else could have noticed. `deckard.personMarker` and
+  `deckard.entityNamespaceAliases` had the same latent staleness and are
+  covered by the same record.
+
+- **A heading's own text stops at the next heading of any level.** A parent's
+  stored text used to contain its children's, so one sentence sat inside the
+  text of every entry above it — four deep in the sample notes — and was
+  excerpted, indexed and counted once for each. A section now carries its own
+  body as well as the subtree that Extract moves.
+
+## 1.17.0 - 2026-09-18
+
+### Highlights
+
+- A search page shows its results a page at a time, and typing narrows the whole search.
+- Links can name one line, and Related Notes writes a link to a result.
+- Task dependencies can be searched.
+
+### Added
+
 - **A Home widget can page through its entries.** **Paging**, in the widget's
   gear, turns it from the first few into all of them a page at a time. The
   widget grows a line of its own holding **Per page**, the entries it is
@@ -760,24 +1638,58 @@
   `has:dependsOn`, with `no:` for either, read the 🆔 and ⛔ markers themselves
   whatever state the tasks at their ends are in.
 
-- **More Home widgets**:
-  - **Today**: today's daily note and its open tasks, or a button to create it.
-  - **Quick add**: a field that adds an open task to today's daily note.
-  - **Stale tasks**: open tasks in notes left unchanged for 7 to 90 days.
-  - **Related notes**: notes related to the note you had open last, ranked as
-    Related Notes ranks them.
-  - **Tags written together**: the tag pairs written together most often,
-    with how much they overlap, to spot a missing hub note or one idea under
-    two names. A pair opens a search for both.
-  - **Tags without a hub**: tags used at least three times that have no hub
-    note, each with **Create hub**.
-  - **New tags**: tags first seen in the last 7 to 90 days, each with
-    **Rename**, to catch a typo such as `#projet/atlas` early. Tags already in
-    use when you update are not new.
-  - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
-    **Pin** for the note you had open last; **×** unpins one.
+### Changed
+
+- **Typing in a search box narrows the whole search, not the page on screen.**
+  The words used to hide rows of the page the reader was holding, which at
+  200 to a page was nearly the whole search and at 30 was not: a match on
+  another page was never found, the count read as a share of the search when
+  it was a share of the page, and a page whose own rows did not match said
+  nothing matched at all. The words are now run as part of the search, so
+  what a draft finds is exactly what pressing Enter finds, and the counts,
+  the pages and Refine all agree with it.
+
+- **The search cache is written on a thread of its own.** The first build in a
+  new workspace wrote every note on the extension host, the thread shared with
+  every other extension and with every completion, hover, and CodeLens
+  Deckard answers: 159 ms at 940 notes and 1.5 s at 5,000. It now leaves the
+  host 14 ms and 45 ms, both under the threshold the log calls Slow. While
+  the build runs, a search finds a note by its title and tags before it finds
+  it by the words inside it. A rescan that changed nothing still writes
+  nothing, and a workspace with no storage of its own, or a machine where the
+  thread cannot be started, writes on the host as before.
+
+- **A search page shows its results a page at a time.** A search that matched
+  the workspace used to send, and draw, every note and task on every save:
+  about 4.3 MB of card text at 940 notes, growing with the workspace, for the
+  screenful anyone reads. Each list is paged now, with **Previous**, **Next**,
+  the page numbers, and the range being shown under it, and notes and tasks
+  are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results
+  to a page, starting at 30, and the choice is kept, so every search page
+  opens the way the last one was left. Every count on the page is still of
+  the whole search, and a search that shortens under an open page falls back
+  to the last page it still has.
 
 ### Fixed
+
+- **Tags written together ranks by the notes and tasks carrying both.** It
+  counted only tags written side by side on one line, which is the strongest
+  case and a rare one: in a workspace where tags are written under headings
+  the count was one for every pair, so the list came out alphabetical and
+  looked sorted the wrong way round, and every pair that never shared a line
+  was left out of it entirely. A pair is now counted over the same entries a
+  search for both tags finds, inherited tags included, so the number beside a
+  pair is the number the row opens — `#project/argent-protocol` and
+  `#person/sable-ortiz` read 8, which is what searching for both shows.
+
+- **A word being typed into a search box survives its own results arriving.**
+  Redrawing the page takes the field out of the document, which the browser
+  reports as the reader leaving it, and what was typed was let go as if they
+  had clicked away. It only showed once typing started searching, because
+  that made the draft's own results the commonest redraw of all. The caret
+  goes back where it was rather than to the end, so a redraw in the middle of
+  a word no longer moves it out from under you. The Task board's search box
+  had the same fault and is fixed with it.
 
 - A row on Home reads while the pointer is over it. A row is a button as well
   as a row, and each was colored by its own rule: the row rule raised the
@@ -797,6 +1709,71 @@
 
 - Fellowship's muted text is a little darker, so the smaller print on its
   parchment panels reads.
+
+## 1.16.0 - 2026-09-17
+
+### Highlights
+
+- A board card can change a task's status, priority, or due date.
+- A task edit says what it wrote, and offers to undo it.
+- Help is on every page, and the Notes Graph has a keyboard and a legend.
+
+### Added
+
+- Say what a task edit wrote, and offer to undo it.
+- Make the Stats numbers a way in, and say what a reindex found.
+- Put Help on every page, and give the graph a keyboard and a legend.
+- Give a new workspace somewhere to start, and date the shipped releases.
+- Name the search Refine narrows, and open a result beside your note.
+- Reach reordering and the facet modes from the keyboard.
+- Let a card change a task's status, priority, or due date.
+- Move through the calendar with the arrow keys.
+- Check every theme's contrast, hover states included.
+- Mark a chosen segment the same way everywhere, and square it with the theme.
+
+### Fixed
+
+- Open a search on the results, and say what changed instead of re-reading the page.
+- Show related notes sooner, and say why each one is related.
+- Give the sidebar's related notes the room they need.
+- Fold the sidebar's note context so the results come first.
+- Say Home can be arranged, and ask before discarding an arrangement.
+- Ask before removing a saved search.
+- Report a note Deckard could not read to Deckard's log.
+- Let the Fellowship theme use light native controls.
+- Give a tag's page and a saved search one name each.
+- Stop Home blanking between tabs, and keep its widgets current.
+- Keep the search box readable while it is being typed in.
+- Keep a task's place in a ranked list when its line is rewritten.
+- Stop a chosen completion opening the recent searches.
+- Say when completing a task starts its next occurrence.
+
+## 1.15.0 - 2026-09-17
+
+### Highlights
+
+- Home gains eight widgets, from today's note and its open tasks to new tags.
+- Quick add puts a task in today's note without leaving Home.
+- Tags written together, and tags without a hub, point at a missing hub note or one idea under two names.
+
+### Added
+
+- **More Home widgets**:
+  - **Today**: today's daily note and its open tasks, or a button to create it.
+  - **Quick add**: a field that adds an open task to today's daily note.
+  - **Stale tasks**: open tasks in notes left unchanged for 7 to 90 days.
+  - **Related notes**: notes related to the note you had open last, ranked as
+    Related Notes ranks them.
+  - **Tags written together**: the tag pairs written together most often,
+    with how much they overlap, to spot a missing hub note or one idea under
+    two names. A pair opens a search for both.
+  - **Tags without a hub**: tags used at least three times that have no hub
+    note, each with **Create hub**.
+  - **New tags**: tags first seen in the last 7 to 90 days, each with
+    **Rename**, to catch a typo such as `#projet/atlas` early. Tags already in
+    use when you update are not new.
+  - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
+    **Pin** for the note you had open last; **×** unpins one.
 
 ## 1.14.0 - 2026-09-17
 

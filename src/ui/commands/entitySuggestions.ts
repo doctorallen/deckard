@@ -14,7 +14,10 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 export class EntityHeadingSuggestions implements vscode.Disposable {
   private readonly registration: vscode.Disposable;
 
-  public constructor() {
+  public constructor(
+    /** Whether a file is one of the notes; the offer is made only there. */
+    private readonly isNotesFile: (uri: vscode.Uri) => boolean = () => true,
+  ) {
     this.registration = vscode.languages.registerCodeActionsProvider(
       { pattern: '**/*.md' },
       {
@@ -33,7 +36,7 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
     document: vscode.TextDocument,
     range: vscode.Range,
   ): vscode.CodeAction[] {
-    if (!isMarkdownFile(document.uri)) {
+    if (!isMarkdownFile(document.uri) || !this.isNotesFile(document.uri)) {
       return [];
     }
     const line = document.lineAt(range.start.line).text;
@@ -57,7 +60,7 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
     }
 
     const action = new vscode.CodeAction(
-      'Link this heading to an entity',
+      'Tag this heading with a person or project…',
       vscode.CodeActionKind.QuickFix,
     );
     action.command = {

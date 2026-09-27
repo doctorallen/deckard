@@ -1,5 +1,8 @@
+import { isParkedTask } from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
+import { evaluateQuery } from '../../core/query/queryEvaluator';
+import { parseQuery } from '../../core/query/queryParser';
 import { WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../core/workspace/backlinks';
 
@@ -32,6 +35,26 @@ export interface ReviewOptions {
   tagFirstSeen?: Record<string, number>;
   /** How many entries each list names before it says how many are left. */
   limit?: number;
+  /** The period after this one, whose due, scheduled, and start dates the review looks ahead at. */
+  next?: ReviewRange;
+  /** What the next period is called, `next week` or `next month`, for its empty text. */
+  nextLabel?: string;
+  /** Sections of the reader's own, each a title and a Deckard search. */
+  sections?: readonly ReviewSectionSetting[];
+}
+
+/** One section from `deckard.periodicNote.reviewSections`. */
+export interface ReviewSectionSetting {
+  title: string;
+  query: string;
+}
+
+/** A section of the reader's own, as it was when the review was written. */
+export interface ReviewCustomSection {
+  title: string;
+  items: ReviewItem[];
+  /** Set when the search does not parse; the section says so. */
+  error?: string;
 }
 
 /** What a review found, before it is written out. */
@@ -42,6 +65,13 @@ export interface ReviewSummary {
   created: ReviewItem[];
   updated: ReviewItem[];
   newTags: string[];
+  /** Open tasks due, scheduled, or starting in the next period, soonest first. */
+  comingUp: ReviewItem[];
+  /** Tasks due in the period, and how many of those were done by their date. */
+  dueInPeriod: number;
+  doneOnTime: number;
+  nextLabel?: string;
+  custom: ReviewCustomSection[];
 }
 
 /** One line of a review: what it was, and the note it is in. */
@@ -89,7 +119,10 @@ export function summarizeReview(
   const slipped = [...index.tasks.values()]
     .filter(
       (task) =>
-        !task.completed && task.dueAt !== undefined && task.dueAt < range.end,
+        !task.completed &&
+        task.dueAt !== undefined &&
+        task.dueAt < range.end &&
+        !isParkedTask(index, task.id),
     )
     .sort(
       (left, right) =>
@@ -123,7 +156,101 @@ export function summarizeReview(
     .map(([key]) => index.tags.get(key)?.label ?? key)
     .sort((left, right) => left.localeCompare(right));
 
-  return { range, completed, slipped, created, updated, newTags };
+  // What is ahead: each open task once, by its earliest date in the next
+  // period, led by that day.
+  const next = options.next;
+  const comingUp = next
+    ? [...index.tasks.values()]
+        .filter((task) => !task.completed && !isParkedTask(index, task.id))
+        .flatMap((task) => {
+          const dates = (
+            [
+              [task.dueAt, 'due'],
+              [task.scheduledAt, 'scheduled'],
+              [task.startAt, 'starts'],
+            ] as const
+          )
+            .filter((entry): entry is readonly [number, 'due' | 'scheduled' | 'starts'] =>
+              entry[0] !== undefined && entry[0] >= next.start && entry[0] < next.end,
+            )
+            .sort((left, right) => left[0] - right[0]);
+          return dates.length ? [{ task, at: dates[0][0], detail: dates[0][1] }] : [];
+        })
+        .sort((left, right) => left.at - right.at || left.task.title.localeCompare(right.task.title))
+        .map(({ task, at, detail }) => ({
+          title: `${formatDayShort(at)} · ${clean(task.title)}`,
+          note: noteTitle(task.filePath),
+          detail,
+        }))
+    : [];
+
+  // Of what was due in the period, how much was done by its day.
+  const due = [...index.tasks.values()].filter((task) => inRange(task.dueAt));
+  const doneOnTime = due.filter(
+    (task) =>
+      task.completed &&
+      task.doneAt !== undefined &&
+      task.dueAt !== undefined &&
+      task.doneAt < task.dueAt + DAY_MS,
+  ).length;
+
+  const custom = (options.sections ?? []).map((section) => readSection(index, section));
+
+  return {
+    range,
+    completed,
+    slipped,
+    created,
+    updated,
+    newTags,
+    comingUp,
+    dueInPeriod: due.length,
+    doneOnTime,
+    ...(options.nextLabel ? { nextLabel: options.nextLabel } : {}),
+    custom,
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SECTION_LIMIT = 20;
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function formatDayShort(at: number): string {
+  return `${WEEKDAY_SHORT[new Date(at).getDay()]} ${formatIsoDate(at)}`;
+}
+
+/**
+ * A section of the reader's own: what its search finds now, written down as
+ * a list, so it says what was true when the review was written.
+ */
+function readSection(index: WorkspaceIndex, section: ReviewSectionSetting): ReviewCustomSection {
+  const parsed = parseQuery(section.query);
+  const error = parsed.diagnostics.find((diagnostic) => diagnostic.severity === 'error');
+  if (!parsed.node || error) {
+    return {
+      title: section.title,
+      items: [],
+      error: error?.message ?? 'This search is empty.',
+    };
+  }
+  const results = evaluateQuery(index, parsed.node);
+  const items: ReviewItem[] = [
+    ...results.tasks.map((task) => ({ title: clean(task.title), note: noteTitle(task.filePath) })),
+    ...results.sections.map((entry) => ({ title: noteTitle(entry.filePath), note: noteTitle(entry.filePath) })),
+    ...results.files.map((file) => ({ title: noteTitle(file.filePath), note: noteTitle(file.filePath) })),
+  ];
+  const seen = new Set<string>();
+  return {
+    title: section.title,
+    items: items.filter((item) => {
+      const key = `${item.title}\u0000${item.note}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    }),
+  };
 }
 
 /**
@@ -148,8 +275,13 @@ export function formatReview(
     `*${range.name}. Written by Deckard; run the review again to bring it up to date.*`,
     '',
     [
-      `**Done:** ${summary.completed.length}`,
+      `**Done:** ${summary.completed.length}${
+        summary.dueInPeriod > 0
+          ? ` (${summary.doneOnTime} of ${summary.dueInPeriod} that were due)`
+          : ''
+      }`,
       `**Still open:** ${summary.slipped.length}`,
+      `**Coming up:** ${summary.comingUp.length}`,
       `**Notes:** ${summary.created.length} new, ${summary.updated.length} updated`,
       `**New tags:** ${summary.newTags.length}`,
     ].join(' · '),
@@ -181,6 +313,11 @@ export function formatReview(
     summary.slipped,
     'Nothing due by the end of this period is still open.',
   );
+  list(
+    'Coming up',
+    summary.comingUp,
+    `Nothing is due, scheduled, or starting ${summary.nextLabel ?? 'in the next period'}.`,
+  );
   list('Notes written', summary.created, 'No notes were written in this period.');
   list('Notes changed', summary.updated, 'No earlier notes were changed.');
 
@@ -195,6 +332,25 @@ export function formatReview(
       lines.push('', `…and ${summary.newTags.length - limit} more.`);
     }
   }
+  // The reader's own sections, last, each a plain list of what its search
+  // found when the review was written.
+  summary.custom.forEach((section) => {
+    lines.push('', `### ${section.title}`, '');
+    if (section.error) {
+      lines.push(`This search does not parse: ${section.error}`);
+      return;
+    }
+    if (section.items.length === 0) {
+      lines.push('Nothing matched this search.');
+      return;
+    }
+    section.items.slice(0, SECTION_LIMIT).forEach((item) => {
+      lines.push(item.title === item.note ? `- [[${item.note}]]` : `- ${item.title} — [[${item.note}]]`);
+    });
+    if (section.items.length > SECTION_LIMIT) {
+      lines.push(`- …and ${section.items.length - SECTION_LIMIT} more.`);
+    }
+  });
   lines.push(REVIEW_END);
   return lines.join('\n');
 }

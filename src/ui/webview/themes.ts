@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ENABLED } from './selectors';
 
 export const deckardThemes = [
   'corpo',
@@ -13,11 +14,47 @@ export const deckardThemes = [
 
 export type DeckardTheme = (typeof deckardThemes)[number];
 
+/** Each theme as a picker names it. */
+export const deckardThemeNames: Readonly<Record<DeckardTheme, string>> = {
+  corpo: 'Corpo',
+  replicant: 'Replicant',
+  oblivion: 'Oblivion',
+  lcars: 'LCARS',
+  synthwave: 'Synthwave',
+  tomcat: 'Tomcat',
+  fellowship: 'Fellowship',
+  cooper: 'Cooper',
+};
+
+/**
+ * A theme shown on the open pages while Choose Theme… is moved through, and
+ * before anything is written: settings.json is not touched until one is
+ * kept, so arrowing through eight themes makes no file writes.
+ */
+let previewTheme: DeckardTheme | undefined;
+const previewEmitter = new vscode.EventEmitter<void>();
+/** Fires when the previewed theme changes, so the pages redraw. */
+export const onDidChangeThemePreview = previewEmitter.event;
+
+/** Shows a theme on the open pages without writing it, or stops (undefined). */
+export function previewDeckardTheme(
+  theme: DeckardTheme | undefined,
+  options: { silent?: boolean } = {},
+): void {
+  if (previewTheme === theme) {
+    return;
+  }
+  previewTheme = theme;
+  if (!options.silent) {
+    previewEmitter.fire();
+  }
+}
+
 // Rows lift onto the raised panel on hover. Tags only slide: they are buttons,
 // so each theme's button hover colors them, and a shared dark ground under a
 // theme's inverted button text would hide it.
 const contentHoverCss =
-  '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
+  '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .tag-open:hover, .note .tag-list button:hover' + ENABLED + ' { transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
 
 const replicantHoverCss = `${contentHoverCss} .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }`;
 
@@ -49,6 +86,9 @@ const corpoCss = `
   --line: var(--vscode-widget-border, var(--vscode-panel-border));
   --slate-border: var(--vscode-widget-border, var(--vscode-panel-border));
   --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
+  /* VS Code's own input edge, which its themes leave transparent where the
+     field's ground already stands out. */
+  --control-line: var(--vscode-input-border, transparent);
   --cyan: var(--vscode-textLink-foreground);
   --cyan-bright: var(--vscode-textLink-foreground);
   /* The accent is written as text in eyebrows, chips, and hovered controls,
@@ -77,7 +117,7 @@ const corpoCss = `
 /* The page paints its own background: VS Code gives some webviews no backdrop
    of their own, where a transparent page composites to nothing. */
 body { background: var(--vscode-editor-background); }
-body:has(.sidebar-header) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
+body:has(> main[data-sidebar]) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
 main { border: 0; box-shadow: none; }
 header { border-bottom: 1px solid var(--line); }
 /* Corpo's eyebrows and titles read as written too; the working labels
@@ -90,11 +130,12 @@ code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monosp
 .metric-value { color: var(--text); font-weight: 600; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
 .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
-.tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
+.popover, .tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
+.popover.is-tip { border-color: var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, var(--line))); background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background)); color: var(--vscode-editorHoverWidget-foreground, var(--vscode-editorWidget-foreground, var(--text))); }
 button, select, input[type="text"], input[type="search"], .tag-filter summary { border-radius: 2px; }
 button, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
-button:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
-button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .segmented button[aria-pressed="true"], .pagination .page-number.is-current { border-color: var(--vscode-focusBorder); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); box-shadow: inset 0 -2px 0 var(--vscode-focusBorder); }
+button:hover${ENABLED}, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
+button.active, button.active:hover${ENABLED}, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .segmented button[aria-pressed="true"], .pagination .page-number.is-current { border-color: var(--vscode-focusBorder); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); box-shadow: inset 0 -2px 0 var(--vscode-focusBorder); }
 .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 /* A count inside a chosen button follows its text, not the muted color. */
 .active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
@@ -102,8 +143,8 @@ button.active, button.active:hover, button[aria-selected="true"], .dashboard-tab
 input[type="text"], input[type="search"], textarea { border: 1px solid var(--vscode-input-border, transparent); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
 input[type="text"]:focus, input[type="search"]:focus { border-color: var(--vscode-focusBorder); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
 input::placeholder, textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
-select, select:hover { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
-button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+select, select:hover${ENABLED} { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: var(--focus-width) solid var(--vscode-focusBorder); outline-offset: calc(var(--focus-width) * -1); }
 input[type="checkbox"], .task input { accent-color: var(--vscode-button-background); }
 /* Tags read as links, as VS Code shows references, and a tag written inside
    a title keeps a hairline so it stays distinct from the words around it. */
@@ -117,6 +158,9 @@ input[type="checkbox"], .task input { accent-color: var(--vscode-button-backgrou
 
 /** Returns the configured theme, falling back when workspace settings are stale. */
 export function getDeckardTheme(): DeckardTheme {
+  if (previewTheme) {
+    return previewTheme;
+  }
   const configuredTheme = vscode.workspace
     .getConfiguration('deckard')
     .get<string>('theme', 'corpo');
@@ -148,6 +192,7 @@ export function getDeckardThemeCss(theme: DeckardTheme): string {
   --slate-border: #33295e;
   --line: #4c3d87;
   --line-strong: #8f75ff;
+  --control-line: var(--line-strong);
   --cyan-bright: #7ce6f0;
   --cyan: #3fd8ea;
   --amber-bright: #ff8b55;
@@ -178,7 +223,7 @@ h1 { letter-spacing: .12em; }
 .section-heading { border-bottom: 1px solid rgba(0, 229, 255, .3); padding-bottom: 6px; }
 .section-readout { color: var(--cyan); }
 button, select, .tag-open, .view-options summary { border-color: var(--cyan); border-radius: 0; background: rgba(7, 6, 17, .94); color: var(--cyan-bright); font-family: var(--font-mono); letter-spacing: .04em; clip-path: polygon(0 5px, 5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%); }
-button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--cyan); background: var(--cyan); color: var(--bg-dark); box-shadow: 0 0 12px rgba(0, 229, 255, .28); }
+button:hover${ENABLED}, button.active, select:hover${ENABLED}, .tag-open:hover, .view-options summary:hover { border-color: var(--cyan); background: var(--cyan); color: var(--bg-dark); box-shadow: 0 0 12px rgba(0, 229, 255, .28); }
 :root { --hover-bg: var(--cyan); --hover-fg: var(--bg-dark); }
 input[type='checkbox'] { accent-color: var(--cyan); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(21, 16, 47, .92); box-shadow: inset 3px 0 0 var(--favorite-red), 0 0 0 1px rgba(0, 229, 255, .1); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
@@ -191,7 +236,7 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 .tag-name, .task-title a { color: var(--cyan-bright); }
 .tag-filter summary, .tag-filter-search { border-color: var(--line); background: var(--panel-deep); }
 .tag-filter summary:hover, .tag-filter-search:focus { border-color: var(--favorite-red); color: var(--favorite-red); }
-.tag-filter-menu, .rank-context-menu { border-color: var(--cyan); background: var(--panel-deep); box-shadow: 0 0 20px rgba(0, 229, 255, .16); }
+.tag-filter-menu, .popover { border-color: var(--cyan); background: var(--panel-deep); box-shadow: 0 0 20px rgba(0, 229, 255, .16); }
 .drag-ghost { border-color: var(--cyan); background: var(--panel-raised); }
 .drag-placeholder { border-color: var(--favorite-red); }
 .empty { border-color: var(--line); background: var(--panel-deep); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
@@ -216,6 +261,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: #1e5724;
   --line: #278a31;
   --line-strong: #54db51;
+  --control-line: var(--line-strong);
   --cyan-bright: #8ce87c;
   --cyan: #6fd96c;
   --amber-bright: #f0bf47;
@@ -234,7 +280,7 @@ header { border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(118, 255, 99
 h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 button, select, .tag-open, .view-options summary { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
 button, select { text-transform: uppercase; }
-button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { background: var(--green); border-color: var(--green); color: #071006; }
+button:hover${ENABLED}, button.active, select:hover${ENABLED}, .tag-open:hover, .view-options summary:hover { background: var(--green); border-color: var(--green); color: #071006; }
 :root { --hover-bg: var(--green); --hover-fg: #071006; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(3, 12, 3, .9); box-shadow: inset 2px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
@@ -265,13 +311,16 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
   --slate-border: #7d8750;
   --line: #9c9a5c;
   --line-strong: #55713d;
+  --control-line: var(--line-strong);
   --cyan-bright: #354a1f;
   --cyan: #3f5626;
   --amber-bright: #c28a32;
   --amber: #664317;
   --amber-dim: #6f542a;
-  --green: #587a3d;
-  --toxic-green: #587a3d;
+  /* Due dates, totals, and counts are green text on parchment, so the green
+     is deep enough to read at 4.5:1 on every ground, the page's included. */
+  --green: #4a6a32;
+  --toxic-green: #4a6a32;
   --favorite-red: #9a4530;
   --favorite: #8a5a14;
   --warning-orange: #9a4530;
@@ -283,7 +332,7 @@ main { border-color: var(--slate-border); box-shadow: none; }
 header { border-color: var(--line-strong); }
 h1, h2, h3 { font-family: var(--font-display); color: #3d4d28; letter-spacing: .04em; }
 button, select, .tag-open, .view-options summary { border-color: var(--slate-border); border-radius: 5px; background: #e9dfb7; color: var(--text); }
-button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
+button:hover${ENABLED}, button.active, select:hover${ENABLED}, .tag-open:hover, .view-options summary:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
 :root { --hover-bg: var(--green); --hover-fg: #fff7db; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 5px; --corner-bl: 5px; --corner-br: 5px; background: #f1e8c8; box-shadow: inset 3px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
@@ -309,6 +358,9 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
   --slate-border: #2b3136;
   --line: #3b4248;
   --line-strong: #a7afb4;
+  /* Steel between the rule and the readout, so a field's edge is seen
+     without outshining the gold. */
+  --control-line: #6b747b;
   --cyan-bright: #d6e4ee;
   --cyan: #9fbfd4;
   --amber-bright: #f3c46e;
@@ -341,7 +393,7 @@ h1 { font-weight: 200; letter-spacing: .3em; }
 :root { --control-radius: 0; }
 button, select, .tag-open, .view-options summary { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
 button, select { text-transform: uppercase; }
-button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
+button:hover${ENABLED}, button.active, select:hover${ENABLED}, .tag-open:hover, .view-options summary:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
 :root { --hover-bg: var(--text); --hover-fg: var(--bg-dark); }
 /* A tag's weight reads as a gold instrument, against faint empty steps. */
 .tag-weight-rail-segment.filled { background: var(--amber); }
@@ -375,6 +427,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: #12262e;
   --line: #1b3a45;
   --line-strong: #3f8296;
+  --control-line: var(--line-strong);
   --cyan-bright: #5fd3e4;
   --cyan: #3fb6c9;
   --amber-bright: #ff6a35;
@@ -416,7 +469,7 @@ h1 { font-weight: 200; letter-spacing: .32em; }
 :root { --control-radius: 0; }
 button, select, .tag-open, .view-options summary { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; }
 button, select { text-transform: uppercase; }
-button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
+button:hover${ENABLED}, select:hover${ENABLED}, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
 /* An orange rule under the live control, in place of a filled button. */
 button.active { border-color: var(--line-strong); background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
 input[type='checkbox'] { accent-color: var(--cyan); }
@@ -456,6 +509,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: ${themeValue(theme, '#285052', '#050505')};
   --line: ${themeValue(theme, '#285052', '#050505')};
   --line-strong: ${themeValue(theme, '#447274', '#89a9d8')};
+  --control-line: var(--line-strong);
   --cyan-bright: ${themeValue(theme, '#70e1dc', '#89a9d8')};
   --cyan: ${themeValue(theme, '#70e1dc', '#89a9d8')};
   --amber-bright: ${themeValue(theme, '#ff715b', '#f3a63a')};
@@ -468,7 +522,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --font-display: ${theme === 'lcars' ? "'Arial Narrow', var(--vscode-font-family, sans-serif)" : 'var(--vscode-font-family, sans-serif)'};
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
-${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, .icon-button, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; --corner-br: 18px; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
+${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } button svg, button .toolbar-icon, .icon-button, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover' + ENABLED + ' + .control-icon-svg, .related-notes-sort-icon { color: #050505; } button:hover' + ENABLED + ', button.active, select:hover' + ENABLED + ', .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover' + ENABLED + ' { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; --corner-br: 18px; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .popover, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
 ${theme === 'lcars' ? '.active-file .tag-list button { color: #050505; }' : ''}
 ${theme === 'lcars' ? '.card, .note, .task-row, .board-card, .home-row, .tag-row { --frame-left: 7px; --frame-right: 0px; }' : ''}
 ${theme === 'lcars' ? '.favorite-toggle { background: var(--cyan); color: #7a1f1f; } .favorite-toggle:hover, .favorite-toggle:focus-visible, .favorite-toggle.favorite { background: #f5cc72; color: #7a1f1f; }' : ''}
@@ -477,6 +531,7 @@ ${theme === 'lcars' ? 'main { border-top: 0; }' : ''}
 ${theme === 'lcars' ? '.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0; background: var(--panel); } .relationship-workspace { border-color: var(--line-strong); border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); } .sidebar-relationships-header, .relationship-workspace-header { border-bottom-color: var(--line-strong); } .sidebar-relationship-branch { border-bottom: 2px solid var(--line-strong); } .sidebar-relationship-branch summary { border-left: 5px solid var(--cyan); background: var(--panel); } .sidebar-relationship-namespace { border-top-color: var(--line-strong); } .sidebar-relationship-namespace summary { border-left: 3px solid var(--line-strong); } .sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; } .relationship-tree-root { border-color: var(--cyan); } .relationship-tree-column, .relationship-graph-shell { border-color: var(--line-strong); } .relationship-tree-group { border-top-color: var(--line-strong); } .relationship-tree-group summary { border-left: 4px solid var(--cyan); padding-left: 6px; } .relationship-tree-items { margin-left: 8px; border-left: 3px solid var(--cyan); }' : ''}
 ${theme === 'lcars' ? '.inline-tag, .note-title .inline-tag, .task-title .inline-tag { color: #050505; }' : ''}
 ${theme === 'lcars' ? '.active-name .active-filter-tag { color: #050505; }' : ''}
+${theme === 'lcars' ? '/* On a filled LCARS button the muted namespace and count vanish into the fill; they take the button\'s ink. */ button .tag-namespace, button .query-facet-count, button .menu-key { color: inherit; }' : ''}
 ${theme === 'lcars' ? '.task-row .task-title, .task .task-title, .note-row .card-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source, .note-row .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }' : ''}
 ${theme === 'lcars' ? '.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .note-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .note-row:nth-child(3n) { border-left-color: var(--favorite-red); } .note-row:hover { background: var(--panel-raised); transform: translateX(3px); }' : ''}
 ${theme === 'lcars' ? '.overview-tabs-row { border-bottom-color: var(--line-strong); } .overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }' : ''}
@@ -485,7 +540,7 @@ ${theme === 'lcars' ? '.overview-search, .catalog-search, .task-search, .note-se
 ${theme === 'lcars' ? '.dashboard-tabs-row { border-bottom-color: var(--line-strong); } .dashboard-tabs button { border-radius: 0; } .dashboard-tabs button:first-child { border-radius: 15px 0 0 0; } .dashboard-tabs button:last-child { border-radius: 0 0 15px 0; }' : ''}
 ${theme === 'lcars' ? '.browse-scope button { border-radius: 0; } .browse-scope button:first-child { border-radius: 15px 0 0 0; } .browse-scope button:last-child { border-radius: 0 0 15px 0; }' : ''}
 ${theme === 'lcars' ? '.saved-filter-remove.saved-filter-remove { color: #050505; } .saved-filter-remove.saved-filter-remove:hover, .saved-filter-remove.saved-filter-remove:focus-visible { color: #050505; }' : ''}
-${theme === 'lcars' ? 'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover, button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }' : ''}
+${theme === 'lcars' ? 'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover' + ENABLED + ', button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }' : ''}
 ${theme === 'lcars' ? 'section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 0 15px 0; }' : ''}`;
 }
 

@@ -10,11 +10,22 @@ import {
 } from '../types';
 import {
   BLOCK_ID_PATTERN,
+  MIGRATED_TASK_LINE,
   parseIsoDate,
   parseTaskMetadata,
 } from './taskMetadata';
+import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
+import { findListParents, findParentTaskLine } from './listNesting';
+import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
+
+/**
+ * What the parser produces, named. A change to what a parsed note holds
+ * (steps' parent links, say) changes it, so the local cache, which keeps
+ * parsed notes, is rebuilt rather than served in the old shape.
+ */
+export const PARSE_FORMAT = 'code-and-links';
 
 interface HeadingMatch {
   lineNumber: number;
@@ -980,11 +991,15 @@ function normalizeTagKey(
  * would make related-note titles misleading even though they are not tags.
  */
 export function stripTags(text: string, personMarker?: string): string {
+  const skipped = findCodeAndLinkRanges(text);
   return text
     .replace(
       getTagPattern(getPersonMarker(personMarker)),
-      (fullMatch, prefix: string, marker: string, rawName: string) =>
-        isNumericHashTag(marker, rawName) ? fullMatch : prefix,
+      (fullMatch, prefix: string, marker: string, rawName: string, offset: number) =>
+        isNumericHashTag(marker, rawName) ||
+        isInRanges(skipped, offset + prefix.length)
+          ? fullMatch
+          : prefix,
     )
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
@@ -1007,14 +1022,15 @@ function findTagMatches(
   personMarker?: string,
 ): TagMatch[] {
   const activePersonMarker = getPersonMarker(personMarker);
+  const skipped = findCodeAndLinkRanges(text);
   return [...text.matchAll(getTagPattern(activePersonMarker))].flatMap((match) => {
     const marker = match[2];
     const rawName = match[3];
-    if (isNumericHashTag(marker, rawName)) {
+    const markerIndex = (match.index ?? 0) + match[0].lastIndexOf(marker);
+    if (isNumericHashTag(marker, rawName) || isInRanges(skipped, markerIndex)) {
       return [];
     }
 
-    const markerIndex = (match.index ?? 0) + match[0].lastIndexOf(marker);
     return [
       {
         key:
@@ -1258,7 +1274,9 @@ function findInlineSections(
     if (
       fencedLines.has(lineIndex) ||
       headingPattern.test(line) ||
-      taskPattern.test(line)
+      taskPattern.test(line) ||
+      // A task migrated to another day is neither a task nor a note.
+      MIGRATED_TASK_LINE.test(line)
     ) {
       lineIndex += 1;
       continue;
@@ -1396,7 +1414,9 @@ function findTasks(
   /** See `readAssignee`. */
   assigneeFromPersonTag = false,
 ): Task[] {
-  return lines.flatMap((line, lineIndex) => {
+  const listParents = findListParents(lines, fencedLines);
+  const idsByLine = new Map<number, string>();
+  const tasks = lines.flatMap((line, lineIndex): Task[] => {
     if (fencedLines.has(lineIndex)) {
       return [];
     }
@@ -1427,9 +1447,14 @@ function findTasks(
         ? toTaskDate(fields.due)
         : findTaskDate(title, dateAnchor);
 
+    const id = createId('task', `${filePath}:${lineNumber}:${match[4]}`);
+    idsByLine.set(lineIndex, id);
+    const parentLine = findParentTaskLine(lines, listParents, lineIndex);
+    const parentTaskId = parentLine === undefined ? undefined : idsByLine.get(parentLine);
+
     return [
       {
-        id: createId('task', `${filePath}:${lineNumber}:${match[4]}`),
+        id,
         filePath,
         sectionId: section?.id,
         title: title || match[4],
@@ -1459,9 +1484,35 @@ function findTasks(
         sourceLineText: line,
         createdAt: metadata?.createdAt,
         updatedAt: metadata?.updatedAt,
+        ...(parentTaskId !== undefined ? { parentTaskId } : {}),
       },
     ];
   });
+  return summarizeSteps(tasks);
+}
+
+/**
+ * Gives each task with steps a summary of them: how many, how many are
+ * done, and which open one comes first. Only direct steps count.
+ */
+function summarizeSteps(tasks: Task[]): Task[] {
+  const byId = new Map<string, Task>();
+  tasks.forEach((task) => {
+    byId.set(task.id, task);
+    const parent = task.parentTaskId === undefined ? undefined : byId.get(task.parentTaskId);
+    if (!parent) {
+      return;
+    }
+    const steps = parent.steps ?? (parent.steps = { ids: [], total: 0, done: 0 });
+    steps.ids.push(task.id);
+    steps.total += 1;
+    if (task.completed) {
+      steps.done += 1;
+    } else if (steps.next === undefined) {
+      steps.next = task.title;
+    }
+  });
+  return tasks;
 }
 
 /**
@@ -1480,6 +1531,32 @@ export function isPeriodicNotePath(filePath: string): boolean {
     /^month-[a-z]+-\d{4}$/i.test(name) ||
     /^\d{4}-(?:W\d{2}|\d{2})$/i.test(name)
   );
+}
+
+/**
+ * Whether a note is a daily note: named for a day, as `2026-09-25.md` is, or
+ * with a day in its top heading. Every place that tells a daily note from
+ * any other asks this.
+ */
+export function isDailyNoteFile(file: Pick<ParsedFile, 'filePath' | 'sections'>): boolean {
+  return findFileDailyNoteDate(file) !== undefined;
+}
+
+/** The day a daily note is for, read as `isDailyNoteFile` reads it. */
+export function findFileDailyNoteDate(
+  file: Pick<ParsedFile, 'filePath' | 'sections'>,
+): string | undefined {
+  return findDailyNoteDate(
+    file.filePath,
+    file.sections
+      .filter((section) => section.headingLevel === 1 && !section.isInline)
+      .map((section) => section.heading),
+  );
+}
+
+/** Whether a note is a daily, weekly, or monthly note. */
+export function isPeriodicNoteFile(file: Pick<ParsedFile, 'filePath' | 'sections'>): boolean {
+  return isPeriodicNotePath(file.filePath) || isDailyNoteFile(file);
 }
 
 export function findDailyNoteDate(
@@ -1556,42 +1633,8 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   return undefined;
 }
 
-const monthNumbers: Record<string, number> = {
-  january: 0,
-  jan: 0,
-  february: 1,
-  feb: 1,
-  march: 2,
-  mar: 2,
-  april: 3,
-  apr: 3,
-  may: 4,
-  june: 5,
-  jun: 5,
-  july: 6,
-  jul: 6,
-  august: 7,
-  aug: 7,
-  september: 8,
-  sep: 8,
-  sept: 8,
-  october: 9,
-  oct: 9,
-  november: 10,
-  nov: 10,
-  december: 11,
-  dec: 11,
-};
-
-const weekdayNames = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-];
+const monthNumbers = MONTH_NUMBERS;
+const weekdayNames = WEEKDAY_NAMES;
 
 function createLocalDate(
   year: number,
@@ -1682,6 +1725,11 @@ function findNearestSection(
     )[0];
 }
 
+/** A list item's indentation, or undefined for a line that is not one. */
+export function listItemIndentation(line: string): number | undefined {
+  return getListItemMatch(line)?.indentation;
+}
+
 function getListItemMatch(line: string): ListItemMatch | undefined {
   const match = line.match(listItemPattern) ?? line.match(orderedListItemPattern);
   return match ? { indentation: match[1].length } : undefined;
@@ -1692,7 +1740,7 @@ function getListItemMatch(line: string): ListItemMatch | undefined {
  * same boundary rule as a heading section: the next sibling or ancestor item
  * ends the note.
  */
-function findListItemEndLine(
+export function findListItemEndLine(
   lines: string[],
   startIndex: number,
   indentation: number,
@@ -1801,12 +1849,35 @@ export function getTaskLineId(
     : undefined;
 }
 
+/**
+ * An id is two independent 32-bit hashes of the same text. One alone let two
+ * of 5,000 notes' sections share an id about one time in five, and the index
+ * keeps one entry per id, so the other vanished. Two make that about one in
+ * a billion billion.
+ *
+ * The first hash is the one ids were made of before 1.23, so an id written
+ * then is this id without its last part: `legacyIdOf` reads it back, and
+ * what was kept under the old id is carried over to the new one.
+ */
 function createId(prefix: string, value: string): string {
   let hash = 0;
+  // FNV-1a, which shares nothing with the hash above.
+  let second = 0x811c9dc5;
 
   for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+    const code = value.charCodeAt(index);
+    hash = ((hash << 5) - hash + code) | 0;
+    second = Math.imul(second ^ code, 0x01000193);
   }
 
-  return `${prefix}-${Math.abs(hash).toString(36)}`;
+  return `${prefix}-${Math.abs(hash).toString(36)}-${(second >>> 0).toString(36)}`;
+}
+
+/**
+ * The id an entry had before ids were widened, or undefined for an id that
+ * is already of the old kind.
+ */
+export function legacyIdOf(id: string): string | undefined {
+  const match = /^([a-z]+-[0-9a-z]+)-[0-9a-z]+$/.exec(id);
+  return match ? match[1] : undefined;
 }

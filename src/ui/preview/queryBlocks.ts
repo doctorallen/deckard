@@ -5,6 +5,10 @@ import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
+  onIndexUpdateInTurn,
+  VIEW_PRIORITY,
+} from '../../core/workspace/publishing';
+import {
   describeQueryBlockCounts,
   findQueryBlocks,
   getQueryBlockSnapshot,
@@ -19,7 +23,7 @@ interface IndexSource {
 
 /**
  * Connects query blocks to VS Code: results in the Markdown preview, and a
- * summary with an **Open in search** action above each fence in the editor.
+ * summary with an **Open search page** action above each fence in the editor.
  *
  * Both surfaces read the snapshot the indexer last published rather than
  * building one per block, and both refresh when it changes, so a block keeps
@@ -41,12 +45,18 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       indexer.onDidUpdate((index) => {
         this.index = index;
         this.changeEmitter.fire();
-        // Refreshing re-renders every open preview, so it waits until a
-        // preview has actually drawn a block.
-        if (this.previewReadsIndex) {
-          void refreshMarkdownPreviews();
-        }
       }),
+      // Refreshing re-renders every open preview, so it waits until a
+      // preview has actually drawn a block, and for a turn of its own.
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'query block previews', priority: () => VIEW_PRIORITY.visible },
+        () => {
+          if (this.previewReadsIndex) {
+            void refreshMarkdownPreviews();
+          }
+        },
+      ),
       vscode.languages.registerCodeLensProvider({ pattern: '**/*.md' }, this),
     ];
   }
@@ -115,8 +125,8 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     return [
       label(describeQueryBlockCounts(snapshot)),
       new vscode.CodeLens(range, {
-        title: 'Open in search',
-        tooltip: 'Open this query on the Dashboard’s Search tab',
+        title: 'Open search page',
+        tooltip: 'Open this query on a search page',
         command: 'deckard.searchNotes',
         arguments: [snapshot.query],
       }),

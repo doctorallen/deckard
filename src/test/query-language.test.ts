@@ -9,11 +9,18 @@ import {
   toBuilderTree,
 } from '../core/query/queryFormat';
 import { parseQuery } from '../core/query/queryParser';
+import { hasAvailableTerm, toggleAvailable } from '../core/query/queryEdit';
 import {
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
 } from '../core/query/queryTypes';
-import { evaluateQuery } from '../core/query/queryEvaluator';
+import {
+  evaluateQuery,
+  resolveDateRange,
+  setQueryWeekStart,
+} from '../core/query/queryEvaluator';
+import { formatIsoDate, startOfDay } from '../core/markdown/taskMetadata';
+import { startOfWeek } from '../core/markdown/dates';
 import {
   ParsedFile,
   PersistedPreferences,
@@ -495,6 +502,81 @@ suite('Deckard search page state', () => {
     assert.strictEqual(notes.sections.length, 5);
   });
 
+  test('reads a week, a month, a weekday, or a day in words as a date', () => {
+    for (const text of [
+      'created = last-month',
+      'due <= friday',
+      'due <= "oct 3"',
+      'due <= end-of-month',
+      'created = 2026-08',
+      'done >= "last friday"',
+      'updated >= this-week',
+    ]) {
+      assert.deepStrictEqual(parseQuery(text).diagnostics, [], text);
+    }
+    const numeric = parseQuery('due = 10/3');
+    assert.strictEqual(
+      numeric.diagnostics[0]?.message,
+      'due accepts a date such as 2026-09-13, friday, "oct 3", this-week, next-month, a window such as 7d, or none.',
+      'a numeric date means different days on different machines',
+    );
+    assert.strictEqual(
+      parseQuery('created = soon').diagnostics[0]?.message,
+      'created accepts a date such as 2026-09-13, friday, this-week, last-month, 2026-08, or a window such as 30d.',
+    );
+  });
+
+  test('resolves a week by the day it starts on, and a weekday by its direction', () => {
+    // Friday 2026-09-25, noon.
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const span = (value: string, direction: 'past' | 'future') => {
+      const range = resolveDateRange(value, now, direction);
+      return range && `${formatIsoDate(range.start)}..${formatIsoDate(range.end)}`;
+    };
+    try {
+      assert.strictEqual(span('this-week', 'future'), '2026-09-20..2026-09-27');
+      setQueryWeekStart(1);
+      assert.strictEqual(span('this-week', 'future'), '2026-09-21..2026-09-28');
+      setQueryWeekStart(0);
+      assert.strictEqual(span('last-month', 'past'), '2026-08-01..2026-09-01');
+      assert.strictEqual(span('next-week', 'future'), '2026-09-27..2026-10-04');
+      assert.strictEqual(span('friday', 'past'), '2026-09-18..2026-09-19');
+      assert.strictEqual(span('friday', 'future'), '2026-10-02..2026-10-03');
+      assert.strictEqual(span('"last friday"'.replace(/"/g, ''), 'past'), '2026-09-18..2026-09-19');
+      assert.strictEqual(span('end-of-month', 'future'), '2026-09-30..2026-10-01');
+      assert.strictEqual(span('10/3', 'future'), undefined);
+    } finally {
+      setQueryWeekStart(0);
+    }
+  });
+
+  test('matches a whole week, and before the next one starts', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const weekStart = startOfWeek(Date.now(), 0);
+    const index = createIndex();
+    index.tasks.set('first', createTask({ id: 'first', dueAt: weekStart + 12 * 60 * 60 * 1000 }));
+    index.tasks.set('last', createTask({ id: 'last', dueAt: weekStart + 6 * day + 60 * 60 * 1000 }));
+    index.tasks.set('next', createTask({ id: 'next', dueAt: weekStart + 7 * day + 60 * 60 * 1000 }));
+    index.tasks.set('before', createTask({ id: 'before', dueAt: startOfDay(weekStart - day) }));
+    const taskIds = (text: string) =>
+      evaluateQuery(index, parseQuery(text).node).tasks.map((task) => task.id);
+    assert.deepStrictEqual(taskIds('due = this-week'), ['first', 'last']);
+    assert.deepStrictEqual(taskIds('due < next-week'), ['first', 'last', 'before']);
+    assert.deepStrictEqual(taskIds('due >= next-week'), ['next']);
+  });
+
+  test('Can start now switches a search to is:available and back', () => {
+    assert.strictEqual(toggleAvailable('is:open'), 'is:available');
+    assert.strictEqual(toggleAvailable('is:available'), 'is:open');
+    assert.strictEqual(toggleAvailable('is:open #project/atlas'), 'is:available #project/atlas');
+    assert.strictEqual(toggleAvailable('is:available #project/atlas'), 'is:open #project/atlas');
+    assert.strictEqual(toggleAvailable('#project/atlas'), 'is:available #project/atlas');
+    assert.strictEqual(toggleAvailable('#a OR #b'), 'is:available (#a OR #b)');
+    assert.strictEqual(toggleAvailable(''), 'is:available');
+    assert.strictEqual(hasAvailableTerm('#a is:available'), true);
+    assert.strictEqual(hasAvailableTerm('is:open'), false);
+  });
+
   test('matches in: against whole folders', () => {
     const index = createIndex();
     const sectionCount = (text: string) =>
@@ -535,6 +617,7 @@ function createPreferences(): PersistedPreferences {
     taskBoardLayout: 'board',
     taskBoardGroup: 'status',
       renderMode: 'markdown',
+      searchPreview: 'lines',
     tagOverviewSortMode: 'alphabetical',
     tagOverviewLayout: 'tabs',
   searchPageSize: 30,

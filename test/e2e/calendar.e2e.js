@@ -157,6 +157,59 @@ test('a hidden calendar skips updates and catches up when shown', async () => {
   assert.strictEqual(host.posted.length, before + 1, 'showing it draws once');
 });
 
+test('with weeks starting on Monday, the header and every row start on Monday', async () => {
+  await vscode.workspace.getConfiguration('deckard').update('calendar.weekStart', 'monday');
+  try {
+    const { view } = await openCalendar();
+    const header = view.findAll('.weekday').map((cell) => cell.textContent).filter(Boolean);
+    assert.deepStrictEqual(header, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    const weeks = view.findAll('[data-action="open-week"]');
+    assert.ok(weeks.length > 0);
+    weeks.forEach((button) => {
+      const [year, month, date] = button.getAttribute('data-date').split('-').map(Number);
+      assert.strictEqual(new Date(year, month - 1, date).getDay(), 1, 'the week opens from its Monday');
+    });
+    view.click(weeks[0]);
+    await settle();
+    const posted = view.posted[view.posted.length - 1];
+    assert.strictEqual(posted.type, 'openWeek');
+    assert.strictEqual(posted.date, weeks[0].getAttribute('data-date'));
+  } finally {
+    await vscode.workspace.getConfiguration('deckard').update('calendar.weekStart', undefined);
+  }
+});
+
+test('with the day panel on, a click chooses a day and opens nothing, and the panel follows the setting', async () => {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  await configuration.update('calendar.dayPanel', true);
+  try {
+    const { host, view, day } = await openCalendar();
+    assert.ok(view.find('.day-panel'), 'the panel is drawn under the month');
+    assert.match(view.find('#day-title').textContent, /· Today$/);
+    assert.ok(view.find('.day-note'), "today's daily note is offered");
+    const other = view
+      .findAll('[data-action="open-day"]')
+      .find((button) => !button.querySelector('.note-dot') && button.getAttribute('data-date') !== today);
+    const asked = vscode._test.shown.info.length;
+    view.click(other);
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    await settle();
+    assert.deepStrictEqual(opened, [], 'a click opens nothing');
+    assert.strictEqual(vscode._test.shown.info.length, asked, 'and asks nothing');
+    const posted = view.posted.filter((message) => message.type === 'selectDay');
+    assert.strictEqual(posted[posted.length - 1].date, other.getAttribute('data-date'));
+    assert.strictEqual(day(other.getAttribute('data-date')).classList.contains('selected'), true, 'the host draws it chosen');
+
+    const html = host.webview.html;
+    await configuration.update('calendar.dayPanel', false);
+    await settle();
+    assert.strictEqual(host.webview.html, html, 'no reload');
+    assert.strictEqual(view.findAll('.day-panel').length, 0, 'the panel goes');
+  } finally {
+    await configuration.update('calendar.dayPanel', undefined);
+  }
+});
+
 // ---------------------------------------------------------------------------
 
 (async () => {

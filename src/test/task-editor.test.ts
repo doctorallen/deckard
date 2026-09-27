@@ -18,7 +18,9 @@ import {
   setDraftDate,
   setDraftDependencies,
   TaskEditorActions,
+  writeEditedTask,
 } from '../ui/commands/taskEditor';
+import { describeCompletion } from '../ui/commands/taskActions';
 
 /** A Monday morning, so a weekday answer is easy to read. */
 const now = new Date(2026, 8, 21, 9, 0, 0).getTime();
@@ -80,6 +82,51 @@ suite('Task editor', () => {
       already.done,
       '2026-09-18',
       'a done date already written is the one it keeps',
+    );
+  });
+
+  test('marking a repeating task done writes its next occurrence above it', () => {
+    const before = parseTaskDraft('- [ ] Water the plants 🔁 every week 📅 2026-09-21');
+    const done = completeDraft(before, now);
+    const written = writeEditedTask(before, done, now, '\n');
+    assert.strictEqual(
+      written.text,
+      '- [ ] Water the plants 🔁 every week 📅 2026-09-28\n- [x] Water the plants 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
+    );
+    assert.strictEqual(written.next, '- [ ] Water the plants 🔁 every week 📅 2026-09-28');
+
+    // Reopening writes the one line, and so does editing a task already done.
+    const reopened = writeEditedTask(done, completeDraft(done, now), now, '\n');
+    assert.strictEqual(reopened.text, '- [ ] Water the plants 🔁 every week 📅 2026-09-21');
+    assert.strictEqual(
+      writeEditedTask(done, { ...done, description: 'Water the ferns' }, now, '\n').next,
+      undefined,
+    );
+  });
+
+  test('a completion says in one message what it started, or what it could not read', () => {
+    assert.deepStrictEqual(
+      describeCompletion('Water the plants', '- [ ] Water the plants 📅 2026-10-02'),
+      {
+        text: 'Completed "Water the plants", and started the next one, due 2026-10-02.',
+        severity: 'info',
+      },
+    );
+    assert.deepStrictEqual(describeCompletion('Howl', undefined, 'every blue moon'), {
+      text: 'Completed "Howl". Deckard could not read its repeat rule "every blue moon", so no next one was added.',
+      severity: 'warning',
+    });
+    assert.deepStrictEqual(describeCompletion('Plain'), {
+      text: 'Completed "Plain".',
+      severity: 'info',
+    });
+  });
+
+  test('completing writes no done date when the setting is off', () => {
+    const before = parseTaskDraft('- [ ] Ship it');
+    assert.strictEqual(
+      writeEditedTask(before, completeDraft(before, now, false), now, '\n').text,
+      '- [x] Ship it',
     );
   });
 
@@ -179,7 +226,7 @@ suite('Task editor', () => {
         new vscode.Range(line, 0, line, 0);
       assert.deepStrictEqual(
         actions.provideCodeActions(document, at(0)).map((action) => action.title),
-        ['Edit task…'],
+        ['Edit task…', 'Break into steps…'],
       );
       assert.deepStrictEqual(actions.provideCodeActions(document, at(1)), []);
     } finally {

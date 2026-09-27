@@ -169,7 +169,7 @@ export class AssistantTools implements vscode.Disposable {
   ): Promise<vscode.LanguageModelToolResult> {
     if (!areToolsEnabled()) {
       return textResult(
-        "Deckard's assistant tools are turned off. The deckard.assistantTools setting turns them on.",
+        "Deckard's assistant tools are turned off. The \"Assistant Tools\" setting in Deckard's settings turns them on.",
       );
     }
     this.allowed = true;
@@ -187,7 +187,7 @@ export class AssistantTools implements vscode.Disposable {
       confirmationMessages: {
         title: 'Let the assistant read your notes?',
         message: new vscode.MarkdownString(
-          'Deckard will give the assistant matching notes and tasks from this workspace, and the assistant may send them to its model service. Deckard asks once per session, and the `deckard.assistantTools` setting turns these tools off.',
+          'Deckard will give the assistant matching notes and tasks from this workspace, and the assistant may send them to its model service. Deckard asks once per session, and the "Assistant Tools" setting in Deckard\'s settings turns these tools off.',
         ),
       },
     };
@@ -203,7 +203,7 @@ export class AssistantTools implements vscode.Disposable {
   ): Promise<vscode.LanguageModelToolResult> {
     if (!areToolsEnabled()) {
       return textResult(
-        "Deckard's assistant tools are turned off. The deckard.assistantTools setting turns them on.",
+        "Deckard's assistant tools are turned off. The \"Assistant Tools\" setting in Deckard's settings turns them on.",
       );
     }
     this.allowed = true;

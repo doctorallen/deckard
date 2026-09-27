@@ -13,10 +13,14 @@ import {
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readTaskMetadataFormat } from './taskActions';
+import { whenPublished } from '../../core/workspace/publishing';
 
 interface TaskIndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   getSnapshot(): WorkspaceIndex;
+  /** Whether a file is one of the notes, not a README in a code folder. */
+  isNotesFile?(uri: vscode.Uri): boolean;
 }
 
 export interface TaskMetadataSuggestionSettings {
@@ -89,7 +93,11 @@ export class TaskMetadataCompletionProvider implements vscode.Disposable {
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
     const settings = this.readSettings(document);
-    if (!settings.enabled || !isMarkdownFile(document.uri)) {
+    if (
+      !settings.enabled ||
+      !isMarkdownFile(document.uri) ||
+      !(this.indexer.isNotesFile?.(document.uri) ?? true)
+    ) {
       return [];
     }
 
@@ -112,7 +120,7 @@ export class TaskMetadataCompletionProvider implements vscode.Disposable {
       position.line,
       position.character,
     );
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     return createSuggestions(this.now(), this.indexer.getSnapshot()).map(
       (suggestion, index) => toCompletionItem(suggestion, format, range, index),
     );

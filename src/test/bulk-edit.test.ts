@@ -11,13 +11,14 @@ import {
   applyBulkEdit,
   BulkEntry,
   describeBulkEdit,
+  bulkEditSeverity,
   describeBulkEditResult,
 } from '../ui/commands/bulkEdit';
 import {
   describeEntry,
   listBulkEdits,
-  parseBulkDate,
 } from '../ui/commands/bulkEditPrompts';
+import { DATE_INPUT_ERROR, validateDateInput } from '../ui/commands/datePrompt';
 import { parseSearchPageMessage } from '../ui/webview/messages';
 import { workspaceWrites } from '../ui/commands/workspaceWrites';
 
@@ -53,19 +54,34 @@ suite('Bulk edits', () => {
       '- [ ] Book the room',
       'nothing but one tag is written',
     );
+    assert.strictEqual(
+      appendTagToLine('## Decision ##', '#risk/vendor'),
+      '## Decision #risk/vendor ##',
+      'a heading keeps its closing hashes',
+    );
+    assert.strictEqual(
+      appendTagToLine('- [ ] Book the room ^room', '#project/atlas'),
+      '- [ ] Book the room #project/atlas ^room',
+      'a block id stays last, where it is read as one',
+    );
+    assert.strictEqual(
+      appendTagToLine('## Decision ## ^pick', '#risk/vendor'),
+      '## Decision #risk/vendor ## ^pick',
+    );
   });
 
-  test('reads the date a reader writes', () => {
+  test('reads the date a reader writes, as every date box does', () => {
     const now = new Date(2026, 8, 19, 10, 0, 0).getTime();
-    assert.deepStrictEqual(parseBulkDate('2026-09-20', now), {
-      date: '2026-09-20',
-    });
-    assert.deepStrictEqual(parseBulkDate('today', now), { date: '2026-09-19' });
-    assert.deepStrictEqual(parseBulkDate('Tomorrow', now), {
-      date: '2026-09-20',
-    });
-    assert.deepStrictEqual(parseBulkDate('  ', now), { date: undefined });
-    assert.strictEqual(parseBulkDate('next week', now), undefined);
+    const message = (value: string) => {
+      const said = validateDateInput(value, now);
+      return typeof said === 'object' ? said.message : said;
+    };
+    assert.strictEqual(message('2026-09-20'), 'Sunday 2026-09-20 · tomorrow');
+    assert.strictEqual(message('today'), 'Saturday 2026-09-19 · today');
+    assert.strictEqual(message('Tomorrow'), 'Sunday 2026-09-20 · tomorrow');
+    assert.strictEqual(message('  '), undefined, 'empty clears the date');
+    assert.strictEqual(message('next week'), 'Monday 2026-09-21 · in 2 days');
+    assert.strictEqual(message('whenever'), DATE_INPUT_ERROR);
   });
 
   test('offers notes only what a note can take', () => {
@@ -127,10 +143,26 @@ suite('Bulk edits', () => {
       completed: false,
     });
     assert.deepStrictEqual(
-      { changed: again?.changed, skipped: again?.skipped },
-      { changed: 0, skipped: 3 },
+      { changed: again?.changed, skipped: again?.skipped, stale: again?.stale },
+      { changed: 0, skipped: 3, stale: 3 },
       'the lines have changed since indexing, so nothing is overwritten',
     );
+    await clean();
+  });
+
+  test('writes a due date of its own on each task, as one write', async () => {
+    const { file, read, clean } = await writeNote(note);
+    const open = file.tasks.filter((task) => !task.completed);
+    const dates = new Map(open.map((task, index) => [task.id, `2026-10-0${index + 1}`]));
+    const result = await applyBulkEdit(
+      open.map((task) => ({ kind: 'task', task })),
+      { kind: 'dueEach', dates },
+    );
+    assert.strictEqual(result?.changed, open.length);
+    const after = await read();
+    assert.ok(after.includes('- [ ] Chase the contractor 📅 2026-10-01'), after);
+    assert.ok(after.includes('- [ ] Book the room 📅 2026-10-02'), after);
+    assert.strictEqual(describeBulkEdit({ kind: 'dueEach', dates }, 3), 'spreading the due dates of 3 results');
     await clean();
   });
 
@@ -164,19 +196,60 @@ suite('Bulk edits', () => {
       describeBulkEdit({ kind: 'tag', tag: '#a' }, 2),
       'adding #a to 2 results',
     );
+    const tag = { kind: 'tag', tag: '#a' } as const;
+    const unchanged = { changed: 2, skipped: 1, unchanged: 1, stale: 0, notes: 2 };
+    assert.strictEqual(
+      describeBulkEditResult(tag, unchanged),
+      'Added #a to 2 results in 2 notes. 1 was already as you asked.',
+    );
+    assert.strictEqual(bulkEditSeverity(unchanged), 'info');
+    const partly = { changed: 2, skipped: 1, unchanged: 0, stale: 1, notes: 2 };
+    assert.strictEqual(
+      describeBulkEditResult(tag, partly),
+      'Added #a to 2 results in 2 notes. 1 result changed after Deckard last read it and was left as it is.',
+    );
+    assert.strictEqual(bulkEditSeverity(partly), 'warning');
+    const nothing = { changed: 0, skipped: 2, unchanged: 2, stale: 0, notes: 0 };
+    assert.strictEqual(
+      describeBulkEditResult({ kind: 'complete', completed: true }, nothing),
+      'Nothing to change: every result is already as you asked.',
+    );
+    assert.strictEqual(bulkEditSeverity(nothing), 'info');
+    const stale = {
+      changed: 0,
+      skipped: 1,
+      unchanged: 0,
+      stale: 1,
+      staleUris: [vscode.Uri.file('/notes/atlas.md')],
+      notes: 0,
+    };
+    assert.strictEqual(
+      describeBulkEditResult(tag, stale),
+      'atlas.md changed after Deckard last read it, so nothing was written.',
+    );
+    assert.strictEqual(bulkEditSeverity(stale), 'error');
     assert.strictEqual(
       describeBulkEditResult(
-        { kind: 'tag', tag: '#a' },
-        { changed: 2, skipped: 1, notes: 2 },
-      ),
-      'Added #a to 2 results in 2 notes. 1 was left as they are.',
-    );
-    assert.ok(
-      describeBulkEditResult(
         { kind: 'complete', completed: true },
-        { changed: 0, skipped: 2, notes: 0 },
-      ).startsWith('Nothing to change'),
+        { changed: 3, skipped: 0, notes: 1, unreadRules: 2 },
+      ),
+      'Completed 3 results in 1 note. Deckard could not read the repeat rule on 2 of them, so no next one was added.',
     );
+  });
+
+  test('counts the repeat rules it could not read', async () => {
+    const { file, read, clean } = await writeNote(
+      '# Odd\n\n- [ ] Howl 🔁 every blue moon\n- [ ] Plain\n',
+    );
+    const result = await applyBulkEdit(
+      file.tasks.map((task) => ({ kind: 'task', task })),
+      { kind: 'complete', completed: true },
+    );
+    assert.strictEqual(result?.changed, 2);
+    assert.strictEqual(result.unreadRules, 1);
+    assert.ok((await read()).includes('- [x] Howl 🔁 every blue moon'));
+    await workspaceWrites.undo();
+    await clean();
   });
 
   test('reads a result the way the list of them shows it', () => {

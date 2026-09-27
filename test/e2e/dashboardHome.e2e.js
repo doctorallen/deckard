@@ -58,6 +58,8 @@ async function openDashboard(
   index = createIndex(),
   prepare = async () => undefined,
   indexerExtras = {},
+  whatsNew = undefined,
+  tryNext = undefined,
 ) {
   vscode._test.createdPanels.length = 0;
   const updates = new vscode.EventEmitter();
@@ -75,6 +77,8 @@ async function openDashboard(
     preferences,
     { fsPath: '/ext' },
     navigation,
+    whatsNew,
+    tryNext,
   );
   await dashboard.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -167,11 +171,71 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     // Home starts with its default widgets.
     assert.deepStrictEqual(
       view.findAll('.home-widget').map((widget) => widget.dataset.widgetId),
-      ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches'],
+      ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
     );
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
-    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Zen']);
+    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Zen']);
   }
+});
+
+test('after an update Home says so once, and Dismiss takes the line away', async () => {
+  const changed = new vscode.EventEmitter();
+  let pending = { version: '1.23' };
+  const whatsNew = {
+    pending: () => pending,
+    clear: async () => {
+      pending = undefined;
+      changed.fire();
+    },
+    onDidChange: changed.event,
+  };
+  const { view, lastState } = await openDashboard(createIndex(), undefined, {}, whatsNew);
+  assert.deepStrictEqual(lastState().data.whatsNew, { version: '1.23' });
+  assert.strictEqual(view.find('.whats-new-bar span').textContent, 'Updated to Deckard 1.23.');
+
+  view.click(view.find('[data-action="dismiss-whats-new"]'));
+  await delay(20);
+  assert.strictEqual(lastState().data.whatsNew, undefined, 'the next state has no line');
+  assert.strictEqual(view.findAll('.whats-new-bar').length, 0);
+});
+
+test('Try next suggests the Task board, and runs only the command it chose', async () => {
+  const index = createIndex();
+  for (let i = 0; i < 8; i += 1) {
+    const id = `more-${i}`;
+    index.tasks.set(id, { ...index.tasks.get('audit'), id, title: `More ${i}`, lineNumber: 10 + i });
+  }
+  const changed = new vscode.EventEmitter();
+  const retired = new Set();
+  const ledger = {
+    retired: () => retired,
+    snoozed: () => ({}),
+    retire: async (key) => {
+      retired.add(key);
+      changed.fire();
+    },
+    snooze: async () => undefined,
+    onDidChange: changed.event,
+  };
+  const { view, lastState } = await openDashboard(index, undefined, {}, undefined, ledger);
+  const card = lastState().data.widgets.find((widget) => widget.kind === 'tryNext');
+  assert.strictEqual(card.tryNext.id, 'taskBoard');
+  assert.match(view.find('.try-next-text').textContent, /^You have 11 open tasks\./);
+
+  vscode._test.executedCommands.length = 0;
+  view.posted.length = 0;
+  view.click(view.find('[data-action="run-try-next"]'));
+  await delay(20);
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.map((entry) => entry.command),
+    ['deckard.showTaskBoard'],
+  );
+
+  view.click(view.find('[data-action="retire-try-next"]'));
+  await delay(20);
+  assert.ok(retired.has('taskBoard'));
+  assert.strictEqual(lastState().data.widgets.find((widget) => widget.kind === 'tryNext').tryNext, undefined);
+  assert.strictEqual(view.findAll('.home-widget[data-widget-id="tryNext"]').length, 0);
 });
 
 test('a hidden Dashboard skips updates and catches up when shown', async () => {
@@ -226,6 +290,21 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
   assert.strictEqual(view.find('h1').textContent, 'Dashboard: Tags', 'All tags goes to the Tags tab');
 });
 
+test('a saved search offers to show its results on Home, once', async () => {
+  const { view, preferences } = await openDashboard(createIndex(), async (store) => {
+    await store.saveSavedQueryFilter('Open work', 'is:open');
+  });
+  const savedId = preferences.value.savedFilters[0].id;
+  const show = () => view.find(`[data-action="add-saved-search-widget"][data-saved-filter-id="${savedId}"]`);
+  assert.ok(show(), 'its row offers Show results');
+  assert.strictEqual(show().getAttribute('aria-label'), 'Show the results of Open work on Home');
+  view.click(show());
+  await delay(20);
+  const widgets = preferences.value.dashboardWidgets.filter((widget) => widget.kind === 'savedQuery');
+  assert.deepStrictEqual(widgets.map((widget) => [widget.filterId, widget.width, widget.count]), [[savedId, 'half', 5]]);
+  assert.strictEqual(show(), null, 'and no longer offers it');
+});
+
 test('customizing Home removes, resizes, adds, reorders, and resets widgets', async () => {
   const { view, preferences, lastState } = await openDashboard(createIndex(), async (store) => {
     await store.saveSavedQueryFilter('Open work', 'is:open');
@@ -242,18 +321,20 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
 
   view.click(widget('agenda').querySelector('[data-action="remove-widget"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), ['search', 'tasks', 'favoriteTags', 'savedSearches']);
+  // Try next is drawn while Home is arranged, though it has nothing to suggest.
+  assert.deepStrictEqual(ids(), ['tryNext', 'search', 'tasks', 'favoriteTags', 'savedSearches']);
   assert.ok(view.find('.home-edit-bar'), 'a change keeps Home in customizing');
   assert.strictEqual(lastState().data.homeArranged, true, 'and the host knows Home has been arranged');
 
   view.click(widget('tasks').querySelector('[data-action="set-widget-width"][data-value="full"]'));
   await delay(20);
   assert.ok(widget('tasks').classList.contains('is-full'));
-  assert.strictEqual(preferences.value.dashboardWidgets[1].width, 'full');
+  const tasksConfig = () => preferences.value.dashboardWidgets.find((entry) => entry.id === 'tasks');
+  assert.strictEqual(tasksConfig().width, 'full');
 
   view.click(widget('tasks').querySelector('[data-action="set-widget-count"][data-value="10"]'));
   await delay(20);
-  assert.strictEqual(preferences.value.dashboardWidgets[1].count, 10);
+  assert.strictEqual(tasksConfig().count, 10);
 
   const add = view.find('[data-action="add-widget"]');
   const offered = add.children.map((option) => option.getAttribute('value'));
@@ -274,12 +355,12 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.fire('pointermove', widget(added), { pointerId: 1, clientX: 10, clientY: 5 });
   view.fire('pointerup', widget(added), { pointerId: 1, clientX: 10, clientY: 5 });
   await delay(20);
-  assert.deepStrictEqual(ids(), [added, 'search', 'tasks', 'favoriteTags', 'savedSearches']);
+  assert.deepStrictEqual(ids(), ['tryNext', added, 'search', 'tasks', 'favoriteTags', 'savedSearches']);
 
   view.fire('contextmenu', widget('search'));
   assert.deepStrictEqual(
     view.findAll('#rank-context-menu button').map((button) => button.textContent),
-    ['Move to first', 'Move to last'],
+    ['Move up', 'Move down', 'Move to first', 'Move to last'],
   );
   view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
   await delay(20);
@@ -288,7 +369,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   // Reset discards an arrangement, so it asks before it does.
   view.click(view.find('[data-action="reset-widgets"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), [added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes until it is confirmed');
+  assert.deepStrictEqual(ids(), ['tryNext', added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes until it is confirmed');
   view.click(view.find('[data-action="cancel-reset-widgets"]'));
   await delay(20);
   assert.ok(view.find('[data-action="reset-widgets"]'), 'Reset is offered again');
@@ -296,7 +377,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.click(view.find('[data-action="reset-widgets"]'));
   view.click(view.find('[data-action="confirm-reset-widgets"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches']);
+  assert.deepStrictEqual(ids(), ['tryNext', 'search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches']);
 
   view.click(view.find('.home-edit-bar [data-action="finish-customizing"]'));
   assert.strictEqual(view.find('.home-edit-bar'), null);
@@ -333,6 +414,47 @@ test('a widget\'s gear is a control, not a handle to drag the widget by', async 
   );
 });
 
+test('the tiles say what is overdue, due today, and open, and each opens its search', async () => {
+  const { view, navigation } = await openDashboard();
+  const tiles = view.findAll('.metrics .metric-open');
+  assert.deepStrictEqual(
+    tiles.map((tile) => tile.querySelector('.metric-label').textContent),
+    ['Overdue', 'Due today', 'Open'],
+  );
+  view.click(tiles[1]);
+  await delay(20);
+  assert.strictEqual(navigation.opened[navigation.opened.length - 1], 'search is:today');
+});
+
+test('Gone quiet chooses its namespace, and a project with nothing open offers a next action', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 1 }, {});
+  const files = [
+    note('notes/beacon.md', '# Beacon #project/beacon\n- [x] Shipped'),
+    note('notes/ren.md', '# Call @ren-kade'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view, preferences } = await openDashboard(index, async (store) => {
+    await store.setDashboardWidgets([
+      { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 30, namespace: 'project', noOpenTasks: true },
+    ]);
+  });
+  const action = view.find('.home-widget[data-widget-id="q"] [data-action="add-next-action"]');
+  assert.ok(action, 'a stuck project offers its next action');
+  view.posted.length = 0;
+  view.click(action);
+  assert.deepStrictEqual(view.posted.filter((message) => message.type === 'addNextAction'), [
+    { type: 'addNextAction', tagKey: '#project/beacon' },
+  ]);
+
+  view.click(view.find('[data-action="customize-home"]'));
+  const select = view.find('.home-widget[data-widget-id="q"] [data-action="set-widget-namespace"]');
+  assert.ok(select, 'the gear chooses the namespace');
+  assert.ok(view.find('.home-widget[data-widget-id="q"] [data-action="set-widget-no-open-tasks"]'));
+  view.change(select, 'person');
+  await delay(20);
+  assert.strictEqual(preferences.value.dashboardWidgets[0].namespace, undefined, 'person is the default');
+});
+
 test('a tasks widget runs the search set in its options', async () => {
   const { view, preferences } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));
@@ -342,7 +464,10 @@ test('a tasks widget runs the search set in its options', async () => {
   view.type(field(), 'text ~ audit');
   view.submit(view.find('.home-widget[data-widget-id="tasks"] [data-form="widget-query"]'));
   await delay(20);
-  assert.strictEqual(preferences.value.dashboardWidgets[1].query, 'text ~ audit');
+  assert.strictEqual(
+    preferences.value.dashboardWidgets.find((widget) => widget.id === 'tasks').query,
+    'text ~ audit',
+  );
   assert.deepStrictEqual(
     view.findAll('.home-widget[data-widget-id="tasks"] .task-row').map((row) => row.dataset.taskId),
     ['audit'],
@@ -491,7 +616,7 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   view.fire('contextmenu', row('#beta'));
   assert.deepStrictEqual(
     view.findAll('#rank-context-menu button').map((button) => button.textContent),
-    ['Rename tag', 'Move to top', 'Move to bottom'],
+    ['Rename tag', 'Park tag', 'Move up', 'Move down', 'Move to top', 'Move to bottom'],
   );
   view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
   assert.deepStrictEqual(sent('reorderTags')[1].tagKeys.slice(-1), ['#beta']);
@@ -499,6 +624,10 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   view.fire('contextmenu', row('#gamma'));
   view.click(view.find('#rank-context-menu [data-context-action="rename-tag"]'));
   assert.deepStrictEqual(sent('renameTag'), [{ type: 'renameTag', tagKey: '#gamma' }]);
+
+  view.fire('contextmenu', row('#gamma'));
+  view.click(view.find('#rank-context-menu [data-context-action="park-tag"]'));
+  assert.deepStrictEqual(sent('parkTag'), [{ type: 'parkTag', tagKey: '#gamma' }]);
 });
 
 test('typing a tag search keeps focus and text through a host update', async () => {

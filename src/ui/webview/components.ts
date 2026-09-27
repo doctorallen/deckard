@@ -13,8 +13,15 @@
 
 import * as vscode from 'vscode';
 import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import {
+  deckardThemeNames,
+  getDeckardTheme,
+  getDeckardThemeCss,
+  onDidChangeThemePreview,
+} from './themes';
 import { isZenModeEnabled } from './zenMode';
+import { ENABLED } from './selectors';
+export { ENABLED };
 
 /**
  * The palette every webview starts from.
@@ -39,6 +46,9 @@ export function getDesignTokens(): string {
   --line: #212936;
   --slate-border: #212936;
   --line-strong: #34445A;
+  /* The edge of a text field or a list box, which WCAG asks to stand 3:1
+     from the ground around it; the hairline --line is for dividers. */
+  --control-line: #5A6B82;
   --cyan: #3ED4E8;
   --cyan-bright: #5FE1F0;
   --green: #66E066;
@@ -96,6 +106,18 @@ export function getDesignTokens(): string {
   --favorite: var(--amber-bright);
   --positive: var(--green);
   --focus: var(--cyan);
+  /* A focus ring is drawn at least 2px in every theme, zen included, rather
+     than at the edge width, which is a hairline in Corpo and zen. */
+  --focus-width: 2px;
+  /* The stacking order, low to high. Every popover, menu, tip, sheet, and
+     drag ghost takes one of these, so a new one cannot land between two
+     others by accident: the drag ghost used to sit under the menus. */
+  --z-raised: 1;
+  --z-dropdown: 10;
+  --z-menu: 20;
+  --z-tooltip: 30;
+  --z-modal: 40;
+  --z-drag: 50;
 }`;
 }
 
@@ -175,7 +197,7 @@ button { cursor: pointer; }
    the pointer still reads as chosen by the bar along its foot, which the
    hover ground does not cover. Hover raises the ground; chosen keeps the
    control's own ground and marks it with the accent border and the bar. */
-button:hover, select:hover, .tag-open:hover {
+button:hover${ENABLED}, select:hover${ENABLED}, .tag-open:hover {
   border-color: var(--amber);
   background: var(--hover-bg);
   color: var(--hover-fg);
@@ -196,15 +218,28 @@ input[type="text"]:focus, input[type="search"]:focus {
 /* Anything inside a control follows the control's own text color, so a hover
    that flips the background cannot leave a count or an icon on top of it in
    a color chosen for the background it used to have. */
-button:hover *, button.active *, button:focus-visible *,
+button:hover${ENABLED} *, button.active *, button:focus-visible *,
 .tag-open:hover *, .tag-open:focus-visible * {
   color: inherit;
 }
 button:focus-visible, select:focus-visible, input:focus-visible {
-  outline: var(--edge) solid var(--focus);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
 }
-button[disabled] { opacity: .5; cursor: default; }
+/* A control that cannot act yet. One that holds its place in a bar uses
+   aria-disabled instead of disabled, so it stays in the Tab order and its
+   tip says why (data-tip-disabled); both look the same, and neither lights
+   up under the pointer (the ENABLED guard on every hover rule). */
+button:disabled, button[aria-disabled="true"] { opacity: .5; cursor: default; }
+/* The one button that commits what cannot be put back. Neutral, with a
+   heavier edge: red means overdue and nothing else. Never the only or the
+   first button in its row, and never filled at rest. */
+button.danger { border-width: calc(var(--edge) + 1px); border-color: var(--text); font-weight: 650; }
+/* Undo, for 8 seconds, at the foot of the window: where it cannot be
+   scrolled past or closed with the panel the removal was made in. */
+.undo-toast { position: fixed; left: 50%; bottom: var(--space-4); z-index: var(--z-menu); transform: translateX(-50%); max-width: calc(100vw - 2 * var(--space-4)); }
+.undo-toast:empty { display: none; }
+.undo-notice { display: inline-flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); border: var(--edge) solid var(--amber); border-radius: var(--control-radius); background: var(--panel-raised); color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* The status node every page announces through. Off-screen, never hidden
    with display:none, which would stop it being announced at all. */
@@ -221,6 +256,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   white-space: nowrap;
 }
 .toolbar { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.history-buttons { display: inline-flex; gap: var(--space-1); }
 .toolbar label {
   display: inline-flex;
   align-items: center;
@@ -234,8 +270,8 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* A labeled control, such as a sort, drawn the same way on every page. */
 .control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
-.control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
-.control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
+.control-icon-svg { position: absolute; z-index: var(--z-raised); top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
+.control-icon select:hover${ENABLED} + .control-icon-svg { color: var(--hover-fg); }
 .control-icon select { padding-left: 29px; }
 
 /* Notes and Tasks tabs over a set of results, on a page that lists both. */
@@ -248,7 +284,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .segmented > * + * { margin-left: calc(var(--edge) * -1); }
 .segmented > :first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .segmented > :last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
-.segmented > .active { position: relative; z-index: 1; }
+.segmented > .active { position: relative; z-index: var(--z-raised); }
 
 /* An icon-only control, square and the same height as the rest. */
 .icon-button {
@@ -268,7 +304,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .page-range { color: var(--muted); font-family: var(--font-mono); }
 .page-controls { display: flex; align-items: center; gap: 4px; }
 .pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
-.pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.pagination button:hover${ENABLED}:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
 .pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--panel-raised); color: var(--text); box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg); }
 .page-gap { color: var(--muted); padding: 0 2px; }
@@ -277,7 +313,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
    own, and this marks every other group the same way, rather than leaving
    them with the inverted treatment a pressed button takes. */
 .segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"],
-.segmented button.active:hover, .segmented button[aria-pressed="true"]:hover, .segmented button[aria-selected="true"]:hover {
+.segmented button.active:hover${ENABLED}, .segmented button[aria-pressed="true"]:hover${ENABLED}, .segmented button[aria-selected="true"]:hover${ENABLED} {
   border-color: var(--chosen-bg);
   background: var(--panel-raised);
   color: var(--text);
@@ -295,9 +331,9 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
 .view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
-.view-options summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
+.view-options summary:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
-.view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
+.view-options-menu { position: absolute; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* A group whose control is taller than a row, such as a list, sits under its label. */
 .view-options-group.is-stacked { display: grid; justify-content: stretch; }
@@ -307,7 +343,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices button + button { margin-left: -1px; }
 .view-options-choices button:first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .view-options-choices button:last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
-.view-options-choices button.active { position: relative; z-index: 1; }`;
+.view-options-choices button.active { position: relative; z-index: var(--z-raised); }`;
 }
 
 /**
@@ -323,10 +359,6 @@ export function getTagCss(): string {
    heading or a control a theme shouts would otherwise shout the tag too. */
 .tag-open, .inline-tag { text-transform: none; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }
-/* A tag in a title opens that tag rather than controlling the view, so it is
-   drawn as a hairline with no fill and no control height: the boxes a reader
-   sees elsewhere mean "this changes what is listed". */
-.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }
 .inline-tag {
   min-height: 24px;
   margin-left: 3px;
@@ -334,7 +366,18 @@ export function getTagCss(): string {
   font-size: .78em;
   vertical-align: 1px;
 }
-.tag-namespace { opacity: .62; }
+/* The namespace is told from the name by color, not by fading it: at 62%
+   it fell under 3:1 on every dark ground. */
+.tag-namespace { color: var(--muted); }
+/* One line, always. A tag or chip too long for its place keeps to one line
+   and shortens, the namespace first down to about #p…/, then the value; the
+   whole tag is its tip (data-tip-overflow) and its accessible name. This is
+   geometry only, so any look a view gives its tags composes with it. */
+.tag-open, .inline-tag, .query-chip, .query-facet-value { max-width: 100%; min-width: 0; }
+.tag-label { display: inline-flex; max-width: 100%; min-width: 0; vertical-align: bottom; white-space: nowrap; }
+.tag-label > .tag-namespace { display: inline-flex; flex: 0 1000 auto; min-width: 3ch; }
+.tag-namespace-text, .tag-label > .tag-value, .query-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-label > .tag-value { flex: 0 1 auto; }
 /* How much a tag weighs, as a rail of three steps: Related Notes' active
    tags, and related tags in Refine. Empty steps are faint so filled ones read. */
 .tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
@@ -342,28 +385,99 @@ export function getTagCss(): string {
 .tag-weight-rail-segment.filled { background: var(--cyan); opacity: 1; }
 .task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
 
-/* Right-click actions on any tag. */
-.tag-context-menu {
-  position: fixed;
-  z-index: 20;
+/* Right-click actions on any tag; drawn by .popover. */
+.tag-context-menu { position: fixed; }
+/* A searched word where it appears in a result. */
+mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transparent); color: inherit; }
+/* The page's keys, on ?. */
+.key-sheet { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.key-sheet-panel { max-width: 520px; max-height: calc(100vh - 48px); overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); color: var(--text); padding: var(--space-4); }
+.key-sheet-panel h2 { margin: 0 0 var(--space-2); }
+.key-sheet-panel h3 { margin: var(--space-3) 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.key-sheet-panel dl { display: grid; gap: var(--space-1); margin: 0; }
+.key-sheet-panel dl div { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: var(--space-3); }
+.key-sheet-panel dt, .key-sheet-panel dd { margin: 0; }
+.key-sheet-panel kbd { font-family: var(--font-mono); color: var(--cyan); }
+.key-sheet-panel button { margin-top: var(--space-4); }
+/* A group's name inside a menu of several: Status, Priority, Due. */
+.tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.tag-context-menu > .menu-group:first-child .menu-heading { padding-top: var(--space-1); }`;
+}
+
+/**
+ * What a page shows before its first state arrives: `#app`, busy, holding
+ * one `.loading` line. `attributes` adds any the page's main carries.
+ */
+export function loadingHtml(label: string, attributes = ''): string {
+  return `<main id="app"${attributes ? ` ${attributes}` : ''} aria-busy="true"><div class="loading" role="status"><span>${label}</span></div></main>`;
+}
+
+/**
+ * An icon-only button for HTML the host builds, the twin of the page
+ * script's renderIconButton: its label is its name and its tip, and it never
+ * carries title, which no keyboard ever saw.
+ */
+export function iconButtonHtml(options: {
+  id?: string;
+  action?: string;
+  label: string;
+  icon: string;
+  tip?: string;
+  key?: string;
+  className?: string;
+}): string {
+  const escape = (value: string): string =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return `<button type="button" class="icon-button${options.className ? ` ${options.className}` : ''}"`
+    + (options.id ? ` id="${escape(options.id)}"` : '')
+    + (options.action ? ` data-action="${escape(options.action)}"` : '')
+    + ` aria-label="${escape(options.label)}" data-tip="${escape(options.tip ?? options.label)}"`
+    + (options.key ? ` data-tip-key="${escape(options.key)}"` : '')
+    + `>${options.icon}</button>`;
+}
+
+/**
+ * Everything that floats over a page: menus, the gear's menu, completions,
+ * and tips. One look, one stacking order, and one menu row, so the tag menu,
+ * the card menu, the rank menu, and the gear read as one family. Each keeps
+ * its own class for where it is placed.
+ */
+export function getPopoverCss(): string {
+  return `
+.popover {
+  z-index: var(--z-menu);
   min-width: 150px;
-  padding: 4px;
+  padding: var(--space-1);
   border: var(--edge) solid var(--amber);
+  border-radius: var(--control-radius);
   background: var(--panel-raised);
+  color: var(--text);
   box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
 }
-.tag-context-menu[hidden] { display: none; }
-.tag-context-menu button {
-  display: block;
+.popover[hidden] { display: none; }
+.popover.is-dropdown { z-index: var(--z-dropdown); }
+.popover.is-tip { z-index: var(--z-tooltip); max-width: 280px; padding: var(--space-1) var(--space-2); border-width: 1px; border-color: var(--line-strong); font-size: var(--text-xs); line-height: 1.4; }
+/* One row for every menu. 28px tall, over WCAG 2.5.8's 24px. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   width: 100%;
+  min-height: 28px;
+  margin: 0;
   border: 0;
-  padding: 8px 9px;
+  padding: 0 var(--space-2);
   text-align: left;
   text-transform: none;
 }
-/* A group's name inside a menu of several: Status, Priority, Due. */
-.tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.tag-context-menu .menu-heading:first-child { padding-top: var(--space-1); }`;
+.menu-check { flex: 0 0 16px; display: inline-grid; place-items: center; }
+.menu-check svg { width: 14px; height: 14px; }
+.menu-key { margin-left: auto; padding-left: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+button.menu-item:hover${ENABLED} .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }
+/* The one tip every page shares (data-tip), placed by the page script. A
+   facet value's tip runs to several lines, so its line breaks are kept. */
+#deckard-tip { position: fixed; white-space: pre-line; }
+#deckard-tip kbd { margin-left: var(--space-1); font-family: var(--font-mono); }`;
 }
 
 /**
@@ -385,7 +499,7 @@ export function getSurfaceCss(): string {
 }
 .row:hover, .card:hover, .task:hover { border-color: var(--amber); }
 .row:focus-visible, .card:focus-visible, .task:focus-visible {
-  outline: var(--edge) solid var(--focus);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 1px;
 }
 .row[hidden] { display: none; }
@@ -394,6 +508,9 @@ export function getSurfaceCss(): string {
 .card { padding: var(--space-4); }
 .card[hidden], .task[hidden] { display: none; }
 .card-title { margin: 0; color: var(--cyan); font-size: 16px; overflow-wrap: anywhere; }
+/* A parked result: muted words, no box, at the size of the other small meta. */
+.parked-label { margin-left: var(--space-2); color: var(--muted); font-size: var(--text-xs); font-weight: normal; }
+.task-meta .parked-label { margin-left: 0; }
 
 .task {
   display: grid;
@@ -426,6 +543,26 @@ export function getSurfaceCss(): string {
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .metric-label { display: block; color: var(--muted); font-size: var(--text-xs); }
 .metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
+/* How a total moved: a line of its last twelve weeks, the latest point in
+   the accent, and the change in words. Muted, not green or red: a rise in
+   open tasks is not good news. */
+.sparkline { display: block; width: 100%; height: 20px; margin-top: var(--space-1); overflow: visible; }
+.sparkline .sparkline-line { fill: none; stroke: var(--muted); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.sparkline .sparkline-end { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sparkline .sparkline-hit { fill: transparent; }
+.metric-change { display: block; color: var(--muted); font-size: var(--text-xs); }
+@media (forced-colors: active) {
+  .sparkline .sparkline-line { stroke: CanvasText; }
+  .sparkline .sparkline-end { stroke: Highlight; }
+}
+
+/* A page still waiting for what it shows: muted words in the page's flow,
+   not the dashed box an empty result is drawn in. Revealed after 400 ms by a
+   step rather than motion, so a page that draws within that never flashes
+   it, and reduced motion, which stops transitions, leaves it alone. */
+.loading { display: grid; min-height: 96px; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); opacity: 0; animation: loading-reveal 0s linear 400ms forwards; }
+.loading.is-immediate { opacity: 1; animation: none; }
+@keyframes loading-reveal { to { opacity: 1; } }
 
 .empty {
   margin-top: var(--space-5);
@@ -501,6 +638,9 @@ export function getTaskBoardCss(): string {
    auto row sizes to its cards however tall they are, so the column clipped
    them at its max-height and the cards below could not be reached at all. */
 .board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
+/* + Add task sits under the title, in a row of its own, so the cards keep
+   the row that shrinks. */
+.board-column:has(> .board-add) { grid-template-rows: auto auto minmax(0, 1fr); }
 .board-column-title { padding-bottom: var(--space-2); }
 /* overflow-y alone would compute overflow-x to auto, and then anything that
    reaches past the right edge — a theme's hover nudge, a focus outline — puts
@@ -535,6 +675,17 @@ export function getTaskBoardCss(): string {
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
    after this sheet and which took the color off "overdue 20 days". */
 .task .board-details .overdue { color: var(--danger); }
+.task .board-details .stale { color: var(--muted); }
+/* Most of a column overdue: the worst third keep the red, the rest say
+   "overdue" muted beside a small red dot, so the word still says it. */
+.task .board-details .overdue.quiet { color: var(--muted); }
+.task .board-details .overdue.quiet::before { content: ""; display: inline-block; width: 0; height: 0; margin-right: 4px; border: 3px solid var(--danger); border-radius: 50%; vertical-align: middle; }
+/* A task's steps, one line under its details: the count comes first, so
+   in a narrow column it is the next step that gives way to the ellipsis. */
+.board-steps { margin: 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Over its work-in-progress limit: a neutral dashed outline, never red. */
+.board-column.over-limit { outline: var(--edge) dashed var(--line-strong); outline-offset: -1px; }
+.board-column[data-column-id="due:needsdate"] .board-column-title { color: var(--danger); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
   position: absolute;
@@ -551,11 +702,33 @@ export function getTaskBoardCss(): string {
    shared hover text rather than the amber it carries over the card. Open, it
    keeps that look until the menu closes. */
 .board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
+/* The same ⋯ on a list row, clear of the title, and in a table's last cell. */
+.task-row:has(> .row-menu) { padding-right: var(--space-6); }
+.result-table .row-menu { position: static; }
+.result-table .result-menu { width: 36px; }
 .board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
 .board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
 .board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
-.board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }`;
+.board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }
+/* A new task captured straight into a column, at its foot. */
+.board-add { justify-self: start; min-height: 24px; padding: 2px var(--space-2); border-style: dashed; background: transparent; color: var(--muted); font-size: var(--text-xs); }
+/* While a card is held, a column that will not take it fades its cards and
+   says why, rather than letting the drop fail without a word. */
+.board-refuses { display: none; margin: 0; color: var(--muted); font-size: var(--text-xs); }
+.task-board.is-dragging-card .board-column[data-droppable="false"] .board-cards { opacity: .45; }
+.task-board.is-dragging-card .board-column[data-droppable="false"] .board-refuses { display: block; }
+/* A completed card stays a moment, struck through, before the board drops
+   it, so the reader sees which one they ticked. */
+.board-card.is-completing { opacity: .5; transition: opacity 800ms ease; }
+.board-card.is-completing .task-title { text-decoration: line-through; }
+/* A card off screen is not laid out or painted until it is scrolled to. A
+   hovered or focused card is left out: content-visibility implies paint
+   containment, which would clip the file-and-line it carries down over the
+   card below. */
+.task-board .board-card:not(:hover):not(:focus-within):not(.dragging) { content-visibility: auto; contain-intrinsic-size: auto 72px; }
+/* Moved on the page, not yet written: drawn back until the next state. */
+.board-card.is-pending { opacity: .7; }`;
 }
 
 /**
@@ -567,7 +740,7 @@ export function getTaskListCss(): string {
   return `
 .task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: var(--space-2); }
 .task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-2); align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: var(--space-3); cursor: pointer; }
-.task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.task-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
 /* The details sit on one center line: the priority badge is taller than
@@ -576,6 +749,9 @@ export function getTaskListCss(): string {
 .task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
+/* A task past needsNewDateAfterDays reads "was due …" in muted text: red is
+   for what can still be saved today. */
+.due-date.stale { color: var(--muted); font-weight: 400; }
 .task-detail { letter-spacing: .03em; }
 /* Priority is a shape, not a color: an outlined badge with an arrow, told
    from the due date beside it by its edge. It used to be the same bold
@@ -587,26 +763,24 @@ export function getTaskListCss(): string {
 .is-draggable { cursor: grab; touch-action: none; }
 .is-draggable:active { cursor: grabbing; }
 .is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
-.drag-ghost { position: fixed; z-index: 10; top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
+.drag-ghost { position: fixed; z-index: var(--z-drag); top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
 .drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
-.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: var(--space-1); border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
-.rank-context-menu[hidden] { display: none; }
-.rank-context-menu button { display: block; width: 100%; border: 0; padding: var(--space-2) var(--space-3); text-align: left; text-transform: none; }
+.rank-context-menu { position: fixed; min-width: 170px; }
 .result-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .result-table th, .result-table td { padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .result-table th { padding: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
 .result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
-.result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
+.result-table th button:hover${ENABLED}, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
 /* The sorted column is told by weight and its arrow, not a color: amber on a panel is too faint for a small label in some themes.
    Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
 .result-table th.is-sorted button { color: var(--text); font-weight: 700; }
-.result-table th.is-sorted button:hover, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
+.result-table th.is-sorted button:hover${ENABLED}, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
 .result-table .result-check { width: 24px; padding-right: 0; }
 .result-table .result-row { cursor: pointer; }
 /* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
 .result-table .result-row:hover td { border-bottom-color: var(--amber); }
-.result-table .result-row:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: -1px; }
+.result-table .result-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -1px; }
 .result-table .result-row.completed .result-title { color: var(--muted); text-decoration: line-through; }
 .result-table .result-title { color: var(--cyan); }
 .result-table td.is-overdue { color: var(--danger); font-weight: 700; }
@@ -630,6 +804,7 @@ export function getBaseCss(): string {
     getTypographyCss(),
     getControlCss(),
     getTagCss(),
+    getPopoverCss(),
     getSurfaceCss(),
     getTaskBoardCss(),
     getTaskListCss(),
@@ -653,6 +828,13 @@ export function getBaseCss(): string {
  */
 export function getProvenanceCss(): string {
   return `
+/* Escape puts the carried-down line away until the pointer or focus moves. */
+body.provenance-dismissed .card::after, body.provenance-dismissed .note::after,
+body.provenance-dismissed .task-row::after, body.provenance-dismissed .home-row::after,
+body.provenance-dismissed .tag-row::after, body.provenance-dismissed .board-card::after,
+body.provenance-dismissed .card .source, body.provenance-dismissed .note .source,
+body.provenance-dismissed .task-row .task-source, body.provenance-dismissed .board-card .task-source,
+body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed .tag-row .tag-count { visibility: hidden; }
 .task-row .task-source,
 .board-card .task-source,
 .card .source,
@@ -829,7 +1011,98 @@ body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --sp
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getCardTagCss()}\n${getZenCss()}`;
+}
+
+/** Where a tag is written text rather than a control: the card views. */
+const CARD_VIEWS = ['.card', '.task-row', '.board-card', '.note'];
+const CARD_TAGS = ['button.tag-open', 'button.inline-tag'];
+
+/** Every card view's tags, as one selector list, each ending in `suffix`. */
+function cardTagSelectors(suffix = '', prefix = 'body '): string {
+  return CARD_VIEWS.flatMap((view) => CARD_TAGS.map((tag) => `${prefix}${view} ${tag}${suffix}`)).join(', ');
+}
+
+/**
+ * Tags on cards: written text that opens the tag's page, not a control.
+ *
+ * A card can carry five tags, and five boxes outweigh the title they sit in.
+ * On search results, task rows, board cards, and Related Notes a tag is
+ * monospace text with no box or fill, its namespace muted, and a faint
+ * accent ground and underline under the pointer or focus; it is still a
+ * button, one Tab stop, with its context menu. The editor keeps its box, as
+ * do Refine, the query chips, and the Dashboard's Tags tab.
+ *
+ * After every theme and the high contrast sheet, so no theme's button rule
+ * reaches these tags; the body prefix and the :not() pair outweigh the page
+ * and theme rules that color a card's tags. Geometry that keeps a tag on one
+ * line is the shared tag sheet's, which this does not restate.
+ */
+export function getCardTagCss(): string {
+  const rest = ':not(:hover):not(:focus-visible)';
+  return `
+${cardTagSelectors(rest)},
+${cardTagSelectors()} {
+  display: inline;
+  min-height: 0;
+  margin: 0 0 0 .2em;
+  padding: 0 .15em;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .9em;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: none;
+  text-decoration: none;
+  vertical-align: baseline;
+  transform: none;
+  transition: none;
+  cursor: pointer;
+}
+${cardTagSelectors(`:hover${ENABLED}`)}, ${cardTagSelectors(':focus-visible')} {
+  border: 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: none;
+  color: var(--text);
+  text-decoration: underline 1px var(--accent);
+  text-underline-offset: 2px;
+  transform: none;
+}
+${cardTagSelectors(':focus-visible')} { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
+/* The namespace is muted at rest by the tag sheet; on the tinted ground it
+   takes the tag's own ink, which is what keeps it readable there. */
+${cardTagSelectors(`:hover${ENABLED} .tag-namespace`)}, ${cardTagSelectors(':focus-visible .tag-namespace')} { color: inherit; }
+/* A tag is never a chosen control, whatever a theme draws button.active as. */
+${cardTagSelectors('.active')} { background: transparent; color: var(--text); }
+/* Separate tags under a title are a line of words, not a row of chips. */
+body .card .tag-list, body .note .tag-list { gap: 0 var(--space-2); }
+/* High contrast: a tag reads as a link at rest, since there is no tint. */
+${cardTagSelectors('', 'body.vscode-high-contrast ')}, ${cardTagSelectors('', 'body.vscode-high-contrast-light ')} { text-decoration: underline 1px; }
+@media (forced-colors: active) {
+  ${cardTagSelectors('', '')} { color: LinkText; forced-color-adjust: none; }
+}`;
+}
+
+/**
+ * The resting edge of every text field and list box, laid over each theme.
+ *
+ * A field is found by its edge: it holds no words until it is typed in, and
+ * its ground is often a step from the page's. The themes drew that edge in
+ * the divider color, 1.3:1 to 2.9:1 against the ground in six of them,
+ * where WCAG's 1.4.11 asks 3:1. Each theme names a --control-line that meets
+ * it; hover, focus, a search that is set, and an invalid query keep the
+ * edges their own rules give them.
+ */
+export function getControlEdgeCss(): string {
+  return `
+:is(select, input[type="text"], input[type="search"], .query-bar-shell):not(:hover):not(:focus):not(:focus-within):not([data-has-query]):not(.invalid):not(:disabled) { border-color: var(--control-line); }`;
 }
 
 /**
@@ -858,6 +1131,7 @@ body.vscode-high-contrast, body.vscode-high-contrast-light {
   --line: var(--vscode-contrastBorder, var(--vscode-panel-border));
   --slate-border: var(--vscode-contrastBorder, var(--vscode-panel-border));
   --line-strong: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --control-line: var(--line-strong);
   --cyan: var(--vscode-textLink-foreground);
   --cyan-bright: var(--vscode-textLink-foreground);
   --amber: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
@@ -892,6 +1166,11 @@ body.vscode-high-contrast button.active, body.vscode-high-contrast-light button.
   *, *::before, *::after { text-shadow: none !important; box-shadow: none !important; background-image: none !important; clip-path: none !important; }
   body { background-image: none; }
   button.active, [aria-selected="true"], [aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* A border color is all that marks a drop target and a focused search
+     box; forced colors paint every border alike, so each gets an outline. */
+  .board-column.drop-target { outline: 3px dashed Highlight; outline-offset: -3px; }
+  .query-bar-shell:focus-within { outline: 2px solid Highlight; }
+  .legend-swatch, .note-dot, .tag-weight-rail-segment { forced-color-adjust: none; border: 1px solid CanvasText; }
 }`;
 }
 
@@ -906,6 +1185,265 @@ export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boole
     event.affectsConfiguration('deckard.theme') ||
     event.affectsConfiguration('deckard.zenMode')
   );
+}
+
+/**
+ * Calls back when a page has to be drawn again in another look: the theme or
+ * zen setting changed, or Choose Theme… is previewing a theme. A page that
+ * redraws on this needs no configuration listener of its own for it.
+ */
+export function onDidChangePageChrome(listener: () => void): vscode.Disposable {
+  const configuration = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (affectsPageChrome(event)) {
+      listener();
+    }
+  });
+  const preview = onDidChangeThemePreview(listener);
+  return { dispose: () => { configuration.dispose(); preview.dispose(); } };
+}
+
+/**
+ * The shared tip, on its own so a page that does not take the whole
+ * component script, the Notes Graph, can take this. Included by
+ * getComponentScript().
+ */
+export function getTipScript(): string {
+  return `
+  /**
+   * Tips: the longer explanation a control carries, shown on keyboard focus
+   * as well as under the pointer. A native title never shows on focus, so a
+   * keyboard reader never saw one; and it could not be dismissed or hovered.
+   *
+   *   data-tip           what the control does
+   *   data-tip-key       the key that does the same, drawn as <kbd>
+   *   data-tip-disabled  why it cannot act, used while aria-disabled="true"
+   *   data-tip-overflow  the whole of a tag or chip, shown only when cut short
+   *
+   * A keyboard focus shows the tip at once; the pointer after 400 ms, or at
+   * once within 300 ms of another tip closing, so a run along a toolbar does
+   * not wait at every button. Touch never shows one. Escape hides it, and is
+   * taken only while a tip shows, so it does not also close a menu behind it.
+   */
+  const TIP_SELECTOR = '[data-tip], [data-tip-overflow], [data-tip-disabled]';
+  let tipElement;
+  let tipTarget;
+  let tipShowTimer;
+  let tipHideTimer;
+  let tipLastHidden = 0;
+  let keyboardModality = false;
+
+  /** Whether a tag's or a chip's text is cut short where it is drawn. */
+  function isTruncated(element) {
+    return Array.prototype.some.call(element.querySelectorAll('.tag-namespace-text, .tag-value, .query-chip-label'), function (part) {
+      return part.scrollWidth > part.clientWidth;
+    });
+  }
+
+  /** What a tip says for an element now, or nothing. */
+  function tipTextFor(element) {
+    if (!element || !element.getAttribute) return '';
+    const disabled = element.getAttribute('aria-disabled') === 'true' ? element.getAttribute('data-tip-disabled') : null;
+    if (disabled) return disabled;
+    const tip = element.getAttribute('data-tip') || '';
+    const overflow = element.getAttribute('data-tip-overflow');
+    // A chip's own tip already names its whole term; a tag's tip is the tag.
+    if (overflow && isTruncated(element)) return tip || overflow;
+    return tip;
+  }
+
+  function accessibleNameOf(element) {
+    return String(element.getAttribute('aria-label') || element.textContent || '').trim();
+  }
+
+  function hideTip() {
+    clearTimeout(tipShowTimer);
+    clearTimeout(tipHideTimer);
+    tipShowTimer = undefined;
+    tipHideTimer = undefined;
+    if (!tipTarget) return;
+    const described = String(tipTarget.getAttribute('aria-describedby') || '').split(/\\s+/).filter(function (id) { return id && id !== 'deckard-tip'; });
+    if (described.length) tipTarget.setAttribute('aria-describedby', described.join(' '));
+    else tipTarget.removeAttribute('aria-describedby');
+    tipTarget = undefined;
+    if (tipElement) tipElement.hidden = true;
+    tipLastHidden = Date.now();
+  }
+
+  function showTip(element) {
+    clearTimeout(tipShowTimer);
+    clearTimeout(tipHideTimer);
+    tipShowTimer = undefined;
+    const text = tipTextFor(element);
+    if (!text || !document.contains(element)) {
+      if (tipTarget === element) hideTip();
+      return;
+    }
+    if (tipTarget && tipTarget !== element) hideTip();
+    if (!tipElement) {
+      tipElement = document.createElement('div');
+      tipElement.id = 'deckard-tip';
+      tipElement.className = 'popover is-tip';
+      tipElement.setAttribute('role', 'tooltip');
+      tipElement.hidden = true;
+      document.body.appendChild(tipElement);
+    }
+    const key = element.getAttribute('aria-disabled') === 'true' ? '' : element.getAttribute('data-tip-key');
+    tipElement.textContent = text;
+    if (key) {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = key;
+      tipElement.appendChild(document.createTextNode(' '));
+      tipElement.appendChild(kbd);
+    }
+    tipElement.hidden = false;
+    tipTarget = element;
+    // The tip is the name already on an icon button; said twice, it is noise.
+    if (text !== accessibleNameOf(element)) {
+      const described = String(element.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+      if (described.indexOf('deckard-tip') < 0) described.push('deckard-tip');
+      element.setAttribute('aria-describedby', described.join(' '));
+    }
+    const at = element.getBoundingClientRect();
+    const size = tipElement.getBoundingClientRect();
+    const width = window.innerWidth || document.documentElement.clientWidth || 0;
+    const height = window.innerHeight || document.documentElement.clientHeight || 0;
+    let top = at.bottom + 6;
+    if (height && top + size.height > height - 8) top = at.top - 6 - size.height;
+    const left = at.left + at.width / 2 - size.width / 2;
+    tipElement.style.left = Math.max(8, width ? Math.min(left, width - size.width - 8) : left) + 'px';
+    tipElement.style.top = Math.max(8, top) + 'px';
+  }
+
+  function tipOwner(target) {
+    const element = target && target.closest ? target.closest(TIP_SELECTOR) : null;
+    return element && tipTextFor(element) ? element : null;
+  }
+
+  document.addEventListener('keydown', function () { keyboardModality = true; }, true);
+  document.addEventListener('pointerdown', function () {
+    keyboardModality = false;
+    hideTip();
+  }, true);
+  document.addEventListener('mousedown', function () { keyboardModality = false; }, true);
+  // Escape puts the tip away first, and only the tip.
+  window.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape' || !tipTarget) return;
+    event.preventDefault();
+    event.stopPropagation();
+    hideTip();
+  }, true);
+  document.addEventListener('focusin', function (event) {
+    const target = event.target;
+    if (!keyboardModality || !target || !target.matches || !target.matches(TIP_SELECTOR)) return;
+    showTip(target);
+  });
+  document.addEventListener('focusout', function (event) {
+    if (tipTarget && event.target === tipTarget) hideTip();
+  });
+  document.addEventListener('pointerover', function (event) {
+    if (event.pointerType === 'touch') return;
+    if (tipElement && tipElement.contains(event.target)) {
+      clearTimeout(tipHideTimer);
+      return;
+    }
+    const owner = tipOwner(event.target);
+    if (!owner || owner === tipTarget) {
+      if (owner) clearTimeout(tipHideTimer);
+      return;
+    }
+    clearTimeout(tipShowTimer);
+    const warm = Boolean(tipTarget) || Date.now() - tipLastHidden < 300;
+    tipShowTimer = setTimeout(function () { showTip(owner); }, warm ? 0 : 400);
+  });
+  document.addEventListener('pointerout', function (event) {
+    const next = event.relatedTarget;
+    const fromTip = tipElement && tipElement.contains(event.target);
+    const owner = fromTip ? tipTarget : tipOwner(event.target);
+    if (!owner || (next && (owner.contains(next) || (tipElement && tipElement.contains(next))))) return;
+    if (owner !== tipTarget) {
+      clearTimeout(tipShowTimer);
+      return;
+    }
+    clearTimeout(tipHideTimer);
+    tipHideTimer = setTimeout(hideTip, 100);
+  });
+  window.addEventListener('scroll', function () { if (tipTarget) hideTip(); }, true);
+  // A redraw that took the control away takes its tip with it.
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver(function () {
+      if (tipTarget && !document.contains(tipTarget)) hideTip();
+    }).observe(document.body || document.documentElement, { childList: true, subtree: true });
+  }
+`;
+}
+
+/**
+ * Undo, briefly: what a removal that can be put back offers instead of
+ * asking first. On its own so the Notes Graph, which does not take the whole
+ * component script, can take it too; getComponentScript() includes it.
+ */
+export function getUndoScript(): string {
+  return `
+  /**
+   * "Removed Tasks view. Undo": a status line with its Undo button, which
+   * posts nothing itself; its data-action is the page's to handle.
+   */
+  function renderUndoNotice(message, action, buttonClass) {
+    const escape = function (value) {
+      return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+    return '<span class="undo-notice" role="status">' + escape(message) + ' <button type="button"' + (buttonClass ? ' class="' + escape(buttonClass) + '"' : '') + ' data-action="' + escape(action) + '">Undo</button></span>';
+  }
+
+  /**
+   * One offer of Undo at a time, withdrawn after 8 seconds or by the next
+   * removal. show(message, action, payload) makes the offer; take() hands
+   * back its payload and withdraws it. The offer is drawn in its own toast
+   * outside #app, so a page's redraw does not take it away, and it is seen
+   * wherever the removal was made. render redraws the page after a change.
+   */
+  function createUndoNotice(render) {
+    let current;
+    let timer;
+    const draw = function () {
+      let host = document.getElementById('undo-toast');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'undo-toast';
+        host.className = 'undo-toast';
+        document.body.appendChild(host);
+      }
+      host.innerHTML = current ? renderUndoNotice(current.message, current.action) : '';
+    };
+    return {
+      show: function (message, action, payload) {
+        clearTimeout(timer);
+        current = { message: message, action: action, payload: payload };
+        timer = setTimeout(function () {
+          current = undefined;
+          draw();
+        }, 8000);
+        render();
+        draw();
+        // Enter takes it back: focus moves to Undo.
+        const button = document.querySelector('.undo-notice [data-action="' + action + '"]');
+        if (button) button.focus();
+      },
+      take: function () {
+        clearTimeout(timer);
+        const payload = current ? current.payload : undefined;
+        current = undefined;
+        draw();
+        return payload;
+      },
+      clear: function () {
+        clearTimeout(timer);
+        current = undefined;
+        draw();
+      },
+    };
+  }
+`;
 }
 
 /**
@@ -934,6 +1472,321 @@ export function getComponentScript(): string {
     // Repeating the same string is not announced again, so clear it first.
     if (status.textContent === text) status.textContent = '';
     status.textContent = text;
+  }
+
+  /**
+   * Loading, drawn as the host's loadingHtml draws it. immediate shows it at
+   * once, for a line that redraws on every tick, such as the sidebar's
+   * indexing count, whose 400 ms wait would otherwise start over forever.
+   */
+  function renderLoading(label, immediate) {
+    return '<div class="loading' + (immediate ? ' is-immediate' : '') + '" role="status"><span>' + escapeHtml(label) + '</span></div>';
+  }
+
+  /**
+   * How far the first scan has got, in the words the sidebar and every
+   * page use: "Indexing this workspace: 412 of 3,760 notes read…".
+   */
+  function describeIndexing(progress) {
+    return progress && progress.total
+      ? 'Indexing this workspace: ' + Number(progress.completed).toLocaleString('en-US') + ' of ' + Number(progress.total).toLocaleString('en-US') + ' notes read…'
+      : 'Indexing this workspace…';
+  }
+
+  // A page waiting on the first scan says how far it has got, in its
+  // loading line, as the host sends it; the page's first state replaces it.
+  window.addEventListener('message', function (event) {
+    if (!event.data || event.data.type !== 'indexing') return;
+    const line = document.querySelector('#app .loading');
+    if (!line) return;
+    line.classList.add('is-immediate');
+    const words = line.querySelector('span') || line;
+    words.textContent = describeIndexing(event.data.progress);
+  });
+
+  /**
+   * #app is busy exactly while it holds a .loading, or while a search it
+   * ran is still out; pages do nothing about it. #live-status sits outside
+   * #app, so what a page announces still goes through.
+   */
+  let searchInFlight = false;
+  function syncBusy() {
+    const app = document.getElementById('app');
+    if (!app) return;
+    if (searchInFlight || app.querySelector('.loading')) app.setAttribute('aria-busy', 'true');
+    else app.removeAttribute('aria-busy');
+  }
+  if (typeof MutationObserver === 'function' && document.getElementById('app')) {
+    new MutationObserver(syncBusy).observe(document.getElementById('app'), { childList: true, subtree: true });
+  }
+
+  /**
+   * How many values a Refine facet shows before "+N more": the page's and
+   * the sidebar's Refine both read it, so they cut at the same place.
+   */
+  const FACET_VISIBLE = 5;
+
+  /**
+   * The values of one facet a Refine shows, and the control that shows the
+   * rest or fewer. expanded is the set of facet ids opened in this page.
+   */
+  function facetValuesShown(facet, expanded, className) {
+    const all = facet.values || [];
+    const open = expanded.has(facet.id);
+    const values = open ? all : all.slice(0, FACET_VISIBLE);
+    const hidden = all.length - FACET_VISIBLE;
+    const more = hidden > 0
+      ? '<button type="button" class="' + className + '" data-action="facet-more" data-facet-id="' + escapeHtml(facet.id) + '" aria-expanded="' + open + '" aria-label="' + escapeHtml(open ? 'Show fewer ' + facet.label + ' values' : 'Show ' + hidden + ' more ' + facet.label + ' values') + '">' + (open ? 'Show fewer' : '+' + hidden + ' more') + '</button>'
+      : '';
+    return { values: values, more: more };
+  }
+
+  /**
+   * A control that holds its place with aria-disabled stays focusable, so
+   * its click is stopped here, once, before any page listener hears it; no
+   * page handler has to remember. Enter and Space on it raise the same click.
+   */
+  document.addEventListener('click', function (event) {
+    const target = event.target && event.target.closest ? event.target.closest('[aria-disabled="true"]') : null;
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+
+  /**
+   * Redraw without losing the reader's place.
+   *
+   * Pages rebuild their HTML on every snapshot, which drops keyboard focus
+   * to the page itself: tick a card's checkbox, or move it from its menu,
+   * and the next Tab started again from the top. What had focus is found
+   * again by what it is about (a task, a tag, a widget) and what it does;
+   * failing that, the entry it was in; failing that, the entry that took
+   * its place in the list, so completing a task leaves focus on the next.
+   */
+  const PLACE_KEYS = ['taskId', 'cardColumn', 'tagKey', 'widgetId', 'columnId', 'status', 'filePath', 'line', 'action', 'value', 'kind', 'section', 'date'];
+  const PLACE_ITEMS = [['taskId', '[data-task-id]'], ['tagKey', '[data-tag-key]'], ['filePath', '[data-file-path]']];
+
+  function placeSelector(element) {
+    return PLACE_KEYS.filter(function (key) { return element.dataset[key] !== undefined; }).map(function (key) {
+      return '[data-' + key.replace(/[A-Z]/g, function (letter) { return '-' + letter.toLowerCase(); }) + '="' + String(element.dataset[key]).replace(/["\\\\]/g, '\\\\$&') + '"]';
+    }).join('');
+  }
+
+  function focusTarget(element) {
+    if (!element) return null;
+    if (element.matches('button, input, select, textarea, a[href], [tabindex]')) return element;
+    return element.querySelector('[tabindex="0"], button, input, a[href]');
+  }
+
+  function readPlace() {
+    const active = document.activeElement;
+    if (!active || active === document.body || !active.matches || !active.dataset) return null;
+    // A menu that is open keeps its own focus, and closes on a redraw.
+    if (active.closest('[role="menu"]')) return null;
+    const tag = active.tagName.toLowerCase();
+    const selector = placeSelector(active);
+    const place = { tag: tag, selector: selector, unique: Boolean(selector) && document.querySelectorAll(tag + selector).length === 1 };
+    const itemKind = PLACE_ITEMS.find(function (kind) { return active.closest(kind[1]); });
+    if (itemKind) {
+      const item = active.closest(itemKind[1]);
+      place.itemKind = itemKind[1];
+      place.item = placeSelector(item);
+      place.inItem = item !== active;
+      place.index = Array.prototype.indexOf.call(document.querySelectorAll(itemKind[1]), item);
+    }
+    if (active.matches('input[type="text"], input[type="search"], textarea')) {
+      place.selectionStart = active.selectionStart;
+      place.selectionEnd = active.selectionEnd;
+    }
+    return place;
+  }
+
+  function isOnPage(element) {
+    for (let node = element; node; node = node.parentElement) {
+      if (node === document.body) return true;
+      if (node.parentElement && Array.prototype.indexOf.call(node.parentElement.children, node) < 0) return false;
+    }
+    return false;
+  }
+
+  function restorePlace(place) {
+    if (!place) return;
+    const active = document.activeElement;
+    // A redraw that already put focus somewhere, such as a field the page
+    // restores itself, is left alone; focus on what the redraw removed is
+    // focus lost.
+    if (active && active !== document.body && isOnPage(active)) return;
+    let target = null;
+    const item = place.item ? document.querySelector(place.itemKind + place.item) : null;
+    if (item && place.inItem && place.selector) target = item.querySelector(place.tag + place.selector);
+    if (!target && item && !place.inItem) target = item;
+    if (!target && place.unique) target = document.querySelector(place.tag + place.selector);
+    if (!target && item) target = focusTarget(item);
+    if (!target && place.itemKind && place.index >= 0) {
+      const items = document.querySelectorAll(place.itemKind);
+      if (items.length) target = focusTarget(items[Math.min(place.index, items.length - 1)]);
+    }
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    if (place.selectionStart !== undefined && target.setSelectionRange && place.selectionStart !== null) {
+      target.setSelectionRange(place.selectionStart, place.selectionEnd);
+    }
+  }
+
+  function renderKeepingPlace(render) {
+    const place = readPlace();
+    render();
+    restorePlace(place);
+  }
+
+  /**
+   * The keys a page answers, on ?.
+   *
+   * A page's own keys, / to search, the arrows and single letters on the
+   * board, the menu key, were written down nowhere a reader would look.
+   * sections is a list of { title, keys: [[key, what it does]] }, or a
+   * function that makes one; the keys every page shares are added last.
+   */
+  const SHARED_KEYS = { title: 'Everywhere', keys: [
+    ['/', 'Go to the search box'],
+    ['Shift+F10, or the menu key', 'Open the menu of what has focus'],
+    ['Esc', 'Close a menu or this sheet'],
+    ['?', 'Show these keys'],
+  ] };
+  let keySheet;
+  let keySheetOpener;
+
+  function closeKeySheet() {
+    if (!keySheet) return;
+    keySheet.remove();
+    keySheet = undefined;
+    if (keySheetOpener && keySheetOpener.focus) keySheetOpener.focus();
+    keySheetOpener = undefined;
+  }
+
+  function openKeySheet(sections) {
+    closeKeySheet();
+    keySheetOpener = document.activeElement;
+    keySheet = document.createElement('div');
+    keySheet.setAttribute('class', 'key-sheet');
+    keySheet.setAttribute('role', 'dialog');
+    keySheet.setAttribute('aria-modal', 'true');
+    keySheet.setAttribute('aria-labelledby', 'key-sheet-title');
+    keySheet.innerHTML = '<div class="key-sheet-panel"><h2 id="key-sheet-title">Keys on this page</h2>'
+      + sections.concat([SHARED_KEYS]).map(function (section) {
+        return '<h3>' + escapeHtml(section.title) + '</h3><dl>' + section.keys.map(function (entry) {
+          return '<div><dt><kbd>' + escapeHtml(entry[0]) + '</kbd></dt><dd>' + escapeHtml(entry[1]) + '</dd></div>';
+        }).join('') + '</dl>';
+      }).join('')
+      + '<button type="button" data-action="close-key-sheet">Close</button></div>';
+    document.body.appendChild(keySheet);
+    keySheet.querySelector('[data-action="close-key-sheet"]').focus();
+  }
+
+  function installKeySheet(sections) {
+    document.addEventListener('keydown', function (event) {
+      if (keySheet && (event.key === 'Escape' || event.key === 'Tab')) {
+        // The sheet holds one control, so Tab stays on it.
+        event.preventDefault();
+        if (event.key === 'Escape') closeKeySheet();
+        return;
+      }
+      if (event.key !== '?' || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      event.preventDefault();
+      openKeySheet(typeof sections === 'function' ? sections() : sections);
+    });
+    document.addEventListener('click', function (event) {
+      if (!keySheet) return;
+      if (event.target.closest('[data-action="close-key-sheet"]') || !event.target.closest('.key-sheet-panel')) closeKeySheet();
+    });
+  }
+
+  /**
+   * How a click or key asks for a result: Cmd/Ctrl beside the page, a
+   * double-click (the second click of it) keeping the tab.
+   */
+  function openingOf(event) {
+    return {
+      beside: Boolean(event && (event.metaKey || event.ctrlKey)),
+      pin: Boolean(event && event.detail >= 2),
+    };
+  }
+
+  /** An openSource message for an element's file and line, opened as asked. */
+  function openSourceMessage(element, event) {
+    const how = openingOf(event);
+    return Object.assign({ type: 'openSource', filePath: element.dataset.filePath, line: Number(element.dataset.line) },
+      how.beside ? { beside: true } : {}, how.pin ? { pin: true } : {});
+  }
+
+  /**
+   * Marks the searched words where they appear in the results, so a reader
+   * can tell at a glance why each one was found (Hearst, Search User
+   * Interfaces, ch. 5). Only text is marked, never a tag or a control.
+   * options.wordStart marks a word only where one starts, so "route" marks
+   * "routes" but "art" does not mark "start".
+   */
+  function markWords(root, words, options) {
+    const wanted = (words || []).map(function (word) { return String(word).toLowerCase(); }).filter(function (word) { return word.length >= 2; });
+    if (!wanted.length || !root || !document.createTreeWalker) return;
+    const wordStart = Boolean(options && options.wordStart);
+    const pattern = new RegExp((wordStart ? '(?<![\\\\p{L}\\\\p{N}])' : '') + '(' + wanted.map(function (word) { return word.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&'); }).join('|') + ')', wordStart ? 'giu' : 'gi');
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const found = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (node.parentElement && node.parentElement.closest('button, a, mark, [data-tag-key], .inline-tag, .tag-open, code')) continue;
+      pattern.lastIndex = 0;
+      if (pattern.test(node.nodeValue)) found.push(node);
+    }
+    found.forEach(function (node) {
+      const span = document.createElement('span');
+      span.innerHTML = escapeHtml(node.nodeValue).replace(pattern, '<mark>$1</mark>');
+      node.replaceWith.apply(node, Array.prototype.slice.call(span.childNodes));
+    });
+  }
+
+  // Escape puts away the file-and-line line an entry carries down under the
+  // pointer, which could not be dismissed before (WCAG 1.4.13); it comes
+  // back once the pointer or the focus moves on.
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && document.body) document.body.classList.add('provenance-dismissed');
+  });
+  ['pointermove', 'focusin'].forEach(function (type) {
+    document.addEventListener(type, function () {
+      if (document.body && document.body.classList.contains('provenance-dismissed')) document.body.classList.remove('provenance-dismissed');
+    });
+  });
+
+  /**
+   * Where the page was scrolled to, kept in the webview's own state and put
+   * back when the page is drawn again, so coming back to a search, after
+   * VS Code reopens it or the tab is shown again, lands where the reader
+   * left it rather than at the top. Up to 40% of searches are re-finding
+   * (Teevan et al., 2007), and position is how a list is re-found.
+   */
+  function rememberScroll(getSaved, setSaved) {
+    let pending;
+    window.addEventListener('scroll', function () {
+      if (pending) return;
+      pending = setTimeout(function () {
+        pending = undefined;
+        setSaved(Object.assign({}, getSaved() || {}, { scrollY: Math.round(window.scrollY) }));
+      }, 200);
+    }, { passive: true });
+  }
+
+  function restoreScroll(saved) {
+    if (!saved || typeof saved.scrollY !== 'number' || !window.scrollTo) return;
+    window.scrollTo(0, saved.scrollY);
+  }
+
+  /** A task's title as a sentence names it, from its row or card. */
+  function taskTitleOf(element) {
+    const row = element && element.closest ? element.closest('[data-task-id]') : null;
+    const title = row ? row.querySelector('.task-title') : null;
+    return title ? title.textContent.trim().replace(/\\s+/g, ' ') : 'the task';
   }
 
   /**
@@ -995,14 +1848,16 @@ export function getComponentScript(): string {
         : '<tspan class="tag-value">' + escapeHtml(value) + '</tspan>';
     }
     return match
-      ? '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
+      // The slash sits outside the part that shortens, so a namespace cut
+      // short still reads as one: #pro…/atlas.
+      ? '<span class="tag-label"><span class="tag-namespace"><span class="tag-namespace-text">' + escapeHtml(match[1].slice(0, -1)) + '</span>/</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
       : '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
   }
 
   /** Render a tag as a control that opens its overview. */
   function renderTagButton(tag, className) {
     return '<button class="tag-open ' + (className || '') + '" data-action="open-tag" data-tag-key="'
-      + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
+      + escapeHtml(tag.key) + '" data-tip-overflow="' + escapeHtml(tag.label) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
       + renderTagLabel(tag.label) + '</button>';
   }
 
@@ -1106,6 +1961,26 @@ export function getComponentScript(): string {
   }
 
 
+${getTipScript()}
+${getUndoScript()}
+  /**
+   * An icon-only button: its label is its accessible name and its tip, and
+   * it never carries title. options: { action, label, icon, tip, key,
+   * className, attributes, pressed, disabledReason }.
+   */
+  function renderIconButton(options) {
+    const tip = options.tip || options.label;
+    return '<button type="button" class="icon-button' + (options.className ? ' ' + options.className : '') + '"'
+      + (options.action ? ' data-action="' + escapeHtml(options.action) + '"' : '')
+      + (options.attributes ? ' ' + options.attributes : '')
+      + ' aria-label="' + escapeHtml(options.label) + '" data-tip="' + escapeHtml(tip) + '"'
+      + (options.key ? ' data-tip-key="' + escapeHtml(options.key) + '"' : '')
+      + (options.pressed === undefined ? '' : ' aria-pressed="' + Boolean(options.pressed) + '"')
+      + (options.disabledReason ? ' aria-disabled="true" data-tip-disabled="' + escapeHtml(options.disabledReason) + '"' : '')
+      + '>' + (options.icon || '') + '</button>';
+  }
+
+
   /**
    * Right-click actions for any element carrying a tag key.
    *
@@ -1133,12 +2008,12 @@ export function getComponentScript(): string {
     if (!tagContextMenu) {
       tagContextMenu = document.createElement('div');
       tagContextMenu.id = 'tag-context-menu';
-      tagContextMenu.className = 'tag-context-menu';
+      tagContextMenu.className = 'tag-context-menu popover';
       tagContextMenu.setAttribute('role', 'menu');
       document.body.appendChild(tagContextMenu);
     }
     tagContextMenu.innerHTML = items.map(function (item) {
-      return '<button type="button" role="menuitem" data-context-action="' + escapeHtml(item.action) + '">' + escapeHtml(item.label) + '</button>';
+      return '<button type="button" class="menu-item" role="menuitem" data-context-action="' + escapeHtml(item.action) + '"><span class="menu-label">' + escapeHtml(item.label) + '</span></button>';
     }).join('');
     tagContextMenu.hidden = false;
     const bounds = tagContextMenu.getBoundingClientRect();
@@ -1147,12 +2022,27 @@ export function getComponentScript(): string {
     tagContextMenu.querySelector('button').focus();
   }
 
+  /** The tags deckard.parked.tags lists, which the menu offers to unpark. */
+  let parkedTagKeys = new Set();
+
+  /** Called from each page's state handler with the host's parkedTags. */
+  function setParkedTags(keys) {
+    parkedTagKeys = new Set((keys || []).map(function (key) { return String(key).toLowerCase(); }));
+  }
+
+  /** The tag menu's park row: Park tag, or Unpark tag on a listed one. */
+  function parkTagMenuItem(tagKey) {
+    return parkedTagKeys.has(String(tagKey).toLowerCase())
+      ? { action: 'unpark-tag', label: 'Unpark tag' }
+      : { action: 'park-tag', label: 'Park tag' };
+  }
+
   function openTagContextMenu(event, target) {
     const tagKey = target.dataset.tagKey;
     if (!tagKey) return;
     // Opening closes whatever was open, which lets go of the tag it was
     // about, so this menu's tag is remembered after that and not before.
-    openContextMenu(event, [{ action: 'rename-tag', label: 'Rename tag' }]);
+    openContextMenu(event, [{ action: 'rename-tag', label: 'Rename tag' }, parkTagMenuItem(tagKey)]);
     tagContextKey = tagKey;
   }
 
@@ -1183,6 +2073,7 @@ export function getComponentScript(): string {
    * choice, Escape, or a click elsewhere, the arrow keys walk it, and focus
    * goes back to the control that opened it.
    */
+  const CHECK_ICON = '${strokeIcon(ICON_PATHS.check)}';
   let actionMenu;
   let actionMenuChoose;
   let actionMenuOpener;
@@ -1204,7 +2095,7 @@ export function getComponentScript(): string {
     if (!actionMenu) {
       actionMenu = document.createElement('div');
       actionMenu.id = 'action-menu';
-      actionMenu.className = 'tag-context-menu action-menu';
+      actionMenu.className = 'tag-context-menu action-menu popover';
       actionMenu.setAttribute('role', 'menu');
       actionMenu.hidden = true;
       document.body.appendChild(actionMenu);
@@ -1227,6 +2118,16 @@ export function getComponentScript(): string {
           closeActionMenu();
           return;
         }
+        // The key a row shows works in the open menu too, so the hint is
+        // true in both places: 2 in the menu chooses High.
+        if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          const keyed = Array.prototype.find.call(actionMenu.querySelectorAll('[data-menu-key]'), function (item) { return item.dataset.menuKey === event.key; });
+          if (keyed) {
+            event.preventDefault();
+            keyed.click();
+            return;
+          }
+        }
         if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) return;
         const items = Array.prototype.slice.call(actionMenu.querySelectorAll('[data-menu-value]'));
         const index = items.indexOf(document.activeElement);
@@ -1238,13 +2139,30 @@ export function getComponentScript(): string {
         items[next].focus();
       });
     }
-    actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group) {
-      return (group.label ? '<div class="menu-heading" role="presentation">' + escapeHtml(group.label) + '</div>' : '')
-        + group.items.map(function (item) {
-          return '<button type="button" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
-        }).join('');
+    // A named group is a group to a screen reader too, so "Due today" is
+    // heard as one of the Due choices rather than as a bare item. A group
+    // whose items say whether they are checked is a single choice: its items
+    // are radios, and every row keeps a check's width so the labels align.
+    const shown = groups.filter(function (group) { return group.items.length; });
+    const checks = shown.some(function (group) { return group.items.some(function (item) { return item.checked !== undefined; }); });
+    actionMenu.innerHTML = shown.map(function (group, groupIndex) {
+      const items = group.items.map(function (item) {
+        const radio = item.checked !== undefined;
+        return '<button type="button" class="menu-item" role="' + (radio ? 'menuitemradio' : 'menuitem') + '"'
+          + (radio ? ' aria-checked="' + Boolean(item.checked) + '"' : '')
+          + (item.key ? ' aria-keyshortcuts="' + escapeHtml(item.key) + '" data-menu-key="' + escapeHtml(item.key) + '"' : '')
+          + ' data-menu-value="' + escapeHtml(item.value) + '">'
+          + (checks ? '<span class="menu-check" aria-hidden="true">' + (item.checked ? CHECK_ICON : '') + '</span>' : '')
+          + '<span class="menu-label">' + escapeHtml(item.label) + '</span>'
+          + (item.key ? '<kbd class="menu-key" aria-hidden="true">' + escapeHtml(item.key) + '</kbd>' : '')
+          + '</button>';
+      }).join('');
+      if (!group.label) return items;
+      const headingId = 'action-menu-group-' + groupIndex;
+      return '<div class="menu-group" role="group" aria-labelledby="' + headingId + '"><div class="menu-heading" id="' + headingId + '" role="presentation">' + escapeHtml(group.label) + '</div>' + items + '</div>';
     }).join('');
-    const first = actionMenu.querySelector('[data-menu-value]');
+    // Focus opens on what the task is now, so the arrows start from it.
+    const first = actionMenu.querySelector('[aria-checked="true"]') || actionMenu.querySelector('[data-menu-value]');
     if (!first) return;
     actionMenuChoose = onChoose;
     actionMenuOpener = opener;
@@ -1327,13 +2245,88 @@ export function getComponentScript(): string {
     if (drawn) drawn.focus();
   });
 
+  /**
+   * One figure in a row of .metrics: its label, its value, and, with a query,
+   * a button that opens the search the figure counts. code is the theme's
+   * decorative caption, such as TSK.OVR // 01.
+   */
+  function renderMetric(label, value, query, hint, code, trend) {
+    const codeAttribute = code ? ' data-code="' + escapeHtml(code) + '"' : '';
+    const change = trend ? describeChange(trend.change) : '';
+    const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>'
+      + (trend ? renderSparkline(trend.points) + '<span class="metric-change">' + escapeHtml(change) + '</span>' : '');
+    const said = label + ', ' + value + (change ? ', ' + change : '');
+    if (!query) return '<article class="metric"' + codeAttribute + (trend ? ' aria-label="' + escapeHtml(said) + '"' : '') + '>' + body + '</article>';
+    const tip = hint + (trend && trend.note ? '. ' + trend.note : '');
+    return '<button type="button" class="metric metric-open"' + codeAttribute + ' data-action="open-search" data-query="' + escapeHtml(query) + '" data-tip="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(said + '. ' + hint) + '">' + body + '</button>';
+  }
+
+  /**
+   * A total's last twelve weeks as a line: min to max top to bottom, a flat
+   * run as a midline, the latest point marked. Each point names itself on
+   * hover ("3 weeks ago: 402") through a thin strip under it. Hidden from
+   * assistive technology: the tile says the change in words.
+   */
+  function renderSparkline(points) {
+    if (!points || points.length < 2) return '';
+    const width = (points.length - 1) * 10;
+    const low = Math.min.apply(null, points);
+    const high = Math.max.apply(null, points);
+    const y = function (value) { return high === low ? 10 : 18 - ((value - low) / (high - low)) * 16; };
+    const coordinates = points.map(function (value, index) { return (index * 10) + ',' + y(value).toFixed(1); });
+    const last = points.length - 1;
+    const hits = points.map(function (value, index) {
+      const ago = last - index;
+      const when = ago === 0 ? 'Now' : ago === 1 ? '1 week ago' : ago + ' weeks ago';
+      return '<rect class="sparkline-hit" x="' + (index * 10 - 4) + '" y="0" width="8" height="20"><title>' + when + ': ' + value + '</title></rect>';
+    }).join('');
+    const endY = y(points[last]).toFixed(1);
+    return '<svg class="sparkline" viewBox="0 0 ' + width + ' 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+      + '<polyline class="sparkline-line" points="' + coordinates.join(' ') + '"/>'
+      + '<line class="sparkline-end" x1="' + width + '" y1="' + endY + '" x2="' + width + '" y2="' + endY + '"/>'
+      + hits + '</svg>';
+  }
+
+  /** "+9 in the last 7 days", "−3 in the last 7 days", or no change. */
+  function describeChange(change) {
+    if (!change) return 'No change in the last 7 days';
+    return (change > 0 ? '+' + change : '\u2212' + Math.abs(change)) + ' in the last 7 days';
+  }
+
   /** The Status, Priority, and Due date switch above a task board. */
-  function renderTaskBoardGroupSwitch(groupBy) {
+  /** The namespaces the board's Tag… menu offers, from the last state. */
+  let taskBoardNamespaces = [];
+  let taskBoardNamespace;
+
+  function renderTaskBoardGroupSwitch(groupBy, namespace, namespaces) {
+    taskBoardNamespaces = namespaces || [];
+    taskBoardNamespace = groupBy === 'tag' ? namespace : undefined;
+    const byTag = groupBy === 'tag' && namespace;
+    const none = taskBoardNamespaces.length === 0 && !byTag;
+    // Tag… is a menu of the namespaces in use, and names the one chosen.
+    const tag = '<button type="button" class="' + (byTag ? 'active' : '') + '" data-action="pick-board-namespace" aria-haspopup="menu" aria-expanded="false" aria-pressed="' + Boolean(byTag) + '"'
+      + (none
+        ? ' aria-disabled="true" data-tip-disabled="No open task carries a namespaced tag such as #context/phone yet"'
+        : ' data-tip="' + (byTag ? 'Grouped by #' + escapeHtml(namespace) + '/… tags. Choose another namespace' : 'Group by the tags in one namespace, such as #project/… or #context/…') + '"')
+      + '>' + (byTag ? '#' + escapeHtml(namespace) : 'Tag…') + '</button>';
     return '<div class="segmented task-board-group" role="group" aria-label="Group tasks by">'
       + [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date'], ['assignee', 'Person']].map(function (option) {
         const active = option[0] === groupBy;
         return '<button type="button" class="' + (active ? 'active' : '') + '" data-action="set-board-group" data-group="' + option[0] + '" aria-pressed="' + active + '">' + option[1] + '</button>';
-      }).join('') + '</div>';
+      }).join('') + tag + '</div>';
+  }
+
+  /**
+   * A card's key: its column and its task. A task with two tags in the
+   * namespace the board is grouped by is two cards, and each is found,
+   * moved, and focused as itself.
+   */
+  function boardCardKey(columnId, taskId) {
+    return String(columnId) + '\\u0000' + String(taskId);
+  }
+
+  function cardKeyOf(card) {
+    return boardCardKey(card.dataset.cardColumn, card.dataset.taskId);
   }
 
   /**
@@ -1344,7 +2337,15 @@ export function getComponentScript(): string {
    * common edits ended in the Markdown file instead.
    */
   function taskCardMoves(card, columnId, columns, settings) {
-    const option = function (value, label) {
+    const current = card.current || [];
+    // Status, priority, and due are single choices: each keeps the task's
+    // own value, checked, rather than leaving it out, and shows its key.
+    const option = function (value, label, key) {
+      const item = { value: value, label: label, checked: current.indexOf(value) >= 0 || value === columnId };
+      if (key) item.key = key;
+      return item;
+    };
+    const move = function (value, label) {
       return value === columnId ? undefined : { value: value, label: label };
     };
     const group = function (label, options) {
@@ -1354,13 +2355,13 @@ export function getComponentScript(): string {
     const statusOptions = [option('status:', 'No status')].concat(statuses.map(function (status) {
       return option('status:' + status, status.charAt(0).toUpperCase() + status.slice(1).replace(/[-_]+/g, ' '));
     }));
-    const priorityOptions = [['highest', 'Highest'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low'], ['lowest', 'Lowest'], ['', 'No priority']].map(function (entry) {
-      return option('priority:' + entry[0], entry[1]);
+    const priorityOptions = [['highest', 'Highest', '1'], ['high', 'High', '2'], ['medium', 'Medium', '3'], ['low', 'Low', '4'], ['lowest', 'Lowest', '5'], ['', 'No priority', '0']].map(function (entry) {
+      return option('priority:' + entry[0], entry[1], entry[2]);
     });
-    const dueOptions = [['today', 'Due today'], ['tomorrow', 'Due tomorrow'], ['', 'No due date']].map(function (entry) {
-      return option('due:' + entry[0], entry[1]);
-    });
-    const done = card.completed ? '' : option('done', 'Complete it');
+    const dueOptions = [['today', 'Due today', 't'], ['tomorrow', 'Due tomorrow', 'm'], ['', 'No due date']].map(function (entry) {
+      return option('due:' + entry[0], entry[1], entry[2]);
+    }).concat([{ value: 'pick-date', label: 'Due on a date…', key: 'd' }]);
+    const done = card.completed ? '' : { value: 'done', label: 'Complete it', key: 'x' };
     // Any column of the current grouping that is not one of the above, such
     // as a due band the board made, still moves the card.
     const others = columns.filter(function (column) {
@@ -1369,13 +2370,15 @@ export function getComponentScript(): string {
         && column.id.indexOf('priority:') !== 0
         && column.id.indexOf('due:') !== 0
         && column.id !== 'done';
-    }).map(function (column) { return option(column.id, column.label); });
+    }).map(function (column) { return move(column.id, column.label); });
     return [
       group('Status', statusOptions),
       group('Priority', priorityOptions),
       group('Due', dueOptions),
       group('This board', others),
+      group('Steps', [{ value: 'break-steps', label: card.steps ? 'Add steps…' : 'Break into steps…', key: 's' }]),
       group('Done', done ? [done] : []),
+      group('Note', [{ value: 'move-to', label: 'Move to…' }]),
     ];
   }
 
@@ -1386,11 +2389,13 @@ export function getComponentScript(): string {
   const ELLIPSIS_ICON = '${strokeIcon(ICON_PATHS.ellipsis)}';
 
   function renderTaskBoardCard(card, columnId, columns, settings) {
-    taskBoardMoves[card.taskId] = taskCardMoves(card, columnId, columns, settings);
+    taskBoardMoves[boardCardKey(columnId, card.taskId)] = taskCardMoves(card, columnId, columns, settings);
     const details = card.details.map(function (detail) {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
+      const quiet = overdue && card.overdueTone === 'quiet';
+      const stale = card.stale && detail.indexOf('was due') === 0;
       // The host words priority as "high priority"; the card draws the badge
       // the task rows draw, so it is told from the due date beside it.
       const priority = /^(highest|high|medium|low|lowest) priority$/.exec(detail);
@@ -1400,21 +2405,54 @@ export function getComponentScript(): string {
       const text = escapeHtml(detail).replace(/\\d{4}-\\d{2}-\\d{2}/g, function (date) {
         return '<span class="board-date">' + date + '</span>';
       });
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + text + '</span>';
+      return '<span' + (quiet ? ' class="overdue quiet"' : overdue ? ' class="overdue"' : stale ? ' class="stale"' : '') + '>' + text + '</span>';
     }).join('');
     const plainTitle = String(card.title || '');
     // The file and line, then the headings above, fold under the card as
     // they do under a row: the file name was the last detail on every card.
     const cardPath = renderHeadingPath(card.headingPath, String(card.filePath).split('/').pop() || card.filePath, '');
-    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
-      + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
-      + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
+    // A short name for the card as a whole, since a focused article is read
+    // in full otherwise: its title, its column, and when it is due.
+    const columnLabel = (columns.find(function (column) { return column.id === columnId; }) || {}).label;
+    const dueDetail = (card.details || []).find(function (detail) { return /^(due|overdue|was due)/i.test(detail); });
+    const steps = card.steps
+      ? '<p class="source board-steps"><span class="board-steps-label">' + escapeHtml(card.steps.label) + '</span>'
+        + (card.steps.next ? '<span class="board-steps-next"> · next: ' + escapeHtml(card.steps.next) + '</span>' : '')
+        + '</p>'
+      : '';
+    const cardName = [plainTitle, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
+    // The board is one Tab stop: the card last focused, or the first. Arrow
+    // keys move between cards, and a card's checkbox and menu are keys of
+    // their own, so neither is a Tab stop either.
+    const tabStop = boardCardKey(columnId, card.taskId) === taskBoardTabStop ? '0' : '-1';
+    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="' + tabStop + '" aria-label="' + escapeHtml(cardName) + '" aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"'
+      + ' data-task-id="' + escapeHtml(card.taskId) + '" data-card-column="' + escapeHtml(columnId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
+      + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" data-tip="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
+      + steps
       + '<span class="task-source">' + escapeHtml(formatSourceLocation(String(card.filePath).split('/').pop() || card.filePath, card.line)) + '</span>'
       + (cardPath ? '<span class="task-source heading-path">' + cardPath + '</span>' : '')
-      + '<button type="button" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
+      + renderIconButton({
+        action: 'board-menu',
+        className: 'board-move',
+        label: 'Change ' + plainTitle + ': status, priority, or due date',
+        tip: 'Change this task',
+        icon: ELLIPSIS_ICON,
+        attributes: 'tabindex="-1" aria-haspopup="menu" aria-expanded="false"',
+      })
       + '</div></article>';
+  }
+
+  /**
+   * A column's count as its header shows it, "40 / 3 · 38 overdue", and its
+   * name as a screen reader hears it.
+   */
+  function describeBoardColumn(label, count, limit, overdueCount) {
+    return {
+      count: String(count) + (limit !== undefined ? ' / ' + limit : '') + (overdueCount ? ' · ' + overdueCount + ' overdue' : ''),
+      name: label + ', ' + count + (count === 1 ? ' task' : ' tasks') + (limit !== undefined ? ', limit ' + limit : '') + (overdueCount ? ', ' + overdueCount + ' overdue' : ''),
+    };
   }
 
   /**
@@ -1423,6 +2461,14 @@ export function getComponentScript(): string {
    */
   function renderTaskBoard(board, isVisible) {
     taskBoardMoves = {};
+    const shown = board.columns.reduce(function (all, column) {
+      return all.concat((isVisible ? column.cards.filter(isVisible) : column.cards).map(function (card) {
+        return boardCardKey(column.id, card.taskId);
+      }));
+    }, []);
+    if (shown.indexOf(taskBoardTabStop) < 0) {
+      taskBoardTabStop = shown.length ? shown[0] : undefined;
+    }
     // Grouped by status with almost no statuses written, the board is one
     // tall column and four near-empty ones. Say so, and offer the grouping
     // that works for any task, before the reader takes the board for broken.
@@ -1432,15 +2478,34 @@ export function getComponentScript(): string {
     return hint + '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
       const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
       const count = cards.length + column.hiddenCount;
+      // Counted from the cards shown, so typed words that hide cards recount
+      // the overdue ones too. Done and Overdue itself need no such count.
+      const overdueCount = column.id === 'done' || column.id === 'due:overdue'
+        ? 0
+        : cards.filter(function (card) { return card.overdue && !card.completed; }).length;
+      const limit = column.limit;
+      const overLimit = limit !== undefined && count > limit;
+      const described = describeBoardColumn(column.label, count, limit, overdueCount);
+      const countText = described.count;
+      const columnName = described.name;
       const body = cards.length
         ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns, board.settings); }).join('')
         : '<p class="board-empty">' + (column.droppable ? 'Drop a task here' : 'No tasks') + '</p>';
-      return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + '"'
+      return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + (overLimit ? ' over-limit' : '') + '"'
         + ' data-column-id="' + escapeHtml(column.id) + '" data-droppable="' + column.droppable + '"'
-        + ' aria-label="' + escapeHtml(column.label + ', ' + count + (count === 1 ? ' task' : ' tasks')) + '">'
-        + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + count + '</span></h2>'
+        + ' data-hidden-count="' + (column.hiddenCount || 0) + '"' + (limit !== undefined ? ' data-limit="' + limit + '"' : '')
+        + ' aria-label="' + escapeHtml(columnName) + '">'
+        + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + escapeHtml(countText) + '</span></h2>'
+        // A column that takes a drop takes a new task the same way, from under
+        // its title: at the foot of a long column it was out of sight.
+        + (column.droppable && column.id !== 'done'
+          ? '<button type="button" class="board-add" data-action="board-add-task" data-column-id="' + escapeHtml(column.id) + '" data-tip="Capture a task straight into ' + escapeHtml(column.label) + '">+ Add task</button>'
+          : '')
         + '<div class="board-cards">' + body + '</div>'
         + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
+        // One that does not take a drop says so while a card is dragged, and
+        // where to go instead.
+        + (column.droppable ? '' : '<p class="board-refuses">' + (column.id.indexOf('due:') === 0 ? 'A card cannot be dropped on a range of days. Pick its date from its ⋯ menu.' : 'A card cannot be dropped here.') + '</p>')
         + '</section>';
     }).join('') + '</div>';
   }
@@ -1452,6 +2517,25 @@ export function getComponentScript(): string {
    * once; the host's next state confirms it or puts it back.
    */
   let taskBoardDragId;
+  /** The column the dragged card was in. */
+  let taskBoardDragColumn;
+  /** The card that is the board's one Tab stop, kept across redraws. */
+  let taskBoardTabStop;
+  /** Until when a card just completed stays on screen before the redraw. */
+  let taskBoardLingerUntil = 0;
+
+  /**
+   * How long the next redraw should wait for a completed card to finish
+   * leaving. A card that vanished the moment its box was ticked left the
+   * reader unsure they had ticked the right one.
+   */
+  function taskBoardLingerRemaining() {
+    return Math.max(0, taskBoardLingerUntil - Date.now());
+  }
+
+  function reducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
 
   function installTaskBoard(post) {
     function boardCard(target) {
@@ -1464,15 +2548,165 @@ export function getComponentScript(): string {
     function clearDropTargets() {
       document.querySelectorAll('.board-column.drop-target').forEach(function (column) { column.classList.remove('drop-target'); });
     }
-    function openCard(card) {
-      post({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
+    function openCard(card, event) {
+      post(openSourceMessage(card, event));
+    }
+
+    function completeCard(card, completed) {
+      post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: completed });
+      announce((completed ? 'Completed ' : 'Reopened ') + taskTitleOf(card) + '.');
+      if (completed && !reducedMotion()) {
+        card.classList.add('is-completing');
+        taskBoardLingerUntil = Date.now() + 800;
+      }
+    }
+    function moveCard(card, column, said) {
+      const from = card.dataset.cardColumn;
+      applyMove(card, column);
+      post({ type: 'moveTask', taskId: card.dataset.taskId, column: column, from: from });
+      announce(said);
+    }
+    /** A column's header counted again from the cards it holds now. */
+    function recountColumn(column) {
+      if (!column) return;
+      const title = column.querySelector('.board-column-title span');
+      const cards = Array.prototype.filter.call(column.querySelectorAll('.board-card'), function (card) { return !card.hidden; });
+      const count = cards.length + Number(column.dataset.hiddenCount || 0);
+      const id = column.dataset.columnId;
+      const overdue = id === 'done' || id === 'due:overdue' ? 0 : cards.filter(function (card) { return card.querySelector('.board-details .overdue') && !card.classList.contains('completed'); }).length;
+      const limit = column.dataset.limit === undefined ? undefined : Number(column.dataset.limit);
+      const described = describeBoardColumn(title ? title.textContent : '', count, limit, overdue);
+      const counter = column.querySelector('.board-count');
+      if (counter) counter.textContent = described.count;
+      column.setAttribute('aria-label', described.name);
+      column.classList.toggle('over-limit', limit !== undefined && count > limit);
+    }
+    /**
+     * A move shows at once: the card goes to the top of its new column, both
+     * counts change, and it is marked pending until the host's next state
+     * replaces the board. A move to a column this grouping does not draw,
+     * such as a priority on a status board, marks the card where it is.
+     */
+    function applyMove(card, columnId) {
+      const from = card.closest('.board-column');
+      const to = Array.prototype.find.call(document.querySelectorAll('.task-board .board-column'), function (column) { return column.dataset.columnId === columnId; });
+      if (to && to !== from) {
+        const cards = to.querySelector('.board-cards');
+        const empty = cards && cards.querySelector('.board-empty');
+        if (empty) empty.remove();
+        if (cards) cards.prepend(card);
+        // It is this column's card now, for its key and its focus.
+        card.setAttribute('data-card-column', columnId);
+        taskBoardTabStop = cardKeyOf(card);
+        recountColumn(from);
+        recountColumn(to);
+      }
+      card.classList.add('is-pending');
+      card.setAttribute('aria-busy', 'true');
+      focusCard(card);
+    }
+    function visibleCards(column) {
+      return Array.prototype.filter.call(column.querySelectorAll('.board-card'), function (card) { return !card.hidden; });
+    }
+    function focusCard(card) {
+      if (!card) return;
+      document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach(function (other) { other.setAttribute('tabindex', '-1'); });
+      card.setAttribute('tabindex', '0');
+      taskBoardTabStop = cardKeyOf(card);
+      card.focus();
+      if (card.scrollIntoView) card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+    function columnTitle(column) {
+      const title = column && column.querySelector('.board-column-title span');
+      return title ? title.textContent : 'the column';
+    }
+    /** The keys a focused card answers, which the ? sheet lists. */
+    function handleCardKey(event, card) {
+      const column = card.closest('.board-column');
+      const columns = Array.prototype.slice.call(document.querySelectorAll('.task-board .board-column'));
+      const cards = visibleCards(column);
+      const at = cards.indexOf(card);
+      const key = event.key;
+      if (key === 'ArrowDown' || key === 'ArrowUp') {
+        focusCard(cards[at + (key === 'ArrowDown' ? 1 : -1)]);
+        return true;
+      }
+      if (key === 'Home' || key === 'End') {
+        focusCard(key === 'Home' ? cards[0] : cards[cards.length - 1]);
+        return true;
+      }
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        const step = key === 'ArrowRight' ? 1 : -1;
+        for (let index = columns.indexOf(column) + step; index >= 0 && index < columns.length; index += step) {
+          const next = visibleCards(columns[index]);
+          if (next.length) {
+            focusCard(next[Math.min(at, next.length - 1)]);
+            break;
+          }
+        }
+        return true;
+      }
+      if (key === 'x') {
+        completeCard(card, !card.classList.contains('completed'));
+        return true;
+      }
+      if (key === 't' || key === 'm') {
+        moveCard(card, key === 't' ? 'due:today' : 'due:tomorrow', taskTitleOf(card) + (key === 't' ? ' is due today.' : ' is due tomorrow.'));
+        return true;
+      }
+      if (/^[0-5]$/.test(key)) {
+        const priority = ['', 'highest', 'high', 'medium', 'low', 'lowest'][Number(key)];
+        moveCard(card, 'priority:' + priority, taskTitleOf(card) + (priority ? ': ' + priority + ' priority.' : ': no priority.'));
+        return true;
+      }
+      if (key === '[' || key === ']') {
+        const droppable = columns.filter(function (candidate) { return candidate.dataset.droppable === 'true'; });
+        const target = droppable[droppable.indexOf(column) + (key === ']' ? 1 : -1)];
+        if (target && droppable.indexOf(column) >= 0) moveCard(card, target.dataset.columnId, 'Moved ' + taskTitleOf(card) + ' to ' + columnTitle(target) + '.');
+        return true;
+      }
+      if (key === 'd') {
+        post({ type: 'pickTaskDate', taskId: card.dataset.taskId });
+        return true;
+      }
+      if (key === 'e') {
+        post({ type: 'editTask', taskId: card.dataset.taskId });
+        return true;
+      }
+      if (key === 's') {
+        post({ type: 'breakIntoSteps', taskId: card.dataset.taskId });
+        return true;
+      }
+      return false;
     }
 
     function openCardMenu(card, opener) {
-      const groups = taskBoardMoves[card.dataset.taskId];
+      const groups = taskBoardMoves[cardKeyOf(card)];
       if (!groups) return false;
       openActionMenu(opener, groups, function (value) {
-        post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
+        if (value === 'pick-date') {
+          post({ type: 'pickTaskDate', taskId: card.dataset.taskId });
+          return;
+        }
+        if (value === 'move-to') {
+          post({ type: 'moveTaskTo', taskId: card.dataset.taskId });
+          return;
+        }
+        if (value === 'break-steps') {
+          post({ type: 'breakIntoSteps', taskId: card.dataset.taskId });
+          return;
+        }
+        // Said as the menu said it: "Draft spec: Priority, High."
+        const group = groups.find(function (candidate) { return candidate.items.some(function (item) { return item.value === value; }); });
+        const chosen = group ? group.items.find(function (item) { return item.value === value; }) : undefined;
+        if (chosen && chosen.checked) {
+          announce(taskTitleOf(card) + ': ' + (group.label || 'It') + ' is already ' + chosen.label + '.');
+          return;
+        }
+        const from = card.dataset.cardColumn;
+        applyMove(card, value);
+        post({ type: 'moveTask', taskId: card.dataset.taskId, column: value, from: from });
+        announce(taskTitleOf(card) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
       });
       return true;
     }
@@ -1481,6 +2715,20 @@ export function getComponentScript(): string {
       const group = event.target.closest('[data-action="set-board-group"]');
       if (group) {
         post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      const namespaceButton = event.target.closest('[data-action="pick-board-namespace"]');
+      if (namespaceButton) {
+        const choices = taskBoardNamespaces.filter(function (namespace) { return namespace.name !== taskBoardNamespace; });
+        if (!choices.length) return;
+        openActionMenu(namespaceButton, [{
+          label: 'Group by tag namespace',
+          items: choices.map(function (namespace) {
+            return { value: namespace.name, label: '#' + namespace.name + ' · ' + namespace.openTasks + ' open ' + (namespace.openTasks === 1 ? 'task' : 'tasks') };
+          }),
+        }], function (name) {
+          post({ type: 'setBoardGroup', groupBy: 'tag', namespace: name });
+        });
         return;
       }
       const menuButton = event.target.closest('[data-action="board-menu"]');
@@ -1494,19 +2742,36 @@ export function getComponentScript(): string {
         post({ type: 'showColumnRest', columnId: rest.dataset.columnId });
         return;
       }
+      const add = event.target.closest('[data-action="board-add-task"]');
+      if (add) {
+        post({ type: 'addTaskToColumn', column: add.dataset.columnId });
+        return;
+      }
       if (event.target.closest('input, select, button, a')) return;
       const card = boardCard(event.target);
-      if (card) openCard(card);
+      if (card) openCard(card, event);
     });
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && event.target.matches && event.target.matches('.task-board .board-card')) openCard(event.target);
+      const card = event.target.matches && event.target.matches('.task-board .board-card') ? event.target : undefined;
+      if (!card || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === 'Enter') {
+        openCard(card);
+        return;
+      }
+      if (handleCardKey(event, card)) event.preventDefault();
+    });
+    // A card reached by Tab or a click becomes the board's Tab stop.
+    document.addEventListener('focusin', function (event) {
+      const card = event.target.matches && event.target.matches('.task-board .board-card') ? event.target : undefined;
+      if (!card || card.getAttribute('tabindex') === '0') return;
+      document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach(function (other) { other.setAttribute('tabindex', '-1'); });
+      card.setAttribute('tabindex', '0');
+      taskBoardTabStop = cardKeyOf(card);
     });
     document.addEventListener('change', function (event) {
       const card = boardCard(event.target);
       if (!card) return;
-      if (event.target.dataset.action === 'board-toggle-task') {
-        post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: event.target.checked });
-      }
+      if (event.target.dataset.action === 'board-toggle-task') completeCard(card, event.target.checked);
     });
     // A right-click on a card, or the menu key on a focused one, opens the
     // same menu its ⋯ does, anchored to that button.
@@ -1520,15 +2785,21 @@ export function getComponentScript(): string {
       const card = boardCard(event.target);
       if (!card) return;
       taskBoardDragId = card.dataset.taskId;
+      taskBoardDragColumn = card.dataset.cardColumn;
       card.classList.add('dragging');
+      // The columns that will not take the card say so while it is held.
+      const board = card.closest('.task-board');
+      if (board) board.classList.add('is-dragging-card');
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', taskBoardDragId);
     });
     document.addEventListener('dragend', function (event) {
       const card = boardCard(event.target);
       if (card) card.classList.remove('dragging');
+      document.querySelectorAll('.task-board.is-dragging-card').forEach(function (board) { board.classList.remove('is-dragging-card'); });
       clearDropTargets();
       taskBoardDragId = undefined;
+      taskBoardDragColumn = undefined;
     });
     document.addEventListener('dragover', function (event) {
       const column = dropColumn(event);
@@ -1548,13 +2819,17 @@ export function getComponentScript(): string {
       const column = dropColumn(event);
       if (!column) return;
       event.preventDefault();
-      const card = document.querySelector('.task-board .board-card[data-task-id="' + CSS.escape(taskBoardDragId) + '"]');
+      // The card dragged, not another copy of its task in another column.
+      const card = Array.prototype.find.call(
+        document.querySelectorAll('.task-board .board-card[data-task-id="' + CSS.escape(taskBoardDragId) + '"]'),
+        function (candidate) { return taskBoardDragColumn === undefined || candidate.dataset.cardColumn === taskBoardDragColumn; },
+      );
       if (card && card.closest('.board-column') !== column) {
-        const cards = column.querySelector('.board-cards');
-        const empty = cards.querySelector('.board-empty');
-        if (empty) empty.remove();
-        cards.prepend(card);
-        post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId });
+        const from = card.dataset.cardColumn;
+        applyMove(card, column.dataset.columnId);
+        post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId, from: from });
+        const title = column.querySelector('.board-column-title span');
+        announce('Moved ' + taskTitleOf(card) + ' to ' + (title ? title.textContent : 'the column') + '.');
       }
       clearDropTargets();
     });
@@ -1571,17 +2846,19 @@ export function getComponentScript(): string {
    * gets stuck on offered no route to it.
    */
   function renderHelpButton(anchor) {
-    return '<button type="button" class="icon-button help-button" data-action="open-help"'
-      + (anchor ? ' data-help-anchor="' + escapeHtml(anchor) + '"' : '')
-      + ' aria-label="Open Help" title="Open Help">'
-      + '${helpIcon}'
-      + '</button>';
+    return renderIconButton({
+      action: 'open-help',
+      className: 'help-button',
+      label: 'Open Help',
+      icon: '${helpIcon}',
+      attributes: anchor ? 'data-help-anchor="' + escapeHtml(anchor) + '"' : '',
+    });
   }
 
   function renderViewOptions(groups) {
     const wasOpen = Boolean(document.querySelector('.view-options[open]'));
-    return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">' + '${settingsIcon}' + '</summary>'
-      + '<div class="view-options-menu">' + groups.map(function (group) {
+    return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" data-tip="View options">' + '${settingsIcon}' + '</summary>'
+      + '<div class="view-options-menu popover is-dropdown">' + groups.map(function (group) {
         return '<div class="view-options-group' + (group.stacked ? ' is-stacked' : '') + '"><span>' + escapeHtml(group.label) + '</span>' + group.html + '</div>';
       }).join('') + '</div></details>';
   }
@@ -1613,6 +2890,20 @@ export function getComponentScript(): string {
   }
 
   /**
+   * The gear's theme row, directly above zen on every page with a gear: one
+   * button naming the theme in use, which opens Choose Theme… to preview the
+   * others on the open pages. The name is written when the page is built,
+   * and a new theme redraws the page.
+   */
+  function renderThemeOption() {
+    const name = ${JSON.stringify(deckardThemeNames[getDeckardTheme()])};
+    return {
+      label: 'Theme',
+      html: '<button type="button" class="theme-choice" data-action="choose-theme" aria-label="Theme: ' + escapeHtml(name) + '. Choose another">' + escapeHtml(name) + '…</button>',
+    };
+  }
+
+  /**
    * Close the gear's menu on a click outside it, and on Escape, handing focus
    * back to the gear. Call once, before the page's own listeners, so a click
    * that redraws the page is seen while its target is still in the menu.
@@ -1626,6 +2917,10 @@ export function getComponentScript(): string {
       const zen = event.target && event.target.closest ? event.target.closest('[data-action="set-zen-mode"]') : undefined;
       if (zen) {
         vscode.postMessage({ type: 'setZenMode', enabled: zen.dataset.value === 'on' });
+      }
+      const theme = event.target && event.target.closest ? event.target.closest('[data-action="choose-theme"]') : undefined;
+      if (theme) {
+        vscode.postMessage({ type: 'chooseTheme' });
       }
       const inside = event.target && event.target.closest ? event.target.closest('.view-options') : undefined;
       document.querySelectorAll('.view-options[open]').forEach(function (options) {
@@ -1652,6 +2947,14 @@ export function getComponentScript(): string {
    * item is a DashboardTask. options.draggable marks a row that can be
    * ranked; options.titleDisplay is the tagTitleDisplayMode.
    */
+  /**
+   * Said on a parked result: it stays searchable, and is left out of the
+   * lists of things to do. A plain span, so its title is not on a control.
+   */
+  function renderParkedLabel() {
+    return '<span class="parked-label" title="Parked: left out of the Tasks view, the Task board, and Related Notes.">Parked</span>';
+  }
+
   function renderTaskListRow(item, options) {
     const task = item.task;
     const settings = options || {};
@@ -1659,7 +2962,7 @@ export function getComponentScript(): string {
     // · 2026-09-08", so the state is in the text and not in the color alone.
     // A done task keeps its date as written.
     const dueDate = item.dueLabel
-      ? '<span class="due-date ' + (item.overdue ? 'overdue' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
+      ? '<span class="due-date ' + (item.overdue ? 'overdue' : item.stale ? 'stale' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
       : (task.dueText
         ? '<span class="due-date">Due ' + escapeHtml(task.dueText) + '</span>'
         : '');
@@ -1672,13 +2975,17 @@ export function getComponentScript(): string {
     const recurrence = task.recurrence
       ? '<span class="task-detail">Repeats ' + escapeHtml(task.recurrence) + '</span>'
       : '';
+    const steps = item.stepsLabel
+      ? '<span class="task-detail task-steps">' + escapeHtml(item.stepsLabel) + '</span>'
+      : '';
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
     // The headings above the task, tags stripped, under the file and line:
     // the same two lines a note card and the sidebar show.
     const taskPath = renderHeadingPath(item.headingPath, item.fileName, '');
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + (item.parked ? renderParkedLabel() : '') + dueDate + scheduled + priority + recurrence + steps + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
+      + (settings.trailing || '')
       + '</div>';
   }
 
@@ -1721,6 +3028,11 @@ export function getComponentScript(): string {
    *               data-context-action
    *   onMenuAction(action, kind, key) optional; runs one of those
    */
+  /** One row of a context menu, as every menu draws it. */
+  function renderMenuItem(action, label) {
+    return '<button type="button" class="menu-item" role="menuitem" data-context-action="' + escapeHtml(action) + '"><span class="menu-label">' + escapeHtml(label) + '</span></button>';
+  }
+
   let rankMenu;
   let rankMenuKind;
   let rankMenuKey;
@@ -1830,6 +3142,23 @@ export function getComponentScript(): string {
       clearPreview();
       drag = undefined;
     }
+    /** Moves a row one place, past the row of its kind above or below it. */
+    function step(kind, key, up) {
+      if (!options.canRank(kind)) return;
+      const rows = Array.prototype.filter.call(document.querySelectorAll(options.kinds[kind].selector), function (candidate) {
+        return !candidate.classList.contains('drag-placeholder') && !candidate.classList.contains('drag-ghost');
+      });
+      const row = rows.find(function (candidate) { return keyOf(candidate, kind) === key; });
+      const at = rows.indexOf(row);
+      const target = rows[at + (up ? -1 : 1)];
+      if (!row || !target) return;
+      // The row stands in for the drop placeholder, which says which group a
+      // row lands in; one step never leaves its group.
+      if (options.reorder(kind, key, keyOf(target, kind), up, row) === true) {
+        announce('Moved ' + (up ? 'up' : 'down') + '.');
+      }
+    }
+
     function openMenu(event, row) {
       const kind = kindOf(row);
       const key = kind ? keyOf(row, kind) : undefined;
@@ -1837,8 +3166,12 @@ export function getComponentScript(): string {
       const actions = options.menuActions ? options.menuActions(kind, key) : [];
       if (options.canRank(kind)) {
         const labels = options.kinds[kind].edgeLabels || ['Move to top', 'Move to bottom'];
-        actions.push('<button type="button" role="menuitem" data-context-action="top">' + escapeHtml(labels[0]) + '</button>');
-        actions.push('<button type="button" role="menuitem" data-context-action="bottom">' + escapeHtml(labels[1]) + '</button>');
+        // One step at a time as well as to either end, so any place in the
+        // order is reachable without dragging (WCAG 2.5.7).
+        actions.push(renderMenuItem('up', 'Move up'));
+        actions.push(renderMenuItem('down', 'Move down'));
+        actions.push(renderMenuItem('top', labels[0]));
+        actions.push(renderMenuItem('bottom', labels[1]));
       }
       if (!actions.length) return;
       event.preventDefault();
@@ -1846,7 +3179,7 @@ export function getComponentScript(): string {
       if (!rankMenu) {
         rankMenu = document.createElement('div');
         rankMenu.setAttribute('id', 'rank-context-menu');
-        rankMenu.setAttribute('class', 'rank-context-menu');
+        rankMenu.setAttribute('class', 'rank-context-menu popover');
         rankMenu.setAttribute('role', 'menu');
         document.body.appendChild(rankMenu);
       }
@@ -1870,6 +3203,8 @@ export function getComponentScript(): string {
         if (!kind || !key) return;
         if (action === 'top' || action === 'bottom') {
           if (options.canRank(kind)) options.move(kind, key, action === 'top');
+        } else if (action === 'up' || action === 'down') {
+          step(kind, key, action === 'up');
         } else if (options.onMenuAction) {
           options.onMenuAction(action, kind, key);
         }
@@ -1888,6 +3223,15 @@ export function getComponentScript(): string {
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) {
         closeRankMenu();
+        return;
+      }
+      // Alt+Up and Alt+Down move the focused row one place.
+      if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown') && event.target.matches && event.target.matches(rowSelector)) {
+        const kind = kindOf(event.target);
+        if (kind) {
+          event.preventDefault();
+          step(kind, keyOf(event.target, kind), event.key === 'ArrowUp');
+        }
         return;
       }
       // Reordering was a drag or a right-click, so a keyboard could reach
@@ -2028,11 +3372,16 @@ export function getComponentScript(): string {
  */
 export function getQueryEditorCss(): string {
   return `
-.query-workspace { margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+.query-workspace { position: relative; margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+/* A search still out after a second: a thin bar along the box's foot. It is
+   information, not ornament, so zen keeps it. */
+.query-workspace.is-searching::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: searching 1.1s linear infinite; }
+@keyframes searching { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+@media (prefers-reduced-motion: reduce) { .query-workspace.is-searching::after { animation: none; background: var(--accent); opacity: .5; } }
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
 .query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: var(--text-sm) var(--font-mono); }
-.query-input:focus { border-color: var(--amber); outline: none; }
-.query-input:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
+.query-input:focus { border-color: var(--amber); outline: 2px solid transparent; }
+.query-input:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
 .query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
 /*
@@ -2043,10 +3392,10 @@ export function getQueryEditorCss(): string {
 .query-bar-shell { flex-wrap: wrap; align-items: center; gap: 4px 5px; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 3px 6px; cursor: text; }
 .query-bar-shell:focus-within { border-color: var(--amber); }
 .query-bar-shell.invalid { border-color: #FF5555; }
-.query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: none; }
+.query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: 2px solid transparent; }
 /* Every chip looks the same, whatever its term; only a left-out tag is red. */
 .query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: var(--text-xs) var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
-.query-chip-label { min-width: 0; overflow-wrap: anywhere; }
+.query-chip-label { max-width: 28ch; }
 .query-bar-shell .query-chip.is-negated { border-style: dashed; border-color: var(--muted); background: transparent; color: var(--text); text-decoration: line-through; text-decoration-color: var(--muted); }
 /* A group of the search: its own chips inside a frame, with the group's
    remove at the end, so what the builder nests the box shows nested. The
@@ -2069,7 +3418,7 @@ export function getQueryEditorCss(): string {
 .query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
 .query-op { font-size: inherit; }
 .query-paren { color: var(--muted); }
-.query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); }
+.query-suggestions { position: absolute; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; padding: 0; }
 .query-suggestions[hidden] { display: none; }
 /* A completion reads as written, whatever a theme does to buttons, and each
    sits on its own ruled row; a long one wraps beside its note. */
@@ -2089,11 +3438,9 @@ export function getQueryEditorCss(): string {
 .query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
 .query-error { color: #FF8080; font: var(--text-xs) var(--font-mono); }
 .query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
-/* The line of syntax is wanted at the moment of typing and is chrome the rest
-   of the time, competing with the results under it. It shows while the box
-   has focus or holds a term; the Builder button and the count stay, and a
-   parse error, which shares the slot, never hides. */
-.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }
+/* The line of syntax stays put. Shown only while the box was in use, it
+   came and went as focus moved to the grouping and back, and read as a
+   line that had gone missing. Zen still takes it away. */
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
 .query-builder-group.is-negated { border-style: dashed; }
@@ -2115,7 +3462,7 @@ export function getQueryEditorCss(): string {
 .query-builder-row .query-builder-operator { font-family: var(--font-mono); }
 .query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
 .query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); }
-.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
+.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: 2px solid transparent; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
 .query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
@@ -2145,6 +3492,9 @@ export function getQueryEditorCss(): string {
 .query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: var(--text-xs); }
+/* The rest of a facet's values, or fewer: words, the height of a value. */
+.query-facet-more.query-facet-more { min-height: 26px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
+.query-facet-more.query-facet-more:hover, .query-facet-more.query-facet-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
@@ -2188,7 +3538,7 @@ export function getQueryEditorScript(): string {
    */
   function createQueryEditor(options) {
     const DEFAULT_OPERATORS = {
-      tag: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],
+      tag: ['eq', 'neq'], link: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],
       task: ['eq', 'neq'], due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
       start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
       priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], has: ['eq', 'neq'], kind: ['eq', 'neq'],
@@ -2204,7 +3554,7 @@ export function getQueryEditorScript(): string {
     /** Priority compares rank, not time. */
     const PRIORITY_OPERATOR_DESCRIPTIONS = { gt: 'above', gte: 'at or above', lt: 'below', lte: 'at or below' };
     const FIELD_PLACEHOLDERS = {
-      tag: '#project/atlas', text: 'vendor review', is: 'open', task: 'open', due: 'today', scheduled: 'today',
+      tag: '#project/atlas', link: 'Atlas#Decision', text: 'vendor review', is: 'open', task: 'open', due: 'today', scheduled: 'today',
       start: 'today', done: '7d', priority: 'high', has: 'due', kind: 'project', file: '2026-09-*.md',
       path: 'notes/*', in: 'notes/projects', created: '2026-09-13', updated: '30d',
     };
@@ -2226,6 +3576,10 @@ export function getQueryEditorScript(): string {
     let appliedSeen;
     /** Set between applying a search and seeing the host's answer. */
     let awaitingApply = false;
+    /** Refine facets opened past their first five, kept through redraws. */
+    const expandedFacets = new Set();
+    /** Fires a second into a search that has not come back. */
+    let searchingTimer;
     let builderOpen = false;
     /**
      * Local builder rows. A row not finished yet contributes nothing to the
@@ -2273,6 +3627,10 @@ export function getQueryEditorScript(): string {
     function clearedText() {
       return options.clearedText ? String(options.clearedText() || '') : '';
     }
+    /** Why Clear cannot act: nothing is in the box, or only the page's own tag. */
+    function clearReason() {
+      return clearedText().trim() ? 'Only this page\\'s own tag is left' : 'The search is already empty';
+    }
     /** Whether Clear would change the search. */
     function canClear(text) {
       return String(text || '').trim() !== clearedText().trim();
@@ -2295,14 +3653,14 @@ export function getQueryEditorScript(): string {
         ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
         : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
       const label = options.label || 'Search';
-      return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
+      return '<section class="query-workspace' + (searchInFlight ? ' is-searching' : '') + '"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
-        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
-        + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
-        + '<button data-action="clear-query" data-query-clears title="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
+        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions popover is-dropdown" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
+        + '<button class="query-apply" data-action="apply-query" data-tip="Run this search">Search</button>'
+        + '<button data-action="clear-query" data-query-clears data-tip="Clear the search" data-tip-disabled="' + escapeHtml(clearReason()) + '"' + (canClear(value) ? '' : ' aria-disabled="true"') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
         + '</div>'
-        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
+        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" data-tip="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
         + renderBuilder()
         + '</section>';
     }
@@ -2314,7 +3672,7 @@ export function getQueryEditorScript(): string {
      */
     function scanQuery(text) {
       const tokens = [];
-      const pattern = /"(?:[^"\\\\]|\\\\.)*"?|'[^']*'?|[()]|[^\\s()]+/g;
+      const pattern = /-?\\[\\[[^\\]]*(?:\\]\\]?)?|"(?:[^"\\\\]|\\\\.)*"?|'[^']*'?|[()]|[^\\s()]+/g;
       let match;
       while ((match = pattern.exec(text))) {
         tokens.push({ text: match[0], start: match.index, end: match.index + match[0].length });
@@ -2324,6 +3682,11 @@ export function getQueryEditorScript(): string {
       for (let index = 0; index < tokens.length; index += 1) {
         const token = tokens[index];
         const word = token.text;
+        if (/^-?\\[\\[/.test(word)) {
+          // [[Atlas plan]] is one term, spaces and all.
+          pieces.push({ kind: 'link', start: token.start, end: token.end, negated: word.charAt(0) === '-' });
+          continue;
+        }
         let tag = /^(-|!)?([#@][^\\s()"']+)$/.exec(unquote(word));
         if (tag) {
           pieces.push({ kind: 'tag', start: token.start, end: token.end, negated: Boolean(tag[1]) });
@@ -2392,13 +3755,15 @@ export function getQueryEditorScript(): string {
         return '<span class="query-chip-group' + (term.negated ? ' is-negated' : '') + '" role="group" aria-label="' + escapeHtml(label) + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '">'
           + (term.negated ? '<span class="query-chip-join" aria-hidden="true">NOT</span>' : '')
           + renderTermChips(term.items, term.join)
-          + '<button type="button" class="query-chip query-chip-group-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove the group ' + escapeHtml(label) + '" title="Remove the group ' + escapeHtml(label) + '"><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>'
+          + '<button type="button" class="query-chip query-chip-group-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove the group ' + escapeHtml(label) + '" data-tip="Remove the group ' + escapeHtml(label) + '"><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>'
           + '</span>';
       }
       const pieces = scanQuery(term.text);
       const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
-      const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) ? ' is-negated' : '');
-      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" title="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
+      // A link is one chip, struck through when negated, as a tag is.
+      const link = pieces.length === 1 && pieces[0].kind === 'link' ? pieces[0] : undefined;
+      const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) || (link && link.negated) ? ' is-negated' : '');
+      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" data-tip="Remove ' + escapeHtml(label) + '" data-tip-overflow="' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
     }
 
     /**
@@ -2467,10 +3832,12 @@ export function getQueryEditorScript(): string {
      */
     function syncTextButtons(text) {
       const hasText = Boolean(String(text || '').trim());
+      // aria-disabled rather than disabled: the button keeps its place in
+      // the Tab order, and says why it cannot act when focused.
       const enable = function (button, enabled) {
-        button.disabled = !enabled;
-        if (enabled) button.removeAttribute('disabled');
-        else button.setAttribute('disabled', '');
+        if (enabled) button.removeAttribute('aria-disabled');
+        else button.setAttribute('aria-disabled', 'true');
+        if (button.matches('[data-query-clears]')) button.setAttribute('data-tip-disabled', clearReason());
       };
       document.querySelectorAll('[data-query-needs-text]').forEach(function (button) { enable(button, hasText); });
       document.querySelectorAll('[data-query-clears]').forEach(function (button) { enable(button, canClear(text)); });
@@ -2495,10 +3862,10 @@ export function getQueryEditorScript(): string {
       const last = terms.length > 1 ? terms[terms.length - 1] : undefined;
       const label = last ? String(last.label || last.text) : '';
       const drop = last
-        ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" title="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
+        ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" data-tip="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
         : '';
       const clear = canClear(currentText())
-        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear</button>'
+        ? '<button data-action="clear-query" data-query-clears data-tip="Clear the search">Clear</button>'
         : '';
       if (!drop && !clear) return '';
       return '<span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">' + drop + clear + '</span>';
@@ -2520,9 +3887,10 @@ export function getQueryEditorScript(): string {
       }
       const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
-        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span><span class="query-facet-values">' + facet.values.map(function (value) {
+        const shown = facetValuesShown(facet, expandedFacets, 'query-facet-more');
+        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span><span class="query-facet-values">' + shown.values.map(function (value) {
           return renderFacetValue(facet, value);
-        }).join('') + '</span></div>';
+        }).join('') + shown.more + '</span></div>';
       }).join('') + '</div>' + count + '</section>';
     }
 
@@ -2531,6 +3899,13 @@ export function getQueryEditorScript(): string {
      * query it writes. A reader is choosing between AND, OR and NOT, so the
      * tooltip names them rather than describing them.
      */
+    /** A related tag's share of the results, as its chip says it aloud. */
+    function describeShare(value) {
+      return typeof value.total === 'number'
+        ? ', in ' + value.count + ' of ' + value.total + ' results'
+        : ', related ' + getWeightLevel(value.strength) + ' of 3';
+    }
+
     function describeFacetValue(value) {
       const clause = value.clause || '';
       return [
@@ -2555,9 +3930,9 @@ export function getQueryEditorScript(): string {
       const hasStrength = typeof value.strength === 'number';
       const name = value.label;
       const title = describeFacetValue(value);
-      const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
+      const strength = hasStrength ? describeShare(value) : '';
       const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
-      return '<button class="query-facet-value" data-action="facet"' + shared + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+      return '<button class="query-facet-value" data-action="facet"' + shared + ' data-tip="' + escapeHtml(title) + '" data-tip-overflow="' + escapeHtml(name) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
     }
 
     /** How many of each kind of result the applied search matches. */
@@ -2592,7 +3967,7 @@ export function getQueryEditorScript(): string {
         }).join('')
         : '<p class="query-builder-note">This group is empty. Add a condition to start it.</p>';
       const head = '<div class="query-builder-group-head">'
-        + '<button type="button" class="query-builder-not' + (group.negated ? ' active' : '') + '" data-action="builder-toggle-not" data-path="' + at + '" aria-pressed="' + (group.negated ? 'true' : 'false') + '" title="Turn this group around: match what it does not">not</button>'
+        + '<button type="button" class="query-builder-not' + (group.negated ? ' active' : '') + '" data-action="builder-toggle-not" data-path="' + at + '" aria-pressed="' + (group.negated ? 'true' : 'false') + '" data-tip="Turn this group around: match what it does not">not</button>'
         + '<span class="query-builder-head-text">match</span>'
         + '<select data-action="builder-set-join" data-path="' + at + '" aria-label="How this group combines its rows">'
         + '<option value="and"' + (group.join !== 'or' ? ' selected' : '') + '>all of</option>'
@@ -2614,7 +3989,7 @@ export function getQueryEditorScript(): string {
       const remove = '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button>';
       if (row.pending) {
         return '<div class="query-builder-row">' + joiner
-          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions popover is-dropdown" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
           + remove + '</div>';
       }
       if (!row.supported) {
@@ -2635,8 +4010,8 @@ export function getQueryEditorScript(): string {
       const operatorTitle = descriptions[row.operator] || 'Operator';
       return '<div class="query-builder-row">' + joiner
         + '<select data-action="builder-set-field"' + position + ' aria-label="Field">' + fields + '</select>'
-        + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" title="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
-        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+        + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" data-tip="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
+        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions popover is-dropdown" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + remove + '</div>';
     }
 
@@ -2726,14 +4101,21 @@ export function getQueryEditorScript(): string {
 
     /** One row as text, with shorthands written the way they are typed. */
     function formatBuilderCondition(row) {
+      if (row.field === 'link') return 'link ' + (OPERATOR_LABELS[row.operator] || '=') + ' [[' + stripLinkBrackets(row.value) + ']]';
       const value = quoteQueryValue(String(row.value).trim());
       if (row.field === 'has') return (row.operator === 'neq' ? 'no' : 'has') + ':' + value;
       if (SHORTHAND_FIELDS.indexOf(row.field) >= 0) return (row.operator === 'neq' ? '-' : '') + row.field + ':' + value;
       return row.field + ' ' + (OPERATOR_LABELS[row.operator] || '=') + ' ' + value;
     }
 
+    /** A link's note, as typed with or without its brackets and alias. */
+    function stripLinkBrackets(value) {
+      return String(value).trim().replace(/^\\[\\[/, '').replace(/\\]\\]$/, '').replace(/\\|.*$/, '').trim();
+    }
+
     function quoteQueryValue(value) {
-      return /[\\s:=<>~!()"']/.test(value) || !value
+      // [[x]] unquoted would read back as a link rather than the characters.
+      return /[\\s:=<>~!()"']/.test(value) || value.indexOf('[[') >= 0 || !value
         ? '"' + value.replace(/(["\\\\])/g, '\\\\$1') + '"'
         : value;
     }
@@ -2777,6 +4159,8 @@ export function getQueryEditorScript(): string {
       if (match && fieldFor(match[1])) {
         return row(fieldFor(match[1]), SYMBOL_OPERATORS[match[2]], unquote(match[3]));
       }
+      match = /^(-?)\\[\\[(.+?)\\]\\]$/.exec(value);
+      if (match) return row('link', match[1] ? 'neq' : 'eq', stripLinkBrackets(match[2]));
       if (/^-?[#@]/.test(value)) return row('tag', value.charAt(0) === '-' ? 'neq' : 'eq', value.replace(/^-/, ''));
       return row('text', 'contains', unquote(value));
     }
@@ -2788,6 +4172,18 @@ export function getQueryEditorScript(): string {
      */
     function run(text, keepEntry, incidental, focusBar) {
       awaitingApply = true;
+      // A search still out after a second shows a thin bar under the box.
+      clearTimeout(searchingTimer);
+      // The page's document, held here: the timer can outlive the frame
+      // that set it, and must not reach for a global that has since gone.
+      const page = document;
+      searchingTimer = setTimeout(function () {
+        if (!awaitingApply || !page || !page.querySelectorAll) return;
+        searchInFlight = true;
+        page.querySelectorAll('.query-workspace').forEach(function (workspace) { workspace.classList.add('is-searching'); });
+        const app = page.getElementById ? page.getElementById('app') : null;
+        if (app) app.setAttribute('aria-busy', 'true');
+      }, 1000);
       lastEntry = entry;
       entryAfterRun = keepEntry ? entry : '';
       // The host answers with a fresh snapshot, and the page rebuilds itself
@@ -2859,6 +4255,16 @@ export function getQueryEditorScript(): string {
       }
       const caret = caretPosition(input);
       const prefix = input.value.slice(0, caret);
+      // After [[ the notes are what is being written, whatever came before.
+      const opened = /\\[\\[[^\\]]*$/.exec(prefix);
+      if (opened) {
+        return {
+          token: opened[0],
+          items: ((all.values || {}).link || []).map(function (item) {
+            return { value: item.label, label: item.label, detail: item.detail, insert: '[[' + item.value + ']] ', term: true };
+          }),
+        };
+      }
       const context = valueContext(prefix, all.aliases || {});
       if (context) {
         const values = (all.values || {})[context.field] || [];
@@ -2913,6 +4319,16 @@ export function getQueryEditorScript(): string {
      */
     function pendingRowSuggestions(token) {
       const all = suggestions();
+      const opened = /^(-?)(\\[\\[.*)$/.exec(token || '');
+      if (opened) {
+        // A link, whole: -[[Atlas]] leaves out what links to Atlas.
+        return {
+          token: opened[2],
+          items: ((all.values || {}).link || []).map(function (item) {
+            return { value: item.label, label: opened[1] + item.label, detail: item.detail, condition: opened[1] + item.label };
+          }),
+        };
+      }
       const conditions = (all.conditions || []).map(function (item) {
         return { value: item.value, label: item.label, detail: item.detail, condition: item.value };
       });
@@ -2965,14 +4381,27 @@ export function getQueryEditorScript(): string {
       if (!suggestionItems.length) {
         container.hidden = true;
         container.innerHTML = '';
-        if (input) input.setAttribute('aria-expanded', 'false');
+        if (input) {
+          input.setAttribute('aria-expanded', 'false');
+          input.removeAttribute('aria-activedescendant');
+        }
         return;
       }
+      // Focus stays in the field, as the ARIA combobox pattern has it; the
+      // highlighted option is named to a screen reader by its id instead, so
+      // the options are not Tab stops of their own.
+      const idPrefix = container.id || 'suggestions';
       container.innerHTML = suggestionItems.map(function (item, index) {
-        return '<button type="button" role="option" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span class="query-suggestion-label">' + renderTermText(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
+        return '<button type="button" role="option" tabindex="-1" id="' + idPrefix + '-' + index + '" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span class="query-suggestion-label">' + renderTermText(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
       }).join('');
       container.hidden = false;
-      if (input) input.setAttribute('aria-expanded', 'true');
+      if (input) {
+        input.setAttribute('aria-expanded', 'true');
+        if (suggestionIndex >= 0) input.setAttribute('aria-activedescendant', idPrefix + '-' + suggestionIndex);
+        else input.removeAttribute('aria-activedescendant');
+      }
+      const active = container.querySelector('.query-suggestion.active');
+      if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
     }
 
     function closeSuggestions() {
@@ -2982,6 +4411,11 @@ export function getQueryEditorScript(): string {
       if (container) {
         container.hidden = true;
         container.innerHTML = '';
+      }
+      const host = suggestionHostKey ? document.querySelector('[data-suggest-key="' + suggestionHostKey + '"]') : null;
+      if (host) {
+        host.setAttribute('aria-expanded', 'false');
+        host.removeAttribute('aria-activedescendant');
       }
       suggestionHostKey = undefined;
     }
@@ -3167,6 +4601,12 @@ export function getQueryEditorScript(): string {
           }
           appliedSeen = text;
           awaitingApply = false;
+          clearTimeout(searchingTimer);
+          if (searchInFlight) {
+            searchInFlight = false;
+            document.querySelectorAll('.query-workspace.is-searching').forEach(function (workspace) { workspace.classList.remove('is-searching'); });
+            syncBusy();
+          }
         }
         if (text !== builderSourceText) {
           builderDraft = undefined;
@@ -3265,7 +4705,7 @@ export function getQueryEditorScript(): string {
         const target = event.target.closest ? event.target.closest('[data-action]') : undefined;
         if (!target) return false;
         // A disabled button in the bar is there to hold its place, not to act.
-        if (target.disabled === true || (target.getAttribute && target.getAttribute('disabled') !== null)) return true;
+        if (target.disabled === true || (target.getAttribute && (target.getAttribute('disabled') !== null || target.getAttribute('aria-disabled') === 'true'))) return true;
         const action = target.dataset.action;
         if (action === 'toggle-builder') {
           builderOpen = !builderOpen;
@@ -3312,6 +4752,13 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'facet') {
           refine(target.dataset.clause, target.dataset.facetId, event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and');
+          return true;
+        }
+        if (action === 'facet-more') {
+          const id = target.dataset.facetId;
+          if (expandedFacets.has(id)) expandedFacets.delete(id);
+          else expandedFacets.add(id);
+          renderKeepingPlace(options.render);
           return true;
         }
         if (action === 'builder-add-group') {

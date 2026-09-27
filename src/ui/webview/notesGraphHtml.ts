@@ -1,12 +1,15 @@
-import { zoomInIcon, zoomOutIcon } from './icons';
+import { edgeLegendLine as legendLine, zoomInIcon, zoomOutIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
   createNonce,
   getBaseCss,
+  getTipScript,
+  getUndoScript,
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the Notes Graph document: a full-viewport Canvas 2D force-directed
@@ -54,12 +57,20 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-row label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-row output { color: var(--toxic-green); font: var(--text-xs) var(--font-mono); }
 .control-row .slider-line { display: flex; align-items: center; gap: 8px; }
+.slider-end { flex: none; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.control-group.advanced { border: 0; background: transparent; }
+.control-row .control-label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.graph-segmented button { flex: 1; min-height: 24px; padding: 2px 6px; font: var(--text-xs) var(--font-mono); }
+.control-group.advanced > summary { padding: 4px 0; color: var(--muted); }
 input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
 input[type='checkbox'] { accent-color: var(--amber-bright); }
 .toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: var(--text-xs) var(--font-mono); }
 input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); }
+.graph-select { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 6px; font: var(--text-xs) var(--font-mono); }
+.graph-select:focus { border-color: var(--cyan-bright); }
+.control-row[hidden] { display: none; }
 .tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
 .tag-list .toggle-row { padding: 2px 4px; font-size: var(--text-xs); }
 .tag-list .toggle-row:hover { background: var(--panel-raised); }
@@ -72,10 +83,12 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .zoom-controls { display: inline-flex; }
 .zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
-.zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
+.zoom-controls button:hover${ENABLED}, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
+.graph-reset-undo { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.graph-reset-undo:empty { display: none; }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: var(--text-xs) var(--font-mono); pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
 .graph-legend { display: flex; align-items: center; gap: 5px; }
@@ -84,10 +97,16 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .legend-note { background: var(--cyan-bright); }
 .legend-task { background: var(--amber-bright); }
 .legend-tag { background: var(--toxic-green); }
+/* A line sample per kind of edge, drawn with the canvas's own dash pattern.
+   Kinds are told apart by pattern, not color, so the legend survives forced
+   colors, colorblindness, and every theme. */
+.graph-legend .legend-line { display: inline-block; width: 16px; height: 8px; margin-left: 7px; color: var(--muted); }
+.graph-legend .legend-line line { stroke: currentColor; stroke-width: 1.5; }
+.graph-legend .legend-line[hidden], .graph-legend .legend-word[hidden] { display: none; }
 /* The panels follow the theme rather than a fixed near-black, which was
    unreadable when corpo took its text color from a light VS Code theme. */
 .control-group { background: var(--panel); }
-.tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
+.tooltip { position: absolute; z-index: var(--z-tooltip); display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
 .tooltip .tooltip-title { color: var(--text); font: 700 var(--text-xs) var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
@@ -102,71 +121,85 @@ ${getPageTailCss()}
   <details class="control-group" open>
     <summary>Focus</summary>
     <div class="control-body">
-      <label class="toggle-row" title="Draw only the note open in the editor and what it is connected to."><input type="checkbox" id="local-graph" title="Draw only the note open in the editor and what it is connected to."> Around this note</label>
-      <div class="control-row"><label for="local-depth" title="How many connections out from the note the graph reaches.">Hops out</label><div class="slider-line"><input type="range" id="local-depth" min="1" max="3" step="1" value="1" title="How many connections out from the note the graph reaches."><output id="local-depth-out">1</output></div></div>
+      <label class="toggle-row"><input type="checkbox" id="local-graph" data-tip="Draw only the note open in the editor and what it is connected to."> Around this note</label>
+      <div class="control-row"><label for="local-depth">Hops out</label><div class="slider-line"><input type="range" id="local-depth" data-tip="How many connections out from the note the graph reaches." min="1" max="3" step="1" value="1"><output id="local-depth-out">1</output></div></div>
+      <label class="toggle-row"><input type="checkbox" id="skip-periodic" checked data-tip="Pass through daily, weekly, and monthly notes"> Pass through daily notes</label>
       <p class="focus-note" id="focus-note">Open a note to draw the graph around it.</p>
     </div>
   </details>
   <details class="control-group" open>
     <summary>Filters</summary>
     <div class="control-body">
-      <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" title="Filter note, task, and tag titles and file paths.">
-      <label class="toggle-row" title="Show or hide note nodes and their visible links."><input type="checkbox" id="show-notes" checked title="Show or hide note nodes and their visible links."> Show notes</label>
-      <label class="toggle-row" title="Show or hide task nodes and their visible links."><input type="checkbox" id="show-tasks" checked title="Show or hide task nodes and their visible links."> Show tasks</label>
-      <label class="toggle-row" title="Show tag nodes and tag links; hidden tags still guide clustering."><input type="checkbox" id="show-tags" title="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
-      <label class="toggle-row" title="Show nodes with no currently visible connections."><input type="checkbox" id="show-orphans" checked title="Show nodes with no currently visible connections."> Show orphans</label>
-      <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" title="Narrow the tag checklist without changing the graph.">
+      <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" data-tip="Filter note, task, and tag titles and file paths.">
+      <label class="toggle-row"><input type="checkbox" id="show-notes" checked data-tip="Show or hide note nodes and their visible links."> Show notes</label>
+      <label class="toggle-row"><input type="checkbox" id="show-tasks" checked data-tip="Show or hide task nodes and their visible links."> Show tasks</label>
+      <label class="toggle-row"><input type="checkbox" id="show-tags" data-tip="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
+      <label class="toggle-row"><input type="checkbox" id="show-orphans" checked data-tip="Show nodes with no currently visible connections."> Show orphans</label>
+      <label class="toggle-row"><input type="checkbox" id="only-written-links" data-tip="Draw only the wiki links written in your notes. Headings and tags still place each note, but are not drawn."> Only links I wrote</label>
+      <label class="toggle-row"><input type="checkbox" id="show-parked" data-tip="Show parked notes, tasks, and tags. They are hidden unless this is on."> Show parked</label>
+      <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" data-tip="Narrow the tag checklist without changing the graph.">
       <div class="tag-list" id="tag-list" role="group" aria-label="Tag filters"></div>
-      <button class="clear-tags" id="clear-tags" type="button" title="Remove all selected tag filters.">Clear tag filters</button>
+      <div class="control-row" id="group-row" hidden><label for="group-filter">Group</label><select class="graph-select" id="group-filter" data-tip="Pick out one group: the others dim, and the view frames it. A click on a group's name does the same."><option value="">All groups</option></select></div>
+      <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove the tag filters and the group picked out.">Clear filters</button>
     </div>
   </details>
   <details class="control-group">
     <summary>Display</summary>
     <div class="control-body">
-      <div class="control-row"><label for="node-size" title="Scale node circles; larger nodes make highly connected items easier to spot.">Node size</label><div class="slider-line"><input type="range" id="node-size" min="0.5" max="3" step="0.1" value="1" title="Scale node circles; larger nodes make highly connected items easier to spot."><output id="node-size-out">1.0</output></div></div>
-      <div class="control-row"><label for="link-thickness" title="Scale the width of visible edges.">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" min="0.5" max="3" step="0.1" value="1" title="Scale the width of visible edges."><output id="link-thickness-out">1.0</output></div></div>
-      <div class="control-row"><label for="link-density" title="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections.">Connection density</label><div class="slider-line"><input type="range" id="link-density" min="0.15" max="1" step="0.05" value="0.3" title="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections."><output id="link-density-out">0.30</output></div></div>
-      <div class="control-row"><label for="tag-specificity" title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage.">Tag prevalence bias</label><div class="slider-line"><input type="range" id="tag-specificity" min="0" max="1" step="0.05" value="0.9" title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage."><output id="tag-specificity-out">0.90</output></div></div>
-      <div class="control-row"><label for="bridge-strength" title="Control how strongly secondary tags and tag associations bridge different communities.">Secondary bridge strength</label><div class="slider-line"><input type="range" id="bridge-strength" min="0" max="1" step="0.05" value="0.15" title="Control how strongly secondary tags and tag associations bridge different communities."><output id="bridge-strength-out">0.15</output></div></div>
-      <label class="toggle-row" title="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."><input type="checkbox" id="show-all-links" title="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."> Show all links (comparison)</label>
-      <div class="control-row"><label for="label-threshold" title="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer.">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" min="0.5" max="4" step="0.1" value="1.4" title="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer."><output id="label-threshold-out">1.4</output></div></div>
+      <div class="control-row"><label for="node-size">Node size</label><div class="slider-line"><input type="range" id="node-size" data-tip="Scale node circles; larger nodes make highly connected items easier to spot." min="0.5" max="3" step="0.1" value="1"><output id="node-size-out">1.0</output></div></div>
+      <div class="control-row"><label for="link-thickness">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" data-tip="Scale the width of visible edges." min="0.5" max="3" step="0.1" value="1"><output id="link-thickness-out">1.0</output></div></div>
+      <div class="control-row"><label for="link-density">Links per note</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Fewer</span><input type="range" id="link-density" data-tip="How many of each note's strongest links are drawn. Fewer is easier to read. The sidebar's connections do not change." data-words="fewest,fewer,about half,more,most" min="0.15" max="1" step="0.05" value="0.3"><span class="slider-end" aria-hidden="true">More</span></div></div>
+      <div class="control-row"><label for="label-threshold">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" data-tip="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer." min="0.5" max="4" step="0.1" value="1.4"><output id="label-threshold-out">1.4</output></div></div>
+      <div class="control-row"><span class="control-label" id="headings-label">Headings</span><div class="segmented graph-segmented" role="group" aria-labelledby="headings-label"><button type="button" data-headings="zoom" aria-pressed="true" data-tip="Zoomed out, draw each file as one node; zoomed in past Label fade zoom, draw its headings.">By zoom</button><button type="button" data-headings="always" aria-pressed="false" data-tip="Draw every heading as a node of its own, at every zoom.">Always</button><button type="button" data-headings="never" aria-pressed="false" data-tip="Draw each file as one node, at every zoom.">Never</button></div></div>
+      <details class="control-group advanced">
+        <summary>Advanced</summary>
+        <div class="control-body">
+          <div class="control-row"><label for="tag-specificity">Favor rare tags</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Less</span><input type="range" id="tag-specificity" data-tip="How much more a tag on a few notes counts than a tag on nearly every note, when choosing which links to draw." data-words="least,less,about half,more,most" min="0" max="1" step="0.05" value="0.9"><span class="slider-end" aria-hidden="true">More</span></div></div>
+          <div class="control-row"><label for="bridge-strength">Links between groups</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Fewer</span><input type="range" id="bridge-strength" data-tip="How strongly a note's other tags pull it toward other groups." data-words="fewest,fewer,about half,more,most" min="0" max="1" step="0.05" value="0.15"><span class="slider-end" aria-hidden="true">More</span></div></div>
+          <label class="toggle-row"><input type="checkbox" id="show-all-links" data-tip="Draw every link rather than each note's strongest. Busy on a large workspace."> Show every link</label>
+        </div>
+      </details>
     </div>
   </details>
   <details class="control-group">
     <summary>Forces</summary>
     <div class="control-body">
-      <div class="control-row"><label for="center-strength" title="Pull community anchors gently toward the center of the viewport.">Cluster centering</label><div class="slider-line"><input type="range" id="center-strength" min="0" max="1" step="0.05" value="0.4" title="Pull community anchors gently toward the center of the viewport."><output id="center-strength-out">0.40</output></div></div>
-      <div class="control-row"><label for="cluster-cohesion" title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor.">Cluster cohesion</label><div class="slider-line"><input type="range" id="cluster-cohesion" min="0.5" max="3" step="0.1" value="1.5" title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."><output id="cluster-cohesion-out">1.5</output></div></div>
-      <div class="control-row"><label for="community-spacing" title="Increase or reduce the distance between detected communities; changing it recomputes the layout framing.">Community spacing</label><div class="slider-line"><input type="range" id="community-spacing" min="0.6" max="2.5" step="0.1" value="1.2" title="Increase or reduce the distance between detected communities; changing it recomputes the layout framing."><output id="community-spacing-out">1.2</output></div></div>
-      <div class="control-row"><label for="repel-strength" title="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart.">Repel strength</label><div class="slider-line"><input type="range" id="repel-strength" min="50" max="2000" step="25" value="220" title="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart."><output id="repel-strength-out">220</output></div></div>
-      <div class="control-row"><label for="link-strength" title="Increase or reduce the spring force along visible links.">Link strength</label><div class="slider-line"><input type="range" id="link-strength" min="0" max="2" step="0.05" value="1" title="Increase or reduce the spring force along visible links."><output id="link-strength-out">1.00</output></div></div>
-      <div class="control-row"><label for="link-distance" title="Set the target length of visible links; larger values spread connected nodes farther apart.">Link distance</label><div class="slider-line"><input type="range" id="link-distance" min="10" max="200" step="5" value="32" title="Set the target length of visible links; larger values spread connected nodes farther apart."><output id="link-distance-out">32</output></div></div>
+      <div class="control-row"><label for="center-strength">Cluster centering</label><div class="slider-line"><input type="range" id="center-strength" data-tip="Pull community anchors gently toward the center of the viewport." min="0" max="1" step="0.05" value="0.4"><output id="center-strength-out">0.40</output></div></div>
+      <div class="control-row"><label for="cluster-cohesion">Cluster cohesion</label><div class="slider-line"><input type="range" id="cluster-cohesion" data-tip="Strengthen or weaken the pull from notes and tasks toward their detected community anchor." min="0.5" max="3" step="0.1" value="1.5"><output id="cluster-cohesion-out">1.5</output></div></div>
+      <div class="control-row"><label for="community-spacing">Community spacing</label><div class="slider-line"><input type="range" id="community-spacing" data-tip="Increase or reduce the distance between detected communities; changing it recomputes the layout framing." min="0.6" max="2.5" step="0.1" value="1.2"><output id="community-spacing-out">1.2</output></div></div>
+      <div class="control-row"><label for="repel-strength">Repel strength</label><div class="slider-line"><input type="range" id="repel-strength" data-tip="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart." min="50" max="2000" step="25" value="220"><output id="repel-strength-out">220</output></div></div>
+      <div class="control-row"><label for="link-strength">Link strength</label><div class="slider-line"><input type="range" id="link-strength" data-tip="Increase or reduce the spring force along visible links." min="0" max="2" step="0.05" value="1"><output id="link-strength-out">1.00</output></div></div>
+      <div class="control-row"><label for="link-distance">Link distance</label><div class="slider-line"><input type="range" id="link-distance" data-tip="Set the target length of visible links; larger values spread connected nodes farther apart." min="10" max="200" step="5" value="32"><output id="link-distance-out">32</output></div></div>
     </div>
   </details>
   <details class="control-group">
     <summary>Relationships</summary>
     <div class="control-body">
-      <p class="relationship-note">The graph uses prevalence-aware visual communities: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
-      <p class="relationship-note">Connection density controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
+      <p class="relationship-note">The graph uses prevalence-aware groups: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
+      <p class="relationship-note">Each group is named after the tags its notes carry more than the rest of the workspace does.</p>
+      <p class="relationship-note">Links per note controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
       <p class="relationship-note">Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p>
     </div>
   </details>
 </div>
 <div class="graph-zoom-controls">
   <div class="zoom-controls" role="group" aria-label="Zoom controls">
-    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">${zoomOutIcon}</button>
+    <button type="button" id="zoom-out" aria-label="Zoom out" data-tip="Zoom out the graph.">${zoomOutIcon}</button>
     <span class="zoom-readout" id="zoom-readout">100%</span>
-    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">${zoomInIcon}</button>
-    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit graph</button>
+    <button type="button" id="zoom-in" aria-label="Zoom in" data-tip="Zoom in the graph.">${zoomInIcon}</button>
+    <button type="button" id="zoom-fit" aria-label="Fit graph to view" data-tip="Fit the full graph in the current view.">Fit graph</button>
   </div>
-  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph</button>
+  <button class="reset-graph-settings" id="reset-graph-settings" type="button" data-tip="Restore all graph controls and filters, clear node momentum, and reframe the graph. Undo is offered for a few seconds.">Reset graph</button>
+  <span class="graph-reset-undo" id="graph-reset-undo" role="status" aria-live="polite"></span>
 </div>
-<div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
+<div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags${legendLine('wiki', '')}<span class="legend-word">Wiki link</span>${legendLine('heading', '5 3')}<span class="legend-word">Heading</span>${legendLine('tag', '1 3')}<span class="legend-word">Tag</span>${legendLine('joined', '8 3 1 3', true)}<span class="legend-word" data-legend="joined" hidden>Through a daily note</span></span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>
 <script nonce="${nonce}">
 (function () {
   'use strict';
   var vscode = acquireVsCodeApi();
+${getTipScript()}
+${getUndoScript()}
   var canvas = document.getElementById('graph');
   var ctx = canvas.getContext('2d');
   var tooltip = document.getElementById('tooltip');
@@ -193,11 +226,35 @@ ${getPageTailCss()}
     return /^\\d/.test(size) ? size : fallback;
   }
   var labelFontSize = tokenFontSize('--text-xs', '11px');
+  var groupFontSize = tokenFontSize('--text-sm', '12px');
   function themeColor(name, fallback) {
     var value = rootStyles.getPropertyValue(name).trim();
     return value || fallback;
   }
-  var colors = {
+  // A system color as the browser resolves it, for a canvas to paint with.
+  function systemColor(name) {
+    var probe = document.createElement('span');
+    probe.style.color = name;
+    document.body.appendChild(probe);
+    var value = getComputedStyle(probe).color;
+    probe.remove();
+    return value;
+  }
+  // Under forced colors the page's own sheet is repainted in the system's
+  // colors, but a canvas is not: it keeps drawing the theme's cyan on black.
+  // It paints in the same system colors instead, the selection in Highlight.
+  var forcedColors = window.matchMedia && window.matchMedia('(forced-colors: active)').matches;
+  var colors = forcedColors ? {
+    background: systemColor('Canvas'),
+    note: systemColor('CanvasText'),
+    task: systemColor('CanvasText'),
+    tag: systemColor('CanvasText'),
+    edge: systemColor('GrayText'),
+    edgeHighlight: systemColor('Highlight'),
+    label: systemColor('CanvasText'),
+    halo: systemColor('Highlight'),
+    group: systemColor('GrayText')
+  } : {
     background: themeColor('--bg-dark', '#050608'),
     note: themeColor('--cyan-bright', '#5FE1F0'),
     task: themeColor('--amber-bright', '#FFB000'),
@@ -205,7 +262,8 @@ ${getPageTailCss()}
     edge: themeColor('--muted', '#7D8792'),
     edgeHighlight: themeColor('--amber-bright', '#FFB000'),
     label: themeColor('--text', '#D9E0E4'),
-    halo: themeColor('--favorite-red', '#E05232')
+    halo: themeColor('--favorite-red', '#E05232'),
+    group: themeColor('--line-strong', '#3A4450')
   };
 
   // ---- persisted webview-local settings -------------------------------
@@ -214,7 +272,10 @@ ${getPageTailCss()}
     showTasks: true,
     showTags: false,
     showOrphans: true,
+    showParked: false,
+    onlyWrittenLinks: false,
     selectedTags: [],
+    group: '',
     search: '',
     nodeSize: 1,
     linkThickness: 1,
@@ -222,6 +283,7 @@ ${getPageTailCss()}
     tagSpecificity: 0.9,
     bridgeStrength: 0.15,
     showAllLinks: false,
+    headings: 'zoom',
     labelThreshold: 1.4,
     centerStrength: 0.4,
     clusterCohesion: 1.5,
@@ -252,7 +314,25 @@ ${getPageTailCss()}
   var px, py, vx, vy;           // Float32Array simulation state
   var degrees;                  // per-node visible edge counts
   /** How many of the best-connected notes on screen are named at rest. */
-  var HUB_LABELS_AT_REST = 12;
+  var HUB_LABELS_AT_REST = 8;
+  /** How many groups are named at rest, largest first. */
+  var GROUP_LABELS_AT_REST = 16;
+  /** A community is named once it holds this many notes and tasks. */
+  var GROUP_MINIMUM_SIZE = 4;
+  var groups = [];              // community index -> {key, name, size} or null
+  var namedGroupCount = 0;
+  var groupKeyIndex = {};       // group key -> community index
+  var groupMatch = null;        // Uint8Array by node index, or null for all
+  var groupNotice = '';
+  var groupCenters = [];        // community index -> {x, y, r} from the last frame
+  var labelRects = [];          // group labels drawn in the last frame, for clicks
+  var tagLabelByKey = {};
+  /** Whether each file's headings are folded into one node now; null before the first draw. */
+  var headingsFolded = null;
+  var foldedInto = {};          // section node id -> the file node it is folded into
+  var foldMembers = {};         // file node id -> the section ids folded into it
+  /** Zoom past Label fade zoom by this much before headings fold or unfold. */
+  var FOLD_HYSTERESIS = 0.15;
   var primaryTag;               // note/task index -> strongest cluster anchor
   var primaryClusterSize;       // tag index -> assigned note/task count
   var communityId;              // node index -> visual community index
@@ -281,6 +361,7 @@ ${getPageTailCss()}
   var pointerId = -1;
   var pointerDownAt = null;
   var pointerMoved = false;
+  var pointerLabel = '';
   var needsDraw = true;
   var frameQueued = false;
   var matchSet = null;          // null = everything matches the search
@@ -290,6 +371,34 @@ ${getPageTailCss()}
   var selectedId = null;        // sticky selection survives snapshot rebuilds
   var selectedIndex = -1;
   var selectedNeighbors = {};
+
+  // ---- edge kinds ---------------------------------------------------------
+  // An edge is drawn as its strongest kind: a wiki link, then a heading, then
+  // a tag, then an edge a focused graph joins through a daily note.
+  var EDGE_WIKI = 0;
+  var EDGE_HEADING = 1;
+  var EDGE_TAG = 2;
+  var EDGE_JOINED = 3;
+  /** Dash patterns in screen pixels, and each kind's alpha against the base. */
+  var EDGE_STYLES = [
+    { dash: [], alpha: 1.6, cap: 'butt' },
+    { dash: [5, 3], alpha: 1, cap: 'butt' },
+    { dash: [1, 3], alpha: 0.8, cap: 'round' },
+    { dash: [8, 3, 1, 3], alpha: 1, cap: 'butt' }
+  ];
+  /**
+   * Past this many lines in one frame the dashes are left off and the kinds
+   * are told apart by alpha alone: a dashed stroke over thousands of
+   * segments costs far more than a solid one.
+   */
+  var MAXIMUM_DASHED_EDGES = 3000;
+  var hasJoinedEdges = false;
+  function edgeKind(types) {
+    if (types.indexOf('wiki-link') !== -1) { return EDGE_WIKI; }
+    if (types.indexOf('heading') !== -1) { return EDGE_HEADING; }
+    if (types.length === 0) { return EDGE_JOINED; }
+    return EDGE_TAG;
+  }
 
   // ---- view construction ------------------------------------------------
   function rebuildView(repositionCommunities) {
@@ -301,15 +410,36 @@ ${getPageTailCss()}
       }
     }
 
+    var focusPath = snapshot.focus && snapshot.focus.local ? snapshot.focus.filePath : undefined;
     var candidate = snapshot.nodes.filter(function (node) {
       if (node.kind === 'note' && !settings.showNotes) { return false; }
       if (node.kind === 'task' && !settings.showTasks) { return false; }
+      // The note the graph is drawn around is drawn, parked or not.
+      if (node.parked && !settings.showParked && !(focusPath && node.filePath === focusPath)) { return false; }
       return true;
     });
+    // Zoomed out, a file's headings are one node: the workspace draws as its
+    // files, and zooming in opens each into its headings.
+    var previousFoldMembers = foldMembers;
+    var previousFoldedInto = foldedInto;
+    headingsFolded = shouldFoldHeadings();
+    var graphEdges = snapshot.edges;
+    foldedInto = {};
+    foldMembers = {};
+    if (headingsFolded) {
+      var folded = foldHeadings(candidate, snapshot.edges);
+      candidate = folded.nodes;
+      graphEdges = folded.edges;
+    }
+    // Where a node was before a fold or an unfold: a file starts at the
+    // middle of its headings, and a heading around its file.
+    if (!repositionCommunities) {
+      carryFoldPositions(candidate, previous, previousFoldMembers, previousFoldedInto);
+    }
     var candidateIndex = {};
     candidate.forEach(function (node, index) { candidateIndex[node.id] = index; });
 
-    var allCandidateEdges = snapshot.edges.filter(function (edge) {
+    var allCandidateEdges = graphEdges.filter(function (edge) {
       return candidateIndex[edge.source] !== undefined &&
         candidateIndex[edge.target] !== undefined;
     });
@@ -322,6 +452,21 @@ ${getPageTailCss()}
       settings.tagSpecificity,
       settings.bridgeStrength
     );
+    // Only links I wrote draws every wiki link, past the budget that keeps a
+    // hub's twentieth link off screen, and nothing else. The other edges
+    // stay in the view undrawn, so each note is placed where it was.
+    var onlyWritten = Boolean(settings.onlyWrittenLinks);
+    var writtenConnected = {};
+    if (onlyWritten) {
+      var included = {};
+      candidateEdges.forEach(function (edge) { included[edge.id] = true; });
+      allCandidateEdges.forEach(function (edge) {
+        if (edge.types.indexOf('wiki-link') === -1) { return; }
+        writtenConnected[edge.source] = true;
+        writtenConnected[edge.target] = true;
+        if (!included[edge.id]) { candidateEdges.push(edge); }
+      });
+    }
 
     var connected = {};
     candidateEdges.forEach(function (edge) {
@@ -339,7 +484,11 @@ ${getPageTailCss()}
     });
 
     if (!settings.showOrphans) {
-      candidate = candidate.filter(function (node) { return connected[node.id]; });
+      candidate = candidate.filter(function (node) {
+        return onlyWritten && node.kind !== 'tag'
+          ? writtenConnected[node.id]
+          : connected[node.id];
+      });
       candidateIndex = {};
       candidate.forEach(function (node, index) { candidateIndex[node.id] = index; });
       candidateEdges = candidateEdges.filter(function (edge) {
@@ -351,13 +500,17 @@ ${getPageTailCss()}
     nodes = candidate;
     nodeIndexById = candidateIndex;
     edges = candidateEdges.map(function (edge) {
+      var kind = edgeKind(edge.types);
       return {
         a: candidateIndex[edge.source],
         b: candidateIndex[edge.target],
         weight: edge.weight,
-        types: edge.types
+        types: edge.types,
+        kind: kind,
+        drawn: !onlyWritten || kind === EDGE_WIKI
       };
     });
+    hasJoinedEdges = snapshot.edges.some(function (edge) { return edge.types.length === 0; });
 
     var count = nodes.length;
     px = new Float32Array(count);
@@ -382,6 +535,9 @@ ${getPageTailCss()}
     edges.forEach(function (edge) {
       degrees[edge.a] += 1;
       degrees[edge.b] += 1;
+      // A neighbor is what a drawn line leads to, so an undrawn edge is
+      // not highlighted with the node it touches.
+      if (!edge.drawn) { return; }
       adjacency[edge.a].push(edge.b);
       adjacency[edge.b].push(edge.a);
     });
@@ -434,6 +590,14 @@ ${getPageTailCss()}
     communitySizes = communityData.sizes;
     communityEdges = communityData.edges;
     communityCount = communitySizes.length;
+    nameGroups();
+    if (settings.group && groupKeyIndex[settings.group] === undefined) {
+      settings.group = '';
+      groupNotice = 'Group no longer there — showing all';
+      persist();
+    } else {
+      groupNotice = '';
+    }
     communityAnchorX = new Float32Array(communityCount);
     communityAnchorY = new Float32Array(communityCount);
     communityVx = new Float32Array(communityCount);
@@ -543,21 +707,148 @@ ${getPageTailCss()}
 
     recomputeSearchMatches();
     recomputeTagMatches();
+    recomputeGroupMatch();
+    renderGroupList();
     setHoverIndex(findNodeIndex(externalHoverNodeId));
     hideTooltip();
-    var restoredSelection = selectedId !== null &&
-      nodeIndexById[selectedId] !== undefined
-      ? nodeIndexById[selectedId]
-      : -1;
+    var restoredSelection = findNodeIndex(selectedId);
+    if (restoredSelection < 0 && selectedId && previousFoldMembers[selectedId]) {
+      // Unfolded: the file's selection moves to its first heading.
+      restoredSelection = findNodeIndex(previousFoldMembers[selectedId][0]);
+    }
     setSelectedIndex(restoredSelection);
     alpha = reusedAny && hasFramed ? 0.3 : 1;
     updateStatus();
-    emptyState.style.display = snapshot.nodes.length === 0 ? 'grid' : 'none';
+    emptyState.style.display =
+      snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none';
     if (!hasFramed && count > 0) {
       fitToView();
       hasFramed = true;
     }
     scheduleFrame();
+  }
+
+  /** Whether headings are folded into files, by the Headings choice and the zoom. */
+  function shouldFoldHeadings() {
+    if (settings.headings === 'always') { return false; }
+    if (settings.headings === 'never') { return true; }
+    var threshold = settings.labelThreshold;
+    if (headingsFolded === null) { return camera.k < threshold; }
+    return headingsFolded
+      ? camera.k <= threshold + FOLD_HYSTERESIS
+      : camera.k < threshold - FOLD_HYSTERESIS;
+  }
+
+  /**
+   * Folds each file drawn as two or more headings into one node: its id is
+   * the file's, its size the sum of its headings', its tags theirs. Edges
+   * inside a file go; edges out of it join, their kinds unioned. A file with
+   * one heading keeps it, so its node and a selection of it stay put.
+   */
+  function foldHeadings(candidateNodes, graphEdges) {
+    var byFile = {};
+    candidateNodes.forEach(function (node) {
+      if (node.kind !== 'note' || node.id.indexOf('section:') !== 0 || !node.filePath) { return; }
+      (byFile[node.filePath] || (byFile[node.filePath] = [])).push(node);
+    });
+    var fileNodes = {};
+    Object.keys(byFile).forEach(function (filePath) {
+      var members = byFile[filePath];
+      if (members.length < 2) { return; }
+      members.sort(function (left, right) { return (left.line || 0) - (right.line || 0); });
+      var id = 'file:' + filePath;
+      var tagKeys = {};
+      var links = {};
+      var degree = 0;
+      members.forEach(function (member) {
+        foldedInto[member.id] = id;
+        degree += member.degree || 0;
+        (member.tagKeys || []).forEach(function (key) { tagKeys[key] = true; });
+        Object.keys(member.links || {}).forEach(function (kind) {
+          links[kind] = (links[kind] || 0) + member.links[kind];
+        });
+      });
+      foldMembers[id] = members.map(function (member) { return member.id; });
+      fileNodes[id] = {
+        id: id,
+        kind: 'note',
+        title: filePath.split('/').pop().replace(/\.md$/i, ''),
+        filePath: filePath,
+        line: members[0].line,
+        tagKeys: Object.keys(tagKeys),
+        degree: degree,
+        links: links,
+        headingCount: members.length,
+        selectId: members[0].id
+      };
+    });
+    var nodesOut = [];
+    var emitted = {};
+    candidateNodes.forEach(function (node) {
+      var into = foldedInto[node.id];
+      if (!into) { nodesOut.push(node); return; }
+      if (!emitted[into]) {
+        emitted[into] = true;
+        nodesOut.push(fileNodes[into]);
+      }
+    });
+    // Edges keyed by their ends once folded. One that no fold touched is
+    // passed on as it is; one made of several, or re-ended, is a new object,
+    // so the snapshot's own edges are never changed.
+    var merged = {};
+    var order = [];
+    graphEdges.forEach(function (edge) {
+      var source = foldedInto[edge.source] || edge.source;
+      var target = foldedInto[edge.target] || edge.target;
+      if (source === target) { return; }
+      var ends = source < target ? [source, target] : [target, source];
+      var id = ends[0] + '::' + ends[1];
+      var entry = merged[id];
+      if (!entry) {
+        merged[id] = {
+          original: source === edge.source && target === edge.target ? edge : null,
+          edge: { id: id, source: ends[0], target: ends[1], weight: edge.weight, types: edge.types.slice() },
+          parts: 1
+        };
+        order.push(id);
+        return;
+      }
+      entry.parts += 1;
+      entry.edge.weight = Math.max(entry.edge.weight, edge.weight);
+      edge.types.forEach(function (type) {
+        if (entry.edge.types.indexOf(type) === -1) { entry.edge.types.push(type); }
+      });
+    });
+    var edgesOut = order.map(function (id) {
+      var entry = merged[id];
+      return entry.parts === 1 && entry.original ? entry.original : entry.edge;
+    });
+    return { nodes: nodesOut, edges: edgesOut };
+  }
+
+  /** Seeds the position of a node a fold or an unfold made from where its parts were. */
+  function carryFoldPositions(candidateNodes, previous, previousFoldMembers, previousFoldedInto) {
+    candidateNodes.forEach(function (node) {
+      if (previous[node.id]) { return; }
+      var members = foldMembers[node.id];
+      if (members) {
+        var x = 0, y = 0, found = 0;
+        members.forEach(function (memberId) {
+          var at = previous[memberId];
+          if (at) { x += at.x; y += at.y; found += 1; }
+        });
+        if (found) { previous[node.id] = { x: x / found, y: y / found, vx: 0, vy: 0 }; }
+        return;
+      }
+      var into = previousFoldedInto[node.id];
+      var file = into && previous[into];
+      if (file) {
+        var ordinal = previousFoldMembers[into].indexOf(node.id);
+        var angle = ordinal * 2.39996322972865332;
+        var radius = 6 + 4 * Math.sqrt(ordinal + 1);
+        previous[node.id] = { x: file.x + radius * Math.cos(angle), y: file.y + radius * Math.sin(angle), vx: 0, vy: 0 };
+      }
+    });
   }
 
   function recomputeSearchMatches() {
@@ -587,6 +878,101 @@ ${getPageTailCss()}
         if (selected[node.tagKeys[t]]) { tagMatchSet[index] = true; return; }
       }
     });
+  }
+
+  /**
+   * Names each group after the tags its notes and tasks carry more than the
+   * rest of the graph does: a tag scores its count in the group, squared,
+   * over its count anywhere, so a tag on every note names nothing. A second
+   * tag joins the name when it scores half the first. A group with no tags
+   * is named after its best-connected note. Once per rebuild, not a frame.
+   */
+  function nameGroups() {
+    groups = [];
+    groupKeyIndex = {};
+    namedGroupCount = 0;
+    var carried = {};
+    var inGroup = [];
+    var best = [];
+    for (var c = 0; c < communityCount; c += 1) {
+      groups.push(null);
+      inGroup.push({});
+      best.push(-1);
+    }
+    for (var i = 0; i < nodes.length; i += 1) {
+      if (nodes[i].kind === 'tag') { continue; }
+      var community = communityId[i];
+      var keys = nodes[i].tagKeys || [];
+      for (var t = 0; t < keys.length; t += 1) {
+        carried[keys[t]] = (carried[keys[t]] || 0) + 1;
+        if (community >= 0) {
+          inGroup[community][keys[t]] = (inGroup[community][keys[t]] || 0) + 1;
+        }
+      }
+      if (community >= 0 && (best[community] < 0 || nodeDegree(i) > nodeDegree(best[community]))) {
+        best[community] = i;
+      }
+    }
+    for (var g = 0; g < communityCount; g += 1) {
+      if (communitySizes[g] < GROUP_MINIMUM_SIZE || best[g] < 0) { continue; }
+      var counts = inGroup[g];
+      var scored = Object.keys(counts).map(function (key) {
+        return { key: key, score: counts[key] * counts[key] / carried[key] };
+      }).sort(function (left, right) {
+        return right.score - left.score || left.key.localeCompare(right.key);
+      });
+      var key;
+      var name;
+      if (scored.length) {
+        key = scored[0].key;
+        name = tagName(scored[0].key);
+        if (scored[1] && scored[1].score >= scored[0].score / 2) {
+          name += ' · ' + tagName(scored[1].key);
+        }
+      } else {
+        key = nodes[best[g]].id;
+        name = 'around ' + nodes[best[g]].title;
+      }
+      if (groupKeyIndex[key] !== undefined) { key += '@' + nodes[best[g]].id; }
+      if (name.length > 28) { name = name.slice(0, 27) + '…'; }
+      groups[g] = { key: key, name: name, size: communitySizes[g] };
+      groupKeyIndex[key] = g;
+      namedGroupCount += 1;
+    }
+  }
+
+  /** A tag as a group's name says it: its label, without the #. */
+  function tagName(key) {
+    var label = tagLabelByKey[key] || key;
+    return label.charAt(0) === '#' ? label.slice(1) : label;
+  }
+
+  function recomputeGroupMatch() {
+    var community = settings.group ? groupKeyIndex[settings.group] : undefined;
+    if (community === undefined) { groupMatch = null; return; }
+    groupMatch = new Uint8Array(nodes.length);
+    for (var i = 0; i < nodes.length; i += 1) {
+      if (communityId[i] === community) { groupMatch[i] = 1; }
+    }
+  }
+
+  /** Picks one group out, or every group back with an empty key. */
+  function setGroup(key) {
+    settings.group = groupKeyIndex[key] !== undefined ? key : '';
+    groupNotice = '';
+    persist();
+    recomputeGroupMatch();
+    renderGroupList();
+    updateStatus();
+    if (groupMatch) {
+      var members = [];
+      for (var i = 0; i < nodes.length; i += 1) {
+        if (groupMatch[i] && nodes[i].kind !== 'tag') { members.push(i); }
+      }
+      fitToView(members);
+    } else {
+      scheduleFrame();
+    }
   }
 
   // Build visual communities without changing the indexed graph. Primary tag
@@ -958,6 +1344,9 @@ ${getPageTailCss()}
     specificity
   ) {
     var score = 0;
+    // An edge a focused graph joins through a daily note stands for a link
+    // path, so it is kept as a heading is rather than scored as nothing.
+    if (edge.types.length === 0) { score += 0.9; }
     if (edge.types.indexOf('wiki-link') !== -1) { score += 2.5; }
     if (edge.types.indexOf('heading') !== -1) { score += 0.9; }
     if (edge.types.indexOf('associated-tag') !== -1) {
@@ -1000,6 +1389,7 @@ ${getPageTailCss()}
     }
     if (matchSet && !matchSet[index]) { return true; }
     if (tagMatchSet && !tagMatchSet[index]) { return true; }
+    if (groupMatch && !groupMatch[index]) { return true; }
     if (selectedIndex >= 0) {
       return index !== selectedIndex && !selectedNeighbors[index];
     }
@@ -1027,10 +1417,12 @@ ${getPageTailCss()}
     }
   }
 
+  /** A node by id; a heading folded into its file is found as the file. */
   function findNodeIndex(nodeId) {
-    return nodeId && nodeIndexById[nodeId] !== undefined
-      ? nodeIndexById[nodeId]
-      : -1;
+    if (!nodeId) { return -1; }
+    if (nodeIndexById[nodeId] !== undefined) { return nodeIndexById[nodeId]; }
+    var into = foldedInto[nodeId];
+    return into && nodeIndexById[into] !== undefined ? nodeIndexById[into] : -1;
   }
 
   function isRendered(index) {
@@ -1329,8 +1721,17 @@ ${getPageTailCss()}
     scheduleFrame();
   }
 
+  /**
+   * Sized by everything the node is joined to in the index, not by the
+   * links drawn, so a note keeps its size as Links per note moves. The cap
+   * keeps a tag carried by hundreds of entries from covering its group.
+   */
   function nodeRadius(index) {
-    return (2 + Math.sqrt(degrees[index])) * settings.nodeSize;
+    return (2 + Math.sqrt(Math.min(nodeDegree(index), 100))) * settings.nodeSize;
+  }
+  function nodeDegree(index) {
+    var degree = nodes[index].degree;
+    return typeof degree === 'number' && degree >= 0 ? degree : degrees[index];
   }
 
   function draw() {
@@ -1357,27 +1758,90 @@ ${getPageTailCss()}
 
     var hovering = hoverIndex >= 0;
     var focusIndex = hovering ? hoverIndex : selectedIndex;
-    var dimmingActive = focusIndex >= 0 || matchSet !== null || tagMatchSet !== null;
+    var dimmingActive = focusIndex >= 0 || matchSet !== null || tagMatchSet !== null || groupMatch !== null;
 
-    // Edges: one batched path for base edges, a second for highlighted ones.
+    // Groups, at rest: a faint disc under each named group, fading out as
+    // the zoom nears the point where every node is named. One pass to find
+    // each group's center and spread, one path, one fill, one stroke.
+    var restFade = k < settings.labelThreshold
+      ? Math.min(1, (settings.labelThreshold - k) / 0.4)
+      : 0;
+    var showGroups = namedGroupCount >= 2 && restFade > 0;
+    groupCenters = [];
+    if (showGroups) {
+      var sumX = new Float64Array(communityCount);
+      var sumY = new Float64Array(communityCount);
+      var sumSquares = new Float64Array(communityCount);
+      var members = new Uint32Array(communityCount);
+      for (var m = 0; m < nodes.length; m += 1) {
+        var memberGroup = communityId[m];
+        if (memberGroup < 0 || !groups[memberGroup] || nodes[m].kind === 'tag') { continue; }
+        sumX[memberGroup] += px[m];
+        sumY[memberGroup] += py[m];
+        sumSquares[memberGroup] += px[m] * px[m] + py[m] * py[m];
+        members[memberGroup] += 1;
+      }
+      ctx.beginPath();
+      for (var g = 0; g < communityCount; g += 1) {
+        if (!groups[g] || !members[g]) { continue; }
+        var centerX = sumX[g] / members[g];
+        var centerY = sumY[g] / members[g];
+        var spread = Math.max(0, sumSquares[g] / members[g] - centerX * centerX - centerY * centerY);
+        var discRadius = Math.max(12, 1.5 * Math.sqrt(spread));
+        groupCenters[g] = { x: centerX, y: centerY, r: discRadius };
+        ctx.moveTo(centerX + discRadius, centerY);
+        ctx.arc(centerX, centerY, discRadius, 0, 6.2832);
+      }
+      if (!forcedColors) {
+        ctx.fillStyle = colors.group;
+        ctx.globalAlpha = 0.07 * restFade;
+        ctx.fill();
+      }
+      ctx.strokeStyle = colors.group;
+      ctx.globalAlpha = 0.22 * restFade;
+      ctx.lineWidth = 1 / k;
+      ctx.stroke();
+    }
+
+    // Edges: one batched path per kind, each with its own dash pattern, and
+    // one more, solid, for a selected node's links, so they read as a
+    // single highlight. Up to five strokes a frame.
     var edgeAlpha = Math.min(0.45, 0.1 + 0.18 * k);
-    ctx.lineWidth = settings.linkThickness / k;
-    ctx.strokeStyle = colors.edge;
-    ctx.globalAlpha = dimmingActive ? edgeAlpha * 0.25 : edgeAlpha;
-    ctx.beginPath();
+    var byKind = [[], [], [], []];
     var highlighted = [];
+    var shownEdges = 0;
     for (var e = 0; e < edges.length; e += 1) {
       var edge = edges[e];
+      if (!edge.drawn) { continue; }
       if (!isRendered(edge.a) || !isRendered(edge.b)) { continue; }
       if (!inView(edge.a) && !inView(edge.b)) { continue; }
       if (focusIndex >= 0 && (edge.a === focusIndex || edge.b === focusIndex)) {
         highlighted.push(edge);
         continue;
       }
-      ctx.moveTo(px[edge.a], py[edge.a]);
-      ctx.lineTo(px[edge.b], py[edge.b]);
+      byKind[edge.kind].push(edge);
+      shownEdges += 1;
     }
-    ctx.stroke();
+    var dashed = shownEdges <= MAXIMUM_DASHED_EDGES;
+    ctx.lineWidth = settings.linkThickness / k;
+    ctx.strokeStyle = colors.edge;
+    for (var kindIndex = 0; kindIndex < byKind.length; kindIndex += 1) {
+      var kindEdges = byKind[kindIndex];
+      if (kindEdges.length === 0) { continue; }
+      var style = EDGE_STYLES[kindIndex];
+      var kindAlpha = Math.min(0.7, edgeAlpha * style.alpha);
+      ctx.globalAlpha = dimmingActive ? kindAlpha * 0.25 : kindAlpha;
+      ctx.setLineDash(dashed ? style.dash.map(function (length) { return length / k; }) : []);
+      ctx.lineCap = dashed ? style.cap : 'butt';
+      ctx.beginPath();
+      for (var ke = 0; ke < kindEdges.length; ke += 1) {
+        ctx.moveTo(px[kindEdges[ke].a], py[kindEdges[ke].a]);
+        ctx.lineTo(px[kindEdges[ke].b], py[kindEdges[ke].b]);
+      }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
     if (highlighted.length > 0) {
       ctx.strokeStyle = colors.edgeHighlight;
       ctx.globalAlpha = Math.min(0.9, edgeAlpha * 3);
@@ -1433,25 +1897,80 @@ ${getPageTailCss()}
     // are, so an overview reads as places rather than as density alone.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
-    if (k < settings.labelThreshold) {
+    var monoFont = rootStyles.getPropertyValue('--font-mono') || 'monospace';
+    // Placed labels, so no two overlap: group names first, then hubs.
+    var placed = [];
+    function overlaps(rect) {
+      for (var r = 0; r < placed.length; r += 1) {
+        var other = placed[r];
+        if (rect.x0 < other.x1 && rect.x1 > other.x0 && rect.y0 < other.y1 && rect.y1 > other.y0) {
+          return true;
+        }
+      }
+      return false;
+    }
+    labelRects = [];
+    if (showGroups) {
+      var groupPixels = parseFloat(groupFontSize) || 12;
+      ctx.font = '700 ' + groupFontSize + ' ' + monoFont;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = colors.background;
       ctx.fillStyle = colors.label;
-      ctx.font = labelFontSize + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.globalAlpha = restFade;
+      var order = [];
+      for (var og = 0; og < communityCount; og += 1) {
+        if (groups[og] && groupCenters[og]) { order.push(og); }
+      }
+      order.sort(function (left, right) { return groups[right].size - groups[left].size || left - right; });
+      var named = 0;
+      for (var o = 0; o < order.length && named < GROUP_LABELS_AT_REST; o += 1) {
+        var group = groups[order[o]];
+        var center = groupCenters[order[o]];
+        var gx = center.x * k + camera.x;
+        var gy = center.y * k + camera.y;
+        if (gx < -40 || gx > width + 40 || gy < -20 || gy > height + 20) { continue; }
+        var textWidth = ctx.measureText(group.name).width;
+        var rect = { x0: gx - textWidth / 2 - 3, y0: gy - groupPixels / 2 - 3, x1: gx + textWidth / 2 + 3, y1: gy + groupPixels / 2 + 3, key: group.key };
+        if (overlaps(rect)) { continue; }
+        placed.push(rect);
+        labelRects.push(rect);
+        ctx.strokeText(group.name, gx, gy);
+        ctx.fillText(group.name, gx, gy);
+        named += 1;
+      }
+      ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 1;
+    }
+    if (k < settings.labelThreshold) {
+      var labelPixels = parseFloat(labelFontSize) || 11;
+      ctx.fillStyle = colors.label;
+      ctx.font = labelFontSize + ' ' + monoFont;
       ctx.textAlign = 'center';
       var hubs = [];
       for (var h = 0; h < nodes.length; h += 1) {
         if (!isRendered(h) || !inView(h) || isDimmed(h) || nodes[h].kind === 'tag') { continue; }
-        if (degrees[h] < 2) { continue; }
+        if (nodeDegree(h) < 2) { continue; }
         hubs.push(h);
       }
-      hubs.sort(function (a, b) { return degrees[b] - degrees[a]; });
+      hubs.sort(function (a, b) { return nodeDegree(b) - nodeDegree(a); });
       ctx.globalAlpha = 0.85;
-      for (var u = 0; u < Math.min(hubs.length, HUB_LABELS_AT_REST); u += 1) {
+      var hubsNamed = 0;
+      for (var u = 0; u < hubs.length && hubsNamed < HUB_LABELS_AT_REST; u += 1) {
         var hub = hubs[u];
         var hx = px[hub] * k + camera.x;
-        var hy = py[hub] * k + camera.y;
+        var hy = py[hub] * k + camera.y + nodeRadius(hub) * k + 11;
         var hubTitle = nodes[hub].title;
         if (hubTitle.length > 28) { hubTitle = hubTitle.slice(0, 27) + '…'; }
-        ctx.fillText(hubTitle, hx, hy + nodeRadius(hub) * k + 11);
+        var hubWidth = ctx.measureText(hubTitle).width;
+        var hubRect = { x0: hx - hubWidth / 2, y0: hy - labelPixels, x1: hx + hubWidth / 2, y1: hy + 3 };
+        if (overlaps(hubRect)) { continue; }
+        placed.push(hubRect);
+        ctx.fillText(hubTitle, hx, hy);
+        hubsNamed += 1;
       }
       ctx.globalAlpha = 1;
     }
@@ -1465,7 +1984,7 @@ ${getPageTailCss()}
         if (nodeRadius(l) * k <= 8) { continue; }
         labeled.push(l);
       }
-      labeled.sort(function (a, b) { return degrees[b] - degrees[a]; });
+      labeled.sort(function (a, b) { return nodeDegree(b) - nodeDegree(a); });
       var maxLabels = Math.min(labeled.length, 300);
       var fade = Math.min(1, (k - settings.labelThreshold) / 0.5 + 0.35);
       ctx.globalAlpha = fade;
@@ -1490,16 +2009,41 @@ ${getPageTailCss()}
   function updateStatus() {
     if (!snapshot) { return; }
     var visibleEdgeCount = edges.filter(function (edge) {
-      return isRendered(edge.a) && isRendered(edge.b);
+      return edge.drawn && isRendered(edge.a) && isRendered(edge.b);
     }).length;
     var matchCount = matchSet ? Object.keys(matchSet).length : -1;
-    var searchNote = matchCount >= 0
+    var searchNote = (groupNotice ? groupNotice + ' · ' : '') + (matchCount >= 0
       ? matchCount + (matchCount === 1 ? ' match' : ' matches') + ' · '
-      : '';
+      : '');
+    updateLegend();
+    if (settings.onlyWrittenLinks) {
+      var linked = {};
+      edges.forEach(function (edge) {
+        if (!edge.drawn) { return; }
+        linked[edge.a] = true;
+        linked[edge.b] = true;
+      });
+      var without = 0;
+      nodes.forEach(function (node, index) {
+        if (node.kind !== 'tag' && !linked[index]) { without += 1; }
+      });
+      statusCounts.textContent = searchNote + visibleEdgeCount +
+        (visibleEdgeCount === 1 ? ' wiki link · ' : ' wiki links · ') +
+        without + (without === 1 ? ' node with none' : ' nodes with none');
+      return;
+    }
+    var indexed = snapshot.edgeCount !== undefined ? snapshot.edgeCount : snapshot.edges.length;
     statusCounts.textContent = searchNote + snapshot.totalNoteCount + ' notes · ' +
-      snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount +
-      ' strong links / ' + snapshot.edges.length + ' indexed · ' +
-      communityCount + ' communities';
+      snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount + ' of ' +
+      indexed + ' links drawn · ' +
+      communityCount + (communityCount === 1 ? ' group' : ' groups');
+  }
+
+  /** The legend names "Through a daily note" only while such lines exist. */
+  function updateLegend() {
+    document.querySelectorAll('#graph-legend [data-legend="joined"]').forEach(function (element) {
+      element.hidden = !hasJoinedEdges;
+    });
   }
 
   // ---- frame loop -------------------------------------------------------
@@ -1512,6 +2056,12 @@ ${getPageTailCss()}
 
   function frame() {
     frameQueued = false;
+    // Crossing Label fade zoom, past a little give either way, folds the
+    // headings into their files or opens them again.
+    if (snapshot && settings.headings === 'zoom' && headingsFolded !== null &&
+        shouldFoldHeadings() !== headingsFolded) {
+      rebuildView();
+    }
     var start = performance.now();
     var ticked = false;
     while (alpha > 0 && performance.now() - start < 8) {
@@ -1593,10 +2143,13 @@ ${getPageTailCss()}
     scheduleFrame();
   }
 
-  function fitToView() {
+  /** Frames the whole graph, or only the nodes at the indices given. */
+  function fitToView(indices) {
     if (nodes.length === 0) { return; }
+    var subset = Array.isArray(indices) && indices.length ? indices : null;
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (var i = 0; i < nodes.length; i += 1) {
+    for (var f = 0; f < (subset ? subset.length : nodes.length); f += 1) {
+      var i = subset ? subset[f] : f;
       if (px[i] < minX) { minX = px[i]; }
       if (px[i] > maxX) { maxX = px[i]; }
       if (py[i] < minY) { minY = py[i]; }
@@ -1628,8 +2181,11 @@ ${getPageTailCss()}
     pointerId = event.pointerId;
     pointerDownAt = { x: event.clientX, y: event.clientY };
     pointerMoved = false;
+    // A group's name is tested before the nodes under it: a click on it
+    // picks the group out, and a drag from it pans.
+    pointerLabel = groupLabelAt(event.clientX, event.clientY);
     var world = toWorld(event.clientX, event.clientY);
-    var hit = nodeAt(world.x, world.y);
+    var hit = pointerLabel ? -1 : nodeAt(world.x, world.y);
     if (hit >= 0) {
       dragIndex = hit;
       vx[hit] = 0; vy[hit] = 0;
@@ -1674,10 +2230,23 @@ ${getPageTailCss()}
     }
   });
 
+  function groupLabelAt(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    var x = clientX - rect.left;
+    var y = clientY - rect.top;
+    for (var r = 0; r < labelRects.length; r += 1) {
+      var label = labelRects[r];
+      if (x >= label.x0 && x <= label.x1 && y >= label.y0 && y <= label.y1) { return label.key; }
+    }
+    return '';
+  }
+
   function endPointer(event) {
     if (pointerId !== event.pointerId) { return; }
     var wasDrag = dragIndex;
     var clicked = !pointerMoved;
+    var label = pointerLabel;
+    pointerLabel = '';
     dragIndex = -1;
     panning = false;
     pointerId = -1;
@@ -1689,11 +2258,16 @@ ${getPageTailCss()}
     if (wasDrag >= 0 && !clicked) { reheat(0.3); persist(); return; }
     persist();
     if (!clicked) { return; }
+    if (label) {
+      setGroup(settings.group === label ? '' : label);
+      return;
+    }
     if (wasDrag >= 0) {
-      // Cmd/Ctrl+click opens the source; a plain click selects the node and
-      // surfaces direct graph connections in the sidebar.
-      if (event.metaKey || event.ctrlKey) {
-        openNode(wasDrag);
+      // Cmd/Ctrl+click opens the source, and Alt+click opens it beside the
+      // graph; a plain click selects the node and surfaces direct graph
+      // connections in the sidebar.
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        openNode(wasDrag, event.altKey);
       } else {
         selectNode(wasDrag);
       }
@@ -1723,7 +2297,7 @@ ${getPageTailCss()}
     if (event.key === 'Enter' || event.key === ' ') {
       if (selectedIndex >= 0) {
         event.preventDefault();
-        openNode(selectedIndex);
+        openNode(selectedIndex, event.metaKey || event.ctrlKey);
       }
       return;
     }
@@ -1770,11 +2344,12 @@ ${getPageTailCss()}
     scheduleFrame();
     var node = nodes[index];
     if (node) {
-      vscode.postMessage({ type: 'selectNode', nodeId: node.id });
+      // A folded file is known to the host by its first heading.
+      vscode.postMessage({ type: 'selectNode', nodeId: node.selectId || node.id });
     }
   }
 
-  function openNode(index) {
+  function openNode(index, beside) {
     var node = nodes[index];
     if (!node) { return; }
     if (node.kind === 'tag') {
@@ -1782,7 +2357,9 @@ ${getPageTailCss()}
       return;
     }
     if (node.filePath && node.line) {
-      vscode.postMessage({ type: 'openSource', filePath: node.filePath, line: node.line });
+      vscode.postMessage(beside
+        ? { type: 'openSource', filePath: node.filePath, line: node.line, beside: true }
+        : { type: 'openSource', filePath: node.filePath, line: node.line });
     }
   }
 
@@ -1795,13 +2372,7 @@ ${getPageTailCss()}
     tooltip.appendChild(title);
     var meta = document.createElement('div');
     meta.className = 'tooltip-meta';
-    if (node.kind === 'tag') {
-      meta.textContent = 'Tag · ' + degrees[index] + ' connections';
-    } else {
-      var fileName = node.filePath ? node.filePath.split('/').pop() : '';
-      meta.textContent = (node.kind === 'task' ? 'Task · ' : '') + fileName +
-        ':' + node.line + ' · ' + degrees[index] + ' links';
-    }
+    meta.textContent = describeNode(node);
     tooltip.appendChild(meta);
     tooltip.style.display = 'block';
     var offset = 14;
@@ -1809,6 +2380,35 @@ ${getPageTailCss()}
     var maxY = window.innerHeight - tooltip.offsetHeight - 8;
     tooltip.style.left = Math.min(clientX + offset, maxX) + 'px';
     tooltip.style.top = Math.min(clientY + offset, maxY) + 'px';
+  }
+
+  /** "1 wiki link", "4 wiki links"; nothing for none. */
+  function countWords(count, one, many) {
+    return count ? count + ' ' + (count === 1 ? one : many) : '';
+  }
+  /**
+   * What a node is joined to, by kind, from the index's counts:
+   * "atlas.md:12 · 4 wiki links · 2 headings · 7 tags".
+   */
+  function describeNode(node) {
+    var links = node.links || {};
+    var parts = [];
+    if (node.kind === 'tag') {
+      parts.push('Tag');
+      if (links.tag) { parts.push('on ' + countWords(links.tag, 'note or task', 'notes and tasks')); }
+      if (links.related) { parts.push(countWords(links.related, 'related tag', 'related tags')); }
+    } else {
+      if (node.kind === 'task') { parts.push('Task'); }
+      var fileName = node.filePath ? node.filePath.split('/').pop() : '';
+      parts.push(fileName + ':' + node.line);
+      [
+        countWords(links.wiki, 'wiki link', 'wiki links'),
+        countWords(links.heading, 'heading', 'headings'),
+        countWords(links.tag, 'tag', 'tags')
+      ].forEach(function (words) { if (words) { parts.push(words); } });
+    }
+    if (!links.wiki && !links.heading && !links.tag && !links.related) { parts.push('No links'); }
+    return parts.join(' · ');
   }
 
   function hideTooltip() {
@@ -1834,15 +2434,18 @@ ${getPageTailCss()}
   var localDepth = document.getElementById('local-depth');
   var localDepthOut = document.getElementById('local-depth-out');
   var focusNote = document.getElementById('focus-note');
+  var skipPeriodic = document.getElementById('skip-periodic');
   function requestScope() {
     localDepthOut.textContent = localDepth.value;
     vscode.postMessage({
       type: 'setGraphScope',
       local: localGraph.checked,
       depth: Number(localDepth.value),
+      skipPeriodic: skipPeriodic.checked,
     });
   }
   localGraph.addEventListener('change', requestScope);
+  skipPeriodic.addEventListener('change', requestScope);
   localDepth.addEventListener('input', function () {
     localDepthOut.textContent = localDepth.value;
   });
@@ -1852,6 +2455,8 @@ ${getPageTailCss()}
     var focus = snapshot && snapshot.focus;
     if (!focus) { return; }
     localGraph.checked = Boolean(focus.local);
+    skipPeriodic.checked = focus.skipPeriodic !== false;
+    skipPeriodic.disabled = !focus.local;
     localDepth.value = String(focus.depth || 1);
     localDepthOut.textContent = localDepth.value;
     if (!focus.title) {
@@ -1859,22 +2464,36 @@ ${getPageTailCss()}
       return;
     }
     focusNote.textContent = focus.local
-      ? focus.title + ' · ' + snapshot.nodes.length + ' of ' + focus.workspaceNodeCount + ' nodes'
+      ? focus.title + ' · ' + (snapshot.nodes.length + (snapshot.hiddenNodeCount || 0)) +
+        ' of ' + focus.workspaceNodeCount + ' nodes'
       : 'Around ' + focus.title + ', when this is on.';
+  }
+  /**
+   * The host sends only the kinds of node shown, so it is told which. The
+   * page still filters by kind itself, which covers the moment between a
+   * toggle and the graph the host sends back.
+   */
+  function sendFilter() {
+    vscode.postMessage({
+      type: 'setGraphFilter',
+      showNotes: Boolean(settings.showNotes),
+      showTasks: Boolean(settings.showTasks),
+    });
   }
   bindToggle('show-notes', 'showNotes', true);
   bindToggle('show-tasks', 'showTasks', true);
+  document.getElementById('show-notes').addEventListener('change', sendFilter);
+  document.getElementById('show-tasks').addEventListener('change', sendFilter);
+  sendFilter();
   bindToggle('show-tags', 'showTags', true);
   bindToggle('show-orphans', 'showOrphans', true);
+  bindToggle('show-parked', 'showParked', true);
+  bindToggle('only-written-links', 'onlyWrittenLinks', true);
   bindToggle('show-all-links', 'showAllLinks', true);
 
-  function resetGraphSettings() {
-    Object.keys(defaults).forEach(function (key) {
-      settings[key] = Array.isArray(defaults[key])
-        ? defaults[key].slice()
-        : defaults[key];
-    });
-    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-all-links']
+  /** Puts every control in step with settings, after a reset or an undo. */
+  function applySettingsToControls() {
+    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-parked', 'only-written-links', 'show-all-links']
       .forEach(function (id) {
         var key = id.replace(/-([a-z])/g, function (_, letter) {
           return letter.toUpperCase();
@@ -1884,9 +2503,9 @@ ${getPageTailCss()}
     [
       ['node-size', 'nodeSize', 1],
       ['link-thickness', 'linkThickness', 1],
-      ['link-density', 'linkDensity', 2],
-      ['tag-specificity', 'tagSpecificity', 2],
-      ['bridge-strength', 'bridgeStrength', 2],
+      ['link-density', 'linkDensity', null],
+      ['tag-specificity', 'tagSpecificity', null],
+      ['bridge-strength', 'bridgeStrength', null],
       ['label-threshold', 'labelThreshold', 1],
       ['center-strength', 'centerStrength', 2],
       ['cluster-cohesion', 'clusterCohesion', 1],
@@ -1897,10 +2516,27 @@ ${getPageTailCss()}
     ].forEach(function (definition) {
       var input = document.getElementById(definition[0]);
       input.value = String(settings[definition[1]]);
-      document.getElementById(definition[0] + '-out').textContent =
-        Number(settings[definition[1]]).toFixed(definition[2]);
+      showSliderValue(input, settings[definition[1]], definition[2]);
     });
     searchInput.value = settings.search;
+    groupSelect.value = settings.group || '';
+    showHeadingsChoice();
+  }
+
+  function resetGraphSettings() {
+    // What the reader had arranged, so the reset can be taken back.
+    var previous = {
+      settings: JSON.parse(JSON.stringify(settings)),
+      camera: { x: camera.x, y: camera.y, k: camera.k },
+      tagSearch: tagSearchInput.value
+    };
+    Object.keys(defaults).forEach(function (key) {
+      settings[key] = Array.isArray(defaults[key])
+        ? defaults[key].slice()
+        : defaults[key];
+    });
+    applySettingsToControls();
+    sendFilter();
     tagSearchInput.value = '';
     window.clearTimeout(searchTimer);
     camera = { x: 0, y: 0, k: 1 };
@@ -1913,30 +2549,117 @@ ${getPageTailCss()}
       vy.fill(0);
     }
     reheat(1);
+    showResetUndo(previous);
   }
   document.getElementById('reset-graph-settings').addEventListener(
     'click',
     resetGraphSettings
   );
 
+  // ---- undoing a reset -------------------------------------------------
+  // A reset discards an arrangement that may have taken a while, so Undo
+  // is offered beside it for a few seconds, with the focus on it.
+  var resetUndo = document.getElementById('graph-reset-undo');
+  var resetSnapshot = null;
+  var resetUndoTimer = 0;
+  function clearResetUndo() {
+    window.clearTimeout(resetUndoTimer);
+    resetSnapshot = null;
+    resetUndo.textContent = '';
+  }
+  function showResetUndo(previous) {
+    window.clearTimeout(resetUndoTimer);
+    resetSnapshot = previous;
+    resetUndo.innerHTML = renderUndoNotice('Graph reset.', 'undo-graph-reset', 'reset-graph-settings');
+    resetUndo.querySelector('button').focus();
+    resetUndoTimer = window.setTimeout(clearResetUndo, 8000);
+  }
+  function undoGraphReset() {
+    var previous = resetSnapshot;
+    if (!previous) { return; }
+    clearResetUndo();
+    Object.keys(defaults).forEach(function (key) {
+      settings[key] = previous.settings[key];
+    });
+    applySettingsToControls();
+    sendFilter();
+    tagSearchInput.value = previous.tagSearch;
+    camera = { x: previous.camera.x, y: previous.camera.y, k: previous.camera.k };
+    hasFramed = true;
+    persist();
+    renderTagList();
+    rebuildView(true);
+    reheat(1);
+    resetUndo.textContent = 'Graph settings restored.';
+    resetUndoTimer = window.setTimeout(clearResetUndo, 3000);
+  }
+  resetUndo.addEventListener('click', function (event) {
+    if (event.target.closest && event.target.closest('[data-action="undo-graph-reset"]')) {
+      undoGraphReset();
+    }
+  });
+  // Any later change makes the snapshot stale, so the offer goes.
+  function dismissResetUndo(event) {
+    if (resetSnapshot && !resetUndo.contains(event.target)) {
+      clearResetUndo();
+    }
+  }
+  document.addEventListener('input', dismissResetUndo, true);
+  document.addEventListener('change', dismissResetUndo, true);
+  ['zoom-in', 'zoom-out', 'zoom-fit'].forEach(function (id) {
+    document.getElementById(id).addEventListener('click', dismissResetUndo);
+  });
+
+  /**
+   * Says a slider's value: as a number in its output, or, for a slider with
+   * no number worth reading (decimals null), as a word a screen reader says.
+   */
+  function showSliderValue(element, value, decimals) {
+    if (decimals === null) {
+      var words = (element.getAttribute('data-words') || '').split(',');
+      var min = Number(element.min);
+      var span = Number(element.max) - min || 1;
+      var fifth = Math.min(4, Math.floor(((Number(value) - min) / span) * 5));
+      element.setAttribute('aria-valuetext', words[Math.max(0, fifth)] || String(value));
+      return;
+    }
+    document.getElementById(element.id + '-out').textContent = Number(value).toFixed(decimals);
+  }
+
   function bindSlider(id, key, decimals, onChange) {
     var element = document.getElementById(id);
-    var output = document.getElementById(id + '-out');
     element.value = String(settings[key]);
-    output.textContent = Number(settings[key]).toFixed(decimals);
+    showSliderValue(element, settings[key], decimals);
     element.addEventListener('input', function () {
       settings[key] = Number(element.value);
-      output.textContent = Number(settings[key]).toFixed(decimals);
+      showSliderValue(element, settings[key], decimals);
       persist();
       onChange();
     });
   }
   bindSlider('node-size', 'nodeSize', 1, scheduleFrame);
   bindSlider('link-thickness', 'linkThickness', 1, scheduleFrame);
-  bindSlider('link-density', 'linkDensity', 2, rebuildView);
-  bindSlider('tag-specificity', 'tagSpecificity', 2, rebuildView);
-  bindSlider('bridge-strength', 'bridgeStrength', 2, rebuildView);
+  bindSlider('link-density', 'linkDensity', null, rebuildView);
+  bindSlider('tag-specificity', 'tagSpecificity', null, rebuildView);
+  bindSlider('bridge-strength', 'bridgeStrength', null, rebuildView);
   bindSlider('label-threshold', 'labelThreshold', 1, scheduleFrame);
+
+  var headingButtons = document.querySelectorAll('[data-headings]');
+  function showHeadingsChoice() {
+    headingButtons.forEach(function (button) {
+      button.setAttribute('aria-pressed', String(button.getAttribute('data-headings') === settings.headings));
+    });
+  }
+  showHeadingsChoice();
+  headingButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (resetSnapshot) { clearResetUndo(); }
+      settings.headings = button.getAttribute('data-headings');
+      showHeadingsChoice();
+      persist();
+      rebuildView();
+    });
+  });
   bindSlider('center-strength', 'centerStrength', 2, function () { reheat(0.5); });
   bindSlider('cluster-cohesion', 'clusterCohesion', 1, function () { reheat(0.5); });
   bindSlider('community-spacing', 'communitySpacing', 1, function () {
@@ -2030,7 +2753,32 @@ ${getPageTailCss()}
     persist();
     recomputeTagMatches();
     renderTagList();
-    scheduleFrame();
+    setGroup('');
+  });
+
+  var groupRow = document.getElementById('group-row');
+  var groupSelect = document.getElementById('group-filter');
+  /** The Group list: every named group, largest first, keeping the pick. */
+  function renderGroupList() {
+    var order = [];
+    groups.forEach(function (group, community) { if (group) { order.push(community); } });
+    order.sort(function (left, right) { return groups[right].size - groups[left].size || left - right; });
+    groupSelect.textContent = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'All groups';
+    groupSelect.appendChild(all);
+    order.forEach(function (community) {
+      var option = document.createElement('option');
+      option.value = groups[community].key;
+      option.textContent = groups[community].name + ' (' + groups[community].size + ')';
+      groupSelect.appendChild(option);
+    });
+    groupSelect.value = settings.group || '';
+    groupRow.hidden = namedGroupCount < 2;
+  }
+  groupSelect.addEventListener('change', function () {
+    setGroup(groupSelect.value);
   });
 
   document.getElementById('zoom-in').addEventListener('click', function () {
@@ -2039,7 +2787,7 @@ ${getPageTailCss()}
   document.getElementById('zoom-out').addEventListener('click', function () {
     zoomAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 1 / 1.3);
   });
-  document.getElementById('zoom-fit').addEventListener('click', fitToView);
+  document.getElementById('zoom-fit').addEventListener('click', function () { fitToView(); });
 
   window.addEventListener('resize', resizeCanvas);
 
@@ -2047,9 +2795,25 @@ ${getPageTailCss()}
     var message = event.data;
     if (message && message.type === 'state' && message.data) {
       snapshot = message.data;
+      tagLabelByKey = {};
+      (snapshot.tags || []).forEach(function (entry) { tagLabelByKey[entry[0]] = entry[1]; });
+      // Edge ids are left out of the message; each is its two ends.
+      snapshot.edges.forEach(function (edge) {
+        if (!edge.id) { edge.id = edge.source + '::' + edge.target; }
+      });
       rebuildView();
       renderTagList();
       updateFocus();
+    }
+    // The host turns a filter on for a reader who came to see it, such as
+    // Stats' Wiki links total.
+    if (message && message.type === 'applyFilters') {
+      if (typeof message.onlyWrittenLinks === 'boolean') {
+        settings.onlyWrittenLinks = message.onlyWrittenLinks;
+        document.getElementById('only-written-links').checked = settings.onlyWrittenLinks;
+        persist();
+        rebuildView();
+      }
     }
     if (message && message.type === 'highlightNode') {
       externalHoverNodeId = message.nodeId || null;
@@ -2072,4 +2836,3 @@ ${getPageTailCss()}
 </body>
 </html>`;
 }
-

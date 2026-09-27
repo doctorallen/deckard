@@ -8,11 +8,25 @@ import {
   extractWikiLinks,
   getEntityNamespaceAliases,
   getEntityKind,
+  legacyIdOf,
   parseMarkdown,
   stripTags,
 } from '../core/markdown/parser';
 
 suite('Markdown parser', () => {
+  test('gives two entries whose old ids collided ids of their own', () => {
+    // "Aa" and "BB" hash alike under the old 32-bit hash, so these two
+    // headings once shared an id and the index kept only one of them.
+    const first = parseMarkdown('notes/Aa.md', '# Plan #project/atlas\n- [ ] Call Ren');
+    const second = parseMarkdown('notes/BB.md', '# Plan #project/atlas\n- [ ] Call Ren');
+    assert.strictEqual(legacyIdOf(first.sections[0].id), legacyIdOf(second.sections[0].id));
+    assert.notStrictEqual(first.sections[0].id, second.sections[0].id);
+    assert.strictEqual(legacyIdOf(first.tasks[0].id), legacyIdOf(second.tasks[0].id));
+    assert.notStrictEqual(first.tasks[0].id, second.tasks[0].id);
+    assert.match(first.sections[0].id, /^section-[0-9a-z]+-[0-9a-z]+$/);
+    assert.strictEqual(legacyIdOf('section-abc'), undefined, 'an old id has no second half');
+  });
+
   test('keeps people and hash tags distinct while preserving display labels', () => {
     assert.deepStrictEqual(extractTags('Investigate @Case #case #other'), [
       { key: '@case', label: '@Case' },

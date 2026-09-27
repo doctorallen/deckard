@@ -10,6 +10,7 @@ import {
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
+  writeCompletion,
 } from '../core/markdown/taskMetadata';
 
 const at = (year: number, month: number, day: number): number =>
@@ -123,6 +124,37 @@ suite('Obsidian Tasks metadata', () => {
     assert.strictEqual(parseRecurrence('every full moon'), undefined);
   });
 
+  test('reads every other, nth weekdays, quarters, and weekends', () => {
+    const next = (rule: string, from: number): string => {
+      const recurrence = parseRecurrence(rule);
+      assert.ok(recurrence, rule);
+      return formatIsoDate(recurrence.next(from));
+    };
+    // 2026-09-25 is a Friday.
+    const friday = at(2026, 9, 25);
+    assert.strictEqual(next('every other week', friday), '2026-10-09');
+    assert.strictEqual(next('every other day', friday), '2026-09-27');
+    assert.strictEqual(next('every month on the second tuesday', friday), '2026-10-13');
+    assert.strictEqual(next('every month on the 2nd Tuesday', friday), '2026-10-13');
+    assert.strictEqual(next('every month on the last friday', friday), '2026-10-30');
+    assert.strictEqual(next('every quarter', friday), '2026-12-25');
+    assert.strictEqual(next('every 2 quarters', friday), '2027-03-25');
+    assert.strictEqual(next('every weekend', friday), '2026-09-26');
+    assert.strictEqual(next('every weekend', at(2026, 9, 26)), '2026-09-27');
+    // Weeks start on Monday, as Tasks counts them.
+    assert.strictEqual(next('every 2 weeks on monday, thursday', at(2026, 9, 28)), '2026-10-01');
+    assert.strictEqual(next('every 2 weeks on monday, thursday', at(2026, 10, 1)), '2026-10-12');
+    assert.strictEqual(next('every other tuesday', friday), '2026-10-06');
+    // November and December 2026 have four Fridays each.
+    assert.strictEqual(next('every month on the fifth friday', at(2026, 10, 30)), '2027-01-29');
+    assert.strictEqual(parseRecurrence('every other tuesday when done')?.whenDone, true);
+    // The rules Tasks writes read as they did.
+    assert.strictEqual(next('every 2 weeks', at(2026, 9, 13)), '2026-09-27');
+    assert.strictEqual(next('every Tuesday', at(2026, 9, 13)), '2026-09-15');
+    assert.strictEqual(parseRecurrence('every other'), undefined);
+    assert.strictEqual(parseRecurrence('every month on the sixth friday'), undefined);
+  });
+
   test('writes the next occurrence of a recurring task', () => {
     const today = at(2026, 9, 13);
 
@@ -146,6 +178,27 @@ suite('Obsidian Tasks metadata', () => {
     assert.strictEqual(
       createNextOccurrence('- [ ] Odd 🔁 every full moon', 3, today),
       undefined,
+    );
+  });
+
+  test('a completion writes the next occurrence above the completed line', () => {
+    const today = at(2026, 9, 13);
+    const weekly = '- [x] Review 📅 2026-09-10 🔁 every week ✅ 2026-09-13';
+    assert.deepStrictEqual(writeCompletion(weekly, 3, today, '\n'), {
+      text: `- [ ] Review 📅 2026-09-17 🔁 every week\n${weekly}`,
+      next: '- [ ] Review 📅 2026-09-17 🔁 every week',
+    });
+    assert.strictEqual(
+      writeCompletion(weekly, 3, today, '\r\n').text,
+      `- [ ] Review 📅 2026-09-17 🔁 every week\r\n${weekly}`,
+      'in the line ending the note uses',
+    );
+    assert.deepStrictEqual(writeCompletion('- [x] Plain task', 3, today, '\n'), {
+      text: '- [x] Plain task',
+    });
+    assert.deepStrictEqual(
+      writeCompletion('- [x] Odd 🔁 every blue moon', 3, today, '\n'),
+      { text: '- [x] Odd 🔁 every blue moon', unreadRule: 'every blue moon' },
     );
   });
 

@@ -6,15 +6,23 @@ import { writeSetting } from '../commands/settings';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   buildOutline,
+  collectOutlineTags,
+  describeOutlineCounts,
+  filterOutline,
   findOutlineNodeAt,
+  formatOutlineDescription,
   formatOutlineTags,
   mapOutlineParents,
   OutlineNode,
 } from '../state/outlineState';
+import { getBacklinkIndex } from '../../core/workspace/backlinks';
 import { revealLine } from '../commands/navigation';
+import { reportFailure } from '../commands/notify';
 
 /** Context key backing the follow-cursor toggle in the view title. */
 export const outlineFollowCursorContextKey = 'deckard.outlineFollowCursor';
+/** Context key for whether the Outline shows only the headings with a tag. */
+export const outlineFilteredContextKey = 'deckard.outlineFiltered';
 
 const noDocumentMessage = 'Open a Markdown file to see its outline.';
 const noHeadingsMessage = 'This file has no headings.';
@@ -41,11 +49,18 @@ export class OutlineTreeProvider
   private readonly disposables: vscode.Disposable[] = [];
   private view: vscode.TreeView<OutlineNode> | undefined;
   private roots: OutlineNode[] = [];
+  /** Every heading of the note, before any tag filter. */
+  private allRoots: OutlineNode[] = [];
   private parents = new Map<string, OutlineNode>();
   private documentUri: vscode.Uri | undefined;
   private rebuildHandle: ReturnType<typeof setTimeout> | undefined;
   private followHandle: ReturnType<typeof setTimeout> | undefined;
   private rebuildPending = false;
+  /**
+   * The tag the Outline is narrowed to, kept across notes until it is
+   * cleared or the window reloads.
+   */
+  private tagFilter: { key: string; label: string } | undefined;
 
   public constructor(private readonly indexer: WorkspaceIndexer) {
     this.disposables.push(this.changeEmitter);
@@ -73,10 +88,13 @@ export class OutlineTreeProvider
         }
       }),
     );
+    // Links into a heading are counted from the index, which moves on save.
+    this.disposables.push(indexer.onDidUpdate(() => this.scheduleRebuild()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.outline') ||
+          event.affectsConfiguration('deckard.zenMode') ||
           event.affectsConfiguration('deckard.personMarker') ||
           event.affectsConfiguration('deckard.entityNamespaceAliases')
         ) {
@@ -111,7 +129,9 @@ export class OutlineTreeProvider
     );
     const tags = formatOutlineTags(node);
     item.id = node.id;
-    item.description = this.areTagsShown() && tags ? tags : undefined;
+    item.description =
+      formatOutlineDescription(node, { tags: this.areTagsShown(), counts: this.areCountsShown() }) ||
+      undefined;
     item.tooltip = createTooltip(node, tags);
     item.iconPath = new vscode.ThemeIcon('symbol-string');
     item.contextValue =
@@ -122,6 +142,23 @@ export class OutlineTreeProvider
       arguments: [node],
     };
     return item;
+  }
+
+  /** The tags written on the current note's headings, for the filter. */
+  public listTags(): { key: string; label: string }[] {
+    return collectOutlineTags(this.allRoots);
+  }
+
+  /** The tag the Outline is narrowed to, if any. */
+  public get filter(): { key: string; label: string } | undefined {
+    return this.tagFilter;
+  }
+
+  /** Narrows the Outline to the headings that carry a tag, or clears it. */
+  public setTagFilter(tag: { key: string; label: string } | undefined): void {
+    this.tagFilter = tag;
+    void vscode.commands.executeCommand('setContext', outlineFilteredContextKey, tag !== undefined);
+    this.rebuildNow();
   }
 
   public getChildren(node?: OutlineNode): OutlineNode[] {
@@ -155,9 +192,7 @@ export class OutlineTreeProvider
       });
       revealLine(editor, node.line);
     } catch (error) {
-      void vscode.window.showErrorMessage(
-        `Deckard could not open that heading: ${String(error)}`,
-      );
+      void reportFailure({ outcome: 'Deckard could not open that heading.', error });
     }
   }
 
@@ -229,13 +264,21 @@ export class OutlineTreeProvider
               .getConfiguration('deckard', document.uri)
               .get<string>('personMarker'),
             inheritedTags: this.areInheritedTagsShown(document.uri),
+            backlinks: getBacklinkIndex(this.indexer.getSnapshot()),
+            filePath: this.indexer.getFilePath(document.uri),
           }),
         () => `${document.lineCount} lines`,
       );
+      this.allRoots = roots;
+      const shown = this.tagFilter ? filterOutline(roots, this.tagFilter.key) : roots;
       this.publish(
-        roots,
+        shown,
         document.uri,
-        roots.length > 0 ? undefined : noHeadingsMessage,
+        roots.length === 0
+          ? noHeadingsMessage
+          : shown.length === 0 && this.tagFilter
+            ? `No heading in this note carries ${this.tagFilter.label}.`
+            : undefined,
       );
       void this.followCursor();
     } catch {
@@ -251,8 +294,12 @@ export class OutlineTreeProvider
     this.roots = roots;
     this.parents = mapOutlineParents(roots);
     this.documentUri = documentUri;
+    if (!documentUri) {
+      this.allRoots = [];
+    }
     if (this.view) {
       this.view.message = message;
+      this.view.description = this.tagFilter?.label;
     }
     this.changeEmitter.fire(undefined);
   }
@@ -305,6 +352,15 @@ export class OutlineTreeProvider
     return vscode.workspace
       .getConfiguration('deckard')
       .get<boolean>('outline.showTags', true);
+  }
+
+  /** Counts are hidden in zen, like the reference counts above headings. */
+  private areCountsShown(): boolean {
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    return (
+      configuration.get<boolean>('outline.showCounts', true) &&
+      !configuration.get<boolean>('zenMode', false)
+    );
   }
 
   private areInheritedTagsShown(uri: vscode.Uri): boolean {
@@ -381,6 +437,7 @@ function createTooltip(node: OutlineNode, tags: string): string {
   if (tags) {
     lines.push(tags);
   }
+  lines.push(...describeOutlineCounts(node));
   lines.push(`Line ${node.line}`);
   return lines.join('\n');
 }

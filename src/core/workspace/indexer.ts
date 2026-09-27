@@ -1,24 +1,51 @@
 import * as vscode from 'vscode';
 
 import {
-  Entity,
   ParsedFile,
   Section,
-  TagAssociation,
-  TagInfo,
-  TagReference,
   Task,
   WorkspaceIndex,
   UnreadableNote,
 } from '../types';
-import { getEntityKind } from '../markdown/parser';
 import {
   EntrySearchOptions,
   EntrySearchResult,
+  ScanCounts,
   SearchStore,
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../timing';
-import { ScanProgress, WorkspaceScanner, describeError } from './scanner';
+import { FileStamp, WorkspaceScanner, describeError } from './scanner';
+import { takeOwnWrite } from './ownWrites';
+import { IndexState, NoteChange } from './indexState';
+import { ViewUpdateOptions } from './publishing';
+import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
+
+/** What the indexer can be given beyond its scanner and cache. */
+export interface WorkspaceIndexerOptions {
+  /**
+   * Deckard's version. The parsed notes in the cache are kept only for the
+   * version that parsed them, since a new version may parse differently.
+   */
+  version?: string;
+  /**
+   * Whether a start shows the notes the cache kept before reading any. Off
+   * in the Development and Test extension modes, where the parser can
+   * change without the version changing.
+   */
+  readCache?: boolean;
+  /**
+   * Runs a view's redraw in a later host turn. `setImmediate` by default; a
+   * test passes its own to step through the turns.
+   */
+  schedule?: (run: () => void) => void;
+}
+
+/** A view waiting for its turn to redraw from the index. */
+interface ViewSubscription {
+  listener: () => void;
+  options: ViewUpdateOptions;
+  disposed: boolean;
+}
 
 /**
  * Owns the live note cache and turns scanner output into lookup maps for the UI.
@@ -30,7 +57,10 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private readonly updateEmitter = new vscode.EventEmitter<WorkspaceIndex>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly watcherDisposables: vscode.Disposable[] = [];
-  private readonly files = new Map<string, ParsedFile>();
+  /** The notes and the index derived from them, updated a note at a time. */
+  private state = IndexState.build([]);
+  /** The parse settings the notes in the state were read under. */
+  private parsedUnder: string | undefined;
   private readonly pending = new Map<string, PendingUpdate>();
   private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private readyPromise: Promise<void> = Promise.resolve();
@@ -39,15 +69,74 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private snapshot: WorkspaceIndex | undefined;
   /** Notes in the workspace that are not in the index, and why. */
   private readonly unreadable = new Map<string, string>();
+  /** How far the scan under way has got, or nothing between scans. */
+  private scanState: { completed: number; total: number } | undefined;
+  private readonly progressEmitter = new vscode.EventEmitter<void>();
+  /**
+   * Fires as a scan moves on, at most every few percent, so a view that says
+   * it is waiting can say how far along it is.
+   */
+  public readonly onDidProgress = this.progressEmitter.event;
+  /** Views that redraw in turns of their own, in the order they asked. */
+  private readonly views = new Set<ViewSubscription>();
+  /** The views still to redraw from the last publish, next first. */
+  private viewQueue: ViewSubscription[] = [];
+  private viewTurnScheduled = false;
+  private readonly schedule: (run: () => void) => void;
+  private readonly version: string;
+  private readonly readCache: boolean;
+  private readonly publishedPromise: Promise<void>;
+  private resolvePublished: () => void = () => undefined;
+  /** Whether the index shows the cache's notes, not yet checked against the files. */
+  private staleFromCache = false;
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
     private readonly searchStore?: SearchStore,
+    options: WorkspaceIndexerOptions = {},
   ) {
-    this.disposables.push(this.updateEmitter);
+    this.schedule = options.schedule ?? ((run) => void setImmediate(run));
+    this.version = options.version ?? '';
+    this.readCache = options.readCache ?? false;
+    this.publishedPromise = new Promise<void>((resolve) => {
+      this.resolvePublished = resolve;
+    });
+    this.disposables.push(this.updateEmitter, this.progressEmitter);
+  }
+
+  /** Whether a first scan has finished, so the index holds the workspace. */
+  public get hasIndexed(): boolean {
+    return this.indexedOnce;
+  }
+
+  private indexedOnce = false;
+
+  /** How far the scan under way has got: "412 of 3,760 notes", or nothing. */
+  public get scanProgress(): { completed: number; total: number } | undefined {
+    return this.scanState;
   }
 
   public readonly onDidUpdate = this.updateEmitter.event;
+
+  /**
+   * Redraws a view from the index after each update, in a host turn of its
+   * own, after the plain listeners and in order of `priority` (the view in
+   * front first). A view that has not had its turn when the index changes
+   * again runs once, with the newer index.
+   */
+  public onDidUpdateView(
+    listener: () => void,
+    options: ViewUpdateOptions,
+  ): vscode.Disposable {
+    const subscription: ViewSubscription = { listener, options, disposed: false };
+    this.views.add(subscription);
+    return {
+      dispose: () => {
+        subscription.disposed = true;
+        this.views.delete(subscription);
+      },
+    };
+  }
 
   /**
    * Installs change listeners before the first refresh so edits during startup
@@ -55,8 +144,77 @@ export class WorkspaceIndexer implements vscode.Disposable {
    */
   public start(): Promise<void> {
     this.registerWatchers();
-    this.readyPromise = this.refresh();
+    this.readyPromise = this.startFromCache();
     return this.readyPromise;
+  }
+
+  /**
+   * Resolves once the index first has notes to show: the cache's, on a warm
+   * start, or the first scan's. Surfaces that only display notes wait for
+   * this; anything that writes or answers for the whole workspace waits for
+   * `ready`.
+   */
+  public get published(): Promise<void> {
+    return this.publishedPromise;
+  }
+
+  /**
+   * Whether the index is the notes as the cache kept them, still being
+   * checked against the files. It is replaced within about a second.
+   */
+  public get isStale(): boolean {
+    return this.staleFromCache;
+  }
+
+  /**
+   * A warm start: the notes as they were when VS Code last closed, shown at
+   * once, then checked against the files, rereading only the notes whose
+   * saved time, created time, or size changed. A cold start is a full scan.
+   */
+  private async startFromCache(): Promise<void> {
+    const store = this.searchStore;
+    const fingerprint = this.scanner.getParseFingerprint();
+    if (store && this.readCache) {
+      const cached: ParsedFile[] = [];
+      const found = await measureAsync(
+        'Load notes from cache',
+        () =>
+          store.readParsedNotes(this.cacheFingerprint(fingerprint), (page) =>
+            page.forEach((file) => {
+              // A note excluded, or a folder removed, while VS Code was
+              // closed is no longer a note.
+              const uri = this.scanner.getUri(file.filePath);
+              if (uri && this.scanner.isNotesFile(uri)) {
+                cached.push(file);
+              }
+            }),
+          ),
+        () => `${cached.length} notes`,
+      );
+      if (found && cached.length > 0 && !this.disposed) {
+        this.snapshot = measure(
+          'Build index',
+          () => {
+            this.state = IndexState.build(cached);
+            return this.withParking(this.state.snapshot());
+          },
+          (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+        );
+        this.parsedUnder = fingerprint;
+        this.staleFromCache = true;
+        this.cachedScan = store.readLastScan();
+        this.indexedOnce = true;
+        this.emitUpdate();
+        try {
+          await this.refresh({ reuse: 'cache' });
+        } finally {
+          this.staleFromCache = false;
+          this.cachedScan = undefined;
+        }
+        return;
+      }
+    }
+    await this.refresh();
   }
 
   /**
@@ -72,8 +230,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
   /** What the last full scan found, kept out, and read. */
   public getLastScan(): { found: number; templates: number; excluded: number; read: number } {
-    return { ...this.scanner.lastScan };
+    // Until the check at a warm start finishes, the last session's counts.
+    return { ...(this.cachedScan ?? this.scanner.lastScan) };
   }
+
+  private cachedScan: ScanCounts | undefined;
 
   /**
    * Exposes the initial scan as a barrier for commands that need complete data.
@@ -93,10 +254,37 @@ export class WorkspaceIndexer implements vscode.Disposable {
   public getSnapshot(): WorkspaceIndex {
     this.snapshot ??= measure(
       'Build index',
-      () => buildWorkspaceIndex(new Map(this.files)),
+      () => this.withParking(this.state.snapshot()),
       (index) => `${index.files.size} notes, ${index.sections.size} entries`,
     );
     return this.snapshot;
+  }
+
+  /**
+   * Marks what `deckard.parked` parks on a newly derived index. Parking is a
+   * setting, not part of a note, so it is worked out after the notes' own
+   * parts are folded, and a change to it redraws without reading any note.
+   */
+  private withParking(index: WorkspaceIndex): WorkspaceIndex {
+    // A stand-in scanner in a test may not read settings at all.
+    index.parked = computeParked(index, this.getParkedRules());
+    return index;
+  }
+
+  private parkedRules: ParkedRules | undefined;
+
+  /** What `deckard.parked` parks now, as the index reads it. */
+  public getParkedRules(): ParkedRules {
+    this.parkedRules ??=
+      typeof this.scanner.getParkedRules === 'function'
+        ? this.scanner.getParkedRules()
+        : NO_PARKED_RULES;
+    return this.parkedRules;
+  }
+
+  /** The file an index path names, when a workspace folder holds it. */
+  public getUri(filePath: string): vscode.Uri | undefined {
+    return this.scanner.getUri(filePath);
   }
 
   /**
@@ -178,23 +366,41 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
   /**
    * Performs a full replacement refresh while reporting progress in VS Code.
+   *
+   * A note whose saved time, created time, and size are what they were when
+   * it was last read, under the same parse settings, is not read again, so
+   * a rescan after an exclude or folder change costs a stat per note.
+   * `reuse: 'none'` rereads and reparses every note: Reindex Workspace.
    */
-  public async refresh(): Promise<void> {
+  public async refresh(options: { reuse?: 'session' | 'cache' | 'none' } = {}): Promise<void> {
     if (this.disposed) {
       return;
     }
+    const checking = options.reuse === 'cache';
+    this.parkedRules = undefined;
+    const fingerprint = this.scanner.getParseFingerprint();
+    const reusable =
+      options.reuse !== 'none' && this.parsedUnder === fingerprint
+        ? this.state.files
+        : undefined;
 
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Window,
-        title: 'Deckard: Indexing workspace',
+        title: checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
         cancellable: false,
       },
       async (progress) => {
         const parsedFiles = await measureAsync(
           'Scan workspace',
           () =>
-            this.scanner.scan((completed, total): void => {
+            this.scanner.scan(
+              (completed, total): void => {
+              const step = Math.max(1, Math.floor(total / 50));
+              if (completed === total || completed % step === 0) {
+                this.scanState = { completed, total };
+                this.progressEmitter.fire();
+              }
               progress.report({
                 message:
                   total > 0
@@ -202,36 +408,105 @@ export class WorkspaceIndexer implements vscode.Disposable {
                     : 'No Markdown files',
                 increment: total > 0 ? 100 / total : 0,
               });
-            }),
+              },
+              reusable && ((filePath, stamp) => reuseUnchanged(reusable.get(filePath), stamp)),
+              // Each note is encoded for the cache as it is read, rather
+              // than all of them in one turn when the cache is written.
+              this.searchStore && ((file) => this.searchStore?.prepare(file)),
+            ),
           (files) => `${files.length} notes`,
         );
+        this.scanState = undefined;
         if (this.disposed) {
           return;
         }
 
-        this.files.clear();
-        parsedFiles.forEach((file) => this.files.set(file.filePath, file));
+        let changed = true;
+        if (checking) {
+          // The cache's notes are on screen already: only what differs from
+          // them is applied, and nothing is published if nothing does.
+          const changes = measure(
+            'Check notes for changes',
+            () => this.diffAgainstScan(parsedFiles),
+            (found) =>
+              `${parsedFiles.length} notes, ${found.filter((change) => change.file).length} changed, ${found.filter((change) => !change.file).length} gone`,
+          );
+          changed = changes.length > 0;
+          if (changed) {
+            this.snapshot = measure(
+              'Update index',
+              () => {
+                this.state.apply(changes);
+                return this.withParking(this.state.snapshot());
+              },
+              (index) => `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
+            );
+          }
+        } else {
+          const previous = this.state;
+          this.snapshot = measure(
+            'Build index',
+            () => {
+              this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
+              return this.withParking(this.state.snapshot());
+            },
+            (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+          );
+        }
+        this.parsedUnder = fingerprint;
         this.unreadable.clear();
         this.scanner.failures.forEach((failure) =>
           this.unreadable.set(failure.filePath, failure.reason),
         );
-        this.snapshot = undefined;
         measure(
           'Rebuild search index',
           () =>
-            this.searchStore?.replace(
-              this.files.values(),
-              this.scanner.getParseFingerprint(),
-            ),
-          () => `${this.files.size} notes`,
+            {
+              this.searchStore?.replace(this.state.files.values(), this.cacheFingerprint(fingerprint));
+              this.searchStore?.writeLastScan(this.scanner.lastScan);
+            },
+          () => `${this.state.files.size} notes`,
         );
         // What the store handed to its worker is still being written. The
         // log says when it lands, because until then a search finds a note
         // by its title and tags but not yet by the words inside it.
         this.reportSearchIndexWritten();
-        this.emitUpdate();
+        this.indexedOnce = true;
+        this.staleFromCache = false;
+        this.cachedScan = undefined;
+        if (changed) {
+          this.emitUpdate();
+        }
       },
     );
+  }
+
+  /** What a scan found that the index does not hold as it is, in scan order. */
+  private diffAgainstScan(parsedFiles: readonly ParsedFile[]): NoteChange[] {
+    const changes: NoteChange[] = [];
+    const scanned = new Set<string>();
+    parsedFiles.forEach((file) => {
+      scanned.add(file.filePath);
+      if (this.state.files.get(file.filePath) !== file) {
+        changes.push({ filePath: file.filePath, file });
+      }
+    });
+    this.state.files.forEach((_, filePath) => {
+      if (!scanned.has(filePath)) {
+        changes.push({ filePath });
+      }
+    });
+    return changes;
+  }
+
+  /**
+   * What the notes in the cache were parsed under: the parse settings, this
+   * version of Deckard, and the time zone, since the parser reads a
+   * written date as a local one. Any change rebuilds the cache.
+   */
+  private cacheFingerprint(parseFingerprint = this.scanner.getParseFingerprint()): string {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
+    return [parseFingerprint, this.version, timeZone].join('\u0002');
   }
 
   /** Times the part of a rebuild that finished after the host moved on. */
@@ -256,6 +531,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
       .splice(0)
       .forEach((disposable) => disposable.dispose());
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+    this.views.clear();
+    this.viewQueue = [];
     this.searchStore?.dispose();
   }
 
@@ -283,7 +560,18 @@ export class WorkspaceIndexer implements vscode.Disposable {
         );
         const excludeChanged =
           event.affectsConfiguration('deckard.exclude') ||
-          event.affectsConfiguration('files.exclude');
+          event.affectsConfiguration('files.exclude') ||
+          event.affectsConfiguration('search.exclude');
+        if (
+          event.affectsConfiguration('deckard.parked') ||
+          event.affectsConfiguration('deckard.entityNamespaceAliases')
+        ) {
+          this.parkedRules = undefined;
+          if (event.affectsConfiguration('deckard.parked') && this.indexedOnce) {
+            this.snapshot = undefined;
+            this.emitUpdate();
+          }
+        }
         if (
           notesFolderChanged ||
           inlineTagsChanged ||
@@ -302,13 +590,15 @@ export class WorkspaceIndexer implements vscode.Disposable {
     this.disposables.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         this.replaceWatchers();
+        this.parkedRules = undefined;
         this.readyPromise = this.refresh();
       }),
     );
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (this.scanner.isNotesFile(document.uri)) {
-          this.queueUpsert(document.uri);
+          // A note Deckard just wrote is read back at once.
+          this.queueUpsert(document.uri, undefined, takeOwnWrite(document.uri.toString()));
         }
       }),
     );
@@ -343,9 +633,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Replaces pending work for a URI because only its newest content matters.
    */
-  private queueUpsert(uri: vscode.Uri, content?: string): void {
+  private queueUpsert(uri: vscode.Uri, content?: string, now = false): void {
     this.pending.set(uri.toString(), { uri, content, deleted: false });
-    this.scheduleFlush();
+    this.scheduleFlush(now);
   }
 
   /**
@@ -359,15 +649,19 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Debounces bursts from typing and filesystem watchers into one refresh event.
    */
-  private scheduleFlush(): void {
+  private scheduleFlush(now = false): void {
     if (this.flushHandle) {
-      return;
+      if (!now) {
+        return;
+      }
+      // A write of Deckard's own does not wait out another's debounce.
+      clearTimeout(this.flushHandle);
     }
 
     this.flushHandle = setTimeout(() => {
       this.flushHandle = undefined;
       void this.flushPending();
-    }, 200);
+    }, now ? 0 : 200);
   }
 
   /**
@@ -379,32 +673,47 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private async flushPending(): Promise<void> {
     const updates = [...this.pending.values()];
     this.pending.clear();
-    await measureAsync(
+    const changes = await measureAsync(
       'Read changed notes',
-      () => this.applyUpdates(updates),
+      () => this.readUpdates(updates),
       () => `${updates.length} ${updates.length === 1 ? 'note' : 'notes'}`,
     );
-    this.snapshot = undefined;
+    if (this.disposed) {
+      return;
+    }
+    // Only the changed notes' parts of the index are worked out again; the
+    // rest is reused from the index before.
+    this.snapshot = measure(
+      'Update index',
+      () => {
+        this.state.apply(changes);
+        return this.withParking(this.state.snapshot());
+      },
+      (index) =>
+        `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
+    );
     this.emitUpdate();
   }
 
-  private async applyUpdates(updates: PendingUpdate[]): Promise<void> {
+  /** Reads what changed, in the order it was queued, as changes to apply. */
+  private async readUpdates(updates: PendingUpdate[]): Promise<NoteChange[]> {
+    const changes: NoteChange[] = [];
     for (const update of updates) {
       const filePath = this.scanner.getFilePath(update.uri);
       if (update.deleted) {
-        this.files.delete(filePath);
+        changes.push({ filePath });
         this.unreadable.delete(filePath);
         this.searchStore?.remove(filePath);
         continue;
       }
 
       try {
-        const previous = this.files.get(filePath);
+        const previous = this.state.files.get(filePath);
         const parsedFile =
           update.content === undefined
             ? await this.scanner.read(update.uri)
             : this.scanner.parse(update.uri, update.content, previous?.fileTimes);
-        this.files.set(filePath, parsedFile);
+        changes.push({ filePath, file: parsedFile });
         this.unreadable.delete(filePath);
         this.searchStore?.upsert(parsedFile);
       } catch (error) {
@@ -412,17 +721,92 @@ export class WorkspaceIndexer implements vscode.Disposable {
         this.unreadable.set(filePath, describeError(error));
       }
     }
+    return changes;
   }
 
   /**
    * Publishes a newly derived snapshot after the cache is internally consistent.
-   * The measurement covers every listener, so it is what one save costs.
+   *
+   * The plain listeners, which only keep the index or fire a cheap event, run
+   * now. Each view then redraws in a host turn of its own, the one in front
+   * first, so no single turn pays for every open view and other extensions
+   * get a turn in between. A publish while views are still waiting starts
+   * the order again, and each waiting view still runs once.
    */
   private emitUpdate(): void {
+    this.resolvePublished();
     measure('Refresh views after an index update', () =>
       this.updateEmitter.fire(this.getSnapshot()),
     );
+    this.viewQueue = [...this.views]
+      .map((subscription, order) => ({
+        subscription,
+        order,
+        priority: readPriority(subscription),
+      }))
+      .sort((left, right) => left.priority - right.priority || left.order - right.order)
+      .map(({ subscription }) => subscription);
+    this.scheduleViewTurn();
   }
+
+  private scheduleViewTurn(): void {
+    if (this.viewTurnScheduled || this.viewQueue.length === 0) {
+      return;
+    }
+    this.viewTurnScheduled = true;
+    this.schedule(() => {
+      this.viewTurnScheduled = false;
+      this.runNextView();
+    });
+  }
+
+  /** Redraws the next view waiting, if any, then leaves the rest a turn. */
+  private runNextView(): void {
+    if (this.disposed) {
+      return;
+    }
+    let next = this.viewQueue.shift();
+    while (next?.disposed) {
+      next = this.viewQueue.shift();
+    }
+    if (next) {
+      const view = next;
+      try {
+        measure(`Refresh ${view.options.name} after an index update`, () =>
+          view.listener(),
+        );
+      } catch (error) {
+        reportError(`Could not refresh ${view.options.name}`, error);
+      }
+    }
+    this.scheduleViewTurn();
+  }
+}
+
+/** A view's priority now, or last when it cannot say. */
+function readPriority(subscription: ViewSubscription): number {
+  try {
+    const priority = subscription.options.priority();
+    return Number.isFinite(priority) ? priority : Number.MAX_SAFE_INTEGER;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+/**
+ * The note as already parsed, when the file is still as it was then: same
+ * saved time, created time, and size.
+ */
+function reuseUnchanged(
+  file: ParsedFile | undefined,
+  stamp: FileStamp,
+): ParsedFile | undefined {
+  return file &&
+    file.fileTimes?.updatedAt === stamp.mtime &&
+    file.fileTimes.createdAt === stamp.ctime &&
+    Buffer.byteLength(file.content, 'utf8') === stamp.size
+    ? file
+    : undefined;
 }
 
 interface PendingUpdate {
@@ -435,437 +819,12 @@ interface PendingUpdate {
  * Aggregates per-file parse results into stable section, task, and tag lookups.
  *
  * The source files remain the canonical cache; these maps make cross-note
- * queries cheap without duplicating parsing logic in each UI surface.
+ * queries cheap without duplicating parsing logic in each UI surface. The
+ * index is a fold of each note's own contribution (see `IndexState`), so a
+ * full build and an update after a save are the same code.
  */
 export function buildWorkspaceIndex(
   files: Map<string, ParsedFile>,
 ): WorkspaceIndex {
-  const sections = new Map<string, Section>();
-  const tasks = new Map<string, Task>();
-  const tags = new Map<string, TagInfo>();
-  const entities = new Map<string, Entity>();
-  const hubFilePaths = new Map<string, string[]>();
-
-  files.forEach((file) => {
-    file.hub?.describes.forEach((tagReference) => {
-      hubFilePaths.set(tagReference.key, [
-        ...(hubFilePaths.get(tagReference.key) ?? []),
-        file.filePath,
-      ]);
-    });
-    file.sections.forEach((section) => {
-      sections.set(section.id, section);
-      // A tag written on one of the section's own body lines finds the
-      // section too: the tag stayed on its line, and the section is what
-      // holds the line.
-      const bodyTagLabels = new Map(
-        (section.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
-      );
-      const tagKeys = [
-        ...new Set([...section.tags, ...bodyTagLabels.keys()]),
-      ];
-      tagKeys.forEach((tagKey) => {
-        const label =
-          section.tagLabels[tagKey] ?? bodyTagLabels.get(tagKey) ?? tagKey;
-        const tag = getOrCreateTag(tags, tagKey, label);
-        tag.sectionIds.push(section.id);
-        addEntityReference(
-          entities,
-          tagKey,
-          label,
-          'section',
-          section.id,
-          section.updatedAt,
-        );
-      });
-    });
-    file.tasks.forEach((task) => {
-      tasks.set(task.id, task);
-      task.tags.forEach((tagKey) => {
-        const tag = getOrCreateTag(tags, tagKey, task.tagLabels[tagKey]);
-        tag.taskIds.push(task.id);
-        addEntityReference(
-          entities,
-          tagKey,
-          task.tagLabels[tagKey] ?? tagKey,
-          'task',
-          task.id,
-          task.updatedAt,
-        );
-      });
-    });
-    const contentTagKeys = new Set([
-      ...file.sections.flatMap((section) => section.tags),
-      ...file.tasks.flatMap((task) => task.tags),
-    ]);
-    file.frontmatterTags.forEach((tagReference) => {
-      if (contentTagKeys.has(tagReference.key)) {
-        return;
-      }
-      const tag = getOrCreateTag(tags, tagReference.key, tagReference.label);
-      if (!tag.filePaths.includes(file.filePath)) {
-        tag.filePaths.push(file.filePath);
-      }
-      addEntityReference(
-        entities,
-        tagReference.key,
-        tagReference.label,
-        'file',
-        file.filePath,
-        file.updatedAt,
-      );
-    });
-  });
-
-  const { tagAssociations } = buildTagAssociations(sections, tasks);
-
-  tags.forEach((tag) => {
-    // A task inside a tagged section is already represented by that section;
-    // count it separately only when its tag would otherwise have no entry.
-    const taggedSections = new Set(tag.sectionIds);
-    const standaloneTasks = tag.taskIds.filter((taskId) => {
-      const task = tasks.get(taskId);
-      return !task?.sectionId || !taggedSections.has(task.sectionId);
-    });
-    tag.count =
-      taggedSections.size + standaloneTasks.length + tag.filePaths.length;
-  });
-  // The first note by path is the tag's hub; any others are shown as conflicts.
-  hubFilePaths.forEach((filePaths, tagKey) => {
-    const tag = tags.get(tagKey);
-    if (tag) {
-      tag.hubFilePaths = [...filePaths].sort((left, right) =>
-        left.localeCompare(right),
-      );
-    }
-  });
-  entities.forEach((entity) => {
-    const entitySections = new Set(entity.sectionIds);
-    const standaloneTasks = entity.taskIds.filter((taskId) => {
-      const task = tasks.get(taskId);
-      return !task?.sectionId || !entitySections.has(task.sectionId);
-    });
-    entity.count =
-      entitySections.size + standaloneTasks.length + entity.filePaths.length;
-  });
-
-  return {
-    files,
-    sections,
-    tasks,
-    tags,
-    entities,
-    tagAssociations,
-    updatedAt: Date.now(),
-  };
-}
-
-/**
- * Combines explicit same-source associations with heading proximity.
- *
- * Same-source tags are strongest because the author wrote them together. Tags
- * on ancestor headings provide weaker context that decays by outline depth.
- */
-function buildTagAssociations(
-  sections: Map<string, Section>,
-  tasks: Map<string, Task>,
-): {
-  tagAssociations: Map<string, TagAssociation[]>;
-} {
-  const associations = new Map<string, MutableTagAssociation>();
-  const sourceUnits = new Map<string, TagReference[]>();
-  sections.forEach((section) => {
-    (section.associationTagGroups ?? []).forEach((tags, index) => {
-      const unitId = `section:${section.id}:group:${index}`;
-      registerSourceUnit(sourceUnits, unitId, tags);
-      addAssociationGroup(associations, tags, { sectionId: section.id, unitId });
-    });
-    addHeadingAssociations(associations, sourceUnits, section, sections);
-  });
-  tasks.forEach((task) => {
-    (task.associationTagGroups ?? []).forEach((tags, index) => {
-      const unitId = `task:${task.id}:group:${index}`;
-      registerSourceUnit(sourceUnits, unitId, tags);
-      addAssociationGroup(associations, tags, { taskId: task.id, unitId });
-    });
-  });
-
-  const tagSourceUnitCounts = getTagSourceUnitCounts(sourceUnits);
-  const tagAssociations = new Map<string, TagAssociation[]>();
-  [...associations.entries()]
-    .map(([key, relationship]) => {
-      const [tagKey] = key.split('\u0000');
-      const tagSourceUnitCount = tagSourceUnitCounts.get(tagKey) ?? 0;
-      const associatedTagSourceUnitCount =
-        tagSourceUnitCounts.get(relationship.associatedTag.key) ?? 0;
-      return {
-        key,
-        ...relationship,
-        count: relationship.sourceUnitIds.size,
-        normalizedWeight: getNormalizedAssociationWeight(
-          relationship.weight,
-          relationship.sourceUnitIds.size,
-          tagSourceUnitCount,
-          associatedTagSourceUnitCount,
-        ),
-        tagSourceUnitCount,
-        associatedTagSourceUnitCount,
-        totalSourceUnitCount: sourceUnits.size,
-      };
-    })
-    .sort(
-      (left, right) =>
-        right.coOccurrenceCount - left.coOccurrenceCount ||
-        right.weight - left.weight ||
-        left.associatedTag.label.localeCompare(right.associatedTag.label) ||
-        left.associatedTag.key.localeCompare(right.associatedTag.key),
-    )
-    .forEach(({ key, ...relationship }) =>
-      appendAssociation(tagAssociations, key.split('\u0000')[0], relationship),
-    );
-  return { tagAssociations };
-}
-
-interface MutableTagAssociation extends Omit<TagAssociation,
-  | 'count'
-  | 'normalizedWeight'
-  | 'tagSourceUnitCount'
-  | 'associatedTagSourceUnitCount'
-  | 'totalSourceUnitCount'> {
-  sourceUnitIds: Set<string>;
-}
-
-function addAssociationGroup(
-  associations: Map<string, MutableTagAssociation>,
-  tags: TagReference[],
-  source: { sectionId?: string; taskId?: string; unitId: string },
-): void {
-  const uniqueTags = [...new Map(tags.map((tag) => [tag.key, tag])).values()];
-  uniqueTags.forEach((tag, index) => {
-    uniqueTags.slice(index + 1).forEach((associatedTag) => {
-      addAssociationEvidence(associations, tag, associatedTag, source, 1, true);
-      addAssociationEvidence(associations, associatedTag, tag, source, 1, true);
-    });
-  });
-}
-
-function addHeadingAssociations(
-  associations: Map<string, MutableTagAssociation>,
-  sourceUnits: Map<string, TagReference[]>,
-  section: Section,
-  sections: Map<string, Section>,
-): void {
-  const sourceTags = section.headingTags ?? [];
-  if (sourceTags.length === 0) {
-    return;
-  }
-
-  let parentSectionId = section.parentSectionId;
-  let depth = 1;
-  const visited = new Set<string>();
-  while (parentSectionId && !visited.has(parentSectionId)) {
-    visited.add(parentSectionId);
-    const parent = sections.get(parentSectionId);
-    if (!parent) {
-      break;
-    }
-    (parent.headingTags ?? []).forEach((parentTag) => {
-      sourceTags.forEach((childTag) => {
-        const unitId = `heading:${section.id}:${parent.id}`;
-        registerSourceUnit(sourceUnits, unitId, [...sourceTags, ...parent.headingTags ?? []]);
-        addAssociationEvidence(
-          associations,
-          childTag,
-          parentTag,
-          { sectionId: section.id, unitId },
-          0.5 / depth,
-          false,
-        );
-        addAssociationEvidence(
-          associations,
-          parentTag,
-          childTag,
-          { sectionId: section.id, unitId },
-          0.5 / depth,
-          false,
-        );
-      });
-    });
-    parentSectionId = parent.parentSectionId;
-    depth += 1;
-  }
-}
-
-function addAssociationEvidence(
-  associations: Map<string, MutableTagAssociation>,
-  tag: TagReference,
-  associatedTag: TagReference,
-  source: { sectionId?: string; taskId?: string; unitId: string },
-  weight: number,
-  isCoOccurrence: boolean,
-): void {
-  if (tag.key === associatedTag.key) {
-    return;
-  }
-  const key = `${tag.key}\u0000${associatedTag.key}`;
-  const relationship = associations.get(key) ?? {
-    associatedTag: { ...associatedTag },
-    sectionIds: [],
-    taskIds: [],
-    weight: 0,
-    coOccurrenceCount: 0,
-    headingRelationshipCount: 0,
-    sourceUnitIds: new Set<string>(),
-  };
-  if (source.sectionId && !relationship.sectionIds.includes(source.sectionId)) {
-    relationship.sectionIds.push(source.sectionId);
-  }
-  if (source.taskId && !relationship.taskIds.includes(source.taskId)) {
-    relationship.taskIds.push(source.taskId);
-  }
-  relationship.sourceUnitIds.add(source.unitId);
-  relationship.weight += weight;
-  if (isCoOccurrence) {
-    relationship.coOccurrenceCount += 1;
-  } else {
-    relationship.headingRelationshipCount += 1;
-  }
-  associations.set(key, relationship);
-}
-
-function registerSourceUnit(
-  sourceUnits: Map<string, TagReference[]>,
-  unitId: string,
-  tags: TagReference[],
-): void {
-  if (!sourceUnits.has(unitId)) {
-    sourceUnits.set(
-      unitId,
-      [...new Map(tags.map((tag) => [tag.key, tag])).values()],
-    );
-  }
-}
-
-function getTagSourceUnitCounts(
-  sourceUnits: ReadonlyMap<string, TagReference[]>,
-): Map<string, number> {
-  const counts = new Map<string, number>();
-  sourceUnits.forEach((tags) => {
-    tags.forEach((tag) =>
-      counts.set(tag.key, (counts.get(tag.key) ?? 0) + 1),
-    );
-  });
-  return counts;
-}
-
-/**
- * Downweights a raw edge when either tag occurs in many authoring units while
- * retaining a useful score for a one-off, intentional pairing.
- */
-function getNormalizedAssociationWeight(
-  rawWeight: number,
-  support: number,
-  tagSourceUnitCount: number,
-  associatedTagSourceUnitCount: number,
-): number {
-  if (rawWeight <= 0 || support <= 0) {
-    return 0;
-  }
-  const prevalence = support / Math.max(
-    1,
-    tagSourceUnitCount,
-    associatedTagSourceUnitCount,
-  );
-  const supportConfidence = support / (support + 1);
-  return rawWeight * prevalence * (0.5 + supportConfidence / 2);
-}
-
-function appendAssociation(
-  associations: Map<string, TagAssociation[]>,
-  tagKey: string,
-  association: TagAssociation,
-): void {
-  const existing = associations.get(tagKey);
-  if (existing) {
-    existing.push(association);
-  } else {
-    associations.set(tagKey, [association]);
-  }
-}
-
-/**
- * Shares one tag record across section and task references by canonical key.
- */
-function getOrCreateTag(
-  tags: Map<string, TagInfo>,
-  key: string,
-  label = key,
-): TagInfo {
-  const existing = tags.get(key);
-  if (existing) {
-    return existing;
-  }
-
-  const tag: TagInfo = {
-    key,
-    label,
-    sectionIds: [],
-    taskIds: [],
-    filePaths: [],
-    count: 0,
-    isFavorite: false,
-  };
-  tags.set(key, tag);
-  return tag;
-}
-
-/**
- * Builds entity hubs directly from canonical tags without requiring a separate
- * source of truth beyond the Markdown note that carries the tag.
- */
-function addEntityReference(
-  entities: Map<string, Entity>,
-  key: string,
-  label: string,
-  referenceType: 'section' | 'task' | 'file',
-  referenceId: string,
-  updatedAt: number | undefined,
-): void {
-  const kind = getEntityKind({ key, label });
-  if (!kind) {
-    return;
-  }
-
-  let entity = entities.get(key);
-  if (!entity) {
-    entity = {
-      key,
-      label,
-      kind,
-      name: getEntityName(label),
-      sectionIds: [],
-      taskIds: [],
-      filePaths: [],
-      count: 0,
-      isFavorite: false,
-      updatedAt,
-    };
-    entities.set(key, entity);
-  }
-
-  const references =
-    referenceType === 'section'
-      ? entity.sectionIds
-      : referenceType === 'task'
-        ? entity.taskIds
-        : entity.filePaths;
-  references.push(referenceId);
-  if (updatedAt !== undefined && (entity.updatedAt ?? 0) < updatedAt) {
-    entity.updatedAt = updatedAt;
-  }
-}
-
-function getEntityName(label: string): string {
-  const name = label.slice(1).split('/').at(-1) ?? label;
-  return name.replaceAll('-', ' ');
+  return { ...IndexState.build(files.values()).snapshot(), files };
 }

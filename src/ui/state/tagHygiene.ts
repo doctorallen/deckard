@@ -14,6 +14,44 @@ import {
  * reason it was picked, so the reader decides and Merge does the rest.
  */
 
+/** Another spelling of a tag, as its own page names it. */
+export interface TagLookalike {
+  key: string;
+  label: string;
+  /** How many entries carry the other spelling. */
+  count: number;
+  /** The merge Stats would offer: the rarer spelling into the more used. */
+  sourceKey: string;
+  targetKey: string;
+}
+
+const lookalikeCandidates = new WeakMap<WorkspaceIndex, TagMergeCandidate[]>();
+
+/**
+ * The spellings that look like one tag, most confusable first, found by the
+ * same pass Stats' Tags that look alike runs, once per index.
+ */
+export function findTagLookalikes(
+  index: WorkspaceIndex,
+  tagKey: string,
+  limit = 3,
+): TagLookalike[] {
+  let candidates = lookalikeCandidates.get(index);
+  if (!candidates) {
+    candidates = findTagMergeCandidates(index, Number.POSITIVE_INFINITY).candidates;
+    lookalikeCandidates.set(index, candidates);
+  }
+  return candidates
+    .filter((pair) => pair.sourceKey === tagKey || pair.targetKey === tagKey)
+    .slice(0, limit)
+    .map((pair) => {
+      const other = pair.sourceKey === tagKey
+        ? { key: pair.targetKey, label: pair.targetLabel, count: pair.targetCount }
+        : { key: pair.sourceKey, label: pair.sourceLabel, count: pair.sourceCount };
+      return { ...other, sourceKey: pair.sourceKey, targetKey: pair.targetKey };
+    });
+}
+
 /** How many comparisons the spelling pass is allowed before it stops. */
 const COMPARISON_BUDGET = 250_000;
 

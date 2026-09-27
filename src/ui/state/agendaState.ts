@@ -1,3 +1,6 @@
+import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
+import { mentionsParked, withoutParked } from '../../core/workspace/parked';
+import { describeSteps, isPlainStep } from '../../core/markdown/taskSteps';
 import {
   addDays,
   formatIsoDate,
@@ -7,6 +10,7 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
+import { needsNewDate, readLineStatus } from '../../core/taskPolicy';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -16,12 +20,16 @@ import { stripTrailingTags } from './queryBlockState';
  * — grouped by when they need attention, using the dates of the Obsidian
  * Tasks format and Deckard's own due dates:
  *
- * - **Overdue**: the due date has passed.
+ * - **Overdue**: the due date has passed, the most recent slip first.
  * - **Today**: due today, or scheduled for today or earlier and already
  *   started.
  * - **Upcoming**: due, scheduled, or starting within the next few days.
  * - **Later**: dated, but past that horizon.
  * - **No date**: carrying no due, scheduled, or start date at all.
+ * - **Done today**, when asked for: the tasks completed today.
+ * - **Needs a new date**: due more than `needsNewDateAfterDays` ago. A task
+ *   a month past its date is not going to be done that day; it waits here,
+ *   folded, rather than piling up in Overdue.
  *
  * A task appears once, in the first group that applies. What is in the list
  * is the query's business; the groups only say when. So the same list is the
@@ -31,7 +39,7 @@ import { stripTrailingTags } from './queryBlockState';
 export type AgendaGroupId = string;
 
 /** What the Agenda's groups are: when a task is wanted, or what it carries. */
-export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee';
+export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
 
 /** The ways the Agenda can be grouped, in the order the picker offers them. */
 export const AGENDA_GROUPINGS: readonly {
@@ -47,6 +55,11 @@ export const AGENDA_GROUPINGS: readonly {
   { id: 'priority', label: 'Priority', detail: 'Highest to lowest' },
   { id: 'status', label: 'Status', detail: 'The #status/… tag on each task' },
   { id: 'assignee', label: 'Person', detail: 'Who each task is for' },
+  {
+    id: 'tag',
+    label: 'Tag namespace…',
+    detail: 'Your own tags, such as #project/… or #context/…, counting the ones a task inherits',
+  },
 ];
 
 export interface AgendaEntry {
@@ -59,6 +72,10 @@ export interface AgendaEntry {
   at: number;
   /** Short facts shown beside the title, such as "due Mon 2026-09-14". */
   details: string[];
+  /** The task's own steps, done and open, in the order they are written. */
+  steps?: Task[];
+  /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
+  stepsLabel?: string;
 }
 
 export interface AgendaGroup {
@@ -73,6 +90,7 @@ const GROUP_ORDER: readonly AgendaGroupId[] = [
   'upcoming',
   'later',
   'nodate',
+  'needsdate',
 ];
 
 const GROUP_LABELS: Readonly<Record<string, string>> = {
@@ -81,6 +99,7 @@ const GROUP_LABELS: Readonly<Record<string, string>> = {
   upcoming: 'Upcoming',
   later: 'Later',
   nodate: 'No date',
+  needsdate: 'Needs a new date',
 };
 
 /** What the Agenda is built from, beyond the index and the moment. */
@@ -94,12 +113,24 @@ export interface AgendaOptions {
   upcomingDays: number;
   groupBy?: AgendaGroupBy;
   statusNamespace?: string;
+  /** The namespace whose tags are the groups when `groupBy` is `tag`. */
+  groupNamespace?: string;
   /**
    * The order a reader dragged their tasks into, from preferences. A task
    * they placed leads its group; the rest follow in the order the group
    * would have had anyway.
    */
   taskOrder?: readonly string[];
+  /**
+   * Adds a last group, Done today, of the tasks completed today, so the
+   * list shows what was finished and not only what is left.
+   */
+  doneToday?: boolean;
+  /**
+   * Splits Upcoming into a group per day, Tomorrow, Mon Sep 28, and so on,
+   * so a busy Thursday shows before Thursday comes.
+   */
+  upcomingByDay?: boolean;
 }
 
 /**
@@ -124,18 +155,21 @@ export function selectAgendaTasks(
   index: WorkspaceIndex,
   query: string,
 ): { tasks: Task[]; error?: string } {
+  // A list of things to do leaves parked tasks out, unless its own search
+  // asks about them.
   const text = query.trim();
   if (!text) {
-    return { tasks: [...index.tasks.values()] };
+    return { tasks: withoutParked([...index.tasks.values()], index) };
   }
   const parsed = parseQuery(text);
   if (!parsed.node) {
     return {
-      tasks: [...index.tasks.values()],
+      tasks: withoutParked([...index.tasks.values()], index),
       error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
     };
   }
-  return { tasks: evaluateQuery(index, parsed.node).tasks };
+  const tasks = evaluateQuery(index, parsed.node).tasks;
+  return { tasks: mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index) };
 }
 
 /**
@@ -181,6 +215,14 @@ export function createAgenda(
     statusNamespace = 'status',
     taskOrder = [],
   } = options;
+  // A plain step rides on its open task's row, so five steps are not five
+  // rows, nor five in the count; one with a date, priority, person, or tag
+  // of its own is still listed on its own.
+  const all = [...tasks];
+  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
+  const listed = all.filter(
+    (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
+  );
   const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
   const byRank =
     (fallback: (left: AgendaEntry, right: AgendaEntry) => number) =>
@@ -201,7 +243,7 @@ export function createAgenda(
   const groups = new Map<AgendaGroupId, AgendaEntry[]>(
     GROUP_ORDER.map((id) => [id, []]),
   );
-  for (const task of tasks) {
+  for (const task of listed) {
     if (task.completed) {
       continue;
     }
@@ -217,25 +259,101 @@ export function createAgenda(
     id,
     label: GROUP_LABELS[id] ?? id,
     // Today and No date are to-do lists, so importance leads; the other
-    // groups read as a timeline.
+    // groups read as a timeline. Overdue runs newest slip first: what slipped
+    // yesterday can still be saved, and a month-old task is not news.
     entries: (groups.get(id) ?? []).sort(
       byRank(
-        id === 'today' || id === 'nodate' ? compareByPriority : compareByDate,
+        id === 'today' || id === 'nodate'
+          ? compareByPriority
+          : id === 'overdue'
+            ? compareByDateDescending
+            : compareByDate,
       ),
     ),
   })).filter((group) => group.entries.length > 0);
+  const done = options.doneToday
+    ? createDoneToday(listed, index, today, tomorrow, openDependencyIds)
+    : [];
   if (groupBy === 'due') {
-    return byDue;
+    return [
+      ...(options.upcomingByDay
+        ? byDue.flatMap((group) =>
+            group.id === 'upcoming' ? splitByDay(group.entries, tomorrow) : [group],
+          )
+        : byDue),
+      ...done,
+    ];
   }
   // The Agenda holds the same tasks whichever way it is grouped. Only the
   // axis changes.
   const entries = byDue.flatMap((group) => group.entries);
   const order = byRank(compareByDate);
-  return groupBy === 'priority'
-    ? groupByPriority(entries, order)
-    : groupBy === 'status'
-      ? groupByStatus(entries, statusNamespace, order)
-      : groupByAssignee(entries, index, order);
+  return [
+    ...(groupBy === 'priority'
+      ? groupByPriority(entries, order)
+      : groupBy === 'status'
+        ? groupByStatus(entries, statusNamespace, order)
+        : groupBy === 'tag'
+          ? groupByTag(entries, index, options.groupNamespace ?? 'project', order)
+          : groupByAssignee(entries, index, order)),
+    ...done,
+  ];
+}
+
+/**
+ * Upcoming, one group per day that has tasks, each keeping the group's own
+ * order: `upcoming:2026-09-28`, labeled Tomorrow or `Mon Sep 28`.
+ */
+function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGroup[] {
+  const days = new Map<string, AgendaEntry[]>();
+  [...entries]
+    .sort((left, right) => startOfDay(left.at) - startOfDay(right.at))
+    .forEach((entry) => {
+      const date = formatIsoDate(entry.at);
+      days.set(date, [...(days.get(date) ?? []), entry]);
+    });
+  return [...days.entries()].map(([date, held]) => ({
+    id: `upcoming:${date}`,
+    label: startOfDay(held[0].at) === tomorrow ? 'Tomorrow' : formatDayLabel(held[0].at),
+    entries: entries.filter((entry) => held.includes(entry)),
+  }));
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A day as a group names it, `Mon Sep 28`, with no locale comma. */
+function formatDayLabel(at: number): string {
+  const date = new Date(at);
+  return `${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+}
+
+/**
+ * The tasks completed today, by their ✅ date, the latest line first. A task
+ * completed with `deckard.tasks.addDoneDate` off carries no date, and cannot
+ * be counted.
+ */
+function createDoneToday(
+  tasks: readonly Task[],
+  index: WorkspaceIndex,
+  today: number,
+  tomorrow: number,
+  openDependencyIds: ReadonlySet<string>,
+): AgendaGroup[] {
+  const entries = tasks
+    .filter(
+      (task) =>
+        task.completed &&
+        task.doneAt !== undefined &&
+        task.doneAt >= today &&
+        task.doneAt < tomorrow,
+    )
+    .map((task) =>
+      createEntry(task, index, { group: 'donetoday', at: task.doneAt as number, reason: 'done today' }, openDependencyIds),
+    )
+    .sort((left, right) => compareSource(right, left));
+  return entries.length > 0
+    ? [{ id: 'donetoday', label: 'Done today', entries }]
+    : [];
 }
 
 /** Every priority that any entry carries, strongest first. */
@@ -270,18 +388,65 @@ function groupByStatus(
   namespace: string,
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const prefix = `#${namespace.toLowerCase()}/`;
-  const statusOf = (entry: AgendaEntry): string =>
-    (entry.task.associationTagGroups?.[0] ?? [])
-      .map((tag) => tag.key.toLowerCase())
-      .find((key) => key.startsWith(prefix))
-      ?.slice(prefix.length) ?? '';
+  const statusOf = (entry: AgendaEntry): string => readLineStatus(entry.task, namespace);
   return collect(
     entries,
     statusOf,
     (status) => (status ? capitalize(status.replace(/[-_]+/g, ' ')) : 'No status'),
     order,
   );
+}
+
+/**
+ * The tags of one namespace, busiest first, with the tasks carrying none
+ * last. A tag counts whether it is on the task's line, a heading above it, or
+ * its note's front matter; a task with two is in both groups, and says
+ * "also in" the other. Group ids are the board's columns: `tag:context/phone`,
+ * and `tag:context/` for none.
+ */
+export function groupByTag(
+  entries: readonly AgendaEntry[],
+  index: WorkspaceIndex,
+  namespace: string,
+  order: (left: AgendaEntry, right: AgendaEntry) => number,
+): AgendaGroup[] {
+  const name = namespace.toLowerCase();
+  const held = new Map<string, { label: string; entries: AgendaEntry[] }>();
+  const none: AgendaEntry[] = [];
+  entries.forEach((entry) => {
+    const values = readNamespaceValues(index, entry.task, name);
+    if (values.length === 0) {
+      none.push(entry);
+      return;
+    }
+    const labels = values.map((value) =>
+      formatNamespaceValue(labelValue(index.tags.get(value.key)?.label ?? value.label)),
+    );
+    values.forEach((value, at) => {
+      const others = labels.filter((_, other) => other !== at);
+      const group = held.get(value.value) ?? { label: labels[at], entries: [] };
+      group.entries.push(
+        others.length > 0
+          ? { ...entry, details: [...entry.details, `also in ${others.join(', ')}`] }
+          : entry,
+      );
+      held.set(value.value, group);
+    });
+  });
+  const groups = [...held.entries()]
+    .sort(
+      (left, right) =>
+        right[1].entries.length - left[1].entries.length ||
+        left[1].label.localeCompare(right[1].label),
+    )
+    .map(([value, group]) => ({
+      id: `tag:${name}/${value}`,
+      label: group.label,
+      entries: [...group.entries].sort(order),
+    }));
+  return none.length > 0
+    ? [...groups, { id: `tag:${name}/`, label: noValueLabel(name), entries: [...none].sort(order) }]
+    : groups;
 }
 
 /** Who each task is for, busiest first, with the unnamed ones last. */
@@ -347,6 +512,9 @@ function placeTask(
     // its note instead.
     return { group: 'nodate', at: NO_DATE, reason: '' };
   }
+  if (dueAt !== undefined && needsNewDate(dueAt, today)) {
+    return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt)}` };
+  }
   if (dueAt !== undefined && dueAt < today) {
     return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt)}` };
   }
@@ -403,6 +571,10 @@ function createEntry(
   const blockers = (task.dependsOn ?? []).filter((id) =>
     openDependencyIds.has(id),
   );
+  const stepsLabel = task.steps ? describeSteps(task.steps) : undefined;
+  const steps = task.steps?.ids
+    .map((id) => index.tasks.get(id))
+    .filter((step): step is Task => step !== undefined);
   return {
     task,
     title: stripTrailingTags(task.title) || task.title,
@@ -413,14 +585,25 @@ function createEntry(
       placement.reason,
       task.priority ? `${task.priority} priority` : '',
       blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
+      stepsLabel ?? '',
       fileName,
     ].filter(Boolean),
+    ...(steps && steps.length > 0 ? { steps } : {}),
+    ...(stepsLabel ? { stepsLabel } : {}),
   };
 }
 
 function compareByDate(left: AgendaEntry, right: AgendaEntry): number {
   return (
     left.at - right.at ||
+    comparePriority(left, right) ||
+    compareSource(left, right)
+  );
+}
+
+function compareByDateDescending(left: AgendaEntry, right: AgendaEntry): number {
+  return (
+    right.at - left.at ||
     comparePriority(left, right) ||
     compareSource(left, right)
   );

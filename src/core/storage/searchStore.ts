@@ -8,11 +8,24 @@ import {
   CacheChanges,
   compareToStored,
   createNoteToWrite,
+  NoteToWrite,
   openSearchDatabase,
   SearchWriter,
   StoredNote,
 } from './searchDatabase';
 import { SearchWorkerClient } from './searchStoreWorkerClient';
+import { decodeParsedFile, encodeParsedFile } from './parsedFileCodec';
+
+/** How many cached notes are read between turns of the extension host. */
+const PARSED_PAGE_SIZE = 500;
+
+/** What a scan found and kept out, as `WorkspaceScanner.lastScan` says. */
+export interface ScanCounts {
+  found: number;
+  templates: number;
+  excluded: number;
+  read: number;
+}
 
 export interface StoredSearchMatch {
   filePath: string;
@@ -157,14 +170,81 @@ export class SearchStore implements vscode.Disposable {
   }
 
   /**
+   * Encodes a parsed note for the cache now, a note at a time while a scan
+   * reads, so writing the scan's notes later does not encode them all in
+   * one turn of the extension host.
+   */
+  public prepare(file: ParsedFile): void {
+    encodeParsedFile(file);
+  }
+
+  /**
+   * Reads every parsed note the cache holds, a page at a time with a turn
+   * of the host between pages, when they were parsed under `fingerprint`.
+   * Answers false, having read nothing, when they were not: the settings,
+   * the version of Deckard, or the time zone changed.
+   *
+   * A row that cannot be decoded is skipped; the scan that follows reads it.
+   */
+  public async readParsedNotes(
+    fingerprint: string,
+    onPage: (files: ParsedFile[]) => void,
+  ): Promise<boolean> {
+    if (this.writer.readParseFingerprint() !== fingerprint) {
+      return false;
+    }
+    let afterId = 0;
+    for (;;) {
+      const page = this.writer.readParsedPage(afterId, PARSED_PAGE_SIZE);
+      if (page.length === 0) {
+        return true;
+      }
+      afterId = page[page.length - 1].id;
+      const files: ParsedFile[] = [];
+      page.forEach((row) => {
+        try {
+          const file = decodeParsedFile(row.parsed);
+          if (file.filePath === row.filePath) {
+            files.push(file);
+          }
+        } catch {
+          // Read again by the scan.
+        }
+      });
+      onPage(files);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+  }
+
+  /** What the last full scan found, as saved with the cache. */
+  public readLastScan(): ScanCounts | undefined {
+    const text = this.writer.readMeta('lastScan');
+    if (!text) {
+      return undefined;
+    }
+    try {
+      const value = JSON.parse(text) as Partial<ScanCounts>;
+      return {
+        found: Number(value.found) || 0,
+        templates: Number(value.templates) || 0,
+        excluded: Number(value.excluded) || 0,
+        read: Number(value.read) || 0,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  public writeLastScan(counts: ScanCounts): void {
+    this.writer.writeMeta('lastScan', JSON.stringify(counts));
+  }
+
+  /**
    * Synchronizes one saved file without waiting for a complete workspace scan.
    */
   public upsert(file: ParsedFile): void {
     const note = createNoteToWrite(file);
-    this.stored?.set(note.filePath, {
-      updatedAt: note.updatedAt,
-      bytes: note.bytes,
-    });
+    this.stored?.set(note.filePath, toStored(note));
     this.writer.transaction(() => this.writer.writeNote(note));
   }
 
@@ -187,10 +267,7 @@ export class SearchStore implements vscode.Disposable {
     }
     changes.erase.forEach((filePath) => stored.delete(filePath));
     changes.write.forEach((note) =>
-      stored.set(note.filePath, {
-        updatedAt: note.updatedAt,
-        bytes: note.bytes,
-      }),
+      stored.set(note.filePath, toStored(note)),
     );
   }
 
@@ -425,4 +502,14 @@ function replaceWord(text: string, word: string, replacement: string): string {
     'iu',
   );
   return text.replace(pattern, (_, before: string) => `${before}${replacement}`);
+}
+
+/** What the cache records about a note once it is written. */
+function toStored(note: NoteToWrite): StoredNote {
+  return {
+    updatedAt: note.updatedAt,
+    createdAt: note.createdAt,
+    bytes: note.bytes,
+    parsed: true,
+  };
 }

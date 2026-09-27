@@ -1,3 +1,9 @@
+import {
+  isParkedFile,
+  isParkedOnlyTag,
+  isParkedSection,
+  isParkedTask,
+} from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
 import { getPlainTextTerms } from '../../core/query/queryEdit';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -19,6 +25,8 @@ import {
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { describeTagMatches, getHeadingPath } from './dashboardState';
 import { frecencyScore } from './frecency';
+import { createPinForLine, findPinnedSection, resolvePin } from './pinnedNotes';
+import { normalizeFindInput, pinKey } from '../../core/storage/preferences';
 
 /**
  * Ranks what Quick Find shows for what has been typed so far.
@@ -49,6 +57,10 @@ export interface QuickFindItem {
   line?: number;
   sectionId?: string;
   completed?: boolean;
+  /** A note pinned to Home, listed first in an empty Find. */
+  pinned?: boolean;
+  /** A task row's task. */
+  taskId?: string;
   /** The query a recent search or saved view stands for. */
   query?: string;
   savedFilterId?: string;
@@ -60,6 +72,8 @@ export interface QuickFindItem {
 }
 
 export interface QuickFindResults {
+  /** Pinned notes, offered first before anything is typed. */
+  pinned?: QuickFindItem[];
   tags: QuickFindItem[];
   conditions: QuickFindItem[];
   recent: QuickFindItem[];
@@ -72,6 +86,11 @@ export interface QuickFindResults {
   suggestion?: string;
   /** Every match, before the lists above were cut short. */
   totals: { notes: number; tasks: number };
+  /**
+   * What was typed, and the line Capture would write, when Find found
+   * nothing that has every word and the words read as something to do.
+   */
+  capture?: { text: string; line: string };
 }
 
 export type QuickFindTextSearch = (text: string) => EntrySearchResult;
@@ -82,12 +101,17 @@ export interface QuickFindOptions {
   taskLimit?: number;
   /** Whole conditions to offer for the word being typed, such as `is:open`. */
   conditions?: readonly QuerySuggestion[];
+  /** Writes typed words as Capture would, for Find's Capture row. */
+  formatCapture?: (text: string) => string;
 }
 
 const TAG_LIMIT = 5;
 const CONDITION_LIMIT = 4;
 const SAVED_VIEW_LIMIT = 3;
 const EMPTY_LIST_LIMIT = 8;
+/** How many pinned notes, and how many notes opened last, empty Find lists. */
+const EMPTY_PINNED_LIMIT = 10;
+const EMPTY_RECENT_LIMIT = 5;
 
 /** Tier floors. A higher tier always outranks a lower one. */
 const EXACT_TITLE = 3000;
@@ -138,6 +162,7 @@ export function buildQuickFindResults(
     new Set(collectQueryTagKeys(parsed.node)),
     tagToken || isBareWord(token) ? beforeToken : input,
     now,
+    learnedWeights(preferences, input, now),
   );
   const savedViews = matchSavedViews(index, preferences, input.trim());
 
@@ -155,7 +180,8 @@ export function buildQuickFindResults(
     return results;
   }
 
-  const ranked = rankEntries(index, preferences, parsed.node, searchText, now);
+  const learned = learnedBonuses(index, preferences, input, now);
+  const ranked = rankEntries(index, preferences, parsed.node, searchText, now, learned);
   results.message ??= ranked.partial
     ? 'No entry has every word, so these have some of them.'
     : undefined;
@@ -166,6 +192,16 @@ export function buildQuickFindResults(
     notes: ranked.notes.length,
     tasks: ranked.tasks.length,
   };
+  // Nothing had every word: what was typed may be something to do rather
+  // than something to find.
+  if (
+    options.formatCapture &&
+    isCaptureable(parsed.node) &&
+    (ranked.notes.length + ranked.tasks.length === 0 || ranked.partial)
+  ) {
+    const text = input.trim();
+    results.capture = { text, line: options.formatCapture(text) };
+  }
   results.notes = ranked.notes
     .slice(0, options.noteLimit ?? 30)
     .map((entry) => entry.item);
@@ -179,6 +215,13 @@ interface RankedEntry {
   score: number;
   updatedAt: number;
   item: QuickFindItem;
+  /** Parked entries rank after every unparked one, whatever their score. */
+  parked?: boolean;
+}
+
+/** An entry that is parked, said at the end of its description. */
+function parkedItem(item: QuickFindItem, parked: boolean): QuickFindItem {
+  return parked ? { ...item, description: `${item.description ?? ''} · Parked` } : item;
 }
 
 /**
@@ -195,6 +238,7 @@ function rankEntries(
   node: QueryNode,
   searchText: QuickFindTextSearch,
   now: number,
+  learned: ReadonlyMap<string, number> = new Map(),
 ): {
   notes: RankedEntry[];
   tasks: RankedEntry[];
@@ -254,30 +298,47 @@ function rankEntries(
     ...sections.map((section) => {
       const title = stripTags(section.heading) || getFileName(section.filePath);
       const found = textScores.get(section.id);
+      const titleScore = scoreTitle(words, title);
       return {
-        score:
+        score: withLearned(
           base +
-          scoreTitle(words, title) +
-          (found?.score ?? 0) +
-          frecencyBonus(preferences, section.id, now),
+            titleScore +
+            (found?.score ?? 0) +
+            frecencyBonus(preferences, section.id, now),
+          learned.get(section.id),
+          titleScore,
+        ),
         updatedAt: section.updatedAt ?? 0,
-        item: createSectionItem(index, section, title, found?.excerpt),
+        parked: isParkedSection(index, section.id),
+        item: parkedItem(
+          createSectionItem(index, section, title, found?.excerpt),
+          isParkedSection(index, section.id),
+        ),
       };
     }),
     ...files.map((file) => {
       const title = getFileName(file.filePath);
       const found = textScores.get(file.filePath);
+      const titleScore = scoreTitle(words, title);
       return {
-        score: base + scoreTitle(words, title) + (found?.score ?? 0),
+        score: withLearned(
+          base + titleScore + (found?.score ?? 0),
+          learned.get(file.filePath),
+          titleScore,
+        ),
         updatedAt: file.updatedAt ?? 0,
-        item: {
-          kind: 'note' as const,
-          label: title,
-          description: file.filePath,
-          detail: cleanExcerpt(found?.excerpt) ?? firstLine(file.content),
-          filePath: file.filePath,
-          line: 1,
-        },
+        parked: isParkedFile(index, file.filePath),
+        item: parkedItem(
+          {
+            kind: 'note' as const,
+            label: title,
+            description: file.filePath,
+            detail: cleanExcerpt(found?.excerpt) ?? firstLine(file.content),
+            filePath: file.filePath,
+            line: 1,
+          },
+          isParkedFile(index, file.filePath),
+        ),
       };
     }),
   ].sort(compareRanked);
@@ -286,15 +347,17 @@ function rankEntries(
     .map((task) => {
       const title = stripTags(task.title) || task.title;
       const found = textScores.get(task.id);
+      const titleScore = scoreTitle(words, title);
       return {
         // An open task is usually the one being looked for.
-        score:
-          base +
-          scoreTitle(words, title) +
-          (found?.score ?? 0) +
-          (task.completed ? 0 : 20),
+        score: withLearned(
+          base + titleScore + (found?.score ?? 0) + (task.completed ? 0 : 20),
+          learned.get(task.id),
+          titleScore,
+        ),
         updatedAt: task.updatedAt ?? 0,
-        item: createTaskItem(index, task, title),
+        parked: isParkedTask(index, task.id),
+        item: parkedItem(createTaskItem(index, task, title), isParkedTask(index, task.id)),
       };
     })
     .sort(compareRanked);
@@ -306,6 +369,126 @@ function rankEntries(
     suggestion: text?.suggestion,
     searched: words.join(' '),
   };
+}
+
+/**
+ * Adds what Find learned to an entry's score. One pick lifts an entry past
+ * loose matches, three past titles holding every word, and nothing learned
+ * ever lifts one past a title that is exactly what was typed.
+ */
+function withLearned(score: number, weight: number | undefined, titleScore: number): number {
+  if (!weight) {
+    return score;
+  }
+  // One pick is worth more than a loose title match (about 1,100), three
+  // more than a title holding every word (about 2,400).
+  const lifted = score + Math.min(2800, 300 + 900 * weight);
+  return titleScore === EXACT_TITLE ? lifted : Math.min(lifted, EXACT_TITLE - 1);
+}
+
+/** How long a Find choice takes to count half as much. */
+const FIND_CHOICE_HALF_LIFE_DAYS = 30;
+
+/**
+ * How much each remembered result weighs for what is typed now. A choice
+ * counts when what was typed then starts with what is typed now, as
+ * Firefox's adaptive history has it: picking Vendor contract after `vend`
+ * lifts it for `v`, `ve`, and `ven` too. Keyed by the choice's key.
+ */
+export function learnedWeights(
+  preferences: PersistedPreferences,
+  input: string,
+  now: number,
+): Map<string, number> {
+  const typed = normalizeFindInput(input);
+  const weights = new Map<string, number>();
+  if (!typed) {
+    return weights;
+  }
+  (preferences.findChoices ?? []).forEach((choice) => {
+    if (!choice.input.startsWith(typed)) {
+      return;
+    }
+    const ageDays = Math.max(0, (now - choice.at) / (24 * 60 * 60 * 1000));
+    const weight = choice.count * 0.5 ** (ageDays / FIND_CHOICE_HALF_LIFE_DAYS);
+    weights.set(choice.key, (weights.get(choice.key) ?? 0) + weight);
+  });
+  return weights;
+}
+
+/**
+ * The learned weights, resolved to the entries they name now: a note's
+ * heading found again by its text, a task by its words.
+ */
+function learnedBonuses(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  input: string,
+  now: number,
+): Map<string, number> {
+  const resolved = new Map<string, number>();
+  learnedWeights(preferences, input, now).forEach((weight, key) => {
+    const id = resolveFindChoiceKey(index, key);
+    if (id !== undefined) {
+      resolved.set(id, (resolved.get(id) ?? 0) + weight);
+    }
+  });
+  return resolved;
+}
+
+function resolveFindChoiceKey(index: WorkspaceIndex, key: string): string | undefined {
+  const kind = key.slice(0, key.indexOf(':'));
+  if (kind !== 'note' && kind !== 'task') {
+    return undefined;
+  }
+  let parts: unknown;
+  try {
+    parts = JSON.parse(key.slice(kind.length + 1));
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parts) || typeof parts[0] !== 'string') {
+    return undefined;
+  }
+  const file = index.files.get(parts[0]);
+  if (!file) {
+    return undefined;
+  }
+  if (kind === 'task') {
+    return file.tasks.find((task) => stripTags(task.title) === parts[1])?.id;
+  }
+  if (!parts[1]) {
+    return file.filePath;
+  }
+  return findPinnedSection(file.sections, {
+    filePath: file.filePath,
+    heading: String(parts[1]),
+    occurrence: Number(parts[2]) || 0,
+  })?.id;
+}
+
+/**
+ * A result as Find remembers it was chosen: by what it is, so a heading
+ * that moves down its note, or a task whose line changes, is still known.
+ */
+export function findChoiceKey(index: WorkspaceIndex, item: QuickFindItem): string | undefined {
+  switch (item.kind) {
+    case 'note': {
+      if (!item.filePath || !item.line) {
+        return undefined;
+      }
+      const pin = createPinForLine(index, item.filePath, item.line);
+      return pin ? `note:${pinKey(pin)}` : undefined;
+    }
+    case 'task':
+      return item.filePath ? `task:${JSON.stringify([item.filePath, item.label])}` : undefined;
+    case 'tag':
+      return item.tagKey ? `tag:${item.tagKey}` : undefined;
+    case 'savedView':
+      return item.savedFilterId ? `view:${item.savedFilterId}` : undefined;
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -330,6 +513,7 @@ function correctInput(input: string, searched: string, corrected: string): strin
 
 function compareRanked(left: RankedEntry, right: RankedEntry): number {
   return (
+    Number(left.parked === true) - Number(right.parked === true) ||
     right.score - left.score ||
     right.updatedAt - left.updatedAt ||
     left.item.label.localeCompare(right.item.label)
@@ -440,6 +624,7 @@ function matchTags(
   excluded: ReadonlySet<string>,
   prefix: string,
   now: number,
+  learned: ReadonlyMap<string, number> = new Map(),
 ): QuickFindItem[] {
   const wanted = word.replace(/^[#@]/, '').toLowerCase();
   if (wanted.length === 0) {
@@ -461,12 +646,15 @@ function matchTags(
         Math.max(leafScore, keyScore ?? 0) +
         (preferences.favoriteTags.includes(tag.key) ? 20 : 0) +
         tagFrecency(preferences, tag.key, now) * 10 +
-        Math.log2(1 + tag.count);
-      return [{ tag, score }];
+        Math.log2(1 + tag.count) +
+        Math.min(150, 50 * (learned.get(`tag:${tag.key}`) ?? 0));
+      return [{ tag, score, parked: isParkedOnlyTag(index, tag.key) }];
     })
     .sort(
       (left, right) =>
-        right.score - left.score || left.tag.label.localeCompare(right.tag.label),
+        Number(left.parked) - Number(right.parked) ||
+        right.score - left.score ||
+        left.tag.label.localeCompare(right.tag.label),
     )
     .slice(0, TAG_LIMIT)
     .map(({ tag }) => createTagItem(index, tag, `${prefix}${tag.key} `));
@@ -521,16 +709,47 @@ function matchSavedViews(
 }
 
 /**
- * What Quick Find offers before anything is typed: recent searches, the tags
- * most likely to be wanted, saved views, and recently opened notes.
+ * What Quick Find offers before anything is typed: pinned notes, the notes
+ * opened last, recent searches, saved searches, and the tags most likely to
+ * be wanted.
  */
 function buildEmptyResults(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   now: number,
 ): QuickFindResults {
+  const pinnedSectionIds = new Set<string>();
+  const pinnedFiles = new Set<string>();
+  const pinned = (preferences.pinnedNotes ?? [])
+    .flatMap((pin): QuickFindItem[] => {
+      const resolved = resolvePin(index, pin);
+      if (!resolved) {
+        return [];
+      }
+      const file = index.files.get(pin.filePath);
+      const section = pin.heading && file ? findPinnedSection(file.sections, pin) : undefined;
+      if (section) {
+        pinnedSectionIds.add(section.id);
+      } else if (!pin.heading) {
+        pinnedFiles.add(pin.filePath);
+      }
+      const missing = resolved.detail.endsWith('heading not found');
+      return [
+        {
+          kind: 'note',
+          label: resolved.title,
+          description: `Pinned · ${getFileName(pin.filePath)}`,
+          ...(missing ? { detail: 'heading not found' } : {}),
+          filePath: resolved.filePath,
+          line: resolved.line,
+          ...(section ? { sectionId: section.id } : {}),
+          pinned: true,
+        },
+      ];
+    })
+    .slice(0, EMPTY_PINNED_LIMIT);
   const recent = (preferences.recentQueries ?? [])
-    .slice(0, EMPTY_LIST_LIMIT)
+    .slice(0, EMPTY_RECENT_LIMIT)
     .map((query) => ({
       kind: 'recent' as const,
       label: query,
@@ -558,7 +777,7 @@ function buildEmptyResults(
     .sort((left, right) => right[1] - left[1])
     .flatMap(([sectionId]) => {
       const section = index.sections.get(sectionId);
-      return section
+      return section && !pinnedSectionIds.has(sectionId) && !pinnedFiles.has(section.filePath)
         ? [
             createSectionItem(
               index,
@@ -568,8 +787,9 @@ function buildEmptyResults(
           ]
         : [];
     })
-    .slice(0, EMPTY_LIST_LIMIT);
+    .slice(0, EMPTY_RECENT_LIMIT);
   return {
+    pinned,
     tags,
     conditions: [],
     recent,
@@ -657,8 +877,34 @@ function createTaskItem(
     detail: facts.length ? facts.join(' · ') : undefined,
     filePath: task.filePath,
     line: task.lineNumber,
+    // The heading the task is under, which a link to it names.
+    ...(section ? { sectionId: section.id } : {}),
+    taskId: task.id,
     completed: task.completed,
   };
+}
+
+/**
+ * Whether a search reads as words to capture: plain words, with tags and
+ * people among them, and nothing else — no `is:`, `in:`, dates, OR, NOT, or
+ * parentheses — and at least one word.
+ */
+export function isCaptureable(node: QueryNode): boolean {
+  let words = 0;
+  const plain = (current: QueryNode): boolean => {
+    if (current.type === 'and') {
+      return current.children.every(plain);
+    }
+    if (current.type !== 'condition') {
+      return false;
+    }
+    if (current.field === 'text' && current.operator === 'contains') {
+      words += 1;
+      return true;
+    }
+    return current.field === 'tag' && current.operator === 'eq';
+  };
+  return plain(node) && words > 0;
 }
 
 /** Every word a search looks for, used only to order its results. */

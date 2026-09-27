@@ -41,6 +41,8 @@ export function parseDashboardMessage(
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
         : undefined;
+    case 'chooseTheme':
+      return { type: 'chooseTheme' };
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as DashboardMessage)
@@ -97,8 +99,14 @@ export function parseDashboardMessage(
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'parkTag':
+    case 'unparkTag':
+      return isRenameTagMessage(value) && Object.keys(value).length === 2
+        ? { type: value.type, tagKey: value.tagKey as string }
+        : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
+    case 'addSavedSearchWidget':
       return isSavedFilterMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
@@ -117,6 +125,15 @@ export function parseDashboardMessage(
         : undefined;
     case 'resetDashboardWidgets':
       return { type: 'resetDashboardWidgets' };
+    case 'openWhatsNew':
+    case 'dismissWhatsNew':
+      return { type: value.type };
+    case 'runTryNext':
+    case 'snoozeTryNext':
+    case 'retireTryNext':
+      return typeof value.key === 'string' && value.key.length > 0 && value.key.length <= 1000
+        ? { type: value.type, key: value.key }
+        : undefined;
     case 'openSearch':
       return typeof value.query === 'string' &&
         value.query.length <= MAX_QUERY_LENGTH
@@ -132,7 +149,11 @@ export function parseDashboardMessage(
           }
         : undefined;
     case 'openView':
-      return value.view === 'agenda' || value.view === 'stats'
+      return value.view === 'agenda' ||
+        value.view === 'stats' ||
+        value.view === 'sampleWorkspace' ||
+        value.view === 'checkSetup' ||
+        value.view === 'walkthrough'
         ? { type: 'openView', view: value.view }
         : undefined;
     case 'openDailyNote':
@@ -147,6 +168,10 @@ export function parseDashboardMessage(
     case 'createTagHub':
       return typeof value.tagKey === 'string' && value.tagKey.length > 0
         ? { type: 'createTagHub', tagKey: value.tagKey }
+        : undefined;
+    case 'addNextAction':
+      return typeof value.tagKey === 'string' && value.tagKey.length > 0 && value.tagKey.length <= 200
+        ? { type: 'addNextAction', tagKey: value.tagKey }
         : undefined;
     case 'openNote':
       return typeof value.filePath === 'string' && value.filePath.length > 0
@@ -209,6 +234,8 @@ export function parseSearchPageMessage(
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
         : undefined;
+    case 'chooseTheme':
+      return { type: 'chooseTheme' };
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
@@ -251,6 +278,10 @@ export function parseSearchPageMessage(
       return isRenderMode(value.mode)
         ? { type: 'setRenderMode', mode: value.mode }
         : undefined;
+    case 'setSearchPreview':
+      return value.preview === 'none' || value.preview === 'lines' || value.preview === 'full'
+        ? { type: 'setSearchPreview', preview: value.preview }
+        : undefined;
     case 'setTagOverviewSort':
       return isTagOverviewSortMode(value.mode)
         ? { type: 'setTagOverviewSort', mode: value.mode }
@@ -272,8 +303,32 @@ export function parseSearchPageMessage(
       return isRenameTagMessage(value)
         ? { type: 'renameTag', tagKey: value.tagKey as string }
         : undefined;
+    case 'parkTag':
+    case 'unparkTag':
+      return isRenameTagMessage(value) && Object.keys(value).length === 2
+        ? { type: value.type, tagKey: value.tagKey as string }
+        : undefined;
+    case 'parkNote':
+    case 'unparkNote':
+      return typeof value.filePath === 'string' &&
+        value.filePath.length > 0 &&
+        value.filePath.length <= 4096 &&
+        Object.keys(value).length === 2
+        ? { type: value.type, filePath: value.filePath }
+        : undefined;
+    case 'mergeTags':
+      return typeof value.sourceKey === 'string' &&
+        value.sourceKey.length > 0 &&
+        value.sourceKey.length <= 500 &&
+        typeof value.targetKey === 'string' &&
+        value.targetKey.length > 0 &&
+        value.targetKey.length <= 500 &&
+        value.sourceKey !== value.targetKey
+        ? { type: 'mergeTags', sourceKey: value.sourceKey, targetKey: value.targetKey }
+        : undefined;
     case 'saveTagOverviewFilter':
     case 'createHubNote':
+    case 'excludeHubLinks':
     case 'clearOverviewQuery':
     case 'openHelp':
       return Object.keys(value).length === 1 ? { type: value.type } : undefined;
@@ -294,6 +349,9 @@ export function parseSearchPageMessage(
       return undefined;
   }
 }
+
+/** The most names one Create all may carry. */
+const MAX_MISSING_NOTE_NAMES = 500;
 
 /** Upper bound on query text accepted from the webview. */
 /**
@@ -352,9 +410,17 @@ export function parseNotesGraphMessage(
     typeof value.depth === 'number' &&
     Number.isInteger(value.depth) &&
     value.depth >= 1 &&
-    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH
+    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH &&
+    (value.skipPeriodic === undefined || typeof value.skipPeriodic === 'boolean')
   ) {
-    return { type: 'setGraphScope', local: value.local, depth: value.depth };
+    return {
+      type: 'setGraphScope',
+      local: value.local,
+      depth: value.depth,
+      ...(typeof value.skipPeriodic === 'boolean'
+        ? { skipPeriodic: value.skipPeriodic }
+        : {}),
+    };
   }
   if (
     value.type === 'openTag' &&
@@ -362,6 +428,17 @@ export function parseNotesGraphMessage(
     value.tagKey.length > 0
   ) {
     return { type: 'openTag', tagKey: value.tagKey };
+  }
+  if (
+    value.type === 'setGraphFilter' &&
+    typeof value.showNotes === 'boolean' &&
+    typeof value.showTasks === 'boolean'
+  ) {
+    return {
+      type: 'setGraphFilter',
+      showNotes: value.showNotes,
+      showTasks: value.showTasks,
+    };
   }
   return undefined;
 }
@@ -405,6 +482,43 @@ export function parseSidebarMessage(
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return { type: 'openTag', tagKey: value.tagKey as string };
   }
+  if (
+    value.type === 'linkMention' &&
+    isSourceMessage(value) &&
+    typeof value.startColumn === 'number' &&
+    Number.isInteger(value.startColumn) &&
+    value.startColumn >= 0
+  ) {
+    return {
+      type: 'linkMention',
+      filePath: value.filePath as string,
+      line: value.line as number,
+      startColumn: value.startColumn,
+    };
+  }
+  if (value.type === 'linkAllMentions') {
+    return { type: 'linkAllMentions' };
+  }
+  if (value.type === 'openLinksSearch') {
+    return { type: 'openLinksSearch' };
+  }
+  if (
+    value.type === 'addSuggestedTag' &&
+    typeof value.tagKey === 'string' &&
+    value.tagKey.length > 0 &&
+    Object.keys(value).length === 2
+  ) {
+    return { type: 'addSuggestedTag', tagKey: value.tagKey };
+  }
+  if (
+    value.type === 'setRelatedNotesPreviewLines' &&
+    (value.lines === 0 || value.lines === 1 || value.lines === 2)
+  ) {
+    return { type: 'setRelatedNotesPreviewLines', lines: value.lines };
+  }
+  if (value.type === 'setHideDailyNotes' && typeof value.hide === 'boolean') {
+    return { type: 'setHideDailyNotes', hide: value.hide };
+  }
   if (value.type === 'insertLink' && isSourceMessage(value)) {
     return {
       type: 'insertLink',
@@ -414,6 +528,13 @@ export function parseSidebarMessage(
   }
   if (value.type === 'renameTag' && isRenameTagMessage(value)) {
     return value as unknown as SidebarMessage;
+  }
+  if (
+    (value.type === 'parkTag' || value.type === 'unparkTag') &&
+    isRenameTagMessage(value) &&
+    Object.keys(value).length === 2
+  ) {
+    return { type: value.type, tagKey: value.tagKey as string };
   }
   if (
     value.type === 'refineActiveSearch' &&
@@ -468,6 +589,8 @@ export function parseTaskBoardMessage(
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
         : undefined;
+    case 'chooseTheme':
+      return { type: 'chooseTheme' };
     case 'ready':
       return { type: 'ready' };
     case 'saveBoardSearch':
@@ -494,10 +617,34 @@ export function parseTaskBoardMessage(
     case 'moveTask':
       return typeof value.taskId === 'string' &&
         typeof value.column === 'string' &&
-        value.column.length > 0
-        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
+        value.column.length > 0 &&
+        (value.from === undefined || (typeof value.from === 'string' && value.from.length > 0))
+        ? {
+            type: 'moveTask',
+            taskId: value.taskId,
+            column: value.column,
+            ...(typeof value.from === 'string' ? { from: value.from } : {}),
+          }
+        : undefined;
+    case 'pickTaskDate':
+    case 'moveTaskTo':
+    case 'editTask':
+    case 'breakIntoSteps':
+      return typeof value.taskId === 'string' && Object.keys(value).length === 2
+        ? { type: value.type, taskId: value.taskId }
+        : undefined;
+    case 'addTaskToColumn':
+      return typeof value.column === 'string' &&
+        value.column.length > 0 &&
+        Object.keys(value).length === 2
+        ? { type: 'addTaskToColumn', column: value.column }
         : undefined;
     case 'setBoardGroup':
+      if (value.groupBy === 'tag') {
+        return typeof value.namespace === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value.namespace)
+          ? { type: 'setBoardGroup', groupBy: 'tag', namespace: value.namespace.toLowerCase() }
+          : undefined;
+      }
       return isTaskBoardGroupBy(value.groupBy)
         ? { type: 'setBoardGroup', groupBy: value.groupBy }
         : undefined;
@@ -567,7 +714,8 @@ export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
     value === 'status' ||
     value === 'priority' ||
     value === 'due' ||
-    value === 'assignee'
+    value === 'assignee' ||
+    value === 'tag'
   );
 }
 
@@ -594,6 +742,8 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
             type: 'openSource',
             filePath: value.filePath as string,
             line: value.line as number,
+            ...(value.beside === true ? { beside: true } : {}),
+            ...(value.pin === true ? { pin: true } : {}),
           }
         : undefined;
     case 'openSearch':
@@ -616,6 +766,73 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
     case 'reindexWorkspace':
       return Object.keys(value).length === 1
         ? { type: 'reindexWorkspace' }
+        : undefined;
+    case 'openTagList': {
+      if (typeof value.namespaced !== 'boolean') {
+        return undefined;
+      }
+      const isCount = (count: unknown): count is number =>
+        typeof count === 'number' && Number.isInteger(count) && count >= 1;
+      if (value.min !== undefined && !isCount(value.min)) {
+        return undefined;
+      }
+      if (value.max !== undefined && (!isCount(value.max) || !isCount(value.min) || value.max < value.min)) {
+        return undefined;
+      }
+      return {
+        type: 'openTagList',
+        namespaced: value.namespaced,
+        ...(isCount(value.min) ? { min: value.min } : {}),
+        ...(isCount(value.max) ? { max: value.max } : {}),
+      };
+    }
+    case 'mergeTagInto':
+      return typeof value.sourceKey === 'string' && value.sourceKey.length > 0 && value.sourceKey.length <= 500
+        ? { type: 'mergeTagInto', sourceKey: value.sourceKey }
+        : undefined;
+    case 'openNotesGraph':
+      return value.onlyWrittenLinks === true
+        ? { type: 'openNotesGraph', onlyWrittenLinks: true }
+        : undefined;
+    case 'createMissingNotes':
+      return Array.isArray(value.names) &&
+        value.names.length <= MAX_MISSING_NOTE_NAMES &&
+        value.names.every(
+          (name) => typeof name === 'string' && name.length > 0 && name.length <= 500,
+        )
+        ? { type: 'createMissingNotes', names: value.names as string[] }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/** What the Help page may ask of its host. */
+export type HelpMessage =
+  | { type: 'runCommand'; command: string }
+  | { type: 'openChangelog' }
+  | { type: 'openGuide'; page: string; anchor?: string };
+
+/**
+ * Validates the Help page's messages. Only the shape is checked here; the
+ * host runs a command only when Help is allowed to run it.
+ */
+export function parseHelpMessage(value: unknown): HelpMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+  switch (value.type) {
+    case 'runCommand':
+      return typeof value.command === 'string' && /^deckard\.[\w.]+$/.test(value.command)
+        ? { type: 'runCommand', command: value.command }
+        : undefined;
+    case 'openChangelog':
+      return { type: 'openChangelog' };
+    case 'openGuide':
+      // A page's file name and a heading's anchor: nothing that climbs out.
+      return typeof value.page === 'string' && /^[\w-]+$/.test(value.page) &&
+        (value.anchor === undefined || (typeof value.anchor === 'string' && /^[\w-]+$/.test(value.anchor)))
+        ? { type: 'openGuide', page: value.page, ...(typeof value.anchor === 'string' ? { anchor: value.anchor } : {}) }
         : undefined;
     default:
       return undefined;
@@ -642,13 +859,46 @@ export function parseCalendarMessage(
       return { type: 'openMonth' };
     case 'showMonth':
       return typeof value.month === 'string' &&
-        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month)
-        ? { type: 'showMonth', month: value.month }
+        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month) &&
+        (value.date === undefined || isDate)
+        ? { type: 'showMonth', month: value.month, ...(isDate ? { date } : {}) }
         : undefined;
     case 'openDay':
       return isDate ? { type: 'openDay', date } : undefined;
     case 'openWeek':
       return isDate ? { type: 'openWeek', date } : undefined;
+    case 'selectDay':
+      return isDate && Object.keys(value).length === 2 ? { type: 'selectDay', date } : undefined;
+    case 'createDay':
+      return isDate && Object.keys(value).length === 2 ? { type: 'createDay', date } : undefined;
+    case 'openNote':
+      return typeof value.filePath === 'string' &&
+        value.filePath.length > 0 &&
+        value.filePath.length <= 4096 &&
+        Object.keys(value).length === 2
+        ? { type: 'openNote', filePath: value.filePath }
+        : undefined;
+    case 'searchCreated':
+      return isDate && Object.keys(value).length === 2 ? { type: 'searchCreated', date } : undefined;
+    case 'openTask':
+      return typeof value.taskId === 'string' && value.taskId.length > 0 && Object.keys(value).length === 2
+        ? { type: 'openTask', taskId: value.taskId }
+        : undefined;
+    case 'toggleTask':
+      return typeof value.taskId === 'string' &&
+        value.taskId.length > 0 &&
+        typeof value.completed === 'boolean' &&
+        Object.keys(value).length === 3
+        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
+        : undefined;
+    case 'moveTask':
+      return typeof value.taskId === 'string' &&
+        value.taskId.length > 0 &&
+        (value.field === 'due' || value.field === 'scheduled') &&
+        isDate &&
+        Object.keys(value).length === 4
+        ? { type: 'moveTask', taskId: value.taskId, field: value.field, date }
+        : undefined;
     default:
       return undefined;
   }
@@ -660,7 +910,8 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
     typeof value.line === 'number' &&
     Number.isInteger(value.line) &&
     value.line > 0 &&
-    (value.beside === undefined || typeof value.beside === 'boolean')
+    (value.beside === undefined || typeof value.beside === 'boolean') &&
+    (value.pin === undefined || typeof value.pin === 'boolean')
   );
 }
 

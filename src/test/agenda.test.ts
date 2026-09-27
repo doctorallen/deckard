@@ -6,7 +6,12 @@ import {
   normalizeAgendaQuery,
   selectAgendaTasks,
 } from '../ui/state/agendaState';
-import { groupColumnId } from '../ui/views/agendaTree';
+import * as vscode from 'vscode';
+
+import { evaluateQuery } from '../core/query/queryEvaluator';
+import { parseQuery } from '../core/query/queryParser';
+import { createTaskGlance } from '../ui/state/dashboardState';
+import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -15,6 +20,139 @@ const at = (month: number, day: number): number =>
 const now = at(9, 13) + 10 * 60 * 60 * 1000;
 
 suite('Agenda', () => {
+  test('lists the most recently slipped overdue task first, with ranks still leading', () => {
+    const groups = createAgenda(
+      createIndex([
+        createTask({ id: 'week-ago', dueAt: at(9, 6) }),
+        createTask({ id: 'yesterday', dueAt: at(9, 12) }),
+        createTask({ id: 'ranked', dueAt: at(9, 1) }),
+        createTask({ id: 'three-days', dueAt: at(9, 10) }),
+      ]),
+      now,
+      { upcomingDays: 7, taskOrder: ['ranked'] },
+    );
+    assert.deepStrictEqual(
+      groups[0].entries.map((entry) => entry.task.id),
+      ['ranked', 'yesterday', 'three-days', 'week-ago'],
+    );
+  });
+
+  test('is:today finds exactly the Today group, and the tiles count as the Tasks view does', () => {
+    const index = createIndex([
+      createTask({ id: 'overdue', dueAt: at(9, 10) }),
+      createTask({ id: 'due-today', dueAt: at(9, 13) }),
+      createTask({ id: 'scheduled', scheduledAt: at(9, 11) }),
+      createTask({ id: 'not-started', scheduledAt: at(9, 12), startAt: at(9, 15) }),
+      createTask({ id: 'late-but-scheduled', dueAt: at(9, 12), scheduledAt: at(9, 13) }),
+      createTask({ id: 'upcoming', dueAt: at(9, 18) }),
+      createTask({ id: 'done', dueAt: at(9, 13), completed: true }),
+    ]);
+    const today = createAgenda(index, now, { upcomingDays: 7 })
+      .find((group) => group.id === 'today')
+      ?.entries.map((entry) => entry.task.id)
+      .sort();
+    const realNow = Date.now;
+    Date.now = () => now;
+    try {
+      const matched = evaluateQuery(index, parseQuery('is:today').node).tasks.map((task) => task.id).sort();
+      assert.deepStrictEqual(matched, today);
+      const glance = createTaskGlance(index, '', now);
+      assert.deepStrictEqual(
+        [glance.overdue, glance.today, glance.open],
+        [2, 2, 6],
+      );
+      assert.strictEqual(
+        createTaskGlance(index, '#project/atlas', now).todayQuery,
+        '(#project/atlas) AND is:today',
+        'scoped by the agenda search, so the tile and its page agree',
+      );
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
+  test('splits Upcoming into a group per day when asked', () => {
+    const index = createIndex([
+      createTask({ id: 'tomorrow', dueAt: at(9, 14) }),
+      createTask({ id: 'monday', dueAt: at(9, 14) + 0, scheduledAt: undefined, lineNumber: 2 }),
+      createTask({ id: 'thursday', dueAt: at(9, 17) }),
+      createTask({ id: 'starts', startAt: at(9, 17), lineNumber: 3 }),
+    ]);
+    const byDay = createAgenda(index, now, { upcomingDays: 7, upcomingByDay: true });
+    assert.deepStrictEqual(
+      byDay.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.id)]),
+      [
+        ['upcoming:2026-09-14', 'Tomorrow', ['tomorrow', 'monday']],
+        ['upcoming:2026-09-17', 'Thu Sep 17', ['thursday', 'starts']],
+      ],
+    );
+    assert.deepStrictEqual(
+      createAgenda(index, now, { upcomingDays: 7 }).map((group) => group.id),
+      ['upcoming'],
+      'one Upcoming unless asked',
+    );
+    assert.strictEqual(groupColumnId('upcoming:2026-09-17', 'due'), 'due:2026-09-17');
+  });
+
+  test('ends with what was done today, when asked, whatever the grouping', () => {
+    const index = createIndex([
+      createTask({ id: 'open', dueAt: at(9, 13) }),
+      createTask({ id: 'done-today', completed: true, doneAt: at(9, 13), lineNumber: 2 }),
+      createTask({ id: 'done-later-line', completed: true, doneAt: at(9, 13), lineNumber: 5 }),
+      createTask({ id: 'done-yesterday', completed: true, doneAt: at(9, 12) }),
+      createTask({ id: 'done-undated', completed: true }),
+    ]);
+    const ids = (groups: ReturnType<typeof createAgenda>) =>
+      groups.map((group) => [group.id, group.entries.map((entry) => entry.task.id)]);
+    assert.deepStrictEqual(ids(createAgenda(index, now, { upcomingDays: 7, doneToday: true })), [
+      ['today', ['open']],
+      ['donetoday', ['done-later-line', 'done-today']],
+    ]);
+    assert.deepStrictEqual(
+      ids(createAgenda(index, now, { upcomingDays: 7, doneToday: true, groupBy: 'priority' })).pop(),
+      ['donetoday', ['done-later-line', 'done-today']],
+    );
+    assert.deepStrictEqual(ids(createAgenda(index, now, { upcomingDays: 7 })), [['today', ['open']]]);
+    assert.strictEqual(groupColumnId('donetoday', 'due'), 'done', 'a task dropped there is completed');
+  });
+
+  test('the Tasks view draws five overdue tasks, then Show N more, and acts on all', async () => {
+    // Counted back from today, as the view counts: from a fixed date, the
+    // oldest slipped past 30 days and into Needs a new date as time went on.
+    const today = new Date();
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).getTime();
+    const tasks = Array.from({ length: 17 }, (_, day) =>
+      createTask({ id: `late-${day}`, dueAt: yesterday - day * 24 * 60 * 60 * 1000 }),
+    );
+    const index = createIndex(tasks);
+    const updates = new vscode.EventEmitter<WorkspaceIndex>();
+    const provider = new AgendaTreeProvider({
+      onDidUpdate: updates.event,
+      getTask: (taskId) => index.tasks.get(taskId),
+    });
+    try {
+      updates.fire(index);
+      const [overdue] = await provider.getChildren();
+      assert.strictEqual(overdue.kind, 'group');
+      const rows = await provider.getChildren(overdue);
+      assert.strictEqual(rows.length, OVERDUE_ROWS + 1);
+      const more = rows[rows.length - 1] as Extract<AgendaNode, { kind: 'more' }>;
+      assert.strictEqual(more.kind, 'more');
+      assert.strictEqual(provider.getTreeItem(more).label, 'Show 12 more');
+      assert.strictEqual(provider.getTreeItem(more).command?.command, 'deckard.agenda.showMore');
+      assert.strictEqual(provider.getTreeItem(overdue).description, '17', 'the group still counts all');
+      assert.strictEqual(provider.tasksFor(overdue).length, 17, 'Reschedule All covers every one');
+      assert.deepStrictEqual(provider.tasksFor(more), []);
+
+      provider.showMore('overdue');
+      const [again] = await provider.getChildren();
+      assert.strictEqual((await provider.getChildren(again)).length, 17);
+    } finally {
+      provider.dispose();
+      updates.dispose();
+    }
+  });
+
   test('groups open tasks into overdue, today, and upcoming', () => {
     const groups = createAgenda(
       createIndex([

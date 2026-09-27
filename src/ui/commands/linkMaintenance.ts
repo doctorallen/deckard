@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import { findFencedLines, stripTags } from '../../core/markdown/parser';
 import { measure } from '../../core/timing';
@@ -371,9 +372,18 @@ export async function renameHeadingCommand(
     return undefined;
   }
   if (editor.document.getText() !== file?.content) {
-    void vscode.window.showWarningMessage(
-      'Save this note before renaming its heading, so Deckard rewrites the links from what is on disk.',
-    );
+    const document = editor.document;
+    void vscode.window
+      .showInformationMessage(
+        'Save this note before renaming its heading, so Deckard rewrites the links from what is on disk.',
+        'Save and Rename',
+      )
+      .then(async (choice) => {
+        if (choice === 'Save and Rename' && (await document.save())) {
+          await indexer.refresh();
+          await vscode.commands.executeCommand('deckard.renameHeading');
+        }
+      });
     return undefined;
   }
 
@@ -385,7 +395,7 @@ export async function renameHeadingCommand(
     validateInput: (value) =>
       value.trim() && !value.includes('\n')
         ? undefined
-        : 'Enter the heading on one line.',
+        : 'Write the heading on one line.',
   });
   if (next === undefined || next.trim() === heading) {
     return undefined;
@@ -450,9 +460,7 @@ export async function renameHeadingCommand(
     description: `Rename the heading to "${next.trim()}"`,
   });
   if (!written.applied) {
-    void vscode.window.showErrorMessage(
-      'Deckard could not rename the heading. VS Code rejected the source edit.',
-    );
+    void reportFailure(describeRejectedEdit(noteName(editor.document.uri)));
     return undefined;
   }
   try {

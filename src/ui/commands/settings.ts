@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { settingLabel } from './notify';
+
 /**
  * Writes one `deckard.*` setting, and says something useful when VS Code
  * refuses because it does not know the setting exists.
@@ -27,9 +29,13 @@ export async function writeSetting(
     if (!isUnregisteredSettingError(error)) {
       throw error;
     }
-    void vscode.window.showWarningMessage(
-      describeUnregisteredSetting(key),
-    );
+    void vscode.window
+      .showErrorMessage(describeUnregisteredSetting(key), 'Quit VS Code')
+      .then((choice) => {
+        if (choice === 'Quit VS Code') {
+          void vscode.commands.executeCommand('workbench.action.quit');
+        }
+      });
     return false;
   }
 }
@@ -42,5 +48,18 @@ export function isUnregisteredSettingError(error: unknown): boolean {
 
 /** The sentence a reader gets instead of the registry's. */
 export function describeUnregisteredSetting(key: string): string {
-  return `Deckard was updated, and this window still has the older version's settings, so deckard.${key} could not be saved. Quit and reopen VS Code — Reload Window is not enough — then try again.`;
+  return `Deckard was updated, and this window still has the older version's settings, so the "${settingLabel(key)}" setting could not be saved. Quit and reopen VS Code (Reload Window is not enough), then try again.`;
+}
+
+/**
+ * Where a setting has to be written to take effect: the workspace's settings
+ * when they set it, since they outrank the user's, else the user's.
+ */
+export function settingTarget(
+  key: string,
+  configuration: Pick<vscode.WorkspaceConfiguration, 'inspect'> = vscode.workspace.getConfiguration('deckard'),
+): vscode.ConfigurationTarget {
+  return configuration.inspect(key)?.workspaceValue !== undefined
+    ? vscode.ConfigurationTarget.Workspace
+    : vscode.ConfigurationTarget.Global;
 }

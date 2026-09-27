@@ -20,6 +20,7 @@ import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
 import {
   createQuerySuggestions,
   createSearchPageSnapshot,
+  tagMentionWord,
 } from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
 
@@ -183,13 +184,124 @@ suite('Refining a search', () => {
     assert.deepStrictEqual(values('due'), [['Overdue', 1], ['Next 7 days', 1], ['No date', 1]]);
     // The tag the query names is not offered again.
     assert.deepStrictEqual(values('tags'), [['#home', 1], ['#urgent', 1]]);
-    assert.deepStrictEqual(values('updated'), [['This week', 1], ['Older', 1]]);
+    assert.deepStrictEqual(values('updated'), [['Last 7 days', 1], ['Older', 1]]);
     // Everything is under notes/, so the split is one level down.
     assert.deepStrictEqual(values('folder'), [['notes/work', 4], ['notes/home', 1]]);
     assert.strictEqual(
       facets.find((facet) => facet.id === 'folder')?.values[0].clause,
       'in:notes/work',
     );
+  });
+
+  test("names the Updated spans by the days they hold, a week ago in the second", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const files = [
+      parseMarkdown('notes/today.md', '# Today #project/atlas', { updatedAt: now }),
+      parseMarkdown('notes/week.md', '# A week ago #project/atlas', {
+        updatedAt: now - 7 * day,
+      }),
+      parseMarkdown('notes/old.md', '# Old #project/atlas', { updatedAt: now - 45 * day }),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const query = '#project/atlas';
+    const results = evaluateQuery(index, parseQuery(query).node);
+    const updated = buildSearchFacets(index, results, query, { now })
+      .find((facet) => facet.id === 'updated')
+      ?.values.map((value) => [value.label, value.count]);
+    assert.deepStrictEqual(updated, [
+      ['Last 7 days', 1],
+      ['1–4 weeks ago', 1],
+      ['Older', 1],
+    ]);
+  });
+
+  test('counts notes by the month they were written', () => {
+    // Friday 2026-09-25, noon.
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const at = (year: number, month: number, day: number) => new Date(year, month - 1, day, 9).getTime();
+    const note = (name: string, createdAt: number) =>
+      parseMarkdown(`notes/${name}.md`, `# ${name} #project/atlas`, { createdAt, updatedAt: now });
+    const files = [
+      note('this-month', at(2026, 9, 2)),
+      note('last-month', at(2026, 8, 30)),
+      note('july', at(2026, 7, 1)),
+      note('earlier', at(2025, 12, 1)),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const query = '#project/atlas';
+    const results = evaluateQuery(index, parseQuery(query).node);
+    const created = buildSearchFacets(index, results, query, { now })
+      .find((facet) => facet.id === 'created')
+      ?.values.map((value) => [value.label, value.clause, value.count]);
+    // June has no notes, so it is left out.
+    assert.deepStrictEqual(created, [
+      ['This month', 'created = this-month', 1],
+      ['Last month', 'created = last-month', 1],
+      ['July', 'created = 2026-07', 1],
+      ['Earlier', 'created < 2026-06', 1],
+    ]);
+    const january = buildSearchFacets(index, results, query, { now: new Date(2026, 0, 20, 12).getTime() })
+      .find((facet) => facet.id === 'created')
+      ?.values.map((value) => value.label);
+    assert.ok(january?.includes('Last month'), String(january));
+    const inDecember = buildSearchFacets(index, results, query, { now: new Date(2026, 1, 20, 12).getTime() })
+      .find((facet) => facet.id === 'created')
+      ?.values.map((value) => value.label);
+    assert.ok(inDecember?.includes('December 2025'), String(inDecember));
+  });
+
+  test('narrows by the notes the results link to, leaving out the ones the search names', () => {
+    const files = new Map(
+      Object.entries({
+        'notes/Atlas.md': '# Atlas\nThe plan.\n',
+        'notes/Budget.md': '# Budget\nMoney.\n',
+        'notes/One.md': '# One #project/x\nSee [[Atlas]] and [[Budget]].\n',
+        'notes/Two.md': '# Two #project/x\nSee [[Atlas]].\n',
+        'notes/Three.md': '# Three #project/x\nNothing.\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    const index = buildWorkspaceIndex(files);
+    const query = 'tag = #project/x OR text ~ zzz';
+    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node), query);
+    const links = facets.find((facet) => facet.id === 'links');
+    assert.deepStrictEqual(
+      links?.values.map((value) => [value.label, value.count, value.clause]),
+      [
+        ['Atlas', 2, '[[Atlas]]'],
+        ['Budget', 1, '[[Budget]]'],
+      ],
+    );
+    const named = '#project/x [[Atlas]]';
+    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node), named)
+      .find((facet) => facet.id === 'links');
+    assert.deepStrictEqual(narrowed?.applied, ['[[Atlas]]']);
+    assert.ok(!narrowed?.values.some((value) => value.label === 'Atlas'));
+  });
+
+  test('completes [[ with note names, most linked first, aliases included', () => {
+    const files = new Map(
+      Object.entries({
+        'notes/Atlas plan.md': '---\naliases: [Atlas]\n---\n# Atlas plan\n',
+        'notes/Budget.md': '# Budget\n',
+        'notes/One.md': '# One\nSee [[Atlas plan]].\n',
+        'notes/Two.md': '# Two\nSee [[Atlas]] and [[Budget]].\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    const links = createQuerySuggestions(buildWorkspaceIndex(files)).values.link ?? [];
+    assert.deepStrictEqual(links.slice(0, 3), [
+      { value: 'Atlas', label: '[[Atlas]]', detail: 'alias of Atlas plan' },
+      { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 2 notes' },
+      { value: 'Budget', label: '[[Budget]]', detail: 'Linked from 1 note' },
+    ]);
+  });
+
+  test('reads a tag\'s name as the word prose would write', () => {
+    assert.strictEqual(tagMentionWord('#project/atlas'), 'atlas');
+    assert.strictEqual(tagMentionWord('#risk/vendor-risk'), 'vendor risk');
+    assert.strictEqual(tagMentionWord('@dana'), 'dana');
+    assert.strictEqual(tagMentionWord('#project/q4'), undefined);
+    assert.strictEqual(tagMentionWord('#year/2026'), undefined);
   });
 
   test('does not offer a facet value the query already has', () => {
@@ -246,10 +358,12 @@ suite('Refining a search', () => {
       related.values.map((value) => [value.clause, value.count]),
       [['#team/harbor', 2], ['#risk/privacy', 1]],
     );
-    assert.strictEqual(related.values[0].strength, 1);
-    for (const value of related.values) {
-      assert.ok((value.strength ?? -1) >= 0 && (value.strength ?? 2) <= 1, 'strength is a share of the strongest');
-    }
+    // The rail is part of the whole: the share of the results a tag is on.
+    assert.deepStrictEqual(
+      related.values.map((value) => [value.strength, value.total]),
+      [[2 / 3, 3], [1 / 3, 3]],
+    );
+    assert.match(related.values[0].detail ?? '', /^In 2 of 3 results\. Written together/);
     assert.strictEqual(page.query.facets.some((facet) => facet.id === 'tags'), false);
 
     const narrowed = createSearchPageSnapshot(
@@ -517,5 +631,18 @@ suite('Refining a search', () => {
     assert.strictEqual(results.sections.length + results.files.length, 2);
     assert.strictEqual(results.tasks.length, 3);
     assert.strictEqual(atlas?.detail, '2 notes · 3 tasks');
+  });
+
+  test('a week, a month, or a weekday completes with the days it means', () => {
+    const index = buildWorkspaceIndex(new Map());
+    // Friday 2026-09-25, noon.
+    const values = createQuerySuggestions(index, [], new Date(2026, 8, 25, 12).getTime()).values;
+    const detail = (field: 'due' | 'created', value: string) =>
+      values[field]?.find((suggestion) => suggestion.value === value)?.detail;
+    assert.strictEqual(detail('due', 'next-week'), 'Sep 27 to Oct 3');
+    assert.strictEqual(detail('due', 'this-week'), 'Sep 20 to Sep 26');
+    assert.strictEqual(detail('created', 'last-month'), 'August');
+    assert.strictEqual(detail('due', 'friday'), 'Fri, Oct 2');
+    assert.strictEqual(detail('created', 'friday'), 'Fri, Sep 18');
   });
 });

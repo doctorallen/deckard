@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { reportFailure, reportNeedsFolder } from './notify';
 
 import { findFencedLines } from '../../core/markdown/parser';
 import { measure } from '../../core/timing';
@@ -9,6 +10,10 @@ import {
   parseWikiTarget,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import {
+  onIndexUpdateInTurn,
+  VIEW_PRIORITY,
+} from '../../core/workspace/publishing';
 import { getExtractedNoteFileName } from './extractHeading';
 
 /** A `[[link]]` that opens no note. */
@@ -126,16 +131,14 @@ export async function createLinkedNote(
     vscode.workspace.getWorkspaceFolder(documentUri) ??
     vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    void vscode.window.showWarningMessage(
-      'Open a workspace folder to create notes.',
-    );
+    void reportNeedsFolder();
     return undefined;
   }
   const noteUri = await createNoteNamed(indexer.getNotesFolderUri(folder), name);
   if (!noteUri) {
-    void vscode.window.showWarningMessage(
-      `"${name}" cannot be a file name, so Deckard cannot create the note.`,
-    );
+    void reportFailure({
+      outcome: `"${name}" cannot be a file name, so Deckard did not create the note.`,
+    });
     return undefined;
   }
   await vscode.window.showTextDocument(noteUri, { preview: false });
@@ -174,14 +177,13 @@ export async function createMissingNotes(
   indexer: Pick<LinkHealthSource, 'getNotesFolderUri'>,
   documentUri: vscode.Uri,
   names: readonly string[],
+  options: { report?: boolean } = {},
 ): Promise<number> {
   const folder =
     vscode.workspace.getWorkspaceFolder(documentUri) ??
     vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    void vscode.window.showWarningMessage(
-      'Open a workspace folder to create notes.',
-    );
+    void reportNeedsFolder();
     return 0;
   }
   const notesFolderUri = indexer.getNotesFolderUri(folder);
@@ -196,10 +198,17 @@ export async function createMissingNotes(
       created += 1;
     }
   }
+  if (options.report !== false) {
+    reportCreatedNotes(created);
+  }
+  return created;
+}
+
+/** Says how many notes were made for links that named none. */
+export function reportCreatedNotes(created: number): void {
   void vscode.window.showInformationMessage(
     `Created ${created} ${created === 1 ? 'note' : 'notes'} for links that named no note.`,
   );
-  return created;
 }
 
 async function exists(uri: vscode.Uri): Promise<boolean> {
@@ -240,7 +249,11 @@ export class LinkHealth implements vscode.Disposable {
         },
         { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
       ),
-      indexer.onDidUpdate(() => this.checkOpenNotes()),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'link checks', priority: () => VIEW_PRIORITY.visible },
+        () => this.checkOpenNotes(),
+      ),
       vscode.workspace.onDidOpenTextDocument((document) => this.check(document)),
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (event.contentChanges.length > 0) {

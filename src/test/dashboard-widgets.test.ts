@@ -34,6 +34,7 @@ const preferences: PersistedPreferences = {
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
   renderMode: 'markdown',
+  searchPreview: 'lines',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: 30,
@@ -87,6 +88,32 @@ suite('Dashboard Home widgets', () => {
     ]);
     assert.ok(broken.error, 'a search that does not parse says why');
     assert.deepStrictEqual(broken.tasks, []);
+  });
+
+  test('the agenda leaves what needs a new date to a line under its list', () => {
+    const files = [
+      parseMarkdown(
+        'notes/old.md',
+        '- [ ] Chase the contractor 📅 2026-09-10\n- [ ] Renew the lease 📅 2026-07-01',
+      ),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const [agenda] = widgets([{ id: 'a', kind: 'agenda', width: 'half', count: 5 }], index);
+    assert.deepStrictEqual(agenda.agenda?.map((group) => group.id), ['overdue']);
+    assert.strictEqual(agenda.needsNewDate, 1);
+    assert.strictEqual(agenda.needsNewDateQuery, 'is:needs-date');
+    assert.strictEqual(agenda.total, 1);
+    assert.strictEqual(agenda.doneToday, undefined);
+    const doneIndex = buildWorkspaceIndex(
+      new Map(
+        [parseMarkdown('notes/done.md', '- [x] Filed it ✅ 2026-09-16\n- [ ] Next 📅 2026-09-16')].map(
+          (file) => [file.filePath, file],
+        ),
+      ),
+    );
+    const [done] = widgets([{ id: 'a', kind: 'agenda', width: 'half', count: 5 }], doneIndex);
+    assert.strictEqual(done.doneToday, 1);
+    assert.deepStrictEqual(done.agenda?.map((group) => group.id), ['today'], 'not a group of the list');
   });
 
   test('groups the agenda, and names favorite and frequent tags', () => {
@@ -144,7 +171,7 @@ suite('Dashboard Home widgets', () => {
         ['Open tasks', 3],
         ['Tasks', 4],
         ['Tags', 2],
-        ['Entities', 2],
+        ['Namespaced tags', 2],
       ],
     );
   });

@@ -1,10 +1,14 @@
 import * as vscode from 'vscode';
 
+import { readCaptureText } from '../../core/markdown/captureWords';
+import { readDateOptions } from './datePrompt';
+import { parseMarkdown } from '../../core/markdown/parser';
 import { Task } from '../../core/types';
 import {
   isValidStatusName,
   resolveTaskMove,
   TaskBoardOptions,
+  TaskMoveContext,
 } from '../state/taskBoardState';
 import {
   readTaskMetadataFormat,
@@ -13,6 +17,8 @@ import {
   updateTaskLine,
 } from './taskActions';
 import { writeSetting } from './settings';
+import { captureToToday, formatCaptureLine } from './capture';
+import { appendTagToLine } from './bulkEdit';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 
@@ -42,6 +48,7 @@ export function readTaskBoardOptions(): TaskBoardOptions {
       )
       .map((status) => status.toLowerCase()),
     format: readTaskMetadataFormat(configuration),
+    limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
   };
 }
 
@@ -72,8 +79,9 @@ export async function updateTaskBoardSetting(
 export async function moveTaskToColumn(
   task: Task,
   columnId: string,
+  context: TaskMoveContext = {},
 ): Promise<boolean> {
-  const move = resolveTaskMove(task, columnId, readTaskBoardOptions());
+  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(), context);
   switch (move.kind) {
     case 'unchanged':
       return false;
@@ -89,4 +97,74 @@ export async function moveTaskToColumn(
       void vscode.window.showInformationMessage(move.reason);
       return false;
   }
+}
+
+/**
+ * Captures a task straight into a board column: the words read as Capture
+ * reads them, then the edit the column stands for made to the line, so the
+ * task lands in today's note already in the column it was added from.
+ */
+export async function captureIntoColumn(columnId: string): Promise<boolean> {
+  const text = await vscode.window.showInputBox({
+    title: 'Add a task to this column',
+    prompt: "It goes in today's note. A date, priority, or repeat rule at the end is read as Capture reads it: Call Ren friday p2",
+    placeHolder: 'Call Ren about the #project/atlas budget',
+  });
+  if (!text?.trim()) {
+    return false;
+  }
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  let line = readCaptureText(
+    formatCaptureLine(text),
+    readTaskMetadataFormat(configuration),
+    Date.now(),
+    readDateOptions(),
+  ).line;
+  const [task] = parseMarkdown('capture.md', line).tasks;
+  const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions()) : undefined;
+  if (move?.kind === 'refused') {
+    void vscode.window.showInformationMessage(move.reason);
+    return false;
+  }
+  if (move?.kind === 'edit') {
+    line = move.edit(line);
+  }
+  return captureToToday(text, line);
+}
+
+/** `deckard.board.limits`, keeping only whole numbers of one or more. */
+export function readBoardLimits(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [string, number] =>
+        typeof entry[1] === 'number' && Number.isInteger(entry[1]) && entry[1] >= 1,
+    ),
+  );
+}
+
+/**
+ * A next action for a tag with nothing open, the stuck-projects review: the
+ * words are read as Capture reads them, the tag is written at the end, and
+ * the task goes into today's note.
+ */
+export async function captureNextAction(tagLabel: string): Promise<boolean> {
+  const text = await vscode.window.showInputBox({
+    title: `Next action for ${tagLabel}`,
+    prompt: "It goes in today's note, with the tag. A date, priority, or repeat rule at the end is read as Capture reads it: Call Ren friday p2",
+    placeHolder: 'Draft the kickoff agenda',
+    ignoreFocusOut: true,
+  });
+  if (!text?.trim()) {
+    return false;
+  }
+  const line = readCaptureText(
+    formatCaptureLine(text),
+    readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
+    Date.now(),
+    readDateOptions(),
+  ).line;
+  return captureToToday(text, appendTagToLine(line, tagLabel));
 }

@@ -1,5 +1,12 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+
+import { listedParkedTags } from '../../core/workspace/parked';
+import { setPinned } from '../commands/pinNote';
+import { readWeekStart } from '../commands/datePrompt';
+import { TryNextSuggestion } from '../state/tryNext';
+import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../commands/tryNext';
+import { WhatsNew } from '../commands/whatsNew';
+import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -10,10 +17,12 @@ import {
 } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import {
-  DashboardMode,
   DashboardColumnCount,
   DashboardMessage,
+  DashboardMode,
   DashboardSnapshot,
+  PersistedPreferences,
+  WorkspaceIndex,
 } from '../../core/types';
 import {
   createDashboardSnapshot,
@@ -23,10 +32,12 @@ import {
 } from '../state/dashboardState';
 import { createDashboardWidgets } from '../state/dashboardWidgets';
 import { toggleTask } from '../commands/taskActions';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt, openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
+import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -44,6 +55,8 @@ export interface DashboardNavigation {
   /** Adds a task to today's daily note; true when it was added. */
   quickAdd(text: string): boolean | Promise<boolean>;
   createHubNote(tagKey: string): void | Promise<void>;
+  /** Asks for a next action for a tag, and captures it to today's note. */
+  addNextAction?(tagLabel: string): void | Promise<unknown>;
 }
 
 /**
@@ -73,17 +86,44 @@ export class DashboardPanel implements vscode.Disposable {
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly navigation: DashboardNavigation,
+    /** Whether Home says Deckard was updated; absent, it never does. */
+    private readonly whatsNew?: Pick<WhatsNew, 'pending' | 'clear' | 'onDidChange'>,
+    /** What Try next has been told; absent, it suggests nothing. */
+    private readonly tryNext?: Pick<TryNextLedger, 'retired' | 'snoozed' | 'retire' | 'snooze' | 'onDidChange'>,
   ) {
     const initialPreferences = preferences.value;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Home', priority: () => panelPriority(this.panel) },
+        () => this.refresh(),
+      ),
+    );
+    if (whatsNew) {
+      this.disposables.push(whatsNew.onDidChange(() => this.refresh()));
+    }
+    if (tryNext) {
+      this.disposables.push(tryNext.onDidChange(() => this.refresh()));
+    }
     this.followEditor(vscode.window.activeTextEditor);
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         const previous = this.sourceNotePath;
         this.followEditor(editor);
         if (this.sourceNotePath !== previous && this.followsSourceNote()) {
+          this.refresh();
+        }
+      }),
+    );
+    // A visit is kept quietly; only Home's Recently opened shows it.
+    this.disposables.push(
+      preferences.onDidRecordVisit(() => {
+        if (
+          this.panel?.visible &&
+          preferences.value.dashboardWidgets.some((widget) => widget.kind === 'recentNotes')
+        ) {
           this.refresh();
         }
       }),
@@ -96,18 +136,18 @@ export class DashboardPanel implements vscode.Disposable {
       }),
     );
     this.disposables.push(
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        const chromeChanged = affectsPageChrome(event);
         const titleDisplayChanged = event.affectsConfiguration(
           'deckard.tagTitleDisplayMode',
         );
-        if (chromeChanged) {
-          this.renderHtml();
-        }
         if (
-          chromeChanged ||
           titleDisplayChanged ||
-          event.affectsConfiguration('deckard.agenda')
+          event.affectsConfiguration('deckard.agenda') ||
+          event.affectsConfiguration('deckard.showWhatsNew')
         ) {
           this.refresh();
         }
@@ -124,7 +164,7 @@ export class DashboardPanel implements vscode.Disposable {
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -164,7 +204,7 @@ export class DashboardPanel implements vscode.Disposable {
    * shows whether the workspace has any notes worth opening it for.
    */
   public async showOnStartup(): Promise<void> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     if (!this.panel && this.indexer.getSnapshot().files.size > 0) {
       await this.show();
     }
@@ -180,7 +220,7 @@ export class DashboardPanel implements vscode.Disposable {
     }
 
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -256,6 +296,7 @@ export class DashboardPanel implements vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.panelDisposables = [
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.disposePanelListeners();
@@ -289,6 +330,53 @@ export class DashboardPanel implements vscode.Disposable {
         this.extensionUri,
       );
     }
+  }
+
+  /** Try next's suggestion now, only while Home holds the widget. */
+  private currentTryNext(
+    index: WorkspaceIndex,
+    preferences: PersistedPreferences,
+  ): TryNextSuggestion | undefined {
+    if (!this.tryNext || !preferences.dashboardWidgets.some((widget) => widget.kind === 'tryNext')) {
+      return undefined;
+    }
+    return suggestTryNext(this.tryNext, index, preferences, readWeekStart(), Date.now());
+  }
+
+  /**
+   * Acts on Try next's suggestion. The page names it by key; what runs is
+   * worked out here from the suggestion the host would make now.
+   */
+  private async handleTryNext(
+    type: 'runTryNext' | 'snoozeTryNext' | 'retireTryNext',
+    key: string,
+  ): Promise<void> {
+    if (!this.tryNext) {
+      return;
+    }
+    if (type === 'snoozeTryNext') {
+      await this.tryNext.snooze(key);
+      return;
+    }
+    if (type === 'retireTryNext') {
+      await this.tryNext.retire(key);
+      return;
+    }
+    const index = this.indexer.getSnapshot();
+    const preferences = this.preferences.value;
+    const suggestion = this.currentTryNext(index, preferences);
+    if (!suggestion || suggestion.key !== key) {
+      return;
+    }
+    await runTryNext(suggestion, collectTryNextInput(index, preferences, readWeekStart(), Date.now()), {
+      run: (command, ...args) => vscode.commands.executeCommand(command, ...args),
+      pin: async (filePath, line) => {
+        const pinned = await setPinned(index, this.preferences, { filePath, line }, true);
+        if (pinned) {
+          await this.tryNext?.retire(suggestion.key);
+        }
+      },
+    });
   }
 
   /**
@@ -334,8 +422,10 @@ export class DashboardPanel implements vscode.Disposable {
         viewPreferences,
         undefined,
         tagTitleDisplayMode,
+        { agendaQuery: configuration.get<string>('agenda.query', ''), now: Date.now() },
       ),
       homeArranged: !isDefaultHomeLayout(preferences.dashboardWidgets),
+      ...(this.whatsNew?.pending() ? { whatsNew: this.whatsNew.pending() } : {}),
       // Switching tabs asks the host again, so only Home gets its widgets.
       ...(this.dashboardMode === 'home'
         ? {
@@ -345,6 +435,9 @@ export class DashboardPanel implements vscode.Disposable {
               agendaQuery: configuration.get<string>('agenda.query', ''),
               tagTitleDisplayMode,
               sourceNotePath: this.getSourceNotePath(),
+              ...(this.currentTryNext(index, viewPreferences)
+                ? { tryNext: this.currentTryNext(index, viewPreferences) }
+                : {}),
               relatedNotes: {
                 enableKeywordLinks: configuration.get<boolean>(
                   'enableKeywordLinks',
@@ -365,7 +458,10 @@ export class DashboardPanel implements vscode.Disposable {
           }
         : {}),
     };
-    void this.panel.webview.postMessage({ type: 'state', data });
+    void this.panel.webview.postMessage({
+      type: 'state',
+      data: { ...data, parkedTags: listedParkedTags(this.indexer) },
+    });
   }
 
   /**
@@ -393,6 +489,9 @@ export class DashboardPanel implements vscode.Disposable {
       case 'setZenMode':
         await setZenMode(message.enabled);
         return;
+      case 'chooseTheme':
+        await vscode.commands.executeCommand('deckard.chooseTheme');
+        return;
       case 'openSource':
         // Only open a line that still identifies an indexed note or task.
         const task = [...index.tasks.values()].find(
@@ -413,7 +512,7 @@ export class DashboardPanel implements vscode.Disposable {
             message.line === 1,
         );
         if (task || section || metadataOnlyFile) {
-          await openSourceAt(message.filePath, message.line);
+          await openResultAt(message.filePath, message.line, message);
           if (section) {
             await this.preferences.recordSectionAccess(section.id);
           }
@@ -504,8 +603,15 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       }
+      case 'parkTag':
+      case 'unparkTag':
+        await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
+        return;
       case 'openSavedFilter':
         await this.openSavedFilter(message.filterId);
+        return;
+      case 'addSavedSearchWidget':
+        await this.preferences.addSavedSearchWidget(message.filterId);
         return;
       case 'removeSavedFilter': {
         // Removing a saved search also removes any Home widget bound to it,
@@ -557,9 +663,26 @@ export class DashboardPanel implements vscode.Disposable {
       case 'openTaskBoard':
         await this.navigation.openTaskBoard(message.query);
         return;
+      case 'runTryNext':
+      case 'snoozeTryNext':
+      case 'retireTryNext':
+        await this.handleTryNext(message.type, message.key);
+        return;
+      case 'openWhatsNew':
+        await vscode.commands.executeCommand('deckard.openWhatsNew');
+        return;
+      case 'dismissWhatsNew':
+        await this.whatsNew?.clear();
+        return;
       case 'openView':
         await vscode.commands.executeCommand(
-          message.view === 'agenda' ? 'deckard.agenda.focus' : 'deckard.showStats',
+          {
+            agenda: 'deckard.agenda.focus',
+            stats: 'deckard.showStats',
+            sampleWorkspace: 'deckard.createSampleWorkspace',
+            checkSetup: 'deckard.checkSetup',
+            walkthrough: 'deckard.openWalkthrough',
+          }[message.view],
         );
         return;
       case 'openDailyNote':
@@ -572,6 +695,13 @@ export class DashboardPanel implements vscode.Disposable {
           text: message.text,
           added,
         });
+        return;
+      }
+      case 'addNextAction': {
+        const tag = index.tags.get(message.tagKey);
+        if (tag) {
+          await this.navigation.addNextAction?.(tag.label);
+        }
         return;
       }
       case 'createTagHub':

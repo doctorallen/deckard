@@ -1,3 +1,4 @@
+import { needsNewDate } from '../taskPolicy';
 import { TaskPriority } from '../types';
 
 /**
@@ -251,6 +252,75 @@ export function parseTaskMetadata(text: string): {
   };
 }
 
+/** What a piece of a task line's metadata is. */
+export type TaskMetadataSpanField = TaskMetadataField | 'onCompletion' | 'blockId';
+
+/** One piece of a task line's metadata, where it is written and what it says. */
+export interface TaskMetadataSpan {
+  /** Offsets into the text given, from the marker to the end of its value. */
+  start: number;
+  end: number;
+  field: TaskMetadataSpanField;
+  /** The value as written: a date, a rule, a name, or a priority. */
+  value: string;
+}
+
+/**
+ * Where each piece of metadata is written on a task's text, read by the same
+ * patterns and in the same order as `parseTaskMetadata`, so a piece it reads
+ * first is never read again inside another: cutting every span out leaves
+ * the title. A trailing `^block-id` is a span too.
+ */
+export function findTaskMetadataSpans(text: string): TaskMetadataSpan[] {
+  const spans: TaskMetadataSpan[] = [];
+  let masked = text;
+  const take = (
+    pattern: RegExp,
+    read: (match: RegExpMatchArray) => { field: TaskMetadataSpanField; value: string } | undefined,
+  ): void => {
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+    const found: TaskMetadataSpan[] = [];
+    for (const match of masked.matchAll(new RegExp(pattern.source, flags))) {
+      const piece = read(match);
+      if (!piece) {
+        continue;
+      }
+      let start = match.index ?? 0;
+      let end = start + match[0].length;
+      while (start < end && (masked[start] === ' ' || masked[start] === '\t')) {
+        start += 1;
+      }
+      while (end > start && (masked[end - 1] === ' ' || masked[end - 1] === '\t')) {
+        end -= 1;
+      }
+      found.push({ start, end, ...piece });
+    }
+    for (const span of found) {
+      masked = masked.slice(0, span.start) + ' '.repeat(span.end - span.start) + masked.slice(span.end);
+    }
+    spans.push(...found);
+  };
+
+  take(DATAVIEW_FIELD_PATTERN, (match) => {
+    const field = DATAVIEW_FIELDS.get((match[1] ?? match[3] ?? '').toLowerCase());
+    return field ? { field, value: (match[2] ?? match[4] ?? '').trim() } : undefined;
+  });
+  for (const field of DATE_FIELDS) {
+    take(datePatterns(field)[0], (match) => ({ field, value: match[1] }));
+  }
+  take(PRIORITY_PATTERN, (match) => ({
+    field: 'priority',
+    value: PRIORITY_MARKERS.get(match[0].replace('\uFE0F', '')) ?? '',
+  }));
+  take(RECURRENCE_PATTERN, (match) => ({ field: 'repeat', value: match[1].trim() }));
+  take(ID_PATTERN, (match) => ({ field: 'id', value: match[1] }));
+  take(DEPENDS_ON_PATTERN, (match) => ({ field: 'dependsOn', value: match[1] }));
+  take(ON_COMPLETION_PATTERN, (match) => ({ field: 'onCompletion', value: match[0] }));
+  take(ASSIGNEE_PATTERN, (match) => ({ field: 'assignee', value: match[1] }));
+  take(BLOCK_ID_PATTERN, (match) => ({ field: 'blockId', value: match[1] }));
+  return spans.sort((left, right) => left.start - right.start);
+}
+
 /**
  * Writes one field in the given format, such as `📅 2026-09-20` or
  * `[due:: 2026-09-20]`. An emoji priority is its marker alone.
@@ -439,6 +509,45 @@ export function createNextOccurrence(
   return prefix + next.trimEnd();
 }
 
+/** What completing a task writes in place of its line. */
+export interface CompletionWrite {
+  /** The lines to write in place of the task: the next occurrence, if any, then the completed line. */
+  text: string;
+  /** The next occurrence's line, when one was started. */
+  next?: string;
+  /** The 🔁 rule as written, when there is one Deckard could not read. */
+  unreadRule?: string;
+}
+
+/**
+ * What a completed task line becomes, wherever it was completed: a repeating
+ * task gets its next occurrence on the line above, where Tasks puts it.
+ *
+ * Every way of completing a task comes through here, so a checkbox, the
+ * board, bulk edit, the task editor, and the assistant all leave the same
+ * lines behind. `completedLine` is the line already marked done.
+ */
+export function writeCompletion(
+  completedLine: string,
+  checkboxColumn: number,
+  now: number,
+  eol: string,
+  /**
+   * The task's steps as its next occurrence takes them: unchecked, written
+   * under it, so a routine checklist comes back fresh. The completed
+   * occurrence keeps its own.
+   */
+  steps: readonly string[] = [],
+): CompletionWrite {
+  const next = createNextOccurrence(completedLine, checkboxColumn, now);
+  if (next !== undefined) {
+    return { text: [next, ...steps, completedLine].join(eol), next };
+  }
+  const [, text] = splitTaskLine(completedLine, checkboxColumn, ' ');
+  const rule = parseTaskMetadata(text).metadata.recurrence;
+  return rule ? { text: completedLine, unreadRule: rule } : { text: completedLine };
+}
+
 export interface RecurrenceRule {
   /** "when done" rules count from the day the task is completed. */
   whenDone: boolean;
@@ -456,12 +565,32 @@ const WEEKDAY_NAMES = [
   'saturday',
 ];
 
+/** The nth weekday of a month, as a rule names it. */
+const ORDINALS: Readonly<Record<string, number | 'last'>> = {
+  first: 1,
+  '1st': 1,
+  second: 2,
+  '2nd': 2,
+  third: 3,
+  '3rd': 3,
+  fourth: 4,
+  '4th': 4,
+  fifth: 5,
+  '5th': 5,
+  last: 'last',
+};
+
 /**
- * Reads the repeat rules Tasks writes most often:
+ * Reads the repeat rules Tasks writes, and a few more:
  *
  * - `every day`, `every 3 weeks`, `every month`, `every 2 years`
+ * - `every other day`, `every other week`, and so on: the same as `every 2`
  * - `every weekday`, `every Monday`, `every week on Tuesday, Friday`
+ * - `every 2 weeks on Monday, Thursday`, `every other Tuesday`
  * - `every month on the 15th`, `every month on the last`
+ * - `every month on the second Tuesday`, `every month on the last Friday`
+ * - `every quarter`, `every 2 quarters`, and `every weekend`, which are
+ *   Deckard's own and not Obsidian Tasks'
  *
  * Any of them can end in `when done`. Anything else returns undefined rather
  * than a guess, so Deckard never writes a wrong next date.
@@ -469,9 +598,47 @@ const WEEKDAY_NAMES = [
 export function parseRecurrence(text: string): RecurrenceRule | undefined {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
   const whenDone = normalized.endsWith(' when done');
-  const rule = whenDone
+  const rule = (whenDone
     ? normalized.slice(0, -' when done'.length)
-    : normalized;
+    : normalized
+  ).replace(/^every other /, 'every 2 ');
+
+  const quarters = /^every (?:(\d+) )?quarters?$/.exec(rule);
+  if (quarters) {
+    const count = Number(quarters[1] ?? '1');
+    return count < 1 ? undefined : { whenDone, next: (from) => addMonths(from, 3 * count) };
+  }
+
+  if (rule === 'every weekend') {
+    return {
+      whenDone,
+      next: (from) => nextDayWhere(from, (weekday) => weekday === 0 || weekday === 6),
+    };
+  }
+
+  const nthWeekday = new RegExp(
+    `^every (?:(\\d+) )?months? on the (${Object.keys(ORDINALS).join('|')}) (${WEEKDAY_NAMES.join('|')})$`,
+  ).exec(rule);
+  if (nthWeekday) {
+    const count = Number(nthWeekday[1] ?? '1');
+    const nth = ORDINALS[nthWeekday[2]];
+    const weekday = WEEKDAY_NAMES.indexOf(nthWeekday[3]);
+    return count < 1
+      ? undefined
+      : { whenDone, next: (from) => nextNthWeekday(from, count, weekday, nth) };
+  }
+
+  // Every N weeks on some days: the days of this week still to come, then
+  // those of the week N weeks on, with weeks starting on Monday as Tasks
+  // counts them.
+  const everyWeeks = /^every (\d+) (?:weeks? on )?(.+)$/.exec(rule);
+  if (everyWeeks) {
+    const count = Number(everyWeeks[1]);
+    const days = readWeekdays(everyWeeks[2]);
+    if (days && count >= 1) {
+      return { whenDone, next: (from) => nextWeekdayEveryNWeeks(from, days, count) };
+    }
+  }
 
   const interval = /^every (?:(\d+) )?(day|week|month|year)s?$/.exec(rule);
   if (interval) {
@@ -511,11 +678,8 @@ export function parseRecurrence(text: string): RecurrenceRule | undefined {
     return { whenDone, next: (from) => nextMonthDay(from, count, day) };
   }
 
-  const weekdays = /^every (?:week on )?(.+)$/
-    .exec(rule)?.[1]
-    .split(/, and |, | and /)
-    .map((name) => WEEKDAY_NAMES.indexOf(name));
-  if (weekdays && weekdays.length > 0 && weekdays.every((day) => day >= 0)) {
+  const weekdays = readWeekdays(/^every (?:week on )?(.+)$/.exec(rule)?.[1]);
+  if (weekdays) {
     return {
       whenDone,
       next: (from) => nextDayWhere(from, (weekday) => weekdays.includes(weekday)),
@@ -523,6 +687,162 @@ export function parseRecurrence(text: string): RecurrenceRule | undefined {
   }
 
   return undefined;
+}
+
+/** Whole-word spellings of a rule, as other apps and people write them. */
+const RULE_SYNONYMS: Readonly<Record<string, string>> = {
+  daily: 'every day',
+  weekly: 'every week',
+  monthly: 'every month',
+  yearly: 'every year',
+  annually: 'every year',
+  biweekly: 'every 2 weeks',
+  fortnightly: 'every 2 weeks',
+  'every fortnight': 'every 2 weeks',
+  quarterly: 'every 3 months',
+  weekdays: 'every weekday',
+  weekends: 'every week on saturday, sunday',
+};
+
+/** The words a repeat rule is written in. */
+const RULE_WORDS: readonly string[] = [
+  'every', 'other', 'day', 'days', 'week', 'weeks', 'month', 'months', 'year', 'years',
+  'quarter', 'quarters', 'weekday', 'weekend', 'on', 'the', 'last',
+  'first', 'second', 'third', 'fourth', 'fifth', '1st', '2nd', '3rd', '4th', '5th',
+  'when', 'done', ...WEEKDAY_NAMES,
+];
+
+/** Edits between two short words, stopping once past `limit`. */
+function wordDistance(left: string, right: string, limit: number): number {
+  if (Math.abs(left.length - right.length) > limit) {
+    return limit + 1;
+  }
+  let previous = Array.from({ length: right.length + 1 }, (_, at) => at);
+  for (let row = 1; row <= left.length; row += 1) {
+    const current = [row];
+    for (let column = 1; column <= right.length; column += 1) {
+      current[column] = Math.min(
+        previous[column] + 1,
+        current[column - 1] + 1,
+        previous[column - 1] + (left[row - 1] === right[column - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[right.length];
+}
+
+/** A word outside the rule's vocabulary, as the nearest word inside it. */
+function correctRuleWord(word: string): string[] {
+  if (/^\d+(?:st|nd|rd|th)?$/.test(word) || RULE_WORDS.includes(word)) {
+    return [word];
+  }
+  const limit = word.length <= 4 ? 1 : 2;
+  const scored = RULE_WORDS.map((candidate) => ({ candidate, distance: wordDistance(word, candidate, limit) }))
+    .filter((entry) => entry.distance <= limit)
+    .sort((left, right) => left.distance - right.distance);
+  const best = scored[0]?.distance;
+  return scored.filter((entry) => entry.distance === best).map((entry) => entry.candidate);
+}
+
+/**
+ * The rules Deckard can read that are nearest to one it cannot, best first
+ * and at most three: a synonym such as `weekly`, the same rule with `every`
+ * in front, or its misspelled words corrected. A `when done` is kept.
+ */
+export function suggestRecurrence(text: string): string[] {
+  const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!normalized || parseRecurrence(normalized)) {
+    return [];
+  }
+  const whenDone = / when done$/.test(normalized);
+  const body = whenDone ? normalized.slice(0, -' when done'.length) : normalized;
+  const tail = whenDone ? ' when done' : '';
+  const candidates: string[] = [];
+  const synonym = RULE_SYNONYMS[body];
+  if (synonym) {
+    candidates.push(synonym);
+  }
+  const bodies = body.startsWith('every ') || body === 'every' ? [body] : [body, `every ${body}`];
+  for (const candidate of bodies) {
+    candidates.push(candidate);
+    // Each misspelled word, as each of its nearest words.
+    let spellings: string[][] = [[]];
+    for (const word of candidate.split(/(,? )/)) {
+      const options = /^,? $/.test(word) ? [word] : correctRuleWord(word);
+      if (options.length === 0) {
+        spellings = [];
+        break;
+      }
+      spellings = spellings.flatMap((prefix) => options.map((option) => [...prefix, option])).slice(0, 12);
+    }
+    candidates.push(...spellings.map((words) => words.join('')));
+  }
+  const seen = new Set<string>();
+  return candidates
+    .map((candidate) => `${candidate}${tail}`)
+    .filter((candidate) => {
+      if (seen.has(candidate) || !parseRecurrence(candidate)) {
+        return false;
+      }
+      seen.add(candidate);
+      return true;
+    })
+    .slice(0, 3);
+}
+
+/** Weekday names as a rule lists them, `tuesday, friday`, as day numbers. */
+function readWeekdays(list: string | undefined): number[] | undefined {
+  const days = list?.split(/, and |, | and |,/).map((name) => WEEKDAY_NAMES.indexOf(name.trim()));
+  return days && days.length > 0 && days.every((day) => day >= 0) ? days : undefined;
+}
+
+/** The Monday a day's week starts on, as Tasks counts weeks. */
+function mondayOf(timestamp: number): number {
+  const weekday = new Date(timestamp).getDay();
+  return addDays(startOfDay(timestamp), -((weekday + 6) % 7));
+}
+
+/**
+ * The next of some weekdays, every N weeks: a day later this week comes
+ * first, and a day in a later week moves N - 1 more weeks on.
+ */
+function nextWeekdayEveryNWeeks(from: number, weekdays: readonly number[], weeks: number): number {
+  const next = nextDayWhere(from, (weekday) => weekdays.includes(weekday));
+  return weeks > 1 && mondayOf(next) !== mondayOf(from) ? addDays(next, 7 * (weeks - 1)) : next;
+}
+
+/** The nth weekday of a month, or its last; undefined when it has no fifth. */
+function nthWeekdayOfMonth(
+  year: number,
+  month: number,
+  weekday: number,
+  nth: number | 'last',
+): number | undefined {
+  if (nth === 'last') {
+    const last = new Date(year, month + 1, 0);
+    return addDays(last.getTime(), -((last.getDay() - weekday + 7) % 7));
+  }
+  const first = new Date(year, month, 1);
+  const day = 1 + ((weekday - first.getDay() + 7) % 7) + 7 * (nth - 1);
+  const date = new Date(year, month, day);
+  return date.getMonth() === ((month % 12) + 12) % 12 ? date.getTime() : undefined;
+}
+
+/**
+ * The first such weekday after `from`, in its month or every N months on. A
+ * month without a fifth one is skipped, as Tasks skips it.
+ */
+function nextNthWeekday(from: number, months: number, weekday: number, nth: number | 'last'): number {
+  const start = new Date(from);
+  for (let step = 0; step < 120; step += 1) {
+    const month = new Date(start.getFullYear(), start.getMonth() + step * months, 1);
+    const candidate = nthWeekdayOfMonth(month.getFullYear(), month.getMonth(), weekday, nth);
+    if (candidate !== undefined && candidate > from) {
+      return candidate;
+    }
+  }
+  return addMonths(from, months);
 }
 
 /** Reads a `YYYY-MM-DD` date as local midnight, rejecting impossible dates. */
@@ -565,6 +885,12 @@ export interface DueDescription {
   /** The relative phrase with the date beside it, as a row or card writes it. */
   label: string;
   overdue: boolean;
+  /**
+   * Set once the date is more than `needsNewDateAfterDays` behind today: the
+   * label says `was due 2026-07-01`, drawn muted rather than red, and
+   * `overdue` is false, since it is no longer today's emergency.
+   */
+  stale?: boolean;
   /** Days from today to the due date; negative once it has passed. */
   days: number;
 }
@@ -585,6 +911,9 @@ export function describeDueDate(
 ): DueDescription {
   const days = Math.round((startOfDay(dueAt) - startOfDay(now)) / DAY_MS);
   const date = dueText ?? formatIsoDate(dueAt);
+  if (days < 0 && needsNewDate(dueAt, now)) {
+    return { relative: 'was due', label: `was due ${date}`, overdue: false, stale: true, days };
+  }
   const overdue = days < 0;
   const distance = Math.abs(days);
   let relative: string;
@@ -751,4 +1080,27 @@ export function appendToTaskText(text: string, token: string): string {
   const blockId = BLOCK_ID_PATTERN.exec(text);
   const body = (blockId ? text.slice(0, blockId.index) : text).trimEnd();
   return `${body} ${token}${blockId ? blockId[0].trimEnd() : ''}`;
+}
+
+/**
+ * A task carried forward and left behind, as a bullet journal marks it:
+ * `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`. It is not a task to the
+ * index, so it stops counting as open, and it is not a note either.
+ */
+export const MIGRATED_TASK_LINE = /^\s*[-*+][ \t]+\[>\]/;
+
+/**
+ * Marks a task line as migrated to a day's note: its box becomes `[>]` and
+ * a link to where it went follows its words, ahead of a trailing block id.
+ */
+export function markMigrated(line: string, checkboxColumn: number, target: string): string {
+  const marked =
+    line[checkboxColumn - 1] === '[' && line[checkboxColumn + 1] === ']'
+      ? `${line.slice(0, checkboxColumn)}>${line.slice(checkboxColumn + 1)}`
+      : line.replace(/\[[ xX]\]/, '[>]');
+  const trimmed = marked.replace(/[ \t]+$/, '');
+  const blockId = BLOCK_ID_PATTERN.exec(trimmed);
+  const head = blockId ? trimmed.slice(0, blockId.index) : trimmed;
+  const tail = blockId ? trimmed.slice(blockId.index) : '';
+  return `${head} → [[${target}]]${tail}`;
 }

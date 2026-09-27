@@ -1,3 +1,4 @@
+import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
 import {
   countTagMatches,
@@ -6,6 +7,7 @@ import {
 } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
+  DashboardTryNext,
   DashboardWidget,
   DashboardWidgetConfig,
   DashboardWidgetKind,
@@ -28,7 +30,7 @@ import {
   sortTasks,
 } from './dashboardState';
 import { frecencyScore } from './frecency';
-import { listQuietPeople } from './peopleRecency';
+import { listQuietTags } from './peopleRecency';
 import { pinKey, resolvePin } from './pinnedNotes';
 import {
   collectFileTags,
@@ -56,6 +58,8 @@ export interface DashboardWidgetOptions {
     enableKeywordLinks: boolean;
     ranking: RelatedNotesRankingOptions;
   };
+  /** Try next's suggestion, which the host chooses. */
+  tryNext?: DashboardTryNext;
 }
 
 /** Each widget's heading. A saved-search widget is named after its search. */
@@ -77,8 +81,9 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   tagPairs: 'Tags written together',
   unhubbedTags: 'Tags without a hub',
   newTags: 'New tags',
-  quietPeople: 'People gone quiet',
+  quietPeople: 'Gone quiet',
   pinnedNotes: 'Pinned notes',
+  tryNext: 'Try next',
 };
 
 /**
@@ -152,10 +157,12 @@ function createWidget(
           error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
         };
       }
+      // A list of things to do: parked tasks stay out unless it asks for them.
+      const found = parsed.node
+        ? evaluateQuery(index, parsed.node).tasks
+        : [...index.tasks.values()];
       const tasks = sortTasks(
-        parsed.node
-          ? evaluateQuery(index, parsed.node).tasks
-          : [...index.tasks.values()],
+        mentionsParked(parsed.node) ? found : withoutParked(found, index),
         preferences.taskOrder,
         preferences.taskSortMode,
       );
@@ -170,11 +177,28 @@ function createWidget(
       const groups = createAgenda(index, options.now, {
         tasks: selectAgendaTasks(index, options.agendaQuery ?? '').tasks,
         upcomingDays: options.upcomingDays,
+        doneToday: true,
       });
+      // What needs a new date is a line under the list, not a group in it.
+      const needsNewDate =
+        groups.find((group) => group.id === 'needsdate')?.entries.length ?? 0;
+      const doneToday =
+        groups.find((group) => group.id === 'donetoday')?.entries.length ?? 0;
+      const listed = groups.filter(
+        (group) => group.id !== 'needsdate' && group.id !== 'donetoday',
+      );
+      const scope = options.agendaQuery?.trim();
       return {
         ...widget,
-        total: groups.reduce((sum, group) => sum + group.entries.length, 0),
-        agenda: groups.map((group) => ({
+        total: listed.reduce((sum, group) => sum + group.entries.length, 0),
+        ...(doneToday > 0 ? { doneToday } : {}),
+        ...(needsNewDate > 0
+          ? {
+              needsNewDate,
+              needsNewDateQuery: scope ? `(${scope}) AND is:needs-date` : 'is:needs-date',
+            }
+          : {}),
+        agenda: listed.map((group) => ({
           id: group.id,
           label: group.label,
           count: group.entries.length,
@@ -269,7 +293,7 @@ function createWidget(
           { label: 'Open tasks', value: tasks.filter((task) => !task.completed).length },
           { label: 'Tasks', value: tasks.length },
           { label: 'Tags', value: index.tags.size },
-          { label: 'Entities', value: index.entities.size },
+          { label: 'Namespaced tags', value: index.entities.size },
         ],
       };
     }
@@ -285,16 +309,15 @@ function createWidget(
         tagTitleDisplayMode: options.tagTitleDisplayMode,
         now: options.now,
         // A widget takes its own few entries off the top of the whole
-        // result, so it is not the reader's page size that decides what it
-        // has to choose from.
-        paged: false,
+        // result, so its own count, not the reader's page size, is the page.
+        pageSize: count,
       });
       return {
         ...widget,
         title: filter.name,
         savedQuery: query,
         ...(filter.page ? { savedPage: filter.page } : {}),
-        noteTotal: page.sections.length,
+        noteTotal: page.notePaging?.total ?? page.sections.length,
         notes: page.sections.slice(0, count).map((card) => {
           const fileName = getFileName(card.filePath) ?? card.filePath;
           return {
@@ -325,7 +348,7 @@ function createWidget(
     case 'staleTasks': {
       // A task is as old as the note it is in, as the note dates itself.
       const cutoff = options.now - (config.days ?? 30) * DAY;
-      const stale = [...index.tasks.values()]
+      const stale = withoutParked([...index.tasks.values()], index)
         .flatMap((task) => {
           const updatedAt =
             index.files.get(task.filePath)?.updatedAt ?? task.updatedAt;
@@ -392,7 +415,9 @@ function createWidget(
       const tags = [...index.tags.values()]
         .filter(
           (tag) =>
-            !tag.hubFilePaths?.length && tag.count >= HUB_SUGGESTION_MINIMUM,
+            !tag.hubFilePaths?.length &&
+            tag.count >= HUB_SUGGESTION_MINIMUM &&
+            !isParkedOnlyTag(index, tag.key),
         )
         .sort(
           (left, right) =>
@@ -434,9 +459,21 @@ function createWidget(
       };
     }
     case 'quietPeople': {
-      const quiet = listQuietPeople(index, options.now, config.days ?? 90);
+      const quiet = listQuietTags(index, options.now, config.days ?? 90, {
+        namespace: config.namespace,
+        noOpenTasks: config.noOpenTasks,
+      });
       return {
         ...widget,
+        // What the gear offers: every namespace the index holds.
+        namespaces: [
+          ...new Set(
+            [...index.entities.values()].map((entity) => String(entity.kind).toLowerCase()),
+          ),
+          'person',
+        ]
+          .filter((name, at, all) => all.indexOf(name) === at)
+          .sort(),
         total: quiet.length,
         tags: take(quiet).map((person) => ({
           key: person.tag.key,
@@ -458,6 +495,8 @@ function createWidget(
       });
       return { ...widget, total: pinned.length, notes: take(pinned) };
     }
+    case 'tryNext':
+      return options.tryNext ? { ...widget, tryNext: options.tryNext } : widget;
   }
 }
 

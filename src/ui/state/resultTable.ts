@@ -145,10 +145,13 @@ export function createTaskCells(
           ? { text: task.dueText ?? '' }
           : task.completed
             ? { text: task.dueText ?? formatIsoDate(task.dueAt) }
-            : {
-                text: describeDueDate(task.dueAt, now, task.dueText).label,
-                ...(task.dueAt < today ? { kind: 'overdue' } : {}),
-              };
+            : (() => {
+                const due = describeDueDate(task.dueAt, now, task.dueText);
+                return {
+                  text: due.label,
+                  ...(due.stale ? { kind: 'muted' as const } : task.dueAt < today ? { kind: 'overdue' as const } : {}),
+                };
+              })();
       case 'scheduled':
         return date(task.scheduledAt);
       case 'start':

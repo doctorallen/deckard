@@ -46,7 +46,7 @@ export function createWikiLink(
   return paths.length > 1
     ? {
         text,
-        warning: `${paths.length} notes are called “${title}”, so this link will not resolve until one of them is renamed.`,
+        warning: `${paths.length} notes are called “${title}”, so this link will not open a note until one of them is renamed.`,
       }
     : { text };
 }
@@ -103,8 +103,8 @@ export async function insertWikiLink(
 ): Promise<boolean> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
-    void vscode.window.showWarningMessage(
-      'Open the Markdown note you want the link written in, then insert it.',
+    void vscode.window.showInformationMessage(
+      'Open the note you want the link written in, then insert it.',
     );
     return false;
   }

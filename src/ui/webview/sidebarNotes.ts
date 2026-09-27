@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+
+import { listedParkedTags } from '../../core/workspace/parked';
+import { onDidChangePageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../core/timing';
@@ -8,6 +10,7 @@ import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { refineQueryText } from '../../core/query/queryEdit';
 import {
+  LinkMentionMessage,
   ParsedFile,
   RefineActiveSearchMessage,
   Section,
@@ -23,11 +26,19 @@ import {
   RelatedNotesRankingOptions,
 } from '../state/relatedNotesRanking';
 import { createWikiLink, insertWikiLink } from '../commands/insertLink';
-import { openSourceAt } from '../commands/navigation';
+import { openSourceAt, resolveSourceUri } from '../commands/navigation';
+import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../commands/notify';
+import { appendTagToLine } from '../commands/bulkEdit';
+import { findTagTarget } from '../../core/markdown/tagTarget';
+import { getEntityNamespaceAliases, getPersonMarker } from '../../core/markdown/parser';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
+import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
+import { linkMentions } from '../commands/unlinkedMentions';
+import { applyWorkspaceWrite } from '../commands/workspaceWrites';
+import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -60,7 +71,23 @@ export class SidebarNotesView
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Related Notes', priority: () => viewPriority(this.view) },
+        () => this.refresh(),
+      ),
+    );
+    // While the first scan runs, the waiting line says how far it has got.
+    if (indexer.onDidProgress) {
+      this.disposables.push(
+        indexer.onDidProgress(() => {
+          if (!this.indexed) {
+            this.scheduleRefresh();
+          }
+        }),
+      );
+    }
     this.disposables.push(activeSearch.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => {
@@ -86,6 +113,10 @@ export class SidebarNotesView
       }),
     );
     this.disposables.push(
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.enableKeywordLinks') ||
@@ -102,10 +133,6 @@ export class SidebarNotesView
             'deckard.enableHeadingTagRelationships',
           )
         ) {
-          this.refresh();
-        }
-        if (affectsPageChrome(event)) {
-          this.renderHtml();
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.autoSelectNoteSections')) {
@@ -148,7 +175,7 @@ export class SidebarNotesView
     this.renderHtml();
     this.activeSearch.setSidebarVisible(webviewView.visible);
     this.refresh();
-    void this.indexer.ready.then(() => {
+    void whenPublished(this.indexer).then(() => {
       this.indexed = true;
       this.refresh();
     });
@@ -172,7 +199,7 @@ export class SidebarNotesView
     documentUri: vscode.Uri,
     sourceLine: number,
   ): Promise<void> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const filePath = this.indexer.getFilePath(documentUri);
     const file = index.files.get(filePath);
@@ -183,9 +210,10 @@ export class SidebarNotesView
         ? findTaggedEntry(file, savedLine)
         : undefined;
     if (!file || savedLine === undefined || !entry) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not find that tagged entry in the saved note. Save the file and try again.',
-      );
+      void reportFailure({
+        outcome: 'Deckard could not find that entry in the note as it is now.',
+        fix: 'Save the note so Deckard reads it again, then try again.',
+      });
       return;
     }
 
@@ -244,7 +272,7 @@ export class SidebarNotesView
     documentUri: vscode.Uri,
     sourceLine: number,
   ): Promise<EntryRelatedNotesDiagnostic | undefined> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const filePath = this.indexer.getFilePath(documentUri);
     const file = index.files.get(filePath);
@@ -329,7 +357,10 @@ export class SidebarNotesView
       `Sending Related Notes state: ${currentSnapshot.state}${currentSnapshot.refine ? ` (search ${currentSnapshot.refine.title})` : currentSnapshot.activeFileName ? ` (Markdown ${currentSnapshot.activeFileName})` : ''}, ${currentSnapshot.notes.length} note entries.`,
     );
     void this.view.webview
-      .postMessage({ type: 'state', data: currentSnapshot })
+      .postMessage({
+        type: 'state',
+        data: { ...currentSnapshot, parkedTags: listedParkedTags(this.indexer) },
+      })
       .then(
         (delivered) =>
           this.log(
@@ -394,6 +425,9 @@ export class SidebarNotesView
         notes: [],
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         state: this.indexed ? 'notIndexed' : 'loading',
+        ...(!this.indexed && this.indexer.scanProgress
+          ? { progress: this.indexer.scanProgress }
+          : {}),
       };
     }
 
@@ -413,7 +447,7 @@ export class SidebarNotesView
       this.entryContext?.filePath === selectedFilePath
         ? createEntryScope(selectedFile, this.entryContext.sourceLine)
         : undefined;
-    return createSidebarSnapshot(
+    const snapshot = createSidebarSnapshot(
       index,
       selectedFilePath,
       activeEntry?.file ?? selectedFile,
@@ -425,6 +459,18 @@ export class SidebarNotesView
       activeEntry?.tagWeights,
       this.getRelatedNotesRankingOptions(),
     );
+    // What links here is about the whole note, whichever entry is selected.
+    const indexedFile = selectedFilePath ? index.files.get(selectedFilePath) : undefined;
+    const hideDailyNotes = this.preferences.value.hideDailyNotes === true;
+    const previewLines = this.preferences.value.relatedNotesPreviewLines ?? 1;
+    return indexedFile
+      ? {
+          ...snapshot,
+          hideDailyNotes,
+          previewLines,
+          links: collectNoteLinks(index, indexedFile, { hideDailyNotes }),
+        }
+      : { ...snapshot, hideDailyNotes, previewLines };
   }
 
   private getTagTitleDisplayMode(): TagTitleDisplayMode {
@@ -516,6 +562,11 @@ export class SidebarNotesView
         'relatedNotesRecencyHalfLifeDays',
         0,
       ),
+      hidePeriodicNotes: this.preferences.value.hideDailyNotes === true,
+      // The board's status is how a task moves, not what a note is about.
+      excludedTagNamespaces: [
+        vscode.workspace.getConfiguration('deckard').get<string>('board.statusNamespace', 'status').trim() || 'status',
+      ],
     };
   }
 
@@ -588,6 +639,9 @@ export class SidebarNotesView
     }
     if (message.type === 'setRelatedNotesSort') {
       await this.preferences.setRelatedNotesSortMode(message.mode);
+      // The view does not follow every preference write, so it redraws here:
+      // the list in its new order, and the select saying so.
+      this.refresh();
       return;
     }
     if (message.type === 'openTag') {
@@ -595,6 +649,10 @@ export class SidebarNotesView
       if (tagKey) {
         await this.onOpenTag(tagKey);
       }
+      return;
+    }
+    if (message.type === 'parkTag' || message.type === 'unparkTag') {
+      await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
       return;
     }
     if (message.type === 'renameTag') {
@@ -623,11 +681,67 @@ export class SidebarNotesView
       return;
     }
 
+    if (message.type === 'linkMention') {
+      await this.linkMention(message);
+      return;
+    }
+
+    if (message.type === 'setHideDailyNotes') {
+      await this.preferences.setHideDailyNotes(message.hide);
+      this.refresh();
+      return;
+    }
+
+    if (message.type === 'addSuggestedTag') {
+      await this.addSuggestedTag(message.tagKey);
+      return;
+    }
+
+    if (message.type === 'setRelatedNotesPreviewLines') {
+      await this.preferences.setRelatedNotesPreviewLines(message.lines);
+      this.refresh();
+      return;
+    }
+
+    if (message.type === 'openLinksSearch') {
+      // Built here from the note itself, never from text the page sent.
+      const filePath = this.getSelectedFilePath();
+      const file = filePath ? index.files.get(filePath) : undefined;
+      if (file) {
+        await vscode.commands.executeCommand(
+          'deckard.search',
+          createLinksSearchQuery(file, this.preferences.value.hideDailyNotes === true),
+        );
+      }
+      return;
+    }
+
+    if (message.type === 'linkAllMentions') {
+      const filePath = this.createSnapshot().links ? this.getSelectedFilePath() : undefined;
+      const uri = filePath ? await resolveSourceUri(filePath) : undefined;
+      if (uri) {
+        await linkMentions(this.indexer, uri);
+      }
+      return;
+    }
+
     if (message.type !== 'openSource') {
       return;
     }
     const active = this.getActiveFile();
     const snapshot = this.createSnapshot();
+    // A line that links here, or names this note, opens where it is.
+    const link = [
+      ...(snapshot.links?.linkedFromNotes.flatMap((group) => group.entries) ?? []),
+      ...(snapshot.links?.mentions ?? []),
+    ].find(
+      (candidate) =>
+        candidate.filePath === message.filePath && candidate.line === message.line,
+    );
+    if (link) {
+      await openSourceAt(link.filePath, link.line, undefined, message.beside === true);
+      return;
+    }
     const note = snapshot.notes.find(
       (candidate) =>
         candidate.filePath === message.filePath &&
@@ -646,6 +760,123 @@ export class SidebarNotesView
         message.beside === true,
       );
     }
+  }
+
+  /** The note Related Notes is about: the one chosen by hand, or the active one. */
+  private getSelectedFilePath(): string | undefined {
+    return this.entryContext?.source === 'manual'
+      ? this.entryContext.filePath
+      : this.getActiveFile()?.filePath;
+  }
+
+  /**
+   * Makes one mention a link, as written: `atlas` becomes `[[atlas]]`. The
+   * mention is found again in the snapshot and in its note as it is now, so
+   * a line edited since is left alone. It is one write, taken back by Undo
+   * Last Change.
+   */
+  private async linkMention(message: LinkMentionMessage): Promise<void> {
+    const mention = this.createSnapshot().links?.mentions.find(
+      (candidate) =>
+        candidate.filePath === message.filePath &&
+        candidate.line === message.line &&
+        candidate.startColumn === message.startColumn,
+    );
+    const uri = mention ? await resolveSourceUri(mention.filePath) : undefined;
+    if (!mention || !uri) {
+      return;
+    }
+    const document = await vscode.workspace.openTextDocument(uri);
+    const range = new vscode.Range(
+      mention.line - 1,
+      mention.startColumn,
+      mention.line - 1,
+      mention.endColumn,
+    );
+    if (mention.line > document.lineCount || document.getText(range) !== mention.name) {
+      void reportStale([uri]);
+      return;
+    }
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, range, `[[${mention.name}]]`);
+    await applyWorkspaceWrite(edit, {
+      label: `a link to ${mention.name} in ${mention.title}`,
+    });
+    await this.indexer.refresh();
+  }
+
+  /**
+   * Writes a tag the similar notes use onto the untagged note, on the
+   * heading or line where the cursor is, found from the note as it is now.
+   * The tag must still be one the sidebar offers. One write, which the
+   * message's Undo and Undo Last Change both take back.
+   */
+  private async addSuggestedTag(tagKey: string): Promise<void> {
+    const snapshot = this.createSnapshot();
+    const tag = snapshot.similar?.tags.find((candidate) => candidate.key === tagKey);
+    const filePath = this.getSelectedFilePath();
+    if (!tag || !filePath) {
+      return;
+    }
+    const editor = vscode.window.activeTextEditor;
+    if (
+      !editor ||
+      !isMarkdownDocument(editor.document) ||
+      this.indexer.getFilePath(editor.document.uri) !== filePath
+    ) {
+      void vscode.window.showInformationMessage(
+        'Open the note in an editor, and put the cursor where the tag should go.',
+      );
+      return;
+    }
+    const document = editor.document;
+    const lines = document.getText().split(/\r?\n/);
+    const target = findTagTarget(lines, editor.selection.active.line + 1);
+    if (!target) {
+      void vscode.window.showInformationMessage('Write a heading or a line first, then add the tag to it.');
+      return;
+    }
+    const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
+    const before = lines[target.line - 1];
+    const after = appendTagToLine(before, tag.label, {
+      entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
+      personMarker: getPersonMarker(configuration.get<unknown>('personMarker', '@')),
+    });
+    if (after === before) {
+      void vscode.window.showInformationMessage(`This line already has ${tag.label}.`);
+      return;
+    }
+    const where = target.kind === 'heading' ? `"${target.label}"` : target.label;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(document.uri, document.lineAt(target.line - 1).range, after);
+    const written = await applyWorkspaceWrite(edit, {
+      label: `${tag.label} on ${where}`,
+      preview: 'never',
+    });
+    if (!written.applied) {
+      void reportFailure(describeRejectedEdit(noteName(document.uri)));
+      return;
+    }
+    await this.indexer.refresh();
+    const uri = document.uri;
+    void vscode.window
+      .showInformationMessage(`Added ${tag.label} to ${where}.`, 'Undo')
+      .then(async (choice) => {
+        if (choice !== 'Undo') {
+          return;
+        }
+        const now = await vscode.workspace.openTextDocument(uri);
+        if (target.line > now.lineCount || now.lineAt(target.line - 1).text !== after) {
+          void vscode.window.showWarningMessage(
+            `Line ${target.line} changed after the tag was added, so Deckard left it as it is.`,
+          );
+          return;
+        }
+        const undo = new vscode.WorkspaceEdit();
+        undo.replace(uri, now.lineAt(target.line - 1).range, before);
+        await applyWorkspaceWrite(undo, { label: `taking ${tag.label} off ${where}`, preview: 'never' });
+        await this.indexer.refresh();
+      });
   }
 
   /**

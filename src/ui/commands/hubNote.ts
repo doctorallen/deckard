@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { describeMissingTag, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 
 import { getTagKind } from '../../core/query/queryEvaluator';
 import { TagInfo, TagReference, WorkspaceIndex } from '../../core/types';
@@ -73,16 +74,12 @@ export async function createHubNote(
   const index = indexer.getSnapshot();
   const tag = index.tags.get(tagKey);
   if (!tag) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not find the tag: ${tagKey}`,
-    );
+    void reportFailure({ outcome: describeMissingTag(tagKey) });
     return undefined;
   }
   const workspaceFolder = await findWorkspaceFolder(index, tag);
   if (!workspaceFolder) {
-    void vscode.window.showWarningMessage(
-      'Open a workspace folder to create a hub note.',
-    );
+    void reportNeedsFolder();
     return undefined;
   }
 
@@ -91,13 +88,11 @@ export async function createHubNote(
   const notesFolderUri = indexer.getNotesFolderUri(workspaceFolder);
   const noteUri = vscode.Uri.joinPath(notesFolderUri, fileName);
   if (await exists(noteUri)) {
-    const choice = await vscode.window.showWarningMessage(
-      `${fileName} already exists. Add "describes: ${getDescribesValue(tag)}" to its front matter to make it the hub note for ${tag.label}.`,
-      'Open',
-    );
-    if (choice === 'Open') {
-      await vscode.window.showTextDocument(noteUri, { preview: false });
-    }
+    void reportFailure({
+      outcome: `${fileName} already exists, so Deckard did not create a hub note.`,
+      fix: `Add "describes: ${getDescribesValue(tag)}" to its front matter to make it the hub note for ${tag.label}.`,
+      action: openNoteAction(noteUri),
+    });
     return undefined;
   }
 

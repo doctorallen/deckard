@@ -70,6 +70,45 @@ class Element {
     this.ownerDocument.activeElement = this;
   }
 
+  /** A script's own click, such as a menu key choosing its row. */
+  click() {
+    const event = {
+      target: this,
+      currentTarget: this,
+      preventDefault: () => undefined,
+      propagationStopped: false,
+      stopPropagation() { this.propagationStopped = true; },
+      stopImmediatePropagation() { this.propagationStopped = true; },
+    };
+    for (const handler of [...(this.ownerDocument.listeners.click ?? [])]) {
+      handler(event);
+      if (event.propagationStopped) break;
+    }
+  }
+
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) return true;
+    }
+    return false;
+  }
+
+  get id() {
+    return this.attributes.id ?? '';
+  }
+
+  set id(value) {
+    this.attributes.id = String(value);
+  }
+
+  get className() {
+    return this.attributes.class ?? '';
+  }
+
+  set className(value) {
+    this.attributes.class = String(value);
+  }
+
   appendChild(child) {
     if (child.parentElement) child.remove();
     child.parentElement = this;
@@ -85,6 +124,10 @@ class Element {
     child.ownerDocument = this.ownerDocument;
     this.children.splice(index < 0 ? this.children.length : index, 0, child);
     return child;
+  }
+
+  prepend(child) {
+    return this.insertBefore(child, this.children[0]);
   }
 
   remove() {
@@ -104,6 +147,7 @@ class Element {
     const copy = new Element(this.tagName, { ...this.attributes });
     copy.ownerDocument = this.ownerDocument;
     copy.text = this.text;
+    copy.tail = this.tail;
     if (deep) {
       this.children.forEach((child) => copy.appendChild(child.cloneNode(true)));
     }
@@ -120,7 +164,7 @@ class Element {
   }
 
   get textContent() {
-    return this.text + this.children.map((child) => child.textContent).join('');
+    return this.text + this.children.map((child) => child.textContent + (child.tail ?? '')).join('');
   }
 
   set textContent(value) {
@@ -244,7 +288,11 @@ function parseFragment(html, parent, ownerDocument) {
     if (textRun !== undefined) {
       const current = stack[stack.length - 1];
       if (current) {
-        current.text += decodeEntities(textRun);
+        // Text after a child belongs after it, as `#project` then `/` in a
+        // tag's namespace, rather than before every child.
+        const last = current.children[current.children.length - 1];
+        if (last) last.tail = (last.tail ?? '') + decodeEntities(textRun);
+        else current.text += decodeEntities(textRun);
       }
       continue;
     }
@@ -323,6 +371,7 @@ function mountWebview(html, panel) {
   document.getElementById = (id) =>
     id === 'app' ? app : root.querySelector(`#${id}`);
   document.querySelector = (selector) => root.querySelector(selector);
+  document.contains = (node) => root.contains(node);
   // A test says which element is under the pointer.
   document.elementFromPoint = () => document.pointerTarget ?? null;
   document.querySelectorAll = (selector) => root.querySelectorAll(selector);

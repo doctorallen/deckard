@@ -10,9 +10,13 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createQuerySuggestions } from '../ui/state/dashboardState';
 import {
   buildQuickFindResults,
+  findChoiceKey,
   fuzzyScore,
   QuickFindResults,
 } from '../ui/state/quickFindState';
+import { findDailyNoteRow, isNoteName, keyLabel, toPickItems } from '../ui/commands/quickFind';
+import { formatCapture } from '../ui/commands/capture';
+import { parseDatePhrase } from '../core/markdown/dates';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -57,7 +61,7 @@ function createFinder(notes: Record<string, string>) {
         preferences,
         input,
         (text) => store.searchEntries(text, { limit: 200 }),
-        { conditions },
+        { conditions, formatCapture: (text) => formatCapture(text) },
       ),
     dispose: () => store.dispose(),
   };
@@ -189,10 +193,137 @@ suite('Quick Find', () => {
     }
   });
 
+  test('with nothing typed, lists pinned notes first, then the five opened last', async () => {
+    const finder = createFinder({
+      'atlas.md': '# Atlas\n## Next\nWork.',
+      'harbor.md': '# Harbor',
+      ...Object.fromEntries(Array.from({ length: 7 }, (_, n) => [`n${n}.md`, `# Note ${n}`])),
+    });
+    const store = new PreferencesStore(new MemoryMemento());
+    try {
+      const idOf = (heading: string) =>
+        [...finder.index.sections.values()].find((section) => section.heading === heading)!.id;
+      await store.pinNote({ filePath: 'atlas.md', heading: 'Next', headingLevel: 2, occurrence: 0 });
+      await store.pinNote({ filePath: 'harbor.md', heading: 'Gone', headingLevel: 1, occurrence: 0 });
+      await store.recordSectionAccess(idOf('Next'), 100);
+      for (let n = 0; n < 7; n += 1) {
+        await store.recordSectionAccess(idOf(`Note ${n}`), 200 + n);
+      }
+      for (let n = 0; n < 7; n += 1) {
+        await store.recordRecentQuery(`search ${n}`);
+      }
+      const results = finder.find('', store.value);
+      assert.deepStrictEqual(
+        results.pinned?.map((item) => [item.label, item.description, item.detail]),
+        [
+          ['Next', 'Pinned · atlas.md', undefined],
+          ['Gone', 'Pinned · harbor.md', 'heading not found'],
+        ],
+      );
+      assert.deepStrictEqual(results.notes.map((item) => item.label), ['Note 6', 'Note 5', 'Note 4', 'Note 3', 'Note 2']);
+      assert.strictEqual(results.recent.length, 5);
+      const labels = toPickItems(results, '')
+        .filter((item) => item.kind === vscode.QuickPickItemKind.Separator)
+        .map((item) => item.label);
+      assert.deepStrictEqual(labels, ['Pinned', 'Recently opened', 'Recent searches']);
+      assert.ok(toPickItems(results, '').some((item) => item.label === '$(pinned) Next'));
+    } finally {
+      finder.dispose();
+    }
+  });
+
+  test('writes a key the way VS Code writes it on each platform', () => {
+    assert.strictEqual(keyLabel('cmd+enter', 'darwin'), '⌘Enter');
+    assert.strictEqual(keyLabel('alt+enter', 'darwin'), '⌥Enter');
+    assert.strictEqual(keyLabel('cmd+.', 'darwin'), '⌘.');
+    assert.strictEqual(keyLabel('cmd+enter', 'linux'), 'Ctrl+Enter');
+    assert.strictEqual(keyLabel('alt+enter', 'win32'), 'Alt+Enter');
+    assert.strictEqual(keyLabel('cmd+.', 'win32'), 'Ctrl+.');
+  });
+
+  test('learns the result chosen for what was typed, and never ranks it above an exact title', async () => {
+    const finder = createFinder({
+      'contract.md': '# Vendor contract\nThe terms.',
+      'misc.md': '# Misc\nA vendor visited; vendor notes.',
+      'vendors.md': '# Vendors\nList.',
+    });
+    const store = new PreferencesStore(new MemoryMemento());
+    try {
+      const misc = finder.find('vend', store.value).notes.find((item) => item.label === 'Misc')!;
+      const key = findChoiceKey(finder.index, misc)!;
+      assert.ok(key.startsWith('note:'));
+      const before = finder.find('vend', store.value).notes.map((item) => item.label);
+      assert.notStrictEqual(before[0], 'Misc');
+      for (let n = 0; n < 3; n += 1) {
+        await store.recordFindChoice('Vend', key, Date.now());
+      }
+      for (const typed of ['vend', 'ven']) {
+        const labels = finder.find(typed, store.value).notes.map((item) => item.label);
+        assert.strictEqual(labels[0], 'Misc', typed);
+      }
+      // What was typed is exactly a title: that title still leads.
+      await store.recordFindChoice('vendors', key, Date.now());
+      assert.strictEqual(finder.find('vendors', store.value).notes[0].label, 'Vendors');
+      // An old choice weighs less than a fresh one.
+      const old = new PreferencesStore(new MemoryMemento());
+      await old.recordFindChoice('vend', key, Date.now() - 400 * 24 * 60 * 60 * 1000);
+      assert.notStrictEqual(finder.find('vend', old.value).notes[0].label, 'Misc');
+      old.dispose();
+    } finally {
+      finder.dispose();
+      store.dispose();
+    }
+  });
+
+  test('offers to capture what it could not find, when the words read as something to do', () => {
+    const finder = createFinder({
+      'atlas.md': '# Atlas #project/atlas\nThe budget is due.',
+      'ren.md': '# Ren\nRen likes coffee.',
+    });
+    try {
+      const friday = parseDatePhrase('friday', Date.now(), { direction: 'future' })?.date;
+      const none = finder.find('Call Ren friday p2');
+      assert.strictEqual(none.capture?.text, 'Call Ren friday p2');
+      assert.strictEqual(none.capture?.line, `- [ ] Call Ren ⏫ 📅 ${friday}`);
+      assert.ok(toPickItems(none, 'Call Ren friday p2').some((item) => item.label === '$(inbox) Capture “Call Ren friday p2” to today’s note'));
+      assert.ok(finder.find('#project/atlas budget meeting').capture, 'a tag among the words');
+      assert.strictEqual(finder.find('is:overdue zebra').capture, undefined, 'not a search with a condition');
+      assert.strictEqual(finder.find('budget').capture, undefined, 'not when a note has every word');
+    } finally {
+      finder.dispose();
+    }
+  });
+
   test('scores characters that start words and follow each other highest', () => {
     const initials = fuzzyScore('vc', 'vendor contract') ?? 0;
     const scattered = fuzzyScore('vc', 'every cocoa') ?? 0;
     assert.ok(initials > scattered);
     assert.strictEqual(fuzzyScore('xyz', 'vendor contract'), undefined);
+  });
+
+  test('offers to create a note only for words that read as a name', () => {
+    assert.strictEqual(isNoteName('Vendor contract'), true);
+    assert.strictEqual(isNoteName('#project/atlas'), false);
+    assert.strictEqual(isNoteName('is:open'), false);
+    assert.strictEqual(isNoteName('atlas OR harbor'), false);
+    assert.strictEqual(isNoteName('"exact words"'), false);
+  });
+
+  test('a day typed opens that day\'s note, in place of creating a note by its name', () => {
+    // Friday 2026-09-25, noon.
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const empty: QuickFindResults = createFinder({}).find('friday');
+    const row = findDailyNoteRow('friday', now);
+    assert.deepStrictEqual(row, {
+      date: '2026-10-02',
+      label: '$(calendar) Open daily note for Fri, Oct 2',
+      description: '2026-10-02 · in 7 days',
+    });
+    const items = toPickItems(empty, 'friday', row);
+    assert.strictEqual(items[0].label, '$(calendar) Open daily note for Fri, Oct 2');
+    assert.ok(!items.some((item) => item.label.includes('Create note')), 'no note called friday');
+    assert.strictEqual(findDailyNoteRow('Atlas plan', now), undefined);
+    assert.strictEqual(findDailyNoteRow('fri', now), undefined, 'a short weekday is searched as a word');
+    assert.strictEqual(findDailyNoteRow('#project/atlas', now), undefined);
   });
 });

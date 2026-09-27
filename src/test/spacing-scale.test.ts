@@ -20,8 +20,8 @@ function offScale(css: string): string[] {
   const found: string[] = [];
   for (const match of css.matchAll(/(?:padding|margin|gap)(?:-[a-z]+)?:\s*([^;]+);/g)) {
     for (const part of match[1].trim().split(/\s+/)) {
-      if (part.startsWith('var(') || part.startsWith('calc(')) continue;
-      if (!SCALE.has(part)) found.push(match[0].trim());
+      if (part.startsWith('var(') || part.startsWith('calc(')) {continue;}
+      if (!SCALE.has(part)) {found.push(match[0].trim());}
     }
   }
   return found;

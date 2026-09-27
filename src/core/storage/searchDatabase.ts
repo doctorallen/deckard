@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { DatabaseSync, StatementSync } from 'node:sqlite';
 
 import { ParsedFile, Section } from '../types';
+import { encodeParsedFile } from './parsedFileCodec';
 
 /**
  * The full-text cache's database: its layout, and the writes that keep it in
@@ -16,7 +17,7 @@ import { ParsedFile, Section } from '../types';
  * The cache's layout. A database from an older layout is dropped and rebuilt
  * from the next scan.
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /**
  * How long a connection waits for another to finish writing before it gives
@@ -51,15 +52,19 @@ export function openSearchDatabase(databasePath: string): DatabaseSync {
       PRAGMA user_version = ${SCHEMA_VERSION};
     `);
   }
-  // A note row records only what tells a rescan whether the note changed.
-  // Its entries are found through the note's id, which is indexed, because
-  // the text index cannot look rows up by an unindexed column cheaply.
+  // A note row records what tells a rescan whether the note changed, and
+  // the note as last parsed, which the next start shows before it has read
+  // anything. Its entries are found through the note's id, which is
+  // indexed, because the text index cannot look rows up by an unindexed
+  // column cheaply.
   database.exec(`
     CREATE TABLE IF NOT EXISTS notes (
       id INTEGER PRIMARY KEY,
       file_path TEXT NOT NULL UNIQUE,
       updated_at INTEGER,
-      bytes INTEGER NOT NULL
+      created_at INTEGER,
+      bytes INTEGER NOT NULL,
+      parsed TEXT
     ) STRICT;
     CREATE TABLE IF NOT EXISTS entries (
       id INTEGER PRIMARY KEY,
@@ -90,7 +95,10 @@ export function openSearchDatabase(databasePath: string): DatabaseSync {
 /** What a rescan compares a note against to tell whether it changed. */
 export interface StoredNote {
   updatedAt: number | null;
+  createdAt: number | null;
   bytes: number;
+  /** Whether the row holds the parsed note. */
+  parsed: boolean;
 }
 
 /**
@@ -105,7 +113,10 @@ export interface StoredNote {
 export interface NoteToWrite {
   filePath: string;
   updatedAt: number | null;
+  createdAt: number | null;
   bytes: number;
+  /** The parsed note, encoded for the cache. */
+  parsed: string;
   entries: SearchEntry[];
 }
 
@@ -135,11 +146,13 @@ export class SearchWriter {
 
   public constructor(private readonly database: DatabaseSync) {
     this.upsertNoteRow = database.prepare(
-      `INSERT INTO notes (file_path, updated_at, bytes)
-       VALUES (?, ?, ?)
+      `INSERT INTO notes (file_path, updated_at, created_at, bytes, parsed)
+       VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(file_path) DO UPDATE SET
          updated_at = excluded.updated_at,
-         bytes = excluded.bytes`,
+         created_at = excluded.created_at,
+         bytes = excluded.bytes,
+         parsed = excluded.parsed`,
     );
     this.findNoteId = database.prepare(
       'SELECT id FROM notes WHERE file_path = ?',
@@ -168,15 +181,56 @@ export class SearchWriter {
     const stored = new Map<string, StoredNote>();
     for (const row of this.database
       .prepare(
-        'SELECT file_path AS filePath, updated_at AS updatedAt, bytes FROM notes',
+        `SELECT file_path AS filePath, updated_at AS updatedAt,
+                created_at AS createdAt, bytes, parsed IS NOT NULL AS parsed
+         FROM notes`,
       )
       .all()) {
       stored.set(String(row.filePath), {
         updatedAt: row.updatedAt === null ? null : Number(row.updatedAt),
+        createdAt: row.createdAt === null ? null : Number(row.createdAt),
         bytes: Number(row.bytes),
+        parsed: Number(row.parsed) === 1,
       });
     }
     return stored;
+  }
+
+  /**
+   * Up to `limit` parsed notes after row `afterId`, in the order they were
+   * first written, for reading the cache a page at a time.
+   */
+  public readParsedPage(
+    afterId: number,
+    limit: number,
+  ): Array<{ id: number; filePath: string; parsed: string }> {
+    return this.database
+      .prepare(
+        `SELECT id, file_path AS filePath, parsed FROM notes
+         WHERE id > ? AND parsed IS NOT NULL
+         ORDER BY id LIMIT ?`,
+      )
+      .all(afterId, limit)
+      .map((row) => ({
+        id: Number(row.id),
+        filePath: String(row.filePath),
+        parsed: String(row.parsed),
+      }));
+  }
+
+  /** A value the cache keeps beside its notes, such as the last scan's counts. */
+  public readMeta(key: string): string | undefined {
+    const row = this.database.prepare('SELECT value FROM meta WHERE key = ?').get(key);
+    return row ? String(row.value) : undefined;
+  }
+
+  public writeMeta(key: string, value: string): void {
+    this.database
+      .prepare(
+        `INSERT INTO meta (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      )
+      .run(key, value);
   }
 
   /**
@@ -239,7 +293,13 @@ export class SearchWriter {
   public writeNote(note: NoteToWrite): void {
     // An update keeps the note's id, so its old entries are found and
     // replaced.
-    this.upsertNoteRow.run(note.filePath, note.updatedAt, note.bytes);
+    this.upsertNoteRow.run(
+      note.filePath,
+      note.updatedAt,
+      note.createdAt,
+      note.bytes,
+      note.parsed,
+    );
     const noteId = Number(this.findNoteId.get(note.filePath)?.id);
     this.deleteEntryText.run(noteId);
     this.deleteEntries.run(noteId);
@@ -276,8 +336,9 @@ export class SearchWriter {
 }
 
 /**
- * What a scan changes about the cache: the notes whose saved time or size
- * differ, and the notes the scan no longer finds.
+ * What a scan changes about the cache: the notes whose saved time, created
+ * time, or size differ, or whose parsed note the cache lacks, and the notes
+ * the scan no longer finds.
  *
  * The comparison is what makes a rescan cheap, and it is cheap itself: it
  * reads a path, a time, and a size per note, never a note's text. It runs
@@ -296,8 +357,10 @@ export function compareToStored(
     const previous = rebuild ? undefined : stored.get(file.filePath);
     const unchanged =
       previous !== undefined &&
+      previous.parsed &&
       file.fileTimes?.updatedAt !== undefined &&
       previous.updatedAt === file.fileTimes.updatedAt &&
+      previous.createdAt === (file.fileTimes.createdAt ?? null) &&
       previous.bytes === Buffer.byteLength(file.content, 'utf8');
     if (!unchanged) {
       changes.write.push(createNoteToWrite(file));
@@ -318,7 +381,9 @@ export function createNoteToWrite(file: ParsedFile): NoteToWrite {
   return {
     filePath: file.filePath,
     updatedAt: file.fileTimes?.updatedAt ?? null,
+    createdAt: file.fileTimes?.createdAt ?? null,
     bytes: Buffer.byteLength(file.content, 'utf8'),
+    parsed: encodeParsedFile(file),
     entries: createSearchEntries(file),
   };
 }

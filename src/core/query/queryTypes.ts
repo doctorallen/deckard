@@ -16,6 +16,9 @@
  * Obsidian Tasks metadata, so only tasks can satisfy them. The remaining
  * fields describe the source unit itself.
  *
+ * `link` matches the entries that link to a note, written `link = [[Atlas]]`
+ * or as a bare `[[Atlas]]`; `[[Atlas#Decision]]` names one heading of it.
+ *
  * `assignee` reads the person a task is for: whoever the 👤 field on its
  * line names. Only tasks can satisfy it, the way the date fields work.
  *
@@ -26,6 +29,7 @@
  */
 export type QueryField =
   | 'tag'
+  | 'link'
   | 'text'
   | 'is'
   | 'task'
@@ -45,6 +49,7 @@ export type QueryField =
 
 export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',
+  'link',
   'text',
   'is',
   'task',
@@ -76,11 +81,19 @@ export const QUERY_IS_VALUES = [
   'note',
   'overdue',
   'due',
+  'today',
+  'needs-date',
+  'waiting',
+  'available',
   'blocked',
   'blocking',
   'mine',
   'assigned',
   'unassigned',
+  'daily',
+  'periodic',
+  'parked',
+  'step',
 ] as const;
 
 /** Values `has:` and `no:` accept: a task date, a priority, or an id. */
@@ -92,6 +105,7 @@ export const QUERY_HAS_VALUES = [
   'priority',
   'id',
   'dependsOn',
+  'steps',
 ] as const;
 
 /** Task date fields. Each also accepts `none`, meaning no date is written. */
@@ -132,6 +146,7 @@ export const QUERY_FIELD_OPERATORS: Readonly<
   Record<QueryField, readonly QueryOperator[]>
 > = {
   tag: ['eq', 'neq'],
+  link: ['eq', 'neq'],
   text: ['contains', 'notContains', 'eq', 'neq'],
   is: ['eq', 'neq'],
   task: ['eq', 'neq'],
@@ -275,17 +290,19 @@ export interface QueryFacetValue {
   /** The query text that narrows to this value. */
   clause: string;
   /**
-   * How strongly a related tag is associated with the search's tags, from 0
-   * to 1, relative to the strongest one listed.
+   * How much of the results a related tag is on, from 0 to 1: its count
+   * over `total`. The rail fills by it.
    */
   strength?: number;
+  /** How many results there are, when `strength` is a share of them. */
+  total?: number;
   /** Why the value is offered, such as how often two tags are written together. */
   detail?: string;
 }
 
 /** One way the current results could be narrowed, with its counts. */
 export interface QueryFacet {
-  id: 'related' | 'status' | 'due' | 'tags' | 'updated' | 'folder';
+  id: 'related' | 'status' | 'due' | 'tags' | 'links' | 'updated' | 'created' | 'folder' | 'parked';
   label: string;
   values: QueryFacetValue[];
   /** This facet's clauses the query already has, as written. */

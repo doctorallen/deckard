@@ -19,6 +19,22 @@ suite('Workspace writes', () => {
     assert.strictEqual(shouldPreview('never', 9), false);
   });
 
+  test('says when there is a write to take back, for the palette', () => {
+    const history = new WorkspaceWriteHistory();
+    const heard: boolean[] = [];
+    history.onDidChange((canUndo) => heard.push(canUndo));
+    const uri = vscode.Uri.file('/notes/a.md');
+    const write = { label: 'a write', at: 0, notes: [{ uri, before: 'a', after: 'b' }] };
+
+    history.remember({ ...write, notes: [] });
+    assert.deepStrictEqual(heard, [], 'a write that changed nothing is not one to undo');
+    history.remember(write);
+    history.remember(write);
+    assert.deepStrictEqual(heard, [true], 'told once, when it starts being true');
+    history.clear();
+    assert.deepStrictEqual(heard, [true, false]);
+  });
+
   test('saves what it wrote, and puts every note back on an undo', async () => {
     const root = await createTemporaryRoot();
     const first = vscode.Uri.joinPath(root, 'first.md');
@@ -50,6 +66,7 @@ suite('Workspace writes', () => {
       label: 'the rename of #project/atlas',
       restored: 2,
       skipped: 0,
+      skippedUris: [],
     });
     assert.strictEqual(await read(first), '# Atlas #project/atlas\n');
     assert.strictEqual(await read(second), 'Also #project/atlas here.\n');
@@ -80,11 +97,15 @@ suite('Workspace writes', () => {
     await write(other, 'Rewritten by hand.\n');
 
     const undone = await history.undo();
-    assert.deepStrictEqual(undone, {
-      label: 'the rename of #a',
-      restored: 1,
-      skipped: 1,
-    });
+    assert.deepStrictEqual(
+      { ...undone, skippedUris: undone?.skippedUris.map(String) },
+      {
+        label: 'the rename of #a',
+        restored: 1,
+        skipped: 1,
+        skippedUris: [other.toString()],
+      },
+    );
     assert.strictEqual(await read(note), 'One #a tag.\n');
     assert.strictEqual(await read(other), 'Rewritten by hand.\n');
     await deleteTemporaryRoot(root);

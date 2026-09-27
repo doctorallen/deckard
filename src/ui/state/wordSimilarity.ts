@@ -17,6 +17,8 @@ interface LexicalModel {
 
 interface LexicalEvidence {
   weight: number;
+  /** The BM25 sum before it is capped, which orders wording-only results. */
+  rawWeight: number;
   terms: Array<{ term: string; contribution: number }>;
 }
 
@@ -163,7 +165,7 @@ export function getLexicalWeight(
   knownTerms?: string[],
 ): LexicalEvidence {
   if (!model || model.queryTerms.size === 0) {
-    return { weight: 0, terms: [] };
+    return { weight: 0, rawWeight: 0, terms: [] };
   }
   const terms = knownTerms ?? getLexicalTerms(title, content);
   const frequencies = getTermFrequencies(terms);
@@ -188,8 +190,75 @@ export function getLexicalWeight(
   );
   return {
     weight: Math.min(0.3, rawWeight / (rawWeight + 1)),
+    rawWeight,
     terms: contributions.sort((left, right) => right.contribution - left.contribution),
   };
+}
+
+/** A section's or task's terms, cached as the corpus caches them. */
+export function getEntryTerms(index: WorkspaceIndex, entry: Section | Task): string[] {
+  return 'heading' in entry
+    ? getSectionTerms(entry, index.files.get(entry.filePath)?.sections ?? [])
+    : getTaskTerms(entry);
+}
+
+/** Every entry holding each term, built once per index. */
+const termPostings = new WeakMap<WorkspaceIndex, Map<string, Array<Section | Task>>>();
+
+export function getTermPostings(index: WorkspaceIndex): Map<string, Array<Section | Task>> {
+  let postings = termPostings.get(index);
+  if (!postings) {
+    postings = new Map();
+    const add = (entry: Section | Task, terms: string[]): void => {
+      new Set(terms).forEach((term) => {
+        const list = postings?.get(term);
+        if (list) {
+          list.push(entry);
+        } else {
+          postings?.set(term, [entry]);
+        }
+      });
+    };
+    index.sections.forEach((section) => add(section, getEntryTerms(index, section)));
+    index.tasks.forEach((task) => add(task, getTaskTerms(task)));
+    termPostings.set(index, postings);
+  }
+  return postings;
+}
+
+/**
+ * The wording model for a note with nothing else to go on: its terms by
+ * tf·idf over the corpus, the top `maxTerms` of them, as Lucene's
+ * MoreLikeThis chooses 25. A long journal note would otherwise match
+ * everything. Only terms some other note also holds are kept.
+ */
+export function createMoreLikeThisModel(
+  index: WorkspaceIndex,
+  activeFile: ParsedFile,
+  maxTerms = 25,
+): LexicalModel {
+  const corpus = getLexicalCorpus(index);
+  const postings = getTermPostings(index);
+  const frequencies = getTermFrequencies(getLexicalTerms('', activeFile.content));
+  const model = { ...corpus, queryTerms: new Set<string>(), queryOrder: new Map<string, number>() };
+  const ranked = [...frequencies.entries()]
+    .filter(
+      ([term]) =>
+        !isCommonplace(model, term) &&
+        (postings.get(term) ?? []).some((entry) => entry.filePath !== activeFile.filePath),
+    )
+    .map(([term, frequency]) => {
+      const documents = corpus.documentFrequency.get(term) ?? 0;
+      const inverse = Math.log(1 + (corpus.documentCount - documents + 0.5) / (documents + 0.5));
+      return { term, score: frequency * inverse };
+    })
+    .sort((left, right) => right.score - left.score || left.term.localeCompare(right.term))
+    .slice(0, maxTerms);
+  ranked.forEach(({ term }, order) => {
+    model.queryTerms.add(term);
+    model.queryOrder.set(term, order);
+  });
+  return model;
 }
 
 /**

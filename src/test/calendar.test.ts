@@ -1,10 +1,15 @@
 import * as assert from 'assert';
 
+import * as vscode from 'vscode';
+
 import { parseMarkdown } from '../core/markdown/parser';
+import { setTaskPolicy } from '../core/taskPolicy';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
+import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { parseCalendarMessage } from '../ui/webview/messages';
+import { openWebviewPage } from './webviewPage';
 
 suite('Calendar', () => {
   const note = (filePath: string, content: string) =>
@@ -53,6 +58,52 @@ suite('Calendar', () => {
       [calendar.previousMonth, calendar.nextMonth, calendar.currentMonth],
       ['2026-08', '2026-10', '2026-09'],
     );
+  });
+
+  test('starts each row on the week start, and finds a week note written under another', () => {
+    const monday = createCalendar(
+      buildWorkspaceIndex(
+        new Map(
+          [note('notes/week-2026-09-20-2026-09-26.md', '# Week'), note('notes/2026-W37.md', '# 2026-W37')].map(
+            (file) => [file.filePath, file],
+          ),
+        ),
+      ),
+      '2026-09',
+      new Date(2026, 8, 13, 10),
+      1,
+    );
+    assert.deepStrictEqual(monday.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    assert.ok(
+      monday.weeks.every((week) => parseLocalDate(week.days[0].date)?.getDay() === 1),
+      'every row opens on a Monday',
+    );
+    const row = monday.weeks.find((week) => week.date === '2026-09-21');
+    assert.strictEqual(row?.week, 'week-2026-09-21-2026-09-27');
+    assert.strictEqual(row?.notePath, 'notes/week-2026-09-20-2026-09-26.md', 'the Sunday note it mostly shares');
+    assert.strictEqual(
+      monday.weeks.find((week) => week.date === '2026-09-07')?.notePath,
+      'notes/2026-W37.md',
+      'an ISO week note under either start',
+    );
+    assert.deepStrictEqual(calendar.weekdays, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    assert.strictEqual(
+      calendar.weeks.find((week) => week.date === '2026-09-06')?.notePath,
+      'notes/2026-W37.md',
+    );
+  });
+
+  test('marks the days past needsNewDateAfterDays, and leaves them out at 0', () => {
+    assert.strictEqual(calendar.needsNewDateBefore, '2026-08-14', 'thirty days before 2026-09-13');
+    setTaskPolicy({ needsNewDateAfterDays: 0 });
+    try {
+      assert.strictEqual(
+        createCalendar(index, '2026-09', new Date(2026, 8, 13, 10)).needsNewDateBefore,
+        undefined,
+      );
+    } finally {
+      setTaskPolicy();
+    }
   });
 
   test("marks each day's daily note and open tasks, and today", () => {
@@ -104,5 +155,61 @@ suite('Calendar', () => {
     assert.strictEqual(parseCalendarMessage({ type: 'openWeek', date: '../notes' }), undefined);
     assert.strictEqual(parseCalendarMessage({ type: 'deleteNote' }), undefined);
     assert.strictEqual(parseCalendarMessage('openDay'), undefined);
+  });
+
+  test('a day past the line keeps its count, muted, and says its tasks need a new date', () => {
+    const old = buildWorkspaceIndex(
+      new Map(
+        [note('notes/old.md', '- [ ] Renew the lease 📅 2026-08-03\n- [ ] Chase it 📅 2026-08-20')].map(
+          (file) => [file.filePath, file],
+        ),
+      ),
+    );
+    const page = openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      createCalendar(old, '2026-08', new Date(2026, 8, 13, 10)),
+    );
+    try {
+      const day = (date: string) =>
+        page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      assert.ok(day('2026-08-03').querySelector('.due.stale'), 'muted, not orange');
+      assert.match(day('2026-08-03').getAttribute('aria-label') ?? '', /, 1 needs a new date$/);
+      assert.ok(day('2026-08-20').querySelector('.due.overdue'), 'within 30 days it is overdue');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('keeps keyboard focus on its day through a redraw, and after a month step', () => {
+    const page = openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      calendar,
+    );
+    try {
+      const day = (date: string) =>
+        page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      const key = (target: HTMLElement, name: string) =>
+        target.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: name, bubbles: true }));
+
+      day('2026-09-13').focus();
+      key(day('2026-09-13'), 'ArrowRight');
+      assert.strictEqual(page.document.activeElement, day('2026-09-14'));
+
+      // A save anywhere sends the month again.
+      page.send(calendar);
+      assert.strictEqual(page.document.activeElement, day('2026-09-14'), 'focus survives the redraw');
+      assert.strictEqual(day('2026-09-14').getAttribute('tabindex'), '0');
+
+      key(day('2026-09-14'), 'PageDown');
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' });
+      page.send(createCalendar(index, '2026-10', new Date(2026, 8, 13, 10)));
+      assert.strictEqual(
+        (page.document.activeElement as HTMLElement).dataset.date,
+        '2026-10-14',
+        'the same day of the next month',
+      );
+    } finally {
+      page.dispose();
+    }
   });
 });

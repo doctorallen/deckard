@@ -1,4 +1,7 @@
-import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
+import { getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
+import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
+import { addDays, startOfDay, TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
+import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
   Section,
@@ -7,6 +10,14 @@ import {
   WorkspaceIndex,
 } from '../types';
 import { resolveIndexedTagKey } from '../workspace/tagNavigation';
+import {
+  getQueryLinkState,
+  LinkQuery,
+  LinkState,
+  matchesLinkQuery,
+  resolveLinkQuery,
+  UnitLink,
+} from './queryLinks';
 import { QueryConditionNode, QueryNode } from './queryTypes';
 
 /**
@@ -44,17 +55,86 @@ export function evaluateQuery(
   }
 
   const membership = buildTagMembership(index);
+  const context = createEvaluationContext(index, node);
+  const links = context.links;
+  const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
+    links ? { ...unit, links: links.byUnit.get(key) } : unit;
   const sections = [...index.sections.values()].filter((section) =>
-    matchesNode(node, createSectionUnit(index, membership, section)),
+    matchesNode(
+      node,
+      withLinks(createSectionUnit(index, membership, section), `section:${section.id}`),
+      context,
+    ),
   );
   const tasks = [...index.tasks.values()].filter((task) =>
-    matchesNode(node, createTaskUnit(index, membership, task)),
+    matchesNode(
+      node,
+      withLinks(createTaskUnit(index, membership, task), `task:${task.id}`),
+      context,
+    ),
   );
+  // A note is a result of its own only when it has tags of its own, or, for
+  // a search by link, a link none of its entries owns.
   const files = [...index.files.values()]
-    .filter((file) => (membership.files.get(file.filePath)?.size ?? 0) > 0)
-    .filter((file) => matchesNode(node, createFileUnit(membership, file)));
+    .filter(
+      (file) =>
+        (membership.files.get(file.filePath)?.size ?? 0) > 0 ||
+        (links?.looseFiles.has(file.filePath) ?? false),
+    )
+    .filter((file) =>
+      matchesNode(
+        node,
+        withLinks(createFileUnit(index, membership, file), `file:${file.filePath}`),
+        context,
+      ),
+    );
 
   return { sections, tasks, files };
+}
+
+/**
+ * What one evaluation reads besides the unit itself: the workspace's links,
+ * only when the search asks about them, and each link value read once.
+ */
+interface EvaluationContext {
+  index: WorkspaceIndex;
+  links?: LinkState;
+  linkQueries: Map<string, LinkQuery>;
+}
+
+function createEvaluationContext(
+  index: WorkspaceIndex,
+  node: QueryNode,
+): EvaluationContext {
+  return {
+    index,
+    ...(hasField(node, 'link') ? { links: getQueryLinkState(index) } : {}),
+    linkQueries: new Map(),
+  };
+}
+
+function hasField(node: QueryNode, field: QueryConditionNode['field']): boolean {
+  switch (node.type) {
+    case 'condition':
+      return node.field === field;
+    case 'not':
+      return hasField(node.child, field);
+    default:
+      return node.children.some((child) => hasField(child, field));
+  }
+}
+
+function matchesLinkCondition(
+  condition: QueryConditionNode,
+  unit: QueryUnit,
+  context: EvaluationContext,
+): boolean {
+  let query = context.linkQueries.get(condition.value);
+  if (!query) {
+    query = resolveLinkQuery(context.index, condition.value);
+    context.linkQueries.set(condition.value, query);
+  }
+  return applyNegation(condition, matchesLinkQuery(unit.links, query));
 }
 
 /** How many notes and tasks a search for a tag finds. */
@@ -94,7 +174,7 @@ export function countTagMatches(
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
-      add(createFileUnit(membership, file).tagKeys, 'notes');
+      add(createFileUnit(index, membership, file).tagKeys, 'notes');
     }
   });
   tagMatchCounts.set(index, counts);
@@ -169,7 +249,7 @@ export function countTagPairMatches(
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
-      add(createFileUnit(membership, file).tagKeys, 'notes');
+      add(createFileUnit(index, membership, file).tagKeys, 'notes');
     }
   });
   const pairs = [...counts.values()];
@@ -210,6 +290,16 @@ interface QueryUnit {
   blocking?: boolean;
   /** The person the task is for: whoever its 👤 field names. */
   assignee?: string;
+  /** The status written on the task's line, such as `waiting`, or ''. */
+  status?: string;
+  /** The `[[links]]` on the unit's own lines, read for a `link` search. */
+  links?: readonly UnitLink[];
+  /** In a parked folder, or found by a search for a parked tag. */
+  parked?: boolean;
+  /** A step: written under another task. */
+  step?: boolean;
+  /** How many steps are written under the task. */
+  stepCount?: number;
 }
 
 /**
@@ -221,6 +311,21 @@ interface QueryUnit {
  * default, with nothing yet mine by name.
  */
 let queryIdentity: string | undefined;
+/** The day a week starts on for `this-week` and its like; Sunday until set. */
+let queryWeekStart: Weekday = 0;
+
+/**
+ * Sets the day a search's weeks start on, from `deckard.calendar.weekStart`,
+ * as `setQueryIdentity` sets who "me" is: the evaluator runs in many places
+ * and none of them reads settings.
+ */
+export function setQueryWeekStart(day: Weekday): void {
+  queryWeekStart = day;
+}
+
+export function getQueryWeekStart(): Weekday {
+  return queryWeekStart;
+}
 
 export function setQueryIdentity(person: string | undefined): void {
   queryIdentity = person?.trim() ? person.trim() : undefined;
@@ -282,6 +387,35 @@ function getDependencyState(index: WorkspaceIndex): DependencyState {
     task.dependsOn?.forEach((id) => state.neededIds.add(id));
   });
   dependencyStates.set(index, state);
+  return state;
+}
+
+/**
+ * The daily notes, and the daily, weekly, and monthly notes, of an index, by
+ * path: what `is:daily` and `is:periodic` ask of any entry, task, or note.
+ */
+interface PeriodicState {
+  daily: Set<string>;
+  periodic: Set<string>;
+}
+
+const periodicStates = new WeakMap<WorkspaceIndex, PeriodicState>();
+
+function getPeriodicState(index: WorkspaceIndex): PeriodicState {
+  const cached = periodicStates.get(index);
+  if (cached) {
+    return cached;
+  }
+  const state: PeriodicState = { daily: new Set(), periodic: new Set() };
+  index.files.forEach((file, filePath) => {
+    if (isDailyNoteFile(file)) {
+      state.daily.add(filePath);
+    }
+    if (isPeriodicNoteFile(file)) {
+      state.periodic.add(filePath);
+    }
+  });
+  periodicStates.set(index, state);
   return state;
 }
 
@@ -358,17 +492,18 @@ function createSectionUnit(
     filePath: section.filePath,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
+    parked: index.parked?.sections.has(section.id) ?? false,
   };
 }
 
-function createTaskUnit(
-  index: WorkspaceIndex,
-  membership: TagMembership,
-  task: Task,
-): QueryUnit {
-  const tagKeys = new Set(membership.tasks.get(task.id) ?? []);
-  const dependencies = getDependencyState(index);
-  task.tags.forEach((tagKey) => tagKeys.add(tagKey));
+/**
+ * Every tag a `tag:` search finds a task by: its own line, the heading it is
+ * under and every heading above that, and its note's front matter. The Tasks
+ * view and the board group by the same set, so a column and the search for
+ * its tag always hold the same tasks.
+ */
+export function readTaskTagKeys(index: WorkspaceIndex, task: Task): Set<string> {
+  const tagKeys = new Set(task.tags);
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
@@ -376,6 +511,17 @@ function createTaskUnit(
     section.tags.forEach((tagKey) => tagKeys.add(tagKey));
     collectInheritedTagKeys(index, section, tagKeys);
   }
+  return tagKeys;
+}
+
+function createTaskUnit(
+  index: WorkspaceIndex,
+  membership: TagMembership,
+  task: Task,
+): QueryUnit {
+  const tagKeys = readTaskTagKeys(index, task);
+  membership.tasks.get(task.id)?.forEach((tagKey) => tagKeys.add(tagKey));
+  const dependencies = getDependencyState(index);
   return {
     kind: 'task',
     tagKeys,
@@ -392,6 +538,10 @@ function createTaskUnit(
     dependencyId: task.dependencyId,
     dependsOn: task.dependsOn,
     assignee: task.assignee,
+    status: readLineStatus(task),
+    parked: index.parked?.tasks.has(task.id) ?? false,
+    step: task.parentTaskId !== undefined,
+    stepCount: task.steps?.total ?? 0,
     blocked:
       !task.completed &&
       (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
@@ -403,6 +553,7 @@ function createTaskUnit(
 }
 
 function createFileUnit(
+  index: WorkspaceIndex,
   membership: TagMembership,
   file: ParsedFile,
 ): QueryUnit {
@@ -415,34 +566,47 @@ function createFileUnit(
     filePath: file.filePath,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
+    parked: index.parked?.files.has(file.filePath) ?? false,
   };
 }
 
-function matchesNode(node: QueryNode, unit: QueryUnit): boolean {
+function matchesNode(
+  node: QueryNode,
+  unit: QueryUnit,
+  context: EvaluationContext,
+): boolean {
   switch (node.type) {
     case 'and':
-      return node.children.every((child) => matchesNode(child, unit));
+      return node.children.every((child) => matchesNode(child, unit, context));
     case 'or':
-      return node.children.some((child) => matchesNode(child, unit));
+      return node.children.some((child) => matchesNode(child, unit, context));
     case 'not':
-      return !matchesNode(node.child, unit);
+      return !matchesNode(node.child, unit, context);
     case 'condition':
-      return matchesCondition(node, unit);
+      return matchesCondition(node, unit, context);
   }
 }
 
 function matchesCondition(
   condition: QueryConditionNode,
   unit: QueryUnit,
+  context: EvaluationContext,
 ): boolean {
   switch (condition.field) {
     case 'tag':
       return applyNegation(condition, matchesTag(condition.value, unit));
+    case 'link':
+      return matchesLinkCondition(condition, unit, context);
     case 'text':
       return matchesText(condition, unit);
     case 'task':
       return applyNegation(condition, matchesTaskState(condition.value, unit));
     case 'is':
+      if (condition.value === 'daily' || condition.value === 'periodic') {
+        const periodic = getPeriodicState(context.index);
+        const notes = condition.value === 'daily' ? periodic.daily : periodic.periodic;
+        return applyNegation(condition, notes.has(unit.filePath));
+      }
       return applyNegation(condition, matchesIs(condition.value, unit));
     case 'has':
       return matchesHas(condition, unit);
@@ -557,6 +721,10 @@ function matchesIs(
   if (value === 'note') {
     return unit.kind !== 'task';
   }
+  if (value === 'parked') {
+    // Notes and tasks alike: parking is about where a thing is, not its kind.
+    return unit.parked === true;
+  }
   if (unit.kind !== 'task') {
     return false;
   }
@@ -576,6 +744,43 @@ function matchesIs(
         unit.dueAt !== undefined &&
         unit.dueAt < startOfDay(now) + 7 * DAY
       );
+    case 'needs-date':
+      return open && needsNewDate(unit.dueAt, now);
+    case 'today': {
+      // Exactly the Tasks view's Today: due today, or scheduled for today or
+      // earlier and started, and not overdue.
+      if (!open) {
+        return false;
+      }
+      const today = startOfDay(now);
+      const tomorrow = today + DAY;
+      if (unit.dueAt !== undefined && unit.dueAt < today) {
+        return false;
+      }
+      if (unit.dueAt !== undefined && unit.dueAt < tomorrow) {
+        return true;
+      }
+      const started = unit.startAt === undefined || unit.startAt < tomorrow;
+      return started && unit.scheduledAt !== undefined && unit.scheduledAt < tomorrow;
+    }
+    case 'waiting':
+      // Waiting on someone: marked so, or handed to someone other than me.
+      return (
+        open &&
+        (unit.status === 'waiting' ||
+          (unit.assignee !== undefined &&
+            !(queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee))))
+      );
+    case 'available':
+      // What can be started now: nothing it waits for is open, it has
+      // started, and its status does not put it on hold.
+      return (
+        open &&
+        unit.parked !== true &&
+        unit.blocked !== true &&
+        (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY) &&
+        !getTaskPolicy().onHoldStatuses.includes(unit.status ?? '')
+      );
     case 'blocked':
       return unit.blocked === true;
     case 'blocking':
@@ -591,6 +796,8 @@ function matchesIs(
       return unit.assignee !== undefined;
     case 'unassigned':
       return unit.assignee === undefined;
+    case 'step':
+      return unit.step === true;
     default:
       return false;
   }
@@ -617,6 +824,8 @@ function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
       return unit.dependencyId !== undefined;
     case 'dependsOn':
       return (unit.dependsOn?.length ?? 0) > 0;
+    case 'steps':
+      return (unit.stepCount ?? 0) > 0;
     default:
       return getTaskDate(unit, field) !== undefined;
   }
@@ -875,16 +1084,30 @@ export function resolveDateRange(
     return { start, end: start + DAY, isWindow: false };
   }
 
+  // A whole week or month: `this-week`, `last-month`, `2026-08`.
+  const period = resolveDatePeriod(normalized, now, queryWeekStart);
+  if (period) {
+    return { ...period, isWindow: false };
+  }
+
+  // Any other day in plain words, with `-` for a space: `friday`,
+  // `end-of-month`, `"oct 3"`. A bare weekday points back for the dates a
+  // note or task already has, and ahead for the ones a task is due.
+  const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
+    direction,
+    weekStart: queryWeekStart,
+  });
+  if (phrase?.date) {
+    const [year, month, day] = phrase.date.split('-').map(Number);
+    const start = new Date(year, month - 1, day).getTime();
+    return { start, end: addDays(start, 1), isWindow: false };
+  }
+
   return undefined;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
 
-function startOfDay(timestamp: number): number {
-  const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
 
 /**
  * Compiles a `*`/`?` glob into an anchored, case-insensitive pattern.

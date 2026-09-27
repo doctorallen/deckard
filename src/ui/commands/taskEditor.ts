@@ -1,27 +1,32 @@
 import * as vscode from 'vscode';
+import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import {
   extractTags,
   isPersonTag,
   readPerson,
 } from '../../core/markdown/parser';
+import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../core/markdown/dates';
 import {
-  describeTaskDate,
   formatTaskDraft,
   isTaskLine,
-  parseTaskDateInput,
   parseTaskDraft,
   TaskDraft,
 } from '../../core/markdown/taskDraft';
 import {
+  CompletionWrite,
   formatIsoDate,
   parseRecurrence,
+  suggestRecurrence,
   TaskDateField,
   TaskMetadataFormat,
+  writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
+import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { readTaskMetadataFormat } from './taskActions';
+import { askForDate } from './datePrompt';
+import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 
 /**
  * Editing a whole task at once: its words, its dates, its priority, its
@@ -93,17 +98,17 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
     { label: 'Dates', kind: vscode.QuickPickItemKind.Separator },
     {
       label: '$(calendar) Due',
-      description: value(draft.due && describeTaskDate(draft.due)),
+      description: value(draft.due && nameDay(draft.due)),
       field: 'due',
     },
     {
       label: '$(watch) Scheduled',
-      description: value(draft.scheduled && describeTaskDate(draft.scheduled)),
+      description: value(draft.scheduled && nameDay(draft.scheduled)),
       field: 'scheduled',
     },
     {
       label: '$(rocket) Start',
-      description: value(draft.start && describeTaskDate(draft.start)),
+      description: value(draft.start && nameDay(draft.start)),
       field: 'start',
     },
     { label: 'And', kind: vscode.QuickPickItemKind.Separator },
@@ -151,7 +156,13 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
  */
 export async function editTaskDraft(
   initial: TaskDraft,
-  options: { title: string; index?: TaskEditorIndex; now?: number } = {
+  options: {
+    title: string;
+    index?: TaskEditorIndex;
+    now?: number;
+    /** `deckard.tasks.addDoneDate`: whether completing writes a ✅ date. */
+    addDoneDate?: boolean;
+  } = {
     title: 'Edit task',
   },
 ): Promise<TaskDraft | undefined> {
@@ -199,15 +210,42 @@ function pickField(
  * The draft a field's new value makes. These are what the editor actually
  * does to a task; the prompts around them only collect the words.
  */
-export function completeDraft(draft: TaskDraft, now: number): TaskDraft {
+export function completeDraft(
+  draft: TaskDraft,
+  now: number,
+  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. */
+  addDoneDate = true,
+): TaskDraft {
   const completed = !draft.completed;
   // Completing here writes the done date a checkbox would have written, and
   // reopening takes it away again, so both agree with the rest of Deckard.
   return {
     ...draft,
     completed,
-    ...(completed ? { done: draft.done ?? formatIsoDate(now) } : { done: undefined }),
+    ...(completed
+      ? { done: draft.done ?? (addDoneDate ? formatIsoDate(now) : undefined) }
+      : { done: undefined }),
   };
+}
+
+/**
+ * The lines an edited task is written as. Completing a repeating task starts
+ * its next occurrence on the line above, as a checkbox does; reopening one,
+ * or editing one already done, writes the one line.
+ */
+export function writeEditedTask(
+  before: TaskDraft,
+  edited: TaskDraft,
+  now: number,
+  eol: string,
+  /** The steps the next occurrence of a repeating task takes, unchecked. */
+  steps: readonly string[] = [],
+): CompletionWrite {
+  const line = formatTaskDraft(edited);
+  if (before.completed || !edited.completed) {
+    return { text: line };
+  }
+  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol, steps);
 }
 
 /** A date field's new value, or nothing when the words are not a day. */
@@ -216,8 +254,9 @@ export function setDraftDate(
   field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>,
   written: string,
   now: number,
+  options: DatePhraseOptions = {},
 ): TaskDraft | undefined {
-  const read = parseTaskDateInput(written, now);
+  const read = parseDatePhrase(written, now, options);
   return read ? { ...draft, [field]: read.date } : undefined;
 }
 
@@ -239,7 +278,7 @@ export function setDraftDependencies(
 async function readField(
   draft: TaskDraft,
   field: DraftField | undefined,
-  options: { index?: TaskEditorIndex; now?: number },
+  options: { index?: TaskEditorIndex; now?: number; addDoneDate?: boolean },
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
   switch (field) {
@@ -253,7 +292,7 @@ async function readField(
       return written === undefined ? undefined : { ...draft, description: written.trim() };
     }
     case 'status':
-      return completeDraft(draft, now);
+      return completeDraft(draft, now, options.addDoneDate ?? true);
     case 'due':
     case 'scheduled':
     case 'start':
@@ -287,8 +326,11 @@ async function readField(
       }
       const rule = written === 'Never' ? '' : written.trim();
       if (rule && !parseRecurrence(rule)) {
+        const [nearest] = suggestRecurrence(rule);
         void vscode.window.showWarningMessage(
-          `Deckard cannot read "${rule}" as a repeat rule, so it would not write the next occurrence. The task keeps the rule it had.`,
+          `Deckard cannot read "${rule}" as a repeat rule, so it would not write the next occurrence. The task keeps the rule it had.${
+            nearest ? ` Try "${nearest}".` : ''
+          }`,
         );
         return undefined;
       }
@@ -323,7 +365,7 @@ async function readField(
       const person = readPerson(chosen);
       if (!person) {
         void vscode.window.showWarningMessage(
-          `Deckard cannot read "${chosen.trim()}" as a person.`,
+          `Deckard cannot read "${chosen.trim()}" as a person. The task keeps the person it had.`,
         );
         return draft;
       }
@@ -342,29 +384,12 @@ async function readDate(
   field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>,
   now: number,
 ): Promise<TaskDraft | undefined> {
-  const written = await vscode.window.showInputBox({
+  const read = await askForDate({
     title: `${field[0].toUpperCase()}${field.slice(1)} date`,
-    prompt:
-      'A date such as 2026-09-25, today, tomorrow, friday, next monday, or in 3 days. Leave it empty to clear it.',
     value: draft[field] ?? '',
-    ignoreFocusOut: true,
-    validateInput: (value) => {
-      const read = parseTaskDateInput(value, now);
-      if (!read) {
-        return 'Deckard cannot read that as a day.';
-      }
-      // Saying the day back is the point of accepting words for one.
-      return read.date
-        ? {
-            message: describeTaskDate(read.date),
-            severity: vscode.InputBoxValidationSeverity.Info,
-          }
-        : undefined;
-    },
+    now,
   });
-  return written === undefined
-    ? undefined
-    : setDraftDate(draft, field, written, now);
+  return read === undefined ? undefined : { ...draft, [field]: read.date };
 }
 
 /** Offers the tags already in the workspace, and takes a new one as typed. */
@@ -461,50 +486,76 @@ export async function editTaskCommand(
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
     void vscode.window.showInformationMessage(
-      'Open a Markdown note to write a task.',
+      'Open a note to write a task in it.',
     );
     return undefined;
   }
 
   const line = editor.document.lineAt(editor.selection.active.line);
   const existing = isTaskLine(line.text);
-  const draft = parseTaskDraft(
-    line.text,
-    readTaskMetadataFormat(
-      vscode.workspace.getConfiguration('deckard', editor.document.uri),
-    ),
+  const configuration = vscode.workspace.getConfiguration(
+    'deckard',
+    editor.document.uri,
   );
+  const draft = parseTaskDraft(line.text, readTaskMetadataFormat(configuration));
   const edited = await editTaskDraft(draft, {
     title: existing ? 'Edit task' : 'Add task',
     ...(index ? { index } : {}),
     now,
+    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
   });
   if (!edited) {
     return undefined;
   }
 
-  const written = formatTaskDraft(edited);
+  const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+  const completion = writeEditedTask(
+    draft,
+    edited,
+    now,
+    eol,
+    existing
+      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
+      : [],
+  );
+  const written = completion.text;
   if (written === line.text) {
     return written;
   }
+  // One edit writes the next occurrence and the completed line together, so
+  // one undo takes both back.
   const applied = await editor.edit((builder) =>
     builder.replace(line.range, written),
   );
   if (!applied) {
-    void vscode.window.showErrorMessage(
-      'Deckard could not write the task. VS Code rejected the edit.',
-    );
+    void reportFailure(describeRejectedEdit(noteName(editor.document.uri)));
     return undefined;
   }
-  // The caret goes to the end of the description, where writing continues.
+  // The caret goes to the end of the description, where writing continues:
+  // on the completed line, which a next occurrence pushed down by one.
   const caret = new vscode.Position(
-    line.lineNumber,
+    line.lineNumber + (completion.next === undefined ? 0 : 1),
     Math.min(
-      written.length,
+      formatTaskDraft(edited).length,
       edited.prefix.length + edited.description.length,
     ),
   );
   editor.selection = new vscode.Selection(caret, caret);
+  if (completion.next !== undefined || completion.unreadRule !== undefined) {
+    const said = describeCompletion(
+      edited.description,
+      completion.next,
+      completion.unreadRule,
+    );
+    // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
+    // a next one started is said in passing; a rule that could not be read
+    // is worth stopping for.
+    if (said.severity === 'warning') {
+      void vscode.window.showWarningMessage(said.text);
+    } else {
+      vscode.window.setStatusBarMessage(said.text, 5000);
+    }
+  }
   return written;
 }
 
@@ -597,6 +648,14 @@ export class TaskEditorActions implements vscode.Disposable {
       command: 'deckard.editTask',
       title: 'Edit task…',
     };
-    return [action];
+    const steps = new vscode.CodeAction(
+      'Break into steps…',
+      vscode.CodeActionKind.Refactor,
+    );
+    steps.command = {
+      command: 'deckard.breakIntoSteps',
+      title: 'Break into steps…',
+    };
+    return [action, steps];
   }
 }

@@ -36,6 +36,20 @@ suite('Tag suggestions', () => {
     });
   });
 
+  test('offers nothing in a Markdown file that is not a note', async () => {
+    const provider = new TagCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => createIndex([createTag('@project', 4)]),
+      isNotesFile: () => false,
+    });
+    const items = await provider.provideCompletionItems(
+      createDocument('/tmp/deckard/node_modules/pkg/README.md', 'Review @pro'),
+      new vscode.Position(0, 11),
+    );
+    assert.deepStrictEqual(items, []);
+    provider.dispose();
+  });
+
   test('filters existing tags and includes entry counts', async () => {
     const provider = new TagCompletionProvider({
       ready: Promise.resolve(),

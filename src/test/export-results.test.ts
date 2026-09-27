@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import { Section, Task } from '../core/types';
 import { csv, formatNotes, formatTasks, markdownTable, noteRows, taskRows } from '../ui/commands/exportResults';
+import { findQueryBlocks, formatQueryBlock } from '../ui/state/queryBlockState';
 
 suite('Exporting results', () => {
   const section = (over: Partial<Section> = {}): Section => ({
@@ -17,6 +18,21 @@ suite('Exporting results', () => {
     checkboxColumn: 3, checkboxValue: ' ', sourceLineText: '- [ ] Ship it', ...over,
   });
   const index = { sections: new Map([['sec', section({ heading: 'Plan' })]]) };
+
+  test('a search becomes a live query block that reads back as written', () => {
+    assert.strictEqual(formatQueryBlock('#project/atlas is:open'), '```deckard\n#project/atlas is:open\n```\n');
+    assert.strictEqual(formatQueryBlock('#a', { sort: 'updated' }), '```deckard sort=updated\n#a\n```\n');
+    const table = formatQueryBlock('is:open', { view: 'table', columns: ['title', 'due'], sort: 'due', direction: 'desc' });
+    assert.strictEqual(table, '```deckard view=table columns=title,due sort=due dir=desc\nis:open\n```\n');
+    const fenced = formatQueryBlock('text ~ "```"');
+    assert.ok(fenced.startsWith('````deckard'), 'a run of three backticks in the search takes a fence of four');
+    for (const block of [table, fenced, formatQueryBlock('#a', { sort: 'created' })]) {
+      const [found] = findQueryBlocks(`# Note\n\n${block}`);
+      assert.ok(found, 'the block is found');
+      assert.deepStrictEqual(found.options.warnings, [], 'with no warnings');
+      assert.ok(found.closed, 'and closed');
+    }
+  });
 
   test('CSV quotes a comma, a quote, and a line break, and doubles the quote', () => {
     assert.strictEqual(

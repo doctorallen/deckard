@@ -7,6 +7,8 @@ import {
   createNotesGraphConnections,
   createNotesGraphSnapshot,
   findNoteNodeIds,
+  graphInputsChanged,
+  toWire,
 } from '../ui/state/notesGraphState';
 import {
   parseNotesGraphMessage,
@@ -36,6 +38,23 @@ suite('Notes graph state', () => {
     assert.ok(
       !titles(2).includes('Far away'),
       'a note sharing nothing stays out however far the graph reaches',
+    );
+  });
+
+  test('passes through a daily note, joining what lies beyond it to where the path began', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas\n\nSee [[2026-09-25]].'),
+      parseMarkdown('notes/2026-09-25.md', '# 2026-09-25\n\nMet about [[relay]].'),
+      parseMarkdown('notes/relay.md', '# Relay'),
+    ]);
+    const focus = findNoteNodeIds(snapshot, 'notes/atlas.md');
+    const daily = (node: { filePath?: string }) => node.filePath === 'notes/2026-09-25.md';
+    const local = createLocalGraphSnapshot(snapshot, focus, 2, daily);
+    assert.deepStrictEqual(local.nodes.map((node) => node.title).sort(), ['Atlas', 'Relay'], 'the daily note is not drawn');
+    assert.strictEqual(local.edges.length, 1, 'what it led to is joined to the note it came from');
+    assert.deepStrictEqual(
+      [local.edges[0].source, local.edges[0].target].sort(),
+      [...focus, ...findNoteNodeIds(snapshot, 'notes/relay.md')].sort(),
     );
   });
 
@@ -280,6 +299,27 @@ suite('Notes graph state', () => {
     assert.strictEqual(tagNode.degree, 1);
   });
 
+  test('counts the links of each node by kind, an edge of two kinds in both', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n\n## Design #project/atlas\n\nBack to [[atlas]] and [[relay]].'),
+      parseMarkdown('notes/relay.md', '# Relay #project/atlas #topic/x'),
+    ]);
+    const byTitle = (title: string) => snapshot.nodes.find((node) => node.title === title);
+    // Design links up to Atlas, which is also its heading: one edge, both kinds.
+    assert.deepStrictEqual(byTitle('Design')?.links, { wiki: 2, heading: 1, tag: 1 });
+    assert.strictEqual(byTitle('Design')?.degree, 3, 'the edge itself counts once');
+    assert.deepStrictEqual(byTitle('Relay')?.links, { wiki: 2, tag: 2 });
+    assert.deepStrictEqual(byTitle('#project/atlas')?.links, { tag: 3, related: 1 });
+
+    const alone = buildSnapshot([parseMarkdown('notes/alone.md', '# Alone')]);
+    assert.strictEqual(alone.nodes[0].links, undefined, 'a node with no links carries no counts');
+
+    const focus = findNoteNodeIds(snapshot, 'notes/relay.md');
+    const local = createLocalGraphSnapshot(snapshot, focus, 1);
+    const relay = local.nodes.find((node) => node.title === 'Relay');
+    assert.deepStrictEqual(relay?.links, { wiki: 2, tag: 2 }, 'a focused graph keeps the workspace counts');
+  });
+
   test('produces deterministic output', () => {
     const files = [
       parseMarkdown('notes/a.md', '# Alpha #project/atlas\n\n- [ ] Task #x'),
@@ -296,6 +336,149 @@ suite('Notes graph state', () => {
 });
 
 suite('Notes graph messages', () => {
+  test('says a save changed the graph exactly when it changed something the graph draws', () => {
+    const text = [
+      '---',
+      'tags: [area/home]',
+      'aliases: [Hub]',
+      '---',
+      '# Atlas #project/atlas',
+      'Words about [[relay]] and #topic/maps.',
+      '## Detail #topic/detail',
+      'More words.',
+      '- [ ] Call [[relay]] #person/dana 📅 2026-10-01',
+      '- [x] Done #project/atlas',
+    ].join('\n');
+    const base = parseMarkdown('notes/atlas.md', text, { createdAt: 1, updatedAt: 2 });
+    const other = parseMarkdown('notes/relay.md', '# Relay #project/atlas #topic/maps');
+    const indexOf = (file: ParsedFile) =>
+      buildWorkspaceIndex(new Map([[file.filePath, file], [other.filePath, other]]));
+    const before = indexOf(base);
+    const graphOf = (index: ReturnType<typeof indexOf>) => ({
+      ...createNotesGraphSnapshot(index),
+      updatedAt: 0,
+    });
+    const detail = base.sections.findIndex((section) => section.heading.startsWith('Detail'));
+    assert.ok(detail > 0 && base.sections[detail].headingTags?.length, 'a nested tagged heading');
+    const variant = (change: (file: ParsedFile) => void): ParsedFile => {
+      const copy = structuredClone(base);
+      change(copy);
+      return copy;
+    };
+
+    // Every field the graph reads. A field the graph starts reading joins
+    // graphSignature and this list.
+    const drawn: Record<string, (file: ParsedFile) => void> = {
+      'section id': (file) => { file.sections[0].id += 'x'; },
+      'heading': (file) => { file.sections[0].heading = 'Atlas two #project/atlas'; },
+      'heading level': (file) => { file.sections[detail].headingLevel = 3; },
+      'inline entry': (file) => { file.sections[detail].isInline = !file.sections[detail].isInline; },
+      'section line': (file) => { file.sections[0].startLine += 1; },
+      'section parent': (file) => { file.sections[detail].parentSectionId = undefined; },
+      'section tags': (file) => { file.sections[0].tags = [...file.sections[0].tags, '#topic/new']; },
+      'section tag spelling': (file) => { file.sections[0].tagLabels = { ...file.sections[0].tagLabels, '#project/atlas': '#Project/Atlas' }; },
+      'body tags': (file) => { file.sections[0].bodyTags = [...(file.sections[0].bodyTags ?? []), { key: '#topic/x', label: '#topic/x', line: 6 }]; },
+      'heading tags': (file) => { file.sections[detail].headingTags = [...(file.sections[detail].headingTags ?? []), { key: '#topic/x', label: '#topic/x' }]; },
+      'section tag groups': (file) => { file.sections[0].associationTagGroups = [...(file.sections[0].associationTagGroups ?? []), [{ key: '#a', label: '#a' }, { key: '#b', label: '#b' }]]; },
+      'section links': (file) => { file.sections[0].links = []; },
+      'task id': (file) => { file.tasks[0].id += 'x'; },
+      'task title': (file) => { file.tasks[0].title = 'Write to [[relay]]'; },
+      'task line': (file) => { file.tasks[0].lineNumber += 1; },
+      'task heading': (file) => { file.tasks[0].sectionId = undefined; },
+      'task tags': (file) => { file.tasks[0].tags = []; },
+      'task tag spelling': (file) => { file.tasks[0].tagLabels = { '#person/dana': '#Person/Dana' }; },
+      'task tag groups': (file) => { file.tasks[0].associationTagGroups = [...(file.tasks[0].associationTagGroups ?? []), [{ key: '#a', label: '#a' }, { key: '#b', label: '#b' }]]; },
+      'task links': (file) => { file.tasks[0].sourceLineText = '- [ ] Call #person/dana'; },
+      'front-matter tags': (file) => { file.frontmatterTags = []; },
+      'note links': (file) => { file.links = []; },
+      'aliases': (file) => { file.aliases = []; },
+      'entry count': (file) => { file.sections = []; },
+    };
+    for (const [field, change] of Object.entries(drawn)) {
+      assert.strictEqual(graphInputsChanged(before, indexOf(variant(change))), true, field);
+    }
+
+    // What the graph does not read: changing it leaves the graph as it was.
+    const notDrawn: Record<string, (file: ParsedFile) => void> = {
+      'content': (file) => { file.content += '\nMore prose.'; },
+      'raw content': (file) => { file.sections[0].rawContent += ' prose'; },
+      'body content': (file) => { file.sections[0].bodyContent += ' prose'; },
+      'note dates': (file) => { file.createdAt = 5; file.updatedAt = 6; },
+      'file times': (file) => { file.fileTimes = { createdAt: 7, updatedAt: 8 }; },
+      'section dates': (file) => { file.sections[0].updatedAt = 9; },
+      'section end': (file) => { file.sections[0].endLine += 3; file.sections[0].bodyEndLine += 3; },
+      'body tag line': (file) => { file.sections.forEach((section) => (section.bodyTags ?? []).forEach((tag) => { tag.line += 1; })); },
+      'task status': (file) => { file.tasks[0].completed = true; file.tasks[0].checkboxValue = 'x'; file.tasks[0].sourceLineText = file.tasks[0].sourceLineText.replace('[ ]', '[x]'); },
+      'task due and priority': (file) => { file.tasks[0].dueAt = 10; file.tasks[0].dueText = '2026-11-01'; file.tasks[0].priority = 'high'; },
+      'block ids': (file) => { file.blockIds = { q3: 6 }; },
+      'hub': (file) => { file.hub = { describes: [{ key: '#project/atlas', label: '#project/atlas' }], properties: [] }; },
+    };
+    for (const [field, change] of Object.entries(notDrawn)) {
+      const after = indexOf(variant(change));
+      assert.strictEqual(graphInputsChanged(before, after), false, field);
+      assert.deepStrictEqual(graphOf(after), graphOf(before), `${field}: the graph is the same`);
+    }
+
+    // A prose edit, parsed for real, is not a change either.
+    const prose = parseMarkdown('notes/atlas.md', text.replace('More words.', 'More words, and more.'));
+    assert.strictEqual(graphInputsChanged(before, indexOf(prose)), false);
+    assert.deepStrictEqual(graphOf(indexOf(prose)), graphOf(before));
+
+    // Notes coming, going, or changing order are.
+    const third = parseMarkdown('notes/third.md', '# Third');
+    const withThird = buildWorkspaceIndex(new Map([[base.filePath, base], [other.filePath, other], [third.filePath, third]]));
+    assert.strictEqual(graphInputsChanged(before, withThird), true, 'a note added');
+    assert.strictEqual(graphInputsChanged(withThird, before), true, 'a note removed');
+    const reordered = buildWorkspaceIndex(new Map([[other.filePath, other], [base.filePath, base]]));
+    assert.strictEqual(graphInputsChanged(before, reordered), true, 'the same notes in another order');
+    assert.strictEqual(graphInputsChanged(undefined, before), true, 'nothing drawn yet');
+    assert.strictEqual(graphInputsChanged(before, before), false);
+  });
+
+  test('sends only the kinds of node the page shows, and no edge ids', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n\nSee [[relay]].\n- [ ] Call [[relay]] #person/dana'),
+      parseMarkdown('notes/relay.md', '# Relay #project/atlas'),
+    ]);
+    assert.ok(snapshot.nodes.some((node) => node.kind === 'task'));
+
+    const whole = toWire(snapshot, { notes: true, tasks: true });
+    assert.deepStrictEqual(
+      whole,
+      {
+        ...snapshot,
+        edges: snapshot.edges.map(({ id: _id, ...edge }) => edge),
+        hiddenNodeCount: 0,
+        edgeCount: snapshot.edges.length,
+      },
+      'everything but the ids',
+    );
+    assert.ok(whole.edges.every((edge) => !('id' in edge)));
+
+    const noTasks = toWire(snapshot, { notes: true, tasks: false });
+    const taskIds = new Set(snapshot.nodes.filter((node) => node.kind === 'task').map((node) => node.id));
+    assert.ok(noTasks.nodes.every((node) => node.kind !== 'task'), 'no task node');
+    assert.ok(
+      noTasks.edges.every((edge) => !taskIds.has(edge.source) && !taskIds.has(edge.target)),
+      'no edge touching one',
+    );
+    assert.strictEqual(noTasks.hiddenNodeCount, taskIds.size);
+    assert.strictEqual(noTasks.edgeCount, snapshot.edges.length);
+    assert.strictEqual(noTasks.totalTaskCount, snapshot.totalTaskCount, 'the totals still count them');
+
+    const onlyTags = toWire(snapshot, { notes: false, tasks: false });
+    assert.ok(onlyTags.nodes.every((node) => node.kind === 'tag'));
+  });
+
+  test('accepts a filter message only with both kinds said', () => {
+    assert.deepStrictEqual(
+      parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: true, showTasks: false }),
+      { type: 'setGraphFilter', showNotes: true, showTasks: false },
+    );
+    assert.strictEqual(parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: true }), undefined);
+    assert.strictEqual(parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: 'yes', showTasks: true }), undefined);
+  });
+
   test('accepts valid openSource and openTag messages', () => {
     assert.deepStrictEqual(
       parseNotesGraphMessage({

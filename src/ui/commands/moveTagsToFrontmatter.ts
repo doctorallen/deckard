@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import {
   EntityNamespaceAliases,
@@ -8,6 +9,11 @@ import {
   getPersonMarker,
   isBuiltInEntityKind,
 } from '../../core/markdown/parser';
+import {
+  getFrontmatterBounds,
+  splitValues,
+  unquote,
+} from '../../core/markdown/frontmatterTags';
 import { TagReference } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
@@ -34,8 +40,8 @@ const frontmatterGroups: FrontmatterTagGroup[] = [
 export async function moveInlineTagsToFrontmatter(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
-    void vscode.window.showWarningMessage(
-      'Open a Markdown note before moving tags to front matter.',
+    void vscode.window.showInformationMessage(
+      'Open a note to move its tags into front matter.',
     );
     return;
   }
@@ -67,9 +73,7 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
     editBuilder.replace(replacementRange, content);
   });
   if (!applied) {
-    void vscode.window.showWarningMessage(
-      'Deckard could not move the note tags into front matter.',
-    );
+    void reportFailure(describeRejectedEdit(noteName(document.uri)));
     return;
   }
 
@@ -146,15 +150,6 @@ export function moveInlineTagsToFrontmatterContent(
   return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join('\n');
 }
 
-function getFrontmatterBounds(
-  lines: string[],
-): { end: number } | undefined {
-  if (lines[0]?.trim() !== '---') {
-    return undefined;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end >= 0 ? { end } : undefined;
-}
 
 function collectFrontmatterValues(
   lines: string[],
@@ -280,21 +275,4 @@ function addFrontmatterValue(
     groupValues.push(normalized);
     values.set(group, groupValues);
   }
-}
-
-function splitValues(value: string): string[] {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return [];
-  }
-  return (trimmed.startsWith('[') && trimmed.endsWith(']')
-    ? trimmed.slice(1, -1).split(',')
-    : [trimmed]
-  )
-    .map((item) => unquote(item.trim()))
-    .filter(Boolean);
-}
-
-function unquote(value: string): string {
-  return value.replace(/^['"]|['"]$/g, '');
 }

@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
+  QUERY_SYNTAX_GUIDE,
   answerQuery,
   answerTags,
   readQueryToolInput,
@@ -96,5 +97,9 @@ suite('Assistant tools', () => {
       search: 'atlas',
       limit: 3,
     });
+  });
+
+  test('tells an assistant how to search by link', () => {
+    assert.match(QUERY_SYNTAX_GUIDE, /\[\[Atlas\]\]/);
   });
 });

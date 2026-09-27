@@ -136,6 +136,22 @@ suite('Editor lenses', () => {
       );
     });
 
+    test('in migrate mode, counts a task that has waited several days once', () => {
+      const copies = createIndex({
+        'notes/2026-09-22.md': '# 2026-09-22\n- [ ] Chase the vendor\n',
+        'notes/2026-09-23.md': '# 2026-09-23\n- [ ] Chase the vendor\n',
+        'notes/2026-09-24.md': '# 2026-09-24\n',
+      });
+      const actions = findDailyNoteActions(
+        copies.files.get('notes/2026-09-24.md') as ParsedFile,
+        copies,
+        '2026-09-24',
+        0,
+        'migrate',
+      );
+      assert.strictEqual(actions?.carryIn.length, 1);
+    });
+
     test('shows nothing for a note that is not a daily note', () => {
       assert.strictEqual(
         findDailyNoteActions(note('notes/Plan.md'), index, '2026-09-22'),

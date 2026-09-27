@@ -8,7 +8,9 @@ import {
   isPersonTag,
   listPeopleRecency,
   listQuietPeople,
+  listQuietTags,
 } from '../ui/state/peopleRecency';
+import { normalizeDashboardWidgets } from '../core/storage/preferences';
 
 /** Only what a widget reads; the rest of Home is not in play here. */
 const preferences: PersistedPreferences = {
@@ -30,6 +32,7 @@ const preferences: PersistedPreferences = {
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
   renderMode: 'markdown',
+  searchPreview: 'lines',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: 30,
@@ -127,6 +130,37 @@ suite('People recency', () => {
     assert.deepStrictEqual(
       listQuietPeople(index, now, 1).map((person) => person.tag.key),
       ['@sable-ortiz', '#person/mara-vale', '@ren-kade'],
+    );
+  });
+
+  test('watches any namespace, counts inherited open tasks, and finds the stuck ones', () => {
+    const projects = indexOf({
+      'notes/atlas.md': `---\nupdated: ${day(120)}\n---\n# Atlas #project/atlas\n- [ ] Book the room`,
+      'notes/beacon.md': `---\nupdated: ${day(100)}\n---\n# Beacon #project/beacon\n- [x] Shipped`,
+      'notes/cedar.md': `---\nupdated: ${day(2)}\n---\n# Cedar #project/cedar`,
+    });
+    assert.deepStrictEqual(
+      listQuietTags(projects, now, 90, { namespace: 'project' }).map((entry) => [entry.tag.key, entry.openTasks]),
+      [
+        ['#project/atlas', 1],
+        ['#project/beacon', 0],
+      ],
+      'a task under the tagged heading counts for the project',
+    );
+    assert.deepStrictEqual(
+      listQuietTags(projects, now, 90, { namespace: 'project', noOpenTasks: true }).map((entry) => entry.tag.key),
+      ['#project/beacon'],
+    );
+    const [widget] = normalizeDashboardWidgets([
+      { id: 'q', kind: 'quietPeople', width: 'half', namespace: 'Project', noOpenTasks: true },
+      { id: 'r', kind: 'quietPeople', width: 'half' },
+    ]);
+    assert.strictEqual(widget.namespace, 'project');
+    assert.strictEqual(widget.noOpenTasks, true);
+    assert.strictEqual(
+      normalizeDashboardWidgets([{ id: 'q', kind: 'quietPeople', width: 'half', namespace: '../etc' }])[0].namespace,
+      undefined,
+      'a namespace that is not a name is dropped',
     );
   });
 

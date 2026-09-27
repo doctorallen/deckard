@@ -2,8 +2,11 @@ import {
   NotesGraphEdge,
   NotesGraphEdgeType,
   NotesGraphConnection,
+  NotesGraphLinkCounts,
   NotesGraphNode,
   NotesGraphSnapshot,
+  NotesGraphWireSnapshot,
+  ParsedFile,
   Section,
   WorkspaceIndex,
 } from '../../core/types';
@@ -53,6 +56,7 @@ export function createNotesGraphSnapshot(
     .sort((left, right) => left.id.localeCompare(right.id));
 
   applyDegrees(sources, tagNodes, edges);
+  markParked(index, sources, tagNodes);
 
   const nodes = [
     ...sources.map((source) => source.node),
@@ -70,6 +74,136 @@ export function createNotesGraphSnapshot(
       .length,
     totalTaskCount: sources.filter((source) => source.node.kind === 'task')
       .length,
+  };
+}
+
+/**
+ * Everything the graph reads from one note, as one string: its entries'
+ * ids, headings, lines, nesting, tags and their spellings, and links, and
+ * the note's own front-matter tags, links, and aliases. Two versions of a
+ * note with the same signature draw the same graph, which is what lets a
+ * save that only changes words inside a line leave the graph alone.
+ *
+ * A field the graph (or the tag counts and associations it draws from)
+ * starts reading must join this, and the list in notes-graph-state.test.ts
+ * that proves the signature covers what the graph reads.
+ */
+export function graphSignature(file: ParsedFile): string {
+  const cached = signatures.get(file);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const references = (tags: readonly { key: string; label: string }[] | undefined) =>
+    (tags ?? []).map((tag) => [tag.key, tag.label]);
+  const signature = JSON.stringify([
+    file.sections.length,
+    references(file.frontmatterTags),
+    file.links,
+    file.aliases ?? [],
+    file.sections.map((section) => [
+      section.id,
+      section.heading,
+      section.headingLevel,
+      section.isInline === true,
+      section.startLine,
+      section.parentSectionId ?? '',
+      section.tags,
+      section.tagLabels,
+      references(section.bodyTags),
+      references(section.headingTags),
+      (section.associationTagGroups ?? []).map(references),
+      section.links,
+    ]),
+    file.tasks.map((task) => [
+      task.id,
+      task.title,
+      task.lineNumber,
+      task.sectionId ?? '',
+      task.tags,
+      task.tagLabels,
+      (task.associationTagGroups ?? []).map(references),
+      extractWikiLinks(task.sourceLineText),
+    ]),
+  ]);
+  signatures.set(file, signature);
+  return signature;
+}
+
+const signatures = new WeakMap<ParsedFile, string>();
+
+/**
+ * Whether the graph drawn from `after` could differ from the one drawn from
+ * `before`: a note came, went, or moved in the order, or a note that changed
+ * changed something the graph draws. A note that was not saved keeps its
+ * parsed object from one index to the next, so only saved notes are compared.
+ */
+export function graphInputsChanged(
+  before: WorkspaceIndex | undefined,
+  after: WorkspaceIndex,
+): boolean {
+  if (!before) {
+    return true;
+  }
+  if (before === after) {
+    return false;
+  }
+  if (before.files.size !== after.files.size) {
+    return true;
+  }
+  const previous = before.files.entries();
+  for (const [filePath, file] of after.files) {
+    const next = previous.next();
+    if (next.done) {
+      return true;
+    }
+    const [previousPath, previousFile] = next.value;
+    if (previousPath !== filePath) {
+      return true;
+    }
+    if (previousFile !== file && graphSignature(previousFile) !== graphSignature(file)) {
+      return true;
+    }
+  }
+  // Parking is a setting, not part of a note: a change to it redraws the
+  // graph without any note changing.
+  return !sameParking(before.parked, after.parked);
+}
+
+/** Which kinds of node the page shows. Tags are always sent. */
+export interface NotesGraphKinds {
+  notes: boolean;
+  tasks: boolean;
+}
+
+/**
+ * The graph as it is sent to the page: without the notes or tasks the page
+ * hides and every edge touching one, and without edge ids, which the page
+ * works out from each edge's ends. The counts the page reports are sent
+ * alongside, so they still describe the whole graph.
+ */
+export function toWire(
+  snapshot: NotesGraphSnapshot,
+  kinds: NotesGraphKinds,
+): NotesGraphWireSnapshot {
+  const shown = (kind: NotesGraphNode['kind']) =>
+    kind === 'note' ? kinds.notes : kind === 'task' ? kinds.tasks : true;
+  const nodes = snapshot.nodes.filter((node) => shown(node.kind));
+  const hiddenNodeCount = snapshot.nodes.length - nodes.length;
+  const kept = hiddenNodeCount > 0 ? new Set(nodes.map((node) => node.id)) : undefined;
+  const edges = snapshot.edges
+    .filter((edge) => !kept || (kept.has(edge.source) && kept.has(edge.target)))
+    .map((edge) => ({
+      source: edge.source,
+      target: edge.target,
+      weight: edge.weight,
+      types: edge.types,
+    }));
+  return {
+    ...snapshot,
+    nodes,
+    edges,
+    hiddenNodeCount,
+    edgeCount: snapshot.edges.length,
   };
 }
 
@@ -171,6 +305,55 @@ function createGraphSources(index: WorkspaceIndex): GraphSource[] {
   }
 
   return sources;
+}
+
+/** Marks the parked entries, tasks, and notes, and the tags only they carry. */
+function markParked(
+  index: WorkspaceIndex,
+  sources: GraphSource[],
+  tagNodes: Map<string, NotesGraphNode>,
+): void {
+  const parked = index.parked;
+  if (!parked) {
+    return;
+  }
+  sources.forEach(({ node }) => {
+    const [kind, ...rest] = node.id.split(':');
+    const id = rest.join(':');
+    const isParked =
+      kind === 'section'
+        ? parked.sections.has(id)
+        : kind === 'task'
+          ? parked.tasks.has(id)
+          : parked.files.has(id);
+    if (isParked) {
+      node.parked = true;
+    }
+  });
+  parked.tags.forEach((key) => {
+    const node = tagNodes.get(key);
+    if (node) {
+      node.parked = true;
+    }
+  });
+}
+
+/** Whether two indexes park the same things. */
+function sameParking(
+  before: WorkspaceIndex['parked'],
+  after: WorkspaceIndex['parked'],
+): boolean {
+  const sets = (state: WorkspaceIndex['parked']) =>
+    state ? [state.files, state.sections, state.tasks, state.tags] : [];
+  const left = sets(before);
+  const right = sets(after);
+  const empty = (list: Set<string>[]) => list.every((set) => set.size === 0);
+  if (left.length === 0 || right.length === 0) {
+    return empty(left) && empty(right);
+  }
+  return left.every(
+    (set, at) => set.size === right[at].size && [...set].every((value) => right[at].has(value)),
+  );
 }
 
 function createTagNodes(
@@ -308,8 +491,11 @@ function addTagMembershipEdges(
 }
 
 /**
- * Counts every relationship. Tag membership is now the clustering primitive,
- * so it contributes to both note and tag node prominence.
+ * Counts every relationship, and each kind of it. Tag membership is the
+ * clustering primitive, so it contributes to both note and tag node
+ * prominence. The counts are the workspace's, so a node's size and tooltip
+ * say the same whatever the page draws, and a focused graph, which reuses
+ * these node objects, keeps them.
  */
 function applyDegrees(
   sources: GraphSource[],
@@ -317,23 +503,42 @@ function applyDegrees(
   edges: NotesGraphEdge[],
 ): void {
   const degreeById = new Map<string, number>();
-  const increment = (id: string): void => {
-    degreeById.set(id, (degreeById.get(id) ?? 0) + 1);
+  const linksById = new Map<string, NotesGraphLinkCounts>();
+  const count = (id: string, kind: keyof NotesGraphLinkCounts): void => {
+    const links = linksById.get(id) ?? {};
+    links[kind] = (links[kind] ?? 0) + 1;
+    linksById.set(id, links);
   };
 
   edges.forEach((edge) => {
     [edge.source, edge.target].forEach((id) => {
-      increment(id);
+      degreeById.set(id, (degreeById.get(id) ?? 0) + 1);
+      edge.types.forEach((type) => {
+        count(id, LINK_KIND[type]);
+      });
     });
   });
 
-  sources.forEach((source) => {
-    source.node.degree = degreeById.get(source.node.id) ?? 0;
-  });
-  tagNodes.forEach((node) => {
+  const apply = (node: NotesGraphNode): void => {
     node.degree = degreeById.get(node.id) ?? 0;
-  });
+    const links = linksById.get(node.id);
+    if (links) {
+      node.links = links;
+    } else {
+      delete node.links;
+    }
+  };
+  sources.forEach((source) => apply(source.node));
+  tagNodes.forEach(apply);
 }
+
+/** Which count each kind of edge adds to. */
+const LINK_KIND: Record<NotesGraphEdgeType, keyof NotesGraphLinkCounts> = {
+  'wiki-link': 'wiki',
+  heading: 'heading',
+  'tag-membership': 'tag',
+  'associated-tag': 'related',
+};
 
 function addEdge(
   edgeMap: Map<string, EdgeAccumulator>,
@@ -501,6 +706,14 @@ export function createLocalGraphSnapshot(
   snapshot: NotesGraphSnapshot,
   focusIds: readonly string[],
   depth: number,
+  /**
+   * Nodes that carry hops but are not drawn, such as daily notes: a daily
+   * note links to everything written that day, so drawn, it ties the whole
+   * neighborhood into one knot; left out entirely, it cuts off what it leads
+   * to. Passed through, what lies beyond it is drawn joined to what came
+   * before it.
+   */
+  passThrough?: (node: NotesGraphNode) => boolean,
 ): NotesGraphSnapshot {
   const reach = Math.max(1, Math.min(MAXIMUM_LOCAL_GRAPH_DEPTH, Math.floor(depth)));
   const known = new Set(snapshot.nodes.map((node) => node.id));
@@ -521,6 +734,14 @@ export function createLocalGraphSnapshot(
     ]);
   });
 
+  const byId = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const focus = new Set(kept);
+  const hidden = (id: string): boolean => {
+    const node = byId.get(id);
+    return Boolean(passThrough && node && !focus.has(id) && passThrough(node));
+  };
+  /** The drawn node each node was first reached from, past hidden ones. */
+  const cameFrom = new Map<string, string>();
   let frontier = [...kept];
   for (let hop = 0; hop < reach; hop += 1) {
     const next: string[] = [];
@@ -529,6 +750,7 @@ export function createLocalGraphSnapshot(
         if (!kept.has(neighbor)) {
           kept.add(neighbor);
           next.push(neighbor);
+          cameFrom.set(neighbor, hidden(id) ? cameFrom.get(id) ?? id : id);
         }
       });
     });
@@ -538,10 +760,27 @@ export function createLocalGraphSnapshot(
     frontier = next;
   }
 
-  const nodes = snapshot.nodes.filter((node) => kept.has(node.id));
+  const nodes = snapshot.nodes.filter((node) => kept.has(node.id) && !hidden(node.id));
+  const drawn = new Set(nodes.map((node) => node.id));
   const edges = snapshot.edges.filter(
-    (edge) => kept.has(edge.source) && kept.has(edge.target),
+    (edge) => drawn.has(edge.source) && drawn.has(edge.target),
   );
+  // A node reached through a hidden one is joined to where that path began.
+  const joined = new Set(edges.map((edge) => edge.id));
+  cameFrom.forEach((from, id) => {
+    const via = snapshot.edges.some(
+      (edge) => (edge.source === id || edge.target === id) && hidden(edge.source === id ? edge.target : edge.source),
+    );
+    if (!via || !drawn.has(id) || !drawn.has(from) || from === id) {
+      return;
+    }
+    const [source, target] = [from, id].sort();
+    const edgeId = `${source}::${target}`;
+    if (!joined.has(edgeId)) {
+      joined.add(edgeId);
+      edges.push({ id: edgeId, source, target, weight: 0.5, types: [] });
+    }
+  });
   const tagKeys = new Set(
     nodes
       .filter((node) => node.kind === 'tag')

@@ -1,25 +1,54 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+
+import {
+  findDailyNoteDate,
+  isPeriodicNoteFile,
+  isPeriodicNotePath,
+} from '../../core/markdown/parser';
+import { onDidChangePageChrome } from './components';
 
 import {
   NotesGraphMessage,
   NotesGraphNode,
   NotesGraphSnapshot,
   SidebarGraphContext,
+  WorkspaceIndex,
 } from '../../core/types';
-import { measure } from '../../core/timing';
+import { logTrace, measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt, openSourceAt } from '../commands/navigation';
 import {
   createLocalGraphSnapshot,
   createNotesGraphConnections,
   createNotesGraphSnapshot,
   findNoteNodeIds,
+  graphInputsChanged,
   MAXIMUM_LOCAL_GRAPH_DEPTH,
+  NotesGraphKinds,
+  toWire,
 } from '../state/notesGraphState';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { parseNotesGraphMessage } from './messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
+
+/** What the Notes Graph can be opened showing. */
+export interface NotesGraphShowOptions {
+  /** Turn on Only links I wrote. */
+  onlyWrittenLinks?: boolean;
+}
+
+/**
+ * The options `deckard.showNotesGraph` was run with, keeping only what it
+ * understands: a command can be run from anywhere with anything.
+ */
+export function readNotesGraphOptions(value: unknown): NotesGraphShowOptions {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+  const onlyWrittenLinks = (value as { onlyWrittenLinks?: unknown }).onlyWrittenLinks;
+  return onlyWrittenLinks === true ? { onlyWrittenLinks: true } : {};
+}
 
 /**
  * Owns the workspace-wide Notes Graph panel and validates navigation requests
@@ -31,6 +60,10 @@ export class NotesGraphPanel implements vscode.Disposable {
   private panelDisposables: vscode.Disposable[] = [];
   private selectedNodeId: string | undefined;
   private snapshot: NotesGraphSnapshot | undefined;
+  /** The index the whole-workspace snapshot was drawn from. */
+  private builtFrom: WorkspaceIndex | undefined;
+  /** The kinds of node the page shows, which are all it is sent. */
+  private kinds: NotesGraphKinds = { notes: true, tasks: true };
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
   /**
@@ -40,7 +73,11 @@ export class NotesGraphPanel implements vscode.Disposable {
    * says what one note is attached to, which is the question asked with a
    * note open.
    */
-  private scope: { local: boolean; depth: number } = { local: false, depth: 1 };
+  private scope: { local: boolean; depth: number; skipPeriodic: boolean } = {
+    local: false,
+    depth: 1,
+    skipPeriodic: true,
+  };
   /** Whether the reader has chosen a scope, which the opening default respects. */
   private scopeChosen = false;
   /**
@@ -59,17 +96,28 @@ export class NotesGraphPanel implements vscode.Disposable {
     ) => void | Promise<void>,
   ) {
     this.disposables.push(
-      indexer.onDidUpdate(() => {
-        this.snapshot = undefined;
-        this.refresh();
-      }),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Notes Graph', priority: () => panelPriority(this.panel) },
+        () => {
+          const index = this.indexer.getSnapshot();
+          // A save that changes nothing the graph draws costs it nothing:
+          // no rebuild, no message, and a hidden graph is not out of date.
+          if (this.snapshot && !graphInputsChanged(this.builtFrom, index)) {
+            this.builtFrom = index;
+            logTrace(() => 'Notes Graph unchanged by this update; not redrawn.');
+            return;
+          }
+          this.snapshot = undefined;
+          this.builtFrom = undefined;
+          this.refresh();
+        },
+      ),
     );
     this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          this.renderHtml();
-          this.refresh();
-        }
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
       }),
     );
     this.rememberNote(vscode.window.activeTextEditor);
@@ -80,14 +128,37 @@ export class NotesGraphPanel implements vscode.Disposable {
     );
   }
 
-  public async show(): Promise<void> {
+  public async show(options: NotesGraphShowOptions = {}): Promise<void> {
     if (!this.panel) {
       this.applyOpeningScope();
       this.createPanel();
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
+    this.refresh();
+    // After the graph itself, so the page has something to filter.
+    if (options.onlyWrittenLinks) {
+      void this.panel?.webview.postMessage({
+        type: 'applyFilters',
+        onlyWrittenLinks: true,
+      });
+    }
+  }
+
+  /**
+   * Opens the graph around one note, one hop out, from that note's own
+   * menu. It is not the reader choosing a scope, so the graph's next plain
+   * opening keeps its own default.
+   */
+  public async showAround(filePath: string): Promise<void> {
+    this.focusPath = filePath;
+    this.scope = aroundNoteScope(this.scope);
+    if (!this.panel) {
+      this.createPanel();
+    }
+    this.panel?.reveal(vscode.ViewColumn.Active);
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -98,7 +169,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
 
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -204,7 +275,10 @@ export class NotesGraphPanel implements vscode.Disposable {
    * is kept.
    */
   private applyOpeningScope(): void {
-    this.scope = openingScope(this.focusPath, this.scopeChosen, this.scope);
+    this.scope = {
+      ...openingScope(this.focusPath, this.scopeChosen, this.scope),
+      skipPeriodic: this.scope.skipPeriodic,
+    };
   }
 
   /** Follows the note being written, so a local graph follows it too. */
@@ -247,7 +321,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
     void this.panel.webview.postMessage({
       type: 'state',
-      data: snapshot,
+      data: toWire(snapshot, this.kinds),
     });
     if (this.selectedNodeId) {
       void this.panel.webview.postMessage({
@@ -291,9 +365,20 @@ export class NotesGraphPanel implements vscode.Disposable {
       return;
     }
 
+    if (message.type === 'setGraphFilter') {
+      // Not a choice of scope: the opening scope rule is untouched.
+      const kinds = { notes: message.showNotes, tasks: message.showTasks };
+      if (kinds.notes !== this.kinds.notes || kinds.tasks !== this.kinds.tasks) {
+        this.kinds = kinds;
+        this.refresh();
+      }
+      return;
+    }
+
     if (message.type === 'setGraphScope') {
       this.scopeChosen = true;
       this.scope = {
+        skipPeriodic: message.skipPeriodic ?? this.scope.skipPeriodic,
         local: message.local,
         depth: Math.max(
           1,
@@ -305,7 +390,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
 
     if (this.isKnownSourceLocation(message.filePath, message.line)) {
-      await openSourceAt(message.filePath, message.line);
+      await openResultAt(message.filePath, message.line, message);
     }
   }
 
@@ -362,6 +447,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     const focus = {
       local: this.scope.local,
       depth: this.scope.depth,
+      skipPeriodic: this.scope.skipPeriodic,
       workspaceNodeCount: workspace.nodes.length,
       ...(this.focusPath
         ? { filePath: this.focusPath, title: getNoteTitle(this.focusPath) }
@@ -375,6 +461,9 @@ export class NotesGraphPanel implements vscode.Disposable {
         workspace,
         findNoteNodeIds(workspace, this.focusPath),
         this.scope.depth,
+        this.scope.skipPeriodic
+          ? (node: NotesGraphNode) => isPeriodicNode(node, this.indexer.getSnapshot())
+          : undefined,
       ),
       focus,
     };
@@ -382,9 +471,10 @@ export class NotesGraphPanel implements vscode.Disposable {
 
   private getWorkspaceSnapshot(): NotesGraphSnapshot {
     const index = this.indexer.getSnapshot();
-    if (!this.snapshot || this.snapshot.updatedAt !== index.updatedAt) {
+    if (!this.snapshot || graphInputsChanged(this.builtFrom, index)) {
       this.snapshot = createNotesGraphSnapshot(index);
     }
+    this.builtFrom = index;
     return this.snapshot;
   }
 
@@ -415,6 +505,13 @@ function getNoteTitle(filePath: string): string {
   return (filePath.split('/').pop() ?? filePath).replace(/\.md$/i, '');
 }
 
+/** The scope of a graph drawn around one note: that note, one hop out. */
+export function aroundNoteScope<Scope extends { local: boolean; depth: number }>(
+  current: Scope,
+): Scope {
+  return { ...current, local: true, depth: 1 };
+}
+
 /**
  * The scope a graph opens with: around the note in the editor when there is
  * one and the reader has not chosen otherwise, else what was chosen or the
@@ -429,4 +526,18 @@ export function openingScope(
     return current;
   }
   return { local: true, depth: 1 };
+}
+
+/**
+ * A daily, weekly, or monthly note's own entries, which a local graph passes
+ * through rather than draws. The tasks written in them are still drawn.
+ */
+function isPeriodicNode(node: NotesGraphNode, index: WorkspaceIndex): boolean {
+  if (node.kind === 'task' || node.kind === 'tag' || node.filePath === undefined) {
+    return false;
+  }
+  const file = index.files.get(node.filePath);
+  return file
+    ? isPeriodicNoteFile(file)
+    : isPeriodicNotePath(node.filePath) || findDailyNoteDate(node.filePath, []) !== undefined;
 }

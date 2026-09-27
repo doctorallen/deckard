@@ -1,4 +1,10 @@
-import { collectQueryTagKeys, quoteValue } from '../../core/query/queryFormat';
+import { formatMonthName } from '../../core/markdown/dates';
+import { countLinkTargets, resolveLinkQuery } from '../../core/query/queryLinks';
+import {
+  collectQueryTagKeys,
+  quoteValue,
+  visitConditions,
+} from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { QueryFacet, QueryFacetValue } from '../../core/query/queryTypes';
 import {
@@ -7,6 +13,14 @@ import {
   Task,
   WorkspaceIndex,
 } from '../../core/types';
+import { noteTitle } from '../../core/workspace/backlinks';
+import {
+  isParkedFile,
+  isParkedOnlyTag,
+  isParkedSection,
+  isParkedTask,
+  mentionsParked,
+} from '../../core/workspace/parked';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 
 /**
@@ -35,11 +49,17 @@ export interface FacetOptions {
    */
   related?: SearchFacetValue[];
   now?: number;
+  /**
+   * Open parked tasks a list of things to do left out that its search
+   * otherwise finds, offered as one value that asks for them.
+   */
+  parkedLeftOut?: number;
 }
 
 const TAG_VALUE_LIMIT = 10;
 const RELATED_VALUE_LIMIT = 30;
 const FOLDER_VALUE_LIMIT = 8;
+const LINK_VALUE_LIMIT = 8;
 const DAY = 24 * 60 * 60 * 1000;
 
 export function buildSearchFacets(
@@ -51,7 +71,7 @@ export function buildSearchFacets(
   const now = options.now ?? Date.now();
   const total = source.sections.length + source.files.length + source.tasks.length;
   if (total === 0) {
-    return [];
+    return parkedFacet(options.parkedLeftOut);
   }
   const facet = (
     id: SearchFacet['id'],
@@ -139,6 +159,10 @@ export function buildSearchFacets(
     facets.push(tags);
   }
 
+  const links = facet('links', 'Links to', countLinks(index, source, queryText), LINK_VALUE_LIMIT);
+  links.applied = appliedLinks(queryText);
+  facets.push(links);
+
   const noteTimes = [
     ...source.sections.map((section) => section.updatedAt),
     ...source.files.map((file) => file.updatedAt),
@@ -148,12 +172,12 @@ export function buildSearchFacets(
   facets.push(
     facet('updated', 'Updated', [
       {
-        label: 'This week',
+        label: 'Last 7 days',
         clause: 'updated >= 7d',
         count: noteTimes.filter((time) => time !== undefined && time >= weekStart).length,
       },
       {
-        label: 'This month',
+        label: '1–4 weeks ago',
         clause: '(updated < 7d AND updated >= 30d)',
         count: noteTimes.filter(
           (time) => time !== undefined && time < weekStart && time >= monthStart,
@@ -167,9 +191,82 @@ export function buildSearchFacets(
     ]),
   );
 
+  facets.push(facet('created', 'Created', countCreated(source, now)));
+
   facets.push(facet('folder', 'Folder', countFolders(source), FOLDER_VALUE_LIMIT));
 
+  if ((options.parkedLeftOut ?? 0) > 0) {
+    facets.push(...parkedFacet(options.parkedLeftOut));
+  } else if (index.parked && index.parked.files.size + index.parked.sections.size + index.parked.tasks.size > 0) {
+    // When the results mix parked and unparked, either can be kept.
+    const parked =
+      source.sections.filter((section) => isParkedSection(index, section.id)).length +
+      source.files.filter((file) => isParkedFile(index, file.filePath)).length +
+      tasks.filter((task) => isParkedTask(index, task.id)).length;
+    facets.push(
+      facet('parked', 'Parked', [
+        { label: 'Parked', clause: 'is:parked', count: parked },
+        { label: 'Not parked', clause: '-is:parked', count: total - parked },
+      ]),
+    );
+  }
+
   return facets.filter((candidate) => candidate.values.length > 0);
+}
+
+/**
+ * The open parked tasks a list of things to do left out, as one value that
+ * asks for them. What was left out is not among the results, so it is
+ * offered whatever its count against them.
+ */
+function parkedFacet(parkedLeftOut = 0): SearchFacet[] {
+  return parkedLeftOut > 0
+    ? [
+        {
+          id: 'parked',
+          label: 'Parked',
+          values: [{ label: 'Parked', clause: 'is:parked', count: parkedLeftOut }],
+          applied: [],
+        },
+      ]
+    : [];
+}
+
+/**
+ * Notes by the month they were written: this month, last month, the two
+ * before by name, and everything earlier.
+ */
+function countCreated(source: FacetSource, now: number): SearchFacetValue[] {
+  const times = [
+    ...source.sections.map((section) => section.createdAt),
+    ...source.files.map((file) => file.createdAt),
+  ].filter((time): time is number => time !== undefined);
+  const today = new Date(startOfDay(now));
+  const monthStart = (back: number): number =>
+    new Date(today.getFullYear(), today.getMonth() - back, 1).getTime();
+  const within = (from: number, to: number): number =>
+    times.filter((time) => time >= from && time < to).length;
+  const monthValue = (back: number): string => {
+    const at = new Date(monthStart(back));
+    return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const values: SearchFacetValue[] = [
+    { label: 'This month', clause: 'created = this-month', count: within(monthStart(0), monthStart(-1)) },
+    { label: 'Last month', clause: 'created = last-month', count: within(monthStart(1), monthStart(0)) },
+  ];
+  for (const back of [2, 3]) {
+    values.push({
+      label: formatMonthName(monthStart(back), now),
+      clause: `created = ${monthValue(back)}`,
+      count: within(monthStart(back), monthStart(back - 1)),
+    });
+  }
+  values.push({
+    label: 'Earlier',
+    clause: `created < ${monthValue(3)}`,
+    count: times.filter((time) => time < monthStart(3)).length,
+  });
+  return values;
 }
 
 /**
@@ -195,9 +292,12 @@ export function countTags(
       .filter((tagKey): tagKey is string => tagKey !== undefined),
   );
   const counts = new Map<string, number>();
+  // A tag only parked notes carry is clutter here, unless the search is
+  // about parked notes.
+  const skipParked = !mentionsParked(parseQuery(queryText).node);
   const add = (tagKeys: Iterable<string>): void => {
     new Set(tagKeys).forEach((tagKey) => {
-      if (!named.has(tagKey)) {
+      if (!named.has(tagKey) && !(skipParked && isParkedOnlyTag(index, tagKey))) {
         counts.set(tagKey, (counts.get(tagKey) ?? 0) + 1);
       }
     });
@@ -214,6 +314,46 @@ export function countTags(
     .sort(
       (left, right) => right.count - left.count || left.label.localeCompare(right.label),
     );
+}
+
+/**
+ * The notes the results link to, most linked first, leaving out the notes
+ * the query already names by link.
+ */
+export function countLinks(
+  index: WorkspaceIndex,
+  source: FacetSource,
+  queryText: string,
+): SearchFacetValue[] {
+  const named = new Set<string>();
+  visitConditions(parseQuery(queryText).node, (condition) => {
+    if (condition.field === 'link') {
+      resolveLinkQuery(index, condition.value).paths.forEach((path) => named.add(path));
+    }
+  });
+  const keys = [
+    ...source.sections.map((section) => `section:${section.id}`),
+    ...source.tasks.map((task) => `task:${task.id}`),
+    ...source.files.map((file) => `file:${file.filePath}`),
+  ];
+  return countLinkTargets(index, keys)
+    .filter((target) => !named.has(target.targetPath))
+    .map((target) => {
+      const title = noteTitle(target.targetPath);
+      return { label: title, count: target.count, clause: `[[${title}]]` };
+    });
+}
+
+/** The links the query writes as terms of their own, as `[[Title]]`. */
+function appliedLinks(queryText: string): string[] {
+  const applied: string[] = [];
+  visitConditions(parseQuery(queryText).node, (condition) => {
+    const clause = `[[${condition.value}]]`;
+    if (condition.field === 'link' && isWritten(queryText, clause)) {
+      applied.push(clause);
+    }
+  });
+  return applied;
 }
 
 /**

@@ -5,6 +5,79 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 suite('Extension Test Suite', () => {
+  test('puts Deckard in a note\'s title bar, and the days beside a daily note', () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    const menus: Record<string, Array<{ command?: string; submenu?: string; when?: string; group?: string }>> =
+      extension.packageJSON.contributes.menus;
+    const title = (command: string) =>
+      menus['editor/title'].filter((entry) => entry.command === command).map((entry) => [entry.when, entry.group]);
+    assert.deepStrictEqual(title('deckard.previousDailyNote'), [
+      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@10'],
+    ]);
+    assert.deepStrictEqual(title('deckard.nextDailyNote'), [
+      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@11'],
+    ]);
+    assert.deepStrictEqual(title('deckard.noteActions'), [
+      ['resourceLangId == markdown && deckard.isNote', 'navigation@12'],
+    ]);
+    // A note's context menu has one Deckard submenu, grouped by what it acts on.
+    assert.deepStrictEqual(menus['editor/context'], [
+      { submenu: 'deckard.editor.context', when: 'resourceLangId == markdown && deckard.isNote', group: 'z_deckard@1' },
+    ]);
+    assert.deepStrictEqual(
+      menus['deckard.editor.context'].map((entry) => `${entry.group} ${entry.command}`),
+      [
+        '1_task@1 deckard.toggleTaskDone',
+        '1_task@2 deckard.editTask',
+        '1_task@3 deckard.breakIntoSteps',
+        '1_task@4 deckard.addTask',
+        '2_heading@1 deckard.renameHeading',
+        '2_heading@2 deckard.extractHeading',
+        '2_heading@3 deckard.focusSection',
+        '3_move@1 deckard.moveTo',
+        '4_pin@1 deckard.pinNote',
+        '4_pin@2 deckard.unpinNote',
+        '4_pin@3 deckard.parkNote',
+        '4_pin@4 deckard.unparkNote',
+      ],
+    );
+    // A folder in the Explorer can take a note, or leave Deckard and come back.
+    // A note there can be parked, or unparked.
+    assert.deepStrictEqual(menus['explorer/context'], [
+      { submenu: 'deckard.explorer.context', when: 'explorerResourceIsFolder || resourceExtname == .md', group: 'z_deckard@1' },
+    ]);
+    assert.deepStrictEqual(
+      menus['deckard.explorer.context'].map((entry) => [entry.command, entry.when]),
+      [
+        ['deckard.newNoteFromTemplateHere', 'explorerResourceIsFolder'],
+        ['deckard.excludeFromIndex', 'explorerResourceIsFolder && resourcePath not in deckard.excludedFolders'],
+        ['deckard.includeInIndex', 'explorerResourceIsFolder && resourcePath in deckard.excludedFolders'],
+        ['deckard.parkNote', 'resourceExtname == .md && !(resourcePath in deckard.parkedNotes)'],
+        ['deckard.unparkNote', 'resourceExtname == .md && resourcePath in deckard.parkedNotes'],
+        ['deckard.parkFolder', 'explorerResourceIsFolder && !(resourcePath in deckard.parkedFolders)'],
+        ['deckard.unparkFolder', 'explorerResourceIsFolder && resourcePath in deckard.parkedFolders'],
+      ],
+    );
+    assert.deepStrictEqual(
+      menus['editor/title/context'].map((entry) => entry.command),
+      ['deckard.parkNote', 'deckard.unparkNote'],
+    );
+    assert.deepStrictEqual(
+      menus['file/newFile'].map((entry) => entry.command),
+      ['deckard.createDailyNote', 'deckard.newNoteFromTemplate'],
+    );
+    // Zen is one button on every Deckard page.
+    assert.deepStrictEqual(title('deckard.enableZenMode'), [
+      ['activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode', 'navigation@90'],
+    ]);
+    assert.deepStrictEqual(title('deckard.disableZenMode'), [
+      ['activeWebviewPanelId =~ /^deckard\\./ && deckard.zenMode', 'navigation@90'],
+    ]);
+  });
+
   test('contributes the Deckard commands and settings', () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
@@ -16,7 +89,17 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 54);
+    assert.strictEqual(Object.keys(settings).length, 71);
+    assert.strictEqual(settings['deckard.calendar.dayPanel'].default, false);
+    assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
+    assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
+    assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
+    assert.deepStrictEqual(settings['deckard.board.limits'].default, {});
+    assert.deepStrictEqual(settings['deckard.tasks.onHoldStatuses'].default, ['waiting', 'someday']);
+    assert.strictEqual(settings['deckard.tasks.needsNewDateAfterDays'].default, 30);
+    // The day a week starts on.
+    assert.deepStrictEqual(settings['deckard.calendar.weekStart'].enum, ['sunday', 'monday', 'locale']);
+    assert.strictEqual(settings['deckard.calendar.weekStart'].default, 'sunday');
     // Where one note ends and the next begins.
     assert.deepStrictEqual(settings['deckard.noteBoundaries'].enum, [
       'line',
@@ -35,9 +118,12 @@ suite('Extension Test Suite', () => {
       [
         'deckard.showDashboard',
         'deckard.showNotesGraph',
+        'deckard.showNotesGraphAroundNote',
         'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
+        'deckard.openWalkthrough',
+        'deckard.openWhatsNew',
         'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createDailyNote',
@@ -45,22 +131,40 @@ suite('Extension Test Suite', () => {
         'deckard.unpinNote',
         'deckard.previousDailyNote',
         'deckard.nextDailyNote',
+        'deckard.openDailyNoteForDate',
         'deckard.openWeeklyNote',
         'deckard.openMonthlyNote',
+        'deckard.noteActions',
         'deckard.editTask',
+        'deckard.breakIntoSteps',
         'deckard.addTask',
+        'deckard.toggleTaskDone',
         'deckard.capture',
         'deckard.captureUnderHeading',
         'deckard.writeReview',
         'deckard.rollTasksForward',
         'deckard.newNoteFromTemplate',
+        'deckard.newNoteFromTemplateHere',
+        'deckard.excludeFromIndex',
+        'deckard.includeInIndex',
+        'deckard.parkNote',
+        'deckard.unparkNote',
+        'deckard.parkFolder',
+        'deckard.unparkFolder',
+        'deckard.parkTag',
+        'deckard.unparkTag',
         'deckard.copyMcpSetup',
         'deckard.resetMcpToken',
+        'deckard.moveTo',
         'deckard.extractHeading',
         'deckard.showTagOverview',
         'deckard.search',
+        'deckard.insertQueryBlock',
         'deckard.searchWorkspace',
         'deckard.quickFind.complete',
+        'deckard.quickFind.openBeside',
+        'deckard.quickFind.insertLink',
+        'deckard.quickFind.actions',
         'deckard.searchNotes',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
@@ -73,9 +177,15 @@ suite('Extension Test Suite', () => {
         'deckard.outline.openTagOverview',
         'deckard.outline.renameTag',
         'deckard.agenda.editQuery',
+        'deckard.clearAgendaQuery',
         'deckard.agenda.setGrouping',
         'deckard.outline.enableFollowCursor',
         'deckard.outline.disableFollowCursor',
+        'deckard.focusSection',
+        'deckard.unfoldAllSections',
+        'deckard.outline.filterByTag',
+        'deckard.outline.clearTagFilter',
+        'deckard.chooseTheme',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.tidyPreferences',
@@ -84,6 +194,18 @@ suite('Extension Test Suite', () => {
         'deckard.restorePreferences',
         'deckard.checkSetup',
         'deckard.createSampleWorkspace',
+        'deckard.agenda.editTask',
+        'deckard.agenda.breakIntoSteps',
+        'deckard.agenda.dueToday',
+        'deckard.agenda.dueTomorrow',
+        'deckard.agenda.dueNextWeek',
+        'deckard.agenda.dueOnDate',
+        'deckard.agenda.moveTo',
+        'deckard.agenda.reschedule',
+        'deckard.rescheduleOverdue',
+        'deckard.agenda.showMore',
+        'deckard.calendar.openDayPanel',
+        'deckard.calendar.closeDayPanel',
       ],
     );
     assert.strictEqual(
@@ -180,6 +302,57 @@ suite('Extension Test Suite', () => {
     );
   });
 
+  test('walks a new reader through six steps it can check off', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    const root = extension.extensionPath;
+    const contributes = extension.packageJSON.contributes;
+    const steps: Array<{
+      id: string;
+      description: string;
+      media: { image?: string | Record<string, string>; markdown?: string; altText?: string };
+      completionEvents?: string[];
+    }> = contributes.walkthroughs[0].steps;
+    assert.deepStrictEqual(
+      steps.map((step) => step.id.replace('deckard.walkthrough.', '')),
+      ['openNote', 'addTags', 'captureTask', 'openHome', 'search', 'makeItYours'],
+    );
+    const commands = new Set<string>(contributes.commands.map((command: { command: string }) => command.command));
+    const views = new Set<string>(
+      Object.values(contributes.views as Record<string, Array<{ id: string }>>).flat().map((view) => `${view.id}.focus`),
+    );
+    const compiled = (await import('fs')).readFileSync(path.join(root, 'out', 'extension.js'), 'utf8');
+    let total = 0;
+    for (const step of steps) {
+      for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {
+        assert.ok(commands.has(match[1]) || views.has(match[1]), `${step.id} links ${match[1]}`);
+      }
+      for (const event of step.completionEvents ?? []) {
+        const key = /^onContext:(.+)$/.exec(event)?.[1];
+        if (key) {
+          assert.ok(compiled.includes(`'setContext', '${key}'`), `${step.id} waits on ${key}, which is set`);
+        }
+      }
+      const media = step.media.image ?? step.media.markdown;
+      const paths = typeof media === 'string' ? [media] : Object.values(media ?? {});
+      for (const file of new Set(paths)) {
+        const { size } = (await import('fs')).statSync(path.join(root, file));
+        if (file.endsWith('.png')) {
+          assert.ok(size <= 150 * 1024, `${file} is at most 150 KB`);
+          total += size;
+        }
+      }
+      if (step.media.image) {
+        assert.ok(step.media.altText, `${step.id} says what its image shows`);
+      }
+    }
+    assert.ok(total <= 1024 * 1024, 'the walkthrough images come to at most 1 MB');
+    await extension.activate();
+    assert.ok((await vscode.commands.getCommands(true)).includes('deckard.openWalkthrough'));
+  });
+
   test('activates and registers the dashboard command', async () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
@@ -230,7 +403,7 @@ suite('Extension Test Suite', () => {
     );
   });
 
-  test('counts the open tasks under a heading above it in the editor', async () => {
+  test('draws no lenses in a Markdown file outside every workspace folder', async () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
     );
@@ -252,15 +425,10 @@ suite('Extension Test Suite', () => {
         fileUri,
         10,
       );
+      // It is not a note, so Deckard's counts stay out of it; the counts
+      // themselves are held in editor-references.test.ts.
       const titles = lenses.map((lens) => lens.command?.title);
-      assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
-      // A tagged heading also counts the entries elsewhere that share one of
-      // its tags. No other note here carries #project/atlas, and a heading
-      // with nothing to show gets no lens at all.
-      assert.ok(
-        !titles.some((title) => title?.includes('share a tag')),
-        JSON.stringify(titles),
-      );
+      assert.deepStrictEqual(titles, []);
     } finally {
       await vscode.workspace.fs.delete(fileUri);
     }

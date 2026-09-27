@@ -1,4 +1,4 @@
-import { describeOperator } from './queryParser';
+import { describeOperator, readLinkValue } from './queryParser';
 import {
   QUERY_OPERATOR_INVERSES,
   QUERY_SHORTHAND_FIELDS,
@@ -48,6 +48,9 @@ function formatNode(node: QueryNode, context: FormatContext): string {
  * Writes one condition, quoting values that would otherwise re-tokenize.
  */
 export function formatCondition(condition: QueryConditionNode): string {
+  if (condition.field === 'link') {
+    return `link ${describeOperator(condition.operator)} [[${readLinkValue(condition.value) || condition.value.trim()}]]`;
+  }
   const value = quoteValue(condition.value);
   if (QUERY_SHORTHAND_FIELDS.includes(condition.field)) {
     // A shorthand is written the way people type it, so a saved query or a
@@ -66,7 +69,8 @@ export function formatCondition(condition: QueryConditionNode): string {
  * Quotes a value when it contains characters the tokenizer treats specially.
  */
 export function quoteValue(value: string): string {
-  if (value.length > 0 && !/[\s:=<>~!()"']/.test(value)) {
+  // `[[x]]` unquoted would read back as a link rather than the characters.
+  if (value.length > 0 && !/[\s:=<>~!()"']/.test(value) && !value.includes('[[')) {
     return value;
   }
   return `"${value.replace(/(["\\])/g, '\\$1')}"`;

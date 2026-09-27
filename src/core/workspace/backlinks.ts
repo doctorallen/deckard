@@ -19,6 +19,8 @@ export interface WikiLinkOccurrence {
   line: number;
   startColumn: number;
   endColumn: number;
+  /** The note's name as the link writes it, trimmed; empty for `[[#Heading]]`. */
+  note: string;
   /** The note it points at, when exactly one note has that name. */
   targetPath?: string;
   /** The heading after `#`, as written. */
@@ -196,6 +198,21 @@ export class BacklinkIndex {
   }
 }
 
+const backlinkIndexes = new WeakMap<WorkspaceIndex, BacklinkIndex>();
+
+/**
+ * The backlink index of one workspace index, built once and shared by every
+ * surface that reads links: Linked from, orphans, and a search's `link`.
+ */
+export function getBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
+  let backlinks = backlinkIndexes.get(index);
+  if (!backlinks) {
+    backlinks = buildBacklinkIndex(index);
+    backlinkIndexes.set(index, backlinks);
+  }
+  return backlinks;
+}
+
 /**
  * Finds every Wiki link in the workspace's saved notes, front matter
  * included, and code fences excluded.
@@ -218,6 +235,7 @@ export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
           line,
           startColumn,
           endColumn: startColumn + match[0].length,
+          note: target.note,
           targetPath: resolveWikiTarget(titles, target.note, sourcePath),
           heading: target.heading,
           block: target.block,
@@ -226,4 +244,41 @@ export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
     });
   });
   return new BacklinkIndex(occurrences);
+}
+
+/** A name links write that no note carries. */
+export interface MissingLinkTarget {
+  /** The name as the first link found writes it. */
+  name: string;
+  /** Lowercased, as names are matched. */
+  key: string;
+  /** How many links write it. */
+  count: number;
+  /** The notes the links are in, each once, in the order found. */
+  sourcePaths: string[];
+}
+
+/**
+ * Every name a link writes that opens no note, most linked first. A name
+ * two notes share is not missing: it opens a choice, which the editor
+ * warns about where it is written.
+ */
+export function findMissingLinkTargets(index: WorkspaceIndex): MissingLinkTarget[] {
+  const titles = createNoteTitleMap(index);
+  const missing = new Map<string, MissingLinkTarget>();
+  getBacklinkIndex(index).occurrences.forEach((occurrence) => {
+    if (!occurrence.note || findWikiTargetPaths(titles, occurrence.note, occurrence.sourcePath).length > 0) {
+      return;
+    }
+    const key = occurrence.note.toLocaleLowerCase();
+    const found = missing.get(key) ?? { name: occurrence.note, key, count: 0, sourcePaths: [] };
+    found.count += 1;
+    if (!found.sourcePaths.includes(occurrence.sourcePath)) {
+      found.sourcePaths.push(occurrence.sourcePath);
+    }
+    missing.set(key, found);
+  });
+  return [...missing.values()].sort(
+    (left, right) => right.count - left.count || left.name.localeCompare(right.name),
+  );
 }

@@ -59,10 +59,9 @@ function createGlobalState() {
  * Opens a page through the real registry and mounts its webview, with the
  * real Related Notes view listening to the same active search.
  */
-async function openPanel(open, { sidebarVisible = false } = {}) {
+async function openPanel(open, { sidebarVisible = false, index = createIndex() } = {}) {
   vscode._test.createdPanels.length = 0;
   vscode.window.activeTextEditor = undefined;
-  const index = createIndex();
   const indexer = createIndexer(index);
   const preferences = new PreferencesStore(createGlobalState());
   const activeSearch = new ActiveSearch();
@@ -142,7 +141,7 @@ const box = (view) => view.find('.query-bar-shell').getAttribute('data-query-tex
 const typed = (view) => view.find('[data-action="query-input"]').value;
 /** The chips in the box, as their text. */
 const chips = (view) =>
-  view.findAll('.query-bar-shell .query-chip').map((chip) => chip.getAttribute('title').replace(/^Remove /, ''));
+  view.findAll('.query-bar-shell .query-chip').map((chip) => chip.getAttribute('data-tip').replace(/^Remove /, ''));
 /** Removes every chip, one at a time, as a reader would. */
 async function removeChips(view) {
   while (view.find('.query-bar-shell .query-chip')) {
@@ -160,6 +159,14 @@ function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
+test('the gear\'s Theme row runs Choose Theme', async () => {
+  const { view } = await openOverview();
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-action="choose-theme"]'));
+  await settle();
+  assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
+});
+
 test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   const { view, panel } = await openOverview();
   assert.strictEqual(title(view), 'Project: Atlas');
@@ -170,6 +177,90 @@ test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   assert.deepStrictEqual(chips(view), ['#project/atlas'], 'the tag is a chip in the box');
   assert.strictEqual(typed(view), '');
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Shutdown telemetry audit']);
+});
+
+/** The page's index, with a note and a task that link to the hub without the tag. */
+function createHubLinkIndex() {
+  const note = (filePath, content) =>
+    parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/2026-09-09.md', '## Atlas planning #project/atlas\nSequencing for the milestone.'),
+    note('notes/budget.md', '## Budget\nThe money for [[atlas]] is late.\n- [ ] Ask about [[atlas]] funding'),
+    note('notes/atlas.md', '---\ndescribes: project/atlas\n---\n# Atlas\nRetire the old ledger. See [[atlas]].'),
+  ];
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}
+
+test('a tag\'s page lists what links its hub note, each saying so, and can leave them out', async () => {
+  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
+  const { view } = await openOverview('#project/atlas', { index: createHubLinkIndex() });
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Budget']);
+  const budget = view.findAll('.card').find((card) => card.textContent.includes('Budget'));
+  assert.ok(budget.querySelector('.card-via'), 'the linking entry says why it is here');
+  assert.strictEqual(budget.querySelector('.card-via').textContent, 'Links the hub note');
+  const planning = view.findAll('.card').find((card) => card.textContent.includes('Atlas planning'));
+  assert.ok(!planning.querySelector('.card-via'));
+  assert.ok(view.find('.task-row .card-via'), 'and so does the linking task');
+  const line = view.findAll('.tag-note').find((note) => note.textContent.startsWith('Also listing'));
+  assert.strictEqual(line.textContent, 'Also listing 2 entries that link to atlas without the tag. Leave them out');
+
+  vscode._test.configurationUpdates.length = 0;
+  view.click(view.find('[data-action="exclude-hub-links"]'));
+  await settle();
+  assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]), [
+    ['deckard.tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global],
+  ]);
+  await settle();
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+  assert.ok(!view.findAll('.tag-note').some((note) => note.textContent.startsWith('Also listing')));
+  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
+});
+
+test('a tag\'s page says how else the tag is written, with Include in search and Merge', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/a.md', '## One #project/atlas\nFirst.'),
+    note('notes/b.md', '## Two #project/atlas\nSecond.'),
+    note('notes/c.md', '## Three #proj/atlas\nThird.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view, panel } = await openOverview('#project/atlas', { index });
+  const line = view.find('.tag-note');
+  assert.ok(line.textContent.startsWith('Also written as #proj/atlas (1 entry).'), line.textContent);
+  assert.strictEqual(view.find('.tag-note-tag').getAttribute('data-tag-key'), '#proj/atlas');
+  const merge = view.find('[data-action="merge-lookalike"]');
+  assert.strictEqual(merge.getAttribute('data-tip'), 'Merge #proj/atlas into #project/atlas, after showing what changes');
+
+  // Merge is the confirmed merge the tag list runs; what the page asks
+  // for is checked here, without the modal.
+  const deliver = panel._onWebviewMessage;
+  const posted = [];
+  panel._onWebviewMessage = (message) => posted.push(message);
+  view.click(merge);
+  assert.deepStrictEqual(posted, [{ type: 'mergeTags', sourceKey: '#proj/atlas', targetKey: '#project/atlas' }]);
+  panel._onWebviewMessage = deliver;
+
+  view.click(view.find('[data-action="include-lookalike"]'));
+  await settle();
+  assert.strictEqual(box(view), '#project/atlas OR #proj/atlas');
+});
+
+test('a tag\'s page counts the entries that name it without the tag, and shows them', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/a.md', '## One #project/atlas\nAtlas work.'),
+    note('notes/b.md', '## Two\nWe talked about Atlas today.\n- [ ] Ask about atlas'),
+    note('notes/c.md', '## Three\nNothing here.'),
+    note('notes/atlas.md', '---\ndescribes: project/atlas\n---\n# Atlas\nAtlas is the ledger.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view } = await openOverview('#project/atlas', { index });
+  const line = view.findAll('.tag-note').find((candidate) => candidate.textContent.includes('mention'));
+  assert.ok(line, 'the line is there');
+  assert.strictEqual(line.textContent, '2 entries mention "atlas" without the tag. Show them');
+  view.click(view.find('[data-action="show-mentions"]'));
+  await settle();
+  assert.strictEqual(box(view), 'text = atlas -#project/atlas NOT path = notes/atlas.md');
 });
 
 test('anything more than the one tag is a search, shown by its box alone', async () => {
@@ -198,13 +289,15 @@ test('anything more than the one tag is a search, shown by its box alone', async
 test('Clear holds its place, and waits for more than the page\'s own tag', async () => {
   const { view } = await openOverview();
   const clear = () => view.find('[data-action="clear-query"]');
-  assert.notStrictEqual(clear().getAttribute('disabled'), null, 'with nothing else, there is nothing to clear');
+  assert.strictEqual(clear().getAttribute('aria-disabled'), 'true', 'with nothing else, there is nothing to clear');
+  assert.strictEqual(clear().getAttribute('disabled'), null, 'it stays in the Tab order');
+  assert.strictEqual(clear().getAttribute('data-tip-disabled'), "Only this page's own tag is left");
 
   view.type(view.find('[data-action="query-input"]'), 'planning');
-  assert.strictEqual(clear().disabled, false, 'typing more makes it live');
+  assert.strictEqual(clear().getAttribute('aria-disabled'), null, 'typing more makes it live');
 
   view.type(view.find('[data-action="query-input"]'), '');
-  assert.strictEqual(clear().disabled, true, 'and back to the tag alone, it waits again');
+  assert.strictEqual(clear().getAttribute('aria-disabled'), 'true', 'and back to the tag alone, it waits again');
 });
 
 test('Clear returns the page to its own tag, header and all', async () => {
@@ -219,7 +312,7 @@ test('Clear returns the page to its own tag, header and all', async () => {
   assert.strictEqual(box(view), '#project/atlas');
   assert.strictEqual(title(view), 'Project: Atlas');
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Shutdown telemetry audit']);
-  assert.notStrictEqual(view.find('[data-action="clear-query"]').getAttribute('disabled'), null);
+  assert.strictEqual(view.find('[data-action="clear-query"]').getAttribute('aria-disabled'), 'true');
 });
 
 test('plain words narrow the whole search as they are typed', async () => {
@@ -322,6 +415,27 @@ test('Refine offers the tag\'s related tags, and a value narrows the page', asyn
 
   assert.strictEqual(box(view), '#project/atlas AND is:open');
   assert.deepStrictEqual(visibleTitles(view), [], 'is:open keeps only tasks');
+});
+
+test('Refine counts notes by the month they were written, and a month narrows the page', async () => {
+  const now = new Date();
+  const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, 15, 9).getTime();
+  const note = (filePath, content, createdAt) =>
+    parseMarkdown(filePath, content, { createdAt, updatedAt: createdAt }, {});
+  const files = [
+    note('notes/new.md', '# New plan #project/atlas', now.getTime()),
+    note('notes/last.md', '# Last month #project/atlas', monthAgo),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view } = await openSearch('#project/atlas', { index });
+  const lastMonth = view
+    .findAll('[data-action="facet"][data-facet-id="created"]')
+    .find((button) => button.getAttribute('data-clause') === 'created = last-month');
+  assert.ok(lastMonth, 'the month before this one is offered');
+  view.click(lastMonth);
+  await settle();
+  assert.strictEqual(box(view), '#project/atlas AND created = last-month');
+  assert.deepStrictEqual(visibleTitles(view), ['Last month']);
 });
 
 test('a new builder row starts from its value', async () => {

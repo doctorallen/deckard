@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import { TagInfo, WorkspaceIndex } from '../core/types';
 import { parseStatsMessage } from '../ui/webview/messages';
 import {
+  findTagLookalikes,
   findTagMergeCandidates,
   isWithinDistance,
 } from '../ui/state/tagHygiene';
@@ -148,5 +149,21 @@ suite('Tag hygiene', () => {
         JSON.stringify(message),
       );
     }
+  });
+
+  test('a tag\'s own page names its other spellings, at most three', () => {
+    const index = indexOfTags({
+      '#project/atlas': 12,
+      '#proj/atlas': 3,
+      '#projects/atlas': 2,
+      '#project/atlass': 1,
+      '#atlas': 1,
+      '#project/beta': 4,
+    });
+    const found = findTagLookalikes(index, '#project/atlas');
+    assert.strictEqual(found.length, 3);
+    assert.ok(found.every((other) => other.key !== '#project/atlas' && other.key !== '#project/beta'));
+    const proj = findTagLookalikes(index, '#proj/atlas').find((other) => other.key === '#project/atlas');
+    assert.deepStrictEqual(proj && [proj.count, proj.sourceKey, proj.targetKey], [12, '#proj/atlas', '#project/atlas']);
   });
 });

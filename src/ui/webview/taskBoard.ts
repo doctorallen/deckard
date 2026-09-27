@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { moveTasks } from '../commands/moveTo';
+import { breakIntoStepsCommand } from '../commands/taskSteps';
+import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { parseQuery } from '../../core/query/queryParser';
@@ -7,15 +9,18 @@ import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt } from '../commands/navigation';
 import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
-import { toggleTask } from '../commands/taskActions';
+import { formatQueryBlock, QueryBlockWriteOptions } from '../state/queryBlockState';
 import {
+  captureIntoColumn,
   moveTaskToColumn,
   readTaskBoardOptions,
   updateTaskBoardSetting,
 } from '../commands/taskBoardActions';
-import { writeSetting } from '../commands/settings';
+import { askForDueDate, setTasksDue } from '../commands/agendaActions';
+import { openTask, quoteTaskTitle, toggleTask } from '../commands/taskActions';
+import { settingTarget, writeSetting } from '../commands/settings';
 import {
   mergeOrder,
   normalizeTagTitleDisplayMode,
@@ -25,6 +30,9 @@ import { createTaskBoard } from '../state/taskBoardState';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
+import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
+import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Shows tasks as a Kanban board or as a list, narrowed by the search box
@@ -76,10 +84,14 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     private readonly activeSearch: ActiveSearch,
   ) {
     this.disposables.push(
-      indexer.onDidUpdate(() => {
-        this.writeIndexAt = undefined;
-        this.refresh();
-      }),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Task board', priority: () => panelPriority(this.panel) },
+        () => {
+          this.writeIndexAt = undefined;
+          this.refresh();
+        },
+      ),
     );
     // A task write carries the task's rank into the preferences before the
     // index has read the note back, and a redraw from that index put a
@@ -101,11 +113,10 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       }),
     );
     this.disposables.push(
+      // The page reloads and asks for state again when it is ready.
+      onDidChangePageChrome(() => this.renderHtml()),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          // The page reloads and asks for state again when it is ready.
-          this.renderHtml();
-        } else if (
+        if (
           event.affectsConfiguration('deckard.board') ||
           event.affectsConfiguration('deckard.tasks') ||
           event.affectsConfiguration('deckard.tagTitleDisplayMode')
@@ -128,7 +139,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       this.createPanel();
     }
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -168,7 +179,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       }
     }
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -199,6 +210,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.panelDisposables = [
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.lastSnapshot = undefined;
@@ -259,10 +271,11 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   }
 
   /**
-   * Whether the Done column is showing every completed task. It holds the
-   * most recent handful otherwise, and the column says how many are left.
+   * The columns showing every card after "Show N more". An open column
+   * draws its first hundred otherwise, and Done its most recent handful,
+   * and each says how many are left.
    */
-  private showEveryDoneTask = false;
+  private shownColumns = new Set<string>();
 
   private createSnapshot(): TaskBoardSnapshot {
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
@@ -277,9 +290,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         { query: this.query, invalidQuery: this.invalidQuery },
         {
           ...readTaskBoardOptions(),
-          ...(this.showEveryDoneTask
-            ? { doneLimit: Number.MAX_SAFE_INTEGER }
-            : {}),
+          shownColumns: this.shownColumns,
         },
         tagTitleDisplayMode,
       ),
@@ -290,6 +301,12 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
             .getConfiguration('deckard')
             .get<string>('agenda.query', ''),
         ) === normalizeAgendaQuery(this.query),
+      agendaQueryIsDefault:
+        normalizeAgendaQuery(
+          vscode.workspace
+            .getConfiguration('deckard')
+            .get<string>('agenda.query', ''),
+        ) === '',
     };
   }
 
@@ -300,18 +317,23 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
    */
   private async useSearchForAgenda(): Promise<void> {
     const configuration = vscode.workspace.getConfiguration('deckard');
-    const query = normalizeAgendaQuery(this.query);
-    if (normalizeAgendaQuery(configuration.get<string>('agenda.query', '')) === query) {
-      void vscode.window.showInformationMessage(
-        'The Tasks view lists this search already.',
-      );
+    const listed = normalizeAgendaQuery(configuration.get<string>('agenda.query', ''));
+    // Pressed a second time, the switch gives the Tasks view back its own
+    // list of every open task; when that is what it lists, it does nothing.
+    const again = listed === normalizeAgendaQuery(this.query);
+    if (again && !listed) {
       return;
     }
+    const query = again ? '' : normalizeAgendaQuery(this.query);
     // The value goes where it is already set, as the board's own settings do.
-    const target =
-      configuration.inspect('agenda.query')?.workspaceValue !== undefined
-        ? vscode.ConfigurationTarget.Workspace
-        : vscode.ConfigurationTarget.Global;
+    const target = settingTarget('agenda.query', configuration);
+    if (again) {
+      if (await writeSetting('agenda.query', '', target, configuration)) {
+        void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
+        this.refresh();
+      }
+      return;
+    }
     if (await writeSetting('agenda.query', query, target, configuration)) {
       void vscode.window.showInformationMessage(
         query
@@ -333,6 +355,10 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       this.invalidQuery = query;
       return false;
     }
+    if (query !== this.query) {
+      // A new search is a new board; its columns start short again.
+      this.shownColumns = new Set();
+    }
     this.query = query;
     return true;
   }
@@ -340,17 +366,38 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   /**
    * Names the board's search and keeps it as a saved view that reopens here.
    */
+  /**
+   * How the board is laid out, as a query block's options: a list sorted by
+   * date keeps that sort, a table its columns and sorted column, and the
+   * board's columns have no block of their own.
+   */
+  private queryBlockOptions(): QueryBlockWriteOptions {
+    const preferences = this.preferences.value;
+    if (preferences.taskBoardLayout === 'table') {
+      const sort = preferences.taskTableSort;
+      return {
+        view: 'table',
+        ...(preferences.taskTableColumns?.length ? { columns: preferences.taskTableColumns } : {}),
+        ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
+      };
+    }
+    if (preferences.taskBoardLayout === 'list' && preferences.taskSortMode !== 'rank') {
+      return { sort: preferences.taskSortMode };
+    }
+    return {};
+  }
+
   private async saveSearch(): Promise<void> {
     const query = this.query.trim();
     if (!query) {
       return;
     }
     const name = await vscode.window.showInputBox({
-      title: 'Save this search',
-      prompt: 'Name this Task Board search',
+      title: 'Save search',
+      prompt: 'Name this search. It opens on the Task Board.',
       value: query,
       validateInput: (value) =>
-        value.trim() ? undefined : 'A saved filter needs a name.',
+        value.trim() ? undefined : 'A saved search needs a name.',
     });
     if (name === undefined) {
       return;
@@ -361,9 +408,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       'taskBoard',
     );
     if (saved) {
-      void vscode.window.showInformationMessage(
-        `Saved the search "${saved.name}".`,
-      );
+      void offerSavedSearchOnHome(this.preferences, saved);
     }
   }
 
@@ -381,6 +426,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     switch (message.type) {
       case 'setZenMode':
         await setZenMode(message.enabled);
+        return;
+      case 'chooseTheme':
+        await vscode.commands.executeCommand('deckard.chooseTheme');
         return;
       case 'ready':
         this.refresh();
@@ -400,17 +448,23 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
           'inline',
         );
         const rows = taskRows((board.tasks ?? []).map((item) => item.task), index);
-        await exportResults('tasks', rows.length, (format) => formatTasks(rows, format));
+        const search = this.query.trim();
+        await exportResults(
+          'tasks',
+          rows.length,
+          (format) => formatTasks(rows, format),
+          search ? () => formatQueryBlock(search, this.queryBlockOptions()) : undefined,
+        );
         return;
       }
       case 'setBoardGroup':
-        // A different grouping is a different board, so the Done column goes
+        // A different grouping is a different board, so every column goes
         // back to its short form.
-        this.showEveryDoneTask = false;
-        await this.preferences.setTaskBoardGroup(message.groupBy);
+        this.shownColumns = new Set();
+        await this.preferences.setTaskBoardGroup(message.groupBy, message.namespace);
         return;
       case 'showColumnRest':
-        this.showEveryDoneTask = true;
+        this.shownColumns.add(message.columnId);
         this.refresh();
         return;
       case 'setTaskLayout':
@@ -473,7 +527,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
             task.lineNumber === message.line,
         );
         if (known) {
-          await openSourceAt(message.filePath, message.line);
+          await openResultAt(message.filePath, message.line, message);
         }
         return;
       }
@@ -494,12 +548,49 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'moveTask': {
         const task = index.tasks.get(message.taskId);
         this.writeIndexAt = index.updatedAt;
-        if (!task || !(await moveTaskToColumn(task, message.column))) {
+        if (!task || !(await moveTaskToColumn(task, message.column, { index, from: message.from }))) {
           this.writeIndexAt = undefined;
+          // The card moved at once on the page; say it did not, then put it back.
+          void this.panel?.webview.postMessage({ type: 'moveRefused', taskId: message.taskId });
           this.refresh();
         }
         return;
       }
+      case 'pickTaskDate': {
+        const task = index.tasks.get(message.taskId);
+        if (!task) {
+          return;
+        }
+        const date = await askForDueDate(quoteTaskTitle(task));
+        if (date !== null) {
+          await setTasksDue([task], date);
+        }
+        return;
+      }
+      case 'moveTaskTo': {
+        const task = index.tasks.get(message.taskId);
+        if (task) {
+          await moveTasks(this.indexer, this.preferences, [task]);
+        }
+        return;
+      }
+      case 'editTask': {
+        const task = index.tasks.get(message.taskId);
+        if (task && (await openTask(task))) {
+          await vscode.commands.executeCommand('deckard.editTask');
+        }
+        return;
+      }
+      case 'breakIntoSteps': {
+        const task = index.tasks.get(message.taskId);
+        if (task) {
+          await breakIntoStepsCommand(this.indexer, task);
+        }
+        return;
+      }
+      case 'addTaskToColumn':
+        await captureIntoColumn(message.column);
+        return;
     }
   }
 }

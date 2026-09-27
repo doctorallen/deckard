@@ -18,9 +18,10 @@ import {
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
+import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
 
-interface RenameTagOptions {
+export interface RenameTagOptions {
   entityNamespaceAliases?: EntityNamespaceAliases;
   personMarker?: string;
 }
@@ -39,7 +40,7 @@ interface FileRenamePlan {
 interface RenamePlan {
   files: FileRenamePlan[];
   occurrenceCount: number;
-  staleFilePath?: string;
+  staleUri?: vscode.Uri;
 }
 
 /**
@@ -77,16 +78,17 @@ export async function renameIndexedTag(
       vscode.window.activeTextEditor?.document.uri ??
         vscode.workspace.workspaceFolders?.[0]?.uri,
     );
-    const replacement = await chooseReplacementTag(sourceTag, parseOptions);
+    const replacement = await chooseReplacementTag(index, sourceTag, parseOptions);
     if (!replacement) {
       return undefined;
     }
 
     return await rewriteTag(indexer, index, sourceTag, replacement, preferences);
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not rename a tag: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: 'Deckard could not rename the tag, so nothing was written.',
+      error,
+    });
     return undefined;
   }
 }
@@ -130,9 +132,10 @@ export async function mergeIndexedTag(
       preferences,
     );
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not merge a tag: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: 'Deckard could not merge the tags, so nothing was written.',
+      error,
+    });
     return undefined;
   }
 }
@@ -326,7 +329,7 @@ async function rewriteTag(
   const targetKey = resolveIndexedTagKey(index.tags, replacement.key);
   if (replacement.key === sourceTag.key || targetKey === sourceTag.key) {
     void vscode.window.showInformationMessage(
-      `${sourceTag.label} already uses that tag identity.`,
+      `${sourceTag.label} is already written that way.`,
     );
     return undefined;
   }
@@ -342,16 +345,14 @@ async function rewriteTag(
   const joiner = merge ? 'into' : 'to';
 
   const plan = await createRenamePlan(index, sourceTag.key, replacement);
-  if (plan.staleFilePath) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not ${verb} ${sourceTag.label} because ${plan.staleFilePath} changed after indexing.`,
-    );
+  if (plan.staleUri) {
+    void reportStale([plan.staleUri]);
     return undefined;
   }
   if (plan.occurrenceCount === 0) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not find any current source occurrences of ${sourceTag.label}.`,
-    );
+    void reportFailure({
+      outcome: `Deckard could not find ${sourceTag.label} in any note as the notes are now, so nothing was written.`,
+    });
     return undefined;
   }
 
@@ -383,9 +384,10 @@ async function rewriteTag(
     },
   });
   if (!written.applied) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not ${verb} ${sourceTag.label}. VS Code rejected the source edit.`,
-    );
+    void reportFailure({
+      outcome: `VS Code did not accept the change to ${plan.files.length === 1 ? noteName(plan.files[0].document.uri) : `${plan.files.length} notes`}, so nothing was written.`,
+      fix: describeRejectedEdit('').fix,
+    });
     return undefined;
   }
   if (written.notes.length === 0) {
@@ -395,6 +397,8 @@ async function rewriteTag(
     return undefined;
   }
 
+  const mine = workspaceWrites.lastWrite;
+
   // Favorites, ranking, and saved views follow the tag. This runs before the
   // refresh so nothing prunes them while they still name the old key.
   await preferences?.replaceTagKey(sourceTag.key, targetKey ?? replacement.key);
@@ -402,17 +406,37 @@ async function rewriteTag(
   try {
     await indexer.refresh();
   } catch (error) {
-    void vscode.window.showWarningMessage(
-      `${done} ${sourceTag.label} ${joiner} ${replacement.label}, but Deckard could not refresh its index: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: `${done} ${sourceTag.label} ${joiner} ${replacement.label}, but Deckard could not read the notes again, so search may show the old tag until the next save.`,
+      severity: 'warning',
+      action: reindexAction(),
+      error,
+    });
   }
-  void vscode.window.showInformationMessage(
-    `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
-      written.notes.length,
-      'note',
-      'notes',
-    )}.`,
-  );
+  // Undo is offered where it was done: a Try next merge, or one from a
+  // tag's menu, is not something a reader thinks to find in the palette.
+  void vscode.window
+    .showInformationMessage(
+      `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
+        written.notes.length,
+        'note',
+        'notes',
+      )}.`,
+      'Undo',
+    )
+    .then(async (choice) => {
+      if (choice !== 'Undo') {
+        return;
+      }
+      if (workspaceWrites.lastWrite !== mine) {
+        void vscode.window.showInformationMessage(
+          'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
+        );
+        return;
+      }
+      const result = await workspaceWrites.undo();
+      reportUndo(result, `Put back ${sourceTag.label} in ${formatCount(result?.restored ?? 0, 'note', 'notes')}.`);
+    });
   return replacement;
 }
 
@@ -459,9 +483,7 @@ async function chooseIndexedTag(
     if (requestedTag) {
       return requestedTag;
     }
-    void vscode.window.showWarningMessage(
-      `Deckard could not find the tag: ${requestedTagKey}`,
-    );
+    void reportFailure({ outcome: describeMissingTag(requestedTagKey) });
     return undefined;
   }
 
@@ -519,23 +541,94 @@ async function chooseMergeTarget(
   return picked?.tag;
 }
 
+/** What the Rename box says of what is typed, and how firmly. */
+export interface RenameTargetDescription {
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+const RENAME_TAG_ERROR =
+  'Write one tag, such as #project/new-name, or a new name in the same namespace.';
+
+/**
+ * Says, as a new name is typed, what renaming to it will do: nothing, a
+ * merge into a tag that exists, or a new tag. A bare name with a `/` in it
+ * keeps the old tag's namespace, which is rarely meant, so that one warns.
+ */
+export function describeRenameTarget(
+  index: Pick<WorkspaceIndex, 'tags'>,
+  sourceTag: TagReference,
+  value: string,
+  options: RenameTagOptions = {},
+): RenameTargetDescription {
+  const replacement = parseRenameTag(
+    value,
+    sourceTag,
+    options.entityNamespaceAliases,
+    options.personMarker,
+  );
+  if (!replacement) {
+    return { message: RENAME_TAG_ERROR, severity: 'error' };
+  }
+  const existingKey = resolveIndexedTagKey(index.tags, replacement.key);
+  if (existingKey === sourceTag.key || replacement.key === sourceTag.key) {
+    return {
+      message: `This is ${sourceTag.label} already; nothing will change.`,
+      severity: 'info',
+    };
+  }
+  const existing = existingKey ? index.tags.get(existingKey) : undefined;
+  if (existing) {
+    return {
+      message: `Merges into ${existing.label} (${formatEntries(existing.count)}).`,
+      severity: 'info',
+    };
+  }
+  const trimmed = value.trim();
+  const sourceName = sourceTag.label.slice(1);
+  const namespace =
+    sourceTag.key.startsWith('#') && sourceName.includes('/')
+      ? sourceName.slice(0, sourceName.indexOf('/'))
+      : '';
+  if (!hasTagMarker(trimmed, options.personMarker) && trimmed.includes('/') && namespace) {
+    return {
+      message: `Becomes a new tag ${replacement.label}. Start with # to leave out ${namespace}/.`,
+      severity: 'warning',
+    };
+  }
+  return { message: `Becomes a new tag ${replacement.label}.`, severity: 'info' };
+}
+
+/**
+ * The part of a tag's label a rename most likely changes, selected in the
+ * box: the name after its namespace, or after its marker.
+ */
+export function nameSelection(label: string): [number, number] {
+  const slash = label.indexOf('/');
+  return [slash >= 0 ? slash + 1 : 1, label.length];
+}
+
 async function chooseReplacementTag(
+  index: WorkspaceIndex,
   sourceTag: TagInfo,
   options: Required<RenameTagOptions>,
 ): Promise<TagReference | undefined> {
+  const severities = {
+    info: vscode.InputBoxValidationSeverity.Info,
+    warning: vscode.InputBoxValidationSeverity.Warning,
+  };
   return vscode.window.showInputBox({
-    prompt: `Rename ${sourceTag.label} to`,
-    placeHolder:
-      'Enter a complete tag or a new name in the same namespace. An existing tag merges into it.',
-    validateInput: (value) =>
-      parseRenameTag(
-        value,
-        sourceTag,
-        options.entityNamespaceAliases,
-        options.personMarker,
-      )
-        ? undefined
-        : 'Enter exactly one valid tag, such as #project/new-name or a bare new name.',
+    title: `Rename ${sourceTag.label}`,
+    value: sourceTag.label,
+    valueSelection: nameSelection(sourceTag.label),
+    prompt: 'Type a new name to keep the namespace, or a whole tag starting with # or @.',
+    validateInput: (value) => {
+      const described = describeRenameTarget(index, sourceTag, value, options);
+      // An error stays a plain string, so the box refuses Enter.
+      return described.severity === 'error'
+        ? described.message
+        : { message: described.message, severity: severities[described.severity] };
+    },
   }).then((value) =>
     value === undefined
       ? undefined
@@ -574,7 +667,7 @@ async function createRenamePlan(
 
     const document = await vscode.workspace.openTextDocument(uri);
     if (document.getText() !== file.content) {
-      return { files: [], occurrenceCount: 0, staleFilePath: filePath };
+      return { files: [], occurrenceCount: 0, staleUri: uri };
     }
 
     occurrenceCount += planned.occurrenceCount;

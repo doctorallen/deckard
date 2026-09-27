@@ -2,6 +2,7 @@ import {
   findDailyNoteDate,
   findFencedLines,
 } from '../../core/markdown/parser';
+import { findCodeAndLinkRanges } from '../../core/markdown/inlineRanges';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -116,6 +117,8 @@ export function findDailyNoteActions(
   index: WorkspaceIndex,
   today: string,
   lookbackDays = 0,
+  /** The rollover mode, which decides whether older copies of a task count. */
+  mode: 'move' | 'migrate' = 'move',
 ): DailyNoteActions | undefined {
   const date = findDailyNoteDate(
     file.filePath,
@@ -136,7 +139,7 @@ export function findDailyNoteActions(
   );
   const carryIn =
     date === today
-      ? (planRollover(index, today, lookbackDays)?.tasks ?? []).filter(
+      ? (planRollover(index, today, lookbackDays, mode)?.tasks ?? []).filter(
           (task) =>
             task.filePath !== file.filePath &&
             !written.has(task.sourceLineText.trim()),
@@ -212,11 +215,12 @@ export interface UnlinkedMention {
 /** A name shorter than this is too likely to be an ordinary word. */
 const MIN_MENTION_LENGTH = 3;
 /**
- * What a mention is never found inside: a `[[link]]`, inline code, a Markdown
- * link or its target, a bare URL, and a `#tag` or `@person`.
+ * What a mention is never found inside, besides the code and link ranges
+ * every tag reader skips: a Markdown link's words, a bare URL, and a `#tag`
+ * or `@person`.
  */
 const NOT_PROSE =
-  /\[\[[^\]]*\]\]|`[^`]*`|!?\[[^\]]*\]\([^)]*\)|<?https?:\/\/[^\s>]+>?|[#@][\p{L}\p{N}_/-]+/gu;
+  /!?\[[^\]]*\]\([^)]*\)|<?https?:\/\/[^\s>]+>?|[#@][\p{L}\p{N}_/-]+/gu;
 
 const mentionCache = new WeakMap<WorkspaceIndex, Map<string, UnlinkedMention[]>>();
 
@@ -284,7 +288,10 @@ export function findUnlinkedMentions(
         return;
       }
       // Blank out what is not prose, keeping every column where it was.
-      const prose = text.replace(NOT_PROSE, (match) => ' '.repeat(match.length));
+      const prose = blankRanges(
+        text.replace(NOT_PROSE, (match) => ' '.repeat(match.length)),
+        text,
+      );
       for (const match of prose.matchAll(pattern)) {
         const startColumn = match.index ?? 0;
         mentions.push({
@@ -305,6 +312,15 @@ export function findUnlinkedMentions(
   );
   cached.set(key, mentions);
   return mentions;
+}
+
+/** `text` with the inline code and links of `line` blanked, columns kept. */
+function blankRanges(text: string, line: string): string {
+  let blanked = text;
+  findCodeAndLinkRanges(line).forEach(({ start, end }) => {
+    blanked = blanked.slice(0, start) + ' '.repeat(end - start) + blanked.slice(end);
+  });
+  return blanked;
 }
 
 /** The last line of a note's front matter, or -1 when it has none. */

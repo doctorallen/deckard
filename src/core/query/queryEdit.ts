@@ -131,9 +131,9 @@ function widenOverParentheses(text: string, span: Span): Span {
 function isBalanced(text: string): boolean {
   let depth = 0;
   for (const char of text) {
-    if (char === '(') depth += 1;
-    if (char === ')') depth -= 1;
-    if (depth < 0) return false;
+    if (char === '(') {depth += 1;}
+    if (char === ')') {depth -= 1;}
+    if (depth < 0) {return false;}
   }
   return depth === 0;
 }
@@ -168,8 +168,8 @@ function removeNode(root: QueryNode, target: QueryNode): QueryNode | undefined {
     const children = root.children
       .map((child) => removeNode(child, target))
       .filter((child): child is QueryNode => child !== undefined);
-    if (children.length === 0) return undefined;
-    if (children.length === 1) return children[0];
+    if (children.length === 0) {return undefined;}
+    if (children.length === 1) {return children[0];}
     return { type: root.type, children };
   }
   return root;
@@ -482,4 +482,30 @@ function tidy(text: string): string {
       .trim();
   } while (result !== previous);
   return result;
+}
+
+const AVAILABLE_TERM = /(^|[\s(])is:(?:available|actionable)(?=$|[\s)])/i;
+
+/** Whether a search asks for what can be started now, as a term of its own. */
+export function hasAvailableTerm(query: string): boolean {
+  return AVAILABLE_TERM.test(query);
+}
+
+/**
+ * The board's Can start now switch: a leading `is:open` becomes
+ * `is:available`, or it is put in front; pressed again, `is:available` goes
+ * back to `is:open`, the search the board opens on.
+ */
+export function toggleAvailable(query: string): string {
+  const text = query.trim();
+  if (hasAvailableTerm(text)) {
+    return text.replace(AVAILABLE_TERM, '$1is:open');
+  }
+  if (/^is:open(?=$|\s)/i.test(text)) {
+    return text.replace(/^is:open/i, 'is:available');
+  }
+  if (!text) {
+    return 'is:available';
+  }
+  return /\sOR\s/.test(text) ? `is:available (${text})` : `is:available ${text}`;
 }

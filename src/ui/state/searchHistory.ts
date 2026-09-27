@@ -30,6 +30,15 @@ export class SearchHistory {
     this.forwardEntries = [];
   }
 
+  /** Whether there is a search to go back to, and one to go forward to. */
+  public get canGoBack(): boolean {
+    return this.backEntries.length > 0;
+  }
+
+  public get canGoForward(): boolean {
+    return this.forwardEntries.length > 0;
+  }
+
   /** The search before `current`, which becomes the one ahead of it. */
   public back(current: SearchHistoryEntry): SearchHistoryEntry | undefined {
     const entry = this.backEntries.pop();

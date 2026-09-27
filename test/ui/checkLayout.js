@@ -31,7 +31,8 @@ if (!existsSync(compiled)) {
 const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
 const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
 const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
-const { createSearchPageSnapshot } = require('../../out/ui/state/dashboardState.js');
+const { createSearchPageSnapshot, createDeckardStatsSnapshot } = require('../../out/ui/state/dashboardState.js');
+const { createCalendar } = require('../../out/ui/state/calendarState.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
@@ -43,11 +44,16 @@ if (!chrome) {
 }
 
 /** Enough tasks that the busiest column must scroll, and titles that wrap. */
-function createIndex() {
+function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
     lines.push(`- [ ] ${i === 1 ? long : `Overdue task ${i}`} 📅 2026-09-01 #status/doing`);
+    // The board's cards: the long first task has steps, the next of them
+    // too long for a column, so its line must ellipsize, not widen the card.
+    if (i === 1 && withSteps) {
+      lines.push('  - [x] Find the market stall', '  - [ ] Draft the report for the precinct before the rain comes back');
+    }
   }
   for (let i = 1; i <= 12; i += 1) {
     lines.push(`- [ ] Later task ${i} 📅 2026-12-01`);
@@ -65,6 +71,32 @@ function createIndex() {
       `# Related note ${i} #project/atlas #topic/replicants\nMentions @dana and the Atlas project, entry ${i}.`)]),
   ]);
   return { index: buildWorkspaceIndex(files), files };
+}
+
+/**
+ * The calendar's own small month, so no other surface's pixels move with it:
+ * a crowded day, a day far past due, and a chosen day with more tasks and
+ * new notes than the panel lists at once, their titles long.
+ */
+function createCalendarIndex() {
+  const long = 'Chase the replicant through the neon market and file the report';
+  const created = new Date(2026, 8, 21, 9).getTime();
+  const tasks = [
+    ...Array.from({ length: 7 }, (_, i) => `- [ ] ${long} ${i + 1} 📅 2026-09-21`),
+    '- [ ] Draft the brief for the whole of the Atlas programme ⏳ 2026-09-21',
+    ...Array.from({ length: 12 }, (_, i) => `- [ ] Busy ${i} 📅 2026-09-24`),
+    ...Array.from({ length: 11 }, (_, i) => `- [ ] Planned ${i} ⏳ 2026-09-24`),
+    '- [ ] Renew the lease 📅 2026-08-03',
+    '- [x] Filed the report ✅ 2026-09-21',
+  ];
+  const files = new Map([
+    ['notes/2026-09-21.md', parseMarkdown('notes/2026-09-21.md', `# 2026-09-21\n${tasks.join('\n')}\n`, { createdAt: created, updatedAt: created })],
+    ...Array.from({ length: 6 }, (_, i) => {
+      const filePath = `projects/a-folder-with-a-long-name/note-${i}.md`;
+      return [filePath, parseMarkdown(filePath, `# A new note with a title too long for the sidebar ${i}\n`, { createdAt: created + i, updatedAt: created })];
+    }),
+  ]);
+  return buildWorkspaceIndex(files);
 }
 
 function createGlobalState() {
@@ -85,13 +117,15 @@ const NOW = new Date(2026, 8, 21, 12).getTime();
  */
 function createSurfaces(zen) {
   const { index, files } = createIndex();
+  // Only the board's surfaces carry steps, so no other page's pixels move.
+  const boardIndex = createIndex(true).index;
   const preferences = new PreferencesStore(createGlobalState());
   return [
     {
       page: 'taskBoard',
       viewport: [1400, 900],
       snapshot: () => createTaskBoard(
-        index,
+        boardIndex,
         preferences.value,
         { query: '' },
         { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
@@ -100,6 +134,35 @@ function createSurfaces(zen) {
       scrollers: ['.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+    },
+    {
+      // Grouped by a tag namespace, the switch has five segments: it must
+      // wrap rather than push the page sideways at a narrower width.
+      name: 'taskBoardByTag',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard(
+        boardIndex,
+        { ...preferences.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
+        { query: '' },
+        { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        'inline',
+      ),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+    {
+      // The calendar in a narrow sidebar with its day panel on: counts that
+      // run to two digits, and rows whose words are longer than the panel.
+      page: 'calendar',
+      viewport: [240, 700],
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
+        dayPanel: true,
+      }),
+      scrollers: ['html'],
+      clippers: ['.day', '.day-panel .task-row'],
+      hovered: ['.day-panel .task-row'],
     },
     {
       // As narrow as a reader is likely to drag the sidebar: the page's own
@@ -119,17 +182,59 @@ function createSurfaces(zen) {
       clippers: [],
       hovered: ['.note'],
     },
+    {
+      // A note with no tags: the tags similar notes use, each a full-width
+      // row, then the entries worded like it, at the same narrow width.
+      name: 'sidebarNotesUntagged',
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => {
+        const untaggedFiles = new Map(files);
+        const untagged = parseMarkdown('notes/untagged.md', [
+          '# Thursday',
+          'Walked the neon market with Dana about the Atlas project and the replicants report.',
+          'The related note on the Atlas project needs an entry before the rain.',
+        ].join('\n'));
+        untaggedFiles.set('notes/untagged.md', untagged);
+        return {
+          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, true, 'tags', {}, 'inline'),
+          previewLines: 1,
+        };
+      },
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note'],
+    },
     // Zen folds each card's file and line away and reveals it on hover, so a
     // hovered result is the one row that grows. The search page is where that
     // reveal sits inside a .card-header rather than at the end of the row.
-    ...(zen ? [{
+    // Without zen it is drawn too, so its cards' tags, their three lines, and
+    // the hub line are measured in every theme.
+    {
+      // Stats: what needs attention first, then the totals, then what is
+      // viewed most, with every panel's rows at full width.
+      page: 'stats',
+      viewport: [1100, 900],
+      snapshot: () => ({
+        ...createDeckardStatsSnapshot(index, {
+          ...preferences.value,
+          tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
+        }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
+        // "5 minutes ago" would change with the clock, and so the pixels.
+        updatedAt: 0,
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.metric-open'],
+    },
+    {
       page: 'searchPage',
       viewport: [900, 900],
       snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas'),
       scrollers: ['html'],
       clippers: [],
       hovered: ['.card'],
-    }] : []),
+    },
   ];
 }
 
@@ -187,6 +292,44 @@ function probeScript(surface) {
     return found;
   }
   const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];
+  // A control that cannot act must not light up under the pointer: its
+  // colors at rest, to compare once every :hover rule is forced onto it.
+  function look(el) {
+    const style = getComputedStyle(el);
+    return [style.backgroundColor, style.borderTopColor, style.color].join(' ');
+  }
+  const disabled = [...document.querySelectorAll('button:disabled, [aria-disabled="true"]')];
+  disabled.forEach((el) => { el.style.transition = 'none'; });
+  const disabledAtRest = disabled.map(look);
+  runs[0].disabledCount = disabled.length;
+  // A tag on a card is written text: no edge and no ground at rest.
+  runs[0].cardTagsBoxed = [...document.querySelectorAll(':is(.card, .task-row, .board-card, .note) :is(button.tag-open, button.inline-tag)')]
+    .filter((el) => {
+      const style = getComputedStyle(el);
+      return style.borderTopStyle !== 'none' || (style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent');
+    })
+    .slice(0, 4)
+    .map((el) => name(el) + ' ' + getComputedStyle(el).borderTopStyle + ' ' + getComputedStyle(el).backgroundColor);
+  // A result cut to three lines is no taller than three of its lines.
+  runs[0].clampOver = [...document.querySelectorAll('.card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown')]
+    .filter((el) => {
+      const style = getComputedStyle(el);
+      const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.55;
+      const content = el.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      return content > 3 * line + 2;
+    })
+    .slice(0, 4)
+    .map((el) => name(el) + ' ' + el.clientHeight + 'px');
+  // A tag keeps to one line and stays inside the entry it is written in.
+  runs[0].tagsBroken = [...document.querySelectorAll('.tag-open .tag-label, .inline-tag .tag-label')]
+    .filter((label) => {
+      const entry = label.closest('.note, .card, .board-card, .task-row');
+      const lines = label.getClientRects().length;
+      const past = entry ? label.getBoundingClientRect().right - entry.getBoundingClientRect().right : 0;
+      return lines > 1 || past > 0.5;
+    })
+    .slice(0, 4)
+    .map((label) => label.textContent + ' (' + label.getClientRects().length + ' lines)');
   let target = null;
   let hoverTarget = '';
   for (const sel of ${JSON.stringify(surface.hovered)}) {
@@ -209,6 +352,10 @@ function probeScript(surface) {
     // Force layout so the rewritten rules apply before measuring.
     void target.offsetWidth;
     runs.push({ ...report('hovered'), transform: getComputedStyle(target).transform });
+    disabled.forEach((el) => el.classList.add('layout-probe-hover'));
+    runs[1].disabledLit = disabled
+      .map((el, i) => { const now = look(el); return now === disabledAtRest[i] ? '' : name(el) + ' ' + disabledAtRest[i] + ' -> ' + now; })
+      .filter(Boolean);
   }
   const pre = document.createElement('pre');
   pre.id = 'layout-probe';
@@ -217,8 +364,11 @@ function probeScript(surface) {
 })();`;
 }
 
-/** The page as the webview shows it, with the VS Code bridge replaced. */
-function buildPage(html, surface) {
+/**
+ * The page as the webview shows it, with the VS Code bridge replaced. probe
+ * is the script that measures it, the layout probe unless another is given.
+ */
+function buildPage(html, surface, probe = probeScript(surface)) {
   const snapshot = surface.snapshot();
   const bridge = `<script>
 window.acquireVsCodeApi = function () {
@@ -227,7 +377,7 @@ window.acquireVsCodeApi = function () {
 </script>`;
   const drive = `<script>
 window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(snapshot)} } }));
-setTimeout(function () { ${probeScript(surface)} }, 50);
+setTimeout(function () { ${probe} }, 50);
 </script>`;
   const inner = html
     // The page's CSP names a nonce these scripts do not have.
@@ -309,7 +459,7 @@ function findChrome() {
 
 // The surfaces, the page builder and the browser are shared with the visual
 // check, which draws the same pages and compares the pixels instead.
-module.exports = { chrome, createSurfaces, buildPage, findChrome };
+module.exports = { chrome, createSurfaces, buildPage, findChrome, measure };
 
 if (require.main === module) {
 // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
@@ -326,9 +476,10 @@ try {
       // LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking at it.
       // LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it.
       const only = process.env.LAYOUT_ONLY;
-      if (only && only !== `${label}:${surface.page}` && only !== surface.page && only !== label) continue;
+      const surfaceName = surface.name || surface.page;
+      if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
       const html = rendered.get(surface.page);
-      const file = path.join(dir, `${label}-${surface.page}.html`);
+      const file = path.join(dir, `${label}-${surfaceName}.html`);
       writeFileSync(file, buildPage(html, surface));
       const problems = [];
       let runs;
@@ -353,6 +504,18 @@ try {
             problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
           }
         }
+        for (const boxed of run.cardTagsBoxed || []) {
+          problems.push(`a tag on a card is drawn as a control: ${boxed}`);
+        }
+        for (const over of run.clampOver || []) {
+          problems.push(`a result cut to three lines is taller than three: ${over}`);
+        }
+        for (const broken of run.tagsBroken || []) {
+          problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
+        }
+        for (const lit of run.disabledLit || []) {
+          problems.push(`a control that cannot act lights up under the pointer: ${lit}`);
+        }
         for (const box of run.clippers) {
           if (box.scrollH > box.clientH && box.overflowY === 'hidden') {
             problems.push(`${run.label}: ${box.sel} clips ${box.scrollH - box.clientH}px it cannot scroll to`);
@@ -364,10 +527,10 @@ try {
         console.log(`  wrote ${file}`);
       } else if (problems.length === 0) {
         const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
-        console.log(`  ok   ${label.padEnd(14)} ${surface.page.padEnd(13)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
+        console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
       } else {
         failed += 1;
-        console.log(`  FAIL ${label.padEnd(14)} ${surface.page}`);
+        console.log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
         problems.forEach((problem) => console.log(`         ${problem}`));
       }
     }

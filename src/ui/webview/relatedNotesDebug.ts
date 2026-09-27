@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { reportFailure } from '../commands/notify';
 
 import {
   EntryRelatedNotesDiagnostic,
@@ -26,9 +27,10 @@ export class RelatedNotesDebugPanel implements vscode.Disposable {
       sourceLine,
     );
     if (!diagnostic) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not find that tagged note entry. Save the file and try again.',
-      );
+      void reportFailure({
+        outcome: 'Deckard could not find that entry in the note as it is now.',
+        fix: 'Save the note so Deckard reads it again, then try again.',
+      });
       return;
     }
 

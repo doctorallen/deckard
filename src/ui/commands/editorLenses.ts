@@ -19,9 +19,11 @@ import {
 import { resolveSourceUri } from './navigation';
 import { getRolloverLookbackDays, getRolloverMode } from './rollover';
 import { LINK_MENTIONS_COMMAND } from './unlinkedMentions';
+import { whenPublished } from '../../core/workspace/publishing';
 
 interface LensIndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
@@ -96,7 +98,7 @@ export class EditorLenses
       }),
       vscode.languages.registerCodeLensProvider({ pattern: '**/*.md' }, this),
     ];
-    void indexer.ready.then(() => {
+    void whenPublished(indexer).then(() => {
       this.isReady = true;
       this.changeEmitter.fire();
     });
@@ -114,8 +116,15 @@ export class EditorLenses
       'deckard.editor',
       document.uri,
     );
-    const groups = this.groups.filter((group) =>
-      configuration.get<boolean>(group.setting, true),
+    // Zen keeps the lenses that report a problem or act on today's note,
+    // and drops the suggestion to link a note's mentions.
+    const zen = vscode.workspace
+      .getConfiguration('deckard', document.uri)
+      .get<boolean>('zenMode', false);
+    const groups = this.groups.filter(
+      (group) =>
+        configuration.get<boolean>(group.setting, true) &&
+        !(zen && group.setting === 'unlinkedMentions'),
     );
     if (groups.length === 0) {
       return [];
@@ -202,6 +211,7 @@ function provideDailyNoteLenses({
     index,
     formatLocalDate(now),
     getRolloverLookbackDays(document.uri),
+    getRolloverMode(document.uri) === 'migrate' ? 'migrate' : 'move',
   );
   if (!actions) {
     return [];
@@ -216,7 +226,7 @@ function provideDailyNoteLenses({
     getPeriodicNoteUri(folder, 'day', now).toString() ===
       document.uri.toString();
   if (isTodaysNote && actions.carryIn.length > 0) {
-    const verb = getRolloverMode(document.uri) === 'copy' ? 'Copy' : 'Move';
+    const verb = getRolloverMode(document.uri) === 'migrate' ? 'Migrate' : 'Move';
     lenses.push(
       new ActionLens(range, () => ({
         title: `Carry in ${pluralize(actions.carryIn.length, 'unfinished task')}`,

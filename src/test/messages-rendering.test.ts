@@ -46,7 +46,7 @@ suite('Webview contracts', () => {
     // test can call them. Lifting them into a module of their own is what
     // turns these checks into tests of the algorithm.
     assert.strictEqual(
-      html.includes('The graph uses prevalence-aware visual communities'),
+      html.includes('The graph uses prevalence-aware groups'),
       true,
     );
     assert.strictEqual(
@@ -83,7 +83,7 @@ suite('Webview contracts', () => {
       'zoom-fit',
       'reset-graph-settings',
     ].forEach((id) => {
-      assert.strictEqual(new RegExp(`id="${id}"[^>]*title="[^"]+"`).test(html), true);
+      assert.strictEqual(new RegExp(`id="${id}"[^>]*data-tip="[^"]+"`).test(html), true);
     });
         assert.strictEqual(
       html.indexOf('id="reset-graph-settings"') >
@@ -104,7 +104,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('function isPhysicalNode('), true);
     assert.strictEqual(html.includes('function tickCommunityAnchors('), true);
     assert.strictEqual(html.includes('communityEdges = communityData.edges'), true);
-    assert.strictEqual(html.includes('strong links / '), true);
+    assert.strictEqual(html.includes(' links drawn · '), true);
     assert.strictEqual(html.includes("message.type === 'selectNode'"), true);
     assert.strictEqual(html.includes('selectedNeighbors[index]'), true);
   });
@@ -581,7 +581,7 @@ suite('Webview contracts', () => {
     assert.ok(html.includes('.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }'));
     assert.ok(html.includes('.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {'));
                     assert.strictEqual(
-      html.includes('.tag-namespace { opacity: .62; }'),
+      html.includes('.tag-namespace { color: var(--muted); }'),
       true,
     );
             assertWebviewScriptParses(html);
@@ -598,8 +598,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>\';'), true);
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
-    // A tag in a title is a hairline link, not a control chip.
-    assert.strictEqual(html.includes('.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }'), true);
+    // A tag on a card is written text, not a control chip.
+    assert.strictEqual(html.includes('body .card button.tag-open:not(:hover):not(:focus-visible),'), true);
                                                                                 // The gear is the one every page draws, after the totals.
     assert.strictEqual(
       html.indexOf("const metrics = '<div class=\"metrics\"") <
@@ -620,7 +620,7 @@ suite('Webview contracts', () => {
     );
         assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
     assert.strictEqual(
-      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }'),
+      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }'),
       true,
     );
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
@@ -659,12 +659,12 @@ suite('Webview contracts', () => {
       false,
       'no rule on the page sets text under the floor',
     );
-    // The syntax hint under a search box shows while the box is in use and
-    // not at rest, where it competed with the results under it.
+    // The syntax hint under a search box stays: hidden at rest, it came and
+    // went as focus moved to the grouping beside it.
     assert.strictEqual(
-      html.includes('.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }'),
-      true,
-      'the hint rests only while the box is idle and empty',
+      /\.query-hint \{ display: none; \}/.test(html),
+      false,
+      'the hint is not hidden when the box is idle',
     );
     // The file and line under a task were once a literal gray at 1.85:1 on
     // the panel, which six of the eight themes inherited. The muted token is
@@ -695,9 +695,10 @@ suite('Webview contracts', () => {
     assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
     assert.strictEqual(corpo.includes('body { background: var(--vscode-editor-background); }'), true);
     // Every overlay is opaque: VS Code's hover color is often semi-transparent.
+    assert.strictEqual(corpo.includes('.popover, .tag-filter-menu,'), true);
     assert.strictEqual(corpo.includes('.sidebar-association-tooltip, .query-suggestions { clip-path: none;'), true);
     // A page VS Code gives no backdrop paints its own, or it renders blank.
-    assert.strictEqual(corpo.includes('body:has(.sidebar-header)'), true);
+    assert.strictEqual(corpo.includes('body:has(> main[data-sidebar])'), true);
     assert.strictEqual(corpo.includes('.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border'), true);
     // The page's color scheme follows VS Code's, or a light theme gets a dark backdrop.
     assert.strictEqual(corpo.includes(':root:has(> body.vscode-light)'), true);
@@ -898,7 +899,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover, button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
+        'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover:where(:not(:disabled):not([aria-disabled="true"])), button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
       ),
       true,
     );
@@ -933,18 +934,13 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('.sidebar-toolbar { gap: 0; }'),
-      true,
+      getDeckardThemeCss('lcars').includes('.sidebar-toolbar'),
+      false,
+      'the sidebar\'s actions are in its view title bar, not the page',
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; }',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
-        '.control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
+        '.control-icon select:hover:where(:not(:disabled):not([aria-disabled="true"])) + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
       ),
       true,
     );
@@ -1032,7 +1028,7 @@ suite('Webview contracts', () => {
     // A tag's resting color never outranks the fill a theme gives it on hover.
     assert.strictEqual(/\.card \.tag-open, \.note-row \.tag-open \{ color/.test(cooper), false);
     // A hovered tag keeps Cooper's inverted button colors, not a dark ground under dark text.
-    assert.strictEqual(cooper.includes('.tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); }'), true);
+    assert.strictEqual(cooper.includes('.tag-open:hover, .note .tag-list button:hover:where(:not(:disabled):not([aria-disabled="true"])) { transform: translateX(3px); }'), true);
     assert.strictEqual(/\.tag-open:hover[^{]*\{[^}]*background: var\(--panel-raised\)/.test(cooper), false);
     // The glow is drawn once over the whole panel, not tiled down a short page.
     assert.strictEqual(cooper.includes('html { min-height: 100%; }'), true);
@@ -1134,7 +1130,7 @@ suite('Webview contracts', () => {
       true,
     );
         assert.strictEqual(
-      html.includes('.segmented > .active { position: relative; z-index: 1; }'),
+      html.includes('.segmented > .active { position: relative; z-index: var(--z-raised); }'),
       true,
     );
                             // The closer spelling a search page offers, and the batch it carries of
@@ -1197,7 +1193,7 @@ suite('Webview contracts', () => {
       true,
     );
                                 assert.strictEqual(
-      html.includes('.tag-namespace { opacity: .62; }'),
+      html.includes('.tag-namespace { color: var(--muted); }'),
       true,
     );
         assert.strictEqual(

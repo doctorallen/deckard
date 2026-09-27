@@ -1,3 +1,5 @@
+import { parseWikiTarget } from '../workspace/backlinks';
+import { resolveDateRange } from './queryEvaluator';
 import {
   ParsedQuery,
   QueryConditionNode,
@@ -21,13 +23,14 @@ import {
  * andExpression := notExpression (AND? notExpression)*
  * notExpression := (NOT | '-' | '!')? primary
  * primary    := '(' orExpression ')' | condition
- * condition  := field operator value | tagToken | textToken
+ * condition  := field operator value | tagToken | linkToken | textToken
  * ```
  *
  * Adjacent terms are joined with an implicit AND, so `#project/atlas #urgent`
  * means the same thing as `#project/atlas AND #urgent`. A bare `#tag` or
  * `@person` token is a tag condition and a bare or quoted word is a text
- * condition, which keeps simple searches free of field syntax.
+ * condition, which keeps simple searches free of field syntax. A bare
+ * `[[Note]]` is a link condition, `link = [[Note]]`.
  *
  * `=` is the equality operator. `:` is still accepted as a synonym so queries
  * written before `=` became canonical keep working.
@@ -60,6 +63,9 @@ export function parseQuery(text: string): ParsedQuery {
 export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
   tag: 'tag',
   tags: 'tag',
+  link: 'link',
+  links: 'link',
+  linksto: 'link',
   text: 'text',
   content: 'text',
   body: 'text',
@@ -114,8 +120,15 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   late: 'overdue',
   due: 'due',
   soon: 'due',
+  today: 'today',
+  'needs-date': 'needs-date',
+  needsdate: 'needs-date',
   blocked: 'blocked',
-  waiting: 'blocked',
+  // Waiting on someone, as the board's Waiting column means. It was once a
+  // second spelling of blocked, which is held up by another task.
+  waiting: 'waiting',
+  available: 'available',
+  actionable: 'available',
   blocking: 'blocking',
   blocker: 'blocking',
   mine: 'mine',
@@ -123,6 +136,14 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   assigned: 'assigned',
   unassigned: 'unassigned',
   anyone: 'unassigned',
+  daily: 'daily',
+  journal: 'daily',
+  periodic: 'periodic',
+  dated: 'periodic',
+  parked: 'parked',
+  step: 'step',
+  substep: 'step',
+  subtask: 'step',
 };
 
 /**
@@ -141,6 +162,8 @@ const HAS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   dependson: 'dependsOn',
   dependencies: 'dependsOn',
   blockedby: 'dependsOn',
+  steps: 'steps',
+  subtasks: 'steps',
 };
 
 /**
@@ -175,6 +198,7 @@ const PRIORITY_VALUE_ALIASES: Readonly<Record<string, string>> = {
 
 type TokenType =
   | 'word'
+  | 'link'
   | 'string'
   | 'operator'
   | 'and'
@@ -188,6 +212,8 @@ interface Token {
   value: string;
   start: number;
   end: number;
+  /** For a link, the whole `[[…]]` as written. */
+  raw?: string;
 }
 
 /** Characters that terminate a bare word. */
@@ -260,6 +286,30 @@ function tokenize(text: string, diagnostics: QueryDiagnostic[]): Token[] {
         });
       }
       tokens.push({ type: 'string', value, start, end: index });
+      continue;
+    }
+
+    if (text.startsWith('[[', index)) {
+      // `[[Atlas plan]]` is one term, spaces and all; links do not nest.
+      const start = index;
+      const close = text.indexOf(']]', index + 2);
+      const end = close < 0 ? text.length : close + 2;
+      if (close < 0) {
+        diagnostics.push({
+          message: 'This link is missing its closing ]].',
+          severity: 'error',
+          start,
+          end,
+        });
+      }
+      tokens.push({
+        type: 'link',
+        value: text.slice(start + 2, close < 0 ? end : close),
+        start,
+        end,
+        raw: text.slice(start, end),
+      });
+      index = end;
       continue;
     }
 
@@ -507,6 +557,11 @@ class Parser {
       return this.parseWordCondition();
     }
 
+    if (token.type === 'link') {
+      this.next();
+      return this.createCondition('link', 'eq', token.value, token.start, token.end);
+    }
+
     if (token.type === 'operator') {
       this.next();
       this.diagnostics.push({
@@ -581,7 +636,7 @@ class Parser {
       operator = QUERY_OPERATOR_INVERSES[operator];
     }
 
-    const valueToken = this.consumeValueToken();
+    const valueToken = this.consumeValueToken(field);
     if (!valueToken) {
       this.diagnostics.push({
         message: `${field} needs a value after "${operatorToken.value}".`,
@@ -618,12 +673,19 @@ class Parser {
   /**
    * Takes the token that supplies a condition's value, if one is present.
    */
-  private consumeValueToken(): Token | undefined {
+  private consumeValueToken(field?: QueryField): Token | undefined {
     const token = this.peek();
-    if (!token || (token.type !== 'word' && token.type !== 'string')) {
+    if (
+      !token ||
+      (token.type !== 'word' && token.type !== 'string' && token.type !== 'link')
+    ) {
       return undefined;
     }
-    return this.next();
+    this.next();
+    // `text ~ [[x]]` still means the characters; only `link` reads the name.
+    return token.type === 'link' && field !== 'link'
+      ? { ...token, type: 'word', value: token.raw ?? token.value }
+      : token;
   }
 
   /**
@@ -637,6 +699,19 @@ class Parser {
     end: number,
   ): QueryConditionNode | undefined {
     const value = rawValue.trim();
+    if (field === 'link') {
+      const target = readLinkValue(value);
+      if (!target) {
+        this.diagnostics.push({
+          message: "link needs a note's name, such as [[Atlas]] or [[Atlas#Decision]].",
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: target, start, end };
+    }
     if (!value) {
       this.diagnostics.push({
         message: `${field} needs a value.`,
@@ -651,7 +726,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, due, blocked, blocking, mine, assigned, or unassigned — not "${value}".`,
+          message: `is: accepts open, done, task, note, overdue, due, today, needs-date, waiting, available, blocked, blocking, mine, assigned, unassigned, daily, periodic, parked, or step — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -665,7 +740,7 @@ class Parser {
       const normalized = HAS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `has: and no: accept due, scheduled, start, done, priority, id, or dependsOn — not "${value}".`,
+          message: `has: and no: accept due, scheduled, start, done, priority, id, dependsOn, or steps — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -716,7 +791,7 @@ class Parser {
       }
       if (normalized !== 'none' && !isDateValue(normalized)) {
         this.diagnostics.push({
-          message: `${field} accepts a date such as 2026-09-13, today, tomorrow, a window such as 7d, or none.`,
+          message: `${field} accepts a date such as 2026-09-13, friday, "oct 3", this-week, next-month, a window such as 7d, or none.`,
           severity: 'error',
           start,
           end,
@@ -743,7 +818,7 @@ class Parser {
     if (field === 'created' || field === 'updated') {
       if (!isDateValue(value)) {
         this.diagnostics.push({
-          message: `${field} accepts a date such as 2026-09-13, a range such as 7d, or today.`,
+          message: `${field} accepts a date such as 2026-09-13, friday, this-week, last-month, 2026-08, or a window such as 30d.`,
           severity: 'error',
           start,
           end,
@@ -780,11 +855,39 @@ class Parser {
     const type = this.peek()?.type;
     return (
       type === 'word' ||
+      type === 'link' ||
       type === 'string' ||
       type === 'lparen' ||
       type === 'not'
     );
   }
+}
+
+/**
+ * The note a `link` value names, as the AST keeps it: without brackets or an
+ * alias after `|`, such as `Atlas`, `Atlas#Decision`, or `Atlas#^q3`. Empty
+ * when no note is named, as in `[[#Decision]]`.
+ */
+export function readLinkValue(value: string): string {
+  let inner = value.trim();
+  if (inner.startsWith('[[')) {
+    inner = inner.slice(2);
+  }
+  if (inner.endsWith(']]')) {
+    inner = inner.slice(0, -2);
+  }
+  const bar = inner.indexOf('|');
+  if (bar >= 0) {
+    inner = inner.slice(0, bar);
+  }
+  const target = parseWikiTarget(inner);
+  if (!target.note) {
+    return '';
+  }
+  if (target.block) {
+    return `${target.note}#^${target.block}`;
+  }
+  return target.heading ? `${target.note}#${target.heading}` : target.note;
 }
 
 /**
@@ -836,12 +939,11 @@ export function describeOperator(operator: QueryOperator): string {
  * Accepts absolute dates, relative windows such as `30d`, and named days.
  */
 export function isDateValue(value: string): boolean {
-  const normalized = value.trim().toLowerCase();
+  // Whether a value reads does not depend on the day, so any fixed day will do.
   return (
-    /^\d{4}-\d{2}-\d{2}$/.test(normalized) ||
-    /^\d+[dwmy]$/.test(normalized) ||
-    normalized === 'today' ||
-    normalized === 'yesterday' ||
-    normalized === 'tomorrow'
+    resolveDateRange(value, DATE_CHECK_DAY, 'past') !== undefined &&
+    resolveDateRange(value, DATE_CHECK_DAY, 'future') !== undefined
   );
 }
+
+const DATE_CHECK_DAY = new Date(2026, 0, 15, 12).getTime();

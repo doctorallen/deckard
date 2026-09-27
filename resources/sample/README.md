@@ -1,26 +1,79 @@
-# A sample Deckard workspace
+# Start here
 
-Seven notes, kept small on purpose, so the conventions Deckard reads are
-in front of you rather than described. Open the Dashboard, then look at
-how each note is written.
+This folder is a tour of Deckard that you read and do. Each numbered note
+explains one part of Deckard, holds the tasks, tags, and links that make it
+show up, and ends with **Try it**: the commands to run, the keys to press,
+and the searches to type, with what you should see.
 
-| Note | What it shows |
-| --- | --- |
-| `2026-08-01.md`, `2026-08-02.md`, `2026-08-05.md` | **Daily notes.** A heading per thing worked on, tagged with what it is about — `#project/ghostline-relay`, `#team/wardens`. Tasks under the heading, some with a date `📅` and a priority `⏫`, some naming a person `#person/ren-kade`. |
-| `Argent Protocol.md`, `Harbor.md` | **Hub notes.** `describes:` in the front matter says which tag the note is about, so a search for that tag opens with this note at the top. The other front-matter fields are the note's own. |
-| `Sable Ortiz.md` | **A person.** `describes: person/sable-ortiz` makes this the hub for `#person/sable-ortiz`. |
-| `Wardens.md` | **A team**, and a list of people in front matter, each a tag. |
+The notes are about a small fictional unit: two teams, **Wardens** in the
+field and **Harbor** on sources and the clinic, and the projects they run.
+You are **Juno Hale**, the lieutenant who writes the daily notes.
 
-Some tags and people are named here that have no note of their own.
-That is normal: a tag exists the moment it is written, and Home lists
-the ones without a hub under **Tags without a hub**.
+Every date was set on the day this sample was made, so something is overdue,
+something is due today, and the daily notes run up to today, whenever you
+read this.
 
-Try, in order:
+## Read in this order
 
-1. `Deckard: Open Dashboard` — the totals, then Home.
-2. Search `#project/ghostline-relay` — every entry about it, and its tasks.
-3. `Deckard: Open Task Board` — the tasks, by status. Drag one.
-4. Open `Sable Ortiz.md` — the Related Notes sidebar fills with what shares its tags.
-5. `Deckard: Create Daily Note` — today's note, from the same template.
+Open each note in the editor, where Deckard draws its hints, and keep the
+Deckard sidebar open beside it. A link below opens the note in the preview;
+the **Open Source** button in the preview's title bar opens it in the
+editor. Keys are written for macOS: use <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on
+Windows and Linux.
 
-Delete this folder when you are done with it; nothing else refers to it.
+1. [Tasks](<01 Tasks.md>): due, scheduled, and start dates, priorities,
+   overdue and Needs a new date, Done today, steps, and the Tasks view.
+2. [Task board](<02 Task board.md>): statuses and the board, who a task is
+   for, blocked tasks, and contexts.
+3. [Repeats and dates](<03 Repeats and dates.md>): every kind of repeat rule,
+   and the dates you can type in plain words.
+4. [Search](<04 Search.md>): Find, search pages, and the query language, with
+   a search to run for every field.
+5. [Query blocks](<05 Query blocks.md>): live search results inside a note.
+6. [Tags and people](<06 Tags and people.md>): namespaces, hub notes, a
+   misspelled tag to merge, and a name written without its tag.
+7. [Links](<07 Links.md>): links to notes, headings, and lines, embeds, and a
+   link to a note that does not exist yet.
+8. [Daily notes and reviews](<08 Daily notes and reviews.md>): daily notes,
+   rollover, weekly reviews, and the calendar.
+9. [Capture, move, and park](<09 Capture, move, and park.md>): Capture,
+   Move to…, Extract Heading, templates, and parked notes.
+10. [Home, Stats, and the graph](<10 Home, Stats, and the graph.md>): Home,
+    Related Notes, Stats, the Notes Graph, themes, and zen.
+
+## What else is here
+
+- **Daily notes**, named for their days:
+  [{{date-9}}](<{{date-9}}.md>), [{{date-8}}](<{{date-8}}.md>),
+  [{{date-5}}](<{{date-5}}.md>), [{{date-2}}](<{{date-2}}.md>),
+  [{{date-1}}](<{{date-1}}.md>) (yesterday), and [{{date}}](<{{date}}.md>)
+  (today).
+- **Hub notes**, each describing one tag:
+  [Ghostline Relay](<projects/Ghostline Relay.md>) and
+  [Argent Protocol](<projects/Argent Protocol.md>) for two projects,
+  [Harbor](<teams/Harbor.md>) and [Wardens](<teams/Wardens.md>) for the
+  teams, and [Sable Ortiz](<people/Sable Ortiz.md>) for a person.
+- [Loose ends](<Loose ends.md>), a note with no tags, for Related Notes.
+- [Velvet Circuit](<archive/Velvet Circuit.md>), a finished project,
+  parked.
+- The **templates** folder, with a meeting template and one for new project
+  hub notes. Deckard does not index it.
+
+## This folder's settings
+
+`.vscode/settings.json` sets what the tour depends on, for this folder only,
+so your own settings cannot hide its notes or change what it says:
+
+- `deckard.me` says you are Juno Hale, for `is:mine` and the Person columns.
+- `deckard.board.limits` puts a limit of 2 on the board's Doing column.
+- `deckard.dailyNote.rollover` is `migrate`, so carrying tasks forward
+  leaves a `[>]` line behind.
+- `deckard.periodicNote.reviewSections` adds a **Waiting on others** section
+  to reviews.
+- `deckard.calendar.dayPanel` shows the chosen day under the Calendar.
+
+The sample is kept in VS Code's storage for Deckard. Change anything you
+like: running **Deckard: Create a Sample Workspace** again replaces it with a
+fresh copy dated from that day.
+
+To begin, open [Tasks](<01 Tasks.md>).

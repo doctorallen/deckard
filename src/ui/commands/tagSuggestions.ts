@@ -5,13 +5,21 @@ import {
   getPersonMarker,
   hasAtxHeadingClosingHashes,
 } from '../../core/markdown/parser';
+import { isInCodeOrLink } from '../../core/markdown/inlineRanges';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
+import { whenPublished } from '../../core/workspace/publishing';
+import { isParkedFile, isParkedOnlyTag } from '../../core/workspace/parked';
 
 interface TagIndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   getSnapshot(): WorkspaceIndex;
+  /** Whether a file is one of the notes, not a README in a code folder. */
+  isNotesFile?(uri: vscode.Uri): boolean;
+  /** The note's path in the index, which says whether it is parked. */
+  getFilePath?(uri: vscode.Uri): string;
 }
 
 type TagAutocompleteEnabled = (document: vscode.TextDocument) => boolean;
@@ -86,7 +94,11 @@ export class TagCompletionProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
-    if (!this.isAutocompleteEnabled(document) || !isMarkdownFile(document.uri)) {
+    if (
+      !this.isAutocompleteEnabled(document) ||
+      !isMarkdownFile(document.uri) ||
+      !(this.indexer.isNotesFile?.(document.uri) ?? true)
+    ) {
       return [];
     }
 
@@ -126,12 +138,18 @@ export class TagCompletionProvider implements vscode.Disposable {
       return [];
     }
 
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const query = context.query.toLowerCase();
-    return [...this.indexer.getSnapshot().tags.values()]
+    const index = this.indexer.getSnapshot();
+    // A tag only parked notes carry is left out, except while writing in a
+    // parked note, where those are the tags in use.
+    const filePath = this.indexer.getFilePath?.(document.uri);
+    const offerParked = filePath !== undefined && isParkedFile(index, filePath);
+    return [...index.tags.values()]
       .filter((tag) =>
         matchesTagCompletion(tag, context.marker, query, personMarker),
       )
+      .filter((tag) => offerParked || !isParkedOnlyTag(index, tag.key))
       .filter(
         (tag) =>
           context.marker !== '#' || !/^#?\d+$/.test(tag.key),
@@ -223,11 +241,21 @@ export function getTagCompletionContext(
   const marker = match[2];
   const query = match[3] ?? '';
   const suffix = line.slice(character).match(/^[A-Za-z0-9_/-]*/)?.[0] ?? '';
+  const startColumn = (match.index ?? 0) + match[0].lastIndexOf(marker);
+  // A `#` or `@` in inline code or a link is text, so it is not completed
+  // as a tag; nor is one after a `[[` not closed yet, where the link's own
+  // completion offers headings.
+  if (
+    isInCodeOrLink(line, startColumn) ||
+    linePrefix.lastIndexOf('[[') > linePrefix.lastIndexOf(']]')
+  ) {
+    return undefined;
+  }
 
   return {
     marker,
     query,
-    startColumn: (match.index ?? 0) + match[0].lastIndexOf(marker),
+    startColumn,
     endColumn: character + suffix.length,
   };
 }

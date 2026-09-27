@@ -129,7 +129,7 @@ suite('Periodic review', () => {
       review.includes('*week-2026-09-14-2026-09-20.'),
       'the note it is written in still says which it is',
     );
-    assert.ok(review.includes('**Done:** 1 · **Still open:** 1'));
+    assert.ok(review.includes('**Done:** 1 (0 of 1 that were due) · **Still open:** 1 · **Coming up:** 0'), review);
     assert.ok(review.includes('- Send the proposal — [[2026-09-15]] (done 2026-09-16)'));
 
     const drawn = parseMarkdown('notes/2026-W38.md', review);
@@ -143,6 +143,56 @@ suite('Periodic review', () => {
       0,
       'the tasks it lists are read, not written again as tasks',
     );
+  });
+
+  test('looks ahead at the next week, each task once, by its earliest day', () => {
+    const next = {
+      name: 'week-2026-09-21-2026-09-27',
+      title: '2026-09-21 to 2026-09-27',
+      start: new Date(2026, 8, 21).getTime(),
+      end: new Date(2026, 8, 28).getTime(),
+    };
+    const ahead = indexOf({
+      'notes/2026-09-19.md': [
+        '# 2026-09-19',
+        '- [ ] Call Ren 📅 2026-09-24 ⏳ 2026-09-22',
+        '- [ ] Book the room 📅 2026-09-21',
+        '- [ ] Later still 📅 2026-10-15',
+        '- [x] Done already 📅 2026-09-22 ✅ 2026-09-19',
+        '- [ ] Starts then 🛫 2026-09-26',
+      ].join('\n'),
+    });
+    const summary = summarizeReview(ahead, range, { next, nextLabel: 'next week' });
+    assert.deepStrictEqual(
+      summary.comingUp.map((item) => [item.title, item.detail]),
+      [
+        ['Mon 2026-09-21 · Book the room', 'due'],
+        ['Tue 2026-09-22 · Call Ren', 'scheduled'],
+        ['Sat 2026-09-26 · Starts then', 'starts'],
+      ],
+    );
+    const review = formatReview(summary);
+    assert.ok(review.includes('### Coming up'), review);
+    assert.ok(review.includes('- Mon 2026-09-21 · Book the room — [[2026-09-19]] (due)'), review);
+    assert.ok(
+      formatReview(summarizeReview(indexOf({}), range, { next, nextLabel: 'next week' })).includes(
+        'Nothing is due, scheduled, or starting next week.',
+      ),
+    );
+  });
+
+  test('writes sections of your own, and says when a search does not parse', () => {
+    const review = formatReview(
+      summarizeReview(index, range, {
+        sections: [
+          { title: 'Open for Atlas', query: '#project/atlas is:open' },
+          { title: 'Broken', query: '(is:open' },
+        ],
+      }),
+    );
+    assert.ok(review.includes('### Open for Atlas'), review);
+    assert.ok(review.includes('### Broken\n\nThis search does not parse:'), review);
+    assert.ok(review.indexOf('### Open for Atlas') < review.indexOf(REVIEW_END));
   });
 
   test('says so when a period held nothing', () => {
@@ -185,6 +235,18 @@ suite('Periodic review', () => {
     assert.strictEqual(new Date(month.end).getMonth(), 9, 'October starts it');
 
     assert.strictEqual(getIsoWeekStart(2026, 38).getDate(), 14);
+
+    // With weeks starting on Monday, the week is Monday to Sunday.
+    assert.strictEqual(getReviewRange('week', new Date(2026, 8, 17), 1).title, '2026-09-14 to 2026-09-20');
+  });
+
+  test('a week note is reviewed for the days its own name holds', () => {
+    const span = (name: string) => {
+      const found = findOpenPeriod(name);
+      return found && [formatLocalDate(found.start!), formatLocalDate(found.end!)];
+    };
+    assert.deepStrictEqual(span('week-2026-09-20-2026-09-26'), ['2026-09-20', '2026-09-27']);
+    assert.deepStrictEqual(span('2026-W39'), ['2026-09-21', '2026-09-28']);
   });
 
   test('reads which period a note is for from its name', () => {

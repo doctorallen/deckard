@@ -1,31 +1,34 @@
 import * as vscode from 'vscode';
 
+import { legacyIdOf } from '../markdown/parser';
 import {
   isTaskColumnId,
   TableSort,
   TaskColumnId,
 } from '../../ui/state/resultTable';
 import {
-  PersistedPreferences,
-  PinnedNote,
-  DEFAULT_SEARCH_PAGE_SIZE,
-  SearchPageSize,
-  SEARCH_PAGE_SIZES,
-  TagOverviewLayout,
-  RelatedNotesSortMode,
-  RenderMode,
-  SavedFilter,
-  TagOverviewSortMode,
-  TagSortMode,
-  TaskSortMode,
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
   DashboardViewState,
   DashboardWidgetConfig,
   DashboardWidgetKind,
+  FindChoice,
+  DEFAULT_SEARCH_PAGE_SIZE,
+  PersistedPreferences,
+  PinnedNote,
+  RelatedNotesSortMode,
+  RenderMode,
+  SavedFilter,
+  SEARCH_PAGE_SIZES,
+  SearchPageSize,
+  SearchPreview,
+  TagOverviewLayout,
+  TagOverviewSortMode,
+  TagSortMode,
   TaskBoardGroupBy,
   TaskLayout,
+  TaskSortMode,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -67,6 +70,8 @@ const workspacePreferenceKeys = [
   'sectionAccessTimes',
   'savedFilters',
   'recentQueries',
+  'findChoices',
+  'recentHeadings',
   'tagFirstSeen',
   'pinnedNotes',
   'dashboardWidgets',
@@ -118,10 +123,11 @@ const defaultPreferences: PersistedPreferences = {
     mode: 'home',
     tagSearchQuery: '',
   },
-  renderMode: 'markdown',
+  renderMode: 'html',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: DEFAULT_SEARCH_PAGE_SIZE,
+  searchPreview: 'lines',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
@@ -145,9 +151,13 @@ export const RECENT_QUERY_LIMIT = 20;
 
 /** The widgets Home starts with, and returns to on Reset. */
 export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
+  // One suggestion, when the notes are ready for it, and nothing otherwise.
+  { id: 'tryNext', kind: 'tryNext', width: 'full' },
   { id: 'search', kind: 'search', width: 'full' },
-  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
+  // The Tasks view widget leads: what is overdue and due today comes before
+  // every open task.
   { id: 'agenda', kind: 'agenda', width: 'half', count: 5 },
+  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
   { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
   { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
 ];
@@ -184,6 +194,7 @@ export const DASHBOARD_WIDGET_KINDS: Readonly<
   newTags: { repeatable: false, listed: true },
   quietPeople: { repeatable: false, listed: true },
   pinnedNotes: { repeatable: false, listed: true },
+  tryNext: { repeatable: false, listed: false },
 };
 
 /** How many days back each widget that looks back starts at. */
@@ -213,6 +224,7 @@ const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
 export class PreferencesStore implements vscode.Disposable {
   private readonly changeEmitter =
     new vscode.EventEmitter<PersistedPreferences>();
+  private readonly visitEmitter = new vscode.EventEmitter<void>();
   private preferences: PersistedPreferences;
   private updateQueue: Promise<void> = Promise.resolve();
 
@@ -280,6 +292,11 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   public readonly onDidChange = this.changeEmitter.event;
+  /**
+   * Fires when a visit or a carried view count was kept quietly: only Home's
+   * Recently opened needs to hear it.
+   */
+  public readonly onDidRecordVisit = this.visitEmitter.event;
 
   /**
    * Returns a defensive copy because callers use snapshots as freely mutable
@@ -371,6 +388,44 @@ export class PreferencesStore implements vscode.Disposable {
   /**
    * Keeps a search at the front of the recent list, without duplicates.
    */
+  /**
+   * Remembers the result chosen for what was typed, so Find can offer it
+   * first the next time the start of it is typed.
+   */
+  public async recordFindChoice(input: string, key: string, now = Date.now()): Promise<void> {
+    const typed = normalizeFindInput(input);
+    if (!typed) {
+      return;
+    }
+    const choices = this.preferences.findChoices ?? [];
+    const existing = choices.find((choice) => choice.input === typed && choice.key === key);
+    const next = [
+      { input: typed, key, count: (existing?.count ?? 0) + 1, at: now },
+      ...choices.filter((choice) => choice !== existing),
+    ];
+    await this.update({ findChoices: next.slice(0, FIND_CHOICE_LIMIT) }, true);
+  }
+
+  /** Remembers a heading Capture or Move to… went under, newest first. */
+  public async recordRecentHeading(pin: PinnedNote): Promise<void> {
+    const key = pinKey(pin);
+    const recentHeadings = [
+      pin,
+      ...(this.preferences.recentHeadings ?? []).filter((each) => pinKey(each) !== key),
+    ].slice(0, RECENT_HEADING_LIMIT);
+    await this.update({ recentHeadings }, true);
+  }
+
+  /** Takes one search off the recent list. */
+  public async removeRecentQuery(query: string): Promise<void> {
+    const recentQueries = (this.preferences.recentQueries ?? []).filter(
+      (existing) => existing !== query.trim(),
+    );
+    if (recentQueries.length !== (this.preferences.recentQueries ?? []).length) {
+      await this.update({ recentQueries });
+    }
+  }
+
   public async recordRecentQuery(query: string): Promise<void> {
     const normalized = query.trim();
     if (!normalized) {
@@ -456,8 +511,13 @@ export class PreferencesStore implements vscode.Disposable {
 
   public async setTaskBoardGroup(
     taskBoardGroup: TaskBoardGroupBy,
+    namespace?: string,
   ): Promise<void> {
-    await this.update({ taskBoardGroup });
+    await this.update(
+      taskBoardGroup === 'tag' && namespace
+        ? { taskBoardGroup, taskBoardGroupNamespace: namespace.toLowerCase() }
+        : { taskBoardGroup },
+    );
   }
 
   /** Chooses the table layout's columns; the title is always among them. */
@@ -480,6 +540,31 @@ export class PreferencesStore implements vscode.Disposable {
     await this.update({
       dashboardWidgets: normalizeDashboardWidgets(dashboardWidgets),
     });
+  }
+
+  /**
+   * Adds a Home widget listing what a saved search finds, unless Home
+   * already has one for it. Says which, or that there is no such search.
+   */
+  public async addSavedSearchWidget(filterId: string): Promise<'added' | 'present' | 'missing'> {
+    if (!this.preferences.savedFilters.some((filter) => filter.id === filterId)) {
+      return 'missing';
+    }
+    const widgets = this.preferences.dashboardWidgets;
+    if (widgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === filterId)) {
+      return 'present';
+    }
+    await this.setDashboardWidgets([
+      ...widgets,
+      {
+        id: `savedQuery-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        kind: 'savedQuery',
+        width: 'half',
+        count: 5,
+        filterId,
+      },
+    ]);
+    return 'added';
   }
 
   public async resetDashboardWidgets(): Promise<void> {
@@ -543,7 +628,7 @@ export class PreferencesStore implements vscode.Disposable {
    * Persists whether tag overview bodies should show source or rendered output.
    */
   public async setRenderMode(renderMode: RenderMode): Promise<void> {
-    await this.update({ renderMode });
+    await this.update({ renderMode, renderModeChosen: true });
   }
 
   /**
@@ -565,6 +650,11 @@ export class PreferencesStore implements vscode.Disposable {
     await this.update({ searchPageSize });
   }
 
+  /** Selects how much of each result a search page shows. */
+  public async setSearchPreview(searchPreview: SearchPreview): Promise<void> {
+    await this.update({ searchPreview });
+  }
+
   /**
    * Selects whether overview entries use tabs or a split layout.
    */
@@ -584,11 +674,25 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Leaves daily, weekly, and monthly notes out of Related Notes and Linked
+   * from, or lets them back in.
+   */
+  public async setHideDailyNotes(hide: boolean): Promise<void> {
+    await this.update({ hideDailyNotes: hide ? true : undefined });
+  }
+
+  /** How many lines of each Related Notes result's excerpt to show: 0, 1, or 2. */
+  public async setRelatedNotesPreviewLines(lines: 0 | 1 | 2): Promise<void> {
+    await this.update({ relatedNotesPreviewLines: lines === 1 ? undefined : lines });
+  }
+
+  /**
    * Increments section usage counts for the overview's access sort.
    */
   public async recordSectionAccess(
     sectionId: string,
     now = Date.now(),
+    options: { quiet?: boolean } = {},
   ): Promise<void> {
     const sectionAccessCounts = {
       ...this.preferences.sectionAccessCounts,
@@ -598,7 +702,35 @@ export class PreferencesStore implements vscode.Disposable {
       ...this.preferences.sectionAccessTimes,
       [sectionId]: now,
     };
-    await this.update({ sectionAccessCounts, sectionAccessTimes });
+    await this.update({ sectionAccessCounts, sectionAccessTimes }, options.quiet === true);
+  }
+
+  /**
+   * Moves view counts and times from ids that are gone to the new id of the
+   * same heading, summing counts and keeping the later time, in one quiet
+   * write. A heading's id changes when a line above it does.
+   */
+  public async carrySectionAccess(moved: ReadonlyMap<string, string>): Promise<void> {
+    const counts = { ...this.preferences.sectionAccessCounts };
+    const times = { ...(this.preferences.sectionAccessTimes ?? {}) };
+    let changed = false;
+    moved.forEach((to, from) => {
+      if (from === to || (counts[from] === undefined && times[from] === undefined)) {
+        return;
+      }
+      if (counts[from] !== undefined) {
+        counts[to] = (counts[to] ?? 0) + counts[from];
+        delete counts[from];
+      }
+      if (times[from] !== undefined) {
+        times[to] = Math.max(times[to] ?? 0, times[from]);
+        delete times[from];
+      }
+      changed = true;
+    });
+    if (changed) {
+      await this.update({ sectionAccessCounts: counts, sectionAccessTimes: times }, true);
+    }
   }
 
   /**
@@ -835,13 +967,17 @@ export class PreferencesStore implements vscode.Disposable {
     ) {
       return;
     }
+    // Ids were widened in 1.23. What was kept under an old id is carried to
+    // the new id of the same entry before anything is pruned, so task order
+    // and view counts survive the upgrade.
+    const current = carryLegacyIds(this.preferences, validTasks, validSections);
     const sectionAccessCounts = validSectionIds
       ? Object.fromEntries(
-          Object.entries(this.preferences.sectionAccessCounts).filter(
+          Object.entries(current.sectionAccessCounts).filter(
             ([sectionId]) => validSections?.has(sectionId) ?? false,
           ),
         )
-      : this.preferences.sectionAccessCounts;
+      : current.sectionAccessCounts;
     const tagAccessCounts = Object.fromEntries(
       Object.entries(this.preferences.tagAccessCounts).filter(([tagKey]) =>
         validTags.has(tagKey),
@@ -854,11 +990,11 @@ export class PreferencesStore implements vscode.Disposable {
     );
     const sectionAccessTimes = validSections
       ? Object.fromEntries(
-          Object.entries(this.preferences.sectionAccessTimes ?? {}).filter(
+          Object.entries(current.sectionAccessTimes ?? {}).filter(
             ([sectionId]) => validSections.has(sectionId),
           ),
         )
-      : this.preferences.sectionAccessTimes;
+      : current.sectionAccessTimes;
     // Every tag in the first index is known; a tag seen after that is new
     // from the moment it is seen, until it is gone again.
     const previousFirstSeen = this.preferences.tagFirstSeen;
@@ -874,15 +1010,26 @@ export class PreferencesStore implements vscode.Disposable {
     // mentions one is not a reason to throw it away — it is a reason to say
     // so and let the reader decide. `findStale` finds them; the Tidy command
     // asks.
+    // A choice whose note or tag is gone is forgotten with it.
+    const findChoices = this.preferences.findChoices?.filter((choice) => {
+      const filePath = findChoiceFilePath(choice.key);
+      if (filePath !== undefined) {
+        return validFilePathSet?.has(filePath) ?? true;
+      }
+      return choice.key.startsWith('tag:') ? validTags.has(choice.key.slice(4)) : true;
+    });
+    const recentHeadings = this.preferences.recentHeadings?.filter(
+      (pin) => validFilePathSet?.has(pin.filePath) ?? true,
+    );
     const changes: Partial<PersistedPreferences> = {
+      ...(findChoices ? { findChoices } : {}),
+      ...(recentHeadings ? { recentHeadings } : {}),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
       ),
       tagAccessCounts,
       tagAccessTimes,
-      taskOrder: this.preferences.taskOrder.filter((taskId) =>
-        validTasks.has(taskId),
-      ),
+      taskOrder: current.taskOrder.filter((taskId) => validTasks.has(taskId)),
       sectionAccessCounts,
       sectionAccessTimes,
       entityAccessOrder: this.preferences.entityAccessOrder.filter(
@@ -980,12 +1127,21 @@ export class PreferencesStore implements vscode.Disposable {
    */
   public dispose(): void {
     this.changeEmitter.dispose();
+    this.visitEmitter.dispose();
   }
 
   /**
    * Normalizes, persists, and broadcasts one state transition.
    */
-  private async update(changes: Partial<PersistedPreferences>): Promise<void> {
+  /**
+   * Stores a change. A quiet one is kept without telling every open page,
+   * since a visit recorded on each note switch would redraw them all; only
+   * `onDidRecordVisit` hears of it.
+   */
+  private async update(
+    changes: Partial<PersistedPreferences>,
+    quiet = false,
+  ): Promise<void> {
     this.preferences = normalizePreferences({
       ...this.preferences,
       ...changes,
@@ -993,7 +1149,11 @@ export class PreferencesStore implements vscode.Disposable {
     const nextPreferences = clonePreferences(this.preferences);
     const persist = async (): Promise<void> => {
       await this.persist(nextPreferences);
-      this.changeEmitter.fire(clonePreferences(nextPreferences));
+      if (quiet) {
+        this.visitEmitter.fire();
+      } else {
+        this.changeEmitter.fire(clonePreferences(nextPreferences));
+      }
     };
     const queuedUpdate = this.updateQueue.then(persist, persist);
     this.updateQueue = queuedUpdate;
@@ -1077,7 +1237,12 @@ function normalizePreferences(
       ? dashboardTagColumns
       : 2,
     dashboardViewState: normalizeDashboardViewState(dashboardViewState),
-    renderMode: renderMode === 'html' ? 'html' : 'markdown',
+    // Every saved blob stored Source whether or not it was chosen, so
+    // Source is kept only once it has been chosen since Rendered became the
+    // default; everyone else is switched to Rendered once.
+    renderMode:
+      renderMode === 'markdown' && value?.renderModeChosen === true ? 'markdown' : 'html',
+    ...(value?.renderModeChosen === true ? { renderModeChosen: true as const } : {}),
     tagOverviewSortMode:
       tagOverviewSortMode === 'created' ||
       tagOverviewSortMode === 'updated' ||
@@ -1088,12 +1253,20 @@ function normalizePreferences(
     searchPageSize: isSearchPageSize(searchPageSize)
       ? searchPageSize
       : DEFAULT_SEARCH_PAGE_SIZE,
+    searchPreview:
+      value?.searchPreview === 'none' || value?.searchPreview === 'full'
+        ? value.searchPreview
+        : 'lines',
     relatedNotesSortMode:
       relatedNotesSortMode === 'newest' ||
       relatedNotesSortMode === 'oldest' ||
       relatedNotesSortMode === 'access'
         ? relatedNotesSortMode
         : 'tags',
+    ...(value?.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
+    ...(value?.relatedNotesPreviewLines === 0 || value?.relatedNotesPreviewLines === 2
+      ? { relatedNotesPreviewLines: value.relatedNotesPreviewLines }
+      : {}),
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
     taskBoardLayout:
@@ -1107,9 +1280,14 @@ function normalizePreferences(
     taskBoardGroup:
       value?.taskBoardGroup === 'priority' ||
       value?.taskBoardGroup === 'due' ||
-      value?.taskBoardGroup === 'assignee'
+      value?.taskBoardGroup === 'assignee' ||
+      // A tag grouping holds only with a namespace to group by.
+      (value?.taskBoardGroup === 'tag' && isBoardNamespace(value?.taskBoardGroupNamespace))
         ? value.taskBoardGroup
         : 'status',
+    ...(isBoardNamespace(value?.taskBoardGroupNamespace)
+      ? { taskBoardGroupNamespace: value.taskBoardGroupNamespace.toLowerCase() }
+      : {}),
     tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
     sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
     recentQueries: uniqueStrings(
@@ -1126,7 +1304,50 @@ function normalizePreferences(
       ? { tagFirstSeen: normalizeFirstSeenTimes(value.tagFirstSeen) }
       : {}),
     pinnedNotes: normalizePinnedNotes(value?.pinnedNotes),
+    ...(Array.isArray(value?.findChoices) && value.findChoices.length > 0
+      ? { findChoices: normalizeFindChoices(value.findChoices) }
+      : {}),
+    ...(Array.isArray(value?.recentHeadings) && value.recentHeadings.length > 0
+      ? { recentHeadings: normalizePinnedNotes(value.recentHeadings).slice(0, RECENT_HEADING_LIMIT) }
+      : {}),
   };
+}
+
+/** How many headings Capture and Move to… remember. */
+export const RECENT_HEADING_LIMIT = 5;
+
+/** The most Find choices kept; the least recently chosen goes first. */
+export const FIND_CHOICE_LIMIT = 200;
+
+function normalizeFindChoices(value: readonly unknown[]): FindChoice[] {
+  return value
+    .filter(
+      (choice): choice is FindChoice =>
+        typeof choice === 'object' &&
+        choice !== null &&
+        typeof (choice as FindChoice).input === 'string' &&
+        (choice as FindChoice).input.length > 0 &&
+        typeof (choice as FindChoice).key === 'string' &&
+        Number.isFinite((choice as FindChoice).count) &&
+        (choice as FindChoice).count > 0 &&
+        Number.isFinite((choice as FindChoice).at),
+    )
+    .map(({ input, key, count, at }) => ({ input, key, count, at }))
+    .sort((left, right) => right.at - left.at)
+    .slice(0, FIND_CHOICE_LIMIT);
+}
+
+/** The note a Find choice's key names, when it names one. */
+export function findChoiceFilePath(key: string): string | undefined {
+  if (!key.startsWith('note:') && !key.startsWith('task:')) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(key.slice(5)) as unknown;
+    return Array.isArray(parsed) && typeof parsed[0] === 'string' ? parsed[0] : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -1199,6 +1420,15 @@ export function normalizeDashboardWidgets(
         typeof days === 'number' && Number.isInteger(days)
           ? Math.min(DASHBOARD_WIDGET_DAYS_LIMIT, Math.max(1, days))
           : defaultDays;
+    }
+    if (widgetKind === 'quietPeople') {
+      const namespace = typeof candidate.namespace === 'string' ? candidate.namespace.trim() : '';
+      if (namespace && namespace.length <= 64 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace) && namespace.toLowerCase() !== 'person') {
+        widget.namespace = namespace.toLowerCase();
+      }
+      if (candidate.noOpenTasks === true) {
+        widget.noOpenTasks = true;
+      }
     }
     if (widgetKind === 'savedQuery') {
       if (typeof candidate.filterId !== 'string' || !candidate.filterId) {
@@ -1375,6 +1605,11 @@ function isPinRecord(value: unknown): value is Record<string, unknown> {
  * that text it was. Kept here so preferences can compare pins without
  * reaching into the view layer that resolves them.
  */
+/** A typed search as Find remembers it: trimmed, lowercased, spaces collapsed. */
+export function normalizeFindInput(input: string): string {
+  return input.trim().toLocaleLowerCase().replace(/\s+/g, ' ').slice(0, 100);
+}
+
 export function pinKey(pin: PinnedNote): string {
   // Printable, because a row carries this key in an HTML attribute and a
   // separator such as NUL does not survive being written into one.
@@ -1504,6 +1739,8 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     sectionAccessTimes: { ...value.sectionAccessTimes },
     recentQueries: [...(value.recentQueries ?? [])],
     dashboardWidgets: cloneWidgets(value.dashboardWidgets),
+    ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
+    ...(value.recentHeadings ? { recentHeadings: value.recentHeadings.map((pin) => ({ ...pin })) } : {}),
   };
 }
 
@@ -1526,4 +1763,72 @@ function normalizeTableSort(value: unknown): TableSort | undefined {
   return isTaskColumnId(column)
     ? { column, direction: direction === 'desc' ? 'desc' : 'asc' }
     : undefined;
+}
+
+/**
+ * The id-keyed preferences with each id from before 1.23 renamed to the
+ * entry's id now, when the index has an entry whose id it is the first half
+ * of. Nothing is looked up unless an old id is actually kept.
+ */
+export function carryLegacyIds(
+  preferences: Pick<
+    PersistedPreferences,
+    'taskOrder' | 'sectionAccessCounts' | 'sectionAccessTimes'
+  >,
+  validTaskIds: ReadonlySet<string>,
+  validSectionIds: ReadonlySet<string> | undefined,
+): Pick<PersistedPreferences, 'taskOrder' | 'sectionAccessCounts' | 'sectionAccessTimes'> {
+  const isLegacy = (id: string): boolean => /^[a-z]+-[0-9a-z]+$/.test(id);
+  const stale = (id: string, valid: ReadonlySet<string> | undefined) =>
+    !valid?.has(id) && isLegacy(id);
+  const sectionKeys = [
+    ...Object.keys(preferences.sectionAccessCounts),
+    ...Object.keys(preferences.sectionAccessTimes ?? {}),
+  ];
+  const tasksNeed = preferences.taskOrder.some((id) => stale(id, validTaskIds));
+  const sectionsNeed =
+    validSectionIds !== undefined && sectionKeys.some((id) => stale(id, validSectionIds));
+  if (!tasksNeed && !sectionsNeed) {
+    return preferences;
+  }
+  const renames = (valid: ReadonlySet<string> | undefined): Map<string, string> => {
+    const map = new Map<string, string>();
+    valid?.forEach((id) => {
+      const legacy = legacyIdOf(id);
+      // Two entries sharing an old id is the collision this fixes; the
+      // first keeps what was stored, as the index kept one of them.
+      if (legacy && !map.has(legacy)) {
+        map.set(legacy, id);
+      }
+    });
+    return map;
+  };
+  const taskRenames = tasksNeed ? renames(validTaskIds) : new Map<string, string>();
+  const sectionRenames = sectionsNeed ? renames(validSectionIds) : new Map<string, string>();
+  const renameKeys = <T>(record: Record<string, T>): Record<string, T> => {
+    const renamed: Record<string, T> = {};
+    Object.entries(record).forEach(([id, value]) => {
+      const next = sectionRenames.get(id) ?? id;
+      // A count already kept under the new id wins over the old one.
+      if (!(next in renamed) || next === id) {
+        renamed[next] = value;
+      }
+    });
+    return renamed;
+  };
+  const seen = new Set<string>();
+  return {
+    taskOrder: preferences.taskOrder
+      .map((id) => taskRenames.get(id) ?? id)
+      .filter((id) => !seen.has(id) && Boolean(seen.add(id))),
+    sectionAccessCounts: renameKeys(preferences.sectionAccessCounts),
+    sectionAccessTimes: preferences.sectionAccessTimes
+      ? renameKeys(preferences.sectionAccessTimes)
+      : preferences.sectionAccessTimes,
+  };
+}
+
+/** A namespace the board can group by: `project`, `context`. */
+function isBoardNamespace(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z][a-z0-9_-]*$/.test(value.toLowerCase());
 }

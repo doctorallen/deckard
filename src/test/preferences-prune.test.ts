@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 
+import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 
 class MemoryMemento {
@@ -21,6 +22,23 @@ class MemoryMemento {
 }
 
 suite('Preference pruning', () => {
+  test('carries task order and view counts from the ids before 1.23 to the ids now', async () => {
+    const file = parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Call Ren\n- [ ] Book travel');
+    const section = file.sections[0].id;
+    const [call, book] = file.tasks.map((task) => task.id);
+    const legacy = (id: string) => id.slice(0, id.lastIndexOf('-'));
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.setTaskOrder([legacy(book), legacy(call), 'task-gone']);
+    await store.recordSectionAccess(legacy(section));
+    await store.recordSectionAccess(legacy(section));
+
+    await store.prune(['#project/atlas'], [call, book], [section], []);
+
+    assert.deepStrictEqual(store.value.taskOrder, [book, call], 'the order is kept, the lost id pruned');
+    assert.deepStrictEqual(store.value.sectionAccessCounts, { [section]: 2 });
+    assert.ok(store.value.sectionAccessTimes?.[section], 'and when it was last opened');
+  });
+
   test('writes nothing when every stored key is still indexed', async () => {
     const memento = new MemoryMemento();
     const store = new PreferencesStore(memento);

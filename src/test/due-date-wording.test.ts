@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
 import { describeDueDate } from '../core/markdown/taskMetadata';
+import { setTaskPolicy } from '../core/taskPolicy';
 
 /**
  * A due date is read for its distance from today, and cited by its date, so
@@ -29,9 +30,24 @@ suite('Due date wording', () => {
     const description = describeDueDate(new Date(2026, 11, 1).getTime(), now);
     assert.strictEqual(description.label, 'due 2026-12-01');
     assert.strictEqual(description.overdue, false);
-    const slipped = describeDueDate(new Date(2026, 5, 1).getTime(), now);
-    assert.strictEqual(slipped.label, 'overdue · 2026-06-01', 'but still says it is overdue');
-    assert.strictEqual(slipped.overdue, true);
+    setTaskPolicy({ needsNewDateAfterDays: 0 });
+    try {
+      const slipped = describeDueDate(new Date(2026, 5, 1).getTime(), now);
+      assert.strictEqual(slipped.label, 'overdue · 2026-06-01', 'but still says it is overdue');
+      assert.strictEqual(slipped.overdue, true);
+    } finally {
+      setTaskPolicy();
+    }
+  });
+
+  test('a task more than 30 days overdue was due, and is not red', () => {
+    const stale = describeDueDate(new Date(2026, 6, 1).getTime(), now);
+    assert.strictEqual(stale.label, 'was due 2026-07-01');
+    assert.strictEqual(stale.overdue, false);
+    assert.strictEqual(stale.stale, true);
+    const month = describeDueDate(new Date(2026, 7, 24).getTime(), now);
+    assert.strictEqual(month.label, 'overdue 30 days · 2026-08-24', 'thirty days is still overdue');
+    assert.strictEqual(month.stale, undefined);
   });
 
   test('keeps the date as the task wrote it', () => {

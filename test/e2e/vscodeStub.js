@@ -150,7 +150,8 @@ function createWebviewView() {
   return view;
 }
 
-const shown = { info: [], warning: [] };
+const shown = { info: [], warning: [], error: [] };
+let informationResponse;
 let inputBoxResponse;
 
 // Settings a test sets or the extension writes, by their full name.
@@ -186,17 +187,25 @@ module.exports = {
   Uri: {
     joinPath: (...parts) => ({ fsPath: parts.join('/') }),
     parse: (value) => ({ fsPath: value, path: value, toString: () => value }),
-    file: (value) => ({ fsPath: value, path: value, toString: () => `file://${value}` }),
+    file: (value) => ({ scheme: 'file', fsPath: value, path: value, toString: () => `file://${value}` }),
   },
   ViewColumn: { Active: -1, One: 1 },
   window: {
     createWebviewPanel,
     showInformationMessage: (message) => {
       shown.info.push(message);
-      return Promise.resolve(undefined);
+      // A test says which button the reader picks, once.
+      const response = informationResponse;
+      informationResponse = undefined;
+      return Promise.resolve(response);
     },
     showWarningMessage: (message) => {
       shown.warning.push(message);
+      return Promise.resolve(undefined);
+    },
+    // Failures go through reportFailure, which says them as errors.
+    showErrorMessage: (message) => {
+      shown.error.push(message);
       return Promise.resolve(undefined);
     },
     showInputBox: () => Promise.resolve(inputBoxResponse),
@@ -229,6 +238,8 @@ module.exports = {
     asRelativePath: (value) => String(value),
   },
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+  env: { language: 'en' },
+  InputBoxValidationSeverity: { Info: 1, Warning: 2, Error: 3 },
   commands: {
     registerCommand: () => ({ dispose: () => undefined }),
     // Host code sets context keys through this; a test reads what it set.
@@ -252,6 +263,9 @@ module.exports = {
     },
     setInputBoxResponse: (value) => {
       inputBoxResponse = value;
+    },
+    setInformationResponse: (value) => {
+      informationResponse = value;
     },
   },
 };

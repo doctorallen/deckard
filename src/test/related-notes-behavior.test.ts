@@ -68,6 +68,98 @@ suite('Related Notes behavior', () => {
     assert.match(page.text('.source') ?? '', /^atlas \/ line 12$/);
   });
 
+  test('previews a section\'s first line, marking the shared words at a word start only', () => {
+    const page = open({
+      notes: [
+        note({
+          excerpt: 'The northern route starts at the depot, and the art of it is routes.',
+          relevanceEvidence: {
+            directTagWeight: 1, associationWeight: 0, normalizedAssociationWeight: 0, appliedAssociationWeight: 0,
+            entryLinkWeight: 0, fileLinkWeight: 0, lexicalWeight: 0.2, recencyWeight: 0, specificityPenalty: 0,
+            lexicalTerms: [{ term: 'route', contribution: 1 }, { term: 'art', contribution: 0.5 }],
+          },
+        }),
+      ],
+    });
+    assert.match(page.text('.note-excerpt') ?? '', /^The northern route starts/);
+    assert.deepStrictEqual(
+      page.findAll('.note-excerpt mark').map((mark) => mark.textContent),
+      ['route', 'art', 'route'],
+      '"route" marks "routes", and "art" is not marked inside "starts"',
+    );
+    assert.strictEqual(page.findAll('.note-title mark').length, 0, 'the title is never marked');
+    assert.strictEqual(page.find('main')?.getAttribute('data-preview-lines'), '1');
+  });
+
+  test('the gear sets how many lines to preview, and None draws no excerpt', () => {
+    const page = open({ notes: [note({ excerpt: 'What it says.' })], previewLines: 0, relatedNotesSortMode: 'tags' });
+    assert.strictEqual(page.findAll('.note-excerpt').length, 0);
+    const choices = page.findAll('[data-action="set-preview-lines"]');
+    assert.deepStrictEqual(choices.map((choice) => [choice.textContent, choice.getAttribute('aria-pressed')]), [
+      ['None', 'true'],
+      ['1 line', 'false'],
+      ['2 lines', 'false'],
+    ]);
+    page.click('[data-action="set-preview-lines"][data-value="2"]');
+    assert.deepStrictEqual(page.lastPosted('setRelatedNotesPreviewLines'), { type: 'setRelatedNotesPreviewLines', lines: 2 });
+    page.click('[data-action="set-hide-daily"][data-value="hide"]');
+    assert.deepStrictEqual(page.lastPosted('setHideDailyNotes'), { type: 'setHideDailyNotes', hide: true });
+  });
+
+  test('a note with no tags lists the tags similar notes use, then those notes, weak', () => {
+    const similarNote = note({
+      kind: 'wording',
+      filePath: 'vendors/audit.md',
+      fileName: 'audit.md',
+      title: 'Northwind audit',
+      relevanceScore: 24,
+      reasons: ['Similar wording: northwind, northern, route'],
+      excerpt: 'The audit of Northwind on the northern route.',
+    });
+    const page = open({
+      state: 'noTags',
+      relatedNotesSortMode: 'tags',
+      similar: { notes: [similarNote], tags: [{ key: '#risk/vendor', label: '#risk/vendor', entryCount: 3 }] },
+    });
+    const labels = page.findAll('.section-label').map((label) => label.textContent);
+    assert.deepStrictEqual(labels, ['Tags used by similar notes', 'Similar wording (no tags yet)']);
+    assert.strictEqual(page.text('.similar-hint'), 'These share words with this note, not tags or links.');
+    assert.strictEqual(page.findAll('.similar-wording .relevance-score .tag-weight-rail-segment.filled').length, 1);
+    assert.match(page.find('.similar-wording .relevance-score').getAttribute('aria-label') ?? '', /^Relevance weak, 24 of 100\./);
+    assert.strictEqual(page.text('.similar-wording .relevance-reason'), 'Similar wording: northwind, northern, route');
+    assert.match(page.find('.suggested-tag .tag-open').getAttribute('data-tip') ?? '', /^On 3 of the similar entries below\./);
+    page.click('.suggested-tag [data-action="open-tag"]');
+    assert.deepStrictEqual(page.lastPosted('openTag'), { type: 'openTag', tagKey: '#risk/vendor' });
+    const add = page.find('.suggested-tag [data-action="add-suggested-tag"]');
+    assert.strictEqual(add.textContent, 'Add');
+    assert.strictEqual(add.getAttribute('aria-label'), 'Add #risk/vendor to this note');
+    page.click('.suggested-tag [data-action="add-suggested-tag"]');
+    assert.deepStrictEqual(page.lastPosted('addSuggestedTag'), { type: 'addSuggestedTag', tagKey: '#risk/vendor' });
+  });
+
+  test('a note with no tags says why nothing is listed', () => {
+    let page = open({ state: 'noTags', similar: { notes: [], tags: [] } });
+    assert.strictEqual(
+      page.text('.empty'),
+      'This note has no tags yet, and no other entry shares enough of its wording to suggest any.',
+    );
+    page.dispose();
+    page = open({ state: 'noTags' });
+    assert.strictEqual(page.text('.empty'), 'This note has no tags yet.');
+  });
+
+  test('a note with no tags but a link lists its related notes first, then the similar ones', () => {
+    const page = open({
+      notes: [note()],
+      similar: { notes: [note({ kind: 'wording', filePath: 'b.md', sourceLine: 3, title: 'B', relevanceScore: 20 })], tags: [] },
+    });
+    assert.deepStrictEqual(page.findAll('.section-label').map((label) => label.textContent), [
+      'Related notes',
+      'Similar wording (no tags yet)',
+    ]);
+    assert.strictEqual(page.findAll('.note').length, 2);
+  });
+
   test('opens a result at its line, and beside the note when asked', () => {
     const page = open({ notes: [note()] });
 
@@ -267,7 +359,7 @@ suite('Related Notes behavior', () => {
     // search for it finds is in its label.
     assert.ok(page.findAll('.tag-weight-rail-segment').length > 0);
     assert.match(
-      String(page.find('.active-tag-list [data-action="open-tag"]').getAttribute('title')),
+      String(page.find('.active-tag-list [data-action="open-tag"]').getAttribute('data-tip')),
       /weight 1\.00\. 2 notes · 1 task/,
     );
   });
@@ -350,6 +442,31 @@ suite('Related Notes behavior', () => {
       page.lastPosted('hoverNotesGraphNode')?.nodeId,
       'tag:#project/atlas',
     );
+  });
+
+  test('Refine in the sidebar shows five of a facet, and the rest on request', () => {
+    const values = Array.from({ length: 8 }, (_, index) => ({ label: `#t${index}`, count: 1, clause: `#t${index}` }));
+    const page = open({
+      state: 'refine',
+      refine: {
+        page: 'search',
+        title: 'Project: Atlas',
+        resultKinds: ['notes', 'tasks'],
+        query: {
+          text: '#project/atlas', terms: [], canAppend: true, isAdvanced: false, diagnostics: [],
+          builder: { join: 'and', items: [] }, tags: [],
+          suggestions: { fields: [], values: {}, operators: {} as never, conditions: [], recent: [], aliases: {} },
+          matchCounts: { notes: 8, tasks: 0 },
+          facets: [{ id: 'tags', label: 'Tags', applied: [], values }],
+        },
+      },
+    });
+    assert.strictEqual(page.findAll('.refine-value').length, 5);
+    assert.strictEqual(page.text('.refine-more'), '+3 more');
+    page.click('.refine-more');
+    assert.strictEqual(page.findAll('.refine-value').length, 8);
+    assert.strictEqual(page.text('.refine-more'), 'Show fewer');
+    assert.strictEqual(page.find('.refine-more').getAttribute('aria-expanded'), 'true');
   });
 
   test('narrows the active search from its Refine options', () => {

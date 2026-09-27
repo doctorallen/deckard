@@ -121,20 +121,22 @@ suite('Dashboard behavior', () => {
       ...changes,
     });
 
-  test('counts notes, tasks, and tags, in those words', () => {
+  test('leads with what is overdue, due today, and open, each a search', () => {
     const { page, snapshot } = open();
     const labels = page
       .findAll('.metrics .metric-label')
       .map((label) => label.textContent);
-    assert.deepStrictEqual(labels, ['notes', 'tasks', 'tags']);
+    assert.deepStrictEqual(labels, ['Overdue', 'Due today', 'Open']);
     const values = page
       .findAll('.metrics .metric-value')
       .map((value) => Number(value.textContent));
-    assert.deepStrictEqual(values, [
-      snapshot.totalNoteCount,
-      snapshot.totalTaskCount,
-      snapshot.tags.length,
-    ]);
+    const glance = snapshot.taskGlance!;
+    assert.deepStrictEqual(values, [glance.overdue, glance.today, glance.open]);
+    assert.deepStrictEqual(
+      page.findAll('.metrics .metric-open').map((tile) => tile.getAttribute('data-query')),
+      ['is:overdue -is:needs-date', 'is:today', 'is:open'],
+    );
+    assert.strictEqual(page.find('.metrics')?.getAttribute('aria-label'), 'Tasks at a glance');
   });
 
   test('moves between Home and Tags, and marks where the reader is', () => {
@@ -260,9 +262,10 @@ suite('Dashboard behavior', () => {
     const { page, snapshot } = open();
 
     assert.ok((snapshot.widgets?.length ?? 0) > 0, 'Home starts with widgets');
+    // Try next, with nothing to suggest, draws nothing at all.
     assert.strictEqual(
       page.findAll('.home-widget').length,
-      snapshot.widgets?.length,
+      snapshot.widgets?.filter((widget) => widget.kind !== 'tryNext' || widget.tryNext).length,
     );
   });
 
@@ -290,6 +293,56 @@ suite('Dashboard behavior', () => {
       page.document.querySelector('[data-action="set-widget-paged"][data-value="on"]'),
       'and offers to page it',
     );
+  });
+
+  test('sends each tag\'s name and count, and draws the Tags tab only when it is open', () => {
+    const { page, snapshot } = open();
+    assert.deepStrictEqual(Object.keys(snapshot.tags[0]).sort(), ['count', 'isFavorite', 'key', 'label']);
+    assert.deepStrictEqual(Object.keys(snapshot.entities[0] ?? { count: 0, isFavorite: false, key: '', kind: '', label: '' }).sort(), ['count', 'isFavorite', 'key', 'kind', 'label']);
+    assert.strictEqual(page.findAll('.tag-row').length, 0, 'Home builds no tag rows');
+    page.click('[data-action="set-dashboard-mode"][data-dashboard-mode="browse"]');
+    assert.ok(page.findAll('.tag-row').length > 0, 'the Tags tab draws them when opened');
+  });
+
+  test('a large workspace\'s Dashboard snapshot stays small', () => {
+    const notes: Record<string, string> = {};
+    for (let file = 0; file < 40; file += 1) {
+      notes[`notes/n${file}.md`] = Array.from({ length: 50 }, (_, tag) => `## E${tag} #t${file}-${tag} #shared`).join('\n');
+    }
+    const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
+    store = new PreferencesStore(new MemoryMemento());
+    const size = JSON.stringify(createDashboardSnapshot(index, store.value)).length;
+    assert.ok(index.tags.size >= 2000, `${index.tags.size} tags`);
+    assert.ok(size < 300 * 1024, `${Math.round(size / 1024)} KB`);
+  });
+
+  test('a removed widget can be put back where it was, for a moment', () => {
+    const { page } = open({
+      dashboardWidgets: [
+        { id: 'a', kind: 'topTags', width: 'full', count: 3 },
+        { id: 'b', kind: 'topTags', width: 'half', count: 5 },
+      ],
+    });
+    page.click('[data-action="customize-home"]');
+    page.click('[data-action="remove-widget"][data-widget-id="a"]');
+    const removed = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ id: string }>;
+    assert.deepStrictEqual(removed.map((widget) => widget.id), ['b']);
+    assert.match(page.text('#undo-toast .undo-notice') ?? '', /^Removed .+\. Undo$/);
+    assert.strictEqual(page.document.activeElement, page.find('[data-action="undo-remove-widget"]'), 'focus is on Undo');
+    page.click('[data-action="undo-remove-widget"]');
+    const back = page.lastPosted('setDashboardWidgets')?.widgets as Array<Record<string, unknown>>;
+    assert.deepStrictEqual(back.map((widget) => widget.id), ['a', 'b'], 'back at its place');
+    assert.deepStrictEqual(back[0], { id: 'a', kind: 'topTags', width: 'full', count: 3 }, 'with its width and options');
+    assert.strictEqual(page.findAll('.undo-notice').length, 0);
+  });
+
+  test('Reset widgets asks first, and commits with the heavier button after Keep them', () => {
+    const { page } = open();
+    page.click('[data-action="customize-home"]');
+    page.click('[data-action="reset-widgets"]');
+    const buttons = page.findAll('.home-reset-confirm button');
+    assert.deepStrictEqual(buttons.map((button) => button.getAttribute('data-action')), ['cancel-reset-widgets', 'confirm-reset-widgets']);
+    assert.ok(buttons[1].classList.contains('danger'));
   });
 
   test('turns paging on for a widget', () => {
@@ -407,6 +460,58 @@ suite('Dashboard behavior', () => {
       null,
       'so a later state does not bring it back',
     );
+  });
+
+  test('an empty workspace is offered today\'s note and the sample tour', () => {
+    const { page, snapshot } = open();
+    page.send({ ...snapshot, totalNoteCount: 0 });
+    assert.match(page.text('.home-start p') ?? '', /take the tour/);
+    assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
+  });
+
+  test('Try next draws one card, or nothing at all', () => {
+    const { page, snapshot } = open();
+    const tryNext = { id: 'tryNext', kind: 'tryNext', width: 'full', title: 'Try next' };
+    page.send({ ...snapshot, widgets: [tryNext, ...(snapshot.widgets ?? [])] });
+    assert.strictEqual(page.document.querySelector('.home-widget[data-widget-id="tryNext"]'), null, 'no empty box');
+
+    const suggestion = { id: 'taskBoard', key: 'taskBoard', text: 'You have 42 open tasks.', action: { label: 'Open Task board' } };
+    page.send({ ...snapshot, widgets: [{ ...tryNext, tryNext: suggestion }, ...(snapshot.widgets ?? [])] });
+    assert.strictEqual(page.text('.try-next-text'), 'You have 42 open tasks.');
+    assert.deepStrictEqual(
+      page.findAll('.try-next-actions button').map((button) => button.textContent),
+      ['Open Task board', 'Not now', 'Do not suggest this'],
+    );
+    page.click('[data-action="run-try-next"]');
+    assert.deepStrictEqual(page.lastPosted('runTryNext'), { type: 'runTryNext', key: 'taskBoard' });
+    page.click('[data-action="snooze-try-next"]');
+    assert.deepStrictEqual(page.lastPosted('snoozeTryNext'), { type: 'snoozeTryNext', key: 'taskBoard' });
+    page.click('[data-action="retire-try-next"]');
+    assert.deepStrictEqual(page.lastPosted('retireTryNext'), { type: 'retireTryNext', key: 'taskBoard' });
+  });
+
+  test('the gear leads back to the walkthrough', () => {
+    const { page } = open();
+    page.click('[data-action="open-view"][data-view="walkthrough"]');
+    assert.deepStrictEqual(page.lastPosted('openView'), { type: 'openView', view: 'walkthrough' });
+  });
+
+  test('after an update, says so in the hint line first', () => {
+    const { page, snapshot } = open();
+    page.send({ ...snapshot, whatsNew: { version: '1.23' } });
+    assert.strictEqual(page.text('.home-hint-bar span'), 'Updated to Deckard 1.23.');
+    assert.strictEqual(
+      page.document.querySelector('[data-action="dismiss-home-hint"]'),
+      null,
+      'one line at a time: the arrange hint waits',
+    );
+    page.click('[data-action="open-whats-new"]');
+    assert.ok(page.lastPosted('openWhatsNew'));
+    page.click('[data-action="dismiss-whats-new"]');
+    assert.ok(page.lastPosted('dismissWhatsNew'));
+
+    page.send({ ...snapshot });
+    assert.strictEqual(page.text('.home-hint-bar span'), 'Home is yours to arrange.');
   });
 
   test('offers to rearrange Home, and to put it back', () => {

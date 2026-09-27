@@ -5,10 +5,12 @@ import {
   getBaseCss,
   getComponentScript,
   getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 import {
   calendarPlusIcon,
+  chevronRightIcon,
   dashboardIcon,
   helpIcon,
   ICON_PATHS,
@@ -18,6 +20,7 @@ import {
   strokeIcon,
   taskBoardIcon,
 } from './icons';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -47,6 +50,29 @@ export function getSidebarNotesHtml(
 <title>Deckard Related Notes</title>
 <style nonce="${nonce}">${getBaseCss()}
 .relevance-score, .version { font-family: var(--font-mono); }
+/* What links to the note, under its related notes. */
+.note-links { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.links-group summary { color: var(--muted); font: var(--text-xs) var(--font-mono); cursor: pointer; }
+.links-count { color: var(--text); }
+.link-list { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.link-row { display: grid; gap: 2px; }
+.link-line { display: flex; align-items: flex-start; gap: var(--space-1); min-width: 0; }
+.link-group { display: grid; gap: 2px; margin-top: var(--space-2); }
+.link-group-head { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; padding: 0 var(--space-2); }
+.link-group-open { flex: 0 1 auto; min-width: 0; min-height: 0; padding: 0; overflow: hidden; border-color: transparent; background: transparent; color: var(--cyan); font-size: var(--text-sm); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.link-group-meta { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); }
+.link-expand { flex: 0 0 auto; width: 28px; min-width: 28px; min-height: 28px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
+.link-expand svg { width: 14px; height: 14px; transition: transform 120ms ease; }
+.link-expand[aria-expanded="true"] svg { transform: rotate(90deg); }
+.link-section { margin: 0 0 var(--space-1) var(--space-2); padding-left: var(--space-2); border-left: 1px solid var(--line); color: var(--muted); font-size: var(--text-xs); white-space: pre-wrap; overflow-wrap: anywhere; }
+.links-search { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.link-open { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; min-height: 0; padding: var(--space-1) var(--space-2); border-color: transparent; background: transparent; text-align: left; }
+.link-note { color: var(--cyan); font-size: var(--text-sm); }
+.link-path { color: var(--muted); font-size: var(--text-xs); }
+.link-context { overflow: hidden; color: var(--text); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.link-one, .link-all { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.link-all { margin-top: var(--space-2); }
+.links-more { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--text-xs); }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
 .sidebar-header .eyebrow { flex: 0 0 auto; }
 /* The selected entry is context for the list, not the subject of the pane:
@@ -77,16 +103,28 @@ body .note:hover { transform: none; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
-.related-notes-sort-control { position: relative; display: block; margin-top: 10px; }
+.related-notes-controls { display: flex; align-items: stretch; gap: 6px; margin-top: 10px; }
+.related-notes-sort-control { position: relative; display: block; flex: 1 1 auto; min-width: 0; }
+/* The gear's menu opens under it, inside a sidebar only as wide as the pane. */
+.related-notes-controls .view-options-menu { min-width: 0; width: max-content; max-width: calc(100vw - 24px); }
+/* A result's first lines, clamped to the Preview the gear sets. */
+main { --preview-lines: 1; }
+main[data-preview-lines="2"] { --preview-lines: 2; }
+.suggested-tags { display: grid; gap: 4px; margin: 10px 0; }
+.suggested-tag { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
+.suggested-tag .tag-open { flex: 1 1 auto; min-width: 0; }
+.suggested-tag-add { flex: 0 0 auto; min-height: 30px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.similar-hint { margin: 0 0 6px; color: var(--muted); font-size: var(--text-xs); }
+.note-excerpt { display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: var(--preview-lines); overflow-wrap: anywhere; }
 select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 /* The sort control takes the shared control hover, border and all: its own
    amber border and amber text were both out of step with every other hover,
    and unreadable on a theme whose hover background is light. The icon sits
    over the control, so it follows the same text color. */
-select.related-notes-sort:hover ~ .related-notes-sort-icon { color: var(--hover-fg); }
+select.related-notes-sort:hover${ENABLED} ~ .related-notes-sort-icon { color: var(--hover-fg); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
-button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+button:hover${ENABLED} { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
@@ -105,7 +143,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
 .insert-link:hover { background: transparent; color: var(--text); }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
-.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: var(--text-xs); line-height: 1.35; }
+.relevance-tooltip { position: absolute; top: calc(100% + 7px); right: 0; display: none; width: 220px; max-width: none; padding: 8px; line-height: 1.35; }
 .relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
 .relevance-score { border: 0; background: transparent; padding: 0; cursor: pointer; }
 .relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
@@ -116,11 +154,10 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: var(--text-xs); }
 .relevance-weights strong { color: var(--green); font-weight: 600; }
 .note .tag-list { margin-top: 7px; }
-.note .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
-.graph-kind.task { color: var(--amber); }
-.graph-kind.tag { color: var(--green); }
+.graph-kind.kind-task { color: var(--amber); }
+.graph-kind.kind-tag { color: var(--green); }
 .graph-tag-pill { margin-left: 0; color: var(--text); }
 /* The active search's Refine options. */
 .refine-values { display: grid; gap: 3px; }
@@ -130,15 +167,15 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
    Refine: its rail, its name, and its count. The theme's own .tag-open layout
    is set aside here, and the text matches the other Refine rows rather than a
    tag's smaller size. */
-.active-tag-list .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
-.active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
-.active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The note's own tags are few, so a long one wraps from the left in full. */
-.active-tag-open > .tag-label { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.active-tag-list .tag-open.active-tag-open, .suggested-tag .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
+.active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .suggested-tag .tag-open.active-tag-open:hover, .suggested-tag .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
+.active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; }
 .refine-open-tag { display: inline-grid; flex: 0 0 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 2px; }
 .refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .refine-open-tag:hover, .refine-open-tag:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-count { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.refine-more.refine-more { justify-self: start; min-height: 24px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 2px 8px; font: var(--text-xs) var(--font-mono); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
+.refine-more.refine-more:hover, .refine-more.refine-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
 .refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
 .refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
@@ -158,7 +195,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading related notes...</div></main>
+${loadingHtml('Loading related notes…', 'data-sidebar')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
@@ -190,7 +227,7 @@ ${getComponentScript()}
     const total = matches.notes + matches.tasks;
     const found = matches.notes + ' note' + (matches.notes === 1 ? '' : 's') + ' · ' + matches.tasks + ' task' + (matches.tasks === 1 ? '' : 's');
     const weightText = hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + '. ' : '';
-    return '<button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" title="' + escapeHtml(weightText + found + '. Open its page.') + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview (' + escapeHtml((hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + ', ' : '') + found) + ')">'
+    return '<button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" data-tip="' + escapeHtml(weightText + found + '. Open its page.') + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview (' + escapeHtml((hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + ', ' : '') + found) + ')">'
       + (hasWeight ? renderWeightRail(getWeightLevel(weight), 'Segmented rail, Related Notes weight ' + weight.toFixed(2)) : '')
       + renderTagLabel(tag.label)
       + '<span class="refine-count">' + total + '</span></button>';
@@ -222,13 +259,17 @@ ${getComponentScript()}
     const help = describeRefineValue(value);
     if (facet.id === 'related' || facet.id === 'tags') {
       const hasStrength = typeof value.strength === 'number';
-      const strengthText = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
+      const strengthText = !hasStrength
+        ? ''
+        : typeof value.total === 'number'
+          ? ', in ' + value.count + ' of ' + value.total + ' results'
+          : ', related ' + getWeightLevel(value.strength) + ' of 3';
       // The row narrows the search by the tag; the icon beside it opens the
       // tag's own page in a new tab.
-      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' title="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
-        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" title="Open ' + escapeHtml(value.label) + ' in a new tab">${openInNewIcon}</button></div>';
+      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' data-tip="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
+        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" data-tip="Open ' + escapeHtml(value.label) + ' in a new tab">${openInNewIcon}</button></div>';
     }
-    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" title="' + escapeHtml(help) + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
+    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" data-tip="' + escapeHtml(help) + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
   }
 
   /**
@@ -236,6 +277,9 @@ ${getComponentScript()}
    * page shows its own search, terms, and counts, so the sidebar shows only
    * what could narrow them.
    */
+  /** Refine facets opened past their first five, for this session. */
+  const expandedRefine = new Set();
+
   function renderRefine(refine) {
     const query = refine.query;
     const facets = query.facets || [];
@@ -254,14 +298,15 @@ ${getComponentScript()}
     }
     if (!facets.length) return heading + '<div class="empty">Nothing left to narrow by.</div>';
     return heading + facets.map(function (facet) {
-      return '<section class="refine-facet" aria-label="' + escapeHtml(facet.label) + '"><span class="section-label">' + escapeHtml(facet.label) + '</span><div class="refine-values">' + facet.values.map(function (value) { return renderRefineValue(facet, value); }).join('') + '</div></section>';
+      const shown = facetValuesShown(facet, expandedRefine, 'refine-more');
+      return '<section class="refine-facet" aria-label="' + escapeHtml(facet.label) + '"><span class="section-label">' + escapeHtml(facet.label) + '</span><div class="refine-values">' + shown.values.map(function (value) { return renderRefineValue(facet, value); }).join('') + shown.more + '</div></section>';
     }).join('');
   }
 
 
   /** Shared shell for Related Notes and graph-connected node cards. */
   function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
-    return '<article class="note ' + className + '" tabindex="0" title="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
+    return '<article class="note ' + className + '" tabindex="0" data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
   }
 
   function renderGraphConnections(graph) {
@@ -276,7 +321,9 @@ ${getComponentScript()}
       const title = node.kind === 'tag'
         ? '<span class="inline-tag graph-tag-pill">' + renderTagLabel(node.title) + '</span>'
         : escapeHtml(node.title);
-      const kind = '<span class="graph-kind ' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
+      // kind-note, not note: a bare note or task class is a card's, and gave
+      // the badge a card's edge and hover.
+      const kind = '<span class="graph-kind kind-' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
       const source = node.filePath
         ? escapeHtml(formatSourceLocation(node.filePath.split('/').pop() || node.filePath, node.line))
         : 'Tag node';
@@ -318,10 +365,179 @@ ${getComponentScript()}
       state.activeFileName,
       state.activeEntryTitle,
       state.relatedNotesSortMode,
+      state.hideDailyNotes,
+      Boolean(state.similar),
     ]);
   }
 
+  /** How many lines of each excerpt to show: 0, 1, or 2. */
+  function previewLines() {
+    return state.previewLines === 0 || state.previewLines === 2 ? state.previewLines : 1;
+  }
+
   /** Render explicit empty states so the sidebar explains why no notes appear. */
+  /** Which of the Links groups are open, kept across redraws. */
+  const linksOpen = { linked: true, mentions: false };
+  /** The link rows unfolded onto their section, by file and line. */
+  const openLinkSections = new Set();
+
+  /**
+   * What points at the note: the notes that link to it, each with its lines
+   * under their headings, and the notes that name it without a link, each of
+   * which can be made one here or all at once.
+   */
+  function renderLinks(links) {
+    if (!links || (!links.linkedFromCount && !links.mentionCount)) return '';
+    const row = function (entry, extra, withTitle) {
+      const path = entry.headingPath && entry.headingPath.length ? '<span class="link-path">' + escapeHtml(entry.headingPath.join(' › ')) + '</span>' : '';
+      const key = entry.filePath + ':' + entry.line;
+      const expanded = entry.sectionText && openLinkSections.has(key);
+      const expander = entry.sectionText
+        ? '<button type="button" class="link-expand" data-action="toggle-link-section" data-section-key="' + escapeHtml(key) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-label="Show the rest of this section" data-tip="Show the rest of this section">${chevronRightIcon}</button>'
+        : '';
+      return '<li class="link-row"><div class="link-line"><button type="button" class="link-open" data-action="open-link" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-tip="Open this line. Cmd/Ctrl-click to open it beside the note.">' + (withTitle ? '<span class="link-note">' + escapeHtml(entry.title) + '</span>' : '') + path + '<span class="link-context">' + escapeHtml(entry.text) + '</span></button>' + (extra || '') + expander + '</div>'
+        + (expanded ? '<p class="link-section">' + escapeHtml(entry.sectionText) + '</p>' : '')
+        + '</li>';
+    };
+    const more = function (shown, count) {
+      return count > shown ? '<p class="links-more">' + (count - shown) + ' more not listed</p>' : '';
+    };
+    const groups = links.linkedFromNotes || [];
+    const shownLines = groups.reduce(function (total, group) { return total + group.entries.length; }, 0);
+    const searchTip = 'Search for every entry that links here, so Refine, Bulk edit, Save, and Export work on them';
+    const foot = links.linkedFromCount > shownLines
+      ? '<p class="links-more">' + (links.linkedFromCount - shownLines) + ' more not listed. <button type="button" class="links-search" data-action="open-links-search" data-tip="' + searchTip + '">Open all as a search</button></p>'
+      : '<p class="links-more"><button type="button" class="links-search" data-action="open-links-search" data-tip="' + searchTip + '">Open as search</button></p>';
+    const hidden = links.hiddenDailyNoteCount || 0;
+    const hiding = hidden
+      ? '<p class="links-more links-hiding">Hiding ' + hidden + ' daily ' + (hidden === 1 ? 'note' : 'notes') + '. <button type="button" class="links-search" data-action="show-daily-notes">Show them</button></p>'
+      : '';
+    const linked = links.linkedFromCount
+      ? '<details class="links-group" data-links-group="linked"' + (linksOpen.linked ? ' open' : '') + '><summary>Linked from <span class="links-count">' + (links.linkedFromNoteCount || groups.length) + '</span></summary>'
+        + groups.map(function (group) {
+          const first = group.entries[0];
+          const meta = [group.updatedLabel, group.linkCount > 1 ? group.linkCount + ' links' : '', group.parked ? 'Parked' : ''].filter(Boolean).join(' · ');
+          return '<section class="link-group" aria-label="' + escapeHtml(group.title) + '"><div class="link-group-head"><button type="button" class="link-group-open" data-action="open-link" data-file-path="' + escapeHtml(group.filePath) + '" data-line="' + (first ? first.line : 1) + '" data-tip="Open ' + escapeHtml(group.title) + ' at its first link here">' + escapeHtml(group.title) + '</button>' + (meta ? '<span class="link-group-meta">' + escapeHtml(meta) + '</span>' : '') + '</div>'
+            + '<ul class="link-list">' + group.entries.map(function (entry) { return row(entry); }).join('') + '</ul></section>';
+        }).join('') + foot + hiding + '</details>'
+      : '';
+    const mentions = links.mentionCount
+      ? '<details class="links-group" data-links-group="mentions"' + (linksOpen.mentions ? ' open' : '') + '><summary>Mentioned without a link <span class="links-count">' + links.mentionCount + '</span></summary>'
+        + '<button type="button" class="link-all" data-action="link-all-mentions" data-tip="Make every mention a [[link]], as one change Undo Last Change takes back">Link all</button><ul class="link-list">'
+        + links.mentions.map(function (entry) {
+          return row(entry, '<button type="button" class="link-one" data-action="link-mention" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-start-column="' + entry.startColumn + '" aria-label="Link this mention of ' + escapeHtml(entry.name) + ' in ' + escapeHtml(entry.title) + '" data-tip="Make this mention a [[link]]">Link</button>', true);
+        }).join('') + '</ul>' + more(links.mentions.length, links.mentionCount) + '</details>'
+      : '';
+    return '<section class="note-links" aria-label="Links to this note">' + linked + mentions + '</section>';
+  }
+
+  /** One ranked result: its title, score, where it is, excerpt, and why. */
+  function renderRankedNote(note) {
+    const title = note.title || note.fileName || note.filePath;
+    const titleHtml = state.tagTitleDisplayMode === 'inline'
+      ? renderInlineTitle(title, note.titleTags)
+      : escapeHtml(title);
+    const fileName = note.fileName || note.filePath;
+    const tags = state.tagTitleDisplayMode === 'separate'
+      ? renderTags(note.matchedTags, 'matched-tag')
+      : '';
+    // The tags drawn as chips on the card: the matched tags under the
+    // title when tags are shown apart from it, or the title's own when
+    // they are shown inline. A reason that only lists tags the chips
+    // already name, "Shared: …" or "Associated: …", said them twice;
+    // it goes, and the line moves on to the next reason, or to nothing.
+    const chipLabels = (tags ? note.matchedTags || [] : note.titleTags || []).map(function (tag) { return tag.label; });
+    const namesOnlyChips = function (reason) {
+      const match = /^(Shared|Associated): (.+)$/.exec(reason);
+      if (!match) return false;
+      const listed = match[2].split(', ');
+      return listed.length > 0 && listed.every(function (label) { return chipLabels.indexOf(label) >= 0; });
+    };
+    const dropped = (note.reasons || []).filter(namesOnlyChips);
+    const reasons = (note.reasons || []).filter(function (reason) { return !namesOnlyChips(reason); });
+    const relevanceReasons = reasons.length
+      ? reasons
+      : dropped.length ? [] : ['Related note'];
+    const evidence = note.relevanceEvidence || {
+      directTagWeight: 0,
+      associationWeight: note.associationWeight || 0,
+      normalizedAssociationWeight: note.associationWeight || 0,
+      appliedAssociationWeight: note.associationWeight || 0,
+      entryLinkWeight: 0,
+      fileLinkWeight: 0,
+      lexicalWeight: 0,
+      recencyWeight: 0,
+      specificityPenalty: 0,
+      lexicalTerms: [],
+    };
+    const weights = [
+      ['Shared-tag weight', evidence.directTagWeight],
+      ['Association weight', evidence.appliedAssociationWeight],
+      ['Direct entry-link weight', evidence.entryLinkWeight],
+      ['File-link weight', evidence.fileLinkWeight],
+      ['Lexical weight', evidence.lexicalWeight],
+      ['Recency tie-breaker', evidence.recencyWeight],
+    ].filter(function (item) { return item[1] > 0; });
+    const specificityAdjustment = evidence.specificityPenalty > 0
+      ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
+      : '';
+    // A precise-looking percentage from a heuristic ranker invites a
+    // reader to build a model of it that two close scores then break.
+    // The rail says strong, moderate, or weak; the number is in the
+    // breakdown for anyone who wants it.
+    const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
+    const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
+    const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored.">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip popover is-tip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+    const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
+    // Writing a link to a result is the reason to have found it, and
+    // the sidebar sits beside the note being written in. The button
+    // stays out of the way until the card is under the pointer.
+    const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" data-tip="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
+    // The words the card shares with the note, marked in its excerpt.
+    const terms = (evidence.lexicalTerms || []).slice(0, 5).map(function (term) { return term.term; });
+    const excerpt = note.excerpt && previewLines() > 0
+      ? '<p class="note-excerpt">' + escapeHtml(note.excerpt) + '</p>'
+      : '';
+    return renderNoteCard(
+      '',
+      'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"' + (terms.length ? ' data-terms="' + escapeHtml(terms.join(' ')) + '"' : ''),
+      titleHtml,
+      '<div class="note-actions">' + insertLink + relevance + '</div>',
+      '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
+      (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + excerpt + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+    );
+  }
+
+  /** Why an untagged note's list is empty, or the similar entries in its place. */
+  function renderNoTags() {
+    if (!state.similar) return '<div class="empty">This note has no tags yet.</div>';
+    if (!state.similar.notes.length && !state.similar.tags.length) {
+      return '<div class="empty">This note has no tags yet, and no other entry shares enough of its wording to suggest any.</div>';
+    }
+    return renderSimilar(state.similar);
+  }
+
+  /**
+   * For a note with no tags: the tags entries worded like it use, first,
+   * since tagging it is the way out of guessing, then those entries,
+   * each marked weak and kept apart from the related notes.
+   */
+  function renderSimilar(similar) {
+    if (!similar || (!similar.notes.length && !similar.tags.length)) return '';
+    const tags = similar.tags.length
+      ? '<section class="suggested-tags" aria-label="Tags used by similar notes"><span class="section-label">Tags used by similar notes</span>'
+        + similar.tags.map(function (tag) {
+          const tip = 'On ' + tag.entryCount + ' of the similar entries below. Add writes it on the heading or line where the cursor is.';
+          return '<div class="suggested-tag"><button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" data-tip="' + escapeHtml(tip) + '">' + renderTagLabel(tag.label) + '<span class="refine-count">' + tag.entryCount + '</span></button>'
+            + '<button type="button" class="suggested-tag-add" data-action="add-suggested-tag" data-suggested-tag="' + escapeHtml(tag.key) + '" aria-label="Add ' + escapeHtml(tag.label) + ' to this note" data-tip="Write ' + escapeHtml(tag.label) + ' on the heading or line where the cursor is">Add</button></div>';
+        }).join('') + '</section>'
+      : '';
+    const notes = similar.notes.length
+      ? '<section class="similar-wording" aria-label="Similar wording (no tags yet)"><span class="section-label">Similar wording (no tags yet)</span><p class="similar-hint">These share words with this note, not tags or links.</p><div class="note-list">' + similar.notes.map(renderRankedNote).join('') + '</div></section>'
+      : '';
+    return tags + notes;
+  }
+
   function render() {
     if (!state) return;
     closeTagContextMenu();
@@ -331,13 +547,13 @@ ${getComponentScript()}
     } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
     } else if (state.state === 'loading') {
-      content = '<div class="empty">Indexing this workspace…</div>';
+      content = renderLoading(describeIndexing(state.progress), true);
     } else if (state.state === 'notIndexed') {
       content = '<div class="empty">This note is not indexed yet. Save it inside the notes folder to see related entries.</div>';
     } else if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
     } else if (state.state === 'noTags') {
-      content = '<div class="empty">This note has no tags yet.</div>';
+      content = renderNoTags();
     } else if (state.state === 'noMatches') {
       content = '<div class="empty">No other notes share its tags.</div>';
     } else {
@@ -351,76 +567,7 @@ ${getComponentScript()}
       const showMore = hiddenNoteCount > 0
         ? '<button type="button" class="show-more-notes" data-action="show-more-notes">' + (hiddenNoteCount > NOTE_PAGE_SIZE ? 'Show ' + NOTE_PAGE_SIZE + ' more of ' + hiddenNoteCount : 'Show ' + hiddenNoteCount + ' more') + '</button>'
         : '';
-      content = '<div class="note-list">' + shownNotes.map(function (note) {
-        const title = note.title || note.fileName || note.filePath;
-        const titleHtml = state.tagTitleDisplayMode === 'inline'
-          ? renderInlineTitle(title, note.titleTags)
-          : escapeHtml(title);
-        const fileName = note.fileName || note.filePath;
-        const tags = state.tagTitleDisplayMode === 'separate'
-          ? renderTags(note.matchedTags, 'matched-tag')
-          : '';
-        // The tags drawn as chips on the card: the matched tags under the
-        // title when tags are shown apart from it, or the title's own when
-        // they are shown inline. A reason that only lists tags the chips
-        // already name, "Shared: …" or "Associated: …", said them twice;
-        // it goes, and the line moves on to the next reason, or to nothing.
-        const chipLabels = (tags ? note.matchedTags || [] : note.titleTags || []).map(function (tag) { return tag.label; });
-        const namesOnlyChips = function (reason) {
-          const match = /^(Shared|Associated): (.+)$/.exec(reason);
-          if (!match) return false;
-          const listed = match[2].split(', ');
-          return listed.length > 0 && listed.every(function (label) { return chipLabels.indexOf(label) >= 0; });
-        };
-        const dropped = (note.reasons || []).filter(namesOnlyChips);
-        const reasons = (note.reasons || []).filter(function (reason) { return !namesOnlyChips(reason); });
-        const relevanceReasons = reasons.length
-          ? reasons
-          : dropped.length ? [] : ['Related note'];
-        const evidence = note.relevanceEvidence || {
-          directTagWeight: 0,
-          associationWeight: note.associationWeight || 0,
-          normalizedAssociationWeight: note.associationWeight || 0,
-          appliedAssociationWeight: note.associationWeight || 0,
-          entryLinkWeight: 0,
-          fileLinkWeight: 0,
-          lexicalWeight: 0,
-          recencyWeight: 0,
-          specificityPenalty: 0,
-          lexicalTerms: [],
-        };
-        const weights = [
-          ['Shared-tag weight', evidence.directTagWeight],
-          ['Association weight', evidence.appliedAssociationWeight],
-          ['Direct entry-link weight', evidence.entryLinkWeight],
-          ['File-link weight', evidence.fileLinkWeight],
-          ['Lexical weight', evidence.lexicalWeight],
-          ['Recency tie-breaker', evidence.recencyWeight],
-        ].filter(function (item) { return item[1] > 0; });
-        const specificityAdjustment = evidence.specificityPenalty > 0
-          ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
-          : '';
-        // A precise-looking percentage from a heuristic ranker invites a
-        // reader to build a model of it that two close scores then break.
-        // The rail says strong, moderate, or weak; the number is in the
-        // breakdown for anyone who wants it.
-        const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
-        const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
-        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
-        const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
-        // Writing a link to a result is the reason to have found it, and
-        // the sidebar sits beside the note being written in. The button
-        // stays out of the way until the card is under the pointer.
-        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" title="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
-        return renderNoteCard(
-          '',
-          'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
-          titleHtml,
-          '<div class="note-actions">' + insertLink + relevance + '</div>',
-          '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
-        );
-      }).join('') + '</div>' + showMore;
+      content = '<div class="note-list">' + shownNotes.map(renderRankedNote).join('') + '</div>' + showMore + renderSimilar(state.similar);
     }
     // The note's own tags are context for the list below them, so only the
     // first few are kept on screen; the rest are one press away. A note with
@@ -451,21 +598,85 @@ ${getComponentScript()}
           + activeTags + '</details>'
         : '');
     const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
-      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
+      ? '<div class="related-notes-controls"><span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
+        + renderViewOptions([
+          { label: 'Preview', html: renderViewOptionChoices('set-preview-lines', [[0, 'None', 'No preview'], [1, '1 line', 'One line'], [2, '2 lines', 'Two lines']], previewLines(), 'Preview lines') },
+          { label: 'Daily notes', html: renderViewOptionChoices('set-hide-daily', [['show', 'Show', 'Show daily notes'], ['hide', 'Hide', 'Hide daily, weekly, and monthly notes, which link to everything written that day']], state.hideDailyNotes ? 'hide' : 'show', 'Daily notes') },
+        ]) + '</div>'
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
       : state.state === 'refine'
       ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow" title="Deckard v${escapedExtensionVersion}">DECKARD</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help">${helpIcon}</button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard">${dashboardIcon}</button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note">${calendarPlusIcon}</button></div></div>' + context + sectionLabel + content;
+    // The page's shortcuts are the view's own title-bar actions, as every
+    // other sidebar view's are; the page starts with what it is about.
+    const links = state.state === 'graph' || state.state === 'refine' ? '' : renderLinks(state.links);
+    const app = document.getElementById('app');
+    app.dataset.previewLines = String(previewLines());
+    app.innerHTML = context + sectionLabel + content + links;
+    // The shared words, marked where each excerpt says them.
+    app.querySelectorAll('.note[data-terms]').forEach(function (card) {
+      const excerpt = card.querySelector('.note-excerpt');
+      if (excerpt) markWords(excerpt, card.dataset.terms.split(' '), { wordStart: true });
+    });
   }
 
+  installViewOptions();
   document.addEventListener('toggle', function (event) {
     if (event.target.classList && event.target.classList.contains('active-file')) {
       contextOpen = event.target.open;
     }
+    if (event.target.dataset && event.target.dataset.linksGroup) {
+      linksOpen[event.target.dataset.linksGroup] = event.target.open;
+    }
   }, true);
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('[data-action="open-link"]');
+    if (link) {
+      vscode.postMessage({ type: 'openSource', filePath: link.dataset.filePath, line: Number(link.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) });
+      return;
+    }
+    const one = event.target.closest('[data-action="link-mention"]');
+    if (one) {
+      vscode.postMessage({ type: 'linkMention', filePath: one.dataset.filePath, line: Number(one.dataset.line), startColumn: Number(one.dataset.startColumn) });
+      return;
+    }
+    const expand = event.target.closest('[data-action="toggle-link-section"]');
+    if (expand) {
+      const key = expand.dataset.sectionKey;
+      if (openLinkSections.has(key)) openLinkSections.delete(key);
+      else openLinkSections.add(key);
+      render();
+      const again = Array.prototype.find.call(document.querySelectorAll('[data-action="toggle-link-section"]'), function (button) { return button.dataset.sectionKey === key; });
+      if (again && again.focus) again.focus();
+      return;
+    }
+    if (event.target.closest('[data-action="show-daily-notes"]')) {
+      vscode.postMessage({ type: 'setHideDailyNotes', hide: false });
+      return;
+    }
+    const hideDaily = event.target.closest('[data-action="set-hide-daily"]');
+    if (hideDaily) {
+      vscode.postMessage({ type: 'setHideDailyNotes', hide: hideDaily.dataset.value === 'hide' });
+      return;
+    }
+    const add = event.target.closest('[data-action="add-suggested-tag"]');
+    if (add) {
+      vscode.postMessage({ type: 'addSuggestedTag', tagKey: add.dataset.suggestedTag });
+      return;
+    }
+    const preview = event.target.closest('[data-action="set-preview-lines"]');
+    if (preview) {
+      vscode.postMessage({ type: 'setRelatedNotesPreviewLines', lines: Number(preview.dataset.value) });
+      return;
+    }
+    if (event.target.closest('[data-action="open-links-search"]')) {
+      vscode.postMessage({ type: 'openLinksSearch' });
+      return;
+    }
+    if (event.target.closest('[data-action="link-all-mentions"]')) vscode.postMessage({ type: 'linkAllMentions' });
+  });
   document.addEventListener('click', function (event) {
     if (event.target.closest('[data-action="show-more-notes"]')) {
       const firstNewNote = visibleNoteLimit;
@@ -483,6 +694,9 @@ ${getComponentScript()}
       closeTagContextMenu();
       if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
         vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
+      }
+      if ((contextAction.dataset.contextAction === 'park-tag' || contextAction.dataset.contextAction === 'unpark-tag') && tagKey) {
+        vscode.postMessage({ type: contextAction.dataset.contextAction === 'park-tag' ? 'parkTag' : 'unparkTag', tagKey: tagKey });
       }
       return;
     }
@@ -519,6 +733,13 @@ ${getComponentScript()}
       }
       if (target.dataset.action === 'open-tag') {
         vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
+      }
+      if (target.dataset.action === 'facet-more') {
+        const id = target.dataset.facetId;
+        if (expandedRefine.has(id)) expandedRefine.delete(id);
+        else expandedRefine.add(id);
+        renderKeepingPlace(render);
+        return;
       }
       if (target.dataset.action === 'refine') {
         vscode.postMessage({
@@ -627,7 +848,8 @@ ${getComponentScript()}
     if (event.data && event.data.type === 'state') {
       console.log('[Deckard Related Notes] Received state:', event.data.data.state);
       state = event.data.data;
-      render();
+      setParkedTags(state.parkedTags);
+      renderKeepingPlace(render);
     }
   });
   console.log('[Deckard Related Notes] Requesting initial state.');

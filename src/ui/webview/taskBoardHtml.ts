@@ -6,9 +6,10 @@ import {
   getBaseCss,
   getComponentScript,
   getContentSecurityPolicy,
+  getPageTailCss,
   getQueryEditorCss,
   getQueryEditorScript,
-  getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 
@@ -49,6 +50,7 @@ header { align-items: flex-start; }
 .board-status.drag-ghost { list-style: none; }
 .board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: var(--text-sm) var(--font-mono); }
 .board-status button { min-width: 26px; min-height: 26px; padding: 2px 6px; }
+.board-status-count { min-width: 26px; padding: 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
 .board-settings-row { display: flex; align-items: center; gap: 4px; }
 .board-settings-row input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .board-settings-row button { min-height: 26px; padding: 2px 8px; }
@@ -61,7 +63,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading tasks...</div></main>
+${loadingHtml('Loading tasks…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
@@ -97,13 +99,27 @@ ${getQueryEditorScript()}
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     // Saving sits with the search it saves; the saved search reopens here.
     actions: function (hasText) {
-      // The Tasks view lists a search of its own; this is where it is edited.
-      const listed = !!(state && state.agendaListsThisSearch);
-      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
-        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
-        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
+      return '<button data-action="save-board-search" data-query-needs-text data-tip="Keep this search, named, on Home; it reopens on the Task Board" data-tip-disabled="Type a search to save it"' + (hasText ? '' : ' aria-disabled="true"') + '>Save</button>'
+        + '<button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
     },
   });
+
+  /**
+   * The gear's switch that makes the Tasks view list this search, and lists
+   * every open task again when pressed once more. The Tasks view lists a
+   * search of its own; this is where it is edited.
+   */
+  function renderAgendaToggle() {
+    const listed = Boolean(state.agendaListsThisSearch);
+    const everything = listed && state.agendaQueryIsDefault;
+    const tip = !listed
+      ? 'Make the Tasks view list this search'
+      : 'The Tasks view lists this search. Select to list every open task again.';
+    return '<button type="button" data-action="use-for-agenda" aria-pressed="' + listed + '"' + (listed ? ' class="active"' : '')
+      + ' data-tip="' + escapeHtml(tip) + '"'
+      + (everything ? ' aria-disabled="true" data-tip-disabled="The Tasks view lists every open task, as this search does."' : '')
+      + '>List in Tasks view</button>';
+  }
 
   /** Hide the rows and cards that do not have every plain word being typed. */
   function filterTaskEntries() {
@@ -127,21 +143,11 @@ ${getQueryEditorScript()}
   }
 
   /**
-   * Redraw without taking the caret away from a field being typed in, which
-   * is found again by its action, as the Dashboard does.
+   * Redraw without taking the reader's place: the caret in a field being
+   * typed in, or the card or row that had focus, or the one after it.
    */
   function renderKeepingFocus() {
-    const active = document.activeElement;
-    const isField = Boolean(active && active.matches && active.matches('input[type="text"]'));
-    const action = isField ? active.dataset.action : undefined;
-    const selectionStart = isField ? active.selectionStart : null;
-    const selectionEnd = isField ? active.selectionEnd : null;
-    render();
-    if (!action) return;
-    const field = document.querySelector('input[type="text"][data-action="' + action + '"]');
-    if (!field) return;
-    field.focus();
-    if (selectionStart !== null && selectionEnd !== null) field.setSelectionRange(selectionStart, selectionEnd);
+    renderKeepingPlace(render);
   }
 
   function canRank() {
@@ -162,7 +168,7 @@ ${getQueryEditorScript()}
     canRank: function (kind) { return kind === 'status' ? Boolean(state) : canRank(); },
     reorder: function (kind, key, targetKey, before) {
       if (kind === 'status') {
-        const statuses = rankKeys(state.settings.statuses, key, targetKey, before);
+        const statuses = rankKeys(statusColumnNames(), key, targetKey, before);
         if (!statuses) return false;
         setStatuses(statuses);
         return true;
@@ -174,7 +180,7 @@ ${getQueryEditorScript()}
     },
     move: function (kind, key, toTop) {
       if (kind === 'status') {
-        const statuses = moveKeyToEdge(state.settings.statuses, key, toTop);
+        const statuses = moveKeyToEdge(statusColumnNames(), key, toTop);
         if (statuses) setStatuses(statuses);
         return;
       }
@@ -187,18 +193,34 @@ ${getQueryEditorScript()}
    * The status columns, dragged into order and each removable, and a field
    * to add one.
    */
+  /**
+   * Every status column the board draws, listed or not, in its order. Ordering
+   * them saves the whole order, so a status the tasks carry keeps its place.
+   */
+  function statusColumnNames() {
+    const columns = state.settings.columns;
+    return columns ? columns.map(function (column) { return column.status; }) : state.settings.statuses.slice();
+  }
+
   function renderStatusSettings() {
-    const statuses = state.settings.statuses;
-    const rows = statuses.map(function (status, index) {
-      return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" title="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">'
+    const columns = state.settings.columns || state.settings.statuses.map(function (status) { return { status: status, openTasks: 0 }; });
+    const rows = columns.map(function (column) {
+      const status = column.status;
+      // A status open tasks carry is a column whether it is listed or not,
+      // so there is nothing to remove: it would come straight back.
+      const remove = column.openTasks === 0
+        ? '<button type="button" data-action="remove-status" data-status="' + escapeHtml(status) + '" aria-label="Remove ' + escapeHtml(status) + '" data-tip="Remove column">&#215;</button>'
+        : '<span class="board-status-count" data-tip="Open tasks with this status; a column while any have it">' + column.openTasks + '</span>';
+      return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">'
         + '<span class="board-status-grip" aria-hidden="true">&#10303;</span>'
         + '<span class="board-status-name">' + escapeHtml(status) + '</span>'
-        + '<button type="button" data-action="remove-status" data-index="' + index + '" aria-label="Remove ' + escapeHtml(status) + '" title="Remove column">&#215;</button></li>';
+        + remove + '</li>';
     }).join('');
     const namespace = namespaceDraft === undefined ? state.settings.statusNamespace : namespaceDraft;
     return '<div class="board-settings">'
-      + '<p class="board-settings-note">Columns when grouped by Status. Drag to reorder; Done always comes last. Saved in your settings, so they apply to every workspace unless this one sets its own.</p>'
-      + (rows ? '<ul class="board-status-list" aria-label="Status columns">' + rows + '</ul>' : '<p class="board-settings-note">No status columns. Tasks without a status still get one.</p>')
+      + '<p class="board-settings-note">Columns when grouped by Status. Every status your open tasks carry is a column, listed here or not; drag to set their order. No status comes first and Done last. Saved in your settings, so the order applies to every workspace unless this one sets its own.</p>'
+      + (rows ? '<ul class="board-status-list" aria-label="Status columns">' + rows + '</ul>' : '<p class="board-settings-note">No task has a status yet, so the board has only No status and Done.</p>')
+      + '<p class="board-settings-note">Add a status for an empty column to drop cards into. One no open task has can be removed.</p>'
       + '<form class="board-settings-row" data-form="add-status"><input type="text" data-action="status-draft" value="' + escapeHtml(statusDraft) + '" placeholder="Add a status, such as review" aria-label="New status column" autocomplete="off" spellcheck="false"><button type="submit">Add</button></form>'
       + '<span>Status tag</span>'
       + '<form class="board-settings-row" data-form="status-namespace"><span class="board-settings-prefix">#</span><input type="text" data-action="namespace-draft" value="' + escapeHtml(namespace) + '" aria-label="Status tag namespace" autocomplete="off" spellcheck="false"><span class="board-settings-prefix">/doing</span><button type="submit">Save</button></form>'
@@ -223,15 +245,17 @@ ${getQueryEditorScript()}
       }).join('') + '</select>' + sortIcon + '</span></label>';
     const viewOptions = renderViewOptions([
       { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board'], ['table', 'Table']], state.layout, 'Task layout') },
+      { label: 'Tasks view', html: renderAgendaToggle() },
       ...(isTable ? [{ label: 'Columns', html: renderColumnPicker(), stacked: true }] : []),
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
+      renderThemeOption(),
       renderZenOption(),
     ]);
     const shown = state.taskCount;
     const total = shown + (shown === 1 ? ' task' : ' tasks');
     const list = (state.tasks || []).length
       ? state.tasks.map(function (item) {
-        return renderTaskListRow(item, { draggable: canRank(), titleDisplay: state.tagTitleDisplayMode });
+        return renderTaskListRow(item, { draggable: canRank(), titleDisplay: state.tagTitleDisplayMode, trailing: renderRowMenuButton(item.task.id, item.task.title) });
       }).join('')
       : '<div class="empty">' + (state.taskCount
         ? 'No tasks match this search.'
@@ -244,12 +268,60 @@ ${getQueryEditorScript()}
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>'
       + '<div class="board-header-actions"><span class="board-total">' + total + '</span>' + renderHelpButton('board') + viewOptions + '</div></header>'
-      + editor.renderBar(isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy))
+      + editor.renderBar((isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy, state.groupNamespace, state.tagNamespaces)) + renderAvailableToggle())
       + editor.renderFacets()
       + '<section class="board-area" aria-label="Tasks">' + content + '</section>';
     filterTaskEntries();
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
+  }
+
+  /** A row's ⋯, which opens the menu a board card has. */
+  function renderRowMenuButton(taskId, title) {
+    return renderIconButton({
+      action: 'task-row-menu',
+      className: 'board-move row-menu',
+      label: 'Change ' + title + ': status, priority, or due date',
+      tip: 'Change this task',
+      icon: ELLIPSIS_ICON,
+      attributes: 'data-task-id="' + escapeHtml(taskId) + '" aria-haspopup="menu" aria-expanded="false"',
+    });
+  }
+
+  /**
+   * A list or table row's menu: the board card's status, priority, due,
+   * steps, done, and Move to…, from what the host says the task has now.
+   * The row is redrawn when the note is written, so nothing moves at once.
+   */
+  function openRowMenu(opener) {
+    const row = opener.closest('.task-row, .result-row');
+    const taskId = opener.dataset.taskId;
+    const menu = state && state.taskMenus && state.taskMenus[taskId];
+    if (!row || !menu) return false;
+    const groups = taskCardMoves({ current: menu.current, completed: row.classList.contains('completed'), steps: menu.steps }, '', [], state.settings);
+    openActionMenu(opener, groups, function (value) {
+      if (value === 'pick-date') {
+        post({ type: 'pickTaskDate', taskId: taskId });
+        return;
+      }
+      if (value === 'move-to') {
+        post({ type: 'moveTaskTo', taskId: taskId });
+        return;
+      }
+      if (value === 'break-steps') {
+        post({ type: 'breakIntoSteps', taskId: taskId });
+        return;
+      }
+      const group = groups.find(function (candidate) { return candidate.items.some(function (item) { return item.value === value; }); });
+      const chosen = group ? group.items.find(function (item) { return item.value === value; }) : undefined;
+      if (chosen && chosen.checked) {
+        announce(taskTitleOf(row) + ': ' + (group.label || 'It') + ' is already ' + chosen.label + '.');
+        return;
+      }
+      post({ type: 'moveTask', taskId: taskId, column: value });
+      announce(taskTitleOf(row) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
+    });
+    return true;
   }
 
   /**
@@ -266,7 +338,7 @@ ${getQueryEditorScript()}
       const sorted = sort && sort.column === column.id;
       const arrow = sorted ? (sort.direction === 'desc' ? ' ▼' : ' ▲') : '';
       return '<th scope="col"' + (sorted ? ' class="is-sorted" aria-sort="' + (sort.direction === 'desc' ? 'descending' : 'ascending') + '"' : '') + '>'
-        + '<button type="button" data-action="set-table-sort" data-value="' + escapeHtml(column.id) + '" title="Sort by ' + escapeHtml(column.label.toLowerCase()) + '">' + escapeHtml(column.label) + arrow + '</button></th>';
+        + '<button type="button" data-action="set-table-sort" data-value="' + escapeHtml(column.id) + '" data-tip="Sort by ' + escapeHtml(column.label.toLowerCase()) + '">' + escapeHtml(column.label) + arrow + '</button></th>';
     }).join('');
     const rows = table.rows.map(function (row) {
       const cells = row.cells.map(function (cell, at) {
@@ -277,9 +349,9 @@ ${getQueryEditorScript()}
       }).join('');
       return '<tr class="result-row' + (row.completed ? ' completed' : '') + '" tabindex="0" data-task-id="' + escapeHtml(row.taskId) + '" data-file-path="' + escapeHtml(row.filePath) + '" data-line="' + row.line + '">'
         + '<td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(row.taskId) + '"' + (row.completed ? ' checked' : '') + ' aria-label="Toggle ' + escapeHtml(row.cells[0] ? row.cells[0].text : '') + '"></td>'
-        + cells + '</tr>';
+        + cells + '<td class="result-menu">' + renderRowMenuButton(row.taskId, row.cells[0] ? row.cells[0].text : '') + '</td></tr>';
     }).join('');
-    return '<table class="result-table" aria-label="Tasks"><thead><tr><th class="result-check"></th>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    return '<table class="result-table" aria-label="Tasks"><thead><tr><th class="result-check"></th>' + head + '<th class="result-menu"><span class="visually-hidden">Change</span></th></tr></thead><tbody>' + rows + '</tbody></table>';
   }
 
   /** Under the search box while the table is shown: what it is sorted by, and the way back. */
@@ -288,7 +360,7 @@ ${getQueryEditorScript()}
     if (!sort) return '<span class="control-label">Rank order · choose a column to sort by it</span>';
     const column = (state.table.columns.find(function (c) { return c.id === sort.column; }) || {}).label || sort.column;
     return '<span class="control-label">Sorted by ' + escapeHtml(column.toLowerCase()) + (sort.direction === 'desc' ? ', last first' : '') + '</span>'
-      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Sort by rank</button>';
+      + '<button type="button" data-action="set-table-sort" data-tip="Back to the order you ranked">Sort by rank</button>';
   }
 
   /** The gear's list of columns, the title fixed. */
@@ -313,6 +385,9 @@ ${getQueryEditorScript()}
     post({ type: 'setTableColumns', columns: next });
   }
 
+  /** Undo for a status column removed from the gear. */
+  const statusUndo = createUndoNotice(function () { renderKeepingPlace(render); });
+
   /** Sends a new list of status columns, or says why it cannot be used. */
   function setStatuses(statuses) {
     settingsError = '';
@@ -327,13 +402,14 @@ ${getQueryEditorScript()}
       renderKeepingFocus();
       return;
     }
-    if (state.settings.statuses.indexOf(name) >= 0) {
+    const names = statusColumnNames();
+    if (names.indexOf(name) >= 0) {
       settingsError = name + ' is already a column.';
       renderKeepingFocus();
       return;
     }
     statusDraft = '';
-    setStatuses(state.settings.statuses.concat([name]));
+    setStatuses(names.concat([name]));
   }
 
   function saveNamespace() {
@@ -354,6 +430,15 @@ ${getQueryEditorScript()}
   installTaskBoard(post);
   installViewOptions();
 
+  /**
+   * Can start now: one press narrows the search to is:available, what is not
+   * blocked, has started, and is not waiting or someday; a second goes back.
+   */
+  function renderAvailableToggle() {
+    const pressed = !!state.availableOnly;
+    return '<button type="button" class="board-available' + (pressed ? ' active' : '') + '" data-action="toggle-available" aria-pressed="' + pressed + '" data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">Can start now</button>';
+  }
+
   document.addEventListener('mousedown', function (event) { editor.handleMousedown(event); });
   document.addEventListener('focusin', function (event) { editor.handleFocusIn(event); });
 
@@ -362,23 +447,52 @@ ${getQueryEditorScript()}
     const target = event.target.closest('[data-action]');
     if (target) {
       const action = target.dataset.action;
+      if (action === 'task-row-menu') {
+        openRowMenu(target);
+        return;
+      }
       if (action === 'open-tag') post({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-table-sort') post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value } : { type: 'setTableSort' });
       if (action === 'use-for-agenda') post({ type: 'useSearchForAgenda' });
+      if (action === 'toggle-available') post({ type: 'setBoardQuery', query: state.availableToggleQuery || 'is:available' });
       if (action === 'export-tasks') post({ type: 'exportResults', kind: 'tasks' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
-        const statuses = state.settings.statuses.slice();
-        statuses.splice(Number(target.dataset.index), 1);
-        setStatuses(statuses);
+        const statuses = statusColumnNames();
+        const index = statuses.indexOf(target.dataset.status);
+        const removed = index >= 0 ? statuses.splice(index, 1)[0] : undefined;
+        if (removed !== undefined) {
+          setStatuses(statuses);
+          statusUndo.show('Removed the ' + removed + ' column.', 'undo-remove-status', { status: removed, index: index, after: statuses });
+        }
+      }
+      if (action === 'undo-remove-status') {
+        const undone = statusUndo.take();
+        if (undone) {
+          // The columns as last sent, if the host has not answered yet.
+          const names = statusColumnNames();
+          const current = names.indexOf(undone.status) >= 0 ? undone.after : names;
+          const statuses = current.slice();
+          statuses.splice(Math.min(undone.index, statuses.length), 0, undone.status);
+          setStatuses(statuses);
+        }
+        render();
       }
       return;
     }
     const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
-      post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+      post(openSourceMessage(row, event));
     }
+  });
+
+  // A right-click on a list or table row opens its ⋯ menu, as on a card.
+  document.addEventListener('contextmenu', function (event) {
+    const row = event.target.closest('.task-list .task-row, .result-table .result-row');
+    if (!row || event.target.closest('[data-tag-key], a, input')) return;
+    const button = row.querySelector('[data-action="task-row-menu"]');
+    if (button && openRowMenu(button)) event.preventDefault();
   });
 
   document.addEventListener('submit', function (event) {
@@ -395,7 +509,7 @@ ${getQueryEditorScript()}
     const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
       event.preventDefault();
-      post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+      post(openSourceMessage(row, event));
     }
   });
 
@@ -403,7 +517,10 @@ ${getQueryEditorScript()}
     if (editor.handleChange(event)) return;
     const target = event.target;
     if (target.dataset.action === 'set-task-sort') post({ type: 'setTaskSort', mode: target.value });
-    if (target.dataset.action === 'toggle-task') post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
     if (target.dataset.action === 'toggle-table-column') toggleColumn(target.dataset.value, target.checked);
   });
 
@@ -414,13 +531,64 @@ ${getQueryEditorScript()}
     if (target.dataset.action === 'namespace-draft') namespaceDraft = target.value;
   });
 
+  /** The latest state waiting on a completed card to finish leaving. */
+  let pendingState;
+  function receiveState(next) {
+    const first = !state;
+    state = next;
+    editor.receive();
+    const previous = vscode.getState() || {};
+    vscode.setState(Object.assign({ query: state.query.text }, previous.query === state.query.text && typeof previous.scrollY === 'number' ? { scrollY: previous.scrollY } : {}));
+    renderKeepingFocus();
+    if (first) restoreScroll(previous);
+  }
+  rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') {
-      state = event.data.data;
-      editor.receive();
-      vscode.setState({ query: state.query.text });
-      renderKeepingFocus();
+    // A card moved at once that the host could not write: its next state
+    // puts the card back, and this says so.
+    if (event.data && event.data.type === 'moveRefused') {
+      const card = Array.prototype.find.call(document.querySelectorAll('.board-card'), function (candidate) { return candidate.dataset.taskId === String(event.data.taskId); });
+      announce((card ? taskTitleOf(card) : 'The task') + ' was not moved.');
+      return;
     }
+    if (event.data && event.data.type === 'state') {
+      const wait = taskBoardLingerRemaining();
+      if (!wait) {
+        receiveState(event.data.data);
+        return;
+      }
+      const waiting = pendingState === undefined;
+      pendingState = event.data.data;
+      if (waiting) {
+        setTimeout(function () {
+          const next = pendingState;
+          pendingState = undefined;
+          receiveState(next);
+        }, wait);
+      }
+    }
+  });
+
+  installKeySheet(function () {
+    const board = [
+      ['↑ ↓', 'The card above or below'],
+      ['← →', 'The next column over'],
+      ['Home, End', 'The first or last card in the column'],
+      ['Enter', 'Open the task in its note'],
+      ['x', 'Complete it, or reopen it'],
+      ['t, m', 'Due today, due tomorrow'],
+      ['d', 'Due on a date you type'],
+      ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
+      ['[ ]', 'Move it to the column on the left or right'],
+      ['e', 'Edit the whole task'],
+      ['s', 'Break it into steps'],
+    ];
+    const list = [
+      ['Alt+↑, Alt+↓', 'Move a ranked task up or down'],
+    ];
+    return state && state.layout === 'list'
+      ? [{ title: 'Ranked list', keys: list }]
+      : [{ title: 'A focused card', keys: board }];
   });
 
   post({ type: 'ready' });

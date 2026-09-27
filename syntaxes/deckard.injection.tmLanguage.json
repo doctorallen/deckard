@@ -1,0 +1,320 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "scopeName": "markdown.deckard.injection",
+  "injectionSelector": "L:text.html.markdown -markup.fenced_code -markup.inline.raw -markup.raw -meta.embedded.block.frontmatter -comment",
+  "patterns": [
+    {
+      "include": "#embed"
+    },
+    {
+      "include": "#wiki-link"
+    },
+    {
+      "include": "#task-dates"
+    },
+    {
+      "include": "#dataview-dates"
+    },
+    {
+      "include": "#dataview-fields"
+    },
+    {
+      "include": "#repeat"
+    },
+    {
+      "include": "#priority"
+    },
+    {
+      "include": "#block-id"
+    }
+  ],
+  "repository": {
+    "embed": {
+      "comment": "An embed, ![[Note]], drawn as its link with the ! marked.",
+      "match": "(!)(?=\\[\\[)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.link.embed.deckard"
+        }
+      }
+    },
+    "wiki-link": {
+      "comment": "A [[Note]], [[Note#Heading]], [[Note#^id]], or [[Note|alias]] link.",
+      "match": "(\\[\\[)([^\\[\\]|\\n]+?)(?:(\\|)([^\\[\\]\\n]*?))?(\\]\\])",
+      "name": "meta.link.wiki.deckard",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.link.begin.deckard"
+        },
+        "2": {
+          "name": "string.other.link.title.markdown.deckard"
+        },
+        "3": {
+          "name": "punctuation.separator.alias.deckard"
+        },
+        "4": {
+          "name": "string.other.link.description.markdown.deckard"
+        },
+        "5": {
+          "name": "punctuation.definition.link.end.deckard"
+        }
+      }
+    },
+    "task-dates": {
+      "patterns": [
+        {
+          "match": "(?:📅|📆|🗓)\\x{FE0F}?[ \\t]*(\\d{4}-\\d{2}-\\d{2})",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.date.due.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?:⏳|⌛)\\x{FE0F}?[ \\t]*(\\d{4}-\\d{2}-\\d{2})",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.date.scheduled.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?:🛫)\\x{FE0F}?[ \\t]*(\\d{4}-\\d{2}-\\d{2})",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.date.start.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?:➕)\\x{FE0F}?[ \\t]*(\\d{4}-\\d{2}-\\d{2})",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.date.created.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?:✅)\\x{FE0F}?[ \\t]*(\\d{4}-\\d{2}-\\d{2})",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.date.done.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?:❌)\\x{FE0F}?[ \\t]*(\\d{4}-\\d{2}-\\d{2})",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.date.cancelled.deckard"
+            }
+          }
+        }
+      ]
+    },
+    "dataview-dates": {
+      "patterns": [
+        {
+          "match": "(?i)([\\[(])[ \\t]*(due)[ \\t]*(::)[ \\t]*(\\d{4}-\\d{2}-\\d{2})[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.numeric.date.due.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(scheduled)[ \\t]*(::)[ \\t]*(\\d{4}-\\d{2}-\\d{2})[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.numeric.date.scheduled.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(start)[ \\t]*(::)[ \\t]*(\\d{4}-\\d{2}-\\d{2})[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.numeric.date.start.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(created)[ \\t]*(::)[ \\t]*(\\d{4}-\\d{2}-\\d{2})[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.numeric.date.created.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(completion)[ \\t]*(::)[ \\t]*(\\d{4}-\\d{2}-\\d{2})[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.numeric.date.done.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(cancelled)[ \\t]*(::)[ \\t]*(\\d{4}-\\d{2}-\\d{2})[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.numeric.date.cancelled.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        }
+      ]
+    },
+    "dataview-fields": {
+      "patterns": [
+        {
+          "match": "(?i)([\\[(])[ \\t]*(repeat)[ \\t]*(::)[ \\t]*([^\\])\\n]*?)[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "string.other.repeat.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(priority)[ \\t]*(::)[ \\t]*([^\\])\\n]*?)[ \\t]*([\\])])",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            },
+            "4": {
+              "name": "constant.language.priority.deckard"
+            },
+            "5": {
+              "name": "punctuation.definition.field.end.deckard"
+            }
+          }
+        },
+        {
+          "match": "(?i)([\\[(])[ \\t]*(id|dependsOn|assignee|onCompletion)[ \\t]*(::)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.field.begin.deckard"
+            },
+            "2": {
+              "name": "entity.other.attribute-name.deckard"
+            },
+            "3": {
+              "name": "punctuation.separator.key-value.deckard"
+            }
+          }
+        }
+      ]
+    },
+    "repeat": {
+      "comment": "The rule after 🔁, such as every week when done.",
+      "match": "🔁\\x{FE0F}?[ \\t]*([A-Za-z0-9,!]+(?:[ \\t]+[A-Za-z0-9,!]+)*)",
+      "captures": {
+        "1": {
+          "name": "string.other.repeat.deckard"
+        }
+      }
+    },
+    "priority": {
+      "match": "(?:🔺|⏫|🔼|🔽|⏬)\\x{FE0F}?",
+      "name": "keyword.other.priority.deckard"
+    },
+    "block-id": {
+      "comment": "A ^block-id at the end of a line, which a [[Note#^id]] link opens.",
+      "match": "(?<=[ \\t])(\\^[A-Za-z0-9-]+)[ \\t]*$",
+      "captures": {
+        "1": {
+          "name": "variable.other.block-id.deckard"
+        }
+      }
+    }
+  }
+}
