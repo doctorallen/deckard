@@ -1,3 +1,4 @@
+import { getCalendarDayCss, getCalendarDayScript } from './calendarDay';
 import { calendarIcon } from './icons';
 import * as vscode from 'vscode';
 
@@ -76,37 +77,13 @@ body { min-width: 220px; }
    is the quietest mark, and never colored. */
 .repeat-count { color: var(--muted); font-size: var(--text-xs); line-height: 11px; white-space: nowrap; }
 .repeat-count:empty { display: none; }
-.repeat-mark { color: var(--muted); font-size: var(--text-sm); line-height: 20px; text-align: center; }
 /* The chosen day, with the panel on: outlined and underlined in the accent,
    so it reads apart from today's border. Not filled: the hover ground is a
    pale cream in some themes, and the due and scheduled counts on it went
    unreadable. */
 .day.selected { box-shadow: inset 0 0 0 1px var(--accent), inset 0 -2px 0 var(--accent); }
-.day-panel { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
-.day-panel h2 { margin: 0 0 var(--space-2); color: var(--text); font: var(--text-sm) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-note { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
-.day-note svg { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.2; }
-.day-note-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-note-action { flex: none; font-size: var(--text-xs); }
-.day-note-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.day-note-line .day-note-label { color: var(--muted); }
-.day-panel .empty { margin-top: var(--space-2); }
-.day-group { margin-top: var(--space-3); }
-.day-group > h3, .day-group > summary { margin: 0 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.day-group .task-list { gap: var(--space-1); }
-/* A row is one line in a narrow sidebar: the checkbox, the words, and its
-   button, the words cut short rather than pushing the button off. */
-.day-panel .task-row { grid-template-columns: 20px minmax(0, 1fr) auto; padding: var(--space-2); clip-path: none; }
-.day-panel .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-move { align-self: center; min-height: 0; padding: 2px var(--space-1); font-size: var(--text-xs); letter-spacing: normal; white-space: nowrap; }
-.day-more { margin-top: var(--space-1); }
-.day-notes { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
-.day-notes > li { min-width: 0; }
-.day-panel, .day-group, .day-group .task-list { min-width: 0; }
-.day-group .task-list { grid-template-columns: minmax(0, 1fr); }
-.day-created { display: flex; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
-.day-created-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .day-created-folder { flex: none; max-width: 45%; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+${getCalendarDayCss()}
 ${options.page ? getCalendarPageCss() : ''}
 ${getPageTailCss()}
 </style>
@@ -128,6 +105,7 @@ ${loadingHtml('Loading calendar…')}
   // after a pause, so a held arrow key does not flood it.
   let selectTimer;
 ${getComponentScript()}
+${getCalendarDayScript()}
   const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   /** The calendar page, rather than the sidebar's. */
   const PAGE = ${options.page ? 'true' : 'false'};
@@ -376,64 +354,10 @@ ${getComponentScript()}
     announce(layout === 'week' ? 'Week layout' : 'Month layout');
   }
 
-  /** The chosen day under the month: its title and its daily note. */
+  /** The chosen day under the month, or beside it on the page. */
   function renderPanel(day) {
     if (!state.dayPanel || !day) return '';
-    const title = day.title + (day.relative ? ' · ' + day.relative : '');
-    const note = day.notePath
-      ? '<button type="button" class="day-note" data-action="open-note" data-file-path="' + escapeHtml(day.notePath) + '" aria-label="Open the daily note for ' + escapeHtml(day.date) + '">' + '${calendarIcon}' + '<span class="day-note-label">Daily note</span><span class="day-note-action">Open</span></button>'
-      : '<div class="day-note-line"><span class="day-note-label">No daily note yet</span><button type="button" data-action="create-day" data-date="' + escapeHtml(day.date) + '" aria-label="Create the daily note for ' + escapeHtml(day.date) + '">Create</button></div>';
-    return '<section class="day-panel" aria-labelledby="day-title"><h2 id="day-title">' + escapeHtml(title) + '</h2>' + note + renderDayLists(day) + '</section>';
-  }
-
-  /** The groups a reader asked to see whole, until the page reloads. */
-  const shownGroups = new Set();
-  const DAY_ROWS = 5;
-
-  /** One task in the panel, with the button that moves it a day on. */
-  function renderDayTask(item, field, move) {
-    // A repeat's later date is opened from here, and completed where it is
-    // written, on its current date.
-    if (field === 'repeat') return renderTaskListRow(item, { titleDisplay: 'inline', leading: '<span class="repeat-mark" aria-hidden="true">↻</span>' });
-    const trailing = field && move
-      ? '<button type="button" class="day-move" data-action="move-task" data-task-id="' + escapeHtml(item.task.id) + '" data-field="' + field + '" data-date="' + escapeHtml(move.date) + '" aria-label="' + escapeHtml('Move "' + item.task.title + '" to ' + (move.label === 'Tomorrow' ? 'tomorrow, ' : 'the next day, ') + move.date) + '">' + escapeHtml(move.label) + '</button>'
-      : '';
-    return renderTaskListRow(item, { titleDisplay: 'inline', trailing: trailing });
-  }
-
-  function renderTaskGroup(id, label, items, field, move) {
-    if (!items || !items.length) return '';
-    const all = shownGroups.has(id);
-    const shown = all ? items : items.slice(0, DAY_ROWS);
-    const more = items.length - shown.length;
-    return '<section class="day-group" aria-label="' + escapeHtml(label) + '"><h3>' + escapeHtml(label) + ' (' + items.length + ')</h3><div class="task-list">'
-      + shown.map(function (item) { return renderDayTask(item, field, move); }).join('') + '</div>'
-      + (more > 0 ? '<button type="button" class="day-more text-button" data-action="show-group" data-group="' + id + '">Show ' + more + ' more</button>' : '')
-      + '</section>';
-  }
-
-  /** What the day holds besides its note; Nothing due or scheduled when it holds nothing. */
-  function renderDayLists(day) {
-    const due = renderTaskGroup('due', 'Due', day.due, 'due', day.move);
-    const scheduled = renderTaskGroup('scheduled', 'Scheduled', day.scheduled, 'scheduled', day.move);
-    const repeats = renderTaskGroup('repeats', 'Repeats', day.repeats, 'repeat');
-    // What was finished that day, folded: unchecking one reopens it.
-    const done = day.done && day.done.length
-      ? '<details class="day-group"><summary>Done (' + day.done.length + ')</summary><div class="task-list">' + day.done.map(function (item) { return renderDayTask(item); }).join('') + '</div></details>'
-      : '';
-    return (due || scheduled || repeats ? '' : '<p class="empty">Nothing due or scheduled.</p>') + due + scheduled + repeats + done + renderCreated(day);
-  }
-
-  /** The notes written that day, by their titles, with Search all for the rest. */
-  function renderCreated(day) {
-    if (!day.notes || !day.notes.length) return '';
-    const rest = day.notesTotal - day.notes.length;
-    return '<section class="day-group" aria-label="Notes created"><h3>Notes created (' + day.notesTotal + ')</h3><ul class="day-notes">'
-      + day.notes.map(function (note) {
-        return '<li><button type="button" class="day-created" data-action="open-note" data-file-path="' + escapeHtml(note.filePath) + '"><span class="day-created-title">' + escapeHtml(note.title) + '</span>' + (note.folder ? '<span class="day-created-folder">' + escapeHtml(note.folder) + '</span>' : '') + '</button></li>';
-      }).join('') + '</ul>'
-      + (rest > 0 ? '<button type="button" class="day-more" data-action="search-created" data-date="' + escapeHtml(day.date) + '" aria-label="' + escapeHtml('Search the ' + day.notesTotal + ' notes created on ' + day.date) + '">Search all ' + day.notesTotal + '</button>' : '')
-      + '</section>';
+    return renderCalendarDayPanel(day);
   }
 
   /** Marks a day as chosen at once, and tells the host after a pause. */
@@ -453,12 +377,6 @@ ${getComponentScript()}
 
   /** Move the focus by days, weeks, or to the ends of a week. */
   document.addEventListener('keydown', function (event) {
-    const row = event.target && event.target.matches && event.target.matches('.day-panel .task-row') ? event.target : null;
-    if (row && event.key === 'Enter') {
-      event.preventDefault();
-      post({ type: 'openTask', taskId: row.getAttribute('data-task-id') });
-      return;
-    }
     const day = event.target && event.target.closest ? event.target.closest('.day') : null;
     if (!day) return;
     // A row is five days with the weekends hidden, seven with them.
@@ -527,13 +445,10 @@ ${getComponentScript()}
       selectDay(focusDate);
       return;
     }
+    // The day panel's own controls are installCalendarDayPanel's.
+    if (event.target && event.target.closest && event.target.closest('.day-panel')) return;
     const target = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
-    // A task row opens its task, anywhere but its checkbox and its button.
-    if (!target || target.getAttribute('data-action') === 'toggle-task') {
-      const row = event.target && event.target.closest ? event.target.closest('.day-panel .task-row') : null;
-      if (row && !event.target.closest('input, button')) post({ type: 'openTask', taskId: row.getAttribute('data-task-id') });
-      return;
-    }
+    if (!target) return;
     const action = target.getAttribute('data-action');
     if (action === 'open-day') {
       if (state && state.dayPanel) {
@@ -550,13 +465,7 @@ ${getComponentScript()}
       post(date ? { type: 'showMonth', month: target.getAttribute('data-month'), date: date } : { type: 'showMonth', month: target.getAttribute('data-month') });
     }
     else if (action === 'open-note') post({ type: 'openNote', filePath: target.getAttribute('data-file-path') });
-    else if (action === 'move-task') post({ type: 'moveTask', taskId: target.getAttribute('data-task-id'), field: target.getAttribute('data-field'), date: target.getAttribute('data-date') });
-    else if (action === 'show-group') {
-      shownGroups.add(target.getAttribute('data-group'));
-      renderKeepingPlace(render);
-    }
-    else if (action === 'create-day') post({ type: 'createDay', date: target.getAttribute('data-date') });
-    else if (action === 'search-created') post({ type: 'searchCreated', date: target.getAttribute('data-date') });
+
     else if (action === 'set-calendar-layout') setLayout(target.getAttribute('data-value'));
     else if (action === 'set-show-repeats') post({ type: 'setShowRepeats', show: target.getAttribute('data-value') === 'on' });
     else if (action === 'set-show-weekends') post({ type: 'setShowWeekends', show: target.getAttribute('data-value') === 'on' });
@@ -569,15 +478,7 @@ ${getComponentScript()}
     else if (action === 'open-help') post({ type: 'openHelp' });
   });
 
-  // A task's checkbox completes it, or reopens it in Done.
-  document.addEventListener('change', function (event) {
-    const box = event.target;
-    if (!box || !box.matches || !box.matches('.day-panel [data-action="toggle-task"]')) return;
-    const row = box.closest('.task-row');
-    const title = row ? row.querySelector('.task-title') : null;
-    post({ type: 'toggleTask', taskId: box.getAttribute('data-task-id'), completed: box.checked });
-    announce((box.checked ? 'Completed "' : 'Reopened "') + (title ? title.textContent : 'the task') + '".');
-  });
+  installCalendarDayPanel(post, function () { renderKeepingPlace(render); });
 
   // With the panel on, a click chooses a day and a double-click opens it.
   document.addEventListener('dblclick', function (event) {
