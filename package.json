@@ -2194,7 +2194,7 @@
     "capture:walkthrough": "node scripts/build-walkthrough-images.mjs",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint src --max-warnings 0",
     "test": "vscode-test",
     "test:e2e": "npm run compile-tests && node test/e2e/run.js",
     "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js && node test/ui/checkContrast.js",

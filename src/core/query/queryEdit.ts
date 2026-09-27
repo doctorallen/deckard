@@ -131,9 +131,9 @@ function widenOverParentheses(text: string, span: Span): Span {
 function isBalanced(text: string): boolean {
   let depth = 0;
   for (const char of text) {
-    if (char === '(') depth += 1;
-    if (char === ')') depth -= 1;
-    if (depth < 0) return false;
+    if (char === '(') {depth += 1;}
+    if (char === ')') {depth -= 1;}
+    if (depth < 0) {return false;}
   }
   return depth === 0;
 }
@@ -168,8 +168,8 @@ function removeNode(root: QueryNode, target: QueryNode): QueryNode | undefined {
     const children = root.children
       .map((child) => removeNode(child, target))
       .filter((child): child is QueryNode => child !== undefined);
-    if (children.length === 0) return undefined;
-    if (children.length === 1) return children[0];
+    if (children.length === 0) {return undefined;}
+    if (children.length === 1) {return children[0];}
     return { type: root.type, children };
   }
   return root;
