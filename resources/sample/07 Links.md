@@ -22,7 +22,8 @@ the projects folder, is what most of them point at.
 
 The pilot's scope is written in [[Ghostline Relay]], which also goes by
 [[Relay]]. The ruling itself is under [[Ghostline Relay#Decision|the decision]],
-and the line about quiet pings is [[Ghostline Relay#^threshold]].
+and the line about quiet pings is [[Ghostline Relay#^threshold]]. What to do
+with these links is under [[#Try it]], at the end of this note.
 
 Ren will write the route, alerts, and log handling into [[Relay field test plan]]
 before the next comparison. That note does not exist yet.
@@ -39,7 +40,8 @@ The threshold line, drawn from the relay note:
 ## Try it
 
 1. Cmd/Ctrl-click any link above. The heading and marker links open the note
-   at that heading or line. Hover a link to preview what it points at.
+   at that heading or line, and the link to this note's own Try it heading
+   jumps to this list. Hover a link to preview what it points at.
 2. Open this note's preview (<kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>V</kbd>). The
    embed is drawn as the line it names, with a link back to where it came
    from.

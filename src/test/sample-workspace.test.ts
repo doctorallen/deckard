@@ -243,6 +243,11 @@ suite('Sample workspace', () => {
         'the Links note and today link the threshold line',
       );
       assert.strictEqual(found('[[Relay field test plan]]').sections.length, 1);
+      assert.deepStrictEqual(
+        linking('[[07 Links#Try it]]'),
+        ['07 Links.md'],
+        'the Links note links its own Try it heading, and that link is no tag',
+      );
       assert.ok(
         found('text = "rainshadow mesh" -#project/rainshadow-mesh').sections.some(
           (section) => section.filePath === '06 Tags and people.md',

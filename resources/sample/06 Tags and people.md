@@ -53,15 +53,15 @@ hub, so Home's **Tags without a hub** widget lists it, with **Create hub**.
 
 ## Try it
 
-1. Cmd/Ctrl-click the team tag on the Harbor check-in heading. Its page opens
+1. Cmd/Ctrl-click `#team/harbor` on the Harbor check-in heading. Its page opens
    with the Harbor hub note on top and every Harbor entry beneath it.
 2. Hover a tag in the editor. The hover says how many notes and tasks use
    it, names its hub, and lists its latest entries.
 3. Run **Deckard: Open a Tag's Search Page…** and choose the mesh survey's
    project tag. Under the title it says how many entries mention its name without
    the tag. Select **Show them**, then **Bulk edit → Add a tag** to tag them.
-4. Open the page for Mara Vale's tag. It says the tag is **also written as**
-   the misspelled one, with **Include in search** and **Merge**. Merge it:
+4. Open the page for `#person/mara-vale`. It says the tag is **also written
+   as** `#person/mara-vle`, with **Include in search** and **Merge**. Merge it:
    Deckard shows how many entries each spelling has, previews the change,
    and **Deckard: Undo Last Change** takes it back.
 5. Open the page for the Ashen Mirror project and select **Create hub note**.
@@ -69,8 +69,8 @@ hub, so Home's **Tags without a hub** widget lists it, with **Create hub**.
 6. Right-click any tag on Home's **Tags** tab and choose **Rename tag**. As
    you type, the box says whether the new name is new or merges into a tag
    that exists.
-7. On an empty line, type a hash sign and then `ghost`. Completion offers the
-   relay project's tag, with how many entries use it. Delete the line
+7. On an empty line, type `#ghost`. Completion offers
+   `#project/ghostline-relay`, with how many entries use it. Delete the line
    afterward.
 8. On Home's **Tags** tab, choose **Namespace → Person** to list only the
    people, busiest first. Home's **Gone quiet** widget, which you can add with
