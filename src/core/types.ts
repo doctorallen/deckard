@@ -1954,6 +1954,11 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   tasks?: DashboardTask[];
   /** The searched tasks as rows and columns, present when `layout` is `table`. */
   table?: TaskTable;
+  /**
+   * What each listed task's ⋯ menu checks, by task id, present when `layout`
+   * is `list` or `table`: the menu a board card has, for a row.
+   */
+  taskMenus?: Record<string, TaskMenuState>;
   /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
   taskSortMode: TaskSortMode;
@@ -1970,6 +1975,14 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   availableOnly?: boolean;
   /** The search Can start now switches to. */
   availableToggleQuery?: string;
+}
+
+/** A task's current status, priority, and due choice, as the ⋯ menu marks them. */
+export interface TaskMenuState {
+  /** Column ids the task is in: `status:…`, `priority:…`, `due:…`, `done`. */
+  current: string[];
+  /** Whether the task already has steps, so the menu offers to add more. */
+  steps?: boolean;
 }
 
 /** The Task Board's table: the columns shown, every column there is, and the rows. */

@@ -221,6 +221,39 @@ test('a card\'s menu has a Note group with Move to…, which asks the host', asy
   }
 });
 
+test('a list row and a table row have the card\'s menu, which checks where the task is', async () => {
+  const { view, panel } = await openBoard(async (store) => {
+    await store.setTaskBoardLayout('list');
+  });
+  const row = view.find('.task-list .task-row[data-task-id="audit"]');
+  assert.ok(row, 'the board opened as a list');
+  view.click(row.querySelector('[data-action="task-row-menu"]'));
+  assert.strictEqual(
+    view.find('#action-menu [data-menu-value="priority:"]').getAttribute('aria-checked'),
+    'true',
+    'the priority the task has, none, is checked',
+  );
+  assert.ok(view.find('#action-menu [data-menu-value="move-to"]'), 'with the Note group');
+  view.keydown(view.document.activeElement, 't');
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today' });
+  assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
+
+  view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
+  await delay(10);
+  const tableRow = view.find('.result-table .result-row[data-task-id="room"]');
+  assert.ok(tableRow, 'the board is a table');
+  const deliver = panel._onWebviewMessage;
+  panel._onWebviewMessage = () => undefined;
+  try {
+    view.click(tableRow.querySelector('[data-action="task-row-menu"]'));
+    assert.strictEqual(view.find('#action-menu [data-menu-value="status:"]').getAttribute('aria-checked'), 'true');
+    view.click(view.find('#action-menu [data-menu-value="move-to"]'));
+    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTaskTo', taskId: 'room' });
+  } finally {
+    panel._onWebviewMessage = deliver;
+  }
+});
+
 test('a card breaks into steps from its menu and from s, which ask the host', async () => {
   const { view, panel } = await openBoard();
   const card = view.find('.board-card[data-task-id="audit"]');

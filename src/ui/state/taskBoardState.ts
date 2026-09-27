@@ -42,6 +42,7 @@ import {
   TaskBoardSnapshot,
   TaskPriority,
   WorkspaceIndex,
+  TaskMenuState,
   TaskTable,
   Section,
 } from '../../core/types';
@@ -203,6 +204,8 @@ export function createTaskBoard(
       layout === 'table'
         ? createTaskTable(tasks, preferences, options)
         : undefined,
+    taskMenus:
+      layout === 'board' ? undefined : createTaskMenus(tasks, options),
     taskCounts: {
       all: tasks.length,
       active: tasks.filter((task) => !task.completed).length,
@@ -254,6 +257,23 @@ export function createTaskTable(
       cells: createTaskCells(table, columns, options.now),
     })),
   };
+}
+
+/** What each row's ⋯ menu checks: the same choices a board card's does. */
+function createTaskMenus(
+  tasks: readonly Task[],
+  options: TaskBoardOptions,
+): Record<string, TaskMenuState> {
+  const today = startOfDay(options.now);
+  return Object.fromEntries(
+    tasks.map((task) => [
+      task.id,
+      {
+        current: currentMoves(task, today, options.statusNamespace),
+        ...(task.steps ? { steps: true } : {}),
+      },
+    ]),
+  );
 }
 
 /** A task as the column model reads it. */

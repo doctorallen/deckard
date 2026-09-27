@@ -238,7 +238,7 @@ ${getQueryEditorScript()}
     const total = shown + (shown === 1 ? ' task' : ' tasks');
     const list = (state.tasks || []).length
       ? state.tasks.map(function (item) {
-        return renderTaskListRow(item, { draggable: canRank(), titleDisplay: state.tagTitleDisplayMode });
+        return renderTaskListRow(item, { draggable: canRank(), titleDisplay: state.tagTitleDisplayMode, trailing: renderRowMenuButton(item.task.id, item.task.title) });
       }).join('')
       : '<div class="empty">' + (state.taskCount
         ? 'No tasks match this search.'
@@ -257,6 +257,54 @@ ${getQueryEditorScript()}
     filterTaskEntries();
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
+  }
+
+  /** A row's ⋯, which opens the menu a board card has. */
+  function renderRowMenuButton(taskId, title) {
+    return renderIconButton({
+      action: 'task-row-menu',
+      className: 'board-move row-menu',
+      label: 'Change ' + title + ': status, priority, or due date',
+      tip: 'Change this task',
+      icon: ELLIPSIS_ICON,
+      attributes: 'data-task-id="' + escapeHtml(taskId) + '" aria-haspopup="menu" aria-expanded="false"',
+    });
+  }
+
+  /**
+   * A list or table row's menu: the board card's status, priority, due,
+   * steps, done, and Move to…, from what the host says the task has now.
+   * The row is redrawn when the note is written, so nothing moves at once.
+   */
+  function openRowMenu(opener) {
+    const row = opener.closest('.task-row, .result-row');
+    const taskId = opener.dataset.taskId;
+    const menu = state && state.taskMenus && state.taskMenus[taskId];
+    if (!row || !menu) return false;
+    const groups = taskCardMoves({ current: menu.current, completed: row.classList.contains('completed'), steps: menu.steps }, '', [], state.settings);
+    openActionMenu(opener, groups, function (value) {
+      if (value === 'pick-date') {
+        post({ type: 'pickTaskDate', taskId: taskId });
+        return;
+      }
+      if (value === 'move-to') {
+        post({ type: 'moveTaskTo', taskId: taskId });
+        return;
+      }
+      if (value === 'break-steps') {
+        post({ type: 'breakIntoSteps', taskId: taskId });
+        return;
+      }
+      const group = groups.find(function (candidate) { return candidate.items.some(function (item) { return item.value === value; }); });
+      const chosen = group ? group.items.find(function (item) { return item.value === value; }) : undefined;
+      if (chosen && chosen.checked) {
+        announce(taskTitleOf(row) + ': ' + (group.label || 'It') + ' is already ' + chosen.label + '.');
+        return;
+      }
+      post({ type: 'moveTask', taskId: taskId, column: value });
+      announce(taskTitleOf(row) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
+    });
+    return true;
   }
 
   /**
@@ -284,9 +332,9 @@ ${getQueryEditorScript()}
       }).join('');
       return '<tr class="result-row' + (row.completed ? ' completed' : '') + '" tabindex="0" data-task-id="' + escapeHtml(row.taskId) + '" data-file-path="' + escapeHtml(row.filePath) + '" data-line="' + row.line + '">'
         + '<td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(row.taskId) + '"' + (row.completed ? ' checked' : '') + ' aria-label="Toggle ' + escapeHtml(row.cells[0] ? row.cells[0].text : '') + '"></td>'
-        + cells + '</tr>';
+        + cells + '<td class="result-menu">' + renderRowMenuButton(row.taskId, row.cells[0] ? row.cells[0].text : '') + '</td></tr>';
     }).join('');
-    return '<table class="result-table" aria-label="Tasks"><thead><tr><th class="result-check"></th>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    return '<table class="result-table" aria-label="Tasks"><thead><tr><th class="result-check"></th>' + head + '<th class="result-menu"><span class="visually-hidden">Change</span></th></tr></thead><tbody>' + rows + '</tbody></table>';
   }
 
   /** Under the search box while the table is shown: what it is sorted by, and the way back. */
@@ -381,6 +429,10 @@ ${getQueryEditorScript()}
     const target = event.target.closest('[data-action]');
     if (target) {
       const action = target.dataset.action;
+      if (action === 'task-row-menu') {
+        openRowMenu(target);
+        return;
+      }
       if (action === 'open-tag') post({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-table-sort') post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value } : { type: 'setTableSort' });
@@ -412,6 +464,14 @@ ${getQueryEditorScript()}
     if (row && !event.target.closest('button, input, a')) {
       post(openSourceMessage(row, event));
     }
+  });
+
+  // A right-click on a list or table row opens its ⋯ menu, as on a card.
+  document.addEventListener('contextmenu', function (event) {
+    const row = event.target.closest('.task-list .task-row, .result-table .result-row');
+    if (!row || event.target.closest('[data-tag-key], a, input')) return;
+    const button = row.querySelector('[data-action="task-row-menu"]');
+    if (button && openRowMenu(button)) event.preventDefault();
   });
 
   document.addEventListener('submit', function (event) {

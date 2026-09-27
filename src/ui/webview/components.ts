@@ -699,6 +699,10 @@ export function getTaskBoardCss(): string {
    shared hover text rather than the amber it carries over the card. Open, it
    keeps that look until the menu closes. */
 .board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
+/* The same ⋯ on a list row, clear of the title, and in a table's last cell. */
+.task-row:has(> .row-menu) { padding-right: var(--space-6); }
+.result-table .row-menu { position: static; }
+.result-table .result-menu { width: 36px; }
 .board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
 .board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
