@@ -410,6 +410,8 @@ ${getComponentScript()}
       const chosen = cell.dataset.date === date;
       cell.classList.toggle('selected', chosen);
       if (cell.parentElement) cell.parentElement.setAttribute('aria-selected', String(chosen));
+      // The page outlines the whole day, not only its date.
+      if (PAGE && cell.parentElement) cell.parentElement.classList.toggle('is-selected', chosen);
     });
     clearTimeout(selectTimer);
     selectTimer = setTimeout(function () { post({ type: 'selectDay', date: date }); }, 120);
@@ -480,6 +482,13 @@ ${getComponentScript()}
     const chip = PAGE && event.target && event.target.closest ? event.target.closest('.cal-chip') : null;
     if (chip) {
       post({ type: 'openTask', taskId: chip.getAttribute('data-task-id') });
+      return;
+    }
+    // Anywhere else in a day chooses it, as its date does.
+    const cell = PAGE && event.target && event.target.closest ? event.target.closest('.day-cell') : null;
+    if (cell && !event.target.closest('button, a, input')) {
+      focusDate = cell.getAttribute('data-drop-date');
+      selectDay(focusDate);
       return;
     }
     const target = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
@@ -667,6 +676,15 @@ main { max-width: none; padding: var(--space-5) var(--space-5) var(--space-6); }
 .calendar-page-body.is-week .day-cell { min-height: 60vh; }
 /* The chosen day is outlined in the accent, not filled: a fill is the hover
    ground, which in some themes is the ink of the links on the day. */
+.calendar-page-body .day-cell { cursor: pointer; }
+/* The whole day lights under the pointer, faintly, in the accent: a fill in
+   the hover ground would take the ink of its tasks and its date with it.
+   The date inside takes no hover of its own, which in some themes turned
+   it the color of the ground. */
+.calendar-page-body .day-cell:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.calendar-page-body .day.day:hover:not(.selected), .calendar-page-body .day.day:focus-visible:not(.selected) { background: none; color: var(--text); }
+.calendar-page-body .day.outside.outside:hover:not(.selected) { color: var(--muted); }
+.calendar-page-body .day.day.selected:hover, .calendar-page-body .day.day.selected:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
 .calendar-page-body .day-cell.is-selected { box-shadow: inset 0 0 0 var(--edge) var(--accent); }
 .calendar-page-body .day-cell.drop-target { outline: var(--edge) solid var(--amber); outline-offset: -2px; }
 .calendar-page-body .day { display: block; align-self: flex-start; min-height: 0; padding: 0 var(--space-1); border: 1px solid transparent; background: none; font: var(--text-sm) var(--font-mono); text-align: left; box-shadow: none; }
