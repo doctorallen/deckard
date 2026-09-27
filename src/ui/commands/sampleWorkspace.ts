@@ -35,6 +35,19 @@ interface SampleFileAccess {
   delete(uri: vscode.Uri, options?: { recursive?: boolean; useTrash?: boolean }): Thenable<void>;
 }
 
+/**
+ * Where the sample is written and opened: Deckard's global storage, as a
+ * `file:` folder. Desktop VS Code hands that storage out as
+ * `vscode-userdata:`, and a folder opened under that scheme has no file
+ * search, so the first scan's `findFiles` never returned and the window
+ * said it was indexing forever.
+ */
+export function getSampleStorageUri(globalStorageUri: vscode.Uri): vscode.Uri {
+  return globalStorageUri.scheme === 'vscode-userdata'
+    ? vscode.Uri.file(globalStorageUri.fsPath)
+    : globalStorageUri;
+}
+
 /** Where the shipped sample lives, inside the installed extension. */
 export function getSampleSourceUri(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'resources', 'sample');
@@ -152,7 +165,8 @@ export async function showSampleReadmeOnce(context: vscode.ExtensionContext): Pr
 }
 
 export async function createSampleWorkspace(context: vscode.ExtensionContext): Promise<void> {
-  const target = vscode.Uri.joinPath(context.globalStorageUri, SAMPLE_FOLDER_NAME);
+  const storage = getSampleStorageUri(context.globalStorageUri);
+  const target = vscode.Uri.joinPath(storage, SAMPLE_FOLDER_NAME);
   let replace = false;
   if (await exists(vscode.workspace.fs, target)) {
     const choice = await vscode.window.showWarningMessage(
@@ -170,7 +184,7 @@ export async function createSampleWorkspace(context: vscode.ExtensionContext): P
   if (replace || !(await exists(vscode.workspace.fs, target))) {
     try {
       notes = (
-        await installSample(context.extensionUri, context.globalStorageUri, new Date(), vscode.workspace.fs, {
+        await installSample(context.extensionUri, storage, new Date(), vscode.workspace.fs, {
           replace,
         })
       ).notes;

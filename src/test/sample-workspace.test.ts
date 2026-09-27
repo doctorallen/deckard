@@ -15,6 +15,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { computeParked } from '../core/workspace/parked';
 import { listDailyNotes } from '../ui/commands/dailyNote';
 import {
+  getSampleStorageUri,
   installSample,
   isSampleNote,
   resolveSampleTokens,
@@ -358,6 +359,20 @@ suite('Sample workspace', () => {
     );
     assert.strictEqual(takeSampleReadme(sample.toString(), [{ uri: vscode.Uri.file('/work') }]), undefined);
     assert.strictEqual(takeSampleReadme(undefined, [{ uri: sample }]), undefined);
+  });
+
+  test('opens as a file folder, which VS Code can search', () => {
+    // A `vscode-userdata:` folder has no file search, so its first scan
+    // never finished.
+    const userData = vscode.Uri.from({
+      scheme: 'vscode-userdata',
+      path: '/Users/reader/Library/Application Support/Code/User/globalStorage/esperinnovations.deckard-notes',
+    });
+    const opened = getSampleStorageUri(userData);
+    assert.strictEqual(opened.scheme, 'file');
+    assert.strictEqual(opened.fsPath, userData.fsPath);
+    const file = vscode.Uri.file(os.tmpdir());
+    assert.strictEqual(getSampleStorageUri(file), file);
   });
 });
 

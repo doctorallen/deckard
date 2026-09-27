@@ -129,6 +129,7 @@ import { tidyPreferences } from './ui/commands/tidyPreferences';
 import { checkSetup } from './ui/commands/checkSetup';
 import {
   createSampleWorkspace,
+  getSampleStorageUri,
   SAMPLE_FOLDER_NAME,
   showSampleReadmeOnce,
 } from './ui/commands/sampleWorkspace';
@@ -327,7 +328,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   void indexer.ready.then(async () => {
     const notes = indexer.getSnapshot().files.size;
     const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
-    const sample = vscode.Uri.joinPath(context.globalStorageUri, SAMPLE_FOLDER_NAME).toString();
+    const sample = vscode.Uri.joinPath(getSampleStorageUri(context.globalStorageUri), SAMPLE_FOLDER_NAME).toString();
     const summarized = await summarizeFirstIndex(
       context,
       indexer.getSnapshot(),
