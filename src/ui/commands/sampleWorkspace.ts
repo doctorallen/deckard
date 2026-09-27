@@ -7,10 +7,11 @@ import { reportFailure } from './notify';
  * Somewhere to start.
  *
  * The walkthrough says what a tag and a hub note are; it cannot show one
- * being found. Nine small notes, written the way Deckard reads them, can.
- * They are written into Deckard's own storage, dated from the day they are
- * made so one task is overdue, two are due today, and one is due this week,
- * and opened, with the README shown once the window has reloaded.
+ * being found. The sample is a tour you read and do: a README that says the
+ * order, then a note per topic that explains what it holds, holds it, and
+ * says what to try. It is written into Deckard's own storage, dated from the
+ * day it is made so its tasks are overdue, due today, and due later as the
+ * notes say, and opened, with the README shown once the window has reloaded.
  */
 
 export const SAMPLE_FOLDER_NAME = 'deckard-sample';
@@ -45,12 +46,25 @@ function sampleDate(today: Date, offset: number): string {
   return formatLocalDate(day);
 }
 
-/** `{{date}}`, `{{date-9}}`, and `{{date+3}}` as the days they name. */
+/**
+ * `{{date}}`, `{{date-9}}`, and `{{date+3}}` as the days they name, and
+ * `{{month+1}}` or `{{month-1}}` as the 15th of that month, for a task due
+ * next month or a note written last month whatever day it is made.
+ */
 export function resolveSampleTokens(text: string, today: Date): string {
-  return text.replace(/\{\{date(?:([+-])(\d+))?\}\}/g, (_whole, sign?: string, days?: string) =>
-    sampleDate(today, sign ? (sign === '-' ? -1 : 1) * Number(days) : 0),
-  );
+  return text
+    .replace(/\{\{date(?:([+-])(\d+))?\}\}/g, (_whole, sign?: string, days?: string) =>
+      sampleDate(today, sign ? (sign === '-' ? -1 : 1) * Number(days) : 0),
+    )
+    .replace(/\{\{month([+-])(\d+)\}\}/g, (_whole, sign: string, months: string) =>
+      formatLocalDate(
+        new Date(today.getFullYear(), today.getMonth() + (sign === '-' ? -1 : 1) * Number(months), 15),
+      ),
+    );
 }
+
+/** The templates folder, which Deckard does not index, so its files are not notes. */
+const SAMPLE_TEMPLATES_FOLDER = 'templates';
 
 /** A shipped name as installed: `day-9.md` is that day's daily note, `dot-vscode` is `.vscode`. */
 export function sampleFileName(name: string, today: Date): string {
@@ -64,7 +78,8 @@ export function sampleFileName(name: string, today: Date): string {
 /**
  * Writes the sample into `storageUri/deckard-sample`, dated from `today`.
  * Refuses, rather than merging, when it is already there, unless told to
- * replace it. Returns where it went and how many notes it holds.
+ * replace it. Returns where it went and how many notes it holds: every
+ * Markdown file but the README and the templates.
  */
 export async function installSample(
   extensionUri: vscode.Uri,
@@ -81,24 +96,33 @@ export async function installSample(
     await fs.delete(target, { recursive: true, useTrash: false });
   }
   let notes = 0;
-  const copy = async (from: vscode.Uri, to: vscode.Uri, top: boolean): Promise<void> => {
+  const copy = async (from: vscode.Uri, to: vscode.Uri, folder: string): Promise<void> => {
     await fs.createDirectory(to);
     for (const [name, type] of await fs.readDirectory(from)) {
       const source = vscode.Uri.joinPath(from, name);
       const written = vscode.Uri.joinPath(to, sampleFileName(name, today));
       if (type === vscode.FileType.Directory) {
-        await copy(source, written, false);
+        await copy(source, written, folder ? `${folder}/${name}` : name);
       } else if (type === vscode.FileType.File) {
         const text = Buffer.from(await fs.readFile(source)).toString('utf8');
         await fs.writeFile(written, Buffer.from(resolveSampleTokens(text, today), 'utf8'));
-        if (top && name.endsWith('.md') && name !== 'README.md') {
+        if (isSampleNote(folder ? `${folder}/${name}` : name)) {
           notes += 1;
         }
       }
     }
   };
-  await copy(getSampleSourceUri(extensionUri), target, true);
+  await copy(getSampleSourceUri(extensionUri), target, '');
   return { target, notes };
+}
+
+/** Whether a shipped file, by its path in the sample, is one of its notes. */
+export function isSampleNote(relativePath: string): boolean {
+  return (
+    relativePath.endsWith('.md') &&
+    relativePath !== 'README.md' &&
+    !relativePath.startsWith(`${SAMPLE_TEMPLATES_FOLDER}/`)
+  );
 }
 
 /**

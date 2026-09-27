@@ -3,6 +3,7 @@ import * as path from 'path';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
+import { resolveSampleTokens, sampleFileName } from '../ui/commands/sampleWorkspace';
 
 /**
  * Notes for the index equivalence tests: the sample workspace, the repo's own
@@ -38,21 +39,29 @@ export function parseNotes(notes: ReadonlyArray<[string, string]>): ParsedFile[]
   );
 }
 
-/** The sample workspace Deckard installs, with its dates filled in. */
+/**
+ * The sample workspace Deckard installs, with its dates filled in from one
+ * fixed day and its daily notes named as installed. The templates folder is
+ * left out, as the scanner leaves it out.
+ */
 export function sampleNotes(): Array<[string, string]> {
-  const folder = path.join(repositoryRoot, 'resources', 'sample');
-  return fs
-    .readdirSync(folder)
-    .filter((name) => name.endsWith('.md'))
-    .sort()
-    .map((name) => [
-      name,
-      fs
-        .readFileSync(path.join(folder, name), 'utf8')
-        .replace(/\{\{date([+-]\d+)?\}\}/g, (_, offset: string | undefined) =>
-          `2026-09-${String(20 + Number(offset ?? 0)).padStart(2, '0')}`,
-        ),
-    ]);
+  const root = path.join(repositoryRoot, 'resources', 'sample');
+  const day = new Date(2026, 8, 20);
+  const notes: Array<[string, string]> = [];
+  const walk = (folder: string, prefix: string): void => {
+    for (const name of fs.readdirSync(folder).sort()) {
+      const full = path.join(folder, name);
+      if (fs.statSync(full).isDirectory()) {
+        if (name !== 'templates' && name !== 'dot-vscode') {
+          walk(full, `${prefix}${name}/`);
+        }
+      } else if (name.endsWith('.md')) {
+        notes.push([`${prefix}${sampleFileName(name, day)}`, resolveSampleTokens(fs.readFileSync(full, 'utf8'), day)]);
+      }
+    }
+  };
+  walk(root, '');
+  return notes;
 }
 
 /** The repository's own development notes: real daily and weekly notes. */
