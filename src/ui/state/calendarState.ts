@@ -2,7 +2,7 @@ import { isParkedTask } from '../../core/workspace/parked';
 import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
 import { Weekday } from '../../core/markdown/dates';
-import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
+import { projectRepeats, TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
 import { DashboardTask, Task, WorkspaceIndex } from '../../core/types';
 import { createDashboardTask } from './dashboardState';
 import {
@@ -38,6 +38,12 @@ export interface CalendarDay {
    */
   scheduledCount: number;
   scheduledTitles?: string[];
+  /**
+   * Repeating tasks whose rule lands on the day after their current date,
+   * with `deckard.calendar.showRepeats`: projected, not due.
+   */
+  repeatCount?: number;
+  repeatTitles?: string[];
 }
 
 /** One row of the calendar: seven days, from the week's first day. */
@@ -95,6 +101,8 @@ export interface CalendarDayDetail {
   scheduled: DashboardTask[];
   /** Tasks completed that day. */
   done: DashboardTask[];
+  /** Repeating tasks whose rule lands on the day, projected: opened, never completed, from here. */
+  repeats?: DashboardTask[];
   /**
    * Where the row's button moves a task: tomorrow, or the day after a later
    * day, never earlier.
@@ -131,6 +139,7 @@ export function createCalendarDay(
   index: WorkspaceIndex,
   date: string,
   now: Date,
+  options: Pick<CalendarOptions, 'showRepeats'> = {},
 ): CalendarDayDetail {
   const [year, month, day] = date.split('-').map(Number);
   const at = new Date(year, month - 1, day);
@@ -164,6 +173,7 @@ export function createCalendarDay(
       scheduled.push(task);
     }
   });
+  const repeats = options.showRepeats ? repeatsOn(index, at.getTime(), at.getTime(), now).get(date) ?? [] : [];
   const byImportance = (left: Task, right: Task): number =>
     TASK_PRIORITY_RANKS[right.priority ?? 'none'] - TASK_PRIORITY_RANKS[left.priority ?? 'none'] ||
     left.filePath.localeCompare(right.filePath) ||
@@ -206,6 +216,7 @@ export function createCalendarDay(
     due: rows(due),
     scheduled: rows(scheduled),
     done: rows(done),
+    ...(repeats.length ? { repeats: rows(repeats) } : {}),
     move: { date: target, label: target === tomorrow ? 'Tomorrow' : 'Next day' },
     notes,
     notesTotal: created.length,
@@ -222,8 +233,28 @@ export function clampToMonth(date: string, month: string): string {
   return `${month}-${String(Math.min(Number(date.slice(8, 10)), last)).padStart(2, '0')}`;
 }
 
+/**
+ * The repeating tasks projected onto each day from `from` to `to`, by
+ * YYYY-MM-DD: open, not parked, and on their rule's later dates only.
+ */
+function repeatsOn(index: WorkspaceIndex, from: number, to: number, now: Date): Map<string, Task[]> {
+  const byDate = new Map<string, Task[]>();
+  index.tasks.forEach((task) => {
+    if (task.completed || !task.recurrence || isParkedTask(index, task.id)) {
+      return;
+    }
+    projectRepeats(task, from, to, now.getTime()).forEach((at) => {
+      const date = formatLocalDate(new Date(at));
+      byDate.set(date, [...(byDate.get(date) ?? []), task]);
+    });
+  });
+  return byDate;
+}
+
 /** What the calendar draws besides the month. */
 export interface CalendarOptions {
+  /** Draw a repeating task on its rule's later dates, not only its next. */
+  showRepeats?: boolean;
   /** Show the chosen day below the month. */
   dayPanel?: boolean;
   /** The day chosen; today when none was. */
@@ -314,12 +345,28 @@ export function createCalendar(
       .filter(Boolean)
       .slice(0, TOOLTIP_ITEMS);
 
-  const weeks: CalendarWeek[] = [];
+  const rowStarts: Date[] = [];
   for (
     let rowStart = new Date(year, monthNumber - 1, 1 - ((first.getDay() - weekStart + 7) % 7));
     rowStart <= last;
     rowStart = new Date(rowStart.getFullYear(), rowStart.getMonth(), rowStart.getDate() + 7)
   ) {
+    rowStarts.push(rowStart);
+  }
+  // Every day drawn, a neighbor month's included, so a repeat is where the
+  // grid says it is in both months.
+  const lastRow = rowStarts[rowStarts.length - 1];
+  const repeats = options.showRepeats
+    ? repeatsOn(
+        index,
+        rowStarts[0].getTime(),
+        new Date(lastRow.getFullYear(), lastRow.getMonth(), lastRow.getDate() + 6).getTime(),
+        now,
+      )
+    : new Map<string, Task[]>();
+
+  const weeks: CalendarWeek[] = [];
+  for (const rowStart of rowStarts) {
     // A row is a week from the week start, which is what its note is named
     // for and what its review covers.
     const week = getPeriodicNote('week', rowStart, weekStart).name;
@@ -341,6 +388,12 @@ export function createCalendar(
         ...(dueTitles.has(date) ? { dueTitles: dueTitles.get(date) } : {}),
         scheduledCount: scheduledCounts.get(date) ?? 0,
         ...(scheduledTitles.has(date) ? { scheduledTitles: scheduledTitles.get(date) } : {}),
+        ...(repeats.has(date)
+          ? {
+              repeatCount: repeats.get(date)!.length,
+              repeatTitles: repeats.get(date)!.slice(0, TOOLTIP_ITEMS).map((task) => task.title.trim()),
+            }
+          : {}),
       };
     });
     const notePath = periodicNote('week', rowStart);
@@ -372,7 +425,7 @@ export function createCalendar(
           return {
             dayPanel: true,
             selectedDate,
-            selected: createCalendarDay(index, selectedDate, now),
+            selected: createCalendarDay(index, selectedDate, now, options),
           };
         })()
       : {}),

@@ -65,6 +65,7 @@ export class CalendarView
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
           event.affectsConfiguration('deckard.calendar.dayPanel') ||
+          event.affectsConfiguration('deckard.calendar.showRepeats') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();
@@ -127,6 +128,7 @@ export class CalendarView
         createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart(), {
           dayPanel: readDayPanel(),
           selectedDate: this.selectedDate,
+          showRepeats: readShowRepeats(),
         }),
       ),
     });
@@ -263,6 +265,11 @@ export class CalendarView
     const noteUri = await ensurePeriodicNote(folder, period, day);
     await vscode.window.showTextDocument(noteUri, { preview: false });
   }
+}
+
+/** `deckard.calendar.showRepeats`: whether a repeating task is drawn on its rule's later dates. */
+export function readShowRepeats(): boolean {
+  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showRepeats', true) !== false;
 }
 
 /** `deckard.calendar.dayPanel`: whether the chosen day shows below the month. */

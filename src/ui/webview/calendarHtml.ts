@@ -61,6 +61,11 @@ body { min-width: 220px; }
 .scheduled-count { padding: 0 1px; border: 1px solid currentColor; border-radius: 3px; color: var(--muted); font-size: var(--text-xs); line-height: 11px; }
 .scheduled-count:empty { display: none; }
 .scheduled-ring { width: 5px; height: 5px; border: 1px solid var(--muted); border-radius: 50%; }
+/* A repeating task's later date: projected from its rule, not due, so it
+   is the quietest mark, and never colored. */
+.repeat-count { color: var(--muted); font-size: var(--text-xs); line-height: 11px; white-space: nowrap; }
+.repeat-count:empty { display: none; }
+.repeat-mark { color: var(--muted); font-size: var(--text-sm); line-height: 20px; text-align: center; }
 /* The chosen day, with the panel on: filled, and underlined in the accent,
    so it reads apart from today's border. */
 .day.selected { background: var(--hover-bg); color: var(--hover-fg); box-shadow: inset 0 -2px 0 var(--accent); }
@@ -123,6 +128,7 @@ ${getComponentScript()}
         : day.dueCount + (overdue ? ' overdue' : ' due'));
     }
     if (day.scheduledCount > 0) parts.push(day.scheduledCount + ' scheduled');
+    if (day.repeatCount > 0) parts.push(day.repeatCount + (day.repeatCount === 1 ? ' repeat' : ' repeats'));
     return parts.join(', ');
   }
 
@@ -142,6 +148,7 @@ ${getComponentScript()}
     const tooltip = escapeHtml([describeDay(day, overdue, stale)]
       .concat((day.dueTitles || []).map(function (title) { return '☐ ' + title; }))
       .concat((day.scheduledTitles || []).map(function (title) { return '⏳ ' + title; }))
+      .concat((day.repeatTitles || []).map(function (title) { return '↻ ' + title; }))
       .concat((day.headings || []).map(function (heading) { return '# ' + heading; }))
       .concat(state.dayPanel ? ['Double-click or Enter opens the daily note.'] : [])
       .join('\\n'));
@@ -154,7 +161,9 @@ ${getComponentScript()}
     const scheduled = day.scheduledCount || 0;
     const ring = scheduled > 0 && ((day.dueCount >= 10 && scheduled >= 10) || day.dueCount >= 100 || scheduled >= 100);
     const due = '<span class="counts" aria-hidden="true"><span class="due' + (overdue ? ' overdue' : stale ? ' stale' : '') + '">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>'
-      + (ring ? '<span class="scheduled-ring"></span>' : '<span class="scheduled-count">' + (scheduled > 0 ? scheduled : '') + '</span>') + '</span>';
+      + (ring ? '<span class="scheduled-ring"></span>' : '<span class="scheduled-count">' + (scheduled > 0 ? scheduled : '') + '</span>')
+      // Then the repeats: the mark alone for one, with a number for more.
+      + '<span class="repeat-count">' + (day.repeatCount > 0 ? '↻' + (day.repeatCount > 1 ? day.repeatCount : '') : '') + '</span></span>';
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = day.date === tabStopDate();
@@ -232,6 +241,9 @@ ${getComponentScript()}
 
   /** One task in the panel, with the button that moves it a day on. */
   function renderDayTask(item, field, move) {
+    // A repeat's later date is opened from here, and completed where it is
+    // written, on its current date.
+    if (field === 'repeat') return renderTaskListRow(item, { titleDisplay: 'inline', leading: '<span class="repeat-mark" aria-hidden="true">↻</span>' });
     const trailing = field && move
       ? '<button type="button" class="day-move" data-action="move-task" data-task-id="' + escapeHtml(item.task.id) + '" data-field="' + field + '" data-date="' + escapeHtml(move.date) + '" aria-label="' + escapeHtml('Move "' + item.task.title + '" to ' + (move.label === 'Tomorrow' ? 'tomorrow, ' : 'the next day, ') + move.date) + '">' + escapeHtml(move.label) + '</button>'
       : '';
@@ -253,11 +265,12 @@ ${getComponentScript()}
   function renderDayLists(day) {
     const due = renderTaskGroup('due', 'Due', day.due, 'due', day.move);
     const scheduled = renderTaskGroup('scheduled', 'Scheduled', day.scheduled, 'scheduled', day.move);
+    const repeats = renderTaskGroup('repeats', 'Repeats', day.repeats, 'repeat');
     // What was finished that day, folded: unchecking one reopens it.
     const done = day.done && day.done.length
       ? '<details class="day-group"><summary>Done (' + day.done.length + ')</summary><div class="task-list">' + day.done.map(function (item) { return renderDayTask(item); }).join('') + '</div></details>'
       : '';
-    return (due || scheduled ? '' : '<p class="empty">Nothing due or scheduled.</p>') + due + scheduled + done + renderCreated(day);
+    return (due || scheduled || repeats ? '' : '<p class="empty">Nothing due or scheduled.</p>') + due + scheduled + repeats + done + renderCreated(day);
   }
 
   /** The notes written that day, by their titles, with Search all for the rest. */

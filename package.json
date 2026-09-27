@@ -1590,6 +1590,13 @@
             "markdownDescription": "Show the chosen day under the Calendar: its daily note, the tasks due or scheduled that day, and the notes created that day. A click then chooses a day; a double-click or Enter opens its note. When off, a click opens the day's note straight away.",
             "order": 7
           },
+          "deckard.calendar.showRepeats": {
+            "type": "boolean",
+            "default": true,
+            "scope": "window",
+            "markdownDescription": "Show every date a repeating task falls on in the weeks the Calendar draws, not only its next one, marked ↻. They are projected from the task's rule and never written. A `when done` rule is shown on its next date only, since the dates after it depend on when it is done.",
+            "order": 7
+          },
           "deckard.periodicNote.review": {
             "type": "boolean",
             "default": true,
