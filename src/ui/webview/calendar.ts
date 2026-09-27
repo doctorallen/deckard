@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
 
 import { measure } from '../../core/timing';
-import { WorkspaceIndex } from '../../core/types';
+import { CalendarMessage, WorkspaceIndex } from '../../core/types';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
@@ -17,7 +17,7 @@ import { openSourceAt } from '../commands/navigation';
 import { setTaskDateField } from '../commands/agendaActions';
 import { openTask, toggleTask } from '../commands/taskActions';
 import { readWeekStart } from '../commands/datePrompt';
-import { clampToMonth, createCalendar } from '../state/calendarState';
+import { CalendarOptions, CalendarSnapshot, clampToMonth, createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
 import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
@@ -40,13 +40,12 @@ export class CalendarView
   private readonly disposables: vscode.Disposable[] = [];
   private viewDisposables: vscode.Disposable[] = [];
   private view: vscode.WebviewView | undefined;
-  private month = formatLocalDate(new Date()).slice(0, 7);
-  /** The day chosen for the panel; today while none was chosen. */
-  private selectedDate: string | undefined;
   /** Whether the index changed while the calendar was hidden. */
   private isStale = false;
+  public readonly controller: CalendarController;
 
   public constructor(private readonly indexer: CalendarIndexSource) {
+    this.controller = new CalendarController(indexer, readDayPanel, () => this.refresh());
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -122,23 +121,52 @@ export class CalendarView
       return;
     }
     this.isStale = false;
-    void this.view.webview.postMessage({
-      type: 'state',
-      data: measure('Calendar', () =>
-        createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart(), {
-          dayPanel: readDayPanel(),
-          selectedDate: this.selectedDate,
-          showRepeats: readShowRepeats(),
-        }),
-      ),
-    });
+    void this.view.webview.postMessage({ type: 'state', data: this.controller.snapshot() });
   }
 
   private async handleMessage(value: unknown): Promise<void> {
     const message = parseCalendarMessage(value);
-    if (!message) {
-      return;
+    if (message) {
+      await this.controller.handle(message);
     }
+  }
+}
+
+/**
+ * The month and the day a calendar shows, and what it does when asked:
+ * one for the sidebar Calendar and one for the calendar page, so the two
+ * behave alike and each keeps its own place.
+ */
+export class CalendarController {
+  public month = formatLocalDate(new Date()).slice(0, 7);
+  /** The day chosen for the panel; today while none was chosen. */
+  public selectedDate: string | undefined;
+
+  public constructor(
+    private readonly indexer: Pick<CalendarIndexSource, 'getSnapshot'>,
+    /** Whether the day panel is showing, and so a new month keeps a chosen day. */
+    private readonly dayPanel: () => boolean,
+    /** Draws the calendar again, after its month or day changed. */
+    private readonly refresh: () => void,
+  ) {}
+
+  /** The calendar as it is now, for the host to post. */
+  public snapshot(options: CalendarOptions = {}): CalendarSnapshot {
+    return measure('Calendar', () =>
+      createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart(), {
+        dayPanel: this.dayPanel(),
+        selectedDate: this.selectedDate,
+        showRepeats: readShowRepeats(),
+        ...options,
+      }),
+    );
+  }
+
+  /**
+   * What either calendar asks of its host, for the month and day it shows.
+   * `ready` is the host's own, since only the host knows its webview.
+   */
+  public async handle(message: CalendarMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
         this.refresh();
@@ -148,7 +176,7 @@ export class CalendarView
         // A new month keeps the chosen day's place in it.
         if (message.date) {
           this.selectedDate = message.date;
-        } else if (this.selectedDate || readDayPanel()) {
+        } else if (this.selectedDate || this.dayPanel()) {
           this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
         }
         if (this.selectedDate === formatLocalDate(new Date())) {
@@ -224,7 +252,7 @@ export class CalendarView
    * Opens a week's or month's note wherever the index has it, or offers to
    * create the note for a day, week, or month in the notes folder.
    */
-  private async openPeriod(period: NotePeriod, date: string): Promise<void> {
+  public async openPeriod(period: NotePeriod, date: string): Promise<void> {
     const day = parseLocalDate(date);
     if (!day) {
       return;
