@@ -401,7 +401,9 @@ function tagMoves(index: WorkspaceIndex, task: Task, namespace: string): string[
 }
 
 /**
- * A column per tag of a namespace, busiest first, then the tasks with none.
+ * A column per tag of a namespace, alphabetically, then the tasks with none.
+ * By name, not by count: a count reordered the columns under the reader
+ * whenever a task moved.
  * A tag counts however the task has it; a task with two is in both columns.
  */
 function createTagColumns(
@@ -437,10 +439,7 @@ function createTagColumns(
   });
   return [
     ...[...columns.entries()]
-      .sort(
-        (left, right) =>
-          right[1].tasks.length - left[1].tasks.length || left[1].label.localeCompare(right[1].label),
-      )
+      .sort((left, right) => left[1].label.localeCompare(right[1].label))
       .map(([id, column]) => ({
         id,
         label: column.label,
@@ -910,8 +909,8 @@ function createPriorityColumns(open: Task[]): ColumnDraft[] {
 }
 
 /**
- * One column per person a task names, busiest first, with the tasks nobody
- * was named on last.
+ * One column per person a task names, by name, with the tasks nobody was
+ * named on last.
  *
  * Dropping a card is not offered: naming someone changes what a sentence
  * says, which is the author's to write, not a drag's to guess.
@@ -932,11 +931,8 @@ function createAssigneeColumns(
   const label = (key: string): string => index.tags.get(key)?.label ?? key;
   return [
     ...[...byPerson.entries()]
-      .sort(
-        (left, right) =>
-          right[1].length - left[1].length ||
-          label(left[0]).localeCompare(label(right[0])),
-      )
+      // By name, as a tag's columns are, so they hold still.
+      .sort((left, right) => label(left[0]).localeCompare(label(right[0])))
       .map(([key, tasks]) => ({
         id: `assignee:${key}`,
         label: label(key),

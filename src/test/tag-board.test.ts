@@ -43,19 +43,19 @@ function board(values: Partial<PersistedPreferences>) {
 }
 
 suite('The Task board grouped by a tag namespace', () => {
-  test('a column per tag, busiest first, No context last before Done, a task in each of its columns', () => {
+  test('a column per tag, by name, No context last before Done, a task in each of its columns', () => {
     const snapshot = board({ taskBoardGroup: 'tag', taskBoardGroupNamespace: 'context' });
     assert.deepStrictEqual(
       snapshot.columns.map((column) => [column.id, column.label, column.cards.length]),
       [
-        ['tag:context/phone', 'Phone', 2],
         ['tag:context/computer', 'Computer', 1],
+        ['tag:context/phone', 'Phone', 2],
         ['tag:context/', 'No context', 2],
         ['done', 'Done', 0],
       ],
     );
     assert.strictEqual(snapshot.taskCount, 4, 'tasks are counted once');
-    const draft = snapshot.columns[1].cards[0];
+    const draft = snapshot.columns[0].cards[0];
     assert.strictEqual(draft.details[draft.details.length - 1], 'also in Phone');
     assert.ok(draft.current.includes('tag:context/computer') && draft.current.includes('tag:context/phone'));
     assert.strictEqual(snapshot.groupNamespace, 'context');
@@ -137,7 +137,7 @@ suite('The Task board grouped by a tag namespace', () => {
     test('a task in two columns is two cards, each moved from its own column, and one Tab stop', () => {
       const view = open({ taskBoardGroup: 'tag', taskBoardGroupNamespace: 'context' });
       const copies = view.findAll('.board-card').filter((card) => (card.textContent ?? '').includes('Draft'));
-      assert.deepStrictEqual(copies.map((card) => card.getAttribute('data-card-column')), ['tag:context/phone', 'tag:context/computer']);
+      assert.deepStrictEqual(copies.map((card) => card.getAttribute('data-card-column')), ['tag:context/computer', 'tag:context/phone']);
       assert.strictEqual(view.findAll('.board-card[tabindex="0"]').length, 1);
       view.click('.board-card[data-card-column="tag:context/computer"] [data-action="board-menu"]');
       view.click('#action-menu [data-menu-value="tag:context/"]');
