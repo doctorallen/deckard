@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.22.0 - 2026-09-26
+
 ### Highlights
 
 - Search pages you can scan: rendered, three lines a result with the paragraph its words are in, five values a Refine facet, and tags on cards as quiet text; a search can become a live query block.
