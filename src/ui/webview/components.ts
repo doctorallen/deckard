@@ -235,8 +235,11 @@ button:disabled, button[aria-disabled="true"] { opacity: .5; cursor: default; }
    heavier edge: red means overdue and nothing else. Never the only or the
    first button in its row, and never filled at rest. */
 button.danger { border-width: calc(var(--edge) + 1px); border-color: var(--text); font-weight: 650; }
-/* Put back in place, beside what was removed, for 8 seconds. */
-.undo-notice { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); }
+/* Undo, for 8 seconds, at the foot of the window: where it cannot be
+   scrolled past or closed with the panel the removal was made in. */
+.undo-toast { position: fixed; left: 50%; bottom: var(--space-4); z-index: var(--z-menu); transform: translateX(-50%); max-width: calc(100vw - 2 * var(--space-4)); }
+.undo-toast:empty { display: none; }
+.undo-notice { display: inline-flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); border: var(--edge) solid var(--amber); border-radius: var(--control-radius); background: var(--panel-raised); color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* The status node every page announces through. Off-screen, never hidden
    with display:none, which would stop it being announced at all. */
@@ -1387,21 +1390,34 @@ export function getUndoScript(): string {
 
   /**
    * One offer of Undo at a time, withdrawn after 8 seconds or by the next
-   * removal. show(message, action, payload) makes the offer and redraws;
-   * take() hands back its payload and withdraws it; html() draws it.
+   * removal. show(message, action, payload) makes the offer; take() hands
+   * back its payload and withdraws it. The offer is drawn in its own toast
+   * outside #app, so a page's redraw does not take it away, and it is seen
+   * wherever the removal was made. render redraws the page after a change.
    */
   function createUndoNotice(render) {
     let current;
     let timer;
+    const draw = function () {
+      let host = document.getElementById('undo-toast');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'undo-toast';
+        host.className = 'undo-toast';
+        document.body.appendChild(host);
+      }
+      host.innerHTML = current ? renderUndoNotice(current.message, current.action) : '';
+    };
     return {
       show: function (message, action, payload) {
         clearTimeout(timer);
         current = { message: message, action: action, payload: payload };
         timer = setTimeout(function () {
           current = undefined;
-          render();
+          draw();
         }, 8000);
         render();
+        draw();
         // Enter takes it back: focus moves to Undo.
         const button = document.querySelector('.undo-notice [data-action="' + action + '"]');
         if (button) button.focus();
@@ -1410,14 +1426,13 @@ export function getUndoScript(): string {
         clearTimeout(timer);
         const payload = current ? current.payload : undefined;
         current = undefined;
+        draw();
         return payload;
       },
       clear: function () {
         clearTimeout(timer);
         current = undefined;
-      },
-      html: function () {
-        return current ? renderUndoNotice(current.message, current.action) : '';
+        draw();
       },
     };
   }

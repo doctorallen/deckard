@@ -433,7 +433,7 @@ ${getQueryEditorScript()}
 
   function setEditingHome(editing) {
     editingHome = editing;
-    // Leaving customizing withdraws a pending Undo with the bar it sat in.
+    // Leaving customizing withdraws a pending Undo: the widgets are settled.
     if (!editing) widgetUndo.clear();
     openWidgetOptions = undefined;
     saveDashboardViewState();
@@ -959,7 +959,7 @@ ${getQueryEditorScript()}
     if (!state.widgets) return renderLoading('Loading Home…');
     const widgets = state.widgets;
     const bar = editingHome
-      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + widgetUndo.html() + renderAddWidget() + '' + (confirmingReset
+      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
         ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="cancel-reset-widgets">Keep them</button><button type="button" class="danger" data-action="confirm-reset-widgets">Reset widgets</button></span>'
         : '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the

@@ -208,7 +208,6 @@ ${getQueryEditorScript()}
       + '<span>Status tag</span>'
       + '<form class="board-settings-row" data-form="status-namespace"><span class="board-settings-prefix">#</span><input type="text" data-action="namespace-draft" value="' + escapeHtml(namespace) + '" aria-label="Status tag namespace" autocomplete="off" spellcheck="false"><span class="board-settings-prefix">/doing</span><button type="submit">Save</button></form>'
       + (settingsError ? '<p class="board-settings-error" role="alert">' + escapeHtml(settingsError) + '</p>' : '')
-      + statusUndo.html()
       + '</div>';
   }
 

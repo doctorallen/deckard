@@ -327,7 +327,7 @@ suite('Dashboard behavior', () => {
     page.click('[data-action="remove-widget"][data-widget-id="a"]');
     const removed = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ id: string }>;
     assert.deepStrictEqual(removed.map((widget) => widget.id), ['b']);
-    assert.match(page.text('.home-edit-bar .undo-notice') ?? '', /^Removed .+\. Undo$/);
+    assert.match(page.text('#undo-toast .undo-notice') ?? '', /^Removed .+\. Undo$/);
     assert.strictEqual(page.document.activeElement, page.find('[data-action="undo-remove-widget"]'), 'focus is on Undo');
     page.click('[data-action="undo-remove-widget"]');
     const back = page.lastPosted('setDashboardWidgets')?.widgets as Array<Record<string, unknown>>;
