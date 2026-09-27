@@ -156,8 +156,8 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .note .tag-list { margin-top: 7px; }
 .active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
-.graph-kind.task { color: var(--amber); }
-.graph-kind.tag { color: var(--green); }
+.graph-kind.kind-task { color: var(--amber); }
+.graph-kind.kind-tag { color: var(--green); }
 .graph-tag-pill { margin-left: 0; color: var(--text); }
 /* The active search's Refine options. */
 .refine-values { display: grid; gap: 3px; }
@@ -321,7 +321,9 @@ ${getComponentScript()}
       const title = node.kind === 'tag'
         ? '<span class="inline-tag graph-tag-pill">' + renderTagLabel(node.title) + '</span>'
         : escapeHtml(node.title);
-      const kind = '<span class="graph-kind ' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
+      // kind-note, not note: a bare note or task class is a card's, and gave
+      // the badge a card's edge and hover.
+      const kind = '<span class="graph-kind kind-' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
       const source = node.filePath
         ? escapeHtml(formatSourceLocation(node.filePath.split('/').pop() || node.filePath, node.line))
         : 'Tag node';
