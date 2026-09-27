@@ -1,4 +1,5 @@
 # Fixes
+- A `[[link]]` written inside inline code still counts as a link: it shows in Linked from, backlinks, the `link` search field, link health, and the Notes Graph. Tags already skip inline code (`findCodeAndLinkRanges` in `src/core/markdown/inlineRanges.ts`); the link extraction in the parser should skip the same code ranges, and the parse-format marker in the cache fingerprint must be bumped with it. The sample's `07 Links.md` describes its Try it link in words rather than code because of this.
 
 # Improvements
 - Later: move each webview's page script into TypeScript modules bundled by esbuild, with typed state and messages, so the pages are type-checked like the rest of the source. For now `npm run test:ui` type-checks and lints the generated scripts instead, which catches unknown names, redeclarations, syntax errors, and wrong argument counts but not type errors.
