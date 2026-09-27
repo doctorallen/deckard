@@ -808,7 +808,10 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
 }
 
 /** What the Help page may ask of its host. */
-export type HelpMessage = { type: 'runCommand'; command: string } | { type: 'openChangelog' };
+export type HelpMessage =
+  | { type: 'runCommand'; command: string }
+  | { type: 'openChangelog' }
+  | { type: 'openGuide'; page: string; anchor?: string };
 
 /**
  * Validates the Help page's messages. Only the shape is checked here; the
@@ -825,6 +828,12 @@ export function parseHelpMessage(value: unknown): HelpMessage | undefined {
         : undefined;
     case 'openChangelog':
       return { type: 'openChangelog' };
+    case 'openGuide':
+      // A page's file name and a heading's anchor: nothing that climbs out.
+      return typeof value.page === 'string' && /^[\w-]+$/.test(value.page) &&
+        (value.anchor === undefined || (typeof value.anchor === 'string' && /^[\w-]+$/.test(value.anchor)))
+        ? { type: 'openGuide', page: value.page, ...(typeof value.anchor === 'string' ? { anchor: value.anchor } : {}) }
+        : undefined;
     default:
       return undefined;
   }

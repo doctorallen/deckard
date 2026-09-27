@@ -1,3 +1,4 @@
+import { GUIDE_IMAGE_BASE, GUIDE_PAGES, HELP_READ_MORE } from './guide';
 import * as vscode from 'vscode';
 
 import {
@@ -270,6 +271,15 @@ function renderSettingsTables(manifest: HelpManifest): string {
 }
 
 /** The escaping the page's own markup uses; nothing here is user content. */
+/** A Help section's way into the guide page that goes into detail. */
+function renderReadMore(section: string): string {
+  const target = HELP_READ_MORE[section];
+  if (!target) {
+    return '';
+  }
+  return `<p class="read-more"><a href="#" data-guide-page="${target.page}"${target.anchor ? ` data-guide-anchor="${target.anchor}"` : ''}>Read more: ${escapeHtml(GUIDE_PAGES[target.page])} →</a></p>`;
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -340,7 +350,7 @@ function buildHelpHtml(
     .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
     .toString();
   const favoriteHeartUris = getFavoriteHeartAssetUris(webview, extensionUri);
-  const csp = `default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
+  const csp = `default-src 'none'; img-src ${webview.cspSource} ${new URL(GUIDE_IMAGE_BASE).origin}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -436,6 +446,15 @@ h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
   h1 { font-size: 24px; }
   .cards { grid-template-columns: 1fr; }
 }
+/* Read more: the way from a section's quick glance into the guide page. */
+.read-more { margin-top: 12px; }
+.read-more a, .guide-back { color: var(--cyan); font-family: var(--font-mono); font-size: var(--text-sm); }
+/* A guide page in place of Help: the same measure, its screenshots fitted. */
+#guide-view img { max-width: 100%; height: auto; }
+#guide-view h1 { margin-top: 12px; }
+#guide-view h2, #guide-view h3, #guide-view h4 { scroll-margin-top: 20px; }
+#guide-view h3 { margin-top: 20px; }
+.guide-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 ${getPageTailCss()}
 </style>
 </head>
@@ -475,6 +494,7 @@ ${getPageTailCss()}
       <p class="eyebrow">DECKARD / FIELD GUIDE</p>
       <h1>Help</h1>
       <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
+      <p class="read-more">This page is the quick glance; each section's <strong>Read more</strong> opens the <a href="#" data-guide-page="README">full guide</a>.</p>
     </header>
 
     <section id="quick-start">
@@ -487,6 +507,7 @@ ${getPageTailCss()}
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what. Hover or Tab to any button to see what it does.</p></div></div>
       </div>
       <p class="note">The first time Deckard reads a workspace it says what it found: how many notes, open tasks, and tags. Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Open Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there. When something fails, its message offers <strong>Open Log</strong>, where the details are.</p>
+      ${renderReadMore('quick-start')}
     </section>
 
     <section id="whats-new">
@@ -506,6 +527,7 @@ ${getPageTailCss()}
         <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
         <div class="card"><h3>The editor</h3><p>A note’s title bar carries Deckard’s button, which opens <code>Deckard: Note Actions…</code>: what can be done from where the cursor is. A daily note’s title bar also steps to the day before and after. Right-click the title bar to hide either. Right-click in a note for a <strong>Deckard</strong> submenu with the task on the line, the heading, Move to…, and Pin. Links, task dates, repeat rules, and block ids take your theme’s colors; <code>editor.tokenColorCustomizations</code> changes any scope ending in <code>.deckard</code>. A task’s metadata is drawn fainter than its words, and an open task that is overdue or due today says so at the end of its line (<code>deckard.editor.dimTaskMetadata</code>, <code>deckard.editor.taskDueHints</code>). The status bar counts the note’s words, or the selection’s, leaving out code, front matter, and task metadata.</p></div>
       </div>
+      ${renderReadMore('tags')}
     </section>
 
     <section id="frontmatter">
@@ -518,6 +540,7 @@ aliases: [Relay, The Relay]
 updated: 2026-09-20
 ---</code></pre>
       <p><code>Deckard: Move Inline Tags to Front Matter</code> collects a note’s inline tags into these fields. Use it when the context belongs to every heading in the note, since that is what a front-matter tag means.</p>
+      ${renderReadMore('frontmatter')}
     </section>
 
     <section id="links">
@@ -528,6 +551,7 @@ updated: 2026-09-20
         <div class="card"><h3>Renaming keeps links</h3><p>Renaming or moving a note rewrites every link that named it, in the same step, so one Undo takes back both. <code>Deckard: Rename Heading</code> does the same for a heading. <code>deckard.updateLinksOnRename</code> turns it off.</p></div>
         <div class="card"><h3>Broken links</h3><p>A link to a note that does not exist is marked in the editor with a <strong>Create note</strong> fix; a name two notes share is a warning, since it opens neither. <code>Deckard: Open Stats</code> lists the notes nothing links to, and every link that opens no note, with <strong>Create</strong> and <strong>Create all</strong>.</p></div>
       </div>
+      ${renderReadMore('links')}
     </section>
 
     <section id="boundaries">
@@ -542,6 +566,7 @@ updated: 2026-09-20
       <div class="cards">
         <div class="card"><h3>Parking</h3><p>A note, heading, or task is parked when it is in a parked folder, or when a search for a parked tag would find it. It stays searchable with <code>is:parked</code>, and is left out of the Tasks view, the Task board, the calendar, rollover, Related Notes, the Notes Graph, and tag completion. <code>Deckard: Park Note</code> writes <code>parked</code> into a note's front matter; <code>Deckard: Park Folder…</code> and <code>Deckard: Park Tag…</code> add to <code>deckard.parked.folders</code> and <code>deckard.parked.tags</code>. To keep someday tasks out of the Tasks view, park <code>status/someday</code>.</p></div>
       </div>
+      ${renderReadMore('boundaries')}
     </section>
 
     <section id="tasks">
@@ -557,6 +582,7 @@ updated: 2026-09-20
         <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code>, or Cmd/Ctrl+Shift+Alt+C, adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note, the ones used last first, above that heading’s sub-headings. With words selected, Capture and Find start from them, and a capture from a note links back to it. It stays open when you click away, and brings back what you had typed if you close it.</p></div>
         <div class="card"><h3>Dependencies</h3><p><code>🆔 a1</code> names a task, and <code>⛔ a1</code> waits for it. A task is blocked while something it waits for is still open, which <code>is:blocked</code> and <code>is:blocking</code> search and the Tasks view says beneath the task. <code>is:waiting</code> is for people, not dependencies: a task marked <code>#status/waiting</code>, or for someone else.</p></div>
       </div>
+      ${renderReadMore('tasks')}
     </section>
 
     <section id="task-metadata">
@@ -573,6 +599,7 @@ updated: 2026-09-20
       </tbody></table></div>
       <p>A repeat rule reads as Obsidian Tasks writes it — <code>every week</code>, <code>every Monday</code>, <code>every month on the 15th</code> — and also <code>every other week</code>, <code>every 2 weeks on Monday, Thursday</code>, <code>every month on the second Tuesday</code>, and Deckard’s own <code>every quarter</code> and <code>every weekend</code>, any of them ending in <code>when done</code>.</p>
       <p>A date written in a task’s sentence, such as <em>by Friday</em>, is read as a due date when the note is a daily note, but Deckard will not rewrite it: there is no marker it could safely change.</p>
+      ${renderReadMore('task-metadata')}
     </section>
 
     <section id="task-views">
@@ -584,6 +611,7 @@ updated: 2026-09-20
         <div class="card"><h3>Editing many at once</h3><p><strong>Bulk edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>A task's due date is written by its distance from today with the date beside it, <strong>Overdue 15 days · 2026-09-08</strong>, wherever a task is listed. The status bar reads <strong>3 due today</strong> while anything is, <strong>2 overdue, 3 due today</strong> when something has slipped, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day, at the first moment VS Code is open on or after an hour you pick. A task more than 30 days overdue (<code>deckard.tasks.needsNewDateAfterDays</code>) leaves the count and the Overdue group for a folded <strong>Needs a new date</strong> group, until it is given one.</p></div>
       </div>
+      ${renderReadMore('task-views')}
     </section>
 
     <section id="search">
@@ -596,6 +624,7 @@ updated: 2026-09-20
         <div class="card"><h3>Saving a search</h3><p><strong>Save</strong> beside the box keeps a search, which reopens on the page it was saved from and can sit on Home as a widget. Recent searches are kept too. Save stays in place until there is a search to save, and says so when focused. Once saved, <strong>Show Results on Home</strong> adds a widget that lists what it finds, and a saved search’s row on Home offers <strong>Show results</strong> until Home lists it.</p></div>
       </div>
           <p><strong>Taking a result out.</strong> <strong>Export notes</strong> and <strong>Export tasks</strong>, beside Bulk edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. Its first choice, <strong>Copy as live query block</strong>, copies the search itself as a <code>deckard</code> fence to paste into a note, where it stays up to date. The index itself never leaves the machine.</p>
+      ${renderReadMore('search')}
     </section>
 
     <section id="query">
@@ -633,6 +662,7 @@ updated: 2026-09-20
       </tbody></table></div>
       <p>Operators are <code>=</code>, <code>!=</code>, <code>~</code> (contains), <code>!~</code>, and <code>&gt;</code> <code>&gt;=</code> <code>&lt;</code> <code>&lt;=</code> for dates and priorities. A window such as <code>7d</code> is compared by its far end, so <code>updated &gt; 7d</code> means within the last seven days and <code>due &lt; 7d</code> means due within the next seven, overdue included. Every operator has an opposite, so any one condition can be negated without <code>NOT</code>.</p>
       <p><code>this-week</code>, <code>last-month</code>, and <code>2026-08</code> name a whole week or month; <code>friday</code> names one day, the next one for task dates and the last one for <code>created</code> and <code>updated</code>.</p>
+      ${renderReadMore('query')}
     </section>
 
     <section id="query-blocks">
@@ -642,6 +672,7 @@ updated: 2026-09-20
 tag = #project/atlas AND task = open
 &#96;&#96;&#96;</code></pre>
       <p><code>sort=</code> any task column such as <code>due</code> or <code>priority</code>, <code>dir=asc|desc</code>, <code>limit=10</code>, and <code>view=table columns=due,priority,for</code> for the tasks as a table follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
+      ${renderReadMore('query-blocks')}
     </section>
 
     <section id="connections">
@@ -653,12 +684,14 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Stats</h3><p>What needs attention first: any note Deckard could not read, with why, the links that open no note, the tags that look like one idea spelled twice, and the notes nothing links to (parked notes aside). Then the index totals, each opening what it counts, with how notes, tasks, and open tasks moved over twelve weeks, how much is parked, the tags and notes you open most, how often tags are used, with the tags used once to merge, and which tags are written together.</p></div>
         <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>
       </div>
+      ${renderReadMore('connections')}
     </section>
 
     <section id="home">
       <h2>Home and pins</h2>
       <p>Three figures at the top say what is <strong>Overdue</strong>, <strong>Due today</strong>, and <strong>Open</strong>; each opens its search. The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, what has gone quiet — people, projects, or any namespace, with a next action for a project with nothing open — and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
       <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
+      ${renderReadMore('home')}
     </section>
 
     <section id="tidy">
@@ -671,6 +704,7 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Extracting and moving</h3><p><code>Deckard: Extract Heading</code> moves a heading, and everything nested under it, into a note of its own and leaves a <code>[[link]]</code> in its place. <code>Deckard: Move to…</code> moves a line, a task and its steps, or a selection under another heading, into today’s note, or into a new note, leaving a link or a <code>[&gt;]</code> task behind.</p></div>
         <div class="card"><h3>Templates</h3><p><code>Deckard: New Note from Template</code> creates a note from a file in your templates folder, filling in the date, the title, and anything the template asks for. Right-click a folder in the Explorer for <strong>Deckard → New Note from Template Here…</strong>, or to leave the folder out of Deckard and bring it back; both new-note commands are in <strong>File → New File…</strong> too.</p></div>
       </div>
+      ${renderReadMore('tidy')}
     </section>
 
     <section id="periodic">
@@ -681,6 +715,7 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Reviews</h3><p>A weekly or monthly note opens with a review written into it: what was completed, what slipped, what is coming up next, the notes written and changed, and the tags first seen, with sections of your own from <code>deckard.periodicNote.reviewSections</code>. It is ordinary Markdown, named by the days it covers, and rewritten in place when you run it again.</p></div>
         <div class="card"><h3>Calendar</h3><p>A month in the sidebar, in weeks from the day <code>deckard.calendar.weekStart</code> names, Sunday unless you change it. A dot marks a day with a note; a number counts what is due, orange once the day has passed and gray after 30 days, and an outlined number what is scheduled. Turn on the day panel from the view’s … menu to see the chosen day’s note, tasks, and new notes below the month, each task with a Tomorrow button; a click then chooses a day, and a double-click or Enter opens it. The week beside a row opens that week’s note.</p></div>
       </div>
+      ${renderReadMore('periodic')}
     </section>
 
     <section id="zen">
@@ -688,18 +723,21 @@ tag = #project/atlas AND task = open
       <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
       <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from the zen button in the title bar of any Deckard page, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> above Zen in the same gear, shows each of the eight themes on the open pages as you move through them, and keeps the one you choose.</p>
       <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
+      ${renderReadMore('zen')}
     </section>
 
     <section id="commands">
       <h2>Commands</h2>
       <p>Every Deckard command is in the Command Palette under <strong>Deckard:</strong>. A command that acts on “the note” acts on the note in the editor, and one that acts on “the task” acts on the line your cursor is in.</p>
       ${renderCommandTable(manifest, platform)}
+      ${renderReadMore('commands')}
     </section>
 
     <section id="advanced">
       <h2>Settings</h2>
       <p>Every setting below is in VS Code’s settings editor under <strong>Deckard</strong>, and can be set per workspace. This table is built from what Deckard contributes, so it says what your version actually has.</p>
       ${renderSettingsTables(manifest)}
+      ${renderReadMore('advanced')}
     </section>
 
     <section id="assistants">
@@ -708,6 +746,7 @@ tag = #project/atlas AND task = open
       <p>For Claude Code and other MCP clients, <code>deckard.mcpServer.enabled</code> runs a local server on 127.0.0.1 with the same tools, and <code>Deckard: Copy MCP Server Setup</code> copies the command that adds it, token included. <code>Deckard: Reset MCP Server Token</code> makes a new token, so every copied setup stops working.</p>
       <p><strong>A write is guarded twice.</strong> An assistant asks before adding or changing a task, every time, and nothing is written until you approve the exact line in the refactor preview Deckard’s own writes use. A change is refused if the line is no longer the task the index knows there, and <code>Deckard: Undo Last Change</code> takes any write back.</p>
       <p class="note">Deckard answers with what it has indexed: paths, lines, titles, and tags. It never sends your notes anywhere itself — an assistant reads the answer, and what that assistant does next is between you and it.</p>
+      ${renderReadMore('assistants')}
     </section>
 
     <section id="privacy">
@@ -718,7 +757,10 @@ tag = #project/atlas AND task = open
       <p><strong>What names your notes is kept with the workspace.</strong> Favorite tags and people, pinned notes, saved searches, Home’s widgets, view counts, and your task order belong to the folder they describe, so opening another project cannot disturb them. How Deckard looks — sort modes, column counts, layouts, page sizes — is kept for the machine and is the same everywhere. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.</p>
       <p><strong>Deckard never deletes a favorite, a pin, or a saved search on its own.</strong> If what one pointed at is gone, it stays until you run <code>Deckard: Tidy Favorites, Pins, and Saved Searches</code>, which lists what points nowhere and asks first. Only what Deckard derived for itself — view counts and access order — is cleaned up automatically.</p>
       <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export Favorites, Pins, and Searches</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import Favorites, Pins, and Searches</code> reads one back; each says what it holds and asks before replacing anything.</p>
+      ${renderReadMore('privacy')}
+    </section>
     </article>
+  <div id="guide-view" hidden></div>
 </main>
 <script nonce="${nonce}">
 (function () {
@@ -728,8 +770,51 @@ tag = #project/atlas AND task = open
     var target = event.target && event.target.closest ? event.target : null;
     var button = target ? target.closest('.command-link') : null;
     if (button && vscode) vscode.postMessage({ type: 'runCommand', command: button.getAttribute('data-command') });
-    if (target && target.closest('[data-action="open-changelog"]') && vscode) vscode.postMessage({ type: 'openChangelog' });
+    if (target && target.closest('[data-action="open-changelog"]') && vscode) { event.preventDefault(); vscode.postMessage({ type: 'openChangelog' }); }
+    var guideLink = target ? target.closest('[data-guide-page], [data-guide-anchor]') : null;
+    if (guideLink) {
+      event.preventDefault();
+      var page = guideLink.getAttribute('data-guide-page');
+      var anchor = guideLink.getAttribute('data-guide-anchor') || undefined;
+      if (page && vscode) {
+        // Where Help was, for Back: the section the link sat in.
+        if (guideView.hidden) { var from = guideLink.closest('section'); returnTo = from ? from.id : undefined; }
+        vscode.postMessage(anchor ? { type: 'openGuide', page: page, anchor: anchor } : { type: 'openGuide', page: page });
+      } else if (anchor) {
+        revealIn(guideView, anchor);
+      }
+      return;
+    }
+    if (target && target.closest('[data-action="guide-back"]')) { event.preventDefault(); showHelp(returnTo); return; }
+    // The rail leads back to Help from a guide page.
+    var railLink = target ? target.closest('nav a[href^="#"]') : null;
+    if (railLink && !guideView.hidden) { event.preventDefault(); showHelp(railLink.getAttribute('href').slice(1)); }
   });
+  var article = document.querySelector('main > article');
+  var guideView = document.getElementById('guide-view');
+  var returnTo;
+  function revealIn(root, anchor) {
+    var heading = anchor ? root.querySelector('[id="' + anchor.replace(/"/g, '') + '"]') : null;
+    if (heading && heading.scrollIntoView) heading.scrollIntoView({ block: 'start' });
+  }
+  /** A guide page in place of Help, with the way back first. */
+  function showGuide(message) {
+    guideView.innerHTML = '<div class="guide-bar"><a href="#" class="guide-back" data-action="guide-back">← Back to Help</a>'
+      + (message.page !== 'README' ? '<a href="#" class="guide-back" data-guide-page="README">All guide topics</a>' : '') + '</div>'
+      + message.html;
+    article.hidden = true;
+    guideView.hidden = false;
+    if (message.anchor) revealIn(guideView, message.anchor);
+    else window.scrollTo(0, 0);
+    var title = guideView.querySelector('h1');
+    if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: Boolean(message.anchor) }); }
+  }
+  function showHelp(anchor) {
+    guideView.hidden = true;
+    guideView.innerHTML = '';
+    article.hidden = false;
+    if (anchor) reveal(anchor); else window.scrollTo(0, 0);
+  }
   // Opened on a section, such as What's new, the page goes to it.
   function reveal(anchor) {
     var section = anchor ? document.getElementById(anchor) : null;
@@ -739,7 +824,8 @@ tag = #project/atlas AND task = open
     if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
   }
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'reveal') reveal(event.data.anchor);
+    if (event.data && event.data.type === 'reveal') { if (!guideView.hidden) showHelp(); reveal(event.data.anchor); }
+    if (event.data && event.data.type === 'guide') showGuide(event.data);
   });
   reveal(document.body.getAttribute('data-anchor'));
 })();

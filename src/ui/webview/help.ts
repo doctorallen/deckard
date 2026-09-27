@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
 
+import { GUIDE_PAGES, isGuidePage, renderGuidePage } from './guide';
 import { getHelpHtml, HelpManifest, isRunnableFromHelp } from './helpHtml';
 import { parseHelpMessage } from './messages';
 import { Release } from '../../core/changelog';
@@ -109,12 +110,40 @@ export class HelpPanel implements vscode.Disposable {
     const message = parseHelpMessage(value);
     if (message?.type === 'runCommand' && isRunnableFromHelp(this.manifest, message.command)) {
       await vscode.commands.executeCommand(message.command);
+    } else if (message?.type === 'openGuide') {
+      await this.showGuide(message.page, message.anchor);
     } else if (message?.type === 'openChangelog') {
       await vscode.commands.executeCommand(
         'markdown.showPreview',
         vscode.Uri.joinPath(this.extensionUri, 'CHANGELOG.md'),
       );
     }
+  }
+
+  /**
+   * Shows a guide page in the panel, read from the copy the VSIX ships. A
+   * page that cannot be read says so where the page would be.
+   */
+  private async showGuide(page: string, anchor?: string): Promise<void> {
+    if (!this.panel || !isGuidePage(page)) {
+      return;
+    }
+    let html: string;
+    try {
+      const bytes = await vscode.workspace.fs.readFile(
+        vscode.Uri.joinPath(this.extensionUri, 'docs', 'guide', `${page}.md`),
+      );
+      html = renderGuidePage(Buffer.from(bytes).toString('utf8'));
+    } catch {
+      html = '<p>Deckard could not read this page of the guide. It is also on GitHub, at <a href="https://github.com/doctorallen/deckard/blob/master/docs/guide/' + page + '.md">docs/guide/' + page + '.md</a>.</p>';
+    }
+    void this.panel.webview.postMessage({
+      type: 'guide',
+      page,
+      title: GUIDE_PAGES[page],
+      html,
+      ...(anchor ? { anchor } : {}),
+    });
   }
 
   private disposePanelListeners(): void {
