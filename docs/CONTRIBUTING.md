@@ -8,9 +8,23 @@ or changed. Keep the **Quick start** section focused on the minimum usable
 workflow, and place detailed configuration and specialized workflows in the
 appropriate advanced category.
 
-Also update `README.md` when the feature needs installation, configuration, or
-reference documentation. Help and README must describe the same current
-behavior before a change is merged.
+Documentation lives in three places, each with its own job:
+
+- **Help** (`helpHtml.ts`) is the quick glance: what a reader most needs to
+  know about each area, with **Read more** into the guide.
+- **The guide** (`docs/guide/*.md`) is the full documentation, one topic to a
+  page. Put the detail here: every option, edge case, and example. It ships in
+  the VSIX, where Help's **Read more** shows it, is readable on GitHub, and is
+  built into the GitHub Pages site by `.github/workflows/docs.yml`. Link pages
+  to one another with relative `.md` links, and to screenshots as
+  `../images/…`.
+- **`README.md`** is the pitch: what Deckard is, the feature table, the
+  themes, and a quick start. Add to it only when a feature belongs in that
+  table; its detail goes in the guide.
+
+Help and the guide must describe the same current behavior before a change is
+merged. A new guide page also needs a line in `docs/guide/README.md`, and, if
+Help has a section for it, the page named in that section's **Read more**.
 
 ## Webview components
 
