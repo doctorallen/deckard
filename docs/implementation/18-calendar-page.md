@@ -149,3 +149,20 @@ Types and lint per commit; the full set at the end.
 2. **Daily repeats in the sidebar:** show them (every day reads `↻1`), or project only rules longer than a day there, keeping daily ones for the page?
 3. **`when done` repeats:** not projected (recommended, since any date would be a guess), or projected as if done on the due date, marked *if done on time*?
 4. **Where a sidebar day leads:** should choosing a day in the sidebar Calendar open it on the page, or keep opening the day's note as now, with **Open in Editor** the way to the page?
+
+## 8. Decisions (David, 2026-09-27)
+
+1. Drag to reschedule ships with the page.
+2. Daily repeats show in the sidebar too.
+3. `when done` rules are not projected.
+4. A sidebar day keeps opening its note, as it has; the page is reached from **Open Calendar in Editor** in the view's title bar, on the sidebar's month and day, or `Deckard: Open Calendar`.
+
+## 9. As built
+
+- The page, its Week layout, and drag to reschedule landed as one commit rather than three.
+- The Week layout is the row of the month's grid that holds the chosen day, stepped by choosing the day a week on, so it needs no state of its own from the host.
+- The layout is kept in the page's own webview state, not in the machine-wide preferences, so it survives a reload of the page and needs no preference or migration.
+- A drag reuses the sidebar's `moveTask` message. The host posts `moveRefused` when the write fails, and the page says so.
+- The Show and Hide commands are titled **Turn On Repeats** and **Turn Off Repeats**: Deckard keeps "Show" for commands that open something.
+- `deckard.showHelp` takes a Help section to open, which the page's **?** uses for **Days, weeks, and months**.
+- The review guide's Calendar (page) section is left for David's stashed edits to that file.
