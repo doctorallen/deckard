@@ -117,8 +117,12 @@ suite('Agenda', () => {
   });
 
   test('the Tasks view draws five overdue tasks, then Show N more, and acts on all', async () => {
+    // Counted back from today, as the view counts: from a fixed date, the
+    // oldest slipped past 30 days and into Needs a new date as time went on.
+    const today = new Date();
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).getTime();
     const tasks = Array.from({ length: 17 }, (_, day) =>
-      createTask({ id: `late-${day}`, dueAt: at(9, 12) - day * 24 * 60 * 60 * 1000 }),
+      createTask({ id: `late-${day}`, dueAt: yesterday - day * 24 * 60 * 60 * 1000 }),
     );
     const index = createIndex(tasks);
     const updates = new vscode.EventEmitter<WorkspaceIndex>();
