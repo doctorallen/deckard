@@ -638,6 +638,9 @@ export function getTaskBoardCss(): string {
    auto row sizes to its cards however tall they are, so the column clipped
    them at its max-height and the cards below could not be reached at all. */
 .board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
+/* + Add task sits under the title, in a row of its own, so the cards keep
+   the row that shrinks. */
+.board-column:has(> .board-add) { grid-template-rows: auto auto minmax(0, 1fr); }
 .board-column-title { padding-bottom: var(--space-2); }
 /* overflow-y alone would compute overflow-x to auto, and then anything that
    reaches past the right edge — a theme's hover nudge, a focus outline — puts
@@ -2493,13 +2496,16 @@ ${getUndoScript()}
         + ' data-hidden-count="' + (column.hiddenCount || 0) + '"' + (limit !== undefined ? ' data-limit="' + limit + '"' : '')
         + ' aria-label="' + escapeHtml(columnName) + '">'
         + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + escapeHtml(countText) + '</span></h2>'
-        + '<div class="board-cards">' + body + '</div>'
-        + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
-        // A column that takes a drop takes a new task the same way; one that
-        // does not says so while a card is dragged, and where to go instead.
+        // A column that takes a drop takes a new task the same way, from under
+        // its title: at the foot of a long column it was out of sight.
         + (column.droppable && column.id !== 'done'
           ? '<button type="button" class="board-add" data-action="board-add-task" data-column-id="' + escapeHtml(column.id) + '" data-tip="Capture a task straight into ' + escapeHtml(column.label) + '">+ Add task</button>'
-          : column.droppable ? '' : '<p class="board-refuses">' + (column.id.indexOf('due:') === 0 ? 'A card cannot be dropped on a range of days. Pick its date from its ⋯ menu.' : 'A card cannot be dropped here.') + '</p>')
+          : '')
+        + '<div class="board-cards">' + body + '</div>'
+        + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
+        // One that does not take a drop says so while a card is dragged, and
+        // where to go instead.
+        + (column.droppable ? '' : '<p class="board-refuses">' + (column.id.indexOf('due:') === 0 ? 'A card cannot be dropped on a range of days. Pick its date from its ⋯ menu.' : 'A card cannot be dropped here.') + '</p>')
         + '</section>';
     }).join('') + '</div>';
   }
