@@ -3,7 +3,7 @@
   "displayName": "Deckard",
   "publisher": "esperinnovations",
   "description": "Your notes, tasks, and people, connected and kept local. Find what you wrote, chase down loose ends, and retire what's done.",
-  "icon": "resources/logo.png",
+  "icon": "resources/lockup.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
