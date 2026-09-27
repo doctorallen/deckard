@@ -242,8 +242,13 @@ export function getTagCompletionContext(
   const query = match[3] ?? '';
   const suffix = line.slice(character).match(/^[A-Za-z0-9_/-]*/)?.[0] ?? '';
   const startColumn = (match.index ?? 0) + match[0].lastIndexOf(marker);
-  // A `#` or `@` in inline code is text, so it is not completed as a tag.
-  if (isInCodeOrLink(line, startColumn)) {
+  // A `#` or `@` in inline code or a link is text, so it is not completed
+  // as a tag; nor is one after a `[[` not closed yet, where the link's own
+  // completion offers headings.
+  if (
+    isInCodeOrLink(line, startColumn) ||
+    linePrefix.lastIndexOf('[[') > linePrefix.lastIndexOf(']]')
+  ) {
     return undefined;
   }
 

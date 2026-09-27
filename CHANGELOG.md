@@ -691,6 +691,13 @@
 
 ### Fixed
 
+- **A link to a heading is a link, not a tag.** `[[#Heading]]`, with an
+  alias or as an embed, made `#Heading` a tag, and so did the target of a
+  Markdown link such as `[see](#heading)`. Nothing inside `[[…]]` or a
+  link's target is a tag now: the index, the editor, completion, Rename Tag
+  and Merge, bulk edit, and Move Tags to Front Matter all leave it alone,
+  and a tag written right after the link still counts.
+
 - **A tag written inside inline code is text, not a tag.** `` `#project/x` ``
   or `` `@dana` `` in a sentence made a real tag, counted, colored, and
   completed like one; only fenced code was left alone. Code spans of any

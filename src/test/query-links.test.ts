@@ -112,8 +112,9 @@ suite('Searching by link', () => {
   test('narrows to a heading, including a link from inside the note', () => {
     const index = createIndex();
     assert.deepStrictEqual(found(index, '[[Atlas plan#Decision]]'), [
-      // `[[#Decision]]` reads as a tagged line of its own.
-      'notes/Atlas plan.md:See [[Atlas plan]] and [[#Decision]] above.',
+      // `[[#Decision]]` is a link and no tag, so the line answers as part of
+      // the heading it is under.
+      'notes/Atlas plan.md:Atlas plan',
       'task notes/Standup.md:6',
     ]);
   });

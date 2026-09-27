@@ -25,7 +25,7 @@ export { BLOCK_ID_PATTERN } from './taskMetadata';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'inline-code';
+export const PARSE_FORMAT = 'code-and-links';
 
 interface HeadingMatch {
   lineNumber: number;

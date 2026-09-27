@@ -249,7 +249,7 @@ Run `Deckard: Rename Tag` to search the indexed tag list, choose a replacement, 
 - Tasks use `-`, `*`, or `+` followed by `[ ]` for open items or `[x]`/`[X]` for completed items.
 - A task inherits tags from its nearest heading and combines them with tags written on the task line.
 - Tag names start with a letter or number and can contain letters, numbers, `_`, `-`, and `/` namespace segments.
-- Fenced code blocks using backticks or tildes, and inline code such as `` `#not-a-tag` ``, are ignored by indexing, decorations, completion, and Rename Tag.
+- Fenced code blocks using backticks or tildes, inline code such as `` `#not-a-tag` ``, and links such as `[[#Heading]]` or `[text](#anchor)` are ignored by indexing, decorations, completion, and Rename Tag: a `#` in them is never a tag.
 - Numeric-only hash tokens such as `#2026` are ignored as tags so that ordinary Markdown headings and dates do not become tags. Numeric `@` tags such as `@2026` remain valid.
 
 For example:

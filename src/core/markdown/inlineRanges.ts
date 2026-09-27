@@ -1,10 +1,11 @@
 /**
- * The parts of a line that are code, where a `#` or `@` is text and never a
- * tag: inline code spans.
+ * The parts of a line that are code or a link, where a `#` or `@` is text
+ * and never a tag: inline code spans, `[[wiki links]]` (embeds included), and
+ * the target of a Markdown link, `[text](target)`.
  *
  * Every place that finds, colors, completes, or rewrites tags asks this, so a
  * tag the index holds is a tag the editor shows and Rename Tag changes, and a
- * `` `#tag` `` in code is none of them.
+ * `#Heading` in `[[#Heading]]` or a `` `#tag` `` in code is none of them.
  */
 
 export interface InlineRange {
@@ -21,11 +22,12 @@ export interface InlineRange {
  *
  * Code spans follow CommonMark: a run of backticks opens one that the next
  * run of exactly as many backticks closes, and a run that nothing closes is
- * plain text. A backslash before a backtick makes it plain text.
+ * plain text. A backslash before a backtick or bracket makes it plain text.
+ * A `[[` with no `]]` after it on the line is not a link either.
  */
 export function findCodeAndLinkRanges(text: string): InlineRange[] {
   const ranges: InlineRange[] = [];
-  if (!text.includes('`')) {
+  if (!/[`\]]/.test(text)) {
     return ranges;
   }
   let index = 0;
@@ -45,6 +47,23 @@ export function findCodeAndLinkRanges(text: string): InlineRange[] {
       ranges.push({ start: index, end: closing + run });
       index = closing + run;
       continue;
+    }
+    if (character === '[' && text[index + 1] === '[') {
+      const close = findOnLine(text, ']]', index + 2);
+      if (close !== undefined) {
+        const start = index > 0 && text[index - 1] === '!' ? index - 1 : index;
+        ranges.push({ start, end: close + 2 });
+        index = close + 2;
+        continue;
+      }
+    }
+    if (character === ']' && text[index + 1] === '(') {
+      const close = findOnLine(text, ')', index + 2);
+      if (close !== undefined) {
+        ranges.push({ start: index + 1, end: close + 1 });
+        index = close + 1;
+        continue;
+      }
     }
     index += 1;
   }
@@ -84,4 +103,13 @@ function findClosingRun(text: string, from: number, length: number): number | un
     index += 1;
   }
   return undefined;
+}
+
+function findOnLine(text: string, needle: string, from: number): number | undefined {
+  const found = text.indexOf(needle, from);
+  if (found < 0) {
+    return undefined;
+  }
+  const lineEnd = text.indexOf('\n', from);
+  return lineEnd >= 0 && lineEnd < found ? undefined : found;
 }
