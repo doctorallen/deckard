@@ -1,0 +1,73 @@
+# Query blocks
+
+A search written in a `deckard` code fence is a **query block**: a list
+inside a note that stays up to date. Open this note's preview
+(<kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>V</kbd>) to see the blocks below drawn as
+their results. In the editor, the line above each block shows its totals
+and **Open search page**.
+
+The fence is ordinary Markdown, so another editor, or Git, shows the search
+itself. Like any code block, a query block is not indexed: the tags written
+in it are not counted as uses.
+
+## What the relay project still needs
+
+The open tasks of the relay project that are due within a week, overdue ones
+included:
+
+```deckard
+#project/ghostline-relay is:open due < 7d
+```
+
+## Every dated task, as a table
+
+`view=table` draws the tasks as a table, `columns=` picks the columns, and
+`sort=` orders the rows. A task with nothing in the sorted column comes last.
+
+```deckard view=table columns=due,priority,for,status,note sort=due
+is:open has:due -is:step -is:parked
+```
+
+## The five Wardens notes changed last
+
+`sort=` also orders notes by `title`, `created`, or `updated`, and `limit=`
+shows at most that many while the header still gives the total:
+
+```deckard sort=updated limit=5
+is:note #team/wardens
+```
+
+## Waiting on others
+
+```deckard view=table columns=for,status,note
+is:waiting
+```
+
+## Done this week
+
+A block's dates are read each time it is drawn, so `this-week` moves on with
+the week, and the same block shows next week's work next week.
+
+```deckard sort=done
+is:done done = this-week
+```
+
+## Try it
+
+1. Open the preview beside the editor
+   (<kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>V</kbd>). Each result links to its line.
+2. Complete a task listed in the first block, from the Tasks view or the
+   board. The preview updates, because a block refreshes when any note
+   changes.
+3. Select **Open search page** above a block. The same search opens on a
+   search page, where Refine can narrow it.
+4. Change `limit=5` to `limit=2` in the third block, and add `dir=asc` after
+   `sort=updated`. Save, and watch the preview.
+5. Put the cursor on an empty line below and run **Deckard: Insert Query
+   Block…**. Choose a recent search, or type one.
+6. On any search page, open **Export** and choose **Copy as live query
+   block**, then paste it here. It keeps the page's sort.
+7. Type a `#` inside a block: tag completion works there, even though the
+   tags are not counted.
+
+Next: [[06 Tags and people]]
