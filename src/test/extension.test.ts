@@ -121,6 +121,8 @@ suite('Extension Test Suite', () => {
         'deckard.showNotesGraph',
         'deckard.showNotesGraphAroundNote',
         'deckard.showTaskBoard',
+        'deckard.showCalendar',
+        'deckard.calendar.openInEditor',
         'deckard.showStats',
         'deckard.showHelp',
         'deckard.openWalkthrough',

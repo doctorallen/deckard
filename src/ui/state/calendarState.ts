@@ -44,6 +44,18 @@ export interface CalendarDay {
    */
   repeatCount?: number;
   repeatTitles?: string[];
+  /** The calendar page's day: every task on it, by name, most important first. */
+  entries?: CalendarEntry[];
+}
+
+/** One task on a day of the calendar page. */
+export interface CalendarEntry {
+  taskId: string;
+  title: string;
+  /** Due that day, scheduled that day, or a repeat's later date. */
+  kind: 'due' | 'scheduled' | 'repeat';
+  /** A due date past: overdue, or past `needsNewDateAfterDays`. */
+  tone?: 'overdue' | 'stale';
 }
 
 /** One row of the calendar: seven days, from the week's first day. */
@@ -78,6 +90,8 @@ export interface CalendarSnapshot {
    */
   needsNewDateBefore?: string;
   weeks: CalendarWeek[];
+  /** Whether repeats are drawn, from `deckard.calendar.showRepeats`. */
+  showRepeats?: boolean;
   /** Whether the chosen day is shown below the month, from `deckard.calendar.dayPanel`. */
   dayPanel?: boolean;
   /** The day chosen, YYYY-MM-DD: today until another is. */
@@ -255,6 +269,11 @@ function repeatsOn(index: WorkspaceIndex, from: number, to: number, now: Date): 
 export interface CalendarOptions {
   /** Draw a repeating task on its rule's later dates, not only its next. */
   showRepeats?: boolean;
+  /**
+   * The sidebar's days carry counts and a few names for their tooltips; the
+   * page's list every task by name.
+   */
+  layout?: 'sidebar' | 'page';
   /** Show the chosen day below the month. */
   dayPanel?: boolean;
   /** The day chosen; today when none was. */
@@ -307,11 +326,21 @@ export function createCalendar(
     findPeriodicNoteNames(period, day, weekStart)
       .map((name) => periodicNotes.get(name))
       .find(Boolean);
+  const page = options.layout === 'page';
+  /** The page's tasks by day, due and scheduled; repeats are added from their own map. */
+  const dueTasks = new Map<string, Task[]>();
+  const scheduledTasks = new Map<string, Task[]>();
+  const add = (byDate: Map<string, Task[]>, date: string, task: Task): void => {
+    if (page) {
+      byDate.set(date, [...(byDate.get(date) ?? []), task]);
+    }
+  };
   const dueCounts = new Map<string, number>();
   const dueTitles = new Map<string, string[]>();
   for (const task of index.tasks.values()) {
     if (!task.completed && task.dueAt !== undefined && !isParkedTask(index, task.id)) {
       const date = formatLocalDate(new Date(task.dueAt));
+      add(dueTasks, date, task);
       dueCounts.set(date, (dueCounts.get(date) ?? 0) + 1);
       const titles = dueTitles.get(date) ?? [];
       if (titles.length < TOOLTIP_ITEMS) {
@@ -330,6 +359,7 @@ export function createCalendar(
     if (task.dueAt !== undefined && formatLocalDate(new Date(task.dueAt)) === date) {
       continue;
     }
+    add(scheduledTasks, date, task);
     scheduledCounts.set(date, (scheduledCounts.get(date) ?? 0) + 1);
     const titles = scheduledTitles.get(date) ?? [];
     if (titles.length < TOOLTIP_ITEMS) {
@@ -365,6 +395,28 @@ export function createCalendar(
       )
     : new Map<string, Task[]>();
 
+  const staleBefore = needsNewDateBefore(now.getTime());
+  const staleDate = staleBefore !== undefined ? formatLocalDate(new Date(staleBefore)) : undefined;
+  const byImportance = (left: Task, right: Task): number =>
+    TASK_PRIORITY_RANKS[right.priority ?? 'none'] - TASK_PRIORITY_RANKS[left.priority ?? 'none'] ||
+    left.title.localeCompare(right.title);
+  /** A page day's tasks: due, then scheduled, then repeats, each most important first. */
+  const entriesOn = (date: string): CalendarEntry[] => {
+    const entry = (kind: CalendarEntry['kind']) => (task: Task): CalendarEntry => ({
+      taskId: task.id,
+      title: stripTags(task.title).trim() || task.title.trim(),
+      kind,
+      ...(kind === 'due' && date < today
+        ? { tone: staleDate !== undefined && date < staleDate ? 'stale' as const : 'overdue' as const }
+        : {}),
+    });
+    return [
+      ...[...(dueTasks.get(date) ?? [])].sort(byImportance).map(entry('due')),
+      ...[...(scheduledTasks.get(date) ?? [])].sort(byImportance).map(entry('scheduled')),
+      ...[...(repeats.get(date) ?? [])].sort(byImportance).map(entry('repeat')),
+    ];
+  };
+
   const weeks: CalendarWeek[] = [];
   for (const rowStart of rowStarts) {
     // A row is a week from the week start, which is what its note is named
@@ -394,6 +446,7 @@ export function createCalendar(
               repeatTitles: repeats.get(date)!.slice(0, TOOLTIP_ITEMS).map((task) => task.title.trim()),
             }
           : {}),
+        ...(page ? { entries: entriesOn(date) } : {}),
       };
     });
     const notePath = periodicNote('week', rowStart);
@@ -419,6 +472,7 @@ export function createCalendar(
       : {}),
     weekdays: Array.from({ length: 7 }, (_, offset) => WEEKDAY_SHORT[(weekStart + offset) % 7]),
     weeks,
+    ...(options.showRepeats ? { showRepeats: true } : {}),
     ...(options.dayPanel
       ? (() => {
           const selectedDate = options.selectedDate ?? today;

@@ -1068,6 +1068,14 @@ export type CalendarMessage =
   | { type: 'moveTask'; taskId: string; field: 'due' | 'scheduled'; date: string }
   | { type: 'searchCreated'; date: string };
 
+/** What the calendar page asks besides what the sidebar Calendar does. */
+export type CalendarPageMessage =
+  | CalendarMessage
+  | { type: 'setShowRepeats'; show: boolean }
+  | { type: 'setZenMode'; enabled: boolean }
+  | { type: 'chooseTheme' }
+  | { type: 'openHelp' };
+
 /** A line in another note that links to, or names, the note being read. */
 export interface NoteLinkEntry {
   filePath: string;

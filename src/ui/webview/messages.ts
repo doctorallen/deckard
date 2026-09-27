@@ -20,6 +20,7 @@ import {
   TaskBoardGroupBy,
   TaskBoardMessage,
   CalendarMessage,
+  CalendarPageMessage,
   StatsMessage,
 } from '../../core/types';
 
@@ -902,6 +903,25 @@ export function parseCalendarMessage(
     default:
       return undefined;
   }
+}
+
+/** The calendar page's messages: the sidebar Calendar's, and its gear's and help's. */
+export function parseCalendarPageMessage(value: unknown): CalendarPageMessage | undefined {
+  if (isRecord(value)) {
+    switch (value.type) {
+      case 'setShowRepeats':
+        return typeof value.show === 'boolean' && Object.keys(value).length === 2
+          ? { type: 'setShowRepeats', show: value.show }
+          : undefined;
+      case 'setZenMode':
+        return typeof value.enabled === 'boolean' ? { type: 'setZenMode', enabled: value.enabled } : undefined;
+      case 'chooseTheme':
+        return { type: 'chooseTheme' };
+      case 'openHelp':
+        return { type: 'openHelp' };
+    }
+  }
+  return parseCalendarMessage(value);
 }
 
 function isSourceMessage(value: Record<string, unknown>): boolean {

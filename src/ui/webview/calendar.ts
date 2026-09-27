@@ -148,6 +148,8 @@ export class CalendarController {
     private readonly dayPanel: () => boolean,
     /** Draws the calendar again, after its month or day changed. */
     private readonly refresh: () => void,
+    /** Says a task was not moved, so a page that moved it at once can say so. */
+    private readonly refused?: (taskId: string) => void,
   ) {}
 
   /** The calendar as it is now, for the host to post. */
@@ -223,8 +225,9 @@ export class CalendarController {
       }
       case 'moveTask': {
         const task = this.indexer.getSnapshot().tasks.get(message.taskId);
-        if (task && !task.completed) {
-          await setTaskDateField(task, message.field, message.date);
+        const moved = task && !task.completed ? await setTaskDateField(task, message.field, message.date) : false;
+        if (!moved) {
+          this.refused?.(message.taskId);
         }
         return;
       }

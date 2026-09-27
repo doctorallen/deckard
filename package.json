@@ -23,6 +23,7 @@
     "onWebviewPanel:deckard.help",
     "onWebviewPanel:deckard.notesGraph",
     "onWebviewPanel:deckard.taskBoard",
+    "onWebviewPanel:deckard.calendarPage",
     "onStartupFinished",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags"
@@ -213,6 +214,18 @@
         "title": "Open Task Board",
         "category": "Deckard",
         "icon": "$(project)"
+      },
+      {
+        "command": "deckard.showCalendar",
+        "title": "Open Calendar",
+        "category": "Deckard",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "deckard.calendar.openInEditor",
+        "title": "Open Calendar in Editor",
+        "category": "Deckard",
+        "icon": "$(link-external)"
       },
       {
         "command": "deckard.showStats",
@@ -912,6 +925,10 @@
           "when": "false"
         },
         {
+          "command": "deckard.calendar.openInEditor",
+          "when": "false"
+        },
+        {
           "command": "deckard.calendar.hideRepeats",
           "when": "false"
         }
@@ -1134,6 +1151,11 @@
           "command": "deckard.showHelp",
           "when": "view == deckard.relatedNotes",
           "group": "1_open@2"
+        },
+        {
+          "command": "deckard.calendar.openInEditor",
+          "when": "view == deckard.calendar",
+          "group": "navigation@1"
         },
         {
           "command": "deckard.calendar.openDayPanel",
