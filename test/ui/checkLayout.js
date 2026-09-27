@@ -182,6 +182,40 @@ function createSurfaces(zen) {
       hovered: ['.day-panel .task-row'],
     },
     {
+      // The sidebar calendar as its five working days.
+      name: 'calendarNoWeekends',
+      page: 'calendar',
+      viewport: [240, 700],
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
+        dayPanel: true,
+        showWeekends: false,
+        selectedDate: '2026-09-24',
+      }),
+      scrollers: ['html'],
+      clippers: ['.day', '.day-panel .task-row'],
+      hovered: ['.day-panel .task-row'],
+    },
+    {
+      // Related Notes showing the calendar page's chosen day.
+      name: 'sidebarNotesCalendarDay',
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => ({
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: 'inline',
+        calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+          dayPanel: true,
+          showRepeats: true,
+          selectedDate: '2026-09-24',
+        }).selected,
+        state: 'calendarDay',
+      }),
+      scrollers: ['html'],
+      clippers: ['.day-panel .task-row'],
+      hovered: ['.day-panel .task-row'],
+    },
+    {
       // The calendar page, wide: the month beside the chosen day, with
       // chips cut short, +N more, and repeats every weekday.
       page: 'calendarPage',
