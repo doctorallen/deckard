@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.23.0 - 2026-09-27
+
 ### Highlights
 
 - `Deckard: Open Calendar` opens the calendar as a page: each day's tasks by name, a Week layout, and drag a task to move its date.
