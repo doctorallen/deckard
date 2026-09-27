@@ -3,6 +3,7 @@
   "displayName": "Deckard",
   "publisher": "esperinnovations",
   "description": "Find your replicants, chase down loose ends, and keep your memories in order.",
+  "icon": "resources/logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
