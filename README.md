@@ -6,7 +6,7 @@
 
 **A local-first second brain for the Markdown notes already in your VS Code workspace.** Write `#tags`, `@people`, `[[links]]`, and `- [ ] tasks` the way you always have; Deckard connects them into one index and gives you a Dashboard, a Task board, search pages, a notes graph, and a sidebar of related notes — without changing how your notes are written or sending them anywhere.
 
-📖 **[Read the guide](docs/guide/README.md)** · 🚀 [Getting started](docs/guide/getting-started.md) · 📝 [Changelog](CHANGELOG.md)
+📖 **[Read the guide](https://deckard.esperinnovations.com)** · 🚀 [Getting started](https://deckard.esperinnovations.com/getting-started.html) · 📝 [Changelog](CHANGELOG.md)
 
 <p align="center">
 	<img src="docs/images/dashboard.png" alt="Deckard's Dashboard: overdue, due today, and open tasks, and a Home of widgets." width="820">

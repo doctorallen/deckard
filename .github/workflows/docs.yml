@@ -1,14 +1,16 @@
 name: Docs
 
-# Builds docs/guide into the GitHub Pages site. The guide is plain Markdown
+# Builds docs/guide into the GitHub Pages site at deckard.esperinnovations.com. The guide is plain Markdown
 # that also reads on GitHub and ships in the VSIX for Help's Read more, so
 # the site is built from the same files: staged beside the screenshots, with
 # the links that leave the guide pointed at GitHub, then run through the
 # Jekyll GitHub Pages uses, which turns README.md into the index and each
 # `.md` link into a link to its page.
 #
-# Pages must be set to deploy from GitHub Actions once, in the repository's
-# Settings > Pages.
+# Pages must be set once, in the repository's Settings > Pages, to deploy
+# from GitHub Actions with deckard.esperinnovations.com as its custom domain;
+# a workflow deployment takes its domain from there, not from a CNAME file.
+# The domain's DNS needs a CNAME record pointing at doctorallen.github.io.
 
 on:
   push:
@@ -51,6 +53,7 @@ jobs:
             site/*.md
           cat > site/_config.yml <<'CONFIG'
           title: Deckard guide
+          url: https://deckard.esperinnovations.com
           description: A local-first second brain for the Markdown notes in your VS Code workspace.
           theme: jekyll-theme-primer
           CONFIG

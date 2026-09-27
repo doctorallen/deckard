@@ -1,5 +1,7 @@
 # Deckard guide
 
+Also online at [deckard.esperinnovations.com](https://deckard.esperinnovations.com).
+
 Everything Deckard does, one topic to a page. The [README](../../README.md) is the short version; the **Help** page inside VS Code (`Deckard: Open Help`) is the quick glance, and each of its sections has **Read more**, which opens the page here that goes into detail.
 
 ## Start

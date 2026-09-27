@@ -15,7 +15,8 @@ Documentation lives in three places, each with its own job:
 - **The guide** (`docs/guide/*.md`) is the full documentation, one topic to a
   page. Put the detail here: every option, edge case, and example. It ships in
   the VSIX, where Help's **Read more** shows it, is readable on GitHub, and is
-  built into the GitHub Pages site by `.github/workflows/docs.yml`. Link pages
+  built into the site at <https://deckard.esperinnovations.com> by
+  `.github/workflows/docs.yml`. Link pages
   to one another with relative `.md` links, and to screenshots as
   `../images/…`.
 - **`README.md`** is the pitch: what Deckard is, the feature table, the
