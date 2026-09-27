@@ -225,7 +225,7 @@
         "command": "deckard.calendar.openInEditor",
         "title": "Open Calendar in Editor",
         "category": "Deckard",
-        "icon": "$(link-external)"
+        "icon": "$(calendar)"
       },
       {
         "command": "deckard.showStats",
@@ -264,7 +264,7 @@
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
         "category": "Deckard",
-        "icon": "$(calendar)"
+        "icon": "$(new-file)"
       },
       {
         "command": "deckard.pinNote",
@@ -1138,9 +1138,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "deckard.createDailyNote",
+          "command": "deckard.showCalendar",
           "when": "view == deckard.relatedNotes",
           "group": "navigation@3"
+        },
+        {
+          "command": "deckard.createDailyNote",
+          "when": "view == deckard.relatedNotes",
+          "group": "navigation@4"
         },
         {
           "command": "deckard.showNotesGraph",
