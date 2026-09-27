@@ -673,7 +673,10 @@ main { max-width: none; padding: var(--space-5) var(--space-5) var(--space-6); }
 .calendar-page-body .day.today { border-color: var(--amber); }
 /* The chosen date keeps the sidebar's fill, which its ink is chosen for. */
 .calendar-page-body .day.selected { background: var(--hover-bg); color: var(--hover-fg); }
-.cal-note { align-self: flex-start; font-size: var(--text-xs); }
+/* The daily note and +N more are words on the day, drawn as the search
+   cards' Show all is, so every theme reads them the same. */
+.cal-note.cal-note, .cal-more.cal-more { align-self: flex-start; min-height: 0; margin: 0; padding: 0 var(--space-1); border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: normal; text-transform: none; white-space: nowrap; box-shadow: none; clip-path: none; transform: none; }
+.cal-note.cal-note:hover, .cal-note.cal-note:focus-visible, .cal-more.cal-more:hover, .cal-more.cal-more:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
 .cal-chips { display: grid; gap: 2px; min-width: 0; }
 .cal-chip { min-width: 0; overflow: hidden; padding: 1px var(--space-1); border: 1px solid var(--line); border-left: 3px solid var(--green); background: var(--panel); color: var(--text); font-size: var(--text-xs); line-height: 16px; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
 .cal-chip.tone-overdue { border-left-color: var(--danger); }
@@ -684,7 +687,6 @@ main { max-width: none; padding: var(--space-5) var(--space-5) var(--space-6); }
 .cal-chip.kind-repeat { border-style: dashed; border-left-width: 1px; background: transparent; color: var(--muted); cursor: default; }
 .cal-chip[draggable="true"] { cursor: grab; }
 .cal-chip.dragging, .cal-chip.is-pending { opacity: .5; }
-.cal-more { align-self: flex-start; font-size: var(--text-xs); }
 `;
 }
 
