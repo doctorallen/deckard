@@ -136,9 +136,9 @@ header { position: relative; }
 /* A result's file, line, and headings fold under it on hover, as the
    sidebar's notes do, and Show all waits for hover too: on every card at
    rest they were noise. Show all keeps its room, so appearing moves
-   nothing, and focus shows it to the keyboard. */
-.card .card-more.card-more { opacity: 0; transition: opacity 120ms ease; }
-.card:hover .card-more.card-more, .card:focus-within .card-more.card-more { opacity: 1; }
+   nothing; focus on the card shows it, so Tab reaches it next. */
+.card .card-more.card-more { visibility: hidden; opacity: 0; transition: opacity 120ms ease, visibility 0s linear 120ms; }
+.card:hover .card-more.card-more, .card:focus-within .card-more.card-more { visibility: visible; opacity: 1; transition: opacity 120ms ease; }
 ${getPageTailCss()}
 </style>
 </head>
