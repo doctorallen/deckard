@@ -124,15 +124,6 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
    positioned against. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
-/* On a search page a result's file, line, and headings are part of telling
-   it from the others, where people re-find by where a thing was (Bergman et
-   al., 2008), so they sit in the card's header rather than folding under
-   it. Zen keeps the fold. Specific enough to outweigh the fold, which the tail lays down after it. */
-body:not(.zen) main .card .source, body:not(.zen) main .card:hover .source, body:not(.zen) main .card:focus-within .source {
-  position: static; width: auto; height: auto; overflow: hidden; clip-path: none;
-  color: var(--muted); font: var(--text-xs)/16px var(--font-mono); white-space: nowrap; text-overflow: ellipsis;
-}
-body:not(.zen) main .card:hover::after, body:not(.zen) main .card:focus-within::after { display: none; }
 /* Three lines of each result, or of the paragraph its words are in, and
    Show all for the rest. The clamp is Chromium's; the height is the guard. */
 .card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
@@ -142,7 +133,12 @@ body:not(.zen) main .card:hover::after, body:not(.zen) main .card:focus-within::
 /* A text button: words that open the rest, drawn as words. */
 .card-more.card-more { display: inline-block; min-height: 0; margin: var(--space-2) 0 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-xs) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
 .card-more.card-more:hover, .card-more.card-more:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
-body:not(.zen) main .card:hover, body:not(.zen) main .card:focus-within { border-bottom-left-radius: var(--corner-bl, 0); border-bottom-right-radius: var(--corner-br, 0); }
+/* A result's file, line, and headings fold under it on hover, as the
+   sidebar's notes do, and Show all waits for hover too: on every card at
+   rest they were noise. Show all keeps its room, so appearing moves
+   nothing, and focus shows it to the keyboard. */
+.card .card-more.card-more { opacity: 0; transition: opacity 120ms ease; }
+.card:hover .card-more.card-more, .card:focus-within .card-more.card-more { opacity: 1; }
 ${getPageTailCss()}
 </style>
 </head>
