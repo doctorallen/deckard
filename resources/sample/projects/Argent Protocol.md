@@ -1,7 +1,7 @@
 ---
 describes: project/argent-protocol
 status: consented rollout
-opened: {{date-23}}
+created: {{month-1}}
 decoded-by: "#person/leena-sato"
 reviews: "#person/rhea-sol"
 ---
@@ -18,3 +18,5 @@ A remaining command key, decoded by Leena from reassignment records for recalled
 ## Where it stands
 
 The consented installations finished before the return window. The one remaining patient chose observation with an advocate, under a nonintrusive safety watch. Rhea is scheduling voluntary post-installation reviews.
+
+- [ ] Schedule the voluntary post-installation reviews with Rhea 📅 {{date+16}}
