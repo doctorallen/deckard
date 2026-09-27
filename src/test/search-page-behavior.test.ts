@@ -452,14 +452,14 @@ suite('Search page behavior', () => {
     assert.ok(page.find('.view-options [data-action="set-sort"]'), 'Sort sits in the gear with the other view options');
   });
 
-  test('marks a search box that holds a term, so its hint can stay while it is in use', () => {
+  test('marks a search box that holds a term, and shows its hint', () => {
     const { page } = open(NOTES, '#project/atlas');
     assert.strictEqual(
       page.find('.query-workspace').hasAttribute('data-has-text'),
       true,
       'a search page opens on its tag, which is a term',
     );
-    assert.ok(page.find('.query-hint'), 'and the hint is in the page for the sheet to show or hide');
+    assert.ok(page.find('.query-hint'), 'and the hint is in the page');
   });
 
   test('the result tabs behave as tabs from the keyboard', () => {

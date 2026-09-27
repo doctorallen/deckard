@@ -3428,11 +3428,9 @@ export function getQueryEditorCss(): string {
 .query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
 .query-error { color: #FF8080; font: var(--text-xs) var(--font-mono); }
 .query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
-/* The line of syntax is wanted at the moment of typing and is chrome the rest
-   of the time, competing with the results under it. It shows while the box
-   has focus or holds a term; the Builder button and the count stay, and a
-   parse error, which shares the slot, never hides. */
-.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }
+/* The line of syntax stays put. Shown only while the box was in use, it
+   came and went as focus moved to the grouping and back, and read as a
+   line that had gone missing. Zen still takes it away. */
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
 .query-builder-group.is-negated { border-style: dashed; }

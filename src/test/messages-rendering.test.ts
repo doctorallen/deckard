@@ -659,12 +659,12 @@ suite('Webview contracts', () => {
       false,
       'no rule on the page sets text under the floor',
     );
-    // The syntax hint under a search box shows while the box is in use and
-    // not at rest, where it competed with the results under it.
+    // The syntax hint under a search box stays: hidden at rest, it came and
+    // went as focus moved to the grouping beside it.
     assert.strictEqual(
-      html.includes('.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }'),
-      true,
-      'the hint rests only while the box is idle and empty',
+      /\.query-hint \{ display: none; \}/.test(html),
+      false,
+      'the hint is not hidden when the box is idle',
     );
     // The file and line under a task were once a literal gray at 1.85:1 on
     // the panel, which six of the eight themes inherited. The muted token is
