@@ -88,11 +88,15 @@ Also changed: `deckard.dailyNote.rolloverDays` now defaults to `7`,
 
 ### Data to review with
 
-- [ ] Run **Deckard: Create a Sample Workspace**. It opens nine notes, dated
-  today, without a folder dialog. They include one overdue task, two due
-  today, one due later this week, a `#status/waiting` task, a scheduled task,
-  and people and namespaced tags. The sample has no `[[links]]`, no repeating
-  tasks, no steps, and nothing parked.
+- [ ] Run **Deckard: Create a Sample Workspace**. It opens a tour dated
+  today, without a folder dialog: a Start here README and ten notes, one a
+  topic, each with **Try it** steps. Between them they hold overdue tasks, a
+  task 40 days overdue, repeating tasks of every kind and two misspelled
+  rules, a task with steps, a blocked task, `#status/waiting` and
+  `#status/someday` tasks, contexts, a lookalike tag, hub notes, links to
+  headings and lines, an embed, a link to a note that does not exist, an
+  untagged note, and a parked note. Much of this guide can be checked there
+  instead of in the fixtures below.
 - [ ] Add a note named `review.md` to the sample (or to your own notes) with
   the lines below. The dates assume today is 2026-09-26; move them if you
   review on a different day.
@@ -497,8 +501,8 @@ Open it with **Deckard: Open Help**.
   start and Home's gear **Walkthrough** also open it.
 - [ ] **Sample workspace.** Run **Deckard: Create a Sample Workspace** from a
   window with a folder open. *Look for:* no folder dialog; a choice of **Open
-  in New Window** or **Open Here**; nine notes dated from today; the README
-  preview opening after reload. Run it again to see **Replace** or **Open As
+  in New Window** or **Open Here**; a tour dated from today; the Start here
+  README preview opening after reload. Run it again to see **Replace** or **Open As
   It Is**. **(check by hand)**
 - [ ] **First index summary.** Open a folder Deckard has never indexed.
   *Look for:* one message, *Deckard read N notes: N open tasks (N overdue)

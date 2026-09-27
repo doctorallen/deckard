@@ -88,7 +88,7 @@
           {
             "id": "deckard.walkthrough.openNote",
             "title": "Open or create a note",
-            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two — or start from nine notes already written the way Deckard reads them.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
+            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two — or take the tour: a sample workspace of notes that show what Deckard does and say what to try.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
             "media": {
               "markdown": "resources/walkthrough/notes.md"
             },

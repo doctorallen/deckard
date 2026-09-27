@@ -12,6 +12,17 @@
 
 ### Added
 
+- **The sample workspace is a tour you read and do.** `Deckard: Create a
+  Sample Workspace` opens on a Start here README that leads through ten
+  notes, one a topic: tasks, the Task board, repeat rules and dates, search,
+  query blocks, tags and people, links, daily notes and reviews, Capture and
+  parking, and Home, Stats, and the graph. Each says what it holds, holds the
+  tasks, tags, and links that make it show, and ends with **Try it**: the
+  commands, keys, and searches to run, and what each shows. The Search note
+  gives a search for every field and state, and says what each finds. The
+  sample's own settings name you, show the calendar's day panel, and
+  migrate tasks on rollover.
+
 - **Zoomed out, the Notes Graph draws each file as one node, and opens it
   into its headings as you zoom in.** A workspace of fifty files draws as
   fifty dots at rest rather than hundreds, each sized by its headings
@@ -490,10 +501,9 @@
   characters.
 
 - **The sample workspace is dated the day it is made.** Its tasks were due
-  in August and September, so a sample made later was all overdue. It is
-  now nine notes, yesterday's and today's among them, with one task overdue,
-  two due today, one due later this week, and three with a status for the
-  Task board. It opens without a folder dialog, from Deckard's own storage,
+  in August and September, so a sample made later was all overdue. Its daily
+  notes now run up to yesterday's and today's. It opens without a folder
+  dialog, from Deckard's own storage,
   shows its README once the window has reloaded, and carries a
   `.vscode/settings.json` so your own settings cannot make it look empty.
 

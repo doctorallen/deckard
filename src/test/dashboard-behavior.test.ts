@@ -462,10 +462,10 @@ suite('Dashboard behavior', () => {
     );
   });
 
-  test('an empty workspace is offered today\'s note and the nine-note sample', () => {
+  test('an empty workspace is offered today\'s note and the sample tour', () => {
     const { page, snapshot } = open();
     page.send({ ...snapshot, totalNoteCount: 0 });
-    assert.match(page.text('.home-start p') ?? '', /nine notes already written/);
+    assert.match(page.text('.home-start p') ?? '', /take the tour/);
     assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
   });
 

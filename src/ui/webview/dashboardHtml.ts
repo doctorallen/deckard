@@ -979,7 +979,7 @@ ${getQueryEditorScript()}
     // A workspace with no notes yet gets the next step, not a grid of empty
     // widgets each saying there is nothing to show.
     const start = state.totalNoteCount === 0 && !editingHome
-      ? '<section class="home-start" aria-label="Get started"><h2>No notes here yet</h2><p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or look around nine notes already written the way Deckard reads them.</p><div class="home-start-actions"><button type="button" class="active" data-action="open-daily-note">Create today’s note</button><button type="button" data-action="open-view" data-view="sampleWorkspace">Create a sample workspace</button><button type="button" data-action="open-view" data-view="checkSetup">Check my setup</button></div></section>'
+      ? '<section class="home-start" aria-label="Get started"><h2>No notes here yet</h2><p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or take the tour: a sample workspace of notes that show what Deckard does and say what to try.</p><div class="home-start-actions"><button type="button" class="active" data-action="open-daily-note">Create today’s note</button><button type="button" data-action="open-view" data-view="sampleWorkspace">Create a sample workspace</button><button type="button" data-action="open-view" data-view="checkSetup">Check my setup</button></div></section>'
       : '';
     return bar + start + grid;
   }
