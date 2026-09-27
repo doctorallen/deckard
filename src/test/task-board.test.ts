@@ -183,23 +183,23 @@ suite('Task board', () => {
 
     const due = board(createIndex(), 'due', '', options);
     assert.deepStrictEqual(ids(due), [
+      ['due:needsdate', []],
       ['due:overdue', ['audit']],
       ['due:today', ['call']],
       ['due:tomorrow', []],
       ['due:week', ['brief']],
       ['due:later', []],
       ['due:', ['draft']],
-      ['due:needsdate', []],
       ['done', ['ship', 'file']],
     ]);
     assert.deepStrictEqual(
       due.columns.map((column) => column.droppable),
-      [false, true, true, false, false, true, false, true],
+      [false, false, true, true, false, false, true, true],
     );
-    assert.strictEqual(due.columns[0].cards[0].overdue, true);
+    assert.strictEqual(due.columns[1].cards[0].overdue, true);
   });
 
-  test('a task more than 30 days overdue has a muted band of its own, and says when it was due', () => {
+  test('a task more than 30 days overdue has a band of its own, first, and says when it was due', () => {
     const index = createIndex();
     index.tasks.set(
       'lease',

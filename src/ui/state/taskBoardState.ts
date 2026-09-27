@@ -957,15 +957,15 @@ function createAssigneeColumns(
  * only they accept a dropped card.
  */
 const DUE_BANDS: ReadonlyArray<[string, string, boolean]> = [
+  // First, and titled in red as Overdue is: the oldest slips are the ones
+  // that most need a decision, and at the far end they went unseen.
+  ['needsdate', 'Needs a new date', false],
   ['overdue', 'Overdue', false],
   ['today', 'Today', true],
   ['tomorrow', 'Tomorrow', true],
   ['week', 'Within a week', false],
   ['later', 'Later', false],
   ['', 'No due date', true],
-  // A band of its own, muted, for what a month has passed by: it is not a
-  // red column of things to do today.
-  ['needsdate', 'Needs a new date', false],
 ];
 
 function createDueColumns(open: Task[], now: number): ColumnDraft[] {

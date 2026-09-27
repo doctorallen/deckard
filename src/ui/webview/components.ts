@@ -682,7 +682,7 @@ export function getTaskBoardCss(): string {
 .board-steps { margin: 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Over its work-in-progress limit: a neutral dashed outline, never red. */
 .board-column.over-limit { outline: var(--edge) dashed var(--line-strong); outline-offset: -1px; }
-.board-column[data-column-id="due:needsdate"] .board-column-title { color: var(--muted); }
+.board-column[data-column-id="due:needsdate"] .board-column-title { color: var(--danger); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
   position: absolute;
