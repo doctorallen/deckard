@@ -20,6 +20,7 @@ import {
   TaskBoardGroupBy,
   TaskBoardMessage,
   CalendarMessage,
+  CalendarPageMessage,
   StatsMessage,
 } from '../../core/types';
 
@@ -125,6 +126,19 @@ export function parseDashboardMessage(
         : undefined;
     case 'resetDashboardWidgets':
       return { type: 'resetDashboardWidgets' };
+    case 'widgetChoices':
+      return Array.isArray(value.choices) && value.choices.length <= 200 &&
+        value.choices.every((choice) => isRecord(choice) && typeof choice.value === 'string' && typeof choice.label === 'string' &&
+          (choice.description === undefined || typeof choice.description === 'string'))
+        ? {
+            type: 'widgetChoices',
+            choices: (value.choices as Array<Record<string, string>>).map((choice) => ({
+              value: choice.value,
+              label: choice.label,
+              ...(choice.description ? { description: choice.description } : {}),
+            })),
+          }
+        : undefined;
     case 'openWhatsNew':
     case 'dismissWhatsNew':
       return { type: value.type };
@@ -902,6 +916,26 @@ export function parseCalendarMessage(
     default:
       return undefined;
   }
+}
+
+/** The calendar page's messages: the sidebar Calendar's, and its gear's and help's. */
+export function parseCalendarPageMessage(value: unknown): CalendarPageMessage | undefined {
+  if (isRecord(value)) {
+    switch (value.type) {
+      case 'setShowRepeats':
+      case 'setShowWeekends':
+        return typeof value.show === 'boolean' && Object.keys(value).length === 2
+          ? { type: value.type, show: value.show }
+          : undefined;
+      case 'setZenMode':
+        return typeof value.enabled === 'boolean' ? { type: 'setZenMode', enabled: value.enabled } : undefined;
+      case 'chooseTheme':
+        return { type: 'chooseTheme' };
+      case 'openHelp':
+        return { type: 'openHelp' };
+    }
+  }
+  return parseCalendarMessage(value);
 }
 
 function isSourceMessage(value: Record<string, unknown>): boolean {

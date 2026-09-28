@@ -6,6 +6,8 @@ import {
   formatIsoDate,
   parseRecurrence,
   parseTaskMetadata,
+  PROJECTED_REPEATS,
+  projectRepeats,
   setTaskAssignee,
   setTaskDate,
   setTaskLineCompletion,
@@ -315,5 +317,66 @@ suite('Obsidian Tasks metadata', () => {
       ),
       '- [ ] Review [due:: 2026-09-17] [repeat:: every week]',
     );
+  });
+
+  suite('projected repeats', () => {
+    const now = at(2026, 9, 27);
+    const days = (dates: number[]): string[] => dates.map(formatIsoDate);
+    const project = (recurrence: string, due: number, from = at(2026, 9, 1), to = at(2026, 10, 31)): string[] =>
+      days(projectRepeats({ recurrence, dueAt: due }, from, to, now));
+
+    test('draws every date a rule lands on, after today, to the end of the range', () => {
+      assert.deepStrictEqual(project('every week', at(2026, 9, 29), at(2026, 9, 1), at(2026, 10, 27)), [
+        '2026-10-06', '2026-10-13', '2026-10-20', '2026-10-27',
+      ]);
+      assert.deepStrictEqual(project('every month on the last', at(2026, 10, 31), at(2026, 10, 1), at(2027, 3, 31)), [
+        '2026-11-30', '2026-12-31', '2027-01-31', '2027-02-28', '2027-03-31',
+      ]);
+      assert.deepStrictEqual(project('every month on the last Friday', at(2026, 9, 25), at(2026, 9, 1), at(2026, 12, 31)), [
+        '2026-10-30', '2026-11-27', '2026-12-25',
+      ]);
+      assert.deepStrictEqual(project('every other week on Monday, Thursday', at(2026, 9, 28), at(2026, 9, 1), at(2026, 10, 18)), [
+        '2026-10-01', '2026-10-12', '2026-10-15',
+      ]);
+      assert.deepStrictEqual(project('every year', at(2026, 12, 31), at(2026, 1, 1), at(2028, 12, 31)), ['2027-12-31', '2028-12-31']);
+    });
+
+    test('an overdue task is drawn again from today on, on its own sequence', () => {
+      // Due Tuesday the 1st, still open on Sunday the 27th.
+      assert.deepStrictEqual(project('every Tuesday', at(2026, 9, 1), at(2026, 9, 1), at(2026, 10, 13)), [
+        '2026-09-29', '2026-10-06', '2026-10-13',
+      ]);
+    });
+
+    test('a range after today starts where it starts', () => {
+      assert.deepStrictEqual(project('every week', at(2026, 9, 29), at(2026, 10, 12), at(2026, 10, 25)), ['2026-10-13', '2026-10-20']);
+    });
+
+    test('projects nothing for a when done rule, a rule it cannot read, or a task with no date', () => {
+      assert.deepStrictEqual(project('every week when done', at(2026, 9, 29)), []);
+      assert.deepStrictEqual(project('whenever I feel like it', at(2026, 9, 29)), []);
+      assert.deepStrictEqual(days(projectRepeats({ recurrence: 'every week' }, at(2026, 9, 1), at(2026, 10, 31), now)), []);
+    });
+
+    test('a task with only a scheduled date repeats on that', () => {
+      assert.deepStrictEqual(
+        days(projectRepeats({ recurrence: 'every week', scheduledAt: at(2026, 9, 29) }, at(2026, 9, 1), at(2026, 10, 13), now)),
+        ['2026-10-06', '2026-10-13'],
+      );
+    });
+
+    test('stops at a year of dates', () => {
+      assert.strictEqual(project('every day', at(2026, 9, 28), at(2026, 9, 1), at(2030, 1, 1)).length, PROJECTED_REPEATS);
+    });
+
+    test('agrees with the next occurrence completing the task writes', () => {
+      for (const rule of ['every day', 'every week', 'every 2 weeks', 'every month on the 31st', 'every month on the second Tuesday', 'every weekday', 'every quarter', 'every weekend']) {
+        const line = `- [x] Water the plants 📅 2026-10-30 🔁 ${rule} ✅ 2026-10-30`;
+        const next = createNextOccurrence(line, 3, at(2026, 10, 30)) ?? '';
+        const written = /📅 (\d{4}-\d{2}-\d{2})/.exec(next)?.[1];
+        const [first] = project(rule, at(2026, 10, 30), at(2026, 10, 1), at(2027, 12, 31));
+        assert.strictEqual(first, written, rule);
+      }
+    });
   });
 });

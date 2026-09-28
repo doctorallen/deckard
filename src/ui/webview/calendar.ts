@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
 
 import { measure } from '../../core/timing';
-import { WorkspaceIndex } from '../../core/types';
+import { CalendarMessage, WorkspaceIndex } from '../../core/types';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
@@ -17,7 +17,7 @@ import { openSourceAt } from '../commands/navigation';
 import { setTaskDateField } from '../commands/agendaActions';
 import { openTask, toggleTask } from '../commands/taskActions';
 import { readWeekStart } from '../commands/datePrompt';
-import { clampToMonth, createCalendar } from '../state/calendarState';
+import { CalendarOptions, CalendarSnapshot, clampToMonth, createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
 import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
@@ -40,13 +40,12 @@ export class CalendarView
   private readonly disposables: vscode.Disposable[] = [];
   private viewDisposables: vscode.Disposable[] = [];
   private view: vscode.WebviewView | undefined;
-  private month = formatLocalDate(new Date()).slice(0, 7);
-  /** The day chosen for the panel; today while none was chosen. */
-  private selectedDate: string | undefined;
   /** Whether the index changed while the calendar was hidden. */
   private isStale = false;
+  public readonly controller: CalendarController;
 
   public constructor(private readonly indexer: CalendarIndexSource) {
+    this.controller = new CalendarController(indexer, readDayPanel, () => this.refresh());
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -65,6 +64,8 @@ export class CalendarView
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
           event.affectsConfiguration('deckard.calendar.dayPanel') ||
+          event.affectsConfiguration('deckard.calendar.showRepeats') ||
+          event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();
@@ -121,22 +122,55 @@ export class CalendarView
       return;
     }
     this.isStale = false;
-    void this.view.webview.postMessage({
-      type: 'state',
-      data: measure('Calendar', () =>
-        createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart(), {
-          dayPanel: readDayPanel(),
-          selectedDate: this.selectedDate,
-        }),
-      ),
-    });
+    void this.view.webview.postMessage({ type: 'state', data: this.controller.snapshot() });
   }
 
   private async handleMessage(value: unknown): Promise<void> {
     const message = parseCalendarMessage(value);
-    if (!message) {
-      return;
+    if (message) {
+      await this.controller.handle(message);
     }
+  }
+}
+
+/**
+ * The month and the day a calendar shows, and what it does when asked:
+ * one for the sidebar Calendar and one for the calendar page, so the two
+ * behave alike and each keeps its own place.
+ */
+export class CalendarController {
+  public month = formatLocalDate(new Date()).slice(0, 7);
+  /** The day chosen for the panel; today while none was chosen. */
+  public selectedDate: string | undefined;
+
+  public constructor(
+    private readonly indexer: Pick<CalendarIndexSource, 'getSnapshot'>,
+    /** Whether the day panel is showing, and so a new month keeps a chosen day. */
+    private readonly dayPanel: () => boolean,
+    /** Draws the calendar again, after its month or day changed. */
+    private readonly refresh: () => void,
+    /** Says a task was not moved, so a page that moved it at once can say so. */
+    private readonly refused?: (taskId: string) => void,
+  ) {}
+
+  /** The calendar as it is now, for the host to post. */
+  public snapshot(options: CalendarOptions = {}): CalendarSnapshot {
+    return measure('Calendar', () =>
+      createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart(), {
+        dayPanel: this.dayPanel(),
+        selectedDate: this.selectedDate,
+        showRepeats: readShowRepeats(),
+        showWeekends: readShowWeekends(),
+        ...options,
+      }),
+    );
+  }
+
+  /**
+   * What either calendar asks of its host, for the month and day it shows.
+   * `ready` is the host's own, since only the host knows its webview.
+   */
+  public async handle(message: CalendarMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
         this.refresh();
@@ -146,7 +180,7 @@ export class CalendarView
         // A new month keeps the chosen day's place in it.
         if (message.date) {
           this.selectedDate = message.date;
-        } else if (this.selectedDate || readDayPanel()) {
+        } else if (this.selectedDate || this.dayPanel()) {
           this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
         }
         if (this.selectedDate === formatLocalDate(new Date())) {
@@ -193,8 +227,9 @@ export class CalendarView
       }
       case 'moveTask': {
         const task = this.indexer.getSnapshot().tasks.get(message.taskId);
-        if (task && !task.completed) {
-          await setTaskDateField(task, message.field, message.date);
+        const moved = task && !task.completed ? await setTaskDateField(task, message.field, message.date) : false;
+        if (!moved) {
+          this.refused?.(message.taskId);
         }
         return;
       }
@@ -222,7 +257,7 @@ export class CalendarView
    * Opens a week's or month's note wherever the index has it, or offers to
    * create the note for a day, week, or month in the notes folder.
    */
-  private async openPeriod(period: NotePeriod, date: string): Promise<void> {
+  public async openPeriod(period: NotePeriod, date: string): Promise<void> {
     const day = parseLocalDate(date);
     if (!day) {
       return;
@@ -263,6 +298,16 @@ export class CalendarView
     const noteUri = await ensurePeriodicNote(folder, period, day);
     await vscode.window.showTextDocument(noteUri, { preview: false });
   }
+}
+
+/** `deckard.calendar.showWeekends`: whether Saturday and Sunday are drawn. */
+export function readShowWeekends(): boolean {
+  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showWeekends', true) !== false;
+}
+
+/** `deckard.calendar.showRepeats`: whether a repeating task is drawn on its rule's later dates. */
+export function readShowRepeats(): boolean {
+  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showRepeats', true) !== false;
 }
 
 /** `deckard.calendar.dayPanel`: whether the chosen day shows below the month. */

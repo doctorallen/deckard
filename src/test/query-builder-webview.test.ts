@@ -522,7 +522,7 @@ suite('Tag overview query builder', () => {
 
     view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
     assert.doesNotMatch(view.html(), /data-clause="#team\/harbor"/);
-    assert.match(view.html(), /In the Related Notes sidebar\./);
+    assert.match(view.html(), /In the Context sidebar\./);
   });
 
   test('offers recent searches in an empty search box', () => {

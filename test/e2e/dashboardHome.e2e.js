@@ -345,7 +345,8 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   assert.ok(offered.includes(`savedQuery:${savedId}`), 'each saved search is offered');
   view.change(add, `savedQuery:${savedId}`);
   await delay(20);
-  const added = ids()[ids().length - 1];
+  // A new widget goes first, after Try next, where it is seen.
+  const added = ids()[1];
   assert.match(added, /^savedQuery-/);
   assert.match(widget(added).querySelector('.home-widget-title').textContent, /Open work/, 'named after its saved search');
 
@@ -366,17 +367,18 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   await delay(20);
   assert.strictEqual(ids()[ids().length - 1], 'search');
 
-  // Reset discards an arrangement, so it asks before it does.
+  // Reset discards an arrangement, so it asks first, in a modal.
+  const warn = vscode.window.showWarningMessage;
+  const asked = [];
+  vscode.window.showWarningMessage = async (text, options) => { asked.push([text, options && options.modal]); return undefined; };
   view.click(view.find('[data-action="reset-widgets"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), ['tryNext', added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes until it is confirmed');
-  view.click(view.find('[data-action="cancel-reset-widgets"]'));
-  await delay(20);
-  assert.ok(view.find('[data-action="reset-widgets"]'), 'Reset is offered again');
-
+  assert.deepStrictEqual(asked, [['Reset Home to its default widgets?', true]]);
+  assert.deepStrictEqual(ids(), ['tryNext', added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes unless it is confirmed');
+  vscode.window.showWarningMessage = async () => 'Reset Widgets';
   view.click(view.find('[data-action="reset-widgets"]'));
-  view.click(view.find('[data-action="confirm-reset-widgets"]'));
   await delay(20);
+  vscode.window.showWarningMessage = warn;
   assert.deepStrictEqual(ids(), ['tryNext', 'search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches']);
 
   view.click(view.find('.home-edit-bar [data-action="finish-customizing"]'));

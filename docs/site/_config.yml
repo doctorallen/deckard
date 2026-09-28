@@ -1,0 +1,44 @@
+# The Deckard guide's site, built by .github/workflows/docs.yml from
+# docs/guide. This folder is copied beside the guide's pages before the
+# build; the pages themselves stay plain Markdown that reads on GitHub.
+title: Deckard guide
+# The tagline under the header. The docs workflow writes package.json's
+# description here before the build, so the two always match.
+description: "Your notes, tasks, and people, connected and kept local. Find what you wrote, chase down loose ends, and retire what's done."
+url: https://deckard.esperinnovations.com
+repository: doctorallen/deckard
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# The side navigation, in the guide's own order.
+nav:
+  - title: Start
+    pages:
+      - { title: Getting started, url: /getting-started.html }
+      - { title: Themes and Zen mode, url: /themes-and-zen.html }
+  - title: Writing
+    pages:
+      - { title: Notes, tags, and links, url: /notes-and-links.html }
+      - { title: Tasks, url: /tasks.html }
+      - { title: Daily notes and the calendar, url: /daily-notes.html }
+      - { title: Renaming, moving, and parking, url: /organizing.html }
+  - title: Finding
+    pages:
+      - { title: Search, url: /search.html }
+      - { title: Search pages, url: /search-pages.html }
+      - { title: Query blocks, url: /query-blocks.html }
+      - { title: Related notes and the graph, url: /connections.html }
+  - title: Seeing the whole
+    pages:
+      - { title: Task board, url: /task-board.html }
+      - { title: Home and Stats, url: /home-and-stats.html }
+      - { title: AI assistants, url: /ai-assistants.html }
+  - title: Reference
+    pages:
+      - { title: Commands, url: /commands.html }
+      - { title: Settings, url: /settings.html }
+      - { title: Privacy and troubleshooting, url: /privacy-and-troubleshooting.html }

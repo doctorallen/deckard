@@ -57,6 +57,7 @@ const pages = [
   ['stats', () => require('../../out/ui/webview/statsHtml.js').getStatsHtml(webview)],
   ['taskBoard', () => require('../../out/ui/webview/taskBoardHtml.js').getTaskBoardHtml(webview)],
   ['calendar', () => require('../../out/ui/webview/calendarHtml.js').getCalendarHtml(webview)],
+  ['calendarPage', () => require('../../out/ui/webview/calendarHtml.js').getCalendarHtml(webview, { page: true })],
   ['relatedNotesDebug', () => require('../../out/ui/webview/relatedNotesDebugHtml.js')
       .getRelatedNotesDebugHtml(webview, {
         filePath: 'notes/a.md', sourceLine: 1, title: 'Entry', tags: [],

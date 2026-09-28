@@ -212,4 +212,71 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('draws a repeating task on each later date its rule lands on, quieter than a due date', () => {
+    const repeating = buildWorkspaceIndex(new Map([
+      ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],
+    ]));
+    const now = new Date(2026, 8, 13, 10);
+    const shown = createCalendar(repeating, '2026-09', now, 0, { showRepeats: true, dayPanel: true, selectedDate: '2026-09-22' });
+    const day = (date: string) => shown.weeks.flatMap((week) => week.days).find((entry) => entry.date === date);
+    assert.strictEqual(day('2026-09-15')?.dueCount, 1, 'its own date is due');
+    assert.strictEqual(day('2026-09-15')?.repeatCount, undefined, 'and not a repeat as well');
+    assert.deepStrictEqual(
+      ['2026-09-22', '2026-09-29', '2026-10-06'].map((date) => day(date)?.repeatCount),
+      [1, 1, undefined],
+      'every week after it, into the next month as far as the grid draws',
+    );
+    assert.deepStrictEqual(day('2026-09-22')?.repeatTitles, ['Water the plants']);
+    assert.strictEqual(day('2026-10-14'), undefined);
+    assert.strictEqual(day('2026-10-03')?.repeatCount, undefined, 'a when done rule is not projected');
+    assert.deepStrictEqual(shown.selected?.repeats?.map((item) => item.task.title), ['Water the plants']);
+    assert.deepStrictEqual(shown.selected?.due, [], 'a repeat is not due');
+
+    const off = createCalendar(repeating, '2026-09', now, 0, { dayPanel: true, selectedDate: '2026-09-22' });
+    assert.strictEqual(off.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-09-22')?.repeatCount, undefined);
+    assert.strictEqual(off.selected?.repeats, undefined, 'the setting off draws none');
+
+    const page = openWebviewPage(getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never), shown);
+    try {
+      const cell = page.find('.calendar-grid .day[data-date="2026-09-22"]');
+      assert.strictEqual(cell.querySelector('.repeat-count')?.textContent, '↻');
+      assert.match(cell.getAttribute('aria-label') ?? '', /1 repeat$/);
+      assert.match(cell.getAttribute('data-tip') ?? '', /↻ Water the plants/);
+      const row = page.find('.day-panel [aria-label="Repeats"] .task-row');
+      assert.strictEqual(row.querySelector('input[type="checkbox"]'), null, 'a later date is not completed from here');
+      (row.querySelector('.task-title') as HTMLElement).click();
+      assert.deepStrictEqual(page.lastPosted('openTask'), { type: 'openTask', taskId: row.getAttribute('data-task-id') });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('leaves the weekends out when they are hidden, in the sidebar and on the page', () => {
+    const now = new Date(2026, 8, 13, 10);
+    const hidden = createCalendar(index, '2026-09', now, 0, { showWeekends: false });
+    assert.strictEqual(hidden.hideWeekends, true);
+    assert.strictEqual(createCalendar(index, '2026-09', now).hideWeekends, undefined, 'drawn unless turned off');
+    const sidebar = openWebviewPage(getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never), hidden);
+    try {
+      assert.deepStrictEqual(sidebar.findAll('.weekday').map((cell) => cell.textContent).filter(Boolean), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+      assert.ok(sidebar.find('.calendar-grid').classList.contains('no-weekends'));
+      assert.strictEqual(sidebar.findAll('.calendar-grid .day[data-date="2026-09-12"]').length, 0, 'no Saturday');
+      assert.strictEqual(sidebar.findAll('.calendar-grid .day[data-date="2026-09-13"]').length, 0, 'no Sunday');
+      assert.strictEqual(sidebar.findAll('.calendar-grid .day').length, 25, 'five weeks of five days');
+    } finally {
+      sidebar.dispose();
+    }
+    const page = openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never, { page: true }),
+      createCalendar(index, '2026-09', now, 0, { showWeekends: false, dayPanel: true, layout: 'page' }),
+    );
+    try {
+      assert.strictEqual(page.findAll('.day-cell[data-drop-date="2026-09-12"]').length, 0);
+      page.click('.view-options [data-action="set-show-weekends"][data-value="on"]');
+      assert.deepStrictEqual(page.lastPosted('setShowWeekends'), { type: 'setShowWeekends', show: true });
+    } finally {
+      page.dispose();
+    }
+  });
 });

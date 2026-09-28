@@ -1068,6 +1068,43 @@ export type CalendarMessage =
   | { type: 'moveTask'; taskId: string; field: 'due' | 'scheduled'; date: string }
   | { type: 'searchCreated'; date: string };
 
+/** The chosen day, as the panel under the month shows it. */
+export interface CalendarDayDetail {
+  date: string;
+  /** Such as "Friday, September 25", with the year when it is not this one. */
+  title: string;
+  /** Today, Yesterday, or Tomorrow, when the day is one of them. */
+  relative?: string;
+  /** The day's daily note, when it has one. */
+  notePath?: string;
+  /** Open tasks due that day, most important first. */
+  due: DashboardTask[];
+  /** Open tasks scheduled that day and not due on it. */
+  scheduled: DashboardTask[];
+  /** Tasks completed that day. */
+  done: DashboardTask[];
+  /** Repeating tasks whose rule lands on the day, projected: opened, never completed, from here. */
+  repeats?: DashboardTask[];
+  /**
+   * Where the row's button moves a task: tomorrow, or the day after a later
+   * day, never earlier.
+   */
+  move: { date: string; label: 'Tomorrow' | 'Next day' };
+  /** Notes created that day, oldest first, daily, weekly, and monthly aside. */
+  notes: { filePath: string; title: string; folder: string }[];
+  /** How many there are, listed or not. */
+  notesTotal: number;
+}
+
+/** What the calendar page asks besides what the sidebar Calendar does. */
+export type CalendarPageMessage =
+  | CalendarMessage
+  | { type: 'setShowRepeats'; show: boolean }
+  | { type: 'setShowWeekends'; show: boolean }
+  | { type: 'setZenMode'; enabled: boolean }
+  | { type: 'chooseTheme' }
+  | { type: 'openHelp' };
+
 /** A line in another note that links to, or names, the note being read. */
 export interface NoteLinkEntry {
   filePath: string;
@@ -1182,6 +1219,10 @@ export interface SidebarNotesSnapshot {
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
   refine?: SearchRefineState;
+  /** The calendar page's chosen day, while the page is in front. */
+  calendarDay?: CalendarDayDetail;
+  /** The widgets Home can add, while Home is in front. */
+  homeWidgets?: { value: string; label: string; description?: string }[];
   state:
     | 'ready'
     | 'loading'
@@ -1190,7 +1231,9 @@ export interface SidebarNotesSnapshot {
     | 'noTags'
     | 'noMatches'
     | 'graph'
-    | 'refine';
+    | 'refine'
+    | 'calendarDay'
+    | 'customizeHome';
 }
 
 /**
@@ -1476,6 +1519,12 @@ export interface SetDashboardWidgetsMessage {
 /** Puts Home's widgets back as they first were. */
 export interface ResetDashboardWidgetsMessage {
   type: 'resetDashboardWidgets';
+}
+
+/** What Home's + Add widget offers, for Related Notes to offer too. */
+export interface DashboardWidgetChoicesMessage {
+  type: 'widgetChoices';
+  choices: { value: string; label: string; description?: string }[];
 }
 
 /** Opens a search page on a search. */
@@ -1811,6 +1860,7 @@ export type DashboardMessage =
   | RecordRecentQueryMessage
   | SetDashboardWidgetsMessage
   | ResetDashboardWidgetsMessage
+  | DashboardWidgetChoicesMessage
   | OpenSearchMessage
   | OpenTaskBoardMessage
   | OpenDeckardViewMessage

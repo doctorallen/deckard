@@ -484,10 +484,11 @@ export function createNextOccurrence(
     return undefined;
   }
 
-  const reference =
-    parseIsoDate(metadata.due) ??
-    parseIsoDate(metadata.scheduled) ??
-    parseIsoDate(metadata.start);
+  const reference = recurrenceReference({
+    due: parseIsoDate(metadata.due),
+    scheduled: parseIsoDate(metadata.scheduled),
+    start: parseIsoDate(metadata.start),
+  });
   const nextReference = rule.next(
     rule.whenDone || reference === undefined ? startOfDay(today) : reference,
   );
@@ -507,6 +508,64 @@ export function createNextOccurrence(
   }
   next = replaceDates(next, 'created', () => formatIsoDate(today));
   return prefix + next.trimEnd();
+}
+
+/**
+ * The date a repeat rule advances: the due date, or else the scheduled or
+ * start date. Completing a task and drawing its later dates on the calendar
+ * both start from it, so the two never disagree about what comes next.
+ */
+export function recurrenceReference(dates: {
+  due?: number;
+  scheduled?: number;
+  start?: number;
+}): number | undefined {
+  return dates.due ?? dates.scheduled ?? dates.start;
+}
+
+/** How many dates a task's projection may draw, a daily task across a year. */
+export const PROJECTED_REPEATS = 370;
+/** How many steps it may take to reach them, an overdue daily task included. */
+const PROJECTION_STEPS = 20000;
+
+/**
+ * The dates a repeating task falls on after its current one, from `from` to
+ * `to`, as local midnights: where its rule will put it if it is kept on
+ * schedule. Nothing is written; a projected date is not a task.
+ *
+ * Only dates after today are drawn. A weekly task left overdue since the
+ * first of the month is drawn on its own date and again from today on, on
+ * the rule's own sequence, since the weeks between did not happen. A `when
+ * done` rule projects nothing: its next date depends on the day it is done,
+ * and any date drawn would be a guess. Nor does a rule Deckard cannot read.
+ */
+export function projectRepeats(
+  task: { recurrence?: string; dueAt?: number; scheduledAt?: number; startAt?: number },
+  from: number,
+  to: number,
+  now: number,
+): number[] {
+  const rule = task.recurrence ? parseRecurrence(task.recurrence) : undefined;
+  const reference = recurrenceReference({ due: task.dueAt, scheduled: task.scheduledAt, start: task.startAt });
+  if (!rule || rule.whenDone || reference === undefined) {
+    return [];
+  }
+  const today = startOfDay(now);
+  const first = Math.max(startOfDay(from), today + 1);
+  const dates: number[] = [];
+  let at = startOfDay(reference);
+  for (let step = 0; step < PROJECTION_STEPS && dates.length < PROJECTED_REPEATS; step += 1) {
+    const next = rule.next(at);
+    // A rule that does not move forward would never end.
+    if (!(next > at) || next > to) {
+      break;
+    }
+    at = next;
+    if (at >= first) {
+      dates.push(at);
+    }
+  }
+  return dates;
 }
 
 /** What completing a task writes in place of its line. */

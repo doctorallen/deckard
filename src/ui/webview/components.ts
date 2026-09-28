@@ -2983,7 +2983,9 @@ ${getUndoScript()}
     // the same two lines a note card and the sidebar show.
     const taskPath = renderHeadingPath(item.headingPath, item.fileName, '');
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
-      + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
+      // A row that cannot be completed from here, such as a repeat's later
+      // date, draws its own mark where the checkbox goes.
+      + (settings.leading !== undefined ? settings.leading : '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">')
       + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + (item.parked ? renderParkedLabel() : '') + dueDate + scheduled + priority + recurrence + steps + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
       + (settings.trailing || '')
       + '</div>';
@@ -3881,7 +3883,7 @@ export function getQueryEditorScript(): string {
         // The sidebar still says where Refine went; a search that matched
         // nothing has nothing to narrow, so it offers the way back instead.
         const note = facets.length
-          ? '<span class="query-facets-empty">In the Related Notes sidebar.</span>'
+          ? '<span class="query-facets-empty">In the Context sidebar.</span>'
           : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
         return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + note + '</div>' + count + '</section>';
       }

@@ -32,9 +32,11 @@ import { appendTagToLine } from '../commands/bulkEdit';
 import { findTagTarget } from '../../core/markdown/tagTarget';
 import { getEntityNamespaceAliases, getPersonMarker } from '../../core/markdown/parser';
 import { renameIndexedTag } from '../commands/renameTag';
+import { ActiveCalendar } from './activeCalendar';
+import { ActiveHome } from './activeHome';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
-import { parseSidebarMessage } from './messages';
+import { parseCalendarMessage, parseSidebarMessage } from './messages';
 import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
 import { applyWorkspaceWrite } from '../commands/workspaceWrites';
@@ -70,7 +72,17 @@ export class SidebarNotesView
     private readonly activeSearch: ActiveSearch,
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
     private readonly extensionVersion: string,
+    /** The calendar page, whose chosen day this shows while it is in front. */
+    private readonly activeCalendar?: ActiveCalendar,
+    /** Home, whose widgets this offers to add while it is in front. */
+    private readonly activeHome?: ActiveHome,
   ) {
+    if (activeHome) {
+      this.disposables.push(activeHome.onDidChange(() => this.refresh()));
+    }
+    if (activeCalendar) {
+      this.disposables.push(activeCalendar.onDidChange(() => this.refresh()));
+    }
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -156,6 +168,7 @@ export class SidebarNotesView
         this.log('Related Notes webview disposed.');
         this.view = undefined;
         this.activeSearch.setSidebarVisible(false);
+        this.activeCalendar?.setSidebarVisible(false);
         this.disposeViewListeners();
       }),
       webviewView.onDidChangeVisibility(() => {
@@ -163,6 +176,7 @@ export class SidebarNotesView
           `Related Notes visibility changed: ${webviewView.visible}.`,
         );
         this.activeSearch.setSidebarVisible(webviewView.visible);
+        this.activeCalendar?.setSidebarVisible(webviewView.visible);
         if (webviewView.visible) {
           this.refresh();
         }
@@ -174,6 +188,7 @@ export class SidebarNotesView
     ];
     this.renderHtml();
     this.activeSearch.setSidebarVisible(webviewView.visible);
+    this.activeCalendar?.setSidebarVisible(webviewView.visible);
     this.refresh();
     void whenPublished(this.indexer).then(() => {
       this.indexed = true;
@@ -189,6 +204,7 @@ export class SidebarNotesView
     this.disposeViewListeners();
     this.view = undefined;
     this.activeSearch.setSidebarVisible(false);
+    this.activeCalendar?.setSidebarVisible(false);
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -397,6 +413,29 @@ export class SidebarNotesView
         state: 'graph',
       };
     }
+    // The calendar page in front: its chosen day, which the page leaves
+    // to this pane while it is open.
+    const day = this.activeCalendar?.active?.getDay();
+    if (day) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        calendarDay: day,
+        state: 'calendarDay',
+      };
+    }
+    // Home in front: the widgets it can add, and Reset.
+    const home = this.activeHome?.active;
+    if (home) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        homeWidgets: home.getWidgetChoices(),
+        state: 'customizeHome',
+      };
+    }
     const refine = this.activeSearch.active?.getRefineState();
     if (refine) {
       return {
@@ -574,6 +613,25 @@ export class SidebarNotesView
    * Rejects malformed sidebar messages before invoking navigation or commands.
    */
   private async handleMessage(value: unknown): Promise<void> {
+    // Home's widgets are Home's to add, and to reset.
+    const request = typeof value === 'object' && value !== null ? (value as { type?: unknown; value?: unknown }) : undefined;
+    if (request?.type === 'homeAddWidget' && typeof request.value === 'string') {
+      this.activeHome?.active?.addWidget(request.value);
+      return;
+    }
+    if (request?.type === 'homeResetWidgets') {
+      await this.activeHome?.active?.resetWidgets();
+      return;
+    }
+    // What is done in the calendar's day is the calendar's to do.
+    if (typeof value === 'object' && value !== null && (value as { type?: unknown }).type === 'calendarDay') {
+      const dayMessage = parseCalendarMessage((value as { message?: unknown }).message);
+      const source = this.activeCalendar?.active;
+      if (dayMessage && source) {
+        await source.handleDayMessage(dayMessage);
+      }
+      return;
+    }
     const message = parseSidebarMessage(value);
     if (!message) {
       return;

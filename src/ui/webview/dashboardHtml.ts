@@ -149,6 +149,10 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); align-items: stretch; }
 @media (max-width: 720px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
 .home-widget { position: relative; min-width: 0; border: 2px solid var(--slate-border); background: var(--panel-bg); padding: 12px; }
+/* A widget just added: outlined in the accent for a moment, fading out. */
+.home-widget.is-new { outline: 2px solid var(--accent); outline-offset: 2px; animation: home-widget-new 2.4s ease-out forwards; }
+@keyframes home-widget-new { 0%, 60% { outline-color: var(--accent); } 100% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .home-widget.is-new { animation: none; } }
 .home-widget.is-full { grid-column: 1 / -1; }
 .home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
 .home-widget.is-editing:hover { border-color: var(--amber-bright); }
@@ -286,7 +290,6 @@ ${getQueryEditorScript()}
    */
   let homeHintDismissed = Boolean(restoredViewState && restoredViewState.homeHintDismissed);
   /** Whether Reset is waiting to be confirmed. It is never restored. */
-  let confirmingReset = false;
   /** The widget whose options are open, which stays open across a redraw. */
   let openWidgetOptions;
   /** A tasks widget's search being typed in its options, by widget. */
@@ -528,7 +531,37 @@ ${getQueryEditorScript()}
       if (separator < 0) return;
       widget.filterId = String(value).slice(separator + 1);
     }
-    sendWidgets(widgetConfig().concat([widget]));
+    // A new widget goes first, after Try next, where it is seen without
+    // scrolling; it is then shown, marked for a moment, and focused.
+    const widgets = widgetConfig();
+    widgets.splice(widgets.length && widgets[0].kind === 'tryNext' ? 1 : 0, 0, widget);
+    newWidget = { id: widget.id, until: Date.now() + 2400, shown: false };
+    sendWidgets(widgets);
+  }
+
+  /** The widget just added, until it has been shown and its mark has faded. */
+  let newWidget;
+
+  /** Scrolls to the widget just added, marks it, focuses it, and says so, once. */
+  function revealNewWidget() {
+    if (!newWidget) return;
+    const element = document.querySelector('.home-widget[data-widget-id="' + newWidget.id + '"]');
+    if (!element) return;
+    if (Date.now() < newWidget.until) element.classList.add('is-new');
+    if (newWidget.shown) return;
+    newWidget.shown = true;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (element.scrollIntoView) element.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    element.setAttribute('tabindex', '-1');
+    if (element.focus) element.focus({ preventScroll: true });
+    const title = element.querySelector('.home-widget-title');
+    announce('Added ' + (title ? title.textContent.trim() : 'a widget') + ' to the top of Home.');
+    const id = newWidget.id;
+    setTimeout(function () {
+      const marked = document.querySelector('.home-widget[data-widget-id="' + id + '"]');
+      if (marked) marked.classList.remove('is-new');
+      if (newWidget && newWidget.id === id) newWidget = undefined;
+    }, Math.max(0, newWidget.until - Date.now()));
   }
 
   // Tags, entities, and Home's widgets are ranked by dragging, or from their
@@ -942,6 +975,29 @@ ${getQueryEditorScript()}
   }
 
   /** The kinds that can still be added, and a saved search's widget for each. */
+  /** What + Add widget offers, which Related Notes offers too while Home is in front. */
+  function widgetChoices() {
+    const present = new Set(widgetConfig().map(function (widget) { return widget.kind; }));
+    return Object.keys(WIDGET_KINDS).filter(function (kind) {
+      return kind !== 'savedQuery' && (WIDGET_KINDS[kind].repeatable || !present.has(kind));
+    }).map(function (kind) {
+      return { value: kind, label: WIDGET_KINDS[kind].label, description: WIDGET_KINDS[kind].description };
+    }).concat(state.savedFilters.map(function (filter) {
+      return { value: 'savedQuery:' + filter.id, label: 'Saved search: ' + filter.name };
+    }));
+  }
+
+  let sentChoices = '';
+  /** Tells the host what can be added, when that has changed. */
+  function sendWidgetChoices() {
+    if (!state || !state.widgets) return;
+    const choices = widgetChoices();
+    const key = JSON.stringify(choices);
+    if (key === sentChoices) return;
+    sentChoices = key;
+    send({ type: 'widgetChoices', choices: choices });
+  }
+
   function renderAddWidget() {
     const present = new Set(widgetConfig().map(function (widget) { return widget.kind; }));
     const options = Object.keys(WIDGET_KINDS).filter(function (kind) {
@@ -959,9 +1015,9 @@ ${getQueryEditorScript()}
     if (!state.widgets) return renderLoading('Loading Home…');
     const widgets = state.widgets;
     const bar = editingHome
-      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
-        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="cancel-reset-widgets">Keep them</button><button type="button" class="danger" data-action="confirm-reset-widgets">Reset widgets</button></span>'
-        : '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
+      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget()
+        // The host asks first, in VS Code's own modal: a reset cannot be undone.
+        + '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>' + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
       // few times and skipped after. Customize stays in the gear throughout.
@@ -987,6 +1043,7 @@ ${getQueryEditorScript()}
   /** Re-render from a snapshot while preserving scroll and filter affordances. */
   function render() {
     if (!state) return;
+    sendWidgetChoices();
     const selectedTagColumns = tagColumns ?? state.tagColumns ?? 2;
     tagColumns = selectedTagColumns;
     state.tagColumns = selectedTagColumns;
@@ -1147,18 +1204,7 @@ ${getQueryEditorScript()}
         return;
       }
       if (action === 'reset-widgets') {
-        confirmingReset = true;
-        render();
-        return;
-      }
-      if (action === 'confirm-reset-widgets') {
-        confirmingReset = false;
         send({ type: 'resetDashboardWidgets' });
-        return;
-      }
-      if (action === 'cancel-reset-widgets') {
-        confirmingReset = false;
-        render();
         return;
       }
       if (action === 'remove-widget') {
@@ -1329,6 +1375,12 @@ ${getQueryEditorScript()}
   });
 
   window.addEventListener('message', function (event) {
+    // A widget chosen in Related Notes: Home goes into customizing, and adds it.
+    if (event.data && event.data.type === 'addWidget' && typeof event.data.value === 'string') {
+      if (!editingHome) setEditingHome(true);
+      addWidget(event.data.value);
+      return;
+    }
     if (event.data && event.data.type === 'quickAddResult') {
       if (event.data.added) {
         quickAddStatus = 'Added “' + event.data.text + '”.';
@@ -1357,6 +1409,7 @@ ${getQueryEditorScript()}
       state = incomingState;
       searchEditor.receive();
       renderKeepingFocus();
+      revealNewWidget();
     }
   });
 }());

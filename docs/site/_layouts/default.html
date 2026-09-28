@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if page.title and page.url != "/" %}{{ page.title }} · {% endif %}{{ site.title }}</title>
+<meta name="description" content="{{ site.description }}">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="{{ '/images/logo.png' | relative_url }}">
+<link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to the page</a>
+<header class="site-header">
+  <a class="brand" href="{{ '/' | relative_url }}" aria-label="Deckard guide, home">
+    <img src="{{ '/images/lockup.png' | relative_url }}" alt="Deckard" width="84" height="84">
+  </a>
+  <div class="brand-text">
+    <p class="eyebrow">Deckard / Field guide</p>
+    <p class="tagline">{{ site.description }}</p>
+  </div>
+  <nav class="site-links" aria-label="Deckard">
+    <a href="https://github.com/{{ site.repository }}/releases/latest">Download</a>
+    <a href="https://github.com/{{ site.repository }}/blob/master/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/{{ site.repository }}">GitHub</a>
+  </nav>
+</header>
+<div class="layout">
+  <nav class="toc" aria-label="Guide topics">
+    <a class="toc-home{% if page.url == '/' %} is-current{% endif %}" href="{{ '/' | relative_url }}"{% if page.url == '/' %} aria-current="page"{% endif %}>All topics</a>
+    {% for group in site.nav %}
+    <p class="toc-group">{{ group.title }}</p>
+    <ul>
+      {% for item in group.pages %}
+      <li><a href="{{ item.url | relative_url }}"{% if page.url == item.url %} class="is-current" aria-current="page"{% endif %}>{{ item.title }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </nav>
+  <main id="content" class="content">
+    {{ content }}
+  </main>
+</div>
+<footer class="site-footer">
+  <p>Deckard is released under the MIT License. This guide is <a href="https://github.com/{{ site.repository }}/tree/master/docs/guide">docs/guide</a> in the repository, and the Help page inside VS Code reads the same pages.</p>
+</footer>
+<div class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Image, full screen">
+  <button type="button" class="lightbox-close" aria-label="Close">×</button>
+  <img alt="">
+</div>
+<script>
+  // A screenshot opens full screen on a click; a click, Escape, or × closes it.
+  (function () {
+    var box = document.querySelector('.lightbox');
+    var full = box.querySelector('img');
+    var opener;
+    function close() {
+      box.hidden = true;
+      full.removeAttribute('src');
+      if (opener) opener.focus();
+    }
+    document.querySelectorAll('.content img').forEach(function (image) {
+      image.setAttribute('tabindex', '0');
+      image.setAttribute('role', 'button');
+      image.setAttribute('aria-label', 'Open full screen: ' + (image.alt || 'image'));
+      function open() {
+        opener = image;
+        full.src = image.currentSrc || image.src;
+        full.alt = image.alt;
+        box.hidden = false;
+        box.querySelector('.lightbox-close').focus();
+      }
+      image.addEventListener('click', open);
+      image.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+      });
+    });
+    box.addEventListener('click', close);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !box.hidden) close();
+    });
+  }());
+</script>
+</body>
+</html>

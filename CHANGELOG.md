@@ -2,6 +2,88 @@
 
 ## Unreleased
 
+## 1.23.0 - 2026-09-27
+
+### Highlights
+
+- `Deckard: Open Calendar` opens the calendar as a page: each day's tasks by name, a Week layout, and drag a task to move its date.
+- A repeating task is drawn on every date its rule lands on, marked ↻, not only its next one.
+- The chosen day moves to Related Notes while that sidebar is open, and either calendar can leave out the weekends.
+
+### Added
+
+- **Customize Home from the sidebar.** While Home is the active editor, the
+  Related Notes sidebar lists every widget **+ Add widget** offers; a click
+  puts Home into customizing and adds it. **Reset widgets…** is there too.
+
+- **The guide is a website**, in the Replicant theme, under Deckard's
+  lockup, with its screenshots opening full screen on a click.
+
+- **The calendar as a page.** `Deckard: Open Calendar`, or the calendar
+  button in the Related Notes and Calendar title bars, opens a month across
+  the editor, on the sidebar's month and day. Each day lists its tasks by
+  name, due, then scheduled, then repeats, with **+N more**, and the chosen
+  day's panel sits beside the month, or under it in a narrow editor.
+  **Week** shows the chosen day's week in full; `[` and `]` step, `t` is
+  today, `m` and `w` switch the layout, and `?` lists the keys.
+
+- **Drag a task to another day on the calendar page.** A due or scheduled
+  task dropped on a day takes that date, with Undo, and a move Deckard could
+  not write is said. A repeat stays where its rule puts it.
+
+- **Every date a task repeats on.** A repeating task is drawn on each later
+  date its rule lands on in the weeks shown, a muted **↻** in the sidebar
+  and a dashed chip on the page, named in the day's tooltip and listed under
+  **Repeats** in the day panel, where a row opens the task. The dates are
+  projected, never written, and a `when done` rule stays on its next date.
+  `deckard.calendar.showRepeats`, on by default, or **Turn Off Repeats** in
+  the Calendar's `…` menu, turns them off.
+
+- **The chosen day in Related Notes.** While the calendar page is in front
+  and the Related Notes sidebar is open, the chosen day's panel is drawn
+  there, its checkboxes and buttons acting on the calendar, and the month
+  takes the page's whole width.
+
+- **Weekends can be left out.** `deckard.calendar.showWeekends`, or **Hide
+  Weekends** in the Calendar's `…` menu and **Weekends** in the page's gear,
+  draws each week as its five working days in both calendars; the arrow keys
+  step over the weekend.
+
+### Changed
+
+- **The Related Notes view is now Context.** It shows more than related
+  notes: a search's Refine, a graph node's connections, the calendar page's
+  chosen day, and Home's widgets. Its Notes Graph and Help buttons sit in
+  its title bar with the others, instead of in its `…` menu.
+
+- **A widget added to Home goes at the top**, where it is seen, and Home
+  scrolls to it, outlines it for a moment, and moves focus to it.
+
+- **Reset widgets asks in a modal confirmation**, in place of the Keep them
+  and Reset buttons in the customizing bar.
+
+- **The Extensions view shows Deckard's lockup** as its icon.
+
+- **The guide says what to do, in fewer words**: about a third shorter,
+  with every command, setting, and syntax kept.
+
+- **The calendar icon opens the calendar.** In the Related Notes title bar
+  it opened today's note; that is now a new-file icon, and the calendar icon
+  opens the calendar page.
+
+- **The Extensions view says what Deckard does**, under its name.
+
+### Fixed
+
+- **A chosen day in the sidebar Calendar is readable in every theme.** It
+  was filled with the hover ground, cream in Cooper, and its counts went
+  unreadable on it; it is now outlined and underlined in the accent.
+
+- **A day on the calendar page keeps its date under the pointer.** The date
+  took the theme's button hover, which in Cooper is the ground's own color;
+  the whole day now lights faintly instead, and a click anywhere in it
+  chooses it.
+
 ## 1.22.0 - 2026-09-27
 
 ### Highlights

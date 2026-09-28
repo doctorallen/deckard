@@ -1,6 +1,7 @@
 name: Docs
 
-# Builds docs/guide into the GitHub Pages site at deckard.esperinnovations.com. The guide is plain Markdown
+# Builds docs/guide into the GitHub Pages site at deckard.esperinnovations.com,
+# in the Replicant theme that docs/site lays out. The guide is plain Markdown
 # that also reads on GitHub and ships in the VSIX for Help's Read more, so
 # the site is built from the same files: staged beside the screenshots, with
 # the links that leave the guide pointed at GitHub, then run through the
@@ -19,6 +20,8 @@ on:
     paths:
       - docs/guide/**
       - docs/images/**
+      - docs/site/**
+      - resources/lockup.png
       - .github/workflows/docs.yml
   workflow_dispatch:
 
@@ -39,11 +42,23 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Stage the guide and its screenshots
+      - name: Stage the guide, its screenshots, and the site's layout
         run: |
           mkdir -p site/images
           cp docs/guide/*.md site/
           cp docs/images/* site/images/
+          # The layout, the Replicant stylesheet, and the config, with the
+          # README's lockup in the header and the logo as the tab's icon.
+          cp -R docs/site/. site/
+          cp resources/lockup.png resources/logo.png site/images/
+          # The header's tagline is the extension's own description.
+          node -e '
+            const fs = require("fs");
+            const description = require("./package.json").description;
+            const config = fs.readFileSync("site/_config.yml", "utf8")
+              .replace(/^description: .*$/m, "description: " + JSON.stringify(description));
+            fs.writeFileSync("site/_config.yml", config);
+          '
           repo="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}"
           # Screenshots sit beside the pages here; files outside the guide are read on GitHub.
           sed -i \
@@ -51,12 +66,6 @@ jobs:
             -e "s#](\.\./\.\./\([^)]*\))#](${repo}/\1)#g" \
             -e "s#](\.\./\([^)]*\))#](${repo}/docs/\1)#g" \
             site/*.md
-          cat > site/_config.yml <<'CONFIG'
-          title: Deckard guide
-          url: https://deckard.esperinnovations.com
-          description: A local-first second brain for the Markdown notes in your VS Code workspace.
-          theme: jekyll-theme-primer
-          CONFIG
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

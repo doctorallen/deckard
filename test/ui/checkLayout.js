@@ -99,6 +99,23 @@ function createCalendarIndex() {
   return buildWorkspaceIndex(files);
 }
 
+/**
+ * The calendar page's month: the sidebar's, with a task due every week that
+ * repeats, a task due every day, and a crowded day for +N more.
+ */
+function createCalendarPageIndex() {
+  const base = createCalendarIndex();
+  const files = new Map(base.files);
+  const created = new Date(2026, 8, 1, 9).getTime();
+  files.set('notes/routines.md', parseMarkdown('notes/routines.md', [
+    '# Routines',
+    '- [ ] Water the plants on the balcony and the ones by the window 📅 2026-09-22 🔁 every week',
+    '- [ ] Stand-up 📅 2026-09-21 🔁 every weekday',
+    '- [ ] Pay rent 📅 2026-09-28 🔁 every month when done',
+  ].join('\n') + '\n', { createdAt: created, updatedAt: created }));
+  return buildWorkspaceIndex(files);
+}
+
 function createGlobalState() {
   const store = new Map();
   return {
@@ -163,6 +180,69 @@ function createSurfaces(zen) {
       scrollers: ['html'],
       clippers: ['.day', '.day-panel .task-row'],
       hovered: ['.day-panel .task-row'],
+    },
+    {
+      // The sidebar calendar as its five working days.
+      name: 'calendarNoWeekends',
+      page: 'calendar',
+      viewport: [240, 700],
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
+        dayPanel: true,
+        showWeekends: false,
+        selectedDate: '2026-09-24',
+      }),
+      scrollers: ['html'],
+      clippers: ['.day', '.day-panel .task-row'],
+      hovered: ['.day-panel .task-row'],
+    },
+    {
+      // Related Notes showing the calendar page's chosen day.
+      name: 'sidebarNotesCalendarDay',
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => ({
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: 'inline',
+        calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+          dayPanel: true,
+          showRepeats: true,
+          selectedDate: '2026-09-24',
+        }).selected,
+        state: 'calendarDay',
+      }),
+      scrollers: ['html'],
+      clippers: ['.day-panel .task-row'],
+      hovered: ['.day-panel .task-row'],
+    },
+    {
+      // The calendar page, wide: the month beside the chosen day, with
+      // chips cut short, +N more, and repeats every weekday.
+      page: 'calendarPage',
+      viewport: [1400, 900],
+      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+        dayPanel: true,
+        layout: 'page',
+        showRepeats: true,
+        selectedDate: '2026-09-24',
+      }),
+      scrollers: ['html'],
+      clippers: ['.cal-chip', '.day-panel .task-row'],
+      hovered: ['.cal-chip'],
+    },
+    {
+      // The page under 900px: the day panel moves under the month.
+      name: 'calendarPageNarrow',
+      page: 'calendarPage',
+      viewport: [800, 900],
+      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+        dayPanel: true,
+        layout: 'page',
+        showRepeats: true,
+      }),
+      scrollers: ['html'],
+      clippers: ['.cal-chip', '.day-panel .task-row'],
+      hovered: ['.cal-chip'],
     },
     {
       // As narrow as a reader is likely to drag the sidebar: the page's own

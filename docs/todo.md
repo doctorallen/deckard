@@ -11,6 +11,7 @@
   Next: move the shared layer into a typed module emitted as its own bundle, with `getComponentScript` reading it, which leaves the string-building pages working while they are migrated one at a time.
 
 # Features
+- Calendar: show every date a repeating task falls on in the weeks drawn, not only its next one, and open the calendar, with its day panel, as a full page of its own. Planned in `docs/implementation/18-calendar-page.md`.
 - Calendar: when a week or month is clicked and Deckard asks whether to create its note, offer **Create Review** as a second action beside creating the note, so the review for that week or month is written from the same prompt rather than by opening the note first and running the review afterwards.
 
 # Themes

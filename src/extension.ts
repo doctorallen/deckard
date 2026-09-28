@@ -73,6 +73,9 @@ import {
   LinkHealth,
 } from './ui/commands/linkHealth';
 import { CalendarView } from './ui/webview/calendar';
+import { CalendarPanel } from './ui/webview/calendarPage';
+import { ActiveCalendar } from './ui/webview/activeCalendar';
+import { ActiveHome } from './ui/webview/activeHome';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
@@ -414,6 +417,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer);
+  const activeCalendar = new ActiveCalendar();
+  const activeHome = new ActiveHome();
+  context.subscriptions.push(activeCalendar, activeHome);
+  const calendarPage = new CalendarPanel(indexer, context.extensionUri, activeCalendar);
+  context.subscriptions.push(calendarPage);
   const taskBoard = new TaskBoardPanel(
     indexer,
     preferences,
@@ -453,7 +461,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
     (tagKey) => searchPanels.show(tagKey),
     context.extension.packageJSON.version,
+    activeCalendar,
+    activeHome,
   );
+  dashboard.activeHome = activeHome;
   const stats = new StatsPanel(
     indexer,
     preferences,
@@ -820,6 +831,19 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.calendar.closeDayPanel', () =>
       writeSetting('calendar.dayPanel', false, settingTarget('calendar.dayPanel')),
     ),
+    // Weekends, and repeats, the same way.
+    vscode.commands.registerCommand('deckard.calendar.hideWeekends', () =>
+      writeSetting('calendar.showWeekends', false, settingTarget('calendar.showWeekends')),
+    ),
+    vscode.commands.registerCommand('deckard.calendar.includeWeekends', () =>
+      writeSetting('calendar.showWeekends', true, settingTarget('calendar.showWeekends')),
+    ),
+    vscode.commands.registerCommand('deckard.calendar.showRepeats', () =>
+      writeSetting('calendar.showRepeats', true, settingTarget('calendar.showRepeats')),
+    ),
+    vscode.commands.registerCommand('deckard.calendar.hideRepeats', () =>
+      writeSetting('calendar.showRepeats', false, settingTarget('calendar.showRepeats')),
+    ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(indexer.getSnapshot()),
     ),
@@ -879,6 +903,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       deserializeWebviewPanel: (webviewPanel) =>
         notesGraph.restore(webviewPanel),
     }),
+    vscode.window.registerWebviewPanelSerializer('deckard.calendarPage', {
+      deserializeWebviewPanel: (webviewPanel) => calendarPage.restore(webviewPanel),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.taskBoard', {
       deserializeWebviewPanel: (webviewPanel, state) =>
         taskBoard.restore(webviewPanel, state),
@@ -893,7 +920,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       dashboard.show(),
     ),
     vscode.commands.registerCommand('deckard.showStats', () => stats.show()),
-    vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
+    // A page may open Help at the section about it, such as the calendar's.
+    vscode.commands.registerCommand('deckard.showHelp', (anchor?: unknown) =>
+      help.show(typeof anchor === 'string' && /^[\w-]+$/.test(anchor) ? anchor : undefined),
+    ),
     vscode.commands.registerCommand('deckard.chooseTheme', () =>
       chooseTheme(context.extension.packageJSON.contributes),
     ),
@@ -921,6 +951,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     }),
     vscode.commands.registerCommand('deckard.noteActions', () =>
       noteActionsCommand({ index: indexer, preferences }),
+    ),
+    vscode.commands.registerCommand('deckard.showCalendar', () => calendarPage.show()),
+    // From the sidebar, the page opens on the month and the day it shows.
+    vscode.commands.registerCommand('deckard.calendar.openInEditor', () =>
+      calendarPage.show(calendar.controller.month, calendar.controller.selectedDate),
     ),
     vscode.commands.registerCommand('deckard.showTaskBoard', async () => {
       await taskBoard.show();

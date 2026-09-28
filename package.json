@@ -2,13 +2,13 @@
   "name": "deckard-notes",
   "displayName": "Deckard",
   "publisher": "esperinnovations",
-  "description": "Find your replicants, chase down loose ends, and keep your memories in order.",
-  "icon": "resources/logo.png",
+  "description": "Your notes, tasks, and people, connected and kept local. Find what you wrote, chase down loose ends, and retire what's done.",
+  "icon": "resources/lockup.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.22.0",
+  "version": "1.23.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -23,6 +23,7 @@
     "onWebviewPanel:deckard.help",
     "onWebviewPanel:deckard.notesGraph",
     "onWebviewPanel:deckard.taskBoard",
+    "onWebviewPanel:deckard.calendarPage",
     "onStartupFinished",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags"
@@ -215,6 +216,18 @@
         "icon": "$(project)"
       },
       {
+        "command": "deckard.showCalendar",
+        "title": "Open Calendar",
+        "category": "Deckard",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "deckard.calendar.openInEditor",
+        "title": "Open Calendar in Editor",
+        "category": "Deckard",
+        "icon": "$(calendar)"
+      },
+      {
         "command": "deckard.showStats",
         "title": "Open Stats",
         "category": "Deckard"
@@ -251,7 +264,7 @@
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
         "category": "Deckard",
-        "icon": "$(calendar)"
+        "icon": "$(new-file)"
       },
       {
         "command": "deckard.pinNote",
@@ -667,6 +680,26 @@
         "command": "deckard.calendar.closeDayPanel",
         "title": "Close Day Panel",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.hideWeekends",
+        "title": "Hide Weekends",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.includeWeekends",
+        "title": "Include Weekends",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.showRepeats",
+        "title": "Turn On Repeats",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.hideRepeats",
+        "title": "Turn Off Repeats",
+        "category": "Deckard"
       }
     ],
     "submenus": [
@@ -896,6 +929,26 @@
         {
           "command": "deckard.calendar.closeDayPanel",
           "when": "false"
+        },
+        {
+          "command": "deckard.calendar.showRepeats",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.hideWeekends",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.includeWeekends",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.openInEditor",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.hideRepeats",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -1103,19 +1156,29 @@
           "group": "navigation@2"
         },
         {
-          "command": "deckard.createDailyNote",
+          "command": "deckard.showCalendar",
           "when": "view == deckard.relatedNotes",
           "group": "navigation@3"
         },
         {
+          "command": "deckard.createDailyNote",
+          "when": "view == deckard.relatedNotes",
+          "group": "navigation@4"
+        },
+        {
           "command": "deckard.showNotesGraph",
           "when": "view == deckard.relatedNotes",
-          "group": "1_open@1"
+          "group": "navigation@5"
         },
         {
           "command": "deckard.showHelp",
           "when": "view == deckard.relatedNotes",
-          "group": "1_open@2"
+          "group": "navigation@6"
+        },
+        {
+          "command": "deckard.calendar.openInEditor",
+          "when": "view == deckard.calendar",
+          "group": "navigation@1"
         },
         {
           "command": "deckard.calendar.openDayPanel",
@@ -1126,6 +1189,26 @@
           "command": "deckard.calendar.closeDayPanel",
           "when": "view == deckard.calendar && config.deckard.calendar.dayPanel",
           "group": "1_calendar@1"
+        },
+        {
+          "command": "deckard.calendar.hideWeekends",
+          "when": "view == deckard.calendar && config.deckard.calendar.showWeekends",
+          "group": "1_calendar@3"
+        },
+        {
+          "command": "deckard.calendar.includeWeekends",
+          "when": "view == deckard.calendar && !config.deckard.calendar.showWeekends",
+          "group": "1_calendar@3"
+        },
+        {
+          "command": "deckard.calendar.showRepeats",
+          "when": "view == deckard.calendar && !config.deckard.calendar.showRepeats",
+          "group": "1_calendar@2"
+        },
+        {
+          "command": "deckard.calendar.hideRepeats",
+          "when": "view == deckard.calendar && config.deckard.calendar.showRepeats",
+          "group": "1_calendar@2"
         }
       ],
       "view/item/context": [
@@ -1293,10 +1376,10 @@
       "deckard": [
         {
           "id": "deckard.relatedNotes",
-          "name": "Related Notes",
+          "name": "Context",
           "icon": "resources/views/related-notes.svg",
           "type": "webview",
-          "contextualTitle": "Deckard Related Notes"
+          "contextualTitle": "Deckard Context"
         },
         {
           "id": "deckard.outline",
@@ -1588,6 +1671,20 @@
             "default": false,
             "scope": "window",
             "markdownDescription": "Show the chosen day under the Calendar: its daily note, the tasks due or scheduled that day, and the notes created that day. A click then chooses a day; a double-click or Enter opens its note. When off, a click opens the day's note straight away.",
+            "order": 7
+          },
+          "deckard.calendar.showWeekends": {
+            "type": "boolean",
+            "default": true,
+            "scope": "window",
+            "markdownDescription": "Draw Saturday and Sunday in the Calendar and on the calendar page. Turned off, a week is its five working days; a task due on a weekend is still in the Tasks view and on the board.",
+            "order": 7
+          },
+          "deckard.calendar.showRepeats": {
+            "type": "boolean",
+            "default": true,
+            "scope": "window",
+            "markdownDescription": "Show every date a repeating task falls on in the weeks the Calendar draws, not only its next one, marked ↻. They are projected from the task's rule and never written. A `when done` rule is shown on its next date only, since the dates after it depend on when it is done.",
             "order": 7
           },
           "deckard.periodicNote.review": {
