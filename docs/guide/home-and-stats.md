@@ -53,7 +53,7 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 
 - Drag a widget, or right-click to move it first or last. Switch it between half and full width.
 - Open its gear for entry count, paging, its search or saved search, or days to look back.
-- Remove it with **×**, or add more from **+ Add widget**.
+- Remove it with **×**, or add more from **+ Add widget**. A new widget goes at the top, and is outlined for a moment.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.
 
 While Home is the active editor, the Related Notes sidebar lists every widget Home can add. Click one to start customizing and add it. **Reset widgets…** is there too.

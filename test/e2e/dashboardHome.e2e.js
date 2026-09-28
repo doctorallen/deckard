@@ -345,7 +345,8 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   assert.ok(offered.includes(`savedQuery:${savedId}`), 'each saved search is offered');
   view.change(add, `savedQuery:${savedId}`);
   await delay(20);
-  const added = ids()[ids().length - 1];
+  // A new widget goes first, after Try next, where it is seen.
+  const added = ids()[1];
   assert.match(added, /^savedQuery-/);
   assert.match(widget(added).querySelector('.home-widget-title').textContent, /Open work/, 'named after its saved search');
 

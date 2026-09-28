@@ -149,6 +149,10 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); align-items: stretch; }
 @media (max-width: 720px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
 .home-widget { position: relative; min-width: 0; border: 2px solid var(--slate-border); background: var(--panel-bg); padding: 12px; }
+/* A widget just added: outlined in the accent for a moment, fading out. */
+.home-widget.is-new { outline: 2px solid var(--accent); outline-offset: 2px; animation: home-widget-new 2.4s ease-out forwards; }
+@keyframes home-widget-new { 0%, 60% { outline-color: var(--accent); } 100% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .home-widget.is-new { animation: none; } }
 .home-widget.is-full { grid-column: 1 / -1; }
 .home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
 .home-widget.is-editing:hover { border-color: var(--amber-bright); }
@@ -527,7 +531,37 @@ ${getQueryEditorScript()}
       if (separator < 0) return;
       widget.filterId = String(value).slice(separator + 1);
     }
-    sendWidgets(widgetConfig().concat([widget]));
+    // A new widget goes first, after Try next, where it is seen without
+    // scrolling; it is then shown, marked for a moment, and focused.
+    const widgets = widgetConfig();
+    widgets.splice(widgets.length && widgets[0].kind === 'tryNext' ? 1 : 0, 0, widget);
+    newWidget = { id: widget.id, until: Date.now() + 2400, shown: false };
+    sendWidgets(widgets);
+  }
+
+  /** The widget just added, until it has been shown and its mark has faded. */
+  let newWidget;
+
+  /** Scrolls to the widget just added, marks it, focuses it, and says so, once. */
+  function revealNewWidget() {
+    if (!newWidget) return;
+    const element = document.querySelector('.home-widget[data-widget-id="' + newWidget.id + '"]');
+    if (!element) return;
+    if (Date.now() < newWidget.until) element.classList.add('is-new');
+    if (newWidget.shown) return;
+    newWidget.shown = true;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (element.scrollIntoView) element.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    element.setAttribute('tabindex', '-1');
+    if (element.focus) element.focus({ preventScroll: true });
+    const title = element.querySelector('.home-widget-title');
+    announce('Added ' + (title ? title.textContent.trim() : 'a widget') + ' to the top of Home.');
+    const id = newWidget.id;
+    setTimeout(function () {
+      const marked = document.querySelector('.home-widget[data-widget-id="' + id + '"]');
+      if (marked) marked.classList.remove('is-new');
+      if (newWidget && newWidget.id === id) newWidget = undefined;
+    }, Math.max(0, newWidget.until - Date.now()));
   }
 
   // Tags, entities, and Home's widgets are ranked by dragging, or from their
@@ -1375,6 +1409,7 @@ ${getQueryEditorScript()}
       state = incomingState;
       searchEditor.receive();
       renderKeepingFocus();
+      revealNewWidget();
     }
   });
 }());

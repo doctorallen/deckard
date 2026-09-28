@@ -351,7 +351,8 @@ suite('Dashboard behavior', () => {
     page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'addWidget', value: 'topTags' } }));
     assert.ok(page.find('.home-edit-bar'), 'Home is customizing');
     const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
-    assert.strictEqual(widgets[widgets.length - 1].kind, 'topTags');
+    const at = widgets[0].kind === 'tryNext' ? 1 : 0;
+    assert.strictEqual(widgets[at].kind, 'topTags', 'added first, after Try next, where it is seen');
   });
 
   test('turns paging on for a widget', () => {
