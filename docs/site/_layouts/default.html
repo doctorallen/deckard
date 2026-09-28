@@ -44,5 +44,42 @@
 <footer class="site-footer">
   <p>Deckard is released under the MIT License. This guide is <a href="https://github.com/{{ site.repository }}/tree/master/docs/guide">docs/guide</a> in the repository, and the Help page inside VS Code reads the same pages.</p>
 </footer>
+<div class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Image, full screen">
+  <button type="button" class="lightbox-close" aria-label="Close">×</button>
+  <img alt="">
+</div>
+<script>
+  // A screenshot opens full screen on a click; a click, Escape, or × closes it.
+  (function () {
+    var box = document.querySelector('.lightbox');
+    var full = box.querySelector('img');
+    var opener;
+    function close() {
+      box.hidden = true;
+      full.removeAttribute('src');
+      if (opener) opener.focus();
+    }
+    document.querySelectorAll('.content img').forEach(function (image) {
+      image.setAttribute('tabindex', '0');
+      image.setAttribute('role', 'button');
+      image.setAttribute('aria-label', 'Open full screen: ' + (image.alt || 'image'));
+      function open() {
+        opener = image;
+        full.src = image.currentSrc || image.src;
+        full.alt = image.alt;
+        box.hidden = false;
+        box.querySelector('.lightbox-close').focus();
+      }
+      image.addEventListener('click', open);
+      image.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+      });
+    });
+    box.addEventListener('click', close);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !box.hidden) close();
+    });
+  }());
+</script>
 </body>
 </html>
