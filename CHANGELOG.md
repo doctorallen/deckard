@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added
+
+- **Customize Home from the sidebar.** While Home is the active editor, the
+  Related Notes sidebar lists every widget **+ Add widget** offers; a click
+  puts Home into customizing and adds it. **Reset widgets…** is there too.
+
+- **The guide is a website**, in the Replicant theme, under Deckard's
+  lockup, with its screenshots opening full screen on a click.
+
+### Changed
+
+- **A widget added to Home goes at the top**, where it is seen, and Home
+  scrolls to it, outlines it for a moment, and moves focus to it.
+
+- **Reset widgets asks in a modal confirmation**, in place of the Keep them
+  and Reset buttons in the customizing bar.
+
+- **The Extensions view shows Deckard's lockup** as its icon.
+
+- **The guide says what to do, in fewer words**: about a third shorter,
+  with every command, setting, and syntax kept.
+
 ## 1.23.0 - 2026-09-27
 
 ### Highlights
