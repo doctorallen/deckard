@@ -336,13 +336,22 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(page.findAll('.undo-notice').length, 0);
   });
 
-  test('Reset widgets asks first, and commits with the heavier button after Keep them', () => {
+  test('Reset widgets asks the host, which confirms in a modal', () => {
     const { page } = open();
     page.click('[data-action="customize-home"]');
     page.click('[data-action="reset-widgets"]');
-    const buttons = page.findAll('.home-reset-confirm button');
-    assert.deepStrictEqual(buttons.map((button) => button.getAttribute('data-action')), ['cancel-reset-widgets', 'confirm-reset-widgets']);
-    assert.ok(buttons[1].classList.contains('danger'));
+    assert.deepStrictEqual(page.lastPosted('resetDashboardWidgets'), { type: 'resetDashboardWidgets' });
+    assert.strictEqual(page.findAll('.home-reset-confirm').length, 0, 'no inline confirmation');
+  });
+
+  test('tells the host what + Add widget offers, and adds one the host sends, customizing first', () => {
+    const { page } = open();
+    const choices = page.lastPosted('widgetChoices')?.choices as Array<{ value: string }>;
+    assert.ok(choices.some((choice) => choice.value === 'topTags'), 'the list the select offers');
+    page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'addWidget', value: 'topTags' } }));
+    assert.ok(page.find('.home-edit-bar'), 'Home is customizing');
+    const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
+    assert.strictEqual(widgets[widgets.length - 1].kind, 'topTags');
   });
 
   test('turns paging on for a widget', () => {

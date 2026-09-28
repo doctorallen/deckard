@@ -286,7 +286,6 @@ ${getQueryEditorScript()}
    */
   let homeHintDismissed = Boolean(restoredViewState && restoredViewState.homeHintDismissed);
   /** Whether Reset is waiting to be confirmed. It is never restored. */
-  let confirmingReset = false;
   /** The widget whose options are open, which stays open across a redraw. */
   let openWidgetOptions;
   /** A tasks widget's search being typed in its options, by widget. */
@@ -942,6 +941,29 @@ ${getQueryEditorScript()}
   }
 
   /** The kinds that can still be added, and a saved search's widget for each. */
+  /** What + Add widget offers, which Related Notes offers too while Home is in front. */
+  function widgetChoices() {
+    const present = new Set(widgetConfig().map(function (widget) { return widget.kind; }));
+    return Object.keys(WIDGET_KINDS).filter(function (kind) {
+      return kind !== 'savedQuery' && (WIDGET_KINDS[kind].repeatable || !present.has(kind));
+    }).map(function (kind) {
+      return { value: kind, label: WIDGET_KINDS[kind].label, description: WIDGET_KINDS[kind].description };
+    }).concat(state.savedFilters.map(function (filter) {
+      return { value: 'savedQuery:' + filter.id, label: 'Saved search: ' + filter.name };
+    }));
+  }
+
+  let sentChoices = '';
+  /** Tells the host what can be added, when that has changed. */
+  function sendWidgetChoices() {
+    if (!state || !state.widgets) return;
+    const choices = widgetChoices();
+    const key = JSON.stringify(choices);
+    if (key === sentChoices) return;
+    sentChoices = key;
+    send({ type: 'widgetChoices', choices: choices });
+  }
+
   function renderAddWidget() {
     const present = new Set(widgetConfig().map(function (widget) { return widget.kind; }));
     const options = Object.keys(WIDGET_KINDS).filter(function (kind) {
@@ -959,9 +981,9 @@ ${getQueryEditorScript()}
     if (!state.widgets) return renderLoading('Loading Home…');
     const widgets = state.widgets;
     const bar = editingHome
-      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
-        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="cancel-reset-widgets">Keep them</button><button type="button" class="danger" data-action="confirm-reset-widgets">Reset widgets</button></span>'
-        : '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
+      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget()
+        // The host asks first, in VS Code's own modal: a reset cannot be undone.
+        + '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>' + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
       // few times and skipped after. Customize stays in the gear throughout.
@@ -987,6 +1009,7 @@ ${getQueryEditorScript()}
   /** Re-render from a snapshot while preserving scroll and filter affordances. */
   function render() {
     if (!state) return;
+    sendWidgetChoices();
     const selectedTagColumns = tagColumns ?? state.tagColumns ?? 2;
     tagColumns = selectedTagColumns;
     state.tagColumns = selectedTagColumns;
@@ -1147,18 +1170,7 @@ ${getQueryEditorScript()}
         return;
       }
       if (action === 'reset-widgets') {
-        confirmingReset = true;
-        render();
-        return;
-      }
-      if (action === 'confirm-reset-widgets') {
-        confirmingReset = false;
         send({ type: 'resetDashboardWidgets' });
-        return;
-      }
-      if (action === 'cancel-reset-widgets') {
-        confirmingReset = false;
-        render();
         return;
       }
       if (action === 'remove-widget') {
@@ -1329,6 +1341,12 @@ ${getQueryEditorScript()}
   });
 
   window.addEventListener('message', function (event) {
+    // A widget chosen in Related Notes: Home goes into customizing, and adds it.
+    if (event.data && event.data.type === 'addWidget' && typeof event.data.value === 'string') {
+      if (!editingHome) setEditingHome(true);
+      addWidget(event.data.value);
+      return;
+    }
     if (event.data && event.data.type === 'quickAddResult') {
       if (event.data.added) {
         quickAddStatus = 'Added “' + event.data.text + '”.';

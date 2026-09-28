@@ -33,6 +33,7 @@ import { findTagTarget } from '../../core/markdown/tagTarget';
 import { getEntityNamespaceAliases, getPersonMarker } from '../../core/markdown/parser';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveCalendar } from './activeCalendar';
+import { ActiveHome } from './activeHome';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseCalendarMessage, parseSidebarMessage } from './messages';
@@ -73,7 +74,12 @@ export class SidebarNotesView
     private readonly extensionVersion: string,
     /** The calendar page, whose chosen day this shows while it is in front. */
     private readonly activeCalendar?: ActiveCalendar,
+    /** Home, whose widgets this offers to add while it is in front. */
+    private readonly activeHome?: ActiveHome,
   ) {
+    if (activeHome) {
+      this.disposables.push(activeHome.onDidChange(() => this.refresh()));
+    }
     if (activeCalendar) {
       this.disposables.push(activeCalendar.onDidChange(() => this.refresh()));
     }
@@ -419,6 +425,17 @@ export class SidebarNotesView
         state: 'calendarDay',
       };
     }
+    // Home in front: the widgets it can add, and Reset.
+    const home = this.activeHome?.active;
+    if (home) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        homeWidgets: home.getWidgetChoices(),
+        state: 'customizeHome',
+      };
+    }
     const refine = this.activeSearch.active?.getRefineState();
     if (refine) {
       return {
@@ -596,6 +613,16 @@ export class SidebarNotesView
    * Rejects malformed sidebar messages before invoking navigation or commands.
    */
   private async handleMessage(value: unknown): Promise<void> {
+    // Home's widgets are Home's to add, and to reset.
+    const request = typeof value === 'object' && value !== null ? (value as { type?: unknown; value?: unknown }) : undefined;
+    if (request?.type === 'homeAddWidget' && typeof request.value === 'string') {
+      this.activeHome?.active?.addWidget(request.value);
+      return;
+    }
+    if (request?.type === 'homeResetWidgets') {
+      await this.activeHome?.active?.resetWidgets();
+      return;
+    }
     // What is done in the calendar's day is the calendar's to do.
     if (typeof value === 'object' && value !== null && (value as { type?: unknown }).type === 'calendarDay') {
       const dayMessage = parseCalendarMessage((value as { message?: unknown }).message);

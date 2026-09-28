@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ActiveHome, HomeSource, HomeWidgetChoice } from './activeHome';
 
 import { listedParkedTags } from '../../core/workspace/parked';
 import { setPinned } from '../commands/pinNote';
@@ -63,7 +64,11 @@ export interface DashboardNavigation {
  * Owns the dashboard webview and translates validated UI messages into domain
  * actions while keeping filters local to the panel instance.
  */
-export class DashboardPanel implements vscode.Disposable {
+export class DashboardPanel implements HomeSource, vscode.Disposable {
+  /** Where Home says it is in front, so Related Notes can offer its widgets. */
+  public activeHome?: ActiveHome;
+  /** The widgets + Add widget offers, as the page last listed them. */
+  private widgetChoices: HomeWidgetChoice[] = [];
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
@@ -299,6 +304,7 @@ export class DashboardPanel implements vscode.Disposable {
       followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
+        this.activeHome?.release(this);
         this.disposePanelListeners();
       }),
       panel.webview.onDidReceiveMessage((message) => {
@@ -310,8 +316,43 @@ export class DashboardPanel implements vscode.Disposable {
         if (panel.visible && (this.isStale || this.dayHasTurned())) {
           this.refresh();
         }
+        if (panel.active) {
+          this.activeHome?.setActive(this);
+        } else {
+          this.activeHome?.release(this);
+        }
       }),
     ];
+    if (panel.active) {
+      this.activeHome?.setActive(this);
+    }
+  }
+
+  public getWidgetChoices(): HomeWidgetChoice[] {
+    return this.widgetChoices;
+  }
+
+  /** Adds a widget from the sidebar: Home goes into customizing first. */
+  public addWidget(value: string): void {
+    void this.panel?.webview.postMessage({ type: 'addWidget', value });
+  }
+
+  /**
+   * Puts back the widgets Home starts with, after a modal confirmation: it
+   * discards an arrangement, which cannot be taken back.
+   */
+  public async resetWidgets(): Promise<void> {
+    const choice = await vscode.window.showWarningMessage(
+      'Reset Home to its default widgets?',
+      {
+        modal: true,
+        detail: 'The widgets you added, removed, moved, and resized are replaced by the ones Home starts with.',
+      },
+      'Reset Widgets',
+    );
+    if (choice === 'Reset Widgets') {
+      await this.preferences.resetDashboardWidgets();
+    }
   }
 
   /**
@@ -650,7 +691,11 @@ export class DashboardPanel implements vscode.Disposable {
         );
         return;
       case 'resetDashboardWidgets':
-        await this.preferences.resetDashboardWidgets();
+        await this.resetWidgets();
+        return;
+      case 'widgetChoices':
+        this.widgetChoices = message.choices;
+        this.activeHome?.notifyChanged(this);
         return;
       case 'openSearch': {
         const query = message.query.trim();

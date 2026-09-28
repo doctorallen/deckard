@@ -1221,6 +1221,8 @@ export interface SidebarNotesSnapshot {
   refine?: SearchRefineState;
   /** The calendar page's chosen day, while the page is in front. */
   calendarDay?: CalendarDayDetail;
+  /** The widgets Home can add, while Home is in front. */
+  homeWidgets?: { value: string; label: string; description?: string }[];
   state:
     | 'ready'
     | 'loading'
@@ -1230,7 +1232,8 @@ export interface SidebarNotesSnapshot {
     | 'noMatches'
     | 'graph'
     | 'refine'
-    | 'calendarDay';
+    | 'calendarDay'
+    | 'customizeHome';
 }
 
 /**
@@ -1516,6 +1519,12 @@ export interface SetDashboardWidgetsMessage {
 /** Puts Home's widgets back as they first were. */
 export interface ResetDashboardWidgetsMessage {
   type: 'resetDashboardWidgets';
+}
+
+/** What Home's + Add widget offers, for Related Notes to offer too. */
+export interface DashboardWidgetChoicesMessage {
+  type: 'widgetChoices';
+  choices: { value: string; label: string; description?: string }[];
 }
 
 /** Opens a search page on a search. */
@@ -1851,6 +1860,7 @@ export type DashboardMessage =
   | RecordRecentQueryMessage
   | SetDashboardWidgetsMessage
   | ResetDashboardWidgetsMessage
+  | DashboardWidgetChoicesMessage
   | OpenSearchMessage
   | OpenTaskBoardMessage
   | OpenDeckardViewMessage

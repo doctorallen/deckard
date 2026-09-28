@@ -75,6 +75,7 @@ import {
 import { CalendarView } from './ui/webview/calendar';
 import { CalendarPanel } from './ui/webview/calendarPage';
 import { ActiveCalendar } from './ui/webview/activeCalendar';
+import { ActiveHome } from './ui/webview/activeHome';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
@@ -417,7 +418,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer);
   const activeCalendar = new ActiveCalendar();
-  context.subscriptions.push(activeCalendar);
+  const activeHome = new ActiveHome();
+  context.subscriptions.push(activeCalendar, activeHome);
   const calendarPage = new CalendarPanel(indexer, context.extensionUri, activeCalendar);
   context.subscriptions.push(calendarPage);
   const taskBoard = new TaskBoardPanel(
@@ -460,7 +462,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     (tagKey) => searchPanels.show(tagKey),
     context.extension.packageJSON.version,
     activeCalendar,
+    activeHome,
   );
+  dashboard.activeHome = activeHome;
   const stats = new StatsPanel(
     indexer,
     preferences,

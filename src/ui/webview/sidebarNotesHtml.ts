@@ -193,6 +193,11 @@ button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .source { margin-top: 4px; font-size: var(--text-xs); }
 .empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
 ${getCalendarDayCss()}
+/* Home's widgets to add, while Home is in front. */
+.home-widget-choices { display: grid; gap: var(--space-1); margin: var(--space-2) 0 var(--space-3); padding: 0; list-style: none; }
+.home-widget-choice { display: grid; gap: 2px; width: 100%; min-width: 0; padding: var(--space-2); text-align: left; }
+.home-widget-choice-label { font-weight: 650; }
+.home-widget-choice-detail { color: var(--muted); font-size: var(--text-xs); white-space: normal; text-transform: none; letter-spacing: normal; }
 ${getPageTailCss()}
 </style>
 </head>
@@ -541,11 +546,23 @@ ${getCalendarDayScript()}
     return tags + notes;
   }
 
+  /** Home's widgets to add, each one a click, and Reset. */
+  function renderCustomizeHome(widgets) {
+    const rows = widgets.map(function (widget) {
+      return '<li><button type="button" class="home-widget-choice" data-action="home-add-widget" data-value="' + escapeHtml(widget.value) + '"' + (widget.description ? ' data-tip="' + escapeHtml(widget.description) + '"' : '') + '><span class="home-widget-choice-label">+ ' + escapeHtml(widget.label) + '</span>' + (widget.description ? '<span class="home-widget-choice-detail">' + escapeHtml(widget.description) + '</span>' : '') + '</button></li>';
+    }).join('');
+    return '<span class="section-label">Add a widget</span>'
+      + (rows ? '<ul class="home-widget-choices">' + rows + '</ul>' : '<div class="empty">Every widget is on Home.</div>')
+      + '<button type="button" class="home-reset-widgets" data-action="home-reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>';
+  }
+
   function render() {
     if (!state) return;
     closeTagContextMenu();
     let content;
-    if (state.state === 'calendarDay') {
+    if (state.state === 'customizeHome') {
+      content = renderCustomizeHome(state.homeWidgets || []);
+    } else if (state.state === 'calendarDay') {
       content = renderCalendarDayPanel(state.calendarDay);
     } else if (state.state === 'refine') {
       content = renderRefine(state.refine);
@@ -590,6 +607,8 @@ ${getCalendarDayScript()}
       : '';
     const context = state.state === 'refine'
       ? ''
+      : state.state === 'customizeHome'
+      ? '<div class="active-file"><div class="active-label">Home</div><div class="active-name">Customize</div></div>'
       : state.state === 'calendarDay'
       ? '<div class="active-file"><div class="active-label">Calendar</div><div class="active-name">The chosen day</div></div>'
       : state.state === 'graph'
@@ -604,7 +623,7 @@ ${getCalendarDayScript()}
           + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '')
           + activeTags + '</details>'
         : '');
-    const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.state !== 'calendarDay' && state.relatedNotesSortMode
+    const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.state !== 'calendarDay' && state.state !== 'customizeHome' && state.relatedNotesSortMode
       ? '<div class="related-notes-controls"><span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
         + renderViewOptions([
           { label: 'Preview', html: renderViewOptionChoices('set-preview-lines', [[0, 'None', 'No preview'], [1, '1 line', 'One line'], [2, '2 lines', 'Two lines']], previewLines(), 'Preview lines') },
@@ -613,12 +632,12 @@ ${getCalendarDayScript()}
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
-      : state.state === 'refine' || state.state === 'calendarDay'
+      : state.state === 'refine' || state.state === 'calendarDay' || state.state === 'customizeHome'
       ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
     // The page's shortcuts are the view's own title-bar actions, as every
     // other sidebar view's are; the page starts with what it is about.
-    const links = state.state === 'graph' || state.state === 'refine' || state.state === 'calendarDay' ? '' : renderLinks(state.links);
+    const links = state.state === 'graph' || state.state === 'refine' || state.state === 'calendarDay' || state.state === 'customizeHome' ? '' : renderLinks(state.links);
     const app = document.getElementById('app');
     app.dataset.previewLines = String(previewLines());
     app.innerHTML = context + sectionLabel + content + links;
@@ -635,6 +654,14 @@ ${getCalendarDayScript()}
   installCalendarDayPanel(function (message) {
     vscode.postMessage({ type: 'calendarDay', message: message });
   }, function () { renderKeepingPlace(render); });
+  document.addEventListener('click', function (event) {
+    const add = event.target.closest('[data-action="home-add-widget"]');
+    if (add) {
+      vscode.postMessage({ type: 'homeAddWidget', value: add.dataset.value });
+      return;
+    }
+    if (event.target.closest('[data-action="home-reset-widgets"]')) vscode.postMessage({ type: 'homeResetWidgets' });
+  });
   document.addEventListener('toggle', function (event) {
     if (event.target.classList && event.target.classList.contains('active-file')) {
       contextOpen = event.target.open;

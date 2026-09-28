@@ -193,7 +193,14 @@ suite('Dashboard navigation', () => {
           { id: 'tasks', kind: 'tasks', width: 'half' },
         ],
       });
-      await controller.handleValidMessage({ type: 'resetDashboardWidgets' });
+      // The reset asks first, in a modal; this answers it.
+      const warn = vscode.window.showWarningMessage;
+      (vscode.window as { showWarningMessage: unknown }).showWarningMessage = async () => 'Reset Widgets';
+      try {
+        await controller.handleValidMessage({ type: 'resetDashboardWidgets' });
+      } finally {
+        (vscode.window as { showWarningMessage: unknown }).showWarningMessage = warn;
+      }
 
       assert.deepStrictEqual(navigation.opened, [
         'search #project/atlas',
