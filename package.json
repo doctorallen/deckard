@@ -1,6 +1,6 @@
 {
   "name": "deckard-notes",
-  "displayName": "Deckard",
+  "displayName": "Deckard Notes",
   "publisher": "esperinnovations",
   "description": "Your notes, tasks, and people, connected and kept local. Find what you wrote, chase down loose ends, and retire what's done.",
   "icon": "resources/lockup.png",
@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.23.0",
+  "version": "1.23.1",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
