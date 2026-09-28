@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.23.1 - 2026-09-27
+
 ### Changed
 
 - **The Extensions view names it Deckard Notes**, since another extension is
