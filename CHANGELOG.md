@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- **The Extensions view names it Deckard Notes**, since another extension is
+  already called Deckard. Commands, pages, and the sidebar still say Deckard.
+
 ## 1.23.0 - 2026-09-27
 
 ### Highlights
