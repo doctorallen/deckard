@@ -298,7 +298,7 @@ suite('Extension Test Suite', () => {
       extension.packageJSON.contributes?.views?.deckard?.some(
         (view: { id: string; name: string; type: string }) =>
           view.id === 'deckard.relatedNotes' &&
-          view.name === 'Related Notes' &&
+          view.name === 'Context' &&
           view.type === 'webview',
       ),
     );

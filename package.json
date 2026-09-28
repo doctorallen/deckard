@@ -1168,12 +1168,12 @@
         {
           "command": "deckard.showNotesGraph",
           "when": "view == deckard.relatedNotes",
-          "group": "1_open@1"
+          "group": "navigation@5"
         },
         {
           "command": "deckard.showHelp",
           "when": "view == deckard.relatedNotes",
-          "group": "1_open@2"
+          "group": "navigation@6"
         },
         {
           "command": "deckard.calendar.openInEditor",
@@ -1376,10 +1376,10 @@
       "deckard": [
         {
           "id": "deckard.relatedNotes",
-          "name": "Related Notes",
+          "name": "Context",
           "icon": "resources/views/related-notes.svg",
           "type": "webview",
-          "contextualTitle": "Deckard Related Notes"
+          "contextualTitle": "Deckard Context"
         },
         {
           "id": "deckard.outline",

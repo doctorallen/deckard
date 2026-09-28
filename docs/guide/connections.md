@@ -2,6 +2,8 @@
 
 ## Related Notes
 
+Related notes are listed in the **Context** view in the Deckard sidebar. The same view shows a search's Refine, a graph node's connections, the calendar page's chosen day, or Home's widgets while one of those is in front.
+
 Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests note entries that may concern the same work, each showing its first line with shared words marked.
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](../images/related-notes.png)
@@ -54,7 +56,7 @@ Each result has a three-step rail for a strong, moderate, or weak relation. Sele
 
 ### Refine a search from the sidebar
 
-While a [search page](search-pages.md#search-pages) or the Task board is active, Related Notes shows that search's [Refine](search.md#refine) options instead. The page keeps its search, terms, and counts; remove terms in its search box. Related tags are listed by how many results carry them, each with a three-step rail; hover for **In 6 of 13 results.** and how often the tags were written together or shared a heading.
+While a [search page](search-pages.md#search-pages) or the Task board is active, the Context sidebar shows that search's [Refine](search.md#refine) options instead. The page keeps its search, terms, and counts; remove terms in its search box. Related tags are listed by how many results carry them, each with a three-step rail; hover for **In 6 of 13 results.** and how often the tags were written together or shared a heading.
 
 - Select a value to add it to the search.
 - <kbd>Alt</kbd>-select it to leave those results out.
@@ -65,7 +67,7 @@ The page shows one Refine line while the sidebar holds the options, and its full
 
 ## Notes Graph
 
-Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in Related Notes. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.
+Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in the Context view. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.
 
 ![Deckard Notes Graph showing clustered note, task, and tag connections.](../images/notes-graph.png)
 

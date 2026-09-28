@@ -32,7 +32,7 @@ In a code repository, Deckard's editor features apply only to notes: a README ou
 
 ## Help
 
-Run `Deckard: Open Help`, or select the question-mark button in the Related Notes toolbar. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
+Run `Deckard: Open Help`, or select the question-mark button in the Context view's title bar. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
 
 ![Deckard Help page with quick-start instructions and feature navigation.](../images/help.png)
 

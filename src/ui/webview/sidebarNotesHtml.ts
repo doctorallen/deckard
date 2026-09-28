@@ -48,7 +48,7 @@ export function getSidebarNotesHtml(
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
-<title>Deckard Related Notes</title>
+<title>Deckard Context</title>
 <style nonce="${nonce}">${getBaseCss()}
 .relevance-score, .version { font-family: var(--font-mono); }
 /* What links to the note, under its related notes. */

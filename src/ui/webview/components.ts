@@ -3883,7 +3883,7 @@ export function getQueryEditorScript(): string {
         // The sidebar still says where Refine went; a search that matched
         // nothing has nothing to narrow, so it offers the way back instead.
         const note = facets.length
-          ? '<span class="query-facets-empty">In the Related Notes sidebar.</span>'
+          ? '<span class="query-facets-empty">In the Context sidebar.</span>'
           : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
         return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + note + '</div>' + count + '</section>';
       }

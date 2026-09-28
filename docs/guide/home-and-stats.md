@@ -56,7 +56,7 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 - Remove it with **×**, or add more from **+ Add widget**. A new widget goes at the top, and is outlined for a moment.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.
 
-While Home is the active editor, the Related Notes sidebar lists every widget Home can add. Click one to start customizing and add it. **Reset widgets…** is there too.
+While Home is the active editor, the Context sidebar lists every widget Home can add. Click one to start customizing and add it. **Reset widgets…** is there too.
 
 The arrangement is kept in VS Code's preferences, not your notes.
 

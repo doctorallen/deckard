@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- **The Related Notes view is now Context.** It shows more than related
+  notes: a search's Refine, a graph node's connections, the calendar page's
+  chosen day, and Home's widgets. Its Notes Graph and Help buttons sit in
+  its title bar with the others, instead of in its `…` menu.
+
 ## 1.23.0 - 2026-09-27
 
 ### Highlights

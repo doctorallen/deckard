@@ -2,7 +2,7 @@
 
 ## Daily notes
 
-Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the shortcut in Related Notes. Deckard creates or opens a note named with the local date, such as `2026-08-30.md`.
+Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the button in the Context view. Deckard creates or opens a note named with the local date, such as `2026-08-30.md`.
 
 - `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the current one. From another note they start from today.
 - `Deckard: Open Daily Note for Date…` lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`; a missing note is created from the template. [Find](search.md#find) does the same when you type only a day.
@@ -67,7 +67,7 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 
 **Weekends.** Turn off `deckard.calendar.showWeekends`, or choose **Hide Weekends** from the `…` menu, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
 
-**The calendar page.** `Deckard: Open Calendar`, or the calendar button in the Related Notes or Calendar view title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Related Notes sidebar while that is open.
+**The calendar page.** `Deckard: Open Calendar`, or the calendar button in the Context or Calendar view title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
 
 - **Month** and **Week** switch layouts.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.
