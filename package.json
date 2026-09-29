@@ -14,7 +14,31 @@
     "vscode": "^1.134.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization",
+    "AI"
+  ],
+  "keywords": [
+    "markdown",
+    "notes",
+    "note-taking",
+    "knowledge base",
+    "pkm",
+    "second brain",
+    "zettelkasten",
+    "wiki links",
+    "wikilinks",
+    "backlinks",
+    "tags",
+    "tasks",
+    "todo",
+    "kanban",
+    "daily notes",
+    "journal",
+    "graph",
+    "obsidian",
+    "local-first",
+    "mcp"
   ],
   "activationEvents": [
     "onWebviewPanel:deckard.dashboard",
