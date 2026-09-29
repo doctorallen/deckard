@@ -6,7 +6,7 @@
 
 **A local-first second brain for the Markdown notes already in your VS Code workspace.** Write `#tags`, `@people`, `[[links]]`, and `- [ ] tasks` the way you always have; Deckard connects them into one index and gives you a Dashboard, a Task board, search pages, a notes graph, and a sidebar of related notes — without changing how your notes are written or sending them anywhere.
 
-📖 **[Read the guide](https://deckard.esperinnovations.com)** · 🚀 [Getting started](https://deckard.esperinnovations.com/getting-started.html) · 📝 [Changelog](CHANGELOG.md)
+**[Read the guide](https://deckard.esperinnovations.com)** · [Getting started](https://deckard.esperinnovations.com/getting-started.html) · [Changelog](CHANGELOG.md)
 
 <p align="center">
 	<img src="docs/images/dashboard.png" alt="Deckard's Dashboard: overdue, due today, and open tasks, and a Home of widgets." width="820">
@@ -18,6 +18,8 @@
 - **Everything is connected.** A tag, a person, or a project gathers every note section and task that mentions it, wherever it was written.
 - **Tasks where you wrote them.** Checklist items become a Tasks view, a Kanban board, and a status bar count; completing one ticks the box in its note.
 - **Fast on big workspaces.** The first scan says what it read, later starts check only what changed, and editing never waits on indexing.
+- **Designed to be used, not just to work.** Deckard's pages are laid out to be read at a glance and to feel at home in VS Code: the default look takes its colors and fonts from your VS Code theme, a Task board card moves by drag, menu, or key, dates can be typed in plain words, and a Zen mode turns the chrome down when you want to write.
+- **Accessible by default.** Every text pair in every theme meets WCAG AA contrast, and every theme gives way to a high contrast editor theme. Every right-click menu opens from the keyboard, the Task board and Notes Graph work from it too, and focus stays put through a redraw. A screen reader hears what changed, and pages hold still when your system asks for reduced motion.
 
 ## Features
 
@@ -89,3 +91,7 @@ Deckard reads the Markdown in your workspace and keeps its index on your machine
 ## License
 
 Deckard is released under the [MIT License](LICENSE).
+
+## Esper Themes
+
+Deckard is made by Esper Innovations. For film-inspired, high-contrast VS Code color themes, including Cooper, Replicant, LCARS, and an accessibility-aware generated theme, try [Esper Themes](https://marketplace.visualstudio.com/items?itemName=esperinnovations.esper-themes).
