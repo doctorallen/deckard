@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { listOverdueTasks } from './agendaTree';
 
+import { escapeMarkdown } from '../../core/text';
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
@@ -285,7 +286,7 @@ export class TaskStatusBar implements vscode.Disposable {
         '\n\n' +
           overdue
             .slice(0, 5)
-            .map((task) => `- $(warning) ${task.title.replace(/[\\`*_[\]<>]/g, '\\$&')}`)
+            .map((task) => `- $(warning) ${escapeMarkdown(task.title, 'inline')}`)
             .join('\n') +
           (overdue.length > 5 ? `\n- and ${overdue.length - 5} more` : ''),
       );

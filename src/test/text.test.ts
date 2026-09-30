@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { pluralize } from '../core/text';
+import { escapeMarkdown, escapeRegExp, pluralize } from '../core/text';
 
 suite('Text helpers', () => {
   suite('pluralize', () => {
@@ -32,6 +32,46 @@ suite('Text helpers', () => {
     test('treats a negative or fractional count as many', () => {
       assert.strictEqual(pluralize(-1, 'note'), '-1 notes');
       assert.strictEqual(pluralize(1.5, 'note'), '1.5 notes');
+    });
+  });
+
+  suite('escapeMarkdown', () => {
+    const every = String.raw`a\*_[]{}()#+-.!|<>~` + '`';
+
+    test('escapes Markdown punctuation but not the hyphen by default', () => {
+      const expected = String.raw`a\\\*\_\[\]\{\}\(\)\#\+-\.\!\|\<\>~` + '\\`';
+      assert.strictEqual(escapeMarkdown(every), expected);
+      assert.strictEqual(escapeMarkdown(every, 'punctuation'), expected);
+    });
+
+    test('escapes the hyphen too for the agenda tooltip', () => {
+      assert.strictEqual(
+        escapeMarkdown(every, 'punctuationAndHyphen'),
+        String.raw`a\\\*\_\[\]\{\}\(\)\#\+\-\.\!\|\<\>~` + '\\`',
+      );
+    });
+
+    test('escapes only code, emphasis, link, and HTML characters for the status bar', () => {
+      assert.strictEqual(escapeMarkdown(every, 'inline'), String.raw`a\\\*\_\[\]{}()#+-.!|\<\>~` + '\\`');
+    });
+
+    test('leaves plain text alone, and escapes every occurrence on repeated calls', () => {
+      assert.strictEqual(escapeMarkdown('Plain words, 2026'), 'Plain words, 2026');
+      assert.strictEqual(escapeMarkdown('*a* *b*'), String.raw`\*a\* \*b\*`);
+      assert.strictEqual(escapeMarkdown('*a* *b*'), String.raw`\*a\* \*b\*`);
+    });
+  });
+
+  suite('escapeRegExp', () => {
+    test('escapes every metacharacter', () => {
+      assert.strictEqual(escapeRegExp('.*+?^${}()|[]\\'), String.raw`\.\*\+\?\^\$\{\}\(\)\|\[\]\\`);
+    });
+
+    test('matches the text literally inside a larger pattern', () => {
+      const pattern = new RegExp(`^${escapeRegExp('#tag.(one)+')}$`);
+      assert.ok(pattern.test('#tag.(one)+'));
+      assert.ok(!pattern.test('#tagx(one)'));
+      assert.strictEqual(escapeRegExp('plain-text/ok'), 'plain-text/ok');
     });
   });
 });

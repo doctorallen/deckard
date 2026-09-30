@@ -6,6 +6,7 @@ import {
   getPersonMarker,
   parseMarkdown,
 } from '../../core/markdown/parser';
+import { escapeMarkdown } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile } from '../../core/types';
 import { createPinHoverUri } from './pinNote';
@@ -565,8 +566,4 @@ export function createEntryRelatedNotesHoverMessage(
     ],
   };
   return hover;
-}
-
-function escapeMarkdown(value: string): string {
-  return value.replace(/[\\`*_[\]{}()#+.!|<>]/g, '\\$&');
 }

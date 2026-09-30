@@ -32,3 +32,38 @@ export function pluralize(count: number, one: string, many = `${one}s`, options:
   const number = options.locale ? count.toLocaleString('en-US') : `${count}`;
   return `${number} ${count === 1 ? one : many}`;
 }
+
+/**
+ * The characters each Markdown surface escapes, by name. Each caller keeps
+ * the set it was written with, since changing a set changes what a hover or
+ * tooltip shows:
+ *
+ * - `punctuation`: the backslash and every punctuation character Markdown
+ *   gives a meaning, for the editor's tag and reference hovers.
+ * - `punctuationAndHyphen`: the same with `-`, for the agenda's task
+ *   tooltip.
+ * - `inline`: only code, emphasis, link, and HTML characters, for the task
+ *   status bar's list of overdue titles.
+ */
+export type MarkdownEscapeSet = 'punctuation' | 'punctuationAndHyphen' | 'inline';
+
+/** The pattern for each escape set; `replace` resets a global pattern, so they are shared. */
+const MARKDOWN_ESCAPES: Readonly<Record<MarkdownEscapeSet, RegExp>> = {
+  punctuation: /[\\`*_[\]{}()#+.!|<>]/g,
+  punctuationAndHyphen: /[\\`*_{}[\]()#+\-.!|<>]/g,
+  inline: /[\\`*_[\]<>]/g,
+};
+
+/**
+ * Backslash-escapes the characters of `set` in `value`, so a note's title or
+ * a tag's label shows as written inside a `MarkdownString` rather than as
+ * formatting.
+ */
+export function escapeMarkdown(value: string, set: MarkdownEscapeSet = 'punctuation'): string {
+  return value.replace(MARKDOWN_ESCAPES[set], '\\$&');
+}
+
+/** `value` with every regular-expression metacharacter escaped, to match it literally inside a larger pattern. */
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

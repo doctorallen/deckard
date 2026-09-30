@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { describeSteps } from '../../core/markdown/taskSteps';
+import { escapeMarkdown } from '../../core/text';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { stripTrailingTags } from '../state/queryBlockState';
 import { resolveSourceUri } from '../commands/navigation';
@@ -519,19 +520,15 @@ export function describeIndexing(
  */
 export function createTaskTooltip(entry: AgendaEntry): vscode.MarkdownString {
   const tooltip = new vscode.MarkdownString(undefined, true);
-  tooltip.appendMarkdown(`**${escapeMarkdown(entry.title)}**`);
+  tooltip.appendMarkdown(`**${escapeMarkdown(entry.title, 'punctuationAndHyphen')}**`);
   if (entry.details.length > 0) {
-    tooltip.appendMarkdown(`\n\n${entry.details.map(escapeMarkdown).join(' · ')}`);
+    tooltip.appendMarkdown(`\n\n${entry.details.map((detail) => escapeMarkdown(detail, 'punctuationAndHyphen')).join(' · ')}`);
   }
   tooltip.appendMarkdown(
-    `\n\n$(file) ${escapeMarkdown([entry.fileName, ...entry.context].join(' › '))}, line ${entry.task.lineNumber}`,
+    `\n\n$(file) ${escapeMarkdown([entry.fileName, ...entry.context].join(' › '), 'punctuationAndHyphen')}, line ${entry.task.lineNumber}`,
   );
   tooltip.appendMarkdown('\n\nRight-click to date, edit, or break it into steps.');
   return tooltip;
-}
-
-function escapeMarkdown(text: string): string {
-  return text.replace(/[\\`*_{}[\]()#+\-.!|<>]/g, '\\$&');
 }
 
 function createGroupItem(

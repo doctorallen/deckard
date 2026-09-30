@@ -6,7 +6,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
 } from '../../core/markdown/parser';
-import { pluralize } from '../../core/text';
+import { escapeMarkdown, pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 import {
@@ -466,8 +466,4 @@ async function linkToLine(
   return uri
     ? `[${escapeMarkdown(title)}](${uri.with({ fragment: `L${line}` }).toString()})`
     : escapeMarkdown(title);
-}
-
-function escapeMarkdown(value: string): string {
-  return value.replace(/[\\`*_[\]{}()#+.!|<>]/g, '\\$&');
 }
