@@ -13,7 +13,7 @@ import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
 import { createQueryContext } from '../domain/query/queryContext';
-import { createTaskWrites } from './taskWrites';
+import { createAgendaTreeServices } from './taskWrites';
 
 const NOTE = [
   '# Offsite',
@@ -129,7 +129,7 @@ suite('Steps in the views', () => {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      createTaskWrites(),
+      createAgendaTreeServices((taskId) => index.tasks.get(taskId)),
     );
     try {
       updates.fire(index);

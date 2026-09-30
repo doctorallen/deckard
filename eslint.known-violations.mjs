@@ -255,9 +255,6 @@ export default {
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
     ],
-    "src/ui/views/agendaTree.ts": [
-      "getChildren"
-    ],
     "src/ui/webview/calendar.ts": [
       "handle"
     ],
@@ -336,7 +333,6 @@ export default {
     "src/test/relatedNotesFixture.ts": 1,
     "src/test/webviewPage.ts": 2,
     "src/ui/commands/activeNoteContext.ts": 2,
-    "src/ui/commands/agendaActions.ts": 1,
     "src/ui/commands/assistantTools.ts": 3,
     "src/ui/commands/assistantWrites.ts": 5,
     "src/ui/commands/bulkEdit.ts": 1,
@@ -402,7 +398,7 @@ export default {
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
     "src/ui/state/wordSimilarity.ts": 4,
-    "src/ui/views/agendaTree.ts": 6,
+    "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
@@ -567,9 +563,6 @@ export default {
     "src/ui/state/searchFacets.ts": [
       "buildSearchFacets"
     ],
-    "src/ui/views/agendaTree.ts": [
-      "getChildren"
-    ],
     "src/ui/webview/calendarDay.ts": [
       "getCalendarDayScript"
     ],
@@ -681,7 +674,7 @@ export default {
     "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
-    "src/ui/views/agendaTree.ts": 6,
+    "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/messages.ts": 1,

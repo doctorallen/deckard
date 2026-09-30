@@ -2,32 +2,21 @@ import * as vscode from 'vscode';
 
 import { describeSteps } from '../../domain/markdown/taskSteps';
 import { escapeMarkdown } from '../../shared/text';
-import { QueryContext } from '../../domain/query/queryContext';
 import { Task, WorkspaceIndex } from '../../core/types';
+import { AgendaService, AgendaStatus } from '../../services/agendaService';
 import { stripTrailingTags } from '../state/queryBlockState';
 import { resolveSourceUri } from '../commands/navigation';
-import { readQueryContext } from '../commands/queryContext';
-import { writeSetting } from '../commands/settings';
-import {
-  readTaskMetadataFormat,
-  TaskWrites,
-  toggleTask,
-  updateTaskLine,
-} from '../commands/taskActions';
+import { TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
 import { mergeOrder } from '../state/dashboardState';
-import { describeNamespaceValues, isNamespaceName, listTaskNamespaces } from '../state/tagGrouping';
 import {
-  resolveTaskMove,
-  TaskBoardOptions,
-} from '../state/taskBoardState';
-import {
-  AGENDA_GROUPINGS,
   AgendaEntry,
   AgendaGroup,
   AgendaGroupBy,
-  createAgenda,
-  selectAgendaTasks,
 } from '../state/agendaState';
+
+// Which board column a group stands for is a task rule in domain/tasks; its
+// name stays here for the modules that import it from the view.
+export { groupColumnId } from '../../domain/tasks/agendaGroups';
 
 interface AgendaIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
@@ -42,6 +31,18 @@ interface AgendaPreferences {
   readonly onDidChange: vscode.Event<unknown>;
   readonly value: { taskOrder: string[] };
   setTaskOrder(taskOrder: string[]): Promise<void>;
+}
+
+/**
+ * What the Tasks view reads its groups from and writes through: the agenda
+ * service, which builds the view and decides what a drop or a checkbox
+ * writes; the task writes those go through; and the view's context keys,
+ * which each build publishes.
+ */
+export interface AgendaTreeServices {
+  agenda: AgendaService<AgendaGroup>;
+  writes: TaskWrites;
+  contextKeys: { publish(keys: { filtered: boolean; querySet: boolean }): void };
 }
 
 export type AgendaNode =
@@ -101,6 +102,9 @@ const GROUPING_ICONS: Readonly<
   tag: new vscode.ThemeIcon('tag'),
 };
 
+/** What a dragged task carries: the ids being moved, in the order drawn. */
+export const AGENDA_TASK_MIME = 'application/vnd.code.tree.deckard.agenda';
+
 /**
  * Lists open tasks that need attention soon in the Deckard sidebar, grouped
  * by when they are wanted, by priority, by status, or by who they are for.
@@ -114,9 +118,6 @@ const GROUPING_ICONS: Readonly<
  * groups are rebuilt whenever the index changes and when the window regains
  * focus, because what counts as today moves at midnight.
  */
-/** What a dragged task carries: the ids being moved, in the order drawn. */
-export const AGENDA_TASK_MIME = 'application/vnd.code.tree.deckard.agenda';
-
 export class AgendaTreeProvider
   implements
     vscode.TreeDataProvider<AgendaNode>,
@@ -136,10 +137,11 @@ export class AgendaTreeProvider
   /** Groups shown in full after "Show N more", for the rest of the session. */
   private readonly expanded = new Set<string>();
 
+  /** Draws the index `indexer` publishes, redrawing as it, the settings, and the window's focus change. */
   public constructor(
     private readonly indexer: AgendaIndexSource,
-    /** What completing, reopening, or moving a task writes through. */
-    private readonly writes: TaskWrites,
+    /** What the view is built from, and what completing, reopening, or moving a task writes through. */
+    private readonly services: AgendaTreeServices,
     private readonly preferences?: AgendaPreferences,
   ) {
     this.disposables.push(
@@ -201,101 +203,79 @@ export class AgendaTreeProvider
     this.refresh();
   }
 
+  /** The rows under a node: a task's steps, a group's tasks, or the groups themselves. */
   public async getChildren(node?: AgendaNode): Promise<AgendaNode[]> {
     if (node?.kind === 'task') {
-      // A task with steps opens to them, each read again from the index.
-      const steps = (node.entry.steps ?? []).map(
-        (step) => this.indexer.getTask(step.id) ?? step,
-      );
-      return Promise.all(
-        steps.map(async (task) => ({
-          kind: 'step' as const,
-          task,
-          parentId: node.entry.task.id,
-          uri: await resolveSourceUri(task.filePath),
-          groupId: node.groupId,
-        })),
-      );
+      return this.stepsOf(node);
     }
     if (node?.kind === 'more' || node?.kind === 'step') {
       return [];
     }
     if (node?.kind === 'group') {
-      const { group } = node;
-      const cut =
-        node.groupBy === 'due' &&
-        group.id === 'overdue' &&
-        !this.expanded.has(group.id) &&
-        group.entries.length > OVERDUE_ROWS;
-      const shown = cut ? group.entries.slice(0, OVERDUE_ROWS) : group.entries;
-      const tasks: AgendaNode[] = await Promise.all(
-        shown.map(async (entry) => ({
-          kind: 'task' as const,
-          entry,
-          uri: await resolveSourceUri(entry.task.filePath),
-          groupId: group.id,
-        })),
-      );
-      return cut
-        ? [...tasks, { kind: 'more', groupId: group.id, hidden: group.entries.length - OVERDUE_ROWS }]
-        : tasks;
+      return this.entriesOf(node);
     }
+    return this.groups();
+  }
 
+  /**
+   * A task's steps, each read again from the index, so a step completed in
+   * another view shows as done here.
+   */
+  private stepsOf(node: Extract<AgendaNode, { kind: 'task' }>): Promise<AgendaNode[]> {
+    const steps = (node.entry.steps ?? []).map(
+      (step) => this.indexer.getTask(step.id) ?? step,
+    );
+    return Promise.all(
+      steps.map(async (task) => ({
+        kind: 'step' as const,
+        task,
+        parentId: node.entry.task.id,
+        uri: await resolveSourceUri(task.filePath),
+        groupId: node.groupId,
+      })),
+    );
+  }
+
+  /** A group's tasks: Overdue cut short at {@link OVERDUE_ROWS} until shown whole. */
+  private async entriesOf(node: Extract<AgendaNode, { kind: 'group' }>): Promise<AgendaNode[]> {
+    const { group } = node;
+    const cut =
+      node.groupBy === 'due' &&
+      group.id === 'overdue' &&
+      !this.expanded.has(group.id) &&
+      group.entries.length > OVERDUE_ROWS;
+    const shown = cut ? group.entries.slice(0, OVERDUE_ROWS) : group.entries;
+    const tasks: AgendaNode[] = await Promise.all(
+      shown.map(async (entry) => ({
+        kind: 'task' as const,
+        entry,
+        uri: await resolveSourceUri(entry.task.filePath),
+        groupId: group.id,
+      })),
+    );
+    return cut
+      ? [...tasks, { kind: 'more', groupId: group.id, hidden: group.entries.length - OVERDUE_ROWS }]
+      : tasks;
+  }
+
+  /** The groups, as the agenda service builds them, with the badge and message they call for. */
+  private groups(): AgendaNode[] {
     if (!this.index) {
       this.setStatus(describeIndexing(this.indexer.scanProgress), 0);
       return [];
     }
-    const days = getUpcomingDays();
-    const groupBy = getAgendaGrouping();
-    const query = getAgendaQuery();
-    // One moment and one reading of the settings for the whole view, so the
-    // list and its badge agree about what today is.
-    const context = readQueryContext();
-    const selected = selectAgendaTasks(this.index, query, context);
-    const groups = createAgenda(this.index, context, {
-      tasks: selected.tasks,
-      upcomingDays: days,
-      groupBy,
-      statusNamespace: getStatusNamespace(),
-      groupNamespace: getAgendaGroupNamespace(),
-      taskOrder: this.preferences?.value.taskOrder ?? [],
-      doneToday: true,
-      upcomingByDay: true,
-    });
-    // The badge counts what is overdue or due today however the Agenda is
-    // grouped, since that is what it is a badge for.
-    const urgent = createAgenda(this.index, context, {
-      tasks: selected.tasks,
-      upcomingDays: days,
-    })
-      .filter((group) => group.id === 'overdue' || group.id === 'today')
-      .reduce((total, group) => total + group.entries.length, 0);
-    this.setStatus(
-      selected.error
-        ? `The Tasks view's search cannot be read: ${selected.error} It lists every open task until the search is fixed.`
-        : groups.every((group) => group.id === 'donetoday')
-          ? query
-            ? `No open task matches the Tasks view's search, "${query}".`
-            : 'No open tasks.'
-          : undefined,
-      urgent,
-    );
+    const view = this.services.agenda.buildView(this.index, this.preferences?.value.taskOrder ?? []);
+    this.setStatus(describeAgendaStatus(view.status), view.urgent);
     // The way back to every open task is offered while a search narrows it.
-    void vscode.commands.executeCommand(
-      'setContext',
-      'deckard.agendaFiltered',
-      Boolean(query) && !selected.error,
-    );
-    void vscode.commands.executeCommand('setContext', 'deckard.agendaQuerySet', Boolean(query));
-    // The view's own line says what it lists, when that is not everything.
+    this.services.contextKeys.publish({ filtered: view.filtered, querySet: view.querySet });
     if (this.view) {
-      this.view.description = query || undefined;
+      this.view.description = view.query || undefined;
     }
-    this.drawn = groups;
-    return groups.map((group) => ({
+    this.drawn = view.groups;
+    return view.groups.map((group) => ({
       kind: 'group' as const,
       group,
-      groupBy,
+      groupBy: view.groupBy,
     }));
   }
 
@@ -423,38 +403,25 @@ export class AgendaTreeProvider
     target: { group: AgendaGroup; groupBy: AgendaGroupBy },
     from: ReadonlyMap<string, string | undefined> = new Map(),
   ): Promise<void> {
-    const columnId = groupColumnId(target.group.id, target.groupBy);
-    if (!columnId) {
+    const { writes } = this.services;
+    const result = await this.services.agenda.moveToGroup(
+      tasks,
+      { groupId: target.group.id, groupBy: target.groupBy },
+      { from, index: () => this.index },
+      (step) =>
+        step.kind === 'complete'
+          ? toggleTask(writes, step.task, true)
+          : updateTaskLine(writes, step.task, (line) => step.edit(line), step.label),
+    );
+    if (result.kind === 'no-edit') {
       void vscode.window.showInformationMessage(
         `"${target.group.label}" is not one change to a task line, so Deckard wrote nothing. Drag the task on the Task Board instead, or edit the task.`,
       );
       return;
     }
-    const options = readBoardOptions(readQueryContext());
     // A refusal explains a rule, so it is said once, after the moves that
     // could be made, rather than once for every task it held back.
-    const refused: string[] = [];
-    let moved = 0;
-    for (const task of tasks) {
-      const source = from.get(task.id);
-      const move = resolveTaskMove(task, columnId, options, {
-        index: this.index,
-        from: source ? groupColumnId(source, target.groupBy) : undefined,
-      });
-      if (move.kind === 'refused') {
-        refused.push(move.reason);
-        continue;
-      }
-      moved += 1;
-      if (move.kind === 'unchanged') {
-        continue;
-      }
-      if (move.kind === 'complete') {
-        await toggleTask(this.writes, task, true);
-        continue;
-      }
-      await updateTaskLine(this.writes, task, (line) => move.edit(line), move.label);
-    }
+    const { moved, refused } = result;
     if (refused.length > 0) {
       void (moved === 0
         ? vscode.window.showInformationMessage(refused[0])
@@ -488,23 +455,16 @@ export class AgendaTreeProvider
   private async completeTasks(
     event: vscode.TreeCheckboxChangeEvent<AgendaNode>,
   ): Promise<void> {
-    let failed = false;
-    for (const [node, state] of event.items) {
-      if (node.kind !== 'task' && node.kind !== 'step') {
-        continue;
-      }
-      // An open task's box completes it; a box under Done today, or a done
-      // step's, reopens it.
-      const complete = state === vscode.TreeItemCheckboxState.Checked;
-      const drawn = node.kind === 'task' ? node.entry.task : node.task;
-      if (complete === drawn.completed) {
-        continue;
-      }
-      const task = this.indexer.getTask(drawn.id) ?? drawn;
-      if (!(await toggleTask(this.writes, task, complete))) {
-        failed = true;
-      }
-    }
+    // An open task's box completes it; a box under Done today, or a done
+    // step's, reopens it.
+    const changes = event.items.flatMap(([node, state]) =>
+      node.kind === 'task' || node.kind === 'step'
+        ? [{ task: node.kind === 'task' ? node.entry.task : node.task, checked: state === vscode.TreeItemCheckboxState.Checked }]
+        : [],
+    );
+    const { failed } = await this.services.agenda.setCompleted(changes, (task, complete) =>
+      toggleTask(this.services.writes, task, complete),
+    );
     // A task that could not be completed gets its empty box back.
     if (failed) {
       this.refresh();
@@ -519,6 +479,19 @@ export function describeIndexing(
   return progress && progress.total > 0
     ? `Deckard is indexing the workspace: ${progress.completed.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')} notes read…`
     : 'Deckard is indexing the workspace…';
+}
+
+/** What the view says when it lists nothing, or cannot read its search. */
+export function describeAgendaStatus(status: AgendaStatus): string | undefined {
+  if (!status) {
+    return undefined;
+  }
+  if (status.kind === 'unreadable') {
+    return `The Tasks view's search cannot be read: ${status.error} It lists every open task until the search is fixed.`;
+  }
+  return status.query
+    ? `No open task matches the Tasks view's search, "${status.query}".`
+    : 'No open tasks.';
 }
 
 /**
@@ -664,101 +637,6 @@ function createStepItem(node: {
   return item;
 }
 
-/** How the Agenda is grouped, from `deckard.agenda.groupBy`. */
-export function getAgendaGrouping(): AgendaGroupBy {
-  const value = vscode.workspace
-    .getConfiguration('deckard')
-    .get<string>('agenda.groupBy', 'due');
-  return AGENDA_GROUPINGS.some((grouping) => grouping.id === value)
-    ? (value as AgendaGroupBy)
-    : 'due';
-}
-
-/**
- * Asks how to group the Agenda, and keeps the answer where the setting is,
- * so the panel and the settings say the same thing.
- */
-export async function pickAgendaGrouping(
-  index?: WorkspaceIndex,
-): Promise<AgendaGroupBy | undefined> {
-  const current = getAgendaGrouping();
-  const namespace = getAgendaGroupNamespace();
-  const chosen = await vscode.window.showQuickPick(
-    AGENDA_GROUPINGS.map((grouping) => ({
-      label: grouping.label,
-      description:
-        grouping.id === current
-          ? grouping.id === 'tag'
-            ? `Current: #${namespace}`
-            : 'Current'
-          : undefined,
-      detail: grouping.detail,
-      id: grouping.id,
-    })),
-    { title: 'Group tasks by', placeHolder: 'Choose what the groups are' },
-  );
-  if (!chosen) {
-    return undefined;
-  }
-  if (chosen.id === 'tag') {
-    const picked = index ? await pickTagNamespace(index, current === 'tag' ? namespace : undefined) : undefined;
-    if (!picked) {
-      return undefined;
-    }
-    const target = vscode.ConfigurationTarget.Global;
-    if (!(await writeSetting('agenda.groupNamespace', picked, target))) {
-      return undefined;
-    }
-    return current === 'tag' || (await writeSetting('agenda.groupBy', 'tag', target))
-      ? 'tag'
-      : undefined;
-  }
-  if (chosen.id === current) {
-    return undefined;
-  }
-  const written = await writeSetting(
-    'agenda.groupBy',
-    chosen.id,
-    vscode.ConfigurationTarget.Global,
-  );
-  return written ? chosen.id : undefined;
-}
-
-/** The namespace the Tasks view groups by, from `deckard.agenda.groupNamespace`. */
-export function getAgendaGroupNamespace(): string {
-  const value = vscode.workspace
-    .getConfiguration('deckard')
-    .get<string>('agenda.groupNamespace', 'project');
-  return isNamespaceName(value) ? value.toLowerCase() : 'project';
-}
-
-/** Asks which namespace to group by, busiest first; nothing when none is in use. */
-export async function pickTagNamespace(
-  index: WorkspaceIndex,
-  current?: string,
-): Promise<string | undefined> {
-  const namespaces = listTaskNamespaces(index, [getStatusNamespace()]);
-  if (namespaces.length === 0) {
-    void vscode.window.showInformationMessage(
-      'No open task carries a namespaced tag, such as #context/phone, yet. Write one on a task, or on the heading above it, to group by it.',
-    );
-    return undefined;
-  }
-  const picked = await vscode.window.showQuickPick(
-    namespaces.map((namespace) => ({
-      label: `#${namespace.name}`,
-      description: `${namespace.openTasks} open ${namespace.openTasks === 1 ? 'task' : 'tasks'}${namespace.name === current ? ' · Current' : ''}`,
-      detail: describeNamespaceValues(namespace.values),
-      name: namespace.name,
-    })),
-    {
-      title: 'Group tasks by tag namespace',
-      placeHolder: 'Choose the namespace whose tags are the groups',
-    },
-  );
-  return picked?.name;
-}
-
 /** A dragged task and the group it was drawn in. */
 interface DraggedTask {
   taskId: string;
@@ -780,95 +658,4 @@ function readDraggedTasks(value: unknown): DraggedTask[] {
     }
     return [];
   });
-}
-
-function getStatusNamespace(): string {
-  const value = vscode.workspace
-    .getConfiguration('deckard')
-    .get<string>('board.statusNamespace', 'status');
-  return value.trim() || 'status';
-}
-
-/**
- * The Task board column a group means, when it means one.
- *
- * A person is not one of these: a task is handed over by rewriting the name
- * on its line, which the view does itself. Due groups other than Today cover
- * a range of days rather than one date, so they name no edit at all.
- */
-export function groupColumnId(
-  groupId: string,
-  groupBy: AgendaGroupBy,
-): string | undefined {
-  // Dropped on Done today, a task is done: the board's Done column.
-  if (groupId === 'donetoday') {
-    return 'done';
-  }
-  if (groupBy === 'priority') {
-    const priority = groupId.slice('priority:'.length);
-    return `priority:${priority === 'none' ? '' : priority}`;
-  }
-  if (groupBy === 'status') {
-    return `status:${groupId === 'none' ? '' : groupId}`;
-  }
-  if (groupBy === 'assignee') {
-    // The group's id is the person's tag key, which is what the field holds.
-    return `assignee:${groupId === 'none' ? '' : groupId}`;
-  }
-  if (groupBy === 'tag') {
-    // A tag group's id is already the board's column for it.
-    return groupId.startsWith('tag:') ? groupId : undefined;
-  }
-  if (groupBy === 'due') {
-    // A day of Upcoming is one date, so a task dropped on it is due then.
-    if (groupId.startsWith('upcoming:')) {
-      return `due:${groupId.slice('upcoming:'.length)}`;
-    }
-    return groupId === 'today' ? 'due:today' : undefined;
-  }
-  return undefined;
-}
-
-/**
- * The board settings a drop writes with, read the way the board reads them,
- * for a drop made in `queryContext`.
- */
-function readBoardOptions(queryContext: QueryContext): TaskBoardOptions {
-  const configuration = vscode.workspace.getConfiguration('deckard');
-  return {
-    queryContext,
-    statuses: configuration.get<string[]>('board.statuses', []) ?? [],
-    statusNamespace:
-      configuration.get<string>('board.statusNamespace', 'status').trim() ||
-      'status',
-    format: readTaskMetadataFormat(configuration),
-  };
-}
-
-/**
- * The open tasks the Tasks view lists as overdue on the context's today, as
- * its query selects them.
- */
-export function listOverdueTasks(index: WorkspaceIndex, context: QueryContext): Task[] {
-  const selected = selectAgendaTasks(index, getAgendaQuery(), context);
-  return (
-    createAgenda(index, context, {
-      tasks: selected.tasks,
-      upcomingDays: getUpcomingDays(),
-    })
-      .find((group) => group.id === 'overdue')
-      ?.entries.map((entry) => entry.task) ?? []
-  );
-}
-
-/** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */
-export function getAgendaQuery(): string {
-  return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
-}
-
-function getUpcomingDays(): number {
-  const value = vscode.workspace
-    .getConfiguration('deckard')
-    .get<number>('agenda.upcomingDays', 7);
-  return Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 1), 90) : 7;
 }

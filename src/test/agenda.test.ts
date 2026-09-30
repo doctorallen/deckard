@@ -13,7 +13,7 @@ import { parseQuery } from '../domain/query/queryParser';
 import { createTaskGlance } from '../ui/state/dashboardState';
 import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
 import { createQueryContext } from '../domain/query/queryContext';
-import { createTaskWrites } from './taskWrites';
+import { createAgendaTreeServices } from './taskWrites';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -133,7 +133,7 @@ suite('Agenda', () => {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      createTaskWrites(),
+      createAgendaTreeServices((taskId) => index.tasks.get(taskId)),
     );
     try {
       updates.fire(index);

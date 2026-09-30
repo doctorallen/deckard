@@ -14,6 +14,7 @@ import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
 import { readLineStatus } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
+import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -41,8 +42,7 @@ import { stripTrailingTags } from './queryBlockState';
 
 export type AgendaGroupId = string;
 
-/** What the Agenda's groups are: when a task is wanted, or what it carries. */
-export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
+export type { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 
 /** The ways the Agenda can be grouped, in the order the picker offers them. */
 export const AGENDA_GROUPINGS: readonly {
@@ -174,6 +174,27 @@ export function selectAgendaTasks(
   }
   const tasks = evaluateQuery(index, parsed.node, context).tasks;
   return { tasks: mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index) };
+}
+
+/**
+ * The open tasks the Tasks view lists as overdue on the context's today, as
+ * `settings.query` selects them and with Upcoming reaching
+ * `settings.upcomingDays`.
+ */
+export function selectOverdueTasks(
+  index: WorkspaceIndex,
+  context: QueryContext,
+  settings: { query: string; upcomingDays: number },
+): Task[] {
+  const selected = selectAgendaTasks(index, settings.query, context);
+  return (
+    createAgenda(index, context, {
+      tasks: selected.tasks,
+      upcomingDays: settings.upcomingDays,
+    })
+      .find((group) => group.id === 'overdue')
+      ?.entries.map((entry) => entry.task) ?? []
+  );
 }
 
 /**
