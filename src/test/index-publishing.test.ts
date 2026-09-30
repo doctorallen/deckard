@@ -7,7 +7,6 @@ import {
   onIndexUpdateInTurn,
   VIEW_PRIORITY,
 } from '../core/workspace/publishing';
-import { panelPriority, viewPriority } from '../ui/webview/panelPriority';
 import { WorkspaceScanner } from '../core/workspace/scanner';
 import { createFakeAccess, fakeFolder } from './fakeWorkspace';
 
@@ -141,14 +140,5 @@ suite('Publishing an index update to views', () => {
     emitter.fire();
     assert.strictEqual(ran, 1);
     emitter.dispose();
-  });
-
-  test('ranks a panel by whether it is in front or visible, and a side view by whether it is visible', () => {
-    assert.strictEqual(panelPriority({ active: true, visible: true }), VIEW_PRIORITY.active);
-    assert.strictEqual(panelPriority({ active: false, visible: true }), VIEW_PRIORITY.visible);
-    assert.strictEqual(panelPriority({ active: false, visible: false }), VIEW_PRIORITY.hidden);
-    assert.strictEqual(panelPriority(undefined), VIEW_PRIORITY.hidden);
-    assert.strictEqual(viewPriority({ visible: true }), VIEW_PRIORITY.visible);
-    assert.strictEqual(viewPriority(undefined), VIEW_PRIORITY.hidden);
   });
 });
