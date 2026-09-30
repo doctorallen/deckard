@@ -225,14 +225,9 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
         () => `${cached.length} notes`,
       );
       if (found && cached.length > 0 && !this.disposed) {
-        this.snapshot = measure(
-          'Build index',
-          () => {
-            this.state = IndexState.build(cached);
-            return this.withParking(this.state.snapshot());
-          },
-          (index) => `${index.files.size} notes, ${index.sections.size} entries`,
-        );
+        this.publishState('Build index', () => {
+          this.state = IndexState.build(cached);
+        }, describeBuild);
         this.parsedUnder = fingerprint;
         this.staleFromCache = true;
         this.cachedScan = store.readLastScan();
@@ -285,10 +280,27 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * typing in a large workspace.
    */
   public getSnapshot(): WorkspaceIndex {
-    this.snapshot ??= measure(
-      'Build index',
-      () => this.withParking(this.state.snapshot()),
-      (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+    return this.snapshot ?? this.publishState('Build index', () => undefined, describeBuild);
+  }
+
+  /**
+   * Derives the index from the state once `mutate` has changed it, marks
+   * parking on it, and keeps it as the snapshot every caller shares, timed
+   * under `label`. Every path that changes the state derives through here,
+   * so none can forget parking.
+   */
+  private publishState(
+    label: 'Build index' | 'Update index',
+    mutate: () => void,
+    describe: (index: WorkspaceIndex) => string,
+  ): WorkspaceIndex {
+    this.snapshot = measure(
+      label,
+      () => {
+        mutate();
+        return this.withParking(this.state.snapshot());
+      },
+      describe,
     );
     return this.snapshot;
   }
@@ -462,25 +474,13 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
           );
           changed = changes.length > 0;
           if (changed) {
-            this.snapshot = measure(
-              'Update index',
-              () => {
-                this.state.apply(changes);
-                return this.withParking(this.state.snapshot());
-              },
-              (index) => `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
-            );
+            this.publishState('Update index', () => this.state.apply(changes), describeUpdate(changes));
           }
         } else {
           const previous = this.state;
-          this.snapshot = measure(
-            'Build index',
-            () => {
-              this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
-              return this.withParking(this.state.snapshot());
-            },
-            (index) => `${index.files.size} notes, ${index.sections.size} entries`,
-          );
+          this.publishState('Build index', () => {
+            this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
+          }, describeBuild);
         }
         this.parsedUnder = fingerprint;
         this.unreadable.clear();
@@ -724,15 +724,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     }
     // Only the changed notes' parts of the index are worked out again; the
     // rest is reused from the index before.
-    this.snapshot = measure(
-      'Update index',
-      () => {
-        this.state.apply(changes);
-        return this.withParking(this.state.snapshot());
-      },
-      (index) =>
-        `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
-    );
+    this.publishState('Update index', () => this.state.apply(changes), describeUpdate(changes));
     this.emitUpdate();
   }
 
@@ -822,6 +814,17 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     }
     this.scheduleViewTurn();
   }
+}
+
+/** What the log says of a full build: "3 notes, 12 entries". */
+function describeBuild(index: WorkspaceIndex): string {
+  return `${index.files.size} notes, ${index.sections.size} entries`;
+}
+
+/** What the log says of an update: "1 note changed, 3 notes". */
+function describeUpdate(changes: readonly NoteChange[]): (index: WorkspaceIndex) => string {
+  return (index) =>
+    `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`;
 }
 
 /** A view's priority now, or last when it cannot say. */
