@@ -656,7 +656,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         await setTasksDue(taskWrites, tasks, chosen, rescheduleContext());
       }
     };
-  const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice));
+  // A named day is read on the day the menu item is chosen.
+  const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice, Date.now()));
   // How full a day is, of what the Tasks view lists, read beside the
   // reschedule choices and again after the write.
   const rescheduleContext = (): RescheduleContext => ({

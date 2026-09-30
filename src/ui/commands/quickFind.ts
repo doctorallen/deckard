@@ -377,7 +377,7 @@ export class QuickFind implements vscode.Disposable {
           await setTasksDue(
             this.writes,
             [task],
-            action === 'noDue' ? undefined : dueDateFor(action === 'dueToday' ? 'today' : 'tomorrow'),
+            action === 'noDue' ? undefined : dueDateFor(action === 'dueToday' ? 'today' : 'tomorrow', Date.now()),
           );
         }
         return back();
