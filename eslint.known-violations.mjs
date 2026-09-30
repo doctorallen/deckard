@@ -384,7 +384,7 @@ export default {
     "src/ui/state/assistantTools.ts": 3,
     "src/ui/state/calendarState.ts": 1,
     "src/ui/state/dashboardState.ts": 2,
-    "src/ui/state/editorLensState.ts": 4,
+    "src/ui/state/editorLensState.ts": 3,
     "src/ui/state/noteLinks.ts": 2,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/queryBlockState.ts": 3,
