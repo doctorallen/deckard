@@ -1,0 +1,307 @@
+[
+  {
+    "type": "dependency",
+    "from": "src/ui/commands/chooseTheme.ts",
+    "to": "src/ui/webview/themes.ts",
+    "unresolvedTo": "../webview/themes",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "commands-not-to-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/commands/editorReferences.ts",
+    "to": "src/ui/webview/sidebarNotes.ts",
+    "unresolvedTo": "../webview/sidebarNotes",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "commands-not-to-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/storage/preferences.ts",
+    "to": "src/ui/state/resultTable.ts",
+    "unresolvedTo": "../../ui/state/resultTable",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-ui"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/storage/preferences.ts",
+    "to": "vscode",
+    "unresolvedTo": "vscode",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-vscode"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/storage/preferenceSnapshots.ts",
+    "to": "vscode",
+    "unresolvedTo": "vscode",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-vscode"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/storage/searchStore.ts",
+    "to": "vscode",
+    "unresolvedTo": "vscode",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-vscode"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/workspace/indexer.ts",
+    "to": "vscode",
+    "unresolvedTo": "vscode",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-vscode"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/workspace/publishing.ts",
+    "to": "vscode",
+    "unresolvedTo": "vscode",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-vscode"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/workspace/scanner.ts",
+    "to": "vscode",
+    "unresolvedTo": "vscode",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-vscode"
+    }
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/state/agendaState.ts",
+    "to": "src/ui/state/dashboardState.ts",
+    "unresolvedTo": "./dashboardState",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/state/dashboardState.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/state/agendaState.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/state/agendaState.ts",
+    "to": "src/ui/state/queryBlockState.ts",
+    "unresolvedTo": "./queryBlockState",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/state/queryBlockState.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/state/dashboardState.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/state/agendaState.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/query/queryFormat.ts",
+    "to": "src/core/query/queryParser.ts",
+    "unresolvedTo": "./queryParser",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "query-format-not-to-parser"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/core/query/queryParser.ts",
+    "to": "src/core/query/queryEvaluator.ts",
+    "unresolvedTo": "./queryEvaluator",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "query-parser-not-to-evaluator"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/state/calendarState.ts",
+    "to": "src/ui/commands/dailyNote.ts",
+    "unresolvedTo": "../commands/dailyNote",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "state-not-to-commands-views-or-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/state/dashboardState.ts",
+    "to": "src/ui/webview/rendering.ts",
+    "unresolvedTo": "../webview/rendering",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "state-not-to-commands-views-or-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/state/dashboardWidgets.ts",
+    "to": "src/ui/commands/dailyNote.ts",
+    "unresolvedTo": "../commands/dailyNote",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "state-not-to-commands-views-or-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/state/editorLensState.ts",
+    "to": "src/ui/commands/dailyNote.ts",
+    "unresolvedTo": "../commands/dailyNote",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "state-not-to-commands-views-or-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/state/editorLensState.ts",
+    "to": "src/ui/commands/rollover.ts",
+    "unresolvedTo": "../commands/rollover",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "state-not-to-commands-views-or-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/state/taskBoardState.ts",
+    "to": "src/ui/webview/rendering.ts",
+    "unresolvedTo": "../webview/rendering",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "state-not-to-commands-views-or-webview"
+    }
+  }
+]
