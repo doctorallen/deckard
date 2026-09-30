@@ -1,4 +1,4 @@
-import { DEFAULT_TASK_POLICY, getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
+import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../taskPolicy';
 import { DAY_MS, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../paths';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
@@ -20,12 +20,12 @@ import {
   UnitLink,
 } from './queryLinks';
 import { QueryContext } from './queryContext';
-import { DateDirection, getQueryWeekStart, resolveDateRange } from './queryDates';
+import { DateDirection, resolveDateRange } from './queryDates';
 import { QueryConditionNode, QueryNode } from './queryTypes';
 import { escapeRegExp, isWildcard, normalizeFolder } from './queryValues';
 
 export type { DateDirection } from './queryDates';
-export { getQueryWeekStart, resolveDateRange, setQueryWeekStart } from './queryDates';
+export { resolveDateRange } from './queryDates';
 
 /**
  * Evaluates a parsed DQL query against the workspace index.
@@ -64,7 +64,7 @@ interface TagMembership {
 export function evaluateQuery(
   index: WorkspaceIndex,
   node: QueryNode | undefined,
-  query: QueryContext = currentQueryContext(),
+  query: QueryContext,
 ): QueryResults {
   if (!node) {
     return { sections: [], tasks: [], files: [] };
@@ -328,37 +328,6 @@ interface QueryUnit {
   step?: boolean;
   /** How many steps are written under the task. */
   stepCount?: number;
-}
-
-/**
- * Who `is:mine` means, set once from `deckard.me`.
- *
- * The evaluator runs in six places, none of which reads settings, so the
- * identity is given to it rather than passed through every call. Without one
- * `is:mine` is only the tasks for nobody in particular: what is mine by
- * default, with nothing yet mine by name.
- */
-let queryIdentity: string | undefined;
-
-export function setQueryIdentity(person: string | undefined): void {
-  queryIdentity = person?.trim() ? person.trim() : undefined;
-}
-
-export function getQueryIdentity(): string | undefined {
-  return queryIdentity;
-}
-
-/**
- * Transitional: the context the setters above describe, at this moment, for
- * the callers not yet handed a QueryContext of their own.
- */
-export function currentQueryContext(): QueryContext {
-  return {
-    ...(queryIdentity === undefined ? {} : { identity: queryIdentity }),
-    weekStart: getQueryWeekStart(),
-    taskPolicy: getTaskPolicy(),
-    now: Date.now(),
-  };
 }
 
 /**

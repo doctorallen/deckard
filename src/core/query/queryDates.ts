@@ -9,23 +9,6 @@ import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
  * disagree about what a date is and neither has to import the other.
  */
 
-/** The day a week starts on for `this-week` and its like; Sunday until set. */
-let queryWeekStart: Weekday = 0;
-
-/**
- * Sets the day a search's weeks start on, from `deckard.calendar.weekStart`,
- * as `setQueryIdentity` sets who "me" is: the evaluator runs in many places
- * and none of them reads settings.
- */
-export function setQueryWeekStart(day: Weekday): void {
-  queryWeekStart = day;
-}
-
-/** The day a search's weeks start on, as `setQueryWeekStart` last set it. */
-export function getQueryWeekStart(): Weekday {
-  return queryWeekStart;
-}
-
 /**
  * Whether a relative window such as `7d` looks back from today, as `created`
  * and `updated` do, or ahead, as a due date does.
@@ -47,8 +30,8 @@ export interface DateRange {
 export function resolveDateRange(
   value: string,
   now: number,
-  direction: DateDirection = 'past',
-  weekStart: Weekday = queryWeekStart,
+  direction: DateDirection,
+  weekStart: Weekday,
 ): DateRange | undefined {
   const normalized = value.trim().toLowerCase();
 
