@@ -392,7 +392,6 @@ export default {
     "src/ui/state/referenceState.ts": 5,
     "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
-    "src/ui/state/searchFacets.ts": 4,
     "src/ui/state/searchHistory.ts": 2,
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
@@ -554,9 +553,6 @@ export default {
     "src/ui/state/reviewState.ts": [
       "formatReview",
       "summarizeReview"
-    ],
-    "src/ui/state/searchFacets.ts": [
-      "buildSearchFacets"
     ],
     "src/ui/state/taskBoardState.ts": [
       "resolveTaskMove"
@@ -733,7 +729,6 @@ export default {
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
     "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/searchFacets.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/activeHome.ts": 1,
