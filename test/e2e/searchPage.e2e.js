@@ -61,7 +61,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
     preferences,
     extensionUri: { fsPath: '/ext' },
     activeSearch,
-    writes: { history: new WorkspaceWriteHistory() },
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
   });
 
   await open(panels);

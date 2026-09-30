@@ -32,7 +32,7 @@ suite('Find while indexing', () => {
       showSearch: async (query) => {
         opened.push(query);
       },
-    }, { history: new WorkspaceWriteHistory() });
+    }, { history: new WorkspaceWriteHistory(), keepRank: () => undefined });
     try {
       await find.show('atlas');
       const picker = (find as unknown as { picker: vscode.QuickPick<vscode.QuickPickItem & { indexing?: boolean }> }).picker;

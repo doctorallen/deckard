@@ -26,7 +26,6 @@ import {
 import {
   openTask,
   quoteTaskTitle,
-  setTaskRankKeeper,
   TaskWrites,
 } from './ui/commands/taskActions';
 import {
@@ -251,15 +250,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // so one bad write is something a reader can take back.
   const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
   context.subscriptions.push(snapshots);
-  // A task's id comes from its own text, so an edit Deckard writes makes it a
-  // new task to anything keyed by id. This keeps its place in a ranked list
-  // across the edit, and across an Undo of it.
-  setTaskRankKeeper((previousId, nextId) => {
-    void preferences.replaceTaskInOrder(previousId, nextId);
-  });
-  context.subscriptions.push({ dispose: () => setTaskRankKeeper(undefined) });
   // What an edit to a task writes through, for every view that edits one.
-  const taskWrites: TaskWrites = { history };
+  const taskWrites: TaskWrites = {
+    history,
+    // A task's id comes from its own text, so an edit Deckard writes makes it
+    // a new task to anything keyed by id. This keeps its place in a ranked
+    // list across the edit, and across an Undo of it.
+    keepRank: (previousId, nextId) => {
+      void preferences.replaceTaskInOrder(previousId, nextId);
+    },
+  };
   const activeSearch = new ActiveSearch();
   const searchPanels = new SearchPanels({
     indexer,
@@ -1010,7 +1010,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       breakIntoStepsCommand(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
-      toggleTaskDoneCommand(indexer),
+      toggleTaskDoneCommand({ paths: indexer, keepRank: taskWrites.keepRank }),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
       capture(indexer, 'today', captureDrafts, preferences),

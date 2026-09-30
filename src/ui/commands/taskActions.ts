@@ -28,39 +28,33 @@ import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Carries a task's place in the rank order from the line it was to the line
- * it becomes. Set once, where the preferences live, the way the timing log is.
+ * it becomes. A task's id comes from its own text, so an edit Deckard writes
+ * makes it a new task to anything keyed by id; the extension's keeper moves
+ * its place in the preferences to the new id. Made once, where the
+ * preferences live, and handed to whatever edits a task.
  */
-type TaskRankKeeper = (previousId: string, nextId: string) => void;
-
-let keepTaskRank: TaskRankKeeper | undefined;
-
-export function setTaskRankKeeper(keeper: TaskRankKeeper | undefined): void {
-  keepTaskRank = keeper;
-}
+export type TaskRankKeeper = (previousId: string, nextId: string) => void;
 
 /**
  * Tells the rank order that a task's line was rewritten, so a completed task
- * and a task put back by Undo both keep the place they were dragged to. The
- * line is one-based.
+ * and a task put back by Undo both keep the place they were dragged to.
+ * `task` is the line as it was, its number one-based, and `replacement` what
+ * was written over it.
  */
 export function carryTaskRank(
-  filePath: string,
-  lineNumber: number,
-  previousId: string,
+  keepRank: TaskRankKeeper,
+  task: Pick<Task, 'filePath' | 'lineNumber' | 'id'>,
   replacement: string,
 ): void {
-  if (!keepTaskRank) {
-    return;
-  }
   // A completion may add a line above, so the task is the last line written.
   const lines = replacement.split(/\r?\n/);
   const nextId = getTaskLineId(
-    filePath,
-    lineNumber + lines.length - 1,
+    task.filePath,
+    task.lineNumber + lines.length - 1,
     lines[lines.length - 1],
   );
   if (nextId) {
-    keepTaskRank(previousId, nextId);
+    keepRank(task.id, nextId);
   }
 }
 
@@ -70,25 +64,27 @@ export function carryTaskRank(
  * board. The line is one-based.
  */
 export function carryMovedTaskRank(
+  keepRank: TaskRankKeeper,
   previousId: string,
-  filePath: string,
-  lineNumber: number,
-  lineText: string,
+  to: { filePath: string; lineNumber: number; lineText: string },
 ): void {
-  const nextId = getTaskLineId(filePath, lineNumber, lineText);
-  if (keepTaskRank && nextId) {
-    keepTaskRank(previousId, nextId);
+  const nextId = getTaskLineId(to.filePath, to.lineNumber, to.lineText);
+  if (nextId) {
+    keepRank(previousId, nextId);
   }
 }
 
 /**
  * What an edit to a task reaches beyond its own line: the write history,
  * which marks the note's save as Deckard's own so the index reads it back at
- * once, and keeps Complete Steps as the write Undo takes back. Created once,
- * where the extension starts, and handed to whatever edits a task.
+ * once, and keeps Complete Steps as the write Undo takes back; and the rank
+ * keeper, which carries the task's place in the rank order to its new id.
+ * Created once, where the extension starts, and handed to whatever edits a
+ * task.
  */
 export interface TaskWrites {
   readonly history: WorkspaceWriteHistory;
+  readonly keepRank: TaskRankKeeper;
 }
 
 /** What an edit to a task line may need to know about its document. */
@@ -170,7 +166,7 @@ export async function updateTaskLine(
       void reportFailure(describeUnsavedTaskEdit(uri));
       return false;
     }
-    carryTaskRank(task.filePath, task.lineNumber, task.id, replacement);
+    carryTaskRank(writes.keepRank, task, replacement);
     const described =
       typeof description === 'function' ? description() : description;
     const said =
@@ -180,11 +176,8 @@ export async function updateTaskLine(
     if (said?.text) {
       offerUndo(
         said,
-        uri,
-        task.lineNumber,
-        replacement,
-        line,
-        task.filePath,
+        { uri, lineNumber: task.lineNumber, replacement, original: line, filePath: task.filePath },
+        writes.keepRank,
       );
     }
     return true;
@@ -239,6 +232,19 @@ function describeUnsavedTaskEdit(uri: vscode.Uri) {
 }
 
 /**
+ * A task line as an edit left it, and as it was: its note, its one-based
+ * line, what was written, and what was there. `filePath` is the index's path
+ * for the note, which the rank order is keyed by.
+ */
+interface TaskLineEdit {
+  uri: vscode.Uri;
+  lineNumber: number;
+  replacement: string;
+  original: string;
+  filePath?: string;
+}
+
+/**
  * Says what was written to a note, and offers to put it back.
  *
  * A board move or a checkbox writes to a file the reader may not have open,
@@ -247,11 +253,8 @@ function describeUnsavedTaskEdit(uri: vscode.Uri) {
  */
 function offerUndo(
   description: CompletionMessage,
-  uri: vscode.Uri,
-  lineNumber: number,
-  replacement: string,
-  original: string,
-  filePath: string,
+  written: TaskLineEdit,
+  keepRank: TaskRankKeeper,
 ): void {
   // A warning when part of what was asked could not be done, such as a
   // repeat rule Deckard could not read; the edit is still offered back.
@@ -264,7 +267,7 @@ function offerUndo(
       : vscode.window.showInformationMessage(description.text, ...choices)
   ).then((choice) => {
       if (choice === 'Undo') {
-        void revertTaskLine(uri, lineNumber, replacement, original, filePath);
+        void revertTaskLine(written, keepRank);
       } else if (choice !== undefined && choice === description.action?.label) {
         void description.action.run();
       }
@@ -279,11 +282,8 @@ function offerUndo(
  * range since is left alone rather than overwritten.
  */
 async function revertTaskLine(
-  uri: vscode.Uri,
-  lineNumber: number,
-  replacement: string,
-  original: string,
-  filePath?: string,
+  { uri, lineNumber, replacement, original, filePath }: TaskLineEdit,
+  keepRank: TaskRankKeeper,
 ): Promise<void> {
   try {
     const document = await vscode.workspace.openTextDocument(uri);
@@ -315,8 +315,8 @@ async function revertTaskLine(
           written[written.length - 1],
         );
         const restoredId = getTaskLineId(filePath, lineNumber, original);
-        if (writtenId && restoredId && keepTaskRank) {
-          keepTaskRank(writtenId, restoredId);
+        if (writtenId && restoredId) {
+          keepRank(writtenId, restoredId);
         }
       }
     }

@@ -133,7 +133,7 @@ suite('Agenda', () => {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      { history: new WorkspaceWriteHistory() },
+      { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
     );
     try {
       updates.fire(index);

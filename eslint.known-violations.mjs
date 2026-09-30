@@ -78,9 +78,7 @@ export default {
       "createEntryRelatedNotesHoverMessage"
     ],
     "src/ui/commands/taskActions.ts": [
-      "offerUndo",
-      "readCompletionFamily",
-      "revertTaskLine"
+      "readCompletionFamily"
     ],
     "src/ui/commands/taskEditor.ts": [
       "setDraftDate",
@@ -391,7 +389,6 @@ export default {
     "src/ui/commands/selectionSeed.ts": 2,
     "src/ui/commands/tagDecorations.ts": 4,
     "src/ui/commands/tagSuggestions.ts": 1,
-    "src/ui/commands/taskActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 5,
     "src/ui/commands/taskLineDecorations.ts": 2,
     "src/ui/commands/taskMetadataSuggestions.ts": 5,

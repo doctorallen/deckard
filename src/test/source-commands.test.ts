@@ -30,7 +30,7 @@ import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 
 suite('Source commands', () => {
   // The history these edits write to, which no other suite shares.
-  const writes = { history: new WorkspaceWriteHistory() };
+  const writes = { history: new WorkspaceWriteHistory(), keepRank: () => undefined };
 
   test('toggles a checklist character and adds only its completion date', async () => {
     const temporaryRoot = await createTemporaryRoot();

@@ -28,7 +28,7 @@ function listen(): { said: string[]; restore: () => void } {
 
 suite('Task line edits', () => {
   // The history these edits write to, which no other suite shares.
-  const writes = { history: new WorkspaceWriteHistory() };
+  const writes = { history: new WorkspaceWriteHistory(), keepRank: () => undefined };
 
   test('says so when the task is no longer where it was', async () => {
     const uri = vscode.Uri.file(path.join(os.tmpdir(), `deckard-task-${Date.now()}.md`));

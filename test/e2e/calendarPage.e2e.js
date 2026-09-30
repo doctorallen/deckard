@@ -52,7 +52,7 @@ async function openPage() {
   const page = new CalendarPanel(
     { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     { fsPath: '/ext' },
-    { history: new WorkspaceWriteHistory() },
+    { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
   );
   await page.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -166,7 +166,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   const sidebarView = mountWebview(sidebarHost.webview.html, sidebarHost);
   sidebarHost.posted.forEach((message) => sidebarHost._deliver(message));
 
-  const page = new CalendarPanel(indexer, { fsPath: '/ext' }, { history: new WorkspaceWriteHistory() }, activeCalendar);
+  const page = new CalendarPanel(indexer, { fsPath: '/ext' }, { history: new WorkspaceWriteHistory(), keepRank: () => undefined }, activeCalendar);
   await page.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);

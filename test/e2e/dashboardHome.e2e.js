@@ -70,7 +70,7 @@ async function openDashboard(
     navigation,
     whatsNew,
     tryNext,
-    writes: { history: new WorkspaceWriteHistory() },
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
   });
   await dashboard.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -145,7 +145,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       preferences: new PreferencesStore(globalState),
       extensionUri: { fsPath: '/ext' },
       navigation: createNavigation(),
-      writes: { history: new WorkspaceWriteHistory() },
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
     });
     await dashboard.show();
     const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];

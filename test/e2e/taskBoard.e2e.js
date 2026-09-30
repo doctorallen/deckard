@@ -74,7 +74,7 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
     extensionUri: { fsPath: '/ext' },
     openTag: async () => undefined,
     activeSearch,
-    writes: { history: new WorkspaceWriteHistory() },
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
   });
   await board.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -360,7 +360,7 @@ test('saves its search as a view that reopens on the Task Board', async () => {
       openSearch: (query) => opened.push(`search ${query}`),
       openTaskBoard: (query) => opened.push(`board ${query}`),
     },
-    writes: { history: new WorkspaceWriteHistory() },
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
   });
   await dashboard.openSavedFilter(saved.id);
   dashboard.dispose();

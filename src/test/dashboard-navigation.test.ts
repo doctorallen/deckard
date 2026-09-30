@@ -101,7 +101,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-      writes: { history: new WorkspaceWriteHistory() },
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
     });
 
     try {
@@ -140,7 +140,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-      writes: { history: new WorkspaceWriteHistory() },
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
     });
 
     try {
@@ -183,7 +183,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-      writes: { history: new WorkspaceWriteHistory() },
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
     });
 
     try {
@@ -236,7 +236,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation: createNavigation(),
-      writes: { history: new WorkspaceWriteHistory() },
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
     });
 
     try {

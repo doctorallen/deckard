@@ -2,7 +2,6 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { setTaskRankKeeper } from '../ui/commands/taskActions';
 import {
   describeToggle,
   selectedLines,
@@ -100,10 +99,15 @@ suite('Toggle Task Done', () => {
       new vscode.Selection(1, 0, 3, 3),
     ];
     const carried: [string, string][] = [];
-    setTaskRankKeeper((from, to) => carried.push([from, to]));
     try {
       const version = document.version;
-      const result = await toggleTaskDoneCommand({ getFilePath: () => 'plan.md' }, now);
+      const result = await toggleTaskDoneCommand(
+        {
+          paths: { getFilePath: () => 'plan.md' },
+          keepRank: (from, to) => carried.push([from, to]),
+        },
+        now,
+      );
       assert.strictEqual(result?.lines.length, 2);
       assert.strictEqual(
         document.getText(),
@@ -114,7 +118,6 @@ suite('Toggle Task Done', () => {
       // One edit, so one Undo takes every line back.
       assert.strictEqual(document.version, version + 1);
     } finally {
-      setTaskRankKeeper(undefined);
       await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     }
   });

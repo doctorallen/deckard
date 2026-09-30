@@ -208,7 +208,7 @@ suite('Completing steps', () => {
     try {
       const step = parseMarkdown(uri.fsPath, content).tasks[2];
       const shown = await withMessages(async (messages) => {
-        assert.strictEqual(await toggleTask({ history }, step, true), true);
+        assert.strictEqual(await toggleTask({ history, keepRank: () => undefined }, step, true), true);
         await settle();
         return messages;
       });
@@ -225,10 +225,10 @@ suite('Completing steps', () => {
 
       const again = await readNote(uri);
       const reopened = parseMarkdown(uri.fsPath, again).tasks[2];
-      await withMessages(() => toggleTask({ history }, reopened, false));
+      await withMessages(() => toggleTask({ history, keepRank: () => undefined }, reopened, false));
       const fresh = parseMarkdown(uri.fsPath, await readNote(uri)).tasks[2];
       await withMessages(async () => {
-        await toggleTask({ history }, fresh, true);
+        await toggleTask({ history, keepRank: () => undefined }, fresh, true);
         await settle();
         await settle();
       }, 'Complete Task');
@@ -247,7 +247,7 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        await toggleTask({ history }, task, true);
+        await toggleTask({ history, keepRank: () => undefined }, task, true);
         // The steps are written after the choice, and said once written.
         for (let tries = 0; tries < 40 && !messages.some((message) => String(message[0]).startsWith('Completed 2 steps')); tries += 1) {
           await settle();
@@ -276,12 +276,12 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       await withMessages(async () => {
-        await toggleTask({ history }, task, true);
+        await toggleTask({ history, keepRank: () => undefined }, task, true);
       }, 'Undo');
       await settle();
       await settle();
       assert.strictEqual(await readNote(uri), content, 'Undo takes back the next occurrence and its steps too');
-      await withMessages(() => toggleTask({ history }, task, true));
+      await withMessages(() => toggleTask({ history, keepRank: () => undefined }, task, true));
       assert.strictEqual(
         await readNote(uri),
         [
@@ -319,7 +319,7 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        await toggleTask({ history }, task, true);
+        await toggleTask({ history, keepRank: () => undefined }, task, true);
         return messages;
       });
       assert.deepStrictEqual(shown[0], ['Completed "Alone".', 'Undo']);

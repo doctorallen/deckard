@@ -264,7 +264,11 @@ async function moveBlocks(
     for (const source of sources) {
       const first = dedentBlock(source.block.lines)[0];
       if (source.task) {
-        carryMovedTaskRank(source.task.id, targetPath, line + 1, first);
+        carryMovedTaskRank(writes.keepRank, source.task.id, {
+          filePath: targetPath,
+          lineNumber: line + 1,
+          lineText: first,
+        });
       }
       line += source.block.lines.length;
     }
