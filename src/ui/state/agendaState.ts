@@ -12,7 +12,8 @@ import {
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
-import { needsNewDate, readLineStatus, TaskPolicy } from '../../domain/tasks/taskPolicy';
+import { readLineStatus } from '../../domain/tasks/taskPolicy';
+import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -191,25 +192,6 @@ const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
   'none',
 ];
 
-
-/**
- * The date an undated task sorts by. Nothing placed it, so it sorts after
- * everything a date placed, in whichever grouping mixes the two.
- */
-const NO_DATE = Number.MAX_SAFE_INTEGER;
-
-interface Placement {
-  group: AgendaGroupId;
-  at: number;
-  reason: string;
-}
-
-/** The days a task is placed against: today, tomorrow, and where Later begins. */
-interface AgendaDays {
-  today: number;
-  tomorrow: number;
-  horizon: number;
-}
 
 /**
  * Builds the Agenda for the context's `now`, with its task policy saying
@@ -508,72 +490,6 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-/**
- * The group one open task belongs in on `days.today`, the date that put it
- * there, and the words that say why.
- */
-function placeTask(
-  task: Task,
-  days: AgendaDays,
-  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
-): Placement {
-  const { today, tomorrow, horizon } = days;
-  const { dueAt, scheduledAt, startAt } = task;
-  if (
-    dueAt === undefined &&
-    scheduledAt === undefined &&
-    startAt === undefined
-  ) {
-    // No date to read, so no date to show: the entry carries its priority and
-    // its note instead.
-    return { group: 'nodate', at: NO_DATE, reason: '' };
-  }
-  if (dueAt !== undefined && needsNewDate(dueAt, today, taskPolicy)) {
-    return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt)}` };
-  }
-  if (dueAt !== undefined && dueAt < today) {
-    return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt)}` };
-  }
-  if (dueAt !== undefined && dueAt < tomorrow) {
-    return { group: 'today', at: dueAt, reason: 'due today' };
-  }
-
-  // A future start date means the task is not actionable yet, however early
-  // it was scheduled.
-  const started = startAt === undefined || startAt < tomorrow;
-  if (started && scheduledAt !== undefined && scheduledAt < tomorrow) {
-    return {
-      group: 'today',
-      at: scheduledAt,
-      reason:
-        scheduledAt < today
-          ? `scheduled ${formatDay(scheduledAt)}`
-          : 'scheduled today',
-    };
-  }
-
-  // The first date still to come places the task: within the horizon it is
-  // Upcoming, past it Later. A task nothing here placed — scheduled in the
-  // past, say, but not started until after the horizon — is Later by the
-  // date it waits for.
-  const ahead = [
-    { at: dueAt, verb: 'due' },
-    { at: scheduledAt, verb: 'scheduled' },
-    { at: startAt, verb: 'starts' },
-  ]
-    .filter(
-      (candidate): candidate is { at: number; verb: string } =>
-        candidate.at !== undefined && candidate.at >= tomorrow,
-    )
-    .sort((left, right) => left.at - right.at);
-  const soonest = ahead[0] ?? { at: startAt ?? NO_DATE, verb: 'starts' };
-  return {
-    group: soonest.at < horizon ? 'upcoming' : 'later',
-    at: soonest.at,
-    reason: `${soonest.verb} ${formatDay(soonest.at)}`,
-  };
-}
-
 function createEntry(
   task: Task,
   index: WorkspaceIndex,
@@ -645,9 +561,4 @@ function compareSource(left: AgendaEntry, right: AgendaEntry): number {
     left.task.filePath.localeCompare(right.task.filePath) ||
     left.task.lineNumber - right.task.lineNumber
   );
-}
-
-/** Writes a date as "Mon 2026-09-14", so a week reads at a glance. */
-function formatDay(at: number): string {
-  return `${SHORT_WEEKDAY_NAMES[new Date(at).getDay()]} ${formatIsoDate(at)}`;
 }

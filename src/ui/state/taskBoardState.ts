@@ -14,24 +14,24 @@ import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
 import { needsNewDate } from '../../domain/tasks/taskPolicy';
 import { QueryContext } from '../../domain/query/queryContext';
-import { escapeRegExp } from '../../shared/text';
-import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
 import {
   addDays,
-  appendToTaskText,
   formatIsoDate,
-  parseTaskMetadata,
-  setTaskAssignee,
-  setTaskDate,
-  setTaskLineCompletion,
-  setTaskPriority,
   startOfDay,
   TASK_PRIORITY_RANKS,
   TaskMetadataFormat,
   describeDueDate,
 } from '../../domain/markdown/taskMetadata';
-import { extractTags, readPerson } from '../../domain/markdown/parser';
-import { findCodeAndLinkRanges, isInRanges } from '../../domain/markdown/inlineRanges';
+import { extractTags } from '../../domain/markdown/parser';
+import {
+  formatStatusLabel,
+  getDueBand,
+  readTaskStatus,
+  refuseMove,
+  resolveTaskMove as resolveColumnMove,
+  setTaskNamespaceTags,
+  TaskMove,
+} from '../../domain/tasks/boardMoves';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import {
@@ -67,6 +67,16 @@ import {
   TaskColumnId,
 } from './resultTable';
 import { buildSearchFacets } from './searchFacets';
+
+// The board's task rules moved to domain/tasks; their old names stay here
+// for the modules that import them from the board.
+export {
+  isValidStatusName,
+  readTaskStatus,
+  setTaskNamespaceTags,
+  setTaskStatusTag,
+} from '../../domain/tasks/boardMoves';
+export type { TaskMove } from '../../domain/tasks/boardMoves';
 
 /**
  * The task board lays tasks out as a Kanban board. Its columns come from what
@@ -106,13 +116,6 @@ export interface TaskBoardOptions {
   limits?: Readonly<Record<string, number>>;
 }
 
-/** What dropping a task on a column means for its line. */
-export type TaskMove =
-  | { kind: 'unchanged' }
-  | { kind: 'complete' }
-  | { kind: 'edit'; edit: (line: string) => string; label: string }
-  | { kind: 'refused'; reason: string };
-
 interface ColumnDraft {
   id: string;
   label: string;
@@ -122,14 +125,6 @@ interface ColumnDraft {
   alsoIn?: Map<string, string[]>;
 }
 
-const STATUS_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-const PRIORITIES: ReadonlySet<string> = new Set([
-  'highest',
-  'high',
-  'medium',
-  'low',
-  'lowest',
-]);
 const PRIORITY_COLUMNS: ReadonlyArray<[TaskPriority | '', string]> = [
   ['highest', 'Highest'],
   ['high', 'High'],
@@ -140,13 +135,6 @@ const PRIORITY_COLUMNS: ReadonlyArray<[TaskPriority | '', string]> = [
 ];
 const DEFAULT_DONE_LIMIT = 20;
 const DEFAULT_COLUMN_LIMIT = 100;
-
-/**
- * True for a status that can be written as the value of a tag.
- */
-export function isValidStatusName(value: string): boolean {
-  return STATUS_NAME.test(value);
-}
 
 /** The Task Board's search: the one applied, and one typed that could not be. */
 export interface TaskBoardSearch {
@@ -574,124 +562,9 @@ export function resolveTaskMove(
   options: TaskBoardOptions,
   context: TaskMoveContext = {},
 ): TaskMove {
-  if (columnId === 'done') {
-    return task.completed ? { kind: 'unchanged' } : { kind: 'complete' };
-  }
-
-  const separator = columnId.indexOf(':');
-  const kind = separator < 0 ? columnId : columnId.slice(0, separator);
-  const value = separator < 0 ? '' : columnId.slice(separator + 1);
-  const column = task.checkboxColumn;
-  const reopen = (line: string): string =>
-    task.completed ? setTaskLineCompletion(line, column, false) : line;
-
-  switch (kind) {
-    case 'status': {
-      if (value && !isValidStatusName(value)) {
-        return refuse(`"${value}" cannot be written as a status tag.`);
-      }
-      if (
-        !task.completed &&
-        (readTaskStatus(task, options.statusNamespace) ?? '') === value
-      ) {
-        return { kind: 'unchanged' };
-      }
-      return {
-        kind: 'edit',
-        label: value ? formatStatusLabel(value) : 'No status',
-        edit: (line) =>
-          setTaskStatusTag(
-            reopen(line),
-            column,
-            options.statusNamespace,
-            value || undefined,
-          ),
-      };
-    }
-    case 'priority': {
-      if (value && !PRIORITIES.has(value)) {
-        return refuse(`"${value}" is not a priority.`);
-      }
-      if (!task.completed && (task.priority ?? '') === value) {
-        return { kind: 'unchanged' };
-      }
-      return {
-        kind: 'edit',
-        label: value ? `${formatStatusLabel(value)} priority` : 'No priority',
-        edit: (line) =>
-          setTaskPriority(
-            reopen(line),
-            column,
-            (value || undefined) as TaskPriority | undefined,
-            options.format,
-          ),
-      };
-    }
-    case 'due': {
-      // One date, as a day of the Tasks view's Upcoming names it.
-      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        if (!task.completed && task.dueAt !== undefined && formatIsoDate(task.dueAt) === value) {
-          return { kind: 'unchanged' };
-        }
-        const [year, month, day] = value.split('-').map(Number);
-        const weekday = SHORT_WEEKDAY_NAMES[new Date(year, month - 1, day).getDay()];
-        return {
-          kind: 'edit',
-          label: `Due ${weekday} ${value}`,
-          edit: (line) => setTaskDate(reopen(line), column, 'due', value, options.format),
-        };
-      }
-      if (!task.completed && getDueBand(task.dueAt, options.queryContext) === value) {
-        return { kind: 'unchanged' };
-      }
-      if (value === 'today' || value === 'tomorrow') {
-        const date = formatIsoDate(
-          addDays(startOfDay(options.queryContext.now), value === 'today' ? 0 : 1),
-        );
-        return {
-          kind: 'edit',
-          label: value === 'today' ? 'Due today' : 'Due tomorrow',
-          edit: (line) =>
-            setTaskDate(reopen(line), column, 'due', date, options.format),
-        };
-      }
-      if (value === '') {
-        const written = parseTaskMetadata(task.sourceLineText.slice(column + 2))
-          .metadata.due;
-        if (task.dueAt !== undefined && !written) {
-          return refuse(
-            'This task’s due date is written in its sentence, so Deckard leaves it for you to edit.',
-          );
-        }
-        return {
-          kind: 'edit',
-          label: 'No due date',
-          edit: (line) => setTaskDate(reopen(line), column, 'due', undefined),
-        };
-      }
-      return refuse(
-        'Drop a task on Today, Tomorrow, or No due date to change its due date.',
-      );
-    }
-    case 'assignee': {
-      const person = value ? readPerson(value) : undefined;
-      if (value && !person) {
-        return refuse(`Deckard cannot read "${value}" as a person.`);
-      }
-      if (!task.completed && (task.assignee ?? '') === (person ?? '')) {
-        return { kind: 'unchanged' };
-      }
-      return {
-        kind: 'edit',
-        label: person ? `For ${person}` : 'For nobody',
-        edit: (line) => setTaskAssignee(reopen(line), column, person, options.format),
-      };
-    }
-    case 'tag':
-      return resolveTagMove(task, value, context, reopen);
-    default:
-      return refuse('That column no longer exists on the board. Refresh the board and try again.');
-  }
+  return resolveColumnMove(task, columnId, options, (value, reopen) =>
+    resolveTagMove(task, value, context, reopen),
+  );
 }
 
 /**
@@ -712,12 +585,12 @@ function resolveTagMove(
   const target = slash < 0 ? '' : value.slice(slash + 1).toLowerCase();
   const tag = `#${namespace}/${target}`;
   if (!isNamespaceName(namespace) || slash < 0) {
-    return refuse(`Deckard cannot write "${tag}" as a tag.`);
+    return refuseMove(`Deckard cannot write "${tag}" as a tag.`);
   }
   if (target) {
     const parsed = extractTags(tag);
     if (parsed.length !== 1 || parsed[0].key.toLowerCase() !== tag.toLowerCase()) {
-      return refuse(`Deckard cannot write "${tag}" as a tag.`);
+      return refuseMove(`Deckard cannot write "${tag}" as a tag.`);
     }
   }
   const values = readNamespaceValues(context.index, task, namespace);
@@ -728,7 +601,7 @@ function resolveTagMove(
     const source = context.index
       ? findTagSource(context.index, task, entry.key)
       : { kind: 'frontmatter' as const };
-    return refuse(
+    return refuseMove(
       source.kind === 'heading'
         ? `${quoteTask(task)} is in ${entry.label} because its heading "${source.heading}" is, so moving it cannot take it out. Change the heading instead.`
         : `${quoteTask(task)} is in ${entry.label} because its note's front matter is, so moving it cannot take it out. Change the front matter instead.`,
@@ -782,86 +655,6 @@ function resolveTagMove(
       return has ? opened : setTaskNamespaceTags(opened, column, { remove: [], add: tag });
     },
   };
-}
-
-/**
- * Takes tags out of a task line, by their written labels, and writes one:
- * in place of the first taken out, else at the end of the task's words,
- * ahead of a `^block-id`.
- */
-export function setTaskNamespaceTags(
-  line: string,
-  checkboxColumn: number,
-  change: { remove: readonly string[]; add?: string },
-): string {
-  const head = line.slice(0, checkboxColumn + 2);
-  let text = line.slice(checkboxColumn + 2);
-  let placed = change.add === undefined;
-  change.remove.forEach((label) => {
-    const pattern = new RegExp(`[ \\t]+${escapeRegExp(label)}(?![A-Za-z0-9_/-])`, 'gi');
-    const skipped = findCodeAndLinkRanges(text);
-    text = text.replace(pattern, (match, offset: number) => {
-      if (isInRanges(skipped, offset)) {
-        return match;
-      }
-      if (!placed && change.add !== undefined) {
-        placed = true;
-        return match.replace(/\S+$/, change.add);
-      }
-      return '';
-    });
-  });
-  if (!placed && change.add !== undefined) {
-    text = appendToTaskText(text, change.add);
-  }
-  return head + text;
-}
-
-/**
- * Sets or clears a task's status tag. An existing status tag is changed where
- * it is written, and any others are removed; a new one goes at the end.
- */
-export function setTaskStatusTag(
-  line: string,
-  checkboxColumn: number,
-  namespace: string,
-  status: string | undefined,
-): string {
-  const head = line.slice(0, checkboxColumn + 2);
-  const text = line.slice(checkboxColumn + 2);
-  const tag = `#${namespace}/${status ?? ''}`;
-  const pattern = new RegExp(
-    `[ \\t]+#${escapeRegExp(namespace)}/[A-Za-z0-9][A-Za-z0-9_-]*(?![A-Za-z0-9_/-])`,
-    'gi',
-  );
-  let written = false;
-  const skipped = findCodeAndLinkRanges(text);
-  const next = text.replace(pattern, (match, offset: number) => {
-    if (isInRanges(skipped, offset)) {
-      return match;
-    }
-    if (!status || written) {
-      return '';
-    }
-    written = true;
-    return match.replace(/#.*$/, tag);
-  });
-  return head + (status && !written ? appendToTaskText(next, tag) : next);
-}
-
-/**
- * Reads the status written on a task's own line. A status inherited from a
- * heading does not count, because moving the card could not change it.
- */
-export function readTaskStatus(
-  task: Task,
-  namespace: string,
-): string | undefined {
-  const prefix = `#${namespace.toLowerCase()}/`;
-  return (task.associationTagGroups?.[0] ?? [])
-    .map((tag) => tag.key.toLowerCase())
-    .find((key) => key.startsWith(prefix))
-    ?.slice(prefix.length);
 }
 
 /**
@@ -1026,31 +819,6 @@ function createDueColumns(open: Task[], context: QueryContext): ColumnDraft[] {
   }));
 }
 
-/** The due band a date falls in on the context's today, or '' for none. */
-function getDueBand(
-  dueAt: number | undefined,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
-): string {
-  if (dueAt === undefined) {
-    return '';
-  }
-  const { now } = context;
-  const today = startOfDay(now);
-  if (needsNewDate(dueAt, now, context.taskPolicy)) {
-    return 'needsdate';
-  }
-  if (dueAt < today) {
-    return 'overdue';
-  }
-  if (dueAt < addDays(today, 1)) {
-    return 'today';
-  }
-  if (dueAt < addDays(today, 2)) {
-    return 'tomorrow';
-  }
-  return dueAt < addDays(today, 8) ? 'week' : 'later';
-}
-
 function createCard(
   task: Task,
   groupBy: TaskBoardGroupBy,
@@ -1164,13 +932,4 @@ function compareSource(left: Task, right: Task): number {
     left.filePath.localeCompare(right.filePath) ||
     left.lineNumber - right.lineNumber
   );
-}
-
-function formatStatusLabel(status: string): string {
-  const words = status.replace(/[-_]+/g, ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-function refuse(reason: string): TaskMove {
-  return { kind: 'refused', reason };
 }

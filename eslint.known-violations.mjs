@@ -231,8 +231,7 @@ export default {
       "renderTask"
     ],
     "src/ui/state/agendaState.ts": [
-      "createAgenda",
-      "placeTask"
+      "createAgenda"
     ],
     "src/ui/state/calendarState.ts": [
       "createCalendar"
@@ -257,8 +256,7 @@ export default {
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard",
-      "resolveTagMove",
-      "resolveTaskMove"
+      "resolveTagMove"
     ],
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
@@ -578,9 +576,6 @@ export default {
     ],
     "src/ui/state/searchFacets.ts": [
       "buildSearchFacets"
-    ],
-    "src/ui/state/taskBoardState.ts": [
-      "resolveTaskMove"
     ],
     "src/ui/views/agendaTree.ts": [
       "getChildren"
