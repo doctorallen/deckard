@@ -16,7 +16,7 @@ import {
 } from './taskMetadata';
 import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
 import { findListParents, findParentTaskLine } from './listNesting';
-import { isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
+import { isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
@@ -60,7 +60,11 @@ function getTagField(field: string): string {
   return field === 'describes' ? 'tags' : field;
 }
 
-const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
+/** Whether a line is a heading as the parser reads one, words and all. */
+function isParsedHeading(line: string): boolean {
+  return matchHeading(line, 'kept') !== undefined;
+}
+
 /**
  * A task the index reads: any mark but `[>]`, a gap after the box, and the
  * rest of the line on one line.
@@ -781,11 +785,11 @@ function collectTagSpans(
       return [];
     }
 
-    const heading = line.match(headingPattern);
+    const heading = matchHeading(line, 'kept');
     if (heading) {
-      const headingTextStart = heading[0].indexOf(heading[2]);
+      const headingTextStart = line.indexOf(heading.text);
       return createTagSpans(
-        heading[2],
+        heading.text,
         lineIndex + 1,
         headingTextStart,
         entityNamespaceAliases,
@@ -1098,12 +1102,12 @@ function findHeadings(
     if (fencedLines.has(lineIndex)) {
       return;
     }
-    const match = line.match(headingPattern);
+    const match = matchHeading(line, 'kept');
     if (match) {
       headings.push({
         lineNumber: lineIndex + 1,
-        level: match[1].length,
-        text: stripClosingHeadingHashes(match[2].trim()),
+        level: match.level,
+        text: stripClosingHeadingHashes(match.text.trim()),
       });
     }
   });
@@ -1278,7 +1282,7 @@ function findInlineSections(
     const line = lines[lineIndex];
     if (
       fencedLines.has(lineIndex) ||
-      headingPattern.test(line) ||
+      isParsedHeading(line) ||
       isTaskLineOf(line, taskShape) ||
       // A task migrated to another day is neither a task nor a note.
       isTaskLineOf(line, MIGRATED_TASK_LINE)
@@ -1329,7 +1333,7 @@ function findInlineSections(
       const continuation = lines[lineIndex];
       if (
         fencedLines.has(lineIndex) ||
-        headingPattern.test(continuation) ||
+        isParsedHeading(continuation) ||
         isTaskLineOf(continuation, taskShape) ||
         getListItemMatch(continuation) ||
         extractTags(continuation, undefined, personMarker).length === 0
@@ -1815,12 +1819,12 @@ function mergeTagLabels(
  * Tells completion whether a trailing hash belongs to ATX syntax, not a tag.
  */
 export function hasAtxHeadingClosingHashes(line: string): boolean {
-  const match = line.match(headingPattern);
+  const match = matchHeading(line, 'kept');
   if (!match) {
     return false;
   }
 
-  const text = match[2].trim();
+  const text = match.text.trim();
   return stripClosingHeadingHashes(text) !== text;
 }
 

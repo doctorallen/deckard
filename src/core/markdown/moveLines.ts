@@ -1,4 +1,11 @@
-import { isTaskLineOf, matchTaskLine, TaskLineMatch, TaskLineShape } from './lineShapes';
+import {
+  HeadingShape,
+  isHeadingLine,
+  isTaskLineOf,
+  matchTaskLine,
+  TaskLineMatch,
+  TaskLineShape,
+} from './lineShapes';
 import { findFencedLines, findListItemEndLine, listItemIndentation } from './parser';
 import { markMigrated } from './taskMetadata';
 
@@ -35,7 +42,8 @@ export interface MoveSelection {
   isEmpty: boolean;
 }
 
-const HEADING = /^ {0,3}#{1,6}[ \t]+/;
+/** A heading a move refuses to take: hashes alone, `#`, are not one here. */
+const HEADING: HeadingShape = { allowBare: false };
 /** An open task, which a move can leave behind marked `[>]`. */
 const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ' };
 /** A task of any kind: open, done, or migrated. */
@@ -56,7 +64,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   }
   if (selection.isEmpty) {
     const text = lines[start] ?? '';
-    if (HEADING.test(text)) {
+    if (isHeadingLine(text, HEADING)) {
       return { refused: 'heading' };
     }
     if (!text.trim()) {
@@ -85,7 +93,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   while (end > start && !(lines[end] ?? '').trim()) {
     end -= 1;
   }
-  if (rangeOf(start, end).some((line) => HEADING.test(lines[line] ?? ''))) {
+  if (rangeOf(start, end).some((line) => isHeadingLine(lines[line] ?? '', HEADING))) {
     return { refused: 'heading' };
   }
   const fenced = findFencedLines([...lines]);

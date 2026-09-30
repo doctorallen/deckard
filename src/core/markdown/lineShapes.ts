@@ -146,3 +146,57 @@ export function matchTaskLine(line: string, shape: TaskLineShape): TaskLineMatch
     body: line.slice(whole.length),
   };
 }
+
+/**
+ * Which lines open an ATX heading. Half the callers take `#` alone, or `##`
+ * alone, as a heading and half do not, so the choice is the caller's.
+ */
+export interface HeadingShape {
+  /**
+   * Whether hashes with nothing after them are a heading. Either way, hashes
+   * followed by a space or a tab are, and `#tag` is not.
+   */
+  allowBare: boolean;
+}
+
+const BARE_HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
+const SPACED_HEADING = /^ {0,3}#{1,6}[ \t]+/;
+
+/** Whether a line opens an ATX heading of the given shape: up to three spaces, then one to six `#`. */
+export function isHeadingLine(line: string, shape: HeadingShape): boolean {
+  return (shape.allowBare ? BARE_HEADING : SPACED_HEADING).test(line);
+}
+
+/** A heading's level and its words, as `matchHeading` reads them. */
+export interface HeadingMatch {
+  /** 1 for `#`, up to 6. */
+  level: number;
+  text: string;
+}
+
+/**
+ * How a heading's words are read. Both need a space or a tab after the
+ * hashes, and neither reads words with a line terminator (`\r`, U+2028,
+ * U+2029) inside them.
+ *
+ * - `kept`: the words run to the end of the line, closing hashes included,
+ *   with trailing whitespace off (a trailing `\r` counts as whitespace);
+ *   there must be at least one character, so `# ` is not a heading, though
+ *   `#  ` is one whose words are a space. The parser reads headings this
+ *   way and strips closing hashes itself.
+ * - `dropped`: closing hashes and the spaces and tabs around them are off,
+ *   and the words may be empty, so `# ` and `# #` are headings with no
+ *   words; a trailing `\r` makes the line not a heading.
+ */
+export type HeadingClosingHashes = 'kept' | 'dropped';
+
+const HEADING_TEXT_PATTERNS: Readonly<Record<HeadingClosingHashes, RegExp>> = {
+  kept: /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/,
+  dropped: /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*(?:#+[ \t]*)?$/,
+};
+
+/** A heading line's level and words, or undefined for a line that is not one. */
+export function matchHeading(line: string, closingHashes: HeadingClosingHashes): HeadingMatch | undefined {
+  const match = HEADING_TEXT_PATTERNS[closingHashes].exec(line);
+  return match ? { level: match[1].length, text: match[2] } : undefined;
+}

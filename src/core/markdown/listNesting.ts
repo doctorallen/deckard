@@ -1,4 +1,4 @@
-import { isTaskLineOf, TaskLineShape } from './lineShapes';
+import { isHeadingLine, isTaskLineOf, TaskLineShape } from './lineShapes';
 
 /**
  * Which list item each list item is written under, read from indentation
@@ -13,7 +13,6 @@ import { isTaskLineOf, TaskLineShape } from './lineShapes';
 const LIST_ITEM = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+/;
 /** A step's checkbox: indented by spaces and tabs only, with a gap after it. */
 const TASK_ITEM: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
-const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
 /** How far a line's whitespace reaches, with a tab counted to the next multiple of 4. */
@@ -59,7 +58,7 @@ export function findListParents(
   const stack: Array<{ width: number; line: number }> = [];
   const fenced = fencedLines ?? findFences(lines);
   lines.forEach((line, index) => {
-    if (fenced.has(index) || HEADING.test(line)) {
+    if (fenced.has(index) || isHeadingLine(line, { allowBare: true })) {
       stack.length = 0;
       return;
     }

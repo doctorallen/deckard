@@ -1,6 +1,12 @@
 import * as assert from 'assert';
 
-import { isTaskLineOf, matchTaskLine, TaskLineShape } from '../core/markdown/lineShapes';
+import {
+  isHeadingLine,
+  isTaskLineOf,
+  matchHeading,
+  matchTaskLine,
+  TaskLineShape,
+} from '../core/markdown/lineShapes';
 
 /** Which of `lines` a shape accepts. */
 function accepted(shape: TaskLineShape, lines: readonly string[]): string[] {
@@ -17,7 +23,7 @@ suite('Line shapes: task lines', () => {
     '- [ ]word',
     '  * [ ] indented',
     '\t+ [ ] tabbed',
-    ' - [ ] no-break space',
+    '\u00a0- [ ] no-break space',
     '-  [ ] two spaces',
     '-\t[ ] tab gap',
     '- [-] cancelled',
@@ -37,7 +43,7 @@ suite('Line shapes: task lines', () => {
       '- [ ]word',
       '  * [ ] indented',
       '\t+ [ ] tabbed',
-      ' - [ ] no-break space',
+      '\u00a0- [ ] no-break space',
       '-  [ ] two spaces',
       '-\t[ ] tab gap',
       '- [ ] \r',
@@ -57,7 +63,7 @@ suite('Line shapes: task lines', () => {
 
   test('a spaces-and-tabs indent refuses a no-break space', () => {
     const shape: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
-    assert.strictEqual(isTaskLineOf(' - [ ] step', shape), false);
+    assert.strictEqual(isTaskLineOf('\u00a0- [ ] step', shape), false);
     assert.strictEqual(isTaskLineOf(' \t- [ ] step', shape), true);
     assert.strictEqual(isTaskLineOf('- [ ]', shape), false);
     assert.strictEqual(isTaskLineOf('- [ ]step', shape), false);
@@ -82,7 +88,7 @@ suite('Line shapes: task lines', () => {
       body: 'Ship it',
     });
     assert.strictEqual(isTaskLineOf('- [ ] Ship\r', shape), false);
-    assert.strictEqual(isTaskLineOf('- [ ] Ship it', shape), false);
+    assert.strictEqual(isTaskLineOf('- [ ] Ship\u2028it', shape), false);
     assert.strictEqual(isTaskLineOf('- [ ] Ship\r', { indent: 'whitespace', marks: ' xX', after: 'gap' }), true);
   });
 
@@ -108,5 +114,38 @@ suite('Line shapes: task lines', () => {
     assert.strictEqual(matchTaskLine('- [?] odd', shape)?.opening.length, 3);
     assert.strictEqual(matchTaskLine('- [x]', shape)?.mark, '');
     assert.strictEqual(matchTaskLine('- no box', shape), undefined);
+  });
+});
+
+suite('Line shapes: headings', () => {
+  test('a bare # is a heading only where bare hashes are allowed', () => {
+    for (const line of ['#', '##', '   ###', '# ']) {
+      assert.strictEqual(isHeadingLine(line, { allowBare: true }), true, line);
+    }
+    assert.strictEqual(isHeadingLine('#', { allowBare: false }), false);
+    assert.strictEqual(isHeadingLine('##', { allowBare: false }), false);
+    assert.strictEqual(isHeadingLine('# ', { allowBare: false }), true);
+  });
+
+  test('neither shape takes a tag, seven hashes, or a four-space indent', () => {
+    for (const line of ['#tag', '####### seven', '    # code', '\t# tabbed']) {
+      assert.strictEqual(isHeadingLine(line, { allowBare: true }), false, line);
+      assert.strictEqual(isHeadingLine(line, { allowBare: false }), false, line);
+    }
+  });
+
+  test('kept reads the words with their closing hashes and needs one character', () => {
+    assert.deepStrictEqual(matchHeading('## Plan ##  ', 'kept'), { level: 2, text: 'Plan ##' });
+    assert.deepStrictEqual(matchHeading('# Title\r', 'kept'), { level: 1, text: 'Title' });
+    assert.deepStrictEqual(matchHeading('#  ', 'kept'), { level: 1, text: ' ' });
+    assert.strictEqual(matchHeading('# ', 'kept'), undefined);
+    assert.strictEqual(matchHeading('#', 'kept'), undefined);
+  });
+
+  test('dropped takes the closing hashes off and allows no words', () => {
+    assert.deepStrictEqual(matchHeading('## Plan ##  ', 'dropped'), { level: 2, text: 'Plan' });
+    assert.deepStrictEqual(matchHeading('# #', 'dropped'), { level: 1, text: '' });
+    assert.deepStrictEqual(matchHeading('# ', 'dropped'), { level: 1, text: '' });
+    assert.strictEqual(matchHeading('# Title\r', 'dropped'), undefined);
   });
 });

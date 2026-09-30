@@ -1,4 +1,4 @@
-import { matchTaskLine, TaskLineShape } from './lineShapes';
+import { isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findFencedLines, stripTags } from './parser';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
 
@@ -9,7 +9,6 @@ import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
  * preview drops the same Markdown the same way.
  */
 
-const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 const TABLE_ROW = /^\s*\|/;
 const RULE = /^\s*([-*_])(?:\s*\1){2,}\s*$/;
 const IMAGE_ONLY = /^\s*(?:!\[[^\]]*\]\([^)]*\)|!\[\[[^\]]*\]\])\s*$/;
@@ -53,7 +52,7 @@ export function readProseLines(markdown: string, options: { personMarker?: strin
     if (
       fenced.has(index) ||
       line.trim() === '' ||
-      HEADING.test(line) ||
+      isHeadingLine(line, { allowBare: true }) ||
       TABLE_ROW.test(line) ||
       RULE.test(line) ||
       IMAGE_ONLY.test(line)

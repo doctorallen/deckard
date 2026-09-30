@@ -5,7 +5,7 @@ import {
   isTaskItemLine,
   lineIndent,
 } from './listNesting';
-import { isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
+import { isHeadingLine, isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
 import { setTaskLineCompletion } from './taskMetadata';
 
@@ -139,7 +139,7 @@ export function findLastDescendantLine(lines: readonly string[], lineIndex: numb
     if (line.trim() === '') {
       continue;
     }
-    if (lineIndent(line) <= indent || /^ {0,3}#{1,6}(?:[ \t]|$)/.test(line)) {
+    if (lineIndent(line) <= indent || isHeadingLine(line, { allowBare: true })) {
       break;
     }
     last = index;
