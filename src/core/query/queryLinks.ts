@@ -191,3 +191,30 @@ export function countLinkTargets(
     .map(([targetPath, count]) => ({ targetPath, count }))
     .sort((left, right) => right.count - left.count || left.targetPath.localeCompare(right.targetPath));
 }
+
+/**
+ * The note a `link` value names, as the AST keeps it: without brackets or an
+ * alias after `|`, such as `Atlas`, `Atlas#Decision`, or `Atlas#^q3`. Empty
+ * when no note is named, as in `[[#Decision]]`.
+ */
+export function readLinkValue(value: string): string {
+  let inner = value.trim();
+  if (inner.startsWith('[[')) {
+    inner = inner.slice(2);
+  }
+  if (inner.endsWith(']]')) {
+    inner = inner.slice(0, -2);
+  }
+  const bar = inner.indexOf('|');
+  if (bar >= 0) {
+    inner = inner.slice(0, bar);
+  }
+  const target = parseWikiTarget(inner);
+  if (!target.note) {
+    return '';
+  }
+  if (target.block) {
+    return `${target.note}#^${target.block}`;
+  }
+  return target.heading ? `${target.note}#${target.heading}` : target.note;
+}

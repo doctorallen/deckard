@@ -1,5 +1,6 @@
-import { describeOperator, readLinkValue } from './queryParser';
+import { readLinkValue } from './queryLinks';
 import {
+  describeOperator,
   QUERY_OPERATOR_INVERSES,
   QUERY_SHORTHAND_FIELDS,
   QueryBuilderGroup,

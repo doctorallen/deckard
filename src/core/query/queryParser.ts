@@ -1,5 +1,5 @@
-import { parseWikiTarget } from '../workspace/backlinks';
 import { resolveDateRange } from './queryDates';
+import { readLinkValue } from './queryLinks';
 import {
   ParsedQuery,
   QueryConditionNode,
@@ -10,7 +10,11 @@ import {
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
   QUERY_TASK_DATE_FIELDS,
+  describeOperator,
 } from './queryTypes';
+
+export { readLinkValue } from './queryLinks';
+export { describeOperator } from './queryTypes';
 
 /**
  * Parses DQL, the Deckard query language.
@@ -864,33 +868,6 @@ class Parser {
 }
 
 /**
- * The note a `link` value names, as the AST keeps it: without brackets or an
- * alias after `|`, such as `Atlas`, `Atlas#Decision`, or `Atlas#^q3`. Empty
- * when no note is named, as in `[[#Decision]]`.
- */
-export function readLinkValue(value: string): string {
-  let inner = value.trim();
-  if (inner.startsWith('[[')) {
-    inner = inner.slice(2);
-  }
-  if (inner.endsWith(']]')) {
-    inner = inner.slice(0, -2);
-  }
-  const bar = inner.indexOf('|');
-  if (bar >= 0) {
-    inner = inner.slice(0, bar);
-  }
-  const target = parseWikiTarget(inner);
-  if (!target.note) {
-    return '';
-  }
-  if (target.block) {
-    return `${target.note}#^${target.block}`;
-  }
-  return target.heading ? `${target.note}#${target.heading}` : target.note;
-}
-
-/**
  * Maps written operators onto the evaluator's operator set.
  */
 function readOperator(value: string, field: QueryField): QueryOperator {
@@ -911,27 +888,6 @@ function readOperator(value: string, field: QueryField): QueryOperator {
       return 'lte';
     default:
       return field === 'text' ? 'contains' : 'eq';
-  }
-}
-
-export function describeOperator(operator: QueryOperator): string {
-  switch (operator) {
-    case 'eq':
-      return '=';
-    case 'neq':
-      return '!=';
-    case 'contains':
-      return '~';
-    case 'notContains':
-      return '!~';
-    case 'gt':
-      return '>';
-    case 'gte':
-      return '>=';
-    case 'lt':
-      return '<';
-    case 'lte':
-      return '<=';
   }
 }
 
