@@ -63,10 +63,6 @@ export default {
     "src/ui/commands/pinNote.ts": [
       "setNotePinnedCommand"
     ],
-    "src/ui/commands/renameTag.ts": [
-      "getRemovalRange",
-      "rewriteTag"
-    ],
     "src/ui/commands/review.ts": [
       "writeReview"
     ],
@@ -214,9 +210,6 @@ export default {
       "runAction",
       "toPickItems",
       "triggerItemButton"
-    ],
-    "src/ui/commands/renameTag.ts": [
-      "rewriteTag"
     ],
     "src/ui/commands/review.ts": [
       "writeReview"
@@ -372,7 +365,6 @@ export default {
     "src/ui/commands/preferenceBackups.ts": 5,
     "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/quickFindActions.ts": 4,
-    "src/ui/commands/renameTag.ts": 1,
     "src/ui/commands/repeatRuleHealth.ts": 2,
     "src/ui/commands/sampleWorkspace.ts": 2,
     "src/ui/commands/selectionSeed.ts": 2,
@@ -520,9 +512,6 @@ export default {
     ],
     "src/ui/commands/quickFindActions.ts": [
       "buildRowActions"
-    ],
-    "src/ui/commands/renameTag.ts": [
-      "rewriteTag"
     ],
     "src/ui/commands/rollover.ts": [
       "applyRollover"
@@ -683,7 +672,6 @@ export default {
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/parking.ts": 4,
     "src/ui/commands/quickFind.ts": 4,
-    "src/ui/commands/renameTag.ts": 1,
     "src/ui/commands/rollover.ts": 1,
     "src/ui/commands/tagSuggestions.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 2,

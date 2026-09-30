@@ -20,11 +20,9 @@ import {
   createHubNoteContent,
   getHubNoteName,
 } from '../ui/commands/hubNote';
-import {
-  parseRenameTag,
-  replaceIndexedTag,
-  summarizeTagMerge,
-} from '../ui/commands/renameTag';
+import { summarizeTagMerge } from '../domain/index/tagMerge';
+import { replaceIndexedTag } from '../domain/markdown/tagRename';
+import { parseRenameTag } from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 

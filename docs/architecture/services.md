@@ -20,7 +20,7 @@ A service owns one capability. It is a class with three properties:
 
 | Service | What it owns |
 | --- | --- |
-| `TagService` | Renaming, merging, and tag hygiene, including the rewrite that `rewriteTag` does today |
+| `TagService` | Renaming and merging a tag, in [`src/services/tagService.ts`](../../src/services/tagService.ts). `rewrite()` plans the edits against the index with `domain/markdown/tagRename`, checks each note it touches against its text now, writes them as one write, and moves the tag's preferences; it returns `refused`, `confirm-merge` (with the `merge()` to run once the reader confirms), `stale`, `not-found`, `rejected`, `unchanged`, or `written`. Rename Tag and Merge Tags ask, confirm, and word the result. Tag hygiene is still the pure `ui/state/tagHygiene.ts` |
 | `ParkingService` | Which notes can be parked or unparked, and why the others cannot |
 | `RolloverService` | Carrying unfinished tasks forward, as `applyRollover` does today |
 | `TaskService` | Every task edit: update a line, toggle, steps, move, and the board's capture into a column. A `TaskRankKeeper` collaborator carries a task's rank |

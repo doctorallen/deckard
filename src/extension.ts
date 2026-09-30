@@ -94,7 +94,8 @@ import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
 import { carrySectionIds } from './ui/state/frecency';
-import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
+import { mergeIndexedTag, renameIndexedTag, TagWrites } from './ui/commands/renameTag';
+import { TagService } from './services/tagService';
 import {
   EditorTagDecorations,
   isMarkdownDocument,
@@ -256,6 +257,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     keepRank: (previousId, nextId) => {
       void preferences.replaceTaskInOrder(previousId, nextId);
     },
+  };
+  // What renaming or merging a tag writes through, for the commands that
+  // rename one; the service decides what a rename does.
+  const tagWrites: TagWrites = {
+    history,
+    preferences,
+    tags: new TagService({ index: indexer, preferences }),
   };
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
@@ -766,7 +774,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           'Choose a tag to rename',
         );
         if (tagKey) {
-          await renameIndexedTag(indexer, tagKey, { history, preferences });
+          await renameIndexedTag(indexer, tagKey, tagWrites);
         }
       },
     ),
@@ -1193,7 +1201,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         renameIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
-          { history, preferences },
+          tagWrites,
         ),
     ),
     vscode.commands.registerCommand('deckard.renameHeading', () =>
@@ -1208,7 +1216,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         mergeIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
-          { history, preferences },
+          tagWrites,
           getCommandTagArgument(requestedTargetKey),
         ),
     ),
