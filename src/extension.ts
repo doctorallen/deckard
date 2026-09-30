@@ -84,8 +84,7 @@ import {
   rescheduleTasks,
   setTasksDue,
 } from './ui/commands/agendaActions';
-import { createPinForLine } from './ui/state/pinnedNotes';
-import { pinKey } from './core/storage/preferences';
+import { PinService } from './services/pinService';
 import {
   LinkMaintenance,
   renameHeadingCommand,
@@ -274,17 +273,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     themePreview,
   });
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri));
+  // Which entry a line of a note pins, and whether it is pinned, for the
+  // hover and Find's rows alike.
+  const pins = new PinService({ index: indexer, store: preferences });
   // The hover on an entry offers to pin it, so it has to know which entries
-  // are pinned; preferences answer, and a change redraws the hovers.
+  // are pinned; PinService answers, and a change redraws the hovers.
   const readPinned = (): void => {
-    tagDecorations.setPinnedReader((filePath, line) => {
-      const pin = createPinForLine(
-        indexer.getSnapshot(),
-        indexer.getFilePath(vscode.Uri.file(filePath)),
-        line,
-      );
-      return pin !== undefined && preferences.isPinned(pinKey(pin));
-    });
+    tagDecorations.setPinnedReader((filePath, line) =>
+      pins.isLinePinned(indexer.getFilePath(vscode.Uri.file(filePath)), line),
+    );
   };
   readPinned();
   context.subscriptions.push(preferences.onDidChange(() => readPinned()));
