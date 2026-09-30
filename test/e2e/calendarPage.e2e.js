@@ -16,6 +16,8 @@ const { ActiveCalendar } = modules.activeCalendar;
 const { ActiveSearch } = modules.activeSearch;
 const { SidebarNotesView } = modules.sidebarNotes;
 const { PreferencesStore } = modules.preferences;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 vscode.workspace.openTextDocument = () => Promise.reject(new Error('The e2e stub has no editor.'));
 vscode.window.showErrorMessage = () => Promise.resolve(undefined);
@@ -48,10 +50,12 @@ async function openPage() {
   vscode._test.createdPanels.length = 0;
   const index = createIndex();
   const updates = new vscode.EventEmitter();
-  const page = new CalendarPanel(
-    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
-    { fsPath: '/ext' },
-  );
+  const page = new CalendarPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
+    extensionUri: { fsPath: '/ext' },
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
+  });
   await page.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
@@ -149,14 +153,29 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   const store = new Map();
   const globalState = { get: (key, fallback) => (store.has(key) ? store.get(key) : fallback), keys: () => [...store.keys()], update: (key, value) => { store.set(key, value); return Promise.resolve(); } };
   const activeCalendar = new ActiveCalendar();
-  const sidebar = new SidebarNotesView(indexer, new PreferencesStore(globalState), new ActiveSearch(), () => undefined, '0.0.0-test', activeCalendar);
+  const sidebar = new SidebarNotesView({
+    indexer,
+    preferences: new PreferencesStore(globalState),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    activeCalendar,
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const sidebarHost = vscode._test.createWebviewView();
   sidebarHost._onWebviewMessage = sidebarHost._fromWebview;
   sidebar.resolveWebviewView(sidebarHost);
   const sidebarView = mountWebview(sidebarHost.webview.html, sidebarHost);
   sidebarHost.posted.forEach((message) => sidebarHost._deliver(message));
 
-  const page = new CalendarPanel(indexer, { fsPath: '/ext' }, activeCalendar);
+  const page = new CalendarPanel({
+    indexer,
+    extensionUri: { fsPath: '/ext' },
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
+    activeCalendar,
+  });
   await page.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);

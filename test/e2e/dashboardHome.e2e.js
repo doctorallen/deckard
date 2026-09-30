@@ -12,6 +12,8 @@ const { DashboardPanel } = modules.dashboard;
 const { PreferencesStore } = modules.preferences;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 /** Longer than the page's search debounce. */
 const SETTLE_MS = 450;
@@ -62,14 +64,16 @@ async function openDashboard(
   const preferences = new PreferencesStore(createGlobalState());
   await prepare(preferences);
   const navigation = createNavigation();
-  const dashboard = new DashboardPanel(
+  const dashboard = new DashboardPanel({
     indexer,
     preferences,
-    { fsPath: '/ext' },
+    extensionUri: { fsPath: '/ext' },
     navigation,
     whatsNew,
     tryNext,
-  );
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
+  });
   await dashboard.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
@@ -138,12 +142,14 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     vscode._test.createdPanels.length = 0;
     const updates = new vscode.EventEmitter();
     const index = createIndex();
-    const dashboard = new DashboardPanel(
-      { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
-      new PreferencesStore(globalState),
-      { fsPath: '/ext' },
-      createNavigation(),
-    );
+    const dashboard = new DashboardPanel({
+      indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
+      preferences: new PreferencesStore(globalState),
+      extensionUri: { fsPath: '/ext' },
+      navigation: createNavigation(),
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      themePreview: new ThemePreview(),
+    });
     await dashboard.show();
     const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
     const view = mountWebview(panel.webview.html, panel);

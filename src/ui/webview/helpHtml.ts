@@ -11,6 +11,7 @@ import { getFavoriteHeartAssetUris } from './icons';
 import { ENABLED } from './selectors';
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
 import { escapeHtml } from '../../shared/html';
+import type { DeckardTheme } from './themes';
 
 /**
  * What the Help page reads from the extension's own manifest.
@@ -292,6 +293,8 @@ export interface HelpOptions {
   newSince?: string;
   /** A section to scroll to once the page has loaded. */
   anchor?: string;
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme;
 }
 
 export function getHelpHtml(
@@ -448,7 +451,7 @@ h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
 #guide-view h2, #guide-view h3, #guide-view h4 { scroll-margin-top: 20px; }
 #guide-view h3 { margin-top: 20px; }
 .guide-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-${getPageTailCss()}
+${getPageTailCss(options.theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}${options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : ''}>

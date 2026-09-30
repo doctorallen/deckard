@@ -18,7 +18,7 @@ import {
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../timing';
 import { FileStamp, WorkspaceScanner, describeError } from './scanner';
-import { takeOwnWrite } from './ownWrites';
+import type { OwnWrites } from './writeHistory';
 import { IndexState, NoteChange } from './indexState';
 import { ViewUpdateOptions } from './publishing';
 import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
@@ -54,6 +54,12 @@ export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> {
    * extension. Without it, a test's, a scan reports nowhere.
    */
   progress?: Progress;
+  /**
+   * The notes Deckard has just saved itself, which a save reads back at
+   * once rather than after the debounce: the write history's, in the
+   * extension. Without it, a test's, every save is debounced.
+   */
+  ownWrites?: Pick<OwnWrites, 'take'>;
 }
 
 /** Progress for a scan with nowhere to show it: the task runs as it is. */
@@ -108,6 +114,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
   private readonly readCache: boolean;
   private readonly events: WorkspaceEvents<U> | undefined;
   private readonly progress: Progress;
+  private readonly ownWrites: Pick<OwnWrites, 'take'> | undefined;
   private readonly publishedPromise: Promise<void>;
   private resolvePublished: () => void = () => undefined;
   /** Whether the index shows the cache's notes, not yet checked against the files. */
@@ -123,6 +130,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     this.readCache = options.readCache ?? false;
     this.events = options.events;
     this.progress = options.progress ?? PROGRESS_NOWHERE;
+    this.ownWrites = options.ownWrites;
     this.publishedPromise = new Promise<void>((resolve) => {
       this.resolvePublished = resolve;
     });
@@ -623,7 +631,11 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
       events.onDidSaveTextDocument((document) => {
         if (this.scanner.isNotesFile(document.uri)) {
           // A note Deckard just wrote is read back at once.
-          this.queueUpsert(document.uri, undefined, takeOwnWrite(document.uri.toString()));
+          this.queueUpsert(
+            document.uri,
+            undefined,
+            this.ownWrites?.take(document.uri.toString()) ?? false,
+          );
         }
       }),
     );

@@ -116,7 +116,7 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
 
   test('Stats leaves parked notes out of the unlinked ones, and says how much is parked', () => {
     const index = workspace();
-    const stats = createDeckardStatsSnapshot(index, defaults());
+    const stats = createDeckardStatsSnapshot(index, defaults(), [], Date.now());
     assert.ok(!stats.orphanNotes.some((note) => note.detail === 'archive/Old plan.md'));
     assert.deepStrictEqual(stats.parked, { notes: 1, openTasks: 1 });
     const page = openWebviewPage(getStatsHtml({ cspSource: 'vscode-webview://deckard' } as never), stats);
@@ -127,7 +127,7 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
     } finally {
       page.dispose();
     }
-    assert.strictEqual(createDeckardStatsSnapshot(indexWithParking({ 'a.md': '# A\n' }), defaults()).parked, undefined);
+    assert.strictEqual(createDeckardStatsSnapshot(indexWithParking({ 'a.md': '# A\n' }), defaults(), [], Date.now()).parked, undefined);
   });
 
   test('Check My Setup says how many notes are parked, and warns when all are', () => {

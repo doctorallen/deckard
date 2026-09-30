@@ -10,6 +10,7 @@ import {
   zenBodyAttribute,
 } from './components';
 import { ENABLED } from './selectors';
+import type { DeckardTheme } from './themes';
 
 /**
  * Builds the Notes Graph document: a full-viewport Canvas 2D force-directed
@@ -22,6 +23,8 @@ import { ENABLED } from './selectors';
  */
 export function getNotesGraphHtml(
   webview: Pick<vscode.Webview, 'cspSource'>,
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme,
 ): string {
   const nonce = createNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
@@ -111,7 +114,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
 .empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); pointer-events: none; }
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>

@@ -8,9 +8,10 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { workspaceWrites } from '../ui/commands/workspaceWrites';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { ThemePreview } from '../ui/webview/themePreview';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -57,13 +58,16 @@ suite('Adding a suggested tag', () => {
         index = await build();
       },
     };
-    const view = new SidebarNotesView(
-      indexer as never,
-      new PreferencesStore(new MemoryMemento() as never),
-      new ActiveSearch(),
-      () => undefined,
-      'test',
-    );
+    const history = new WorkspaceWriteHistory();
+    const view = new SidebarNotesView({
+      indexer: indexer as never,
+      preferences: new PreferencesStore(new MemoryMemento() as never),
+      activeSearch: new ActiveSearch(),
+      onOpenTag: () => undefined,
+      extensionVersion: 'test',
+      history,
+      themePreview: new ThemePreview(),
+    });
     const send = (message: unknown) =>
       (view as unknown as { handleMessage(value: unknown): Promise<void> }).handleMessage(message);
     const window = vscode.window as unknown as Record<string, unknown>;
@@ -85,7 +89,7 @@ suite('Adding a suggested tag', () => {
       await send({ type: 'addSuggestedTag', tagKey: '#risk/vendor' });
       const read = async () => Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
       assert.strictEqual(await read(), '# Vendor audit #risk/vendor\nNorthwind deliveries on the northern route are late again.\n');
-      assert.strictEqual(workspaceWrites.lastWrite?.label, '#risk/vendor on "Vendor audit"');
+      assert.strictEqual(history.lastWrite?.label, '#risk/vendor on "Vendor audit"');
       assert.deepStrictEqual(shown[0], ['Added #risk/vendor to "Vendor audit".', 'Undo']);
 
       // A tag no longer offered, now that the note has one, writes nothing.
@@ -93,7 +97,7 @@ suite('Adding a suggested tag', () => {
       assert.strictEqual(shown.length, 1);
 
       // Undo from the message puts the line back.
-      await workspaceWrites.undo();
+      await history.undo();
       index = await build();
       answer = 'Undo';
       await send({ type: 'addSuggestedTag', tagKey: '#risk/vendor' });

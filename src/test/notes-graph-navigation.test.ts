@@ -15,6 +15,7 @@ import {
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { aroundNoteScope, NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { ThemePreview } from '../ui/webview/themePreview';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,
@@ -72,6 +73,7 @@ suite('Notes graph navigation', () => {
       async (context, reveal) => {
         contexts.push({ context, reveal });
       },
+      new ThemePreview(),
     );
 
     try {
@@ -136,7 +138,7 @@ suite('Notes graph navigation', () => {
       isNotesFile: () => true,
     } as unknown as WorkspaceIndexer;
     const posted: Array<{ type: string }> = [];
-    const graph = new NotesGraphPanel(indexer, vscode.Uri.file(process.cwd()), () => undefined);
+    const graph = new NotesGraphPanel(indexer, vscode.Uri.file(process.cwd()), () => undefined, new ThemePreview());
     try {
       const controller = graph as unknown as { panel: unknown; refresh(): void };
       controller.panel = {
@@ -175,6 +177,7 @@ suite('Notes graph navigation', () => {
       createIndexer(buildWorkspaceIndex(new Map())),
       vscode.Uri.file(process.cwd()),
       () => undefined,
+      new ThemePreview(),
     );
     try {
       const controller = graph as unknown as {

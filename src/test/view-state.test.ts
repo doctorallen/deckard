@@ -227,6 +227,8 @@ suite('Dashboard state', () => {
     const stats = createDeckardStatsSnapshot(
       createFileIndex([self, first, second, daily, weekly, monthly]),
       defaultPreferences,
+      [],
+      Date.now(),
     );
 
     assert.strictEqual(stats.orphanNoteCount, 2);
@@ -256,7 +258,7 @@ suite('Dashboard state', () => {
       tagAccessCounts: { '#project/relay': 3, missing: 9 },
       entityAccessCounts: { '#project/relay': 2 },
       sectionAccessCounts: { [first.sections[0].id]: 4 },
-    });
+    }, [], Date.now());
 
     assert.strictEqual(stats.fileCount, 2);
     assert.strictEqual(stats.sectionCount, 2);

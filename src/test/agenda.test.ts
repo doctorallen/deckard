@@ -12,6 +12,7 @@ import { evaluateQuery } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { createTaskGlance } from '../ui/state/dashboardState';
 import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { createQueryContext } from '../core/query/queryContext';
 
 const at = (month: number, day: number): number =>
@@ -127,10 +128,13 @@ suite('Agenda', () => {
     );
     const index = createIndex(tasks);
     const updates = new vscode.EventEmitter<WorkspaceIndex>();
-    const provider = new AgendaTreeProvider({
-      onDidUpdate: updates.event,
-      getTask: (taskId) => index.tasks.get(taskId),
-    });
+    const provider = new AgendaTreeProvider(
+      {
+        onDidUpdate: updates.event,
+        getTask: (taskId) => index.tasks.get(taskId),
+      },
+      { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    );
     try {
       updates.fire(index);
       const [overdue] = await provider.getChildren();

@@ -6,6 +6,8 @@ import {
   isPeriodicNotePath,
 } from '../../core/markdown/parser';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import {
   NotesGraphMessage,
@@ -96,6 +98,8 @@ export class NotesGraphPanel implements vscode.Disposable {
       context: SidebarGraphContext | undefined,
       reveal?: boolean,
     ) => void | Promise<void>,
+    /** The theme Choose Theme… is previewing, which the page draws in. */
+    private readonly themePreview: ThemePreview,
   ) {
     this.disposables.push(
       onIndexUpdateInTurn(
@@ -120,7 +124,7 @@ export class NotesGraphPanel implements vscode.Disposable {
       onDidChangePageChrome(() => {
         this.renderHtml();
         this.refresh();
-      }),
+      }, this.themePreview),
     );
     this.rememberNote(vscode.window.activeTextEditor);
     this.disposables.push(
@@ -265,7 +269,7 @@ export class NotesGraphPanel implements vscode.Disposable {
 
   private renderHtml(): void {
     if (this.panel) {
-      this.panel.webview.html = getNotesGraphHtml(this.panel.webview);
+      this.panel.webview.html = getNotesGraphHtml(this.panel.webview, getDeckardTheme(this.themePreview));
     }
   }
 

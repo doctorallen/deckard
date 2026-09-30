@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 
 import { listedParkedTags } from '../../core/workspace/parked';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../core/timing';
@@ -43,7 +45,7 @@ import {
 import { parseCalendarMessage, parseSidebarMessage } from './messages';
 import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
-import { applyWorkspaceWrite } from '../commands/workspaceWrites';
+import { WorkspaceWriteHistory } from '../commands/workspaceWrites';
 import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
 import { viewPriority } from './panelPriority';
 
@@ -52,6 +54,23 @@ export type { EntryScope, EntryTagContext, EntryTagSource } from '../state/entry
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
+
+/** What Related Notes is built from. */
+export interface SidebarNotesViewOptions {
+  indexer: WorkspaceIndexer;
+  preferences: PreferencesStore;
+  activeSearch: ActiveSearch;
+  onOpenTag: (tagKey: string) => void | Promise<void>;
+  extensionVersion: string;
+  /** The calendar page, whose chosen day this shows while it is in front. */
+  activeCalendar?: ActiveCalendar;
+  /** Home, whose widgets this offers to add while it is in front. */
+  activeHome?: ActiveHome;
+  /** The history its links, tags, and renames are written to. */
+  history: WorkspaceWriteHistory;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
+}
 
 /**
  * Shows the notes related to the Markdown note being edited, or, while a
@@ -74,17 +93,31 @@ export class SidebarNotesView
   /** Whether the first scan has finished, which tells indexing from missing. */
   private indexed = false;
 
-  public constructor(
-    private readonly indexer: WorkspaceIndexer,
-    private readonly preferences: PreferencesStore,
-    private readonly activeSearch: ActiveSearch,
-    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
-    private readonly extensionVersion: string,
-    /** The calendar page, whose chosen day this shows while it is in front. */
-    private readonly activeCalendar?: ActiveCalendar,
-    /** Home, whose widgets this offers to add while it is in front. */
-    private readonly activeHome?: ActiveHome,
-  ) {
+  private readonly indexer: WorkspaceIndexer;
+  private readonly preferences: PreferencesStore;
+  private readonly activeSearch: ActiveSearch;
+  private readonly onOpenTag: (tagKey: string) => void | Promise<void>;
+  private readonly extensionVersion: string;
+  /** The calendar page, whose chosen day this shows while it is in front. */
+  private readonly activeCalendar: ActiveCalendar | undefined;
+  /** Home, whose widgets this offers to add while it is in front. */
+  private readonly activeHome: ActiveHome | undefined;
+  /** The history its links, tags, and renames are written to. */
+  private readonly history: WorkspaceWriteHistory;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
+
+  public constructor(options: SidebarNotesViewOptions) {
+    this.indexer = options.indexer;
+    this.preferences = options.preferences;
+    this.activeSearch = options.activeSearch;
+    this.onOpenTag = options.onOpenTag;
+    this.extensionVersion = options.extensionVersion;
+    this.activeCalendar = options.activeCalendar;
+    this.activeHome = options.activeHome;
+    this.history = options.history;
+    this.themePreview = options.themePreview;
+    const { indexer, activeSearch, activeCalendar, activeHome } = options;
     if (activeHome) {
       this.disposables.push(activeHome.onDidChange(() => this.refresh()));
     }
@@ -136,7 +169,7 @@ export class SidebarNotesView
       onDidChangePageChrome(() => {
         this.renderHtml();
         this.refresh();
-      }),
+      }, this.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.enableKeywordLinks') ||
@@ -348,6 +381,7 @@ export class SidebarNotesView
       this.view.webview.html = getSidebarNotesHtml(
         this.view.webview,
         this.extensionVersion,
+        getDeckardTheme(this.themePreview),
       );
     }
   }
@@ -492,8 +526,11 @@ export class SidebarNotesView
       this.entryContext?.filePath === selectedFilePath
         ? createEntryScope(selectedFile, this.entryContext.sourceLine)
         : undefined;
+    // The moment this snapshot is built at, for the ranking's recency and
+    // for how lately each linking note changed.
+    const now = Date.now();
     const snapshot = createSidebarSnapshot(index, selectedFilePath, activeEntry?.file ?? selectedFile, {
-      now: Date.now(),
+      now,
       enableKeywordLinks: this.areKeywordLinksEnabled(),
       relatedNotesSortMode: this.preferences.value.relatedNotesSortMode,
       sectionAccessCounts: this.preferences.value.sectionAccessCounts,
@@ -511,7 +548,7 @@ export class SidebarNotesView
           ...snapshot,
           hideDailyNotes,
           previewLines,
-          links: collectNoteLinks(index, indexedFile, { hideDailyNotes }),
+          links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes }),
         }
       : { ...snapshot, hideDailyNotes, previewLines };
   }
@@ -718,11 +755,10 @@ export class SidebarNotesView
       return;
     }
     if (message.type === 'renameTag') {
-      const replacement = await renameIndexedTag(
-        this.indexer,
-        message.tagKey,
-        this.preferences,
-      );
+      const replacement = await renameIndexedTag(this.indexer, message.tagKey, {
+        history: this.history,
+        preferences: this.preferences,
+      });
       if (replacement) {
         await this.onOpenTag(replacement.key);
       }
@@ -782,7 +818,7 @@ export class SidebarNotesView
       const filePath = this.createSnapshot().links ? this.getSelectedFilePath() : undefined;
       const uri = filePath ? await resolveSourceUri(filePath) : undefined;
       if (uri) {
-        await linkMentions(this.indexer, uri);
+        await linkMentions(this.indexer, this.history, uri);
       }
       return;
     }
@@ -860,7 +896,7 @@ export class SidebarNotesView
     }
     const edit = new vscode.WorkspaceEdit();
     edit.replace(uri, range, `[[${mention.name}]]`);
-    await applyWorkspaceWrite(edit, {
+    await this.history.write(edit, {
       label: `a link to ${mention.name} in ${mention.title}`,
     });
     await this.indexer.refresh();
@@ -910,7 +946,7 @@ export class SidebarNotesView
     const where = target.kind === 'heading' ? `"${target.label}"` : target.label;
     const edit = new vscode.WorkspaceEdit();
     edit.replace(document.uri, document.lineAt(target.line - 1).range, after);
-    const written = await applyWorkspaceWrite(edit, {
+    const written = await this.history.write(edit, {
       label: `${tag.label} on ${where}`,
       preview: 'never',
     });
@@ -935,7 +971,7 @@ export class SidebarNotesView
         }
         const undo = new vscode.WorkspaceEdit();
         undo.replace(uri, now.lineAt(target.line - 1).range, before);
-        await applyWorkspaceWrite(undo, { label: `taking ${tag.label} off ${where}`, preview: 'never' });
+        await this.history.write(undo, { label: `taking ${tag.label} off ${where}`, preview: 'never' });
         await this.indexer.refresh();
       });
   }

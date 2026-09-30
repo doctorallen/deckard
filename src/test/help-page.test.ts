@@ -8,6 +8,7 @@ import * as path from 'path';
 import { HelpPanel } from '../ui/webview/help';
 import { getHelpHtml, HelpManifest } from '../ui/webview/helpHtml';
 import { openWebviewPage } from './webviewPage';
+import { ThemePreview } from '../ui/webview/themePreview';
 
 suite('Help page', () => {
   const extensionUri = vscode.Uri.file('/tmp/deckard-extension');
@@ -95,7 +96,7 @@ suite('Help page', () => {
     const original = commands.executeCommand;
     const ran: string[] = [];
     commands.executeCommand = async (id: string) => void ran.push(id);
-    const help = new HelpPanel(extensionUri, manifest);
+    const help = new HelpPanel(extensionUri, new ThemePreview(), manifest);
     try {
       await help.handle({ type: 'runCommand', command: 'deckard.editTask' });
       await help.handle({ type: 'runCommand', command: 'workbench.action.quit' });
@@ -143,8 +144,8 @@ suite('Help page', () => {
       return fakePanel();
     };
     assert.strictEqual(window.createWebviewPanel === original, false, 'the panel can be stood in for');
-    const help = new HelpPanel(extensionUri);
-    const restoredHelp = new HelpPanel(extensionUri);
+    const help = new HelpPanel(extensionUri, new ThemePreview());
+    const restoredHelp = new HelpPanel(extensionUri, new ThemePreview());
     try {
       await help.show();
       assert.strictEqual((made[0] as vscode.WebviewPanelOptions & vscode.WebviewOptions).enableScripts, true);

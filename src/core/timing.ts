@@ -1,5 +1,6 @@
 import { performance } from 'perf_hooks';
 
+import type { Disposable } from '../ports/events';
 import type { Log } from '../ports/log';
 
 /**
@@ -21,11 +22,26 @@ export type TimingLog = Log;
 /** A measurement at least this long is reported even at the default level. */
 export const SLOW_OPERATION_MS = 100;
 
+/**
+ * Where measurements go. The one piece of module state here, on purpose: a
+ * log has no answer to give back, so measuring reads it rather than every
+ * measured function taking it, and activate() sets it and takes it away.
+ */
 let log: TimingLog | undefined;
 
-/** Sends measurements to `next`, or stops reporting them when undefined. */
-export function setTimingLog(next: TimingLog | undefined): void {
+/**
+ * Sends measurements to `next`, or stops reporting them when undefined.
+ * Returns what stops them again, which activate() pushes onto the
+ * extension's subscriptions, so the log is Deckard's from activation to
+ * deactivation.
+ */
+export function setTimingLog(next: TimingLog | undefined): Disposable {
   log = next;
+  return {
+    dispose: () => {
+      log = undefined;
+    },
+  };
 }
 
 /**

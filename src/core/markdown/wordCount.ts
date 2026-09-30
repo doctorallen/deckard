@@ -105,13 +105,16 @@ export function maskNoteForWords(lines: readonly string[]): string[] {
   return masked;
 }
 
-let segmenter: Intl.Segmenter | undefined;
+/**
+ * The word breaker for the host's own language, made once: it holds no state
+ * between calls, so one serves every count.
+ */
+const WORD_SEGMENTER = new Intl.Segmenter(undefined, { granularity: 'word' });
 
 /** The words in some text, as the language's own word breaker finds them. */
 export function countWords(text: string): number {
-  segmenter ??= new Intl.Segmenter(undefined, { granularity: 'word' });
   let count = 0;
-  for (const segment of segmenter.segment(text)) {
+  for (const segment of WORD_SEGMENTER.segment(text)) {
     if (segment.isWordLike) {
       count += 1;
     }

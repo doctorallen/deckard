@@ -67,17 +67,17 @@ suite('Stats: notes that could not be read', () => {
   test('the snapshot lists each one with what opens it', () => {
     const snapshot = createDeckardStatsSnapshot(index(), preferences(), [
       { filePath: 'notes/bad.md', reason: 'EACCES: permission denied' },
-    ]);
+    ], Date.now());
     assert.deepStrictEqual(snapshot.unreadable, [
       { filePath: 'notes/bad.md', reason: 'EACCES: permission denied', open: { type: 'openSource', filePath: 'notes/bad.md', line: 1 } },
     ]);
-    assert.deepStrictEqual(createDeckardStatsSnapshot(index(), preferences()).unreadable, []);
+    assert.deepStrictEqual(createDeckardStatsSnapshot(index(), preferences(), [], Date.now()).unreadable, []);
   });
 
   test('the page says so where a reader looks, and a row opens the note', () => {
     const page = openWebviewPage(
       getStatsHtml(webview),
-      createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/bad.md', reason: 'EACCES: permission denied' }]),
+      createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/bad.md', reason: 'EACCES: permission denied' }], Date.now()),
     );
     try {
       const text = page.document.body.textContent ?? '';
@@ -93,7 +93,7 @@ suite('Stats: notes that could not be read', () => {
   });
 
   test('the page says when the index was refreshed in words, with the time on hover', () => {
-    const page = openWebviewPage(getStatsHtml(webview), { ...createDeckardStatsSnapshot(index(), preferences()), updatedAt: Date.now() - 5 * 60 * 1000 });
+    const page = openWebviewPage(getStatsHtml(webview), { ...createDeckardStatsSnapshot(index(), preferences(), [], Date.now()), updatedAt: Date.now() - 5 * 60 * 1000 });
     try {
       assert.match(page.text('.updated') ?? '', /^Index last refreshed: 5 minutes ago/);
       assert.ok(page.find('.updated span[title]').getAttribute('title')?.includes('2'), 'the exact time is on hover');
@@ -103,7 +103,7 @@ suite('Stats: notes that could not be read', () => {
   });
 
   test('every tile opens a search Deckard can read', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {
       const queries = page.findAll('[data-query]').map((tile) => tile.getAttribute('data-query') ?? '');
       assert.ok(queries.includes('is:task'), JSON.stringify(queries));
@@ -117,7 +117,7 @@ suite('Stats: notes that could not be read', () => {
   });
 
   test('the page says nothing when every note was read', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {
       // The page's own script mentions the panel by name, so read the DOM,
       // not the text of everything under body.
@@ -138,7 +138,7 @@ suite('Stats: what needs attention, first', () => {
   });
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
   const open = (index: ReturnType<typeof build>, prefs = preferences()) =>
-    openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index, prefs));
+    openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index, prefs, [], Date.now()));
 
   test('leads with Needs attention, each panel counting its rows', () => {
     const page = open(build({
@@ -354,7 +354,7 @@ suite('Stats: how often tags are used', () => {
   });
 
   test('each bar says its count and opens its tags; Used once unfolds them to merge', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(notes(), preferences()));
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(notes(), preferences(), [], Date.now()));
     try {
       const bands = page.findAll('.tag-use-band');
       assert.deepStrictEqual(bands.map((band) => band.textContent), [
@@ -435,7 +435,7 @@ suite('Stats: tags written together', () => {
   });
 
   test('a cell opens the search for both, and the pairs can be read as a list', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {
       const cells = page.findAll('.pair-grid .pair-cell');
       assert.ok(cells.length > 0);

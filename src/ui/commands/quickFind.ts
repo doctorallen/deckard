@@ -23,7 +23,7 @@ import { pinKey } from '../../core/storage/preferences';
 import { createPinForLine } from '../state/pinnedNotes';
 import { askForDueDate, dueDateFor, pickReschedule, setTasksDue } from './agendaActions';
 import { buildRowActions, RowActionId, STAYING_ACTIONS } from './quickFindActions';
-import { quoteTaskTitle, toggleTask } from './taskActions';
+import { quoteTaskTitle, TaskWrites, toggleTask } from './taskActions';
 import { keyLabel } from './quickFindKeys';
 import { shortSelection } from './selectionSeed';
 import { whenPublished } from '../../core/workspace/publishing';
@@ -69,11 +69,12 @@ const SHORT_WEEKDAY = /^(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)$/i;
 /**
  * The daily note row for what is typed, when the whole of it is a day, such
  * as `friday` or `oct 3`, and could be a note's name. A short weekday alone,
- * such as `sat`, is left to the search.
+ * such as `sat`, is left to the search. `now` is the moment the keystroke's
+ * results are read at, which the day is found from and described against.
  */
 export function findDailyNoteRow(
   value: string,
-  now: number = Date.now(),
+  now: number,
   options: Parameters<typeof parseDatePhrase>[2] = {},
 ): DailyNoteRow | undefined {
   const text = value.trim();
@@ -145,6 +146,8 @@ export class QuickFind implements vscode.Disposable {
     private readonly indexer: WorkspaceIndexer<vscode.Uri>,
     private readonly preferences: PreferencesStore,
     private readonly actions: QuickFindActions,
+    /** What completing or dating a task from a row writes through. */
+    private readonly writes: TaskWrites,
   ) {}
 
   public async show(initialQuery?: string, activeKey?: string): Promise<void> {
@@ -363,7 +366,7 @@ export class QuickFind implements vscode.Disposable {
       case 'complete':
       case 'reopen':
         if (task) {
-          await toggleTask(task, action === 'complete');
+          await toggleTask(this.writes, task, action === 'complete');
         }
         // Find stays open, and redraws the row when the index has it.
         return this.picker ? undefined : back();
@@ -372,8 +375,9 @@ export class QuickFind implements vscode.Disposable {
       case 'noDue':
         if (task) {
           await setTasksDue(
+            this.writes,
             [task],
-            action === 'noDue' ? undefined : dueDateFor(action === 'dueToday' ? 'today' : 'tomorrow'),
+            action === 'noDue' ? undefined : dueDateFor(action === 'dueToday' ? 'today' : 'tomorrow', Date.now()),
           );
         }
         return back();
@@ -381,7 +385,7 @@ export class QuickFind implements vscode.Disposable {
         if (task) {
           const date = await askForDueDate(quoteTaskTitle(task));
           if (date !== null) {
-            await setTasksDue([task], date);
+            await setTasksDue(this.writes, [task], date);
           }
         }
         return back();
@@ -442,7 +446,7 @@ export class QuickFind implements vscode.Disposable {
       title: `Due date for ${quoteTaskTitle(task)}`,
     });
     if (choice?.kind === 'one') {
-      await setTasksDue([task], choice.date);
+      await setTasksDue(this.writes, [task], choice.date);
     }
     await this.show(value, rowKey(item));
   }
@@ -578,7 +582,7 @@ export class QuickFind implements vscode.Disposable {
     }
     if (chosen.openDate !== undefined) {
       picker.hide();
-      await openDailyNoteFor(this.indexer, chosen.openDate);
+      await openDailyNoteFor(this.indexer, this.writes.history, chosen.openDate);
       return;
     }
     if (chosen.capture) {

@@ -12,6 +12,7 @@ import {
   findMissingNoteNames,
 } from '../ui/commands/linkHealth';
 import { linkMentions } from '../ui/commands/unlinkedMentions';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import {
   findDailyNoteActions,
   findEmbedProblems,
@@ -321,6 +322,7 @@ suite('Editor lenses', () => {
             parse: (uri, content) => parseMarkdown(uri.fsPath, content),
             refresh: async () => undefined,
           },
+          new WorkspaceWriteHistory(),
           atlas,
         );
         const written = (await vscode.workspace.openTextDocument(log)).getText();

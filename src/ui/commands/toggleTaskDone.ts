@@ -17,6 +17,7 @@ import {
   describeCompletion,
   quoteTitle,
   readTaskMetadataFormat,
+  TaskRankKeeper,
 } from './taskActions';
 
 /** The checkbox a line must open with to be toggled. */
@@ -155,12 +156,21 @@ interface RankPaths {
 }
 
 /**
+ * How each toggled task keeps its place in the rank order: the index's own
+ * path for the note, and the keeper that carries a rank to the line's new id.
+ */
+interface RankCarry {
+  paths: RankPaths;
+  keepRank: TaskRankKeeper;
+}
+
+/**
  * Completes or reopens every task under the editor's cursors in one edit, so
  * one Undo takes it all back. It writes into the buffer rather than through
  * the index, so an unsaved note works like any other.
  */
 export async function toggleTaskDoneCommand(
-  paths?: RankPaths,
+  rank?: RankCarry,
   now: number = Date.now(),
 ): Promise<ToggleResult | undefined> {
   const editor = vscode.window.activeTextEditor;
@@ -202,14 +212,18 @@ export async function toggleTaskDoneCommand(
 
   // Each task keeps its place in the rank order. A next occurrence written
   // above a line moves every line below it down by one.
-  if (paths && !document.isUntitled) {
-    const filePath = paths.getFilePath(document.uri);
+  if (rank && !document.isUntitled) {
+    const filePath = rank.paths.getFilePath(document.uri);
     let added = 0;
     for (const toggled of result.lines) {
       const lineNumber = toggled.line + 1;
       const previousId = getTaskLineId(filePath, lineNumber, toggled.before);
       if (previousId) {
-        carryTaskRank(filePath, lineNumber + added, previousId, toggled.after);
+        carryTaskRank(
+          rank.keepRank,
+          { filePath, lineNumber: lineNumber + added, id: previousId },
+          toggled.after,
+        );
       }
       added += toggled.after.split(/\r?\n/).length - 1;
     }

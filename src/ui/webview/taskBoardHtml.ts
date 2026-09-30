@@ -12,13 +12,18 @@ import {
   loadingHtml,
   zenBodyAttribute,
 } from './components';
+import type { DeckardTheme } from './themes';
 
 /**
  * Builds the Task Board page: the search box every search page shares, the
  * gear that holds the board's view options and column settings, and the
  * searched tasks as columns or as a list.
  */
-export function getTaskBoardHtml(webview: vscode.Webview): string {
+export function getTaskBoardHtml(
+  webview: vscode.Webview,
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme,
+): string {
   const nonce = createNonce();
   const csp = getContentSecurityPolicy(webview.cspSource, nonce);
 
@@ -59,7 +64,7 @@ header { align-items: flex-start; }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>
@@ -68,7 +73,7 @@ ${loadingHtml('Loading tasks…')}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
-${getComponentScript()}
+${getComponentScript(theme)}
 ${getQueryEditorScript()}
   let state;
   /** What is being typed into the gear's fields, kept across redraws. */

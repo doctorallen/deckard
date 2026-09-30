@@ -26,8 +26,12 @@ import {
   summarizeTagMerge,
 } from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 
 suite('Source commands', () => {
+  // The history these edits write to, which no other suite shares.
+  const writes = { history: new WorkspaceWriteHistory(), keepRank: () => undefined };
+
   test('toggles a checklist character and adds only its completion date', async () => {
     const temporaryRoot = await createTemporaryRoot();
     const fileUri = vscode.Uri.joinPath(temporaryRoot, 'notes.md');
@@ -38,7 +42,7 @@ suite('Source commands', () => {
     );
 
     const parsed = parseMarkdown(fileUri.fsPath, originalContent);
-    const updated = await toggleTask(parsed.tasks[0], true);
+    const updated = await toggleTask(writes, parsed.tasks[0], true);
     const content = Buffer.from(
       await vscode.workspace.fs.readFile(fileUri),
     ).toString('utf8');
@@ -64,6 +68,7 @@ suite('Source commands', () => {
     const today = formatIsoDate(Date.now());
 
     const completed = await toggleTask(
+      writes,
       parseMarkdown(fileUri.fsPath, originalContent).tasks[0],
       true,
     );
@@ -76,6 +81,7 @@ suite('Source commands', () => {
 
     // Reopening removes the done date but leaves the next occurrence alone.
     const reopened = await toggleTask(
+      writes,
       parseMarkdown(fileUri.fsPath, afterCompleting).tasks[1],
       false,
     );
@@ -106,7 +112,7 @@ suite('Source commands', () => {
       '- [ ] Changed title',
     );
     assert.strictEqual(await vscode.workspace.applyEdit(edit), true);
-    assert.strictEqual(await toggleTask(parsed.tasks[0], true), false);
+    assert.strictEqual(await toggleTask(writes, parsed.tasks[0], true), false);
     assert.strictEqual(document.lineAt(0).text, '- [ ] Changed title');
     await deleteTemporaryRoot(temporaryRoot);
   });

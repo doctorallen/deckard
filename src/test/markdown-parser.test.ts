@@ -8,6 +8,7 @@ import {
   extractWikiLinks,
   getEntityNamespaceAliases,
   getEntityKind,
+  getPersonMarker,
   legacyIdOf,
   parseMarkdown,
   stripTags,
@@ -275,6 +276,20 @@ suite('Markdown parser', () => {
       ],
     );
     assert.strictEqual(stripTags('Team ~mara-vale @inbox', '~'), 'Team');
+  });
+
+  test('every people marker the setting accepts finds its people', () => {
+    const punctuation = [...'!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'];
+    const accepted = punctuation.filter((marker) => getPersonMarker(marker) === marker);
+    assert.ok(accepted.length > 1);
+    for (const marker of accepted) {
+      assert.strictEqual(stripTags(`Call ${marker}dana today`, marker), 'Call today', marker);
+      assert.deepStrictEqual(
+        extractTags(`Call ${marker}dana`, undefined, marker).map((tag) => tag.key),
+        ['@dana'],
+        marker,
+      );
+    }
   });
 
   test('inherits supported frontmatter entities into sections and tasks', () => {

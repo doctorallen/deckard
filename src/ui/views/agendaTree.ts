@@ -10,6 +10,7 @@ import { readQueryContext } from '../commands/queryContext';
 import { writeSetting } from '../commands/settings';
 import {
   readTaskMetadataFormat,
+  TaskWrites,
   toggleTask,
   updateTaskLine,
 } from '../commands/taskActions';
@@ -137,6 +138,8 @@ export class AgendaTreeProvider
 
   public constructor(
     private readonly indexer: AgendaIndexSource,
+    /** What completing, reopening, or moving a task writes through. */
+    private readonly writes: TaskWrites,
     private readonly preferences?: AgendaPreferences,
   ) {
     this.disposables.push(
@@ -447,10 +450,10 @@ export class AgendaTreeProvider
         continue;
       }
       if (move.kind === 'complete') {
-        await toggleTask(task, true);
+        await toggleTask(this.writes, task, true);
         continue;
       }
-      await updateTaskLine(task, (line) => move.edit(line), move.label);
+      await updateTaskLine(this.writes, task, (line) => move.edit(line), move.label);
     }
     if (refused.length > 0) {
       void (moved === 0
@@ -498,7 +501,7 @@ export class AgendaTreeProvider
         continue;
       }
       const task = this.indexer.getTask(drawn.id) ?? drawn;
-      if (!(await toggleTask(task, complete))) {
+      if (!(await toggleTask(this.writes, task, complete))) {
         failed = true;
       }
     }

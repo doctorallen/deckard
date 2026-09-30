@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import { measure } from '../../core/timing';
 import { CalendarMessage, WorkspaceIndex } from '../../core/types';
@@ -15,7 +17,7 @@ import {
 } from '../commands/dailyNote';
 import { openSourceAt } from '../commands/navigation';
 import { setTaskDateField } from '../commands/agendaActions';
-import { openTask, toggleTask } from '../commands/taskActions';
+import { openTask, TaskWrites, toggleTask } from '../commands/taskActions';
 import { readWeekStart } from '../commands/datePrompt';
 import { readQueryContext } from '../commands/queryContext';
 import { CalendarOptions, CalendarSnapshot, clampToMonth, createCalendar } from '../state/calendarState';
@@ -46,8 +48,17 @@ export class CalendarView
   private isStale = false;
   public readonly controller: CalendarController;
 
-  public constructor(private readonly indexer: CalendarIndexSource) {
-    this.controller = new CalendarController(indexer, readDayPanel, () => this.refresh());
+  public constructor(
+    private readonly indexer: CalendarIndexSource,
+    /** What checking a task off, or dropping it on a day, writes through. */
+    writes: TaskWrites,
+    /** The theme Choose Theme… is previewing, which the calendar draws in. */
+    private readonly themePreview: ThemePreview,
+  ) {
+    this.controller = new CalendarController(indexer, writes, {
+      dayPanel: readDayPanel,
+      refresh: () => this.refresh(),
+    });
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -61,7 +72,7 @@ export class CalendarView
         }
       }),
       // The page reloads and asks for its state again when it is ready.
-      onDidChangePageChrome(() => this.renderHtml()),
+      onDidChangePageChrome(() => this.renderHtml(), themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
@@ -110,7 +121,9 @@ export class CalendarView
 
   private renderHtml(): void {
     if (this.view) {
-      this.view.webview.html = getCalendarHtml(this.view.webview);
+      this.view.webview.html = getCalendarHtml(this.view.webview, {
+        theme: getDeckardTheme(this.themePreview),
+      });
     }
   }
 
@@ -135,6 +148,16 @@ export class CalendarView
   }
 }
 
+/** What a calendar's controller asks of the view or page that shows it. */
+export interface CalendarControllerHost {
+  /** Whether the day panel is showing, and so a new month keeps a chosen day. */
+  dayPanel: () => boolean;
+  /** Draws the calendar again, after its month or day changed. */
+  refresh: () => void;
+  /** Says a task was not moved, so a page that moved it at once can say so. */
+  refused?: (taskId: string) => void;
+}
+
 /**
  * The month and the day a calendar shows, and what it does when asked:
  * one for the sidebar Calendar and one for the calendar page, so the two
@@ -147,19 +170,16 @@ export class CalendarController {
 
   public constructor(
     private readonly indexer: Pick<CalendarIndexSource, 'getSnapshot'>,
-    /** Whether the day panel is showing, and so a new month keeps a chosen day. */
-    private readonly dayPanel: () => boolean,
-    /** Draws the calendar again, after its month or day changed. */
-    private readonly refresh: () => void,
-    /** Says a task was not moved, so a page that moved it at once can say so. */
-    private readonly refused?: (taskId: string) => void,
+    /** What checking a task off, or dropping it on a day, writes through. */
+    private readonly writes: TaskWrites,
+    private readonly host: CalendarControllerHost,
   ) {}
 
   /** The calendar as it is now, for the host to post. */
   public snapshot(options: CalendarOptions = {}): CalendarSnapshot {
     return measure('Calendar', () =>
       createCalendar(this.indexer.getSnapshot(), this.month, readQueryContext(), {
-        dayPanel: this.dayPanel(),
+        dayPanel: this.host.dayPanel(),
         selectedDate: this.selectedDate,
         showRepeats: readShowRepeats(),
         showWeekends: readShowWeekends(),
@@ -175,20 +195,20 @@ export class CalendarController {
   public async handle(message: CalendarMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
-        this.refresh();
+        this.host.refresh();
         return;
       case 'showMonth':
         this.month = message.month;
         // A new month keeps the chosen day's place in it.
         if (message.date) {
           this.selectedDate = message.date;
-        } else if (this.selectedDate || this.dayPanel()) {
+        } else if (this.selectedDate || this.host.dayPanel()) {
           this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
         }
         if (this.selectedDate === formatLocalDate(new Date())) {
           this.selectedDate = undefined;
         }
-        this.refresh();
+        this.host.refresh();
         return;
       case 'selectDay':
         // Today is held as no choice, so after midnight it is the new today.
@@ -196,7 +216,7 @@ export class CalendarController {
         if (message.date.slice(0, 7) !== this.month) {
           this.month = message.date.slice(0, 7);
         }
-        this.refresh();
+        this.host.refresh();
         return;
       case 'createDay': {
         const day = parseLocalDate(message.date);
@@ -223,15 +243,15 @@ export class CalendarController {
       case 'toggleTask': {
         const task = this.indexer.getSnapshot().tasks.get(message.taskId);
         if (task) {
-          await toggleTask(task, message.completed);
+          await toggleTask(this.writes, task, message.completed);
         }
         return;
       }
       case 'moveTask': {
         const task = this.indexer.getSnapshot().tasks.get(message.taskId);
-        const moved = task && !task.completed ? await setTaskDateField(task, message.field, message.date) : false;
+        const moved = task && !task.completed ? await setTaskDateField(this.writes, task, message.field, message.date) : false;
         if (!moved) {
-          this.refused?.(message.taskId);
+          this.host.refused?.(message.taskId);
         }
         return;
       }

@@ -15,7 +15,6 @@ import {
   planNoteRenameRewrites,
 } from '../ui/commands/linkMaintenance';
 import {
-  applyWorkspaceWrite,
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
 
@@ -194,11 +193,10 @@ suite('Link maintenance', () => {
     );
 
     const { edit } = await createLinkRewriteEdit(rewrites);
-    const written = await applyWorkspaceWrite(
-      edit,
-      { label: 'the rename', preview: 'never' },
-      new WorkspaceWriteHistory(),
-    );
+    const written = await new WorkspaceWriteHistory().write(edit, {
+      label: 'the rename',
+      preview: 'never',
+    });
     const updated = written.notes.length;
     const read = async (file: string): Promise<string> =>
       Buffer.from(

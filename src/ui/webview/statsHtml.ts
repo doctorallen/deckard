@@ -9,13 +9,18 @@ import {
   zenBodyAttribute,
 } from './components';
 import { ENABLED } from './selectors';
+import type { DeckardTheme } from './themes';
 
 /**
  * Builds the Stats page from host-projected index and access data. Each
  * most-viewed row posts the message the host projected for it, which opens
  * the tag overview or note entry that row counts.
  */
-export function getStatsHtml(webview: vscode.Webview): string {
+export function getStatsHtml(
+  webview: vscode.Webview,
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme,
+): string {
   const nonce = createNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
@@ -95,7 +100,7 @@ main { max-width: 1100px; border-top: 2px solid var(--green); }
 @media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .eyebrow { margin: 0 0 6px; }
 .empty { margin-top: 0; border: 0; background: none; padding: 16px 12px; }
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>
@@ -112,7 +117,7 @@ ${loadingHtml('Loading statistics…')}
   let showUsedOnce = false;
   /** Whether Tags written together is a list rather than a grid. */
   let pairsAsTable = false;
-${getComponentScript()}
+${getComponentScript(theme)}
   /**
    * One number. Given a search, it becomes a button that opens the notes and
    * tasks behind it: the totals were a dead end, even where a page existed

@@ -11,6 +11,8 @@ const { TaskBoardPanel } = modules.taskBoard;
 const { PreferencesStore } = modules.preferences;
 const { ActiveSearch } = modules.activeSearch;
 const { DashboardPanel } = modules.dashboard;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
   const task = (id, title, lineNumber, tags, completed = false) => ({
@@ -67,13 +69,15 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
   const preferences = new PreferencesStore(createGlobalState());
   await prepare(preferences);
   const activeSearch = new ActiveSearch();
-  const board = new TaskBoardPanel(
-    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
+  const board = new TaskBoardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     preferences,
-    { fsPath: '/ext' },
-    async () => undefined,
+    extensionUri: { fsPath: '/ext' },
+    openTag: async () => undefined,
     activeSearch,
-  );
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
+  });
   await board.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
@@ -349,16 +353,18 @@ test('saves its search as a view that reopens on the Task Board', async () => {
 
   // The Dashboard reopens it on the board, not on a search page.
   const opened = [];
-  const dashboard = new DashboardPanel(
-    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+  const dashboard = new DashboardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
     preferences,
-    { fsPath: '/ext' },
-    {
+    extensionUri: { fsPath: '/ext' },
+    navigation: {
       openTag: () => undefined,
       openSearch: (query) => opened.push(`search ${query}`),
       openTaskBoard: (query) => opened.push(`board ${query}`),
     },
-  );
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
+  });
   await dashboard.openSavedFilter(saved.id);
   dashboard.dispose();
   assert.deepStrictEqual(opened, ['board #project/atlas is:open']);

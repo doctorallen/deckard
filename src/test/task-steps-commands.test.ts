@@ -16,7 +16,7 @@ import {
   readWrittenSteps,
   StepList,
 } from '../ui/commands/taskSteps';
-import { workspaceWrites } from '../ui/commands/workspaceWrites';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { parseTaskBoardMessage } from '../ui/webview/messages';
 
 type Shown = unknown[][];
@@ -61,6 +61,13 @@ async function readNote(uri: vscode.Uri): Promise<string> {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 suite('Break into Steps', () => {
+  // Each test writes to a history of its own, so one test's Undo never
+  // reaches another's write.
+  let history: WorkspaceWriteHistory;
+  setup(() => {
+    history = new WorkspaceWriteHistory();
+  });
+
   test('the list adds what is typed, changes a step, moves and removes them, and defaults to Write', () => {
     const list = new StepList([{ title: 'Book the venue', done: true }], undefined, 'Plan the offsite');
     let items = list.items('Draft the email');
@@ -140,7 +147,7 @@ suite('Break into Steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        assert.strictEqual(await addTaskSteps(task, ['Draft the email', 'Send the invite']), true);
+        assert.strictEqual(await addTaskSteps(history, task, ['Draft the email', 'Send the invite']), true);
         return messages;
       });
       assert.strictEqual(
@@ -148,8 +155,8 @@ suite('Break into Steps', () => {
         '# Offsite\n\n- [ ] Plan the offsite 📅 2026-10-09\n  - [x] Book the venue\n    call first\n  - [ ] Draft the email\n  - [ ] Send the invite\n\nAfter.\n',
       );
       assert.deepStrictEqual(shown[0], ['Wrote 2 steps under "Plan the offsite".', 'Undo']);
-      assert.strictEqual(workspaceWrites.lastWrite?.label, 'writing 2 steps under "Plan the offsite"');
-      await workspaceWrites.undo();
+      assert.strictEqual(history.lastWrite?.label, 'writing 2 steps under "Plan the offsite"');
+      await history.undo();
       assert.strictEqual(await readNote(uri), content);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
@@ -162,7 +169,7 @@ suite('Break into Steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       await withMessages(async () => {
-        assert.strictEqual(await addTaskSteps(task, ['One']), true);
+        assert.strictEqual(await addTaskSteps(history, task, ['One']), true);
         await settle();
       }, 'Undo');
       await settle();
@@ -176,7 +183,7 @@ suite('Break into Steps', () => {
     const { uri, root } = await createNote('changed.md', '- [ ] Plan the offsite\n');
     try {
       const [task] = parseMarkdown(uri.fsPath, '- [ ] Plan the party\n').tasks;
-      const written = await withMessages(() => addTaskSteps(task, ['One']));
+      const written = await withMessages(() => addTaskSteps(history, task, ['One']));
       assert.strictEqual(written, false);
       assert.strictEqual(await readNote(uri), '- [ ] Plan the offsite\n');
     } finally {
@@ -186,6 +193,13 @@ suite('Break into Steps', () => {
 });
 
 suite('Completing steps', () => {
+  // Each test writes to a history of its own, so one test's Undo never
+  // reaches another's write.
+  let history: WorkspaceWriteHistory;
+  setup(() => {
+    history = new WorkspaceWriteHistory();
+  });
+
   const today = formatIsoDate(Date.now());
 
   test('the last open step offers to complete its task, and does only when asked', async () => {
@@ -194,7 +208,7 @@ suite('Completing steps', () => {
     try {
       const step = parseMarkdown(uri.fsPath, content).tasks[2];
       const shown = await withMessages(async (messages) => {
-        assert.strictEqual(await toggleTask(step, true), true);
+        assert.strictEqual(await toggleTask({ history, keepRank: () => undefined }, step, true), true);
         await settle();
         return messages;
       });
@@ -211,10 +225,10 @@ suite('Completing steps', () => {
 
       const again = await readNote(uri);
       const reopened = parseMarkdown(uri.fsPath, again).tasks[2];
-      await withMessages(() => toggleTask(reopened, false));
+      await withMessages(() => toggleTask({ history, keepRank: () => undefined }, reopened, false));
       const fresh = parseMarkdown(uri.fsPath, await readNote(uri)).tasks[2];
       await withMessages(async () => {
-        await toggleTask(fresh, true);
+        await toggleTask({ history, keepRank: () => undefined }, fresh, true);
         await settle();
         await settle();
       }, 'Complete Task');
@@ -233,7 +247,7 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        await toggleTask(task, true);
+        await toggleTask({ history, keepRank: () => undefined }, task, true);
         // The steps are written after the choice, and said once written.
         for (let tries = 0; tries < 40 && !messages.some((message) => String(message[0]).startsWith('Completed 2 steps')); tries += 1) {
           await settle();
@@ -249,7 +263,7 @@ suite('Completing steps', () => {
         await readNote(uri),
         `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue ✅ ${today}\n  - [x] Pay\n  - [x] Draft the email ✅ ${today}\n- [ ] Next\n`,
       );
-      assert.strictEqual(workspaceWrites.lastWrite?.label, 'completing 2 steps of "Plan the offsite"');
+      assert.strictEqual(history.lastWrite?.label, 'completing 2 steps of "Plan the offsite"');
       assert.ok(shown.some((message) => message[0] === 'Completed 2 steps of "Plan the offsite".'));
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
@@ -262,12 +276,12 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       await withMessages(async () => {
-        await toggleTask(task, true);
+        await toggleTask({ history, keepRank: () => undefined }, task, true);
       }, 'Undo');
       await settle();
       await settle();
       assert.strictEqual(await readNote(uri), content, 'Undo takes back the next occurrence and its steps too');
-      await withMessages(() => toggleTask(task, true));
+      await withMessages(() => toggleTask({ history, keepRank: () => undefined }, task, true));
       assert.strictEqual(
         await readNote(uri),
         [
@@ -305,7 +319,7 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        await toggleTask(task, true);
+        await toggleTask({ history, keepRank: () => undefined }, task, true);
         return messages;
       });
       assert.deepStrictEqual(shown[0], ['Completed "Alone".', 'Undo']);

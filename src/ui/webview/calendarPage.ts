@@ -6,8 +6,11 @@ import { CalendarDayDetail, CalendarMessage, WorkspaceIndex } from '../../core/t
 import { ActiveCalendar, CalendarDaySource } from './activeCalendar';
 import { settingTarget, writeSetting } from '../commands/settings';
 import { CalendarController, readShowRepeats, readShowWeekends } from './calendar';
+import { TaskWrites } from '../commands/taskActions';
 import { getCalendarHtml } from './calendarHtml';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 import { parseCalendarPageMessage } from './messages';
 import { setZenMode } from './zenMode';
 
@@ -16,6 +19,18 @@ interface CalendarPageIndexSource {
   readonly published?: Promise<void>;
   readonly onDidUpdate: vscode.Event<unknown>;
   getSnapshot(): WorkspaceIndex;
+}
+
+/** What the calendar page is built from. */
+export interface CalendarPanelOptions {
+  indexer: CalendarPageIndexSource;
+  extensionUri: vscode.Uri;
+  /** What checking a task off, or dropping it on a day, writes through. */
+  writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
+  /** Where the page says it is in front, so Related Notes can show its day. */
+  activeCalendar?: ActiveCalendar;
 }
 
 /**
@@ -34,22 +49,28 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
   /** The chosen day as last drawn, which Related Notes shows while the page is in front. */
   private day: CalendarDayDetail | undefined;
 
-  public constructor(
-    private readonly indexer: CalendarPageIndexSource,
-    private readonly extensionUri: vscode.Uri,
-    /** Where the page says it is in front, so Related Notes can show its day. */
-    private readonly activeCalendar?: ActiveCalendar,
-  ) {
+  private readonly indexer: CalendarPageIndexSource;
+  private readonly extensionUri: vscode.Uri;
+  /** Where the page says it is in front, so Related Notes can show its day. */
+  private readonly activeCalendar: ActiveCalendar | undefined;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
+
+  public constructor(options: CalendarPanelOptions) {
+    this.indexer = options.indexer;
+    this.extensionUri = options.extensionUri;
+    this.activeCalendar = options.activeCalendar;
+    this.themePreview = options.themePreview;
+    const { indexer, writes, activeCalendar, themePreview } = options;
     // The page always shows the chosen day: it has the room.
-    this.controller = new CalendarController(
-      indexer,
-      () => true,
-      () => this.refresh(),
-      (taskId) => {
+    this.controller = new CalendarController(indexer, writes, {
+      dayPanel: () => true,
+      refresh: () => this.refresh(),
+      refused: (taskId) => {
         void this.panel?.webview.postMessage({ type: 'moveRefused', taskId });
         this.refresh();
       },
-    );
+    });
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -62,7 +83,7 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
           this.refresh();
         }
       }),
-      onDidChangePageChrome(() => this.renderHtml()),
+      onDidChangePageChrome(() => this.renderHtml(), themePreview),
       // The day moving to or from the sidebar redraws the page with or
       // without its own panel.
       ...(activeCalendar ? [activeCalendar.onDidChangeDayVisibility(() => this.refresh())] : []),
@@ -167,7 +188,10 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
 
   private renderHtml(): void {
     if (this.panel) {
-      this.panel.webview.html = getCalendarHtml(this.panel.webview, { page: true });
+      this.panel.webview.html = getCalendarHtml(this.panel.webview, {
+        page: true,
+        theme: getDeckardTheme(this.themePreview),
+      });
     }
   }
 

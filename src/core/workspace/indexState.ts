@@ -84,28 +84,39 @@ export interface FileContribution {
   unitCount: number;
 }
 
+/** The entity a tag names, by its key and the label it is written with. */
+export type EntityKindOf = (key: string, label: string) => EntityKind | undefined;
+
 /**
  * The entity a tag names, remembered by spelling: working it out normalizes
  * the tag, and a workspace spells the same few hundred tags tens of
- * thousands of times.
+ * thousands of times. Each IndexState holds one, handed on to the state
+ * built from it, so it lasts as long as the index does.
  */
-const entityKinds = new Map<string, EntityKind | null>();
-
-function entityKindOf(key: string, label: string): EntityKind | undefined {
-  const spelling = `${key}\u0000${label}`;
-  let kind = entityKinds.get(spelling);
-  if (kind === undefined) {
-    if (entityKinds.size >= 20000) {
-      entityKinds.clear();
+export function createEntityKindMemo(): EntityKindOf {
+  const kinds = new Map<string, EntityKind | null>();
+  return (key, label) => {
+    const spelling = `${key}\u0000${label}`;
+    let kind = kinds.get(spelling);
+    if (kind === undefined) {
+      if (kinds.size >= 20000) {
+        kinds.clear();
+      }
+      kind = getEntityKind({ key, label }) ?? null;
+      kinds.set(spelling, kind);
     }
-    kind = getEntityKind({ key, label }) ?? null;
-    entityKinds.set(spelling, kind);
-  }
-  return kind ?? undefined;
+    return kind ?? undefined;
+  };
 }
 
-/** Works out one note's contribution. Pure: it reads only the note. */
-export function computeContribution(file: ParsedFile): FileContribution {
+/**
+ * Works out one note's contribution. Pure: it reads only the note, and
+ * `entityKindOf` says which tags name an entity, a memo of getEntityKind.
+ */
+export function computeContribution(
+  file: ParsedFile,
+  entityKindOf: EntityKindOf = createEntityKindMemo(),
+): FileContribution {
   const ops: TagOp[] = [];
   const opsByKey = new Map<string, TagOp[]>();
   const tagKeys: string[] = [];
@@ -622,7 +633,11 @@ export class IndexState {
   private dirty: Set<string> | 'all' = 'all';
   private previous: WorkspaceIndex | undefined;
 
-  private constructor() {
+  /**
+   * An empty state. `entityKindOf` is the memo of which tags name an entity:
+   * a new one, or the one of the state this is built to replace.
+   */
+  private constructor(private readonly entityKindOf: EntityKindOf = createEntityKindMemo()) {
     this.generation = {
       contributions: new Map(),
       ordinals: new Map(),
@@ -638,7 +653,7 @@ export class IndexState {
    * since a parsed note never changes.
    */
   public static build(files: Iterable<ParsedFile>, reuse?: IndexState): IndexState {
-    const state = new IndexState();
+    const state = new IndexState(reuse?.entityKindOf);
     const associationFiles = new Map<string, ReadonlySet<string>>();
     const tagUnits = new Map<string, number>();
     const copied = new Set<string>();
@@ -654,7 +669,7 @@ export class IndexState {
         state.nextOrdinal += 1;
       }
       const kept = reuse?.contributions.get(file.filePath);
-      const contribution = kept?.file === file ? kept : computeContribution(file);
+      const contribution = kept?.file === file ? kept : computeContribution(file, state.entityKindOf);
       state.notes.set(file.filePath, file);
       state.contributions.set(file.filePath, contribution);
       state.remember(file.filePath, contribution, associationFiles, tagUnits, copied);
@@ -748,7 +763,7 @@ export class IndexState {
         this.ordinals.set(change.filePath, this.nextOrdinal);
         this.nextOrdinal += 1;
       }
-      const contribution = computeContribution(change.file);
+      const contribution = computeContribution(change.file, this.entityKindOf);
       this.notes.set(change.filePath, change.file);
       this.contributions.set(change.filePath, contribution);
       this.remember(change.filePath, contribution, associationFiles, tagUnits, copied);
@@ -1061,6 +1076,7 @@ export function buildIndexDirectly(files: Map<string, ParsedFile>): WorkspaceInd
   const tags = new Map<string, TagInfo>();
   const entities = new Map<string, Entity>();
   const hubFilePaths = new Map<string, string[]>();
+  const entityKindOf = createEntityKindMemo();
 
   files.forEach((file) => {
     file.hub?.describes.forEach((reference) => {
@@ -1071,7 +1087,7 @@ export function buildIndexDirectly(files: Map<string, ParsedFile>): WorkspaceInd
     });
     file.sections.forEach((section) => sections.set(section.id, section));
     file.tasks.forEach((task) => tasks.set(task.id, task));
-    computeContribution(file).ops.forEach((op) => applyTagOp(tags, entities, op));
+    computeContribution(file, entityKindOf).ops.forEach((op) => applyTagOp(tags, entities, op));
   });
 
   tags.forEach((tag) => {

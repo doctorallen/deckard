@@ -135,11 +135,12 @@ function fullYear(written: string): number {
  *
  * Returns the date as `YYYY-MM-DD`, `{ date: undefined }` for an empty value,
  * which clears a field, or undefined when the words are not a day, which a
- * box reports rather than guessing.
+ * box reports rather than guessing. `now` is the moment the words are read
+ * at, which `friday` and `in 3 days` count from.
  */
 export function parseDatePhrase(
   written: string,
-  now: number = Date.now(),
+  now: number,
   options: DatePhraseOptions = {},
 ): { date: string | undefined } | undefined {
   const text = written
@@ -273,10 +274,10 @@ function readPhrase(
 
 /**
  * A day said back as a box shows it: its weekday, the date, and how far it is
- * from today, `Monday 2026-09-28 · in 3 days`. Beyond a month the distance
- * is left to the date.
+ * from the day of `now`, `Monday 2026-09-28 · in 3 days`. Beyond a month
+ * the distance is left to the date.
  */
-export function describeDay(date: string, now: number = Date.now()): string {
+export function describeDay(date: string, now: number): string {
   const at = parseIsoDate(date);
   if (at === undefined) {
     return date;
@@ -295,8 +296,8 @@ export function nameDay(date: string): string {
   return `${weekday[0].toUpperCase()}${weekday.slice(1)} ${date}`;
 }
 
-/** `today`, `in 3 days`, `3 days ago`; nothing beyond 31 days. */
-export function describeDistance(at: number, now: number = Date.now()): string | undefined {
+/** `today`, `in 3 days`, `3 days ago`, from the day of `now`; nothing beyond 31 days. */
+export function describeDistance(at: number, now: number): string | undefined {
   const days = Math.round((startOfDay(at) - startOfDay(now)) / DAY_MS);
   if (days === 0) {
     return 'today';
@@ -313,8 +314,8 @@ export function describeDistance(at: number, now: number = Date.now()): string |
   return days > 0 ? `in ${days} days` : `${-days} days ago`;
 }
 
-/** A day written short, `Fri, Oct 2`, with its year when it is not this one. */
-export function formatShortDay(date: string, now: number = Date.now()): string {
+/** A day written short, `Fri, Oct 2`, with its year when it is not the year of `now`. */
+export function formatShortDay(date: string, now: number): string {
   const at = parseIsoDate(date);
   if (at === undefined) {
     return date;
@@ -332,8 +333,8 @@ export function formatMonthDay(at: number): string {
   return `${SHORT_MONTHS[day.getMonth()]} ${day.getDate()}`;
 }
 
-/** A month's name, with its year when it is not this one: `August`, `December 2025`. */
-export function formatMonthName(at: number, now: number = Date.now()): string {
+/** A month's name, with its year when it is not the year of `now`: `August`, `December 2025`. */
+export function formatMonthName(at: number, now: number): string {
   const day = new Date(at);
   const name = LONG_MONTHS[day.getMonth()];
   return day.getFullYear() === new Date(now).getFullYear()

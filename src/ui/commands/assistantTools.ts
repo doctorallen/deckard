@@ -20,6 +20,7 @@ import {
   WriteAnswer,
 } from './assistantWrites';
 import { readQueryContext } from './queryContext';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 interface IndexSource {
   readonly ready: Promise<void>;
@@ -53,6 +54,8 @@ export class AssistantTools implements vscode.Disposable {
 
   public constructor(
     private readonly indexer: IndexSource,
+    /** The history the add-task and change-task tools write to. */
+    private readonly history: WorkspaceWriteHistory,
     register: RegisterTool = (name, tool) => vscode.lm.registerTool(name, tool),
   ) {
     this.queryTool = {
@@ -103,7 +106,7 @@ export class AssistantTools implements vscode.Disposable {
         this.write('Assistant add task', () => {
           const input = readAddTaskInput(options.input);
           return input
-            ? addTask(this.indexer, input)
+            ? addTask(this.indexer, this.history, input)
             : Promise.resolve({
                 text: 'Send the task\'s words as "text", and optionally a workspace-relative "note" to add it to; today\'s note otherwise.',
                 isError: true,
@@ -123,7 +126,7 @@ export class AssistantTools implements vscode.Disposable {
         this.write('Assistant change task', () => {
           const input = readChangeTaskInput(options.input);
           return input
-            ? changeTask(this.indexer, input)
+            ? changeTask(this.indexer, this.history, input)
             : Promise.resolve({
                 text: 'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
                 isError: true,

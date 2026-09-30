@@ -78,11 +78,12 @@ export function readDateOptions(): DatePhraseOptions {
 
 /**
  * What a date box says as it is typed: the day it read, the one error, or
- * nothing for an empty box, which clears the date.
+ * nothing for an empty box, which clears the date. `now` is the moment the
+ * box was opened at, which every keystroke reads the day against.
  */
 export function validateDateInput(
   value: string,
-  now: number = Date.now(),
+  now: number,
   options: DatePhraseOptions = {},
 ): string | vscode.InputBoxValidationMessage | undefined {
   const read = parseDatePhrase(value, now, options);

@@ -5,7 +5,6 @@ import {
   deckardThemes,
   DeckardTheme,
   getDeckardTheme,
-  previewDeckardTheme,
 } from '../webview/themes';
 import { settingTarget, writeSetting } from './settings';
 
@@ -58,21 +57,34 @@ export function hasVisibleDeckardPage(): boolean {
   });
 }
 
-function defaultDeps(): ChooseThemeDeps {
+/**
+ * The preview Choose Theme… shows its themes on: the extension's
+ * ThemePreview, which every page draws with.
+ */
+export interface ThemePreviewTarget {
+  readonly current: DeckardTheme | undefined;
+  show(theme: DeckardTheme | undefined, options?: { silent?: boolean }): void;
+}
+
+/**
+ * What Choose Theme… runs in the extension: VS Code's quick pick and
+ * settings, and `themePreview`, the one every page draws with.
+ */
+export function createChooseThemeDeps(themePreview: ThemePreviewTarget): ChooseThemeDeps {
   return {
     createQuickPick: () => vscode.window.createQuickPick<ThemeItem>(),
     writeTheme: (theme) => writeSetting('theme', theme, settingTarget('theme')),
     hasVisibleDeckardPage,
     openDashboard: () => vscode.commands.executeCommand('deckard.showDashboard'),
-    preview: previewDeckardTheme,
-    current: getDeckardTheme,
+    preview: (theme, options) => themePreview.show(theme, options),
+    current: () => getDeckardTheme(themePreview),
   };
 }
 
 /** Runs Choose Theme…, and returns the theme kept, if one was. */
 export async function chooseTheme(
   manifest: ThemeManifest,
-  deps: ChooseThemeDeps = defaultDeps(),
+  deps: ChooseThemeDeps,
 ): Promise<DeckardTheme | undefined> {
   // Run from the walkthrough, there may be nothing to preview on.
   if (!deps.hasVisibleDeckardPage()) {

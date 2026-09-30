@@ -13,6 +13,7 @@ import {
 } from '../state/taskBoardState';
 import {
   readTaskMetadataFormat,
+  TaskWrites,
   toggleTask,
   quoteTaskTitle,
   updateTaskLine,
@@ -80,6 +81,7 @@ export async function updateTaskBoardSetting(
  * put a card it moved ahead of time back where it belongs.
  */
 export async function moveTaskToColumn(
+  writes: TaskWrites,
   task: Task,
   columnId: string,
   context: TaskMoveContext = {},
@@ -89,9 +91,10 @@ export async function moveTaskToColumn(
     case 'unchanged':
       return false;
     case 'complete':
-      return toggleTask(task, true);
+      return toggleTask(writes, task, true);
     case 'edit':
       return updateTaskLine(
+        writes,
         task,
         (line) => move.edit(line),
         `Moved ${quoteTaskTitle(task)} to ${move.label}`,

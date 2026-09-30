@@ -25,11 +25,11 @@ import { chooseTargetFolder, ensureDailyNote, getPeriodicNote } from './dailyNot
 import { readWeekStart } from './datePrompt';
 import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
-import { carryMovedTaskRank } from './taskActions';
+import { carryMovedTaskRank, TaskWrites } from './taskActions';
 import { createWikiLink } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
-import { applyWorkspaceWrite, getWritePreview, reportUndo, workspaceWrites } from './workspaceWrites';
+import { getWritePreview, WriteHandle } from './workspaceWrites';
 
 /**
  * Deckard: Move to… — a line, a task and its steps, or a selection, taken
@@ -62,6 +62,7 @@ const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
 export async function moveToCommand(
   indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
+  writes: TaskWrites,
 ): Promise<void> {
   await indexer.ready;
   const editor = vscode.window.activeTextEditor;
@@ -85,7 +86,7 @@ export async function moveToCommand(
     }
     return;
   }
-  await moveBlocks(indexer, preferences, [
+  await moveBlocks(indexer, preferences, writes, [
     { uri: editor.document.uri, filePath: indexer.getFilePath(editor.document.uri), block: read },
   ]);
 }
@@ -97,6 +98,7 @@ export async function moveToCommand(
 export async function moveTasks(
   indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
+  writes: TaskWrites,
   tasks: readonly Task[],
 ): Promise<void> {
   const sources: MoveSource[] = [];
@@ -119,7 +121,7 @@ export async function moveTasks(
     sources.push({ uri, filePath: task.filePath, block: read, task });
   }
   if (sources.length > 0) {
-    await moveBlocks(indexer, preferences, sources);
+    await moveBlocks(indexer, preferences, writes, sources);
   }
 }
 
@@ -141,6 +143,7 @@ interface ResolvedTarget {
 async function moveBlocks(
   indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
+  writes: TaskWrites,
   sources: readonly MoveSource[],
 ): Promise<void> {
   const index = indexer.getSnapshot();
@@ -243,7 +246,7 @@ async function moveBlocks(
       // Already gone.
     }
   };
-  const write = await applyWorkspaceWrite(edit, {
+  const write = await writes.history.write(edit, {
     label: 'Move to…',
     description: `Moved to ${target.name}`,
     preview: getWritePreview() === 'always' ? 'always' : 'never',
@@ -254,7 +257,6 @@ async function moveBlocks(
     void reportFailure({ outcome: 'Deckard could not move it, so nothing was written.' });
     return;
   }
-  const mine = workspaceWrites.lastWrite;
   // A task moved to another note keeps its place on the board.
   if (insertedAt !== undefined && sources.every((source) => source.uri.toString() !== target.uri.toString())) {
     const targetPath = indexer.getFilePath(target.uri);
@@ -262,7 +264,11 @@ async function moveBlocks(
     for (const source of sources) {
       const first = dedentBlock(source.block.lines)[0];
       if (source.task) {
-        carryMovedTaskRank(source.task.id, targetPath, line + 1, first);
+        carryMovedTaskRank(writes.keepRank, source.task.id, {
+          filePath: targetPath,
+          lineNumber: line + 1,
+          lineText: first,
+        });
       }
       line += source.block.lines.length;
     }
@@ -273,16 +279,7 @@ async function moveBlocks(
       await preferences.recordRecentHeading(pin);
     }
   }
-  announceMove(sources, target, created !== undefined, async () => {
-    if (workspaceWrites.lastWrite !== mine) {
-      void vscode.window.showInformationMessage(
-        'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
-      );
-      return;
-    }
-    const result = await workspaceWrites.undo();
-    reportUndo(result, 'Put it back.');
-  });
+  announceMove(sources, target, created !== undefined, write.handle);
 }
 
 async function resolveTarget(
@@ -390,7 +387,7 @@ function announceMove(
   sources: readonly MoveSource[],
   target: ResolvedTarget,
   created: boolean,
-  undo: () => Promise<void>,
+  handle: WriteHandle,
 ): void {
   const tasks = sources.flatMap((source) => source.block.openTasks ?? []);
   const lineCount = sources.reduce((total, source) => total + source.block.lines.length, 0);
@@ -403,15 +400,16 @@ function announceMove(
         ? `${tasks.length} tasks`
         : `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`;
   const where = created ? `a new note, ${target.name}` : target.name;
-  void vscode.window
-    .showInformationMessage(`Moved ${what} to ${where}.`, 'Open', 'Undo')
-    .then(async (choice) => {
-      if (choice === 'Open') {
+  handle.offerUndo(
+    `Moved ${what} to ${where}.`,
+    { guard: 'latest', done: 'Put it back.' },
+    {
+      label: 'Open',
+      run: async () => {
         await vscode.window.showTextDocument(target.uri, { preview: false });
-      } else if (choice === 'Undo') {
-        await undo();
-      }
-    });
+      },
+    },
+  );
 }
 
 function describeTask(line: string): string {

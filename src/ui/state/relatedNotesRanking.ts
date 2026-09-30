@@ -426,6 +426,8 @@ export function rankRelatedNotes(
 ): RankedNote[] {
   const activeKeys = new Set(activeTags.map((tag) => tag.key));
   const notes: RankedNote[] = [];
+  const linkNames = createLinkNames();
+  const active: ActiveNote = { file: activeFile, filePath: activeFilePath };
   const associationMinimumSupport = Math.max(
     1,
     Math.floor(options.associationMinimumSupport ?? 1),
@@ -493,15 +495,13 @@ export function rankRelatedNotes(
       }
       const tags = getTagReferences(section.tags, section.tagLabels);
       const associatedMatches = findAssociatedMatches(tags);
-      const linkEvidence = getLinkEvidence(
-        activeFile,
-        activeFilePath,
+      const linkEvidence = getLinkEvidence(linkNames, active, {
         file,
-        extractWikiLinks(
+        links: extractWikiLinks(
           getSectionLexicalContent(section, file.sections),
         ),
-        section.heading,
-      );
+        title: section.heading,
+      });
       // Shared wording only adjusts the score of an entry that shares a tag,
       // an association, or a link. On its own it would make nearly every
       // entry in the workspace "related".
@@ -558,13 +558,11 @@ export function rankRelatedNotes(
         return false;
       }
       const tags = getTagReferences(task.tags, task.tagLabels);
-      const linkEvidence = getLinkEvidence(
-        activeFile,
-        activeFilePath,
+      const linkEvidence = getLinkEvidence(linkNames, active, {
         file,
-        extractWikiLinks(task.sourceLineText),
-        task.title,
-      );
+        links: extractWikiLinks(task.sourceLineText),
+        title: task.title,
+      });
       return (
         (tags.some((tag) => activeKeys.has(tag.key)) ||
           findAssociatedMatches(tags).length > 0 ||
@@ -646,13 +644,11 @@ export function rankRelatedNotes(
           normalizedAssociationWeight,
           totalActiveWeight,
         );
-        const linkEvidence = getLinkEvidence(
-          activeFile,
-          activeFilePath,
+        const linkEvidence = getLinkEvidence(linkNames, active, {
           file,
-          reference.links,
-          reference.title,
-        );
+          links: reference.links,
+          title: reference.title,
+        });
         const lexicalEvidence = getLexicalWeight(
           lexicalModel,
           reference.title,
@@ -884,38 +880,54 @@ function compareRelatedNotes(left: RankedNote, right: RankedNote): number {
   );
 }
 
+/** The note being ranked against: its parse, and its path when it has one. */
+interface ActiveNote {
+  file: ParsedFile;
+  filePath: string | undefined;
+}
+
+/** A candidate entry: the note it is in, the links it writes, and its title. */
+interface CandidateEntry {
+  file: ParsedFile;
+  links: string[];
+  title: string;
+}
+
 function getLinkEvidence(
-  activeFile: ParsedFile,
-  activeFilePath: string | undefined,
-  candidateFile: ParsedFile,
-  candidateLinks: string[],
-  candidateTitle: string,
+  linkNames: LinkNames,
+  active: ActiveNote,
+  candidate: CandidateEntry,
 ): { entryWeight: number; fileWeight: number } {
+  const activeFile = active.file;
+  const candidateFile = candidate.file;
   const activeEntryTitle =
     activeFile.sections[0]?.heading ?? activeFile.tasks[0]?.title;
-  const candidateMatchesActive = candidateLinks.some((link) =>
+  const candidateMatchesActive = candidate.links.some((link) =>
     activeEntryTitle !== undefined &&
-    linkTargetsEntry(
-      link,
-      activeFilePath ?? activeFile.filePath,
-      activeEntryTitle,
-      activeFile.aliases,
-    ),
+    linkTargetsEntry(linkNames, link, {
+      filePath: active.filePath ?? activeFile.filePath,
+      title: activeEntryTitle,
+      aliases: activeFile.aliases,
+    }),
   );
   const activeMatchesCandidate = activeFile.links.some((link) =>
-    linkTargetsEntry(link, candidateFile.filePath, candidateTitle, candidateFile.aliases),
+    linkTargetsEntry(linkNames, link, {
+      filePath: candidateFile.filePath,
+      title: candidate.title,
+      aliases: candidateFile.aliases,
+    }),
   );
   if (candidateMatchesActive || activeMatchesCandidate) {
     return { entryWeight: 0.5, fileWeight: 0 };
   }
-  return filesAreLinked(activeFile, candidateFile)
+  return filesAreLinked(linkNames, activeFile, candidateFile)
     ? { entryWeight: 0, fileWeight: 0.1 }
     : { entryWeight: 0, fileWeight: 0 };
 }
 
-function filesAreLinked(left: ParsedFile, right: ParsedFile): boolean {
-  const leftNames = getLinkNames(left.filePath, left.aliases);
-  const rightNames = getLinkNames(right.filePath, right.aliases);
+function filesAreLinked(linkNames: LinkNames, left: ParsedFile, right: ParsedFile): boolean {
+  const leftNames = linkNames(left.filePath, left.aliases);
+  const rightNames = linkNames(right.filePath, right.aliases);
   return (
     left.links.some((link) => rightNames.has(getLinkFileTarget(link))) ||
     right.links.some((link) => leftNames.has(getLinkFileTarget(link)))
@@ -923,47 +935,44 @@ function filesAreLinked(left: ParsedFile, right: ParsedFile): boolean {
 }
 
 function linkTargetsEntry(
+  linkNames: LinkNames,
   link: string,
-  filePath: string,
-  title: string,
-  aliases?: readonly string[],
+  { filePath, title, aliases }: { filePath: string; title: string; aliases?: readonly string[] },
 ): boolean {
   const [fileTarget, headingTarget] = link.split('#', 2);
-  if (!getLinkNames(filePath, aliases).has(normalizeLink(fileTarget))) {
+  if (!linkNames(filePath, aliases).has(normalizeLink(fileTarget))) {
     return false;
   }
   return !headingTarget || normalizeHeadingTarget(headingTarget) ===
     normalizeHeadingTarget(title);
 }
 
+/** The names a link can use for a note, from its path and its aliases. */
+type LinkNames = (filePath: string, aliases?: readonly string[]) => Set<string>;
+
 /**
  * The names a link can use for a note, by path. Ranking asks for them for
- * every entry it scores, so each path's names are worked out once.
+ * every entry it scores, so each ranking works each path's names out once,
+ * and forgets them when it is done.
  */
-const linkNamesByPath = new Map<string, Set<string>>();
-
-function getLinkNames(
-  filePath: string,
-  aliases?: readonly string[],
-): Set<string> {
-  let names = linkNamesByPath.get(filePath);
-  if (!names) {
-    const fileName = filePath.split('/').pop() ?? filePath;
-    names = new Set([
-      normalizeLink(filePath),
-      normalizeLink(fileName),
-      normalizeLink(fileName.replace(/\.md$/i, '')),
-    ]);
-    // Paths only accumulate through renames; a bound keeps that in check.
-    if (linkNamesByPath.size > 50_000) {
-      linkNamesByPath.clear();
+function createLinkNames(): LinkNames {
+  const byPath = new Map<string, Set<string>>();
+  return (filePath, aliases) => {
+    let names = byPath.get(filePath);
+    if (!names) {
+      const fileName = filePath.split('/').pop() ?? filePath;
+      names = new Set([
+        normalizeLink(filePath),
+        normalizeLink(fileName),
+        normalizeLink(fileName.replace(/\.md$/i, '')),
+      ]);
+      byPath.set(filePath, names);
     }
-    linkNamesByPath.set(filePath, names);
-  }
-  // Aliases can change without the path changing, so they are not cached.
-  return aliases?.length
-    ? new Set([...names, ...aliases.map(normalizeLink)])
-    : names;
+    // Aliases can change without the path changing, so they are not cached.
+    return aliases?.length
+      ? new Set([...names, ...aliases.map(normalizeLink)])
+      : names;
+  };
 }
 
 function getLinkFileTarget(link: string): string {

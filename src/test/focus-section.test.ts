@@ -4,9 +4,8 @@ import * as vscode from 'vscode';
 
 import {
   findHeadingLineAbove,
-  focusSectionCommand,
   SECTION_FOCUSED,
-  unfoldAllSectionsCommand,
+  SectionFocus,
 } from '../ui/commands/focusSection';
 
 /** Records what Focus Section runs and says, and runs none of it. */
@@ -43,8 +42,9 @@ suite('Focus Section', () => {
     const editor = await vscode.window.showTextDocument(document);
     editor.selection = new vscode.Selection(3, 1, 3, 1);
     const watch = spy();
+    const focus = new SectionFocus(watch.deps);
     try {
-      assert.strictEqual(await focusSectionCommand(undefined, watch.deps), true);
+      assert.strictEqual(await focus.focus(undefined), true);
       assert.deepStrictEqual(watch.ran, [
         ['editor.foldAllExcept'],
         ['editor.unfoldRecursively'],
@@ -52,13 +52,14 @@ suite('Focus Section', () => {
       ]);
       assert.strictEqual(editor.selection.active.line, 2, 'the cursor is on the heading');
 
-      await focusSectionCommand(1, watch.deps);
+      await focus.focus(1);
       assert.strictEqual(editor.selection.active.line, 0, 'a heading from the Outline is used as given');
 
       watch.ran.length = 0;
-      await unfoldAllSectionsCommand(watch.deps);
+      await focus.unfoldAll();
       assert.deepStrictEqual(watch.ran, [['editor.unfoldAll'], ['setContext', SECTION_FOCUSED, false]]);
     } finally {
+      focus.dispose();
       await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     }
   });
@@ -67,11 +68,13 @@ suite('Focus Section', () => {
     const document = await vscode.workspace.openTextDocument({ language: 'markdown', content: 'Just prose\n' });
     await vscode.window.showTextDocument(document);
     const watch = spy();
+    const focus = new SectionFocus(watch.deps);
     try {
-      assert.strictEqual(await focusSectionCommand(undefined, watch.deps), false);
+      assert.strictEqual(await focus.focus(undefined), false);
       assert.deepStrictEqual(watch.said, ['Put the cursor under a heading to focus its section.']);
       assert.deepStrictEqual(watch.ran, []);
     } finally {
+      focus.dispose();
       await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     }
   });

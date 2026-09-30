@@ -3,7 +3,8 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { IndexState, NoteChange } from '../core/workspace/indexState';
+import { createEntityKindMemo, IndexState, NoteChange } from '../core/workspace/indexState';
+import { getEntityKind } from '../core/markdown/parser';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { buildLegacyWorkspaceIndex } from './fixtures/legacyWorkspaceIndex';
 import {
@@ -216,5 +217,19 @@ suite('Index equivalence', () => {
       normalizeIndex(buildLegacyWorkspaceIndex(toFileMap(files))),
       'and the fold again once the repeat is gone',
     );
+  });
+
+  test('the entity-kind memo answers as getEntityKind does, spelling by spelling', () => {
+    const kindOf = createEntityKindMemo();
+    const spellings: Array<[string, string]> = [
+      ['#project/atlas', '#project/atlas'],
+      ['#project/atlas', '#Project/Atlas'],
+      ['@dana', '@dana'],
+      ['#plain', '#plain'],
+    ];
+    for (const [key, label] of spellings) {
+      assert.deepStrictEqual(kindOf(key, label), getEntityKind({ key, label }), `${key} as ${label}`);
+      assert.deepStrictEqual(kindOf(key, label), getEntityKind({ key, label }), 'and again, from the memo');
+    }
   });
 });

@@ -4,7 +4,7 @@ import { ParsedFile, WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../core/workspace/backlinks';
 import { findUnlinkedMentions } from '../state/editorLensState';
 import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /** The command the Link mentions lens runs. */
 export const LINK_MENTIONS_COMMAND = 'deckard.linkMentions';
@@ -23,12 +23,13 @@ interface MentionIndexSource {
  *
  * The mentions are found again from the index rather than taken from the
  * lens, and each is compared with what its line says now, so a mention edited
- * since the index read it is left alone. The write is one
- * `applyWorkspaceWrite()`: previewed as `deckard.previewWorkspaceWrites` asks,
+ * since the index read it is left alone. The write is one write to the
+ * history: previewed as `deckard.previewWorkspaceWrites` asks,
  * and taken back by `Deckard: Undo Last Change`.
  */
 export async function linkMentions(
   indexer: MentionIndexSource,
+  history: WorkspaceWriteHistory,
   documentUri: vscode.Uri,
 ): Promise<void> {
   await indexer.ready;
@@ -71,7 +72,7 @@ export async function linkMentions(
     return;
   }
 
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: `links to ${title}`,
     description: `Link a mention of ${title}`,
   });

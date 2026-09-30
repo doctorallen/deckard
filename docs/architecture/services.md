@@ -94,16 +94,22 @@ Everything still registers in `activate()`. Since VS Code 1.74, contributed comm
 
 ## Replacing hidden state
 
-Today module-level `let`s stand in for injection, and pure functions read them. Four test suites reset them in teardown, and one forgotten reset leaks into unrelated suites. Each gets an owner.
+Module-level `let`s stood in for injection, and pure functions read them. Four test suites reset them in teardown, and one forgotten reset leaked into unrelated suites. Each now has an owner, and a suite builds its own.
 
-| Today | Replacement |
+| Was | Now held by |
 | --- | --- |
-| `setQueryIdentity`, `setQueryWeekStart`, `setTaskPolicy` | A `QueryContext { identity, weekStart, taskPolicy, now }`, built by `ConfigurationService` and passed to `evaluateQuery`, `resolveDateRange`, `needsNewDate`, `readLineStatus`, and `describeDueDate` |
-| `timing.log` | A `Log` port |
-| `keepTaskRank` | A `TaskRankKeeper` collaborator on `TaskService` |
-| `workspaceWrites`, `ownWrites` | One injected `WriteHistory`, so no command reads a singleton or re-enters the command system to undo |
-| `focusedIn`, `previewTheme`, `activeServices` | Small classes owned by the composition root, such as `SectionFocus` and `ThemePreview` |
-| `lastSource`, `linkNamesByPath`, `entityKinds`, `tagPatterns` | Caches owned by the object whose lifetime they match: the preview engine, the ranking call, the `IndexState`, and the validated `ParseOptions` |
-| `Date.now()` defaults | A `Clock` port. `now` is resolved once at the entry point and passed down, as `taskLineDecorations.ts` already does |
+| `setQueryIdentity`, `setQueryWeekStart`, `setTaskPolicy` | A `QueryContext { identity, weekStart, taskPolicy, now }` that each view, command, and tool reads with `readQueryContext` when it starts its work, and passes to `evaluateQuery`, `resolveDateRange`, `needsNewDate`, `readLineStatus`, and `describeDueDate` |
+| `timing.log` | Still a module sink in `core/timing.ts`, since a log has no answer to give back. `activate()` sets it with `setTimingLog`, and the disposable that returns clears it on deactivation |
+| `keepTaskRank` | The `keepRank` of the `TaskWrites` that `activate()` makes and hands to every task edit: `updateTaskLine` and its Undo, Move to, and Toggle Task Done |
+| `workspaceWrites`, `ownWrites` | One `WorkspaceWriteHistory`, core's `WriteHistory` with VS Code's edits, made in `activate()` and handed to every command, view, and page that writes, and to Undo Last Change. Its `write()` returns a `WriteHandle`, whose `isLatest()` and `offerUndo()` replace each command's `lastWrite` comparison; its `ownWrites` goes to the indexer's options |
+| `focusedIn` | A `SectionFocus` made in `activate()`, whose `focus()` and `unfoldAll()` are the two commands |
+| `previewTheme` | A `ThemePreview` made in `activate()` and handed to Choose Theme… and every page host. A host reads `getDeckardTheme(preview)` when it builds its HTML and redraws through `onDidChangePageChrome(listener, preview)` |
+| `activeServices` | Unchanged until Phase 5, when `context.subscriptions` owns every disposable |
+| `lastSource` | A parser from `createSourceParser()` per Markdown engine, made in `addNoteEmbedRenderer`, and one per `findEmbedProblems` call |
+| `linkNamesByPath` | A map each `rankRelatedNotes` call makes and hands down |
+| `entityKinds` | A memo each `IndexState` holds, handed on to the state built to replace it |
+| `tagPatterns` | A read-only table of one pattern per people marker, compiled when the parser loads |
+| `segmenter` | A module constant |
+| `Date.now()` defaults | A required `now`, read once where a view, command, or tool starts its work and passed down, as `taskLineDecorations.ts` does |
 
 The `WeakMap` caches keyed by a `WorkspaceIndex` snapshot stay. They memoize per snapshot, so they cannot outlive the data they describe.

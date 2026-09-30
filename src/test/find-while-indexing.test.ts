@@ -6,6 +6,7 @@ import { PreferencesStore } from '../core/storage/preferences';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { parseMarkdown } from '../core/markdown/parser';
 import { QuickFind } from '../ui/commands/quickFind';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 
 /** Find opens at once while the first scan runs, and says how far it has got. */
 suite('Find while indexing', () => {
@@ -31,7 +32,7 @@ suite('Find while indexing', () => {
       showSearch: async (query) => {
         opened.push(query);
       },
-    });
+    }, { history: new WorkspaceWriteHistory(), keepRank: () => undefined });
     try {
       await find.show('atlas');
       const picker = (find as unknown as { picker: vscode.QuickPick<vscode.QuickPickItem & { indexing?: boolean }> }).picker;

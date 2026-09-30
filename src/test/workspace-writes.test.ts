@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import {
-  applyWorkspaceWrite,
   shouldPreview,
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
@@ -46,11 +45,10 @@ suite('Workspace writes', () => {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(first, lineRange(0, 8, 22), '#project/argent');
     edit.replace(second, lineRange(0, 5, 19), '#project/argent');
-    const written = await applyWorkspaceWrite(
-      edit,
-      { label: 'the rename of #project/atlas', preview: 'never' },
-      history,
-    );
+    const written = await history.write(edit, {
+      label: 'the rename of #project/atlas',
+      preview: 'never',
+    });
 
     assert.strictEqual(written.applied, true);
     assert.strictEqual(written.notes.length, 2);
@@ -89,11 +87,7 @@ suite('Workspace writes', () => {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(note, lineRange(0, 4, 6), '#b');
     edit.replace(other, lineRange(0, 8, 10), '#b');
-    await applyWorkspaceWrite(
-      edit,
-      { label: 'the rename of #a', preview: 'never' },
-      history,
-    );
+    await history.write(edit, { label: 'the rename of #a', preview: 'never' });
     await write(other, 'Rewritten by hand.\n');
 
     const undone = await history.undo();
@@ -120,17 +114,13 @@ suite('Workspace writes', () => {
 
     const edit = new vscode.WorkspaceEdit();
     edit.replace(note, lineRange(0, 4, 6), '#b');
-    await applyWorkspaceWrite(
-      edit,
-      {
-        label: 'the rename of #a',
-        preview: 'never',
-        restore: async () => {
-          favorites = ['#a'];
-        },
+    await history.write(edit, {
+      label: 'the rename of #a',
+      preview: 'never',
+      restore: async () => {
+        favorites = ['#a'];
       },
-      history,
-    );
+    });
 
     await history.undo();
     assert.deepStrictEqual(favorites, ['#a']);
@@ -143,13 +133,53 @@ suite('Workspace writes', () => {
     assert.strictEqual(await history.undo(), undefined);
 
     const edit = new vscode.WorkspaceEdit();
-    const written = await applyWorkspaceWrite(
-      edit,
-      { label: 'nothing', preview: 'never' },
-      history,
-    );
-    assert.deepStrictEqual(written, { applied: true, notes: [] });
+    const written = await history.write(edit, { label: 'nothing', preview: 'never' });
+    assert.strictEqual(written.applied, true);
+    assert.deepStrictEqual(written.notes, []);
     assert.strictEqual(history.lastWrite, undefined);
+  });
+
+  test('a write\'s handle takes it back, and only while it is the last', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.joinPath(root, 'note.md');
+    const other = vscode.Uri.joinPath(root, 'other.md');
+    await write(note, 'One #a tag.\n');
+    await write(other, 'Another #a tag.\n');
+    const history = new WorkspaceWriteHistory();
+
+    const first = new vscode.WorkspaceEdit();
+    first.replace(note, lineRange(0, 4, 6), '#b');
+    const written = await history.write(first, { label: 'the first', preview: 'never' });
+    assert.ok(written.applied);
+    assert.strictEqual(written.handle.isLatest(), true);
+
+    const second = new vscode.WorkspaceEdit();
+    second.replace(other, lineRange(0, 8, 10), '#b');
+    const later = await history.write(second, { label: 'the second', preview: 'never' });
+    assert.ok(later.applied);
+    assert.strictEqual(written.handle.isLatest(), false, 'Deckard has written since');
+    assert.strictEqual(await written.handle.undo(), undefined, 'a stale handle writes nothing');
+    assert.strictEqual(await read(other), 'Another #b tag.\n');
+
+    const undone = await later.handle.undo();
+    assert.strictEqual(undone?.label, 'the second');
+    assert.strictEqual(await read(other), 'Another #a tag.\n');
+    assert.strictEqual(later.handle.isLatest(), false, 'an undo spends the write');
+    await deleteTemporaryRoot(root);
+  });
+
+  test('a write\'s saves are marked as Deckard\'s own, for the index', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.joinPath(root, 'note.md');
+    await write(note, 'One #a tag.\n');
+    const history = new WorkspaceWriteHistory();
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(note, lineRange(0, 4, 6), '#b');
+    await history.write(edit, { label: 'the rename of #a', preview: 'never' });
+    assert.strictEqual(history.ownWrites.take(note.toString()), true);
+    assert.strictEqual(new WorkspaceWriteHistory().ownWrites.take(note.toString()), false);
+    await deleteTemporaryRoot(root);
   });
 });
 

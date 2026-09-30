@@ -17,7 +17,7 @@ import { pluralize } from '../../core/text';
 import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
 
 /**
@@ -132,6 +132,7 @@ export function appendTagToLine(
  * so an edit made while the page was open is never overwritten.
  */
 export async function applyBulkEdit(
+  history: WorkspaceWriteHistory,
   entries: readonly BulkEntry[],
   edit: BulkEdit,
 ): Promise<BulkEditResult | undefined> {
@@ -221,7 +222,7 @@ export async function applyBulkEdit(
   if (changed === 0) {
     return { changed: 0, ...left, notes: 0, unreadRules: 0 };
   }
-  const written = await applyWorkspaceWrite(workspaceEdit, {
+  const written = await history.write(workspaceEdit, {
     label: describeBulkEdit(edit, changed),
     description: describeBulkEdit(edit, changed),
   });

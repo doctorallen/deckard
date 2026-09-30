@@ -15,6 +15,7 @@ import { createAgenda } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
 import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider, groupColumnId } from '../ui/views/agendaTree';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { createQueryContext } from '../core/query/queryContext';
 
 const options: TaskBoardOptions = {
@@ -172,10 +173,13 @@ suite('Grouping tasks by a tag namespace', () => {
     await configuration.update('agenda.groupBy', 'tag', vscode.ConfigurationTarget.Global);
     await configuration.update('agenda.groupNamespace', 'context', vscode.ConfigurationTarget.Global);
     const updates = new vscode.EventEmitter<WorkspaceIndex>();
-    const provider = new AgendaTreeProvider({
-      onDidUpdate: updates.event,
-      getTask: (taskId) => index.tasks.get(taskId),
-    });
+    const provider = new AgendaTreeProvider(
+      {
+        onDidUpdate: updates.event,
+        getTask: (taskId) => index.tasks.get(taskId),
+      },
+      { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    );
     try {
       updates.fire(index);
       const groups = await provider.getChildren();

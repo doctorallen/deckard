@@ -1,54 +1,11 @@
 import * as vscode from 'vscode';
 import { ENABLED } from './selectors';
+import { DeckardTheme, deckardThemes } from './themeNames';
 
-export const deckardThemes = [
-  'corpo',
-  'replicant',
-  'oblivion',
-  'lcars',
-  'synthwave',
-  'tomcat',
-  'fellowship',
-  'cooper',
-] as const;
-
-export type DeckardTheme = (typeof deckardThemes)[number];
-
-/** Each theme as a picker names it. */
-export const deckardThemeNames: Readonly<Record<DeckardTheme, string>> = {
-  corpo: 'Corpo',
-  replicant: 'Replicant',
-  oblivion: 'Oblivion',
-  lcars: 'LCARS',
-  synthwave: 'Synthwave',
-  tomcat: 'Tomcat',
-  fellowship: 'Fellowship',
-  cooper: 'Cooper',
-};
-
-/**
- * A theme shown on the open pages while Choose Theme… is moved through, and
- * before anything is written: settings.json is not touched until one is
- * kept, so arrowing through eight themes makes no file writes.
- */
-let previewTheme: DeckardTheme | undefined;
-const previewEmitter = new vscode.EventEmitter<void>();
-/** Fires when the previewed theme changes, so the pages redraw. */
-export const onDidChangeThemePreview = previewEmitter.event;
-
-/** Shows a theme on the open pages without writing it, or stops (undefined). */
-export function previewDeckardTheme(
-  theme: DeckardTheme | undefined,
-  options: { silent?: boolean } = {},
-): void {
-  if (previewTheme === theme) {
-    return;
-  }
-  previewTheme = theme;
-  if (!options.silent) {
-    previewEmitter.fire();
-  }
-}
+// The names live in themeNames.ts, so the preview can name a theme without
+// VS Code; every module that reads them from here still does.
+export { deckardThemeNames, deckardThemes } from './themeNames';
+export type { DeckardTheme } from './themeNames';
 
 // Rows lift onto the raised panel on hover. Tags only slide: they are buttons,
 // so each theme's button hover colors them, and a shared dark ground under a
@@ -156,10 +113,15 @@ input[type="checkbox"], .task input { accent-color: var(--vscode-button-backgrou
 .zoom-controls button, .zoom-readout, .reset-graph-settings { background: var(--vscode-editorWidget-background); }
 `;
 
-/** Returns the configured theme, falling back when workspace settings are stale. */
-export function getDeckardTheme(): DeckardTheme {
-  if (previewTheme) {
-    return previewTheme;
+/**
+ * The theme the pages draw in: the one `preview` (the ThemePreview) is
+ * showing, if any, and otherwise the configured theme, falling back when
+ * workspace settings are stale. Without a preview, as for a page built
+ * outside the extension, it is the configured theme.
+ */
+export function getDeckardTheme(preview?: { readonly current: DeckardTheme | undefined }): DeckardTheme {
+  if (preview?.current) {
+    return preview.current;
   }
   const configuredTheme = vscode.workspace
     .getConfiguration('deckard')

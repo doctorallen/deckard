@@ -11,6 +11,8 @@ const { PreferencesStore } = modules.preferences;
 const { SidebarNotesView } = modules.sidebarNotes;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
   const note = (filePath, content) =>
@@ -55,7 +57,14 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
   const indexer = createIndexer(index);
   const preferences = new PreferencesStore(createGlobalState());
   const activeSearch = new ActiveSearch();
-  const panels = new SearchPanels(indexer, preferences, { fsPath: '/ext' }, activeSearch);
+  const panels = new SearchPanels({
+    indexer,
+    preferences,
+    extensionUri: { fsPath: '/ext' },
+    activeSearch,
+    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
+  });
 
   await open(panels);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -67,13 +76,15 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
   sidebarHost.visible = sidebarVisible;
   // The sidebar page's messages reach the real host, as they do in VS Code.
   sidebarHost._onWebviewMessage = sidebarHost._fromWebview;
-  const sidebarView = new SidebarNotesView(
+  const sidebarView = new SidebarNotesView({
     indexer,
     preferences,
     activeSearch,
-    (tagKey) => panels.show(tagKey),
-    '0.0.0-test',
-  );
+    onOpenTag: (tagKey) => panels.show(tagKey),
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   sidebarView.resolveWebviewView(sidebarHost);
   const sidebarPage = mountWebview(sidebarHost.webview.html, sidebarHost);
   sidebarHost.posted.forEach((message) => sidebarHost._deliver(message));

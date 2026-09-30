@@ -14,6 +14,7 @@ import { askForDate } from './datePrompt';
 import {
   quoteTaskTitle,
   readTaskMetadataFormat,
+  TaskWrites,
   updateTaskLine,
 } from './taskActions';
 
@@ -31,10 +32,11 @@ import {
 export type DueChoice = 'today' | 'tomorrow' | 'nextWeek';
 
 /**
- * The date a named choice means, as `YYYY-MM-DD`. `nextWeek` is the next
- * Monday, and never today: on a Monday it is the Monday after.
+ * The date a named choice means on the day of `now`, as `YYYY-MM-DD`.
+ * `nextWeek` is the next Monday, and never today: on a Monday it is the
+ * Monday after.
  */
-export function dueDateFor(choice: DueChoice, now: number = Date.now()): string {
+export function dueDateFor(choice: DueChoice, now: number): string {
   const today = startOfDay(now);
   if (choice === 'today') {
     return formatIsoDate(today);
@@ -127,7 +129,7 @@ function compareForPlanning(left: Task, right: Task): number {
  * weekend: oldest due first, in blocks, the earlier days taking any left
  * over, so 17 tasks are 4, 4, 3, 3, 3.
  */
-export function planSpread(tasks: readonly Task[], now: number = Date.now()): Map<string, string> {
+export function planSpread(tasks: readonly Task[], now: number): Map<string, string> {
   const days: string[] = [];
   for (let at = startOfDay(now); days.length < 5; at = addDays(at, 1)) {
     const weekday = new Date(at).getDay();
@@ -152,7 +154,7 @@ export function planSpread(tasks: readonly Task[], now: number = Date.now()): Ma
  * Three for today, the rest next Monday: the three most important, oldest
  * due first among equals, stay today, and the others move to the next week.
  */
-export function planThreeToday(tasks: readonly Task[], now: number = Date.now()): Map<string, string> {
+export function planThreeToday(tasks: readonly Task[], now: number): Map<string, string> {
   const ordered = [...tasks].sort(
     (left, right) =>
       TASK_PRIORITY_RANKS[right.priority ?? 'none'] - TASK_PRIORITY_RANKS[left.priority ?? 'none'] ||
@@ -194,6 +196,7 @@ export function describeLoadAfter(
  * go through `setTasksDue`, whose bulk edit writes due dates alone.
  */
 export async function setTaskDateField(
+  writes: TaskWrites,
   task: Task,
   field: 'due' | 'scheduled',
   date: string | undefined,
@@ -202,6 +205,7 @@ export async function setTaskDateField(
     return false;
   }
   return updateTaskLine(
+    writes,
     task,
     (line, { uri }) =>
       setTaskDate(
@@ -228,6 +232,7 @@ export function describeDateChange(
 }
 
 export async function setTasksDue(
+  writes: TaskWrites,
   tasks: readonly Task[],
   date: string | undefined,
   context?: RescheduleContext,
@@ -239,6 +244,7 @@ export async function setTasksDue(
   if (open.length === 1) {
     const [task] = open;
     await updateTaskLine(
+      writes,
       task,
       (line, { uri }) =>
         setTaskDate(
@@ -254,6 +260,7 @@ export async function setTasksDue(
   }
   const edit = { kind: 'due' as const, date };
   const result = await applyBulkEdit(
+    writes.history,
     open.map((task) => ({ kind: 'task' as const, task })),
     edit,
   );
@@ -278,6 +285,7 @@ export async function setTasksDue(
  * as one write, and says where they went and how full today now is.
  */
 export async function setTasksDueEach(
+  writes: TaskWrites,
   choice: Extract<RescheduleChoice, { kind: 'each' }>,
   tasks: readonly Task[],
   context?: RescheduleContext,
@@ -288,6 +296,7 @@ export async function setTasksDueEach(
   }
   const edit = { kind: 'dueEach' as const, dates: choice.dates };
   const result = await applyBulkEdit(
+    writes.history,
     open.map((task) => ({ kind: 'task' as const, task })),
     edit,
   );
@@ -382,6 +391,7 @@ export async function pickReschedule(
 
 /** Reschedules tasks from the Tasks view or the palette, and says the load. */
 export async function rescheduleTasks(
+  writes: TaskWrites,
   subject: string,
   tasks: readonly Task[],
   context?: RescheduleContext,
@@ -391,8 +401,8 @@ export async function rescheduleTasks(
     return;
   }
   if (choice.kind === 'one') {
-    await setTasksDue(tasks, choice.date, context);
+    await setTasksDue(writes, tasks, choice.date, context);
     return;
   }
-  await setTasksDueEach(choice, tasks, context);
+  await setTasksDueEach(writes, choice, tasks, context);
 }

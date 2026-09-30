@@ -19,6 +19,7 @@ import {
 import { DATE_INPUT_ERROR, readDateOptions } from './datePrompt';
 import { openSourceAt } from './navigation';
 import { createDailyNoteWithRollover } from './rollover';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Opening the daily note for any day named in words.
@@ -115,7 +116,11 @@ type DailyNoteIndexer = Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refres
  * new one from the template. The row that led here already said it would
  * create one, so it is not asked again.
  */
-export async function openDailyNoteFor(indexer: DailyNoteIndexer, date: string): Promise<void> {
+export async function openDailyNoteFor(
+  indexer: DailyNoteIndexer,
+  history: WorkspaceWriteHistory,
+  date: string,
+): Promise<void> {
   await indexer.ready;
   const existing = listDailyNotes(indexer.getSnapshot()).find((note) => note.date === date);
   if (existing) {
@@ -123,7 +128,7 @@ export async function openDailyNoteFor(indexer: DailyNoteIndexer, date: string):
     return;
   }
   if (date === formatIsoDate(startOfDay(Date.now()))) {
-    await createDailyNoteWithRollover(indexer);
+    await createDailyNoteWithRollover(indexer, history);
     return;
   }
   const day = parseLocalDate(date);
@@ -136,7 +141,10 @@ export async function openDailyNoteFor(indexer: DailyNoteIndexer, date: string):
 }
 
 /** Deckard: Open Daily Note for Date…, a picker that reads a day in words. */
-export async function openDailyNoteForDate(indexer: DailyNoteIndexer): Promise<void> {
+export async function openDailyNoteForDate(
+  indexer: DailyNoteIndexer,
+  history: WorkspaceWriteHistory,
+): Promise<void> {
   await indexer.ready;
   const notes = listDailyNotes(indexer.getSnapshot());
   const options = readDateOptions();
@@ -166,7 +174,7 @@ export async function openDailyNoteForDate(indexer: DailyNoteIndexer): Promise<v
       return;
     }
     picker.hide();
-    void openDailyNoteFor(indexer, date);
+    void openDailyNoteFor(indexer, history, date);
   });
   picker.onDidHide(() => picker.dispose());
   draw();

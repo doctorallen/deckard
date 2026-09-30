@@ -17,7 +17,7 @@ import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { listExcludedFolders, readExcludeKey, relativeExcludeKey, withExcludeKey } from './excludeFolders';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { writeSetting } from './settings';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
 /**
  * Park Note, Park Folder, and Park Tag, and their Unpark counterparts.
@@ -37,6 +37,8 @@ export interface ParkingIndex {
   isNotesFile(uri: vscode.Uri): boolean;
   getParkedRules(): ParkedRules;
   onDidUpdate: vscode.Event<unknown>;
+  /** Reads the notes again, after an Undo puts some back. */
+  refresh(): Promise<void>;
 }
 
 const STAYS = 'It stays searchable with is:parked.';
@@ -87,17 +89,17 @@ function replaceAll(edit: vscode.WorkspaceEdit, document: vscode.TextDocument, c
   );
 }
 
-/** The Undo button on a write to the notes. */
-function offerUndo(text: string): void {
-  void vscode.window.showInformationMessage(text, 'Undo').then(async (choice) => {
-    if (choice === 'Undo') {
-      await vscode.commands.executeCommand('deckard.undoLastChange');
-    }
-  });
+/**
+ * The Undo button on a write to the notes: it takes back the last write as
+ * Undo Last Change does, asking first, without asking whether that is still
+ * this one.
+ */
+function offerUndo(indexer: ParkingIndex, written: WriteHandle, text: string): void {
+  written.offerUndo(text, { guard: 'ask', refresh: () => indexer.refresh() });
 }
 
 /** Park Note: writes the first parked tag into each note's front matter. */
-export async function parkNotes(indexer: ParkingIndex, uri?: unknown, uris?: unknown): Promise<void> {
+export async function parkNotes(indexer: ParkingIndex, history: WorkspaceWriteHistory, uri?: unknown, uris?: unknown): Promise<void> {
   const chosen = chosenNotes(uri, uris);
   if (chosen.length === 0) {
     void vscode.window.showInformationMessage('Open a note, or right-click one in the Explorer, to park it.');
@@ -165,17 +167,17 @@ export async function parkNotes(indexer: ParkingIndex, uri?: unknown, uris?: unk
     void vscode.window.showInformationMessage('Every note chosen is parked already.');
     return;
   }
-  const result = await applyWorkspaceWrite(edit, {
+  const result = await history.write(edit, {
     label: `parking ${pluralize(parked.length, 'note')}`,
   });
   if (!result.applied) {
     return;
   }
-  offerUndo(parked.length === 1 ? `Parked ${quoted(parked[0])}. ${STAYS}` : `Parked ${parked.length} notes. ${STAY}`);
+  offerUndo(indexer, result.handle, parked.length === 1 ? `Parked ${quoted(parked[0])}. ${STAYS}` : `Parked ${parked.length} notes. ${STAY}`);
 }
 
 /** Unpark Note: takes the parked tags out of each note's front matter. */
-export async function unparkNotes(indexer: ParkingIndex, uri?: unknown, uris?: unknown): Promise<void> {
+export async function unparkNotes(indexer: ParkingIndex, history: WorkspaceWriteHistory, uri?: unknown, uris?: unknown): Promise<void> {
   const chosen = chosenNotes(uri, uris);
   if (chosen.length === 0) {
     void vscode.window.showInformationMessage('Open a note, or right-click one in the Explorer, to unpark it.');
@@ -256,13 +258,13 @@ export async function unparkNotes(indexer: ParkingIndex, uri?: unknown, uris?: u
   if (unparked.length === 0) {
     return;
   }
-  const result = await applyWorkspaceWrite(edit, {
+  const result = await history.write(edit, {
     label: `unparking ${pluralize(unparked.length, 'note')}`,
   });
   if (!result.applied) {
     return;
   }
-  offerUndo(unparked.length === 1 ? `Unparked ${quoted(unparked[0])}.` : `Unparked ${unparked.length} notes.`);
+  offerUndo(indexer, result.handle, unparked.length === 1 ? `Unparked ${quoted(unparked[0])}.` : `Unparked ${unparked.length} notes.`);
 }
 
 /**

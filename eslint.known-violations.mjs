@@ -78,9 +78,7 @@ export default {
       "createEntryRelatedNotesHoverMessage"
     ],
     "src/ui/commands/taskActions.ts": [
-      "offerUndo",
-      "readCompletionFamily",
-      "revertTaskLine"
+      "readCompletionFamily"
     ],
     "src/ui/commands/taskEditor.ts": [
       "setDraftDate",
@@ -123,7 +121,6 @@ export default {
     ],
     "src/ui/state/relatedNotesRanking.ts": [
       "findSimilarWording",
-      "getLinkEvidence",
       "rankRelatedNotes",
       "rankSimilarWording"
     ],
@@ -132,19 +129,10 @@ export default {
       "createTaskBoard",
       "layoutTaskBoard"
     ],
-    "src/ui/webview/dashboard.ts": [
-      "(function)"
-    ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],
     "src/ui/webview/searchPage.ts": [
-      "(function)"
-    ],
-    "src/ui/webview/sidebarNotes.ts": [
-      "(function)"
-    ],
-    "src/ui/webview/taskBoard.ts": [
       "(function)"
     ]
   },
@@ -400,7 +388,6 @@ export default {
     "src/ui/commands/selectionSeed.ts": 2,
     "src/ui/commands/tagDecorations.ts": 4,
     "src/ui/commands/tagSuggestions.ts": 1,
-    "src/ui/commands/taskActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 5,
     "src/ui/commands/taskLineDecorations.ts": 2,
     "src/ui/commands/taskMetadataSuggestions.ts": 5,
@@ -408,7 +395,7 @@ export default {
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/commands/tryNext.ts": 5,
     "src/ui/commands/whatsNew.ts": 4,
-    "src/ui/commands/workspaceWrites.ts": 5,
+    "src/ui/commands/workspaceWrites.ts": 2,
     "src/ui/preview/noteEmbeds.ts": 1,
     "src/ui/preview/queryBlocks.ts": 3,
     "src/ui/state/agendaState.ts": 3,
@@ -454,7 +441,6 @@ export default {
     "src/ui/webview/sidebarNotes.ts": 5,
     "src/ui/webview/stats.ts": 4,
     "src/ui/webview/taskBoard.ts": 5,
-    "src/ui/webview/themes.ts": 1,
     "test/e2e/vscodeStub.js": 17
   },
   "max-depth": {

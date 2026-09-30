@@ -100,6 +100,8 @@ export function addNoteEmbedRenderer(
   );
 
   let depth = 0;
+  // The note being previewed, parsed once for every embed of itself.
+  const parseSource = createSourceParser();
   md.renderer.rules.deckard_embed = (tokens, index, _options, env) => {
     const token = tokens[index];
     const meta = token.meta as EmbedToken;
@@ -109,7 +111,7 @@ export function addNoteEmbedRenderer(
       line === undefined
         ? '<div class="deckard-embed">'
         : `<div class="deckard-embed code-line" data-line="${line}">`;
-    const embed = resolveEmbed(meta.target, meta.source, source.getIndex());
+    const embed = resolveEmbed(meta.target, meta.source, source.getIndex(), parseSource);
 
     if (embed.kind === 'missing') {
       return [
@@ -160,6 +162,8 @@ export function resolveEmbed(
   target: string,
   documentSource: string,
   index: WorkspaceIndex | undefined,
+  /** How the note written in is read: a caller that resolves many embeds passes one parser for all. */
+  parseSource: SourceParser = createSourceParser(),
 ): ResolvedEmbed {
   const { note, heading, block } = parseWikiTarget(target);
   if (!note && !heading && !block) {
@@ -259,17 +263,24 @@ export function withoutFrontmatter(content: string): string {
   return end < 0 ? content : lines.slice(end + 1).join('\n').replace(/^\n+/, '');
 }
 
-/**
- * The note being previewed, parsed once. A note holding several embeds parses
- * it once for all of them, and the preview redraws from the top each time.
- */
-let lastSource: { content: string; file: ParsedFile } | undefined;
+/** Reads the note an embed is written in, as `resolveEmbed` needs it. */
+export type SourceParser = (content: string) => ParsedFile;
 
-function parseSource(content: string): ParsedFile {
-  if (lastSource?.content !== content) {
-    lastSource = { content, file: parseMarkdown('', content) };
-  }
-  return lastSource.file;
+/**
+ * A parser that keeps the last note it read, so a note holding several
+ * embeds of itself is parsed once for all of them, and the preview, which
+ * redraws from the top each time, parses it again only once it changes.
+ * Each preview engine has its own, so two previews of different notes do
+ * not take turns replacing one cache.
+ */
+export function createSourceParser(): SourceParser {
+  let last: { content: string; file: ParsedFile } | undefined;
+  return (content) => {
+    if (last?.content !== content) {
+      last = { content, file: parseMarkdown('', content) };
+    }
+    return last.file;
+  };
 }
 
 function renderHeader(title: string, href?: string): string {
