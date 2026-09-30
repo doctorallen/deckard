@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { StalePreferences } from '../../core/storage/preferences';
+import { pluralize } from '../../core/text';
 import { WorkspaceIndex } from '../../core/types';
 
 /**
@@ -30,7 +31,7 @@ interface TidyStore {
 /** One line per kind, as "3 favorite tags", for whatever is stale. */
 export function describeStale(stale: StalePreferences): string[] {
   const line = (count: number, one: string, many: string): string[] =>
-    count === 0 ? [] : [`${count} ${count === 1 ? one : many}`];
+    count === 0 ? [] : [pluralize(count, one, many)];
   return [
     ...line(stale.favoriteTags.length, 'favorite tag', 'favorite tags'),
     ...line(stale.favoriteEntities.length, 'favorite entity', 'favorite entities'),

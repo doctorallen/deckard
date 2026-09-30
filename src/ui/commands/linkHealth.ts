@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { reportFailure, reportNeedsFolder } from './notify';
 
 import { findFencedLines } from '../../core/markdown/parser';
+import { pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
@@ -207,7 +208,7 @@ export async function createMissingNotes(
 /** Says how many notes were made for links that named none. */
 export function reportCreatedNotes(created: number): void {
   void vscode.window.showInformationMessage(
-    `Created ${created} ${created === 1 ? 'note' : 'notes'} for links that named no note.`,
+    `Created ${pluralize(created, 'note')} for links that named no note.`,
   );
 }
 

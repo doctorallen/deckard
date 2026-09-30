@@ -13,6 +13,7 @@ import {
   setTaskLineCompletion,
   writeCompletion,
 } from '../../core/markdown/taskMetadata';
+import { pluralize } from '../../core/text';
 import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
@@ -328,9 +329,7 @@ export function describeBulkEditResult(
       : ` Deckard could not read the repeat rule on ${
           unread === 1 ? 'one' : unread
         } of them, so no next one was added.`;
-  return `${verb} ${result.changed} ${
-    result.changed === 1 ? 'result' : 'results'
-  } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}${rules}`;
+  return `${verb} ${pluralize(result.changed, 'result')} in ${pluralize(result.notes, 'note')}.${left}${rules}`;
 }
 
 /**

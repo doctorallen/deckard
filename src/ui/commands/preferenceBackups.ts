@@ -6,6 +6,7 @@ import {
   PreferenceSnapshot,
   PreferenceSnapshots,
 } from '../../core/storage/preferenceSnapshots';
+import { pluralize } from '../../core/text';
 import { PersistedPreferences } from '../../core/types';
 import { reportFailure } from './notify';
 
@@ -84,10 +85,10 @@ export function readExport(value: unknown): {
 /** One line saying what a blob holds, for a reader to weigh before replacing. */
 export function describePreferences(preferences: PersistedPreferences): string {
   const parts = [
-    count(preferences.favoriteTags.length, 'favorite tag'),
-    count(preferences.favoriteEntities.length, 'favorite entity', 'favorite entities'),
-    count((preferences.pinnedNotes ?? []).length, 'pinned note'),
-    count(preferences.savedFilters.length, 'saved search', 'saved searches'),
+    pluralize(preferences.favoriteTags.length, 'favorite tag', 'favorite tags', { emptyForZero: true }),
+    pluralize(preferences.favoriteEntities.length, 'favorite entity', 'favorite entities', { emptyForZero: true }),
+    pluralize((preferences.pinnedNotes ?? []).length, 'pinned note', 'pinned notes', { emptyForZero: true }),
+    pluralize(preferences.savedFilters.length, 'saved search', 'saved searches', { emptyForZero: true }),
   ].filter(Boolean);
   return parts.length ? parts.join(', ') : 'nothing chosen yet';
 }
@@ -196,10 +197,6 @@ async function replaceAfterAsking(
   void vscode.window.showInformationMessage(
     `Restored ${describePreferences(preferences)}.`,
   );
-}
-
-function count(n: number, one: string, many = `${one}s`): string {
-  return n === 0 ? '' : `${n} ${n === 1 ? one : many}`;
 }
 
 function describeAge(at: Date, now = Date.now()): string {

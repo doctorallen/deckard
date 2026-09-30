@@ -2,6 +2,7 @@ import { isParkedTask } from '../../core/workspace/parked';
 import * as vscode from 'vscode';
 
 import { markMigrated } from '../../core/markdown/taskMetadata';
+import { pluralize } from '../../core/text';
 import { findLastDescendantLine } from '../../core/markdown/taskSteps';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -326,7 +327,7 @@ export async function applyRollover(
   }
 
   const written = await applyWorkspaceWrite(edit, {
-    label: `carrying ${count(carried.length, 'task', 'tasks')} forward`,
+    label: `carrying ${pluralize(carried.length, 'task', 'tasks')} forward`,
     // A rollover is one gesture over a few notes; showing it every morning
     // would be in the way. Undo is what takes it back.
     preview: 'never',
@@ -434,7 +435,7 @@ async function offerRollover(
   }
   reportUndo(
     undone,
-    `Put ${undone?.restored ?? 0} ${undone?.restored === 1 ? 'note' : 'notes'} back.`,
+    `Put ${pluralize(undone?.restored ?? 0, 'note')} back.`,
   );
 }
 
@@ -456,8 +457,8 @@ export function describeRollover(
   const left =
     result.skipped === 0
       ? ''
-      : ` ${count(result.skipped, 'task', 'tasks')} stayed behind, already carried or changed since.`;
-  return `${verb} ${count(
+      : ` ${pluralize(result.skipped, 'task', 'tasks')} stayed behind, already carried or changed since.`;
+  return `${verb} ${pluralize(
     result.carried,
     'unfinished task',
     'unfinished tasks',
@@ -528,10 +529,6 @@ export function getRolloverLookbackDays(uri?: vscode.Uri): number {
     .getConfiguration('deckard', uri)
     .get<number>('dailyNote.rolloverDays', 7);
   return Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
-}
-
-function count(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
 }
 
 /**

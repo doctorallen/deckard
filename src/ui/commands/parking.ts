@@ -8,6 +8,7 @@ import {
   removeFrontmatterTags,
 } from '../../core/markdown/frontmatterTags';
 import { countTagMatches } from '../../core/query/queryEvaluator';
+import { pluralize } from '../../core/text';
 import { WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../core/workspace/backlinks';
 import { isUnderParkedTag, ParkedRules, toParkedTagKey } from '../../core/workspace/parked';
@@ -165,7 +166,7 @@ export async function parkNotes(indexer: ParkingIndex, uri?: unknown, uris?: unk
     return;
   }
   const result = await applyWorkspaceWrite(edit, {
-    label: `parking ${parked.length} ${parked.length === 1 ? 'note' : 'notes'}`,
+    label: `parking ${pluralize(parked.length, 'note')}`,
   });
   if (!result.applied) {
     return;
@@ -256,7 +257,7 @@ export async function unparkNotes(indexer: ParkingIndex, uri?: unknown, uris?: u
     return;
   }
   const result = await applyWorkspaceWrite(edit, {
-    label: `unparking ${unparked.length} ${unparked.length === 1 ? 'note' : 'notes'}`,
+    label: `unparking ${pluralize(unparked.length, 'note')}`,
   });
   if (!result.applied) {
     return;
@@ -304,8 +305,6 @@ function countNotesIn(index: WorkspaceIndex, folderPath: string): number {
   return count;
 }
 
-const notesPhrase = (count: number): string => `${count} ${count === 1 ? 'note' : 'notes'}`;
-
 /** The folders that hold notes, most notes first, for the palette. */
 async function pickFolder(index: WorkspaceIndex, placeHolder: string): Promise<vscode.Uri | undefined> {
   const counts = new Map<string, number>();
@@ -319,7 +318,7 @@ async function pickFolder(index: WorkspaceIndex, placeHolder: string): Promise<v
   const picked = await vscode.window.showQuickPick(
     [...counts.entries()]
       .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
-      .map(([folder, count]) => ({ label: folder, description: notesPhrase(count) })),
+      .map(([folder, count]) => ({ label: folder, description: pluralize(count, 'note') })),
     { placeHolder, matchOnDescription: true },
   );
   return picked ? folderUri(picked.label) : undefined;
@@ -419,7 +418,7 @@ async function parkFolder(indexer: ParkingIndex, index: WorkspaceIndex, uri: vsc
   }
   const count = countNotesIn(index, indexPath);
   void vscode.window
-    .showInformationMessage(`Parked ${name} and its ${notesPhrase(count)}. ${count === 1 ? STAYS : STAY}`, 'Undo')
+    .showInformationMessage(`Parked ${name} and its ${pluralize(count, 'note')}. ${count === 1 ? STAYS : STAY}`, 'Undo')
     .then(async (choice) => {
       if (choice === 'Undo') {
         await writeSetting('parked.folders', current, target, configuration);
@@ -486,7 +485,7 @@ async function unparkFolder(index: WorkspaceIndex, uri: vscode.Uri): Promise<voi
   if (!(await writeSetting('parked.folders', withExcludeKey(current, written, false), target, configuration))) {
     return;
   }
-  void vscode.window.showInformationMessage(`Unparked ${name} and its ${notesPhrase(countNotesIn(index, indexPath))}.`);
+  void vscode.window.showInformationMessage(`Unparked ${name} and its ${pluralize(countNotesIn(index, indexPath), 'note')}.`);
 }
 
 /** How a parked tag is written in the setting: `project/old`, `@ren`. */
@@ -500,7 +499,7 @@ async function pickTag(index: WorkspaceIndex, placeHolder: string, keys?: readon
     const count = counts.get(key);
     return {
       label: index.tags.get(key)?.label ?? key,
-      description: count ? `${notesPhrase(count.notes)}, ${count.tasks} ${count.tasks === 1 ? 'task' : 'tasks'}` : undefined,
+      description: count ? `${pluralize(count.notes, 'note')}, ${pluralize(count.tasks, 'task')}` : undefined,
       key,
     };
   });
@@ -550,7 +549,7 @@ export async function parkTag(indexer: ParkingIndex, tagKey?: unknown): Promise<
   const count = countTagMatches(index).get(key) ?? { notes: 0, tasks: 0 };
   void vscode.window
     .showInformationMessage(
-      `Parked ${label}: ${notesPhrase(count.notes)} and ${count.tasks} ${count.tasks === 1 ? 'task' : 'tasks'}. ${count.notes + count.tasks === 1 ? STAYS : STAY}`,
+      `Parked ${label}: ${pluralize(count.notes, 'note')} and ${pluralize(count.tasks, 'task')}. ${count.notes + count.tasks === 1 ? STAYS : STAY}`,
       'Undo',
     )
     .then(async (choice) => {

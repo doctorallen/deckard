@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -448,6 +449,3 @@ async function locateTasks(tasks: readonly Task[]): Promise<vscode.Location[]> {
   });
 }
 
-function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}

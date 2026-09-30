@@ -88,6 +88,7 @@ import {
   noteTitle,
 } from '../../core/workspace/backlinks';
 import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
+import { pluralize } from '../../core/text';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
@@ -2025,7 +2026,7 @@ export function describeTagMatches(
   tagKey: string,
 ): string {
   const count = countTagMatches(index).get(tagKey) ?? { notes: 0, tasks: 0 };
-  return `${count.notes} ${count.notes === 1 ? 'note' : 'notes'} · ${count.tasks} ${count.tasks === 1 ? 'task' : 'tasks'}`;
+  return `${pluralize(count.notes, 'note')} · ${pluralize(count.tasks, 'task')}`;
 }
 
 /**
@@ -2221,7 +2222,7 @@ function createLinkSuggestions(index: WorkspaceIndex): QuerySuggestion[] {
     candidates.push({
       value: title,
       label: `[[${title}]]`,
-      detail: `Linked from ${count} ${count === 1 ? 'note' : 'notes'}`,
+      detail: `Linked from ${pluralize(count, 'note')}`,
       count,
     });
     file.aliases?.forEach((alias) =>

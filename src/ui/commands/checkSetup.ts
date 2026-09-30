@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { getPersonMarker } from '../../core/markdown/parser';
 import { matchesPerson } from '../../core/query/queryEvaluator';
+import { pluralize } from '../../core/text';
 import { UnreadableNote, WorkspaceIndex } from '../../core/types';
 import { WorkspaceScanner } from '../../core/workspace/scanner';
 
@@ -155,7 +156,7 @@ export function buildSetupReport(facts: SetupFacts, now = new Date()): string {
   }
   if (facts.unreadable.length > 0) {
     warn(
-      `${facts.unreadable.length} ${facts.unreadable.length === 1 ? 'note' : 'notes'} could not be read, so ${facts.unreadable.length === 1 ? 'it is' : 'they are'} not indexed:\n${facts.unreadable.map((note) => `  - \`${note.filePath}\` — ${note.reason}`).join('\n')}`,
+      `${pluralize(facts.unreadable.length, 'note')} could not be read, so ${facts.unreadable.length === 1 ? 'it is' : 'they are'} not indexed:\n${facts.unreadable.map((note) => `  - \`${note.filePath}\` — ${note.reason}`).join('\n')}`,
       'Fix the cause, then run `Deckard: Reindex Workspace`.',
     );
   } else if (scan.read > 0) {

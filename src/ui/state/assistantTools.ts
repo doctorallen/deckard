@@ -1,4 +1,5 @@
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
+import { pluralize } from '../../core/text';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
 import {
   getQueryBlockSnapshot,
@@ -246,10 +247,6 @@ function clampLimit(
     return fallback;
   }
   return Math.min(max, Math.max(1, Math.floor(value)));
-}
-
-function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { pluralize } from '../../core/text';
 import { noteOwnWrite } from '../../core/workspace/ownWrites';
 import { reportStale } from './notify';
 
@@ -273,7 +274,7 @@ export async function undoLastWorkspaceWrite(
     `Undo ${write.label}?`,
     {
       modal: true,
-      detail: `${countNotes(write.notes.length)} go back to what they were before Deckard changed them, at ${new Date(
+      detail: `${pluralize(write.notes.length, 'note')} go back to what they were before Deckard changed them, at ${new Date(
         write.at,
       ).toLocaleTimeString()}. A note you have changed since is left as it is.`,
     },
@@ -292,7 +293,7 @@ export async function undoLastWorkspaceWrite(
   } catch {
     // The watcher picks the notes up; the notes themselves are already back.
   }
-  reportUndo(result, `Undid ${result.label} in ${countNotes(result.restored)}.`);
+  reportUndo(result, `Undid ${result.label} in ${pluralize(result.restored, 'note')}.`);
   return result;
 }
 
@@ -316,7 +317,7 @@ export function reportUndo(result: UndoResult | undefined, done: string): void {
     return;
   }
   void vscode.window.showWarningMessage(
-    `${done} ${countNotes(result.skipped)} changed after Deckard last read ${
+    `${done} ${pluralize(result.skipped, 'note')} changed after Deckard last read ${
       result.skipped === 1 ? 'it and was' : 'them and were'
     } left as ${result.skipped === 1 ? 'it is' : 'they are'}.`,
   );
@@ -347,6 +348,3 @@ function wholeDocument(document: vscode.TextDocument): vscode.Range {
   );
 }
 
-function countNotes(value: number): string {
-  return `${value} ${value === 1 ? 'note' : 'notes'}`;
-}

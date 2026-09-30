@@ -2,6 +2,7 @@ import { stripTags } from '../../core/markdown/parser';
 import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
+import { pluralize } from '../../core/text';
 import {
   ParsedFile,
   Section,
@@ -610,10 +611,6 @@ function compareDescending(left?: number, right?: number): number {
   return right - left;
 }
 
-
-function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
 
 function getFileName(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;

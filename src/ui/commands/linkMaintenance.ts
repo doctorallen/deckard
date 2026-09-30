@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import { findFencedLines, stripTags } from '../../core/markdown/parser';
+import { pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { Section, WorkspaceIndex } from '../../core/types';
 import {
@@ -315,7 +316,7 @@ export class LinkMaintenance implements vscode.Disposable {
 
     if (rewritten > 0) {
       void vscode.window.showInformationMessage(
-        `Deckard updated ${count(rewritten, 'link', 'links')} in ${count(
+        `Deckard updated ${pluralize(rewritten, 'link', 'links')} in ${pluralize(
           notes,
           'note',
           'notes',
@@ -472,7 +473,7 @@ export async function renameHeadingCommand(
   void vscode.window.showInformationMessage(
     others <= 0
       ? `Renamed the heading to "${next.trim()}".`
-      : `Renamed the heading to "${next.trim()}" and the links to it in ${count(
+      : `Renamed the heading to "${next.trim()}" and the links to it in ${pluralize(
           others,
           'other note',
           'other notes',
@@ -502,8 +503,4 @@ function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('updateLinksOnRename', true);
-}
-
-function count(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
 }
