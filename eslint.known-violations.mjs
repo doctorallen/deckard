@@ -121,7 +121,6 @@ export default {
     ],
     "src/ui/state/relatedNotesRanking.ts": [
       "findSimilarWording",
-      "getLinkEvidence",
       "rankRelatedNotes",
       "rankSimilarWording"
     ],
