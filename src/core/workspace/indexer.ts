@@ -1,4 +1,4 @@
-import type { Disposable } from '../../ports/events';
+import type { Disposable, Event } from '../../ports/events';
 import type { Progress } from '../../ports/progress';
 import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
 import type { WorkspaceEvents } from '../../ports/workspaceEvents';
@@ -22,6 +22,7 @@ import type { OwnWrites } from './writeHistory';
 import { ChangeWatcher, QueuedChange } from './changeWatcher';
 import { IndexState, NoteChange } from './indexState';
 import { ViewUpdateOptions } from './publishing';
+import { ViewPublisher } from './viewPublisher';
 import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
 
 export { buildWorkspaceIndex } from './indexState';
@@ -68,13 +69,6 @@ const PROGRESS_NOWHERE: Progress = {
   withProgress: (_title, task) => task({ report: () => undefined }),
 };
 
-/** A view waiting for its turn to redraw from the index. */
-interface ViewSubscription {
-  listener: () => void;
-  options: ViewUpdateOptions;
-  disposed: boolean;
-}
-
 /**
  * Owns the live note cache and turns scanner output into lookup maps for the UI.
  *
@@ -82,7 +76,6 @@ interface ViewSubscription {
  * watcher events can be coalesced before one consistent snapshot is published.
  */
 export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Disposable {
-  private readonly updateEmitter = new Emitter<WorkspaceIndex>();
   private readonly disposables: Disposable[] = [];
   /** The notes and the index derived from them, updated a note at a time. */
   private state = IndexState.build([]);
@@ -102,19 +95,13 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * it is waiting can say how far along it is.
    */
   public readonly onDidProgress = this.progressEmitter.event;
-  /** Views that redraw in turns of their own, in the order they asked. */
-  private readonly views = new Set<ViewSubscription>();
-  /** The views still to redraw from the last publish, next first. */
-  private viewQueue: ViewSubscription[] = [];
-  private viewTurnScheduled = false;
-  private readonly schedule: (run: () => void) => void;
+  /** Publishes each new index to the plain listeners, then to the views in turns. */
+  private readonly publisher: ViewPublisher;
   private readonly version: string;
   private readonly readCache: boolean;
   private readonly progress: Progress;
   /** Hears changes to the workspace and queues or carries out what each requires. */
   private readonly watcher: ChangeWatcher<U>;
-  private readonly publishedPromise: Promise<void>;
-  private resolvePublished: () => void = () => undefined;
   /** Whether the index shows the cache's notes, not yet checked against the files. */
   private staleFromCache = false;
 
@@ -123,7 +110,8 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     private readonly searchStore?: SearchStore,
     options: WorkspaceIndexerOptions<U> = {},
   ) {
-    this.schedule = options.schedule ?? ((run) => void setImmediate(run));
+    this.publisher = new ViewPublisher(options.schedule);
+    this.onDidUpdate = this.publisher.onDidUpdate;
     this.version = options.version ?? '';
     this.readCache = options.readCache ?? false;
     this.progress = options.progress ?? PROGRESS_NOWHERE;
@@ -142,10 +130,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
       options.events,
       options.ownWrites,
     );
-    this.publishedPromise = new Promise<void>((resolve) => {
-      this.resolvePublished = resolve;
-    });
-    this.disposables.push(this.updateEmitter, this.progressEmitter);
+    this.disposables.push(this.progressEmitter);
   }
 
   /** Whether a first scan has finished, so the index holds the workspace. */
@@ -160,7 +145,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     return this.scanState;
   }
 
-  public readonly onDidUpdate = this.updateEmitter.event;
+  public readonly onDidUpdate: Event<WorkspaceIndex>;
 
   /**
    * Redraws a view from the index after each update, in a host turn of its
@@ -172,14 +157,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     listener: () => void,
     options: ViewUpdateOptions,
   ): Disposable {
-    const subscription: ViewSubscription = { listener, options, disposed: false };
-    this.views.add(subscription);
-    return {
-      dispose: () => {
-        subscription.disposed = true;
-        this.views.delete(subscription);
-      },
-    };
+    return this.publisher.onDidUpdateView(listener, options);
   }
 
   /**
@@ -199,7 +177,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * `ready`.
    */
   public get published(): Promise<void> {
-    return this.publishedPromise;
+    return this.publisher.published;
   }
 
   /**
@@ -566,8 +544,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     this.disposed = true;
     this.watcher.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
-    this.views.clear();
-    this.viewQueue = [];
+    this.publisher.dispose();
     this.searchStore?.dispose();
   }
 
@@ -634,61 +611,12 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
   }
 
   /**
-   * Publishes a newly derived snapshot after the cache is internally consistent.
-   *
-   * The plain listeners, which only keep the index or fire a cheap event, run
-   * now. Each view then redraws in a host turn of its own, the one in front
-   * first, so no single turn pays for every open view and other extensions
-   * get a turn in between. A publish while views are still waiting starts
-   * the order again, and each waiting view still runs once.
+   * Publishes a newly derived snapshot after the cache is internally
+   * consistent: the plain listeners now, each view in a turn of its own, as
+   * `ViewPublisher` orders them.
    */
   private emitUpdate(): void {
-    this.resolvePublished();
-    measure('Refresh views after an index update', () =>
-      this.updateEmitter.fire(this.getSnapshot()),
-    );
-    this.viewQueue = [...this.views]
-      .map((subscription, order) => ({
-        subscription,
-        order,
-        priority: readPriority(subscription),
-      }))
-      .sort((left, right) => left.priority - right.priority || left.order - right.order)
-      .map(({ subscription }) => subscription);
-    this.scheduleViewTurn();
-  }
-
-  private scheduleViewTurn(): void {
-    if (this.viewTurnScheduled || this.viewQueue.length === 0) {
-      return;
-    }
-    this.viewTurnScheduled = true;
-    this.schedule(() => {
-      this.viewTurnScheduled = false;
-      this.runNextView();
-    });
-  }
-
-  /** Redraws the next view waiting, if any, then leaves the rest a turn. */
-  private runNextView(): void {
-    if (this.disposed) {
-      return;
-    }
-    let next = this.viewQueue.shift();
-    while (next?.disposed) {
-      next = this.viewQueue.shift();
-    }
-    if (next) {
-      const view = next;
-      try {
-        measure(`Refresh ${view.options.name} after an index update`, () =>
-          view.listener(),
-        );
-      } catch (error) {
-        reportError(`Could not refresh ${view.options.name}`, error);
-      }
-    }
-    this.scheduleViewTurn();
+    this.publisher.publish(() => this.getSnapshot());
   }
 }
 
@@ -701,16 +629,6 @@ function describeBuild(index: WorkspaceIndex): string {
 function describeUpdate(changes: readonly NoteChange[]): (index: WorkspaceIndex) => string {
   return (index) =>
     `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`;
-}
-
-/** A view's priority now, or last when it cannot say. */
-function readPriority(subscription: ViewSubscription): number {
-  try {
-    const priority = subscription.options.priority();
-    return Number.isFinite(priority) ? priority : Number.MAX_SAFE_INTEGER;
-  } catch {
-    return Number.MAX_SAFE_INTEGER;
-  }
 }
 
 /**
