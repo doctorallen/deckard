@@ -3,13 +3,14 @@
 // The webviews are HTML built from template literals, so a typo in a style
 // sheet or an inline script is invisible to the compiler. This renders each
 // page for real and asserts the things the shared component layer guarantees:
-// the script parses, the design tokens are present, one nonce gates the
-// inline style and script, and no page redeclares a shared helper.
+// the script parses, the design tokens are present, the page's nonce gates
+// every inline style and script, and no page redeclares a shared helper.
 //
 //   npm run test:ui
 const { pages } = require('./pages.js');
-// Required after pages.js, which is what redirects 'vscode' to the stub.
-const { getZenCss } = require('../../out/ui/webview/components.js');
+const { readPageNonce } = require('../harness/loadPage.js');
+// Read after pages.js, which is what redirects 'vscode' to the stub.
+const { getZenCss } = require('../harness/modules.js').components;
 const zenSheet = getZenCss().trim();
 /**
  * Layout each page must still have after the cascade.
@@ -161,9 +162,14 @@ for (const [name, render] of pages) {
   if (roots > 2) problems.push(`${roots} :root blocks; tokens should come from the base sheet`);
   if (!/:root/.test(html)) problems.push('missing :root');
   if (!/Content-Security-Policy/.test(html)) problems.push('missing CSP');
-  // A nonce must gate every inline style and script.
-  const nonces = [...html.matchAll(/nonce="([^"]+)"/g)].map((m) => m[1]);
-  if (new Set(nonces).size !== 1) problems.push(`expected one nonce, saw ${new Set(nonces).size}`);
+  // Every inline style and script carries the nonce the page's policy
+  // names. The page comes through the page loader, so a bundle it loads by
+  // URI is counted here as the inline script it becomes.
+  const nonce = readPageNonce(html);
+  if (!nonce) problems.push('the CSP names no nonce');
+  const ungated = [...html.matchAll(/<(script|style)\b([^>]*)>/g)]
+    .filter(([, , attributes]) => !attributes.includes(`nonce="${nonce}"`));
+  if (ungated.length) problems.push(`${ungated.length} inline style or script without the page's nonce`);
   if (problems.length) { fail++; console.log(`  FAIL ${name}\n       ` + problems.join('\n       ')); }
   else console.log(`  ok   ${name}  (${(html.length/1024).toFixed(0)}kb, ${scripts.length} script)`);
 }

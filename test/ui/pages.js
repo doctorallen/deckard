@@ -1,6 +1,9 @@
 // The rendered HTML of every Deckard webview, built from the compiled sources
-// with VS Code replaced by the e2e stub. The webview checks share it, so a new
-// page is added once and every check covers it.
+// with VS Code replaced by the e2e stub. The pages are the ones the mocha
+// suites walk, from src/test/pages.ts, and each comes through the shared page
+// loader, so the webview checks see one self-contained page whether its
+// script is inline or a bundle. A new page is added once, in the catalog, and
+// every check covers it.
 const path = require('node:path');
 const { existsSync } = require('node:fs');
 
@@ -38,38 +41,40 @@ vscodeStub.workspace.getConfiguration = (section) => {
     },
   };
 };
+const modules = require('../harness/modules.js');
+const { loadPage } = require('../harness/loadPage.js');
+
+/**
+ * The stand-in webview. An icon or image keeps the one URI it has always had
+ * here, which loads nothing, so no page draws differently; a page bundle
+ * under dist/webview gets a URI the page loader reads from the build.
+ */
 const webview = {
   cspSource: 'vscode-webview://deckard',
-  asWebviewUri: (uri) => ({ toString: () => 'vscode-webview://deckard/asset' }),
+  asWebviewUri: (uri) => {
+    const bundle = /(?:^|\/)(dist\/webview\/.+)$/.exec(String(uri.fsPath ?? uri.path ?? ''));
+    const address = bundle ? `vscode-webview://deckard/${bundle[1]}` : 'vscode-webview://deckard/asset';
+    return { toString: () => address };
+  },
 };
-const pages = [
-  ['dashboard', () => require('../../out/ui/webview/dashboardHtml.js').getDashboardHtml(webview, { fsPath: '/ext' })],
-  ['searchPage', () => require('../../out/ui/webview/searchPageHtml.js').getSearchPageHtml(webview)],
-  ['sidebarNotes', () => require('../../out/ui/webview/sidebarNotesHtml.js').getSidebarNotesHtml(webview, '1.0.0')],
-  ['notesGraph', () => require('../../out/ui/webview/notesGraphHtml.js').getNotesGraphHtml(webview)],
-  // Help with the shipped changelog's releases, so What's new is measured too.
-  ['help', () => require('../../out/ui/webview/helpHtml.js').getHelpHtml(webview, { fsPath: '/ext' }, require('../../package.json').contributes, {
-    releases: require('../../out/core/changelog.js').parseChangelog(
-      require('node:fs').readFileSync(path.join(__dirname, '..', '..', 'CHANGELOG.md'), 'utf8'),
-    ),
-    newSince: '1.20.0',
-  })],
-  ['stats', () => require('../../out/ui/webview/statsHtml.js').getStatsHtml(webview)],
-  ['taskBoard', () => require('../../out/ui/webview/taskBoardHtml.js').getTaskBoardHtml(webview)],
-  ['calendar', () => require('../../out/ui/webview/calendarHtml.js').getCalendarHtml(webview)],
-  ['calendarPage', () => require('../../out/ui/webview/calendarHtml.js').getCalendarHtml(webview, { page: true })],
-  ['relatedNotesDebug', () => require('../../out/ui/webview/relatedNotesDebugHtml.js')
-      .getRelatedNotesDebugHtml(webview, {
-        filePath: 'notes/a.md', sourceLine: 1, title: 'Entry', tags: [],
-        snapshot: {
-          activeTags: [], notes: [],
-          tagTitleDisplayMode: 'inline', state: 'ready',
-        },
-      })],
-];
+/** What every page renders against, Help with the shipped changelog's releases, so What's new is measured too. */
+const context = {
+  webview,
+  extensionUri: { fsPath: '/ext' },
+  help: {
+    manifest: require('../../package.json').contributes,
+    options: {
+      releases: modules.changelog.parseChangelog(
+        require('node:fs').readFileSync(path.join(__dirname, '..', '..', 'CHANGELOG.md'), 'utf8'),
+      ),
+      newSince: '1.20.0',
+    },
+  },
+};
+const pages = modules.pageCatalog.PAGES.map((page) => [page.id, () => loadPage(page.render(context))]);
 
 /** Every theme Deckard ships, read from the manifest the themes declare. */
-const { deckardThemes } = require('../../out/ui/webview/themes.js');
+const { deckardThemes } = modules.themes;
 
 /**
  * Renders every page with one theme applied, as [name, html] pairs. The page

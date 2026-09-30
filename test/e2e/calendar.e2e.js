@@ -7,10 +7,11 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview } = require('./support.js');
-const { CalendarView } = require('../../out/ui/webview/calendar.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
-const { formatLocalDate, getPeriodicNote } = require('../../out/ui/commands/dailyNote.js');
+const modules = require('../harness/modules.js');
+const { CalendarView } = modules.calendar;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexer;
+const { formatLocalDate, getPeriodicNote } = modules.dailyNote;
 
 // The stub has no editor, so record what the host tries to open instead.
 const opened = [];

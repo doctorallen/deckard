@@ -7,10 +7,11 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
-const { DashboardPanel } = require('../../out/ui/webview/dashboard.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
+const modules = require('../harness/modules.js');
+const { DashboardPanel } = modules.dashboard;
+const { PreferencesStore } = modules.preferences;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexer;
 
 /** Longer than the page's search debounce. */
 const SETTLE_MS = 450;

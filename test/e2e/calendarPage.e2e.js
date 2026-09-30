@@ -7,14 +7,15 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview } = require('./support.js');
-const { CalendarPanel } = require('../../out/ui/webview/calendarPage.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
-const { formatLocalDate } = require('../../out/ui/commands/dailyNote.js');
-const { ActiveCalendar } = require('../../out/ui/webview/activeCalendar.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const modules = require('../harness/modules.js');
+const { CalendarPanel } = modules.calendarPage;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexer;
+const { formatLocalDate } = modules.dailyNote;
+const { ActiveCalendar } = modules.activeCalendar;
+const { ActiveSearch } = modules.activeSearch;
+const { SidebarNotesView } = modules.sidebarNotes;
+const { PreferencesStore } = modules.preferences;
 
 vscode.workspace.openTextDocument = () => Promise.reject(new Error('The e2e stub has no editor.'));
 vscode.window.showErrorMessage = () => Promise.resolve(undefined);

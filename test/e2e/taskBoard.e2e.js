@@ -6,10 +6,11 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview } = require('./support.js');
-const { TaskBoardPanel } = require('../../out/ui/webview/taskBoard.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { DashboardPanel } = require('../../out/ui/webview/dashboard.js');
+const modules = require('../harness/modules.js');
+const { TaskBoardPanel } = modules.taskBoard;
+const { PreferencesStore } = modules.preferences;
+const { ActiveSearch } = modules.activeSearch;
+const { DashboardPanel } = modules.dashboard;
 
 function createIndex() {
   const task = (id, title, lineNumber, tags, completed = false) => ({

@@ -6,8 +6,9 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
-const { StatsPanel } = require('../../out/ui/webview/stats.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const modules = require('../harness/modules.js');
+const { StatsPanel } = modules.stats;
+const { PreferencesStore } = modules.preferences;
 
 // The stub has no editor, so record what the host tries to open instead.
 const opened = [];
@@ -132,7 +133,7 @@ test('clicking a most-viewed note entry opens its note and counts the view', asy
 
 test('a note nothing links to is listed, and opens without counting a view', async () => {
   const { view, panel, updates, index, preferences, rows } = await openStats();
-  const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+  const { parseMarkdown } = modules.parser;
   // Front matter puts its heading below line 1, so no entry starts there.
   const lonely = parseMarkdown('/notes/lonely.md', '---\ntags: [relay]\n---\n# Lonely');
   index.files.set(lonely.filePath, lonely);
@@ -157,7 +158,7 @@ test('a note nothing links to is listed, and opens without counting a view', asy
 });
 
 test('links that open no note are listed, open their search, and can be created', async () => {
-  const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+  const { parseMarkdown } = modules.parser;
   // Backlinks are read once per index, so the note is there from the start.
   const standup = parseMarkdown('/notes/standup.md', '# Standup\nPlan the [[Q4 offsite]] and [[q4 offsite]] soon, and [[Bad: name]].');
   const { view, panel } = await openStats([standup]);

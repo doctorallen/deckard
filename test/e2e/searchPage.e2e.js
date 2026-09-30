@@ -4,12 +4,13 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
-const { SearchPanels } = require('../../out/ui/webview/searchPage.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
-const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
+const modules = require('../harness/modules.js');
+const { SearchPanels } = modules.searchPage;
+const { ActiveSearch } = modules.activeSearch;
+const { PreferencesStore } = modules.preferences;
+const { SidebarNotesView } = modules.sidebarNotes;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexer;
 
 function createIndex() {
   const note = (filePath, content) =>

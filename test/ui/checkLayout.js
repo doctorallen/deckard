@@ -29,13 +29,14 @@ if (!existsSync(compiled)) {
   process.exit(1);
 }
 const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
-const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
-const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
-const { createSearchPageSnapshot, createDeckardStatsSnapshot } = require('../../out/ui/state/dashboardState.js');
-const { createCalendar } = require('../../out/ui/state/calendarState.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const modules = require('../harness/modules.js');
+const { createTaskBoard } = modules.taskBoardState;
+const { createSidebarSnapshot } = modules.relatedNotesRanking;
+const { createSearchPageSnapshot, createDeckardStatsSnapshot } = modules.dashboardState;
+const { createCalendar } = modules.calendarState;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexer;
+const { PreferencesStore } = modules.preferences;
 
 const chrome = findChrome();
 if (!chrome) {

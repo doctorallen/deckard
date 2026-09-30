@@ -7,16 +7,13 @@ import { PreferencesStore } from '../core/storage/preferences';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
-import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCss, getZenCss } from '../ui/webview/components';
 import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getHelpHtml } from '../ui/webview/helpHtml';
 import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { getStatsHtml } from '../ui/webview/statsHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import { renderablePages } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /**
@@ -28,16 +25,10 @@ suite('Component primitives', () => {
     cspSource: 'vscode-webview://deckard',
     asWebviewUri: (resource: vscode.Uri) => resource,
   } as unknown as vscode.Webview;
-  const pages: Array<[string, () => string]> = [
-    ['Dashboard', () => getDashboardHtml(webview, vscode.Uri.file('/deckard'))],
-    ['search page', () => getSearchPageHtml(webview)],
-    ['Related Notes', () => getSidebarNotesHtml(webview, '1.0.0')],
-    ['Notes Graph', () => getNotesGraphHtml(webview)],
-    ['Help', () => getHelpHtml(webview, vscode.Uri.file('/deckard'))],
-    ['Stats', () => getStatsHtml(webview)],
-    ['Task Board', () => getTaskBoardHtml(webview)],
-    ['Calendar', () => getCalendarHtml(webview)],
-  ];
+  const pages = renderablePages(
+    { webview, extensionUri: vscode.Uri.file('/deckard') },
+    ['dashboard', 'searchPage', 'sidebarNotes', 'notesGraph', 'help', 'stats', 'taskBoard', 'calendar'],
+  );
   const stylesOf = (html: string): string =>
     [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n');
 

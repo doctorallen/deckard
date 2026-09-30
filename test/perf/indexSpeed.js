@@ -33,9 +33,12 @@ Module._resolveFilename = function (request, ...rest) {
 const vscode = require(stubPath);
 extendStub(vscode);
 
-const load = (relative) => {
+const { pathOf } = require('../harness/modules.js');
+// A module the code under test does not have yet comes back empty, so its
+// step prints a dash rather than stopping the bench.
+const load = (name) => {
   try {
-    return require(path.join(out, relative));
+    return require(pathOf(name));
   } catch (error) {
     if (error && error.code === 'MODULE_NOT_FOUND') {
       return {};
@@ -43,13 +46,13 @@ const load = (relative) => {
     throw error;
   }
 };
-const { parseMarkdown } = load('core/markdown/parser.js');
-const { buildWorkspaceIndex, WorkspaceIndexer } = load('core/workspace/indexer.js');
-const { WorkspaceScanner } = load('core/workspace/scanner.js');
-const { SearchStore } = load('core/storage/searchStore.js');
-const { setTimingLog } = load('core/timing.js');
-const graphState = load('ui/state/notesGraphState.js');
-const codec = load('core/storage/parsedFileCodec.js');
+const { parseMarkdown } = load('parser');
+const { buildWorkspaceIndex, WorkspaceIndexer } = load('indexer');
+const { WorkspaceScanner } = load('scanner');
+const { SearchStore } = load('searchStore');
+const { setTimingLog } = load('timing');
+const graphState = load('notesGraphState');
+const codec = load('parsedFileCodec');
 
 const sizes = process.argv.slice(2).map(Number).filter((n) => n > 0);
 

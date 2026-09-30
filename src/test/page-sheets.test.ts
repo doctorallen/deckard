@@ -3,15 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { getBaseCss, getPageTailCss } from '../ui/webview/components';
-import { getCalendarHtml } from '../ui/webview/calendarHtml';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getHelpHtml } from '../ui/webview/helpHtml';
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
-import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { getStatsHtml } from '../ui/webview/statsHtml';
-import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import { renderablePages } from './pages';
 
 /**
  * What a page's own sheet may and may not do beside the shared ones.
@@ -26,27 +18,10 @@ suite('Page sheets', () => {
     cspSource: 'vscode-webview://deckard',
     asWebviewUri: (resource: vscode.Uri) => resource,
   } as unknown as vscode.Webview;
-  const pages: Array<[string, () => string]> = [
-    ['Dashboard', () => getDashboardHtml(webview, vscode.Uri.file('/deckard'))],
-    ['search page', () => getSearchPageHtml(webview)],
-    ['Related Notes', () => getSidebarNotesHtml(webview, '1.0.0')],
-    ['Notes Graph', () => getNotesGraphHtml(webview)],
-    ['Help', () => getHelpHtml(webview, vscode.Uri.file('/deckard'))],
-    ['Stats', () => getStatsHtml(webview)],
-    ['Task Board', () => getTaskBoardHtml(webview)],
-    ['Calendar', () => getCalendarHtml(webview)],
-    [
-      'Related Notes debug',
-      () =>
-        getRelatedNotesDebugHtml(webview, {
-          filePath: 'notes/a.md',
-          sourceLine: 1,
-          title: 'Entry',
-          tags: [],
-          snapshot: { activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'ready' },
-        } as never),
-    ],
-  ];
+  const pages = renderablePages(
+    { webview, extensionUri: vscode.Uri.file('/deckard') },
+    ['dashboard', 'searchPage', 'sidebarNotes', 'notesGraph', 'help', 'stats', 'taskBoard', 'calendar', 'relatedNotesDebug'],
+  );
   const tokens = (css: string): string[] =>
     [...css.matchAll(/(--[a-z][\w-]*)\s*:/g)].map((match) => match[1]);
 

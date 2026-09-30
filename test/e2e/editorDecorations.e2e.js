@@ -5,7 +5,8 @@
 // keystroke.
 const assert = require('assert');
 const vscode = require('vscode');
-const { EditorTagDecorations } = require('../../out/ui/commands/tagDecorations.js');
+const modules = require('../harness/modules.js');
+const { EditorTagDecorations } = modules.tagDecorations;
 
 /** A visible editor that records how many decorations each draw sets. */
 function createEditor(path, text) {

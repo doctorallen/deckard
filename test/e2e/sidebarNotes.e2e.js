@@ -5,11 +5,12 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
-const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
+const modules = require('../harness/modules.js');
+const { SidebarNotesView } = modules.sidebarNotes;
+const { ActiveSearch } = modules.activeSearch;
+const { PreferencesStore } = modules.preferences;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexer;
 
 /** `count` notes, each a heading tagged #project/atlas. */
 function createIndex(count, { dated = false } = {}) {
