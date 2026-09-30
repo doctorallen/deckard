@@ -38,6 +38,7 @@ import {
 } from './ui/commands/taskEditor';
 import { breakIntoStepsCommand } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
+import { TemplateService } from './services/templateService';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
@@ -284,6 +285,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     reviews: createReviewService(history, indexer),
     preferences,
   };
+  // What makes a note from a template, never over one already there.
+  const templates = new TemplateService<vscode.Uri>({
+    files: vscodeWorkspace,
+    index: indexer,
+    clock: { now: () => Date.now() },
+  });
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
   const themePreview = new ThemePreview();
@@ -1086,11 +1093,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       capture(indexer, 'heading', captureDrafts, preferences),
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
-      newNoteFromTemplate(indexer),
+      newNoteFromTemplate(indexer, templates),
     ),
     // The Explorer passes the folder that was right-clicked.
     vscode.commands.registerCommand('deckard.newNoteFromTemplateHere', (folder?: unknown) =>
-      newNoteFromTemplate(indexer, folder instanceof vscode.Uri ? folder : undefined),
+      newNoteFromTemplate(indexer, templates, folder instanceof vscode.Uri ? folder : undefined),
     ),
     vscode.commands.registerCommand('deckard.excludeFromIndex', (folder?: unknown) =>
       excludeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),

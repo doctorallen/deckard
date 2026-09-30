@@ -505,9 +505,6 @@ export default {
       "(arrow function)",
       "pickSteps"
     ],
-    "src/ui/commands/templates.ts": [
-      "newNoteFromTemplate"
-    ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
     ],
