@@ -216,13 +216,28 @@ async function startIndexer(folder, storage) {
 async function openStore(storage) {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return new SearchStore(storage);
+      return createStore(storage);
     } catch (error) {
       if (attempt >= 50 || !/locked/.test(String(error && error.message))) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
+  }
+}
+
+/**
+ * The store over the folder at `storage`, which takes it as a path; an
+ * older checkout's took a Uri, and says so by refusing the path.
+ */
+function createStore(storage) {
+  try {
+    return new SearchStore(storage);
+  } catch (error) {
+    if (error && error.code === 'ERR_INVALID_ARG_TYPE') {
+      return new SearchStore(vscode.Uri.file(storage));
+    }
+    throw error;
   }
 }
 
@@ -312,7 +327,11 @@ function mb(length) {
   return `${(length / 1048576).toFixed(1)} MB`;
 }
 
-/** What the indexer needs of VS Code beyond what the e2e stub has. */
+/**
+ * File URIs, and what the indexer read from VS Code before it had ports,
+ * beyond what the e2e stub has. The indexer now reads none of it, but an
+ * older checkout does, and the bench compares against one.
+ */
 function extendStub(api) {
   const event = () => new api.EventEmitter().event;
   api.Uri.file = (value) => ({
