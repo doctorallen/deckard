@@ -88,6 +88,7 @@ import {
   noteTitle,
 } from '../../core/workspace/backlinks';
 import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
+import { getFileName } from '../../core/paths';
 import { pluralize } from '../../core/text';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
@@ -95,6 +96,10 @@ import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaS
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 import { createPinForLine, pinKey } from './pinnedNotes';
 import { findTagLookalikes, findTagMergeCandidates } from './tagHygiene';
+
+// dashboardWidgets.ts still imports getFileName from here; the re-export
+// keeps that path compiling until it imports core/paths itself.
+export { getFileName };
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -1956,12 +1961,6 @@ function getFrontmatterBody(content: string): string {
   return endLine >= 0 ? lines.slice(endLine + 1).join('\n').replace(/^\n/, '') : content;
 }
 
-/**
- * Extracts a compact display name while preserving the full path elsewhere.
- */
-export function getFileName(filePath: string | undefined): string | undefined {
-  return filePath?.split('/').pop() ?? filePath;
-}
 
 /**
  * Builds everything the query bar and its builder need from one parse.
