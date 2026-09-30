@@ -1,5 +1,6 @@
 import { isParkedTask } from '../../core/workspace/parked';
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 
 import { markMigrated } from '../../core/markdown/taskMetadata';
 import { pluralize } from '../../core/text';
@@ -552,19 +553,10 @@ export async function createDailyNoteWithRollover(
   }
   // Only a note Deckard creates rolls tasks in, so the same tasks are not
   // carried twice when today's note is opened again later.
-  const isNew = !(await exists(getPeriodicNoteUri(folder, 'day', new Date())));
+  const isNew = !(await fileExists(getPeriodicNoteUri(folder, 'day', new Date())));
   const opened = await createDailyNote(folder);
   if (opened && isNew) {
     await rollTasksForward(indexer, { mode, silent: true });
   }
   return opened;
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }

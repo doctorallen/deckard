@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 import { describeMissingTag, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 
 import { getTagKind } from '../../core/query/queryEvaluator';
@@ -87,7 +88,7 @@ export async function createHubNote(
   const fileName = getExtractedNoteFileName(title) ?? 'Hub.md';
   const notesFolderUri = indexer.getNotesFolderUri(workspaceFolder);
   const noteUri = vscode.Uri.joinPath(notesFolderUri, fileName);
-  if (await exists(noteUri)) {
+  if (await fileExists(noteUri)) {
     void reportFailure({
       outcome: `${fileName} already exists, so Deckard did not create a hub note.`,
       fix: `Add "describes: ${getDescribesValue(tag)}" to its front matter to make it the hub note for ${tag.label}.`,
@@ -158,13 +159,4 @@ async function findWorkspaceFolder(
     (uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined) ??
     vscode.workspace.workspaceFolders?.[0]
   );
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 import { reportFailure, reportNeedsFolder } from './notify';
 
 import { findFencedLines } from '../../core/markdown/parser';
@@ -193,7 +194,7 @@ export async function createMissingNotes(
     const fileName = getExtractedNoteFileName(name);
     if (
       fileName &&
-      !(await exists(vscode.Uri.joinPath(notesFolderUri, fileName))) &&
+      !(await fileExists(vscode.Uri.joinPath(notesFolderUri, fileName))) &&
       (await createNoteNamed(notesFolderUri, name))
     ) {
       created += 1;
@@ -210,15 +211,6 @@ export function reportCreatedNotes(created: number): void {
   void vscode.window.showInformationMessage(
     `Created ${pluralize(created, 'note')} for links that named no note.`,
   );
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 
 import { getPersonMarker } from '../../core/markdown/parser';
 import { matchesPerson } from '../../core/query/queryEvaluator';
@@ -63,11 +64,11 @@ export async function collectSetupFacts(
     folders.push({
       name: folder.name,
       notesFolder,
-      notesFolderExists: await exists(scanner.getNotesFolderUri(folder)),
+      notesFolderExists: await fileExists(scanner.getNotesFolderUri(folder)),
       ...(templatesUri
         ? {
             templatesFolder: configuration.get<string>('templatesFolder', 'templates'),
-            templatesFolderExists: await exists(templatesUri),
+            templatesFolderExists: await fileExists(templatesUri),
           }
         : {}),
     });
@@ -207,13 +208,4 @@ export async function checkSetup(indexer: SetupIndexer): Promise<void> {
     content: buildSetupReport(facts),
   });
   await vscode.window.showTextDocument(document, { preview: true });
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }
