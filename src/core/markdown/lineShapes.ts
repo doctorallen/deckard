@@ -200,3 +200,37 @@ export function matchHeading(line: string, closingHashes: HeadingClosingHashes):
   const match = HEADING_TEXT_PATTERNS[closingHashes].exec(line);
   return match ? { level: match[1].length, text: match[2] } : undefined;
 }
+
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+
+/**
+ * The lines of fenced code blocks, fences included, 0-based: marked in one
+ * pass so every Markdown feature can ignore examples without keeping a
+ * second parser. A fence closes only on the character that opened it, so a
+ * `~~~` line inside a backtick block is part of the block. An unclosed fence
+ * runs to the end of the note.
+ */
+export function findFencedLines(lines: readonly string[]): Set<number> {
+  const fencedLines = new Set<number>();
+  let fenceCharacter: '`' | '~' | undefined;
+
+  lines.forEach((line, lineIndex) => {
+    const fence = line.match(FENCE);
+    if (fence) {
+      fencedLines.add(lineIndex);
+      const nextFenceCharacter = fence[1][0] as '`' | '~';
+      if (fenceCharacter === undefined) {
+        fenceCharacter = nextFenceCharacter;
+      } else if (fenceCharacter === nextFenceCharacter) {
+        fenceCharacter = undefined;
+      }
+      return;
+    }
+
+    if (fenceCharacter !== undefined) {
+      fencedLines.add(lineIndex);
+    }
+  });
+
+  return fencedLines;
+}

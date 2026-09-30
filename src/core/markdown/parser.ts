@@ -16,10 +16,11 @@ import {
 } from './taskMetadata';
 import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
 import { findListParents, findParentTaskLine } from './listNesting';
-import { isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
+import { findFencedLines, isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
+export { findFencedLines } from './lineShapes';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds
@@ -1663,10 +1664,6 @@ function createLocalDate(
 }
 
 /**
- * Marks fence delimiters and their contents in one pass so every Markdown
- * feature can ignore examples without maintaining a second parser.
- */
-/**
  * The block ids a note carries, each with the one-based line it marks.
  *
  * The first of a repeated id wins, because a link can only mean one line and
@@ -1688,31 +1685,6 @@ export function findBlockIds(
     }
   });
   return blockIds;
-}
-
-export function findFencedLines(lines: string[]): Set<number> {
-  const fencedLines = new Set<number>();
-  let fenceCharacter: '`' | '~' | undefined;
-
-  lines.forEach((line, lineIndex) => {
-    const fence = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (fence) {
-      fencedLines.add(lineIndex);
-      const nextFenceCharacter = fence[1][0] as '`' | '~';
-      if (fenceCharacter === undefined) {
-        fenceCharacter = nextFenceCharacter;
-      } else if (fenceCharacter === nextFenceCharacter) {
-        fenceCharacter = undefined;
-      }
-      return;
-    }
-
-    if (fenceCharacter !== undefined) {
-      fencedLines.add(lineIndex);
-    }
-  });
-
-  return fencedLines;
 }
 
 /**

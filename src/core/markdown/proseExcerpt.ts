@@ -1,5 +1,5 @@
-import { isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
-import { findFencedLines, stripTags } from './parser';
+import { findFencedLines, isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
+import { stripTags } from './parser';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
 
 /**

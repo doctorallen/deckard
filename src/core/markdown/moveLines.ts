@@ -1,4 +1,5 @@
 import {
+  findFencedLines,
   HeadingShape,
   isHeadingLine,
   isTaskLineOf,
@@ -6,7 +7,7 @@ import {
   TaskLineMatch,
   TaskLineShape,
 } from './lineShapes';
-import { findFencedLines, findListItemEndLine, listItemIndentation } from './parser';
+import { findListItemEndLine, listItemIndentation } from './parser';
 import { markMigrated } from './taskMetadata';
 
 /**

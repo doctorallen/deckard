@@ -1,5 +1,4 @@
-import { matchTaskLine, TaskLineShape } from './lineShapes';
-import { findFencedLines } from './parser';
+import { findFencedLines, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findTaskMetadataSpans } from './taskMetadata';
 
 /**

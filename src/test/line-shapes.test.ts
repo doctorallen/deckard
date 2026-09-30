@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
 import {
+  findFencedLines,
   isHeadingLine,
   isTaskLineOf,
   matchHeading,
@@ -147,5 +148,22 @@ suite('Line shapes: headings', () => {
     assert.deepStrictEqual(matchHeading('# #', 'dropped'), { level: 1, text: '' });
     assert.deepStrictEqual(matchHeading('# ', 'dropped'), { level: 1, text: '' });
     assert.strictEqual(matchHeading('# Title\r', 'dropped'), undefined);
+  });
+});
+
+suite('Line shapes: fences', () => {
+  test('marks the fences and what they hold', () => {
+    const lines = ['text', '```ts', 'code', '```', 'after', '   ~~~', 'more', '~~~~'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [1, 2, 3, 5, 6, 7]);
+  });
+
+  test('a fence closes only on the character that opened it', () => {
+    const lines = ['```', '~~~', 'still code', '```', 'prose'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [0, 1, 2, 3]);
+  });
+
+  test('a four-space indent is not a fence, and an unclosed one runs to the end', () => {
+    assert.deepStrictEqual([...findFencedLines(['    ```', 'prose'])], []);
+    assert.deepStrictEqual([...findFencedLines(['prose', '``` open', 'a', 'b'])], [1, 2, 3]);
   });
 });

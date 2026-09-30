@@ -1,5 +1,5 @@
-import { matchHeading } from './lineShapes';
-import { findFencedLines, stripTags } from './parser';
+import { findFencedLines, matchHeading } from './lineShapes';
+import { stripTags } from './parser';
 
 /**
  * Where a tag offered to an untagged note is written: the heading or line

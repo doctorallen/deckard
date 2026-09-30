@@ -1,4 +1,4 @@
-import { isHeadingLine, isTaskLineOf, TaskLineShape } from './lineShapes';
+import { findFencedLines, isHeadingLine, isTaskLineOf, TaskLineShape } from './lineShapes';
 
 /**
  * Which list item each list item is written under, read from indentation
@@ -13,7 +13,6 @@ import { isHeadingLine, isTaskLineOf, TaskLineShape } from './lineShapes';
 const LIST_ITEM = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+/;
 /** A step's checkbox: indented by spaces and tabs only, with a gap after it. */
 const TASK_ITEM: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
 /** How far a line's whitespace reaches, with a tab counted to the next multiple of 4. */
 export function measureIndent(whitespace: string): number {
@@ -56,7 +55,7 @@ export function findListParents(
 ): Map<number, number | undefined> {
   const parents = new Map<number, number | undefined>();
   const stack: Array<{ width: number; line: number }> = [];
-  const fenced = fencedLines ?? findFences(lines);
+  const fenced = fencedLines ?? findFencedLines(lines);
   lines.forEach((line, index) => {
     if (fenced.has(index) || isHeadingLine(line, { allowBare: true })) {
       stack.length = 0;
@@ -80,23 +79,6 @@ export function findListParents(
     stack.push({ width, line: index });
   });
   return parents;
-}
-
-/** The lines of fenced code blocks, fences included, as the parser finds them. */
-function findFences(lines: readonly string[]): Set<number> {
-  const fenced = new Set<number>();
-  let open: string | undefined;
-  lines.forEach((line, index) => {
-    const match = line.match(FENCE);
-    if (match) {
-      fenced.add(index);
-      const character = match[1][0];
-      open = open === undefined ? character : open === character ? undefined : open;
-    } else if (open !== undefined) {
-      fenced.add(index);
-    }
-  });
-  return fenced;
 }
 
 /**
