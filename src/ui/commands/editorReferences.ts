@@ -1,11 +1,6 @@
 import * as vscode from 'vscode';
 
-import {
-  extractTagSpans,
-  findFencedLines,
-  getEntityNamespaceAliases,
-  getPersonMarker,
-} from '../../core/markdown/parser';
+import { extractTagSpans, findFencedLines } from '../../core/markdown/parser';
 import { escapeMarkdown, pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
@@ -26,6 +21,7 @@ import {
 } from '../state/referenceState';
 import { createEntryScope } from '../webview/sidebarNotes';
 import { resolveSourceUri } from './navigation';
+import { readParseOptions } from './parseSettings';
 
 interface ReferenceIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
@@ -229,17 +225,12 @@ export class EditorReferences
       );
     }
 
-    const configuration = vscode.workspace.getConfiguration(
-      'deckard',
-      document.uri,
-    );
+    const options = readParseOptions(document.uri);
     const span = extractTagSpans(
       text,
-      configuration.get<boolean>('parseInlineTags', true),
-      getEntityNamespaceAliases(
-        configuration.get<unknown>('entityNamespaceAliases', {}),
-      ),
-      getPersonMarker(configuration.get<unknown>('personMarker', '@')),
+      options.parseInlineTags,
+      options.entityNamespaceAliases,
+      options.personMarker,
     ).find(
       (candidate) =>
         candidate.lineNumber - 1 === position.line &&

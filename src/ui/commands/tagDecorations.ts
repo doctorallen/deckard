@@ -1,15 +1,11 @@
 import * as vscode from 'vscode';
 
-import {
-  extractTagSpans,
-  getEntityNamespaceAliases,
-  getPersonMarker,
-  parseMarkdown,
-} from '../../core/markdown/parser';
+import { extractTagSpans, parseMarkdown } from '../../core/markdown/parser';
 import { KeyedDebouncer } from '../../core/debounce';
 import { escapeMarkdown } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile } from '../../core/types';
+import { readParseOptions } from './parseSettings';
 import { createPinHoverUri } from './pinNote';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
@@ -179,12 +175,14 @@ export class EditorTagDecorations implements vscode.Disposable {
 
     return measure(
       'Tag links',
-      () =>
-        extractTagSpans(
-          document.getText(),
-          this.parseInlineTags(document),
-          this.entityNamespaceAliases(document),
-          this.personMarker(document),
+      () => {
+        const text = document.getText();
+        const options = readParseOptions(document.uri);
+        return extractTagSpans(
+          text,
+          options.parseInlineTags,
+          options.entityNamespaceAliases,
+          options.personMarker,
         ).map((span) => {
           const range = new vscode.Range(
             span.lineNumber - 1,
@@ -198,7 +196,8 @@ export class EditorTagDecorations implements vscode.Disposable {
           );
           link.tooltip = `Open ${span.label} tag overview`;
           return link;
-        }),
+        });
+      },
       (links) => `${links.length} links, ${document.lineCount} lines`,
     );
   }
@@ -240,9 +239,7 @@ export class EditorTagDecorations implements vscode.Disposable {
 
   private decorate(editor: vscode.TextEditor): void {
     const content = editor.document.getText();
-    const parseInlineTags = this.parseInlineTags(editor.document);
-    const entityNamespaceAliases = this.entityNamespaceAliases(editor.document);
-    const personMarker = this.personMarker(editor.document);
+    const { parseInlineTags, entityNamespaceAliases, personMarker } = readParseOptions(editor.document.uri);
     const decorations = extractTagSpans(
       content,
       parseInlineTags,
@@ -294,11 +291,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       return cached.entries;
     }
     const entries = collectTaggedEntries(
-      parseMarkdown('', document.getText(), undefined, {
-        parseInlineTags: this.parseInlineTags(document),
-        entityNamespaceAliases: this.entityNamespaceAliases(document),
-        personMarker: this.personMarker(document),
-      }),
+      parseMarkdown('', document.getText(), undefined, readParseOptions(document.uri)),
     );
     this.entryCache.set(key, { version: document.version, entries });
     return entries;
@@ -352,14 +345,6 @@ export class EditorTagDecorations implements vscode.Disposable {
     }
   }
 
-  /**
-   * Reads the setting from the document's workspace scope for multi-root use.
-   */
-  private parseInlineTags(document: vscode.TextDocument): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard', document.uri)
-      .get<boolean>('parseInlineTags', true);
-  }
 
   private shouldHighlightNoteSections(document: vscode.TextDocument): boolean {
     const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
@@ -370,21 +355,6 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
   }
 
-  private entityNamespaceAliases(document: vscode.TextDocument) {
-    return getEntityNamespaceAliases(
-      vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<unknown>('entityNamespaceAliases', {}),
-    );
-  }
-
-  private personMarker(document: vscode.TextDocument): string {
-    return getPersonMarker(
-      vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<unknown>('personMarker', '@'),
-    );
-  }
 }
 
 const markdownDocumentSelector: vscode.DocumentSelector = [
