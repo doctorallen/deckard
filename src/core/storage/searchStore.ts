@@ -1,8 +1,7 @@
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import * as vscode from 'vscode';
-
+import type { Disposable } from '../../ports/events';
 import { ParsedFile } from '../types';
 import {
   CacheChanges,
@@ -90,7 +89,7 @@ const WORKER_THRESHOLD = 25;
  * the host free while a new workspace fills its cache. An in-memory cache,
  * which a thread of its own could not see, is always built here.
  */
-export class SearchStore implements vscode.Disposable {
+export class SearchStore implements Disposable {
   private readonly database: DatabaseSync;
   private readonly writer: SearchWriter;
   private readonly worker?: SearchWorkerClient;
@@ -106,9 +105,15 @@ export class SearchStore implements vscode.Disposable {
    */
   private stored?: Map<string, StoredNote>;
 
-  public constructor(storageUri: vscode.Uri | undefined) {
-    const databasePath = storageUri
-      ? join(storageUri.fsPath, 'deckard-search.sqlite')
+  /**
+   * Opens the cache in `storagePath`, the workspace's storage folder as a
+   * file-system path (VS Code's `storageUri.fsPath`), as
+   * `deckard-search.sqlite`; with no folder, a window with none open, the
+   * cache is in memory and lasts the session.
+   */
+  public constructor(storagePath: string | undefined) {
+    const databasePath = storagePath
+      ? join(storagePath, 'deckard-search.sqlite')
       : ':memory:';
     this.database = openSearchDatabase(databasePath);
     this.writer = new SearchWriter(this.database);

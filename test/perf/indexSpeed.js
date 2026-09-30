@@ -211,7 +211,7 @@ async function startIndexer(folder, storage) {
 async function openStore(storage) {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return new SearchStore(vscode.Uri.file(storage));
+      return new SearchStore(storage);
     } catch (error) {
       if (attempt >= 50 || !/locked/.test(String(error && error.message))) {
         throw error;

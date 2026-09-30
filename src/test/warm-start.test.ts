@@ -62,7 +62,7 @@ function openSession(
     workspace.access.findFiles = async () =>
       (await findFiles()).filter((uri) => !uri.path.endsWith(`/${options.excluded}`));
   }
-  const store = new SearchStore(vscode.Uri.file(directory));
+  const store = new SearchStore(directory);
   const indexer = new WorkspaceIndexer(scanner, store, {
     version: options.version ?? '1.0.0',
     readCache: options.readCache ?? true,

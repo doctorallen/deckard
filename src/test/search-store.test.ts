@@ -4,8 +4,6 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../core/markdown/parser';
 import { SearchStore } from '../core/storage/searchStore';
 import { ParsedFile } from '../core/types';
@@ -13,7 +11,7 @@ import { ParsedFile } from '../core/types';
 suite('Local search store', () => {
   test('persists and searches saved Markdown text locally', () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     try {
       store.replace([
         parseMarkdown(
@@ -34,7 +32,7 @@ suite('Local search store', () => {
 
   test('a later scan updates edited notes, drops deleted ones, and adds new ones', () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     try {
       store.replace([
         parseMarkdown('atlas.md', '# Atlas\nStaffing plan.', { updatedAt: 1 }),
@@ -58,7 +56,7 @@ suite('Local search store', () => {
 
   test('a scan that changes many notes leaves none of their old text', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     const notes = (word: string, updatedAt: number, count: number) =>
       Array.from({ length: count }, (_, index) =>
         parseMarkdown(`note-${index}.md`, `# Note ${index}\n${word}.`, { updatedAt }),
@@ -81,7 +79,7 @@ suite('Local search store', () => {
 
   test('a build large enough to be worth a thread is written on one', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     const notes = Array.from({ length: 60 }, (_, index) =>
       parseMarkdown(`note-${index}.md`, `# Note ${index}\nElevator survey.`, {
         updatedAt: 1,
@@ -115,7 +113,7 @@ suite('Local search store', () => {
         { updatedAt: 1 },
         { noteBoundaries: boundaries },
       );
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     try {
       store.replace([note('line')], 'line');
       await store.whenIdle();
@@ -139,7 +137,7 @@ suite('Local search store', () => {
 
   test('a rescan under the same settings rewrites nothing', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     const notes = Array.from({ length: 40 }, (_, index) =>
       parseMarkdown(`note-${index}.md`, `# Note ${index}\nElevator survey.`, {
         updatedAt: 1,
@@ -216,7 +214,7 @@ suite('Local search store', () => {
     `);
     old.close();
 
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     try {
       assert.deepStrictEqual(store.search('staffing'), [], 'the old cache is dropped');
       store.replace([parseMarkdown('atlas.md', '# Atlas\nBudget review.', { updatedAt: 2 })]);
@@ -238,7 +236,7 @@ suite('Local search store', () => {
       '# Atlas\n- [ ] Staffing review 📅 2026-09-20',
       { updatedAt: 5 },
     );
-    const first = new SearchStore(vscode.Uri.file(directory));
+    const first = new SearchStore(directory);
     try {
       first.replace([note]);
       first.replace([note]);
@@ -247,7 +245,7 @@ suite('Local search store', () => {
       first.dispose();
     }
 
-    const reopened = new SearchStore(vscode.Uri.file(directory));
+    const reopened = new SearchStore(directory);
     try {
       assert.deepStrictEqual(reopened.search('staffing').map((r) => r.filePath), ['atlas.md']);
       reopened.replace([note]);
@@ -357,7 +355,7 @@ suite('Local search store', () => {
   });
   test('keeps each parsed note, and rewrites one whose created time alone changed', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
-    const store = new SearchStore(vscode.Uri.file(directory));
+    const store = new SearchStore(directory);
     const note = (name: string, created: number) =>
       parseMarkdown(name, `# ${name} #project/atlas\n- [ ] Task`, { createdAt: created, updatedAt: 5 });
     try {

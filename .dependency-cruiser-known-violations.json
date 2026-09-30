@@ -44,20 +44,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/core/storage/searchStore.ts",
-    "to": "vscode",
-    "unresolvedTo": "vscode",
-    "dependencyTypes": [
-      "core",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-not-to-vscode"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/core/workspace/indexer.ts",
     "to": "vscode",
     "unresolvedTo": "vscode",

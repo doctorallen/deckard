@@ -267,7 +267,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const indexer = new WorkspaceIndexer(
     undefined,
-    new SearchStore(context.storageUri),
+    new SearchStore(context.storageUri?.fsPath),
     {
       version: String(context.extension.packageJSON.version),
       // A developer's parser edits do not change the version, so only an
