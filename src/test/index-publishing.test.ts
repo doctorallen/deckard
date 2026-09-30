@@ -9,6 +9,7 @@ import {
 } from '../core/workspace/publishing';
 import { panelPriority, viewPriority } from '../ui/webview/panelPriority';
 import { WorkspaceScanner } from '../core/workspace/scanner';
+import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 
 /** An indexer over an empty folder whose view turns a test steps through. */
 function createIndexer(): { indexer: WorkspaceIndexer; step: () => boolean; pending: () => number } {
@@ -19,6 +20,7 @@ function createIndexer(): { indexer: WorkspaceIndexer; step: () => boolean; pend
     index: 0,
   } as vscode.WorkspaceFolder;
   const scanner = new WorkspaceScanner({
+    ...createVscodeWorkspace(),
     workspaceFolders: [workspaceFolder],
     findFiles: async () => [],
     readFile: async () => new Uint8Array(),

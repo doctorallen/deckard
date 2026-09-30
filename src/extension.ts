@@ -10,6 +10,8 @@ import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
+import { WorkspaceScanner } from './core/workspace/scanner';
+import { createVscodeWorkspace } from './platform/vscodeWorkspace';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
 import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
@@ -265,8 +267,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     { dispose: () => setQueryIdentity(undefined) },
     { dispose: () => setQueryWeekStart(0) },
   );
+  // The index reads the workspace through ports; this is VS Code's.
+  const vscodeWorkspace = createVscodeWorkspace();
+  const scanner = new WorkspaceScanner(vscodeWorkspace);
   const indexer = new WorkspaceIndexer(
-    undefined,
+    scanner,
     new SearchStore(context.storageUri?.fsPath),
     {
       version: String(context.extension.packageJSON.version),
@@ -879,7 +884,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       restorePreferences(preferences, snapshots),
     ),
     vscode.commands.registerCommand('deckard.checkSetup', () =>
-      checkSetup(indexer),
+      checkSetup(indexer, scanner),
     ),
     vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
       createSampleWorkspace(context),

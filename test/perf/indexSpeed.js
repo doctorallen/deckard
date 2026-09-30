@@ -184,9 +184,14 @@ async function bench(size) {
 
 async function startIndexer(folder, storage) {
   const workspaceFolder = { uri: vscode.Uri.file(folder), name: 'bench', index: 0 };
+  // The workspace's ports; the settings are the stub's, which leaves every
+  // one at its default.
   const access = {
     workspaceFolders: [workspaceFolder],
     findFiles: async () => listMarkdown(path.join(folder, 'notes')).map((file) => vscode.Uri.file(file)),
+    asRelativePath: (uri, includeWorkspaceFolder) => vscode.workspace.asRelativePath(uri, includeWorkspaceFolder),
+    getConfiguration: (...args) => vscode.workspace.getConfiguration(...args),
+    joinPath: (base, ...segments) => vscode.Uri.joinPath(base, ...segments),
     readFile: (uri) => fs.promises.readFile(uri.fsPath),
     stat: async (uri) => {
       const stat = await fs.promises.stat(uri.fsPath);

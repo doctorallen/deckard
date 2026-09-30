@@ -12,6 +12,8 @@ import {
   WorkspaceFileAccess,
   WorkspaceScanner,
 } from '../core/workspace/scanner';
+import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
+import type { FolderPattern } from '../ports/workspace';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { setTimingLog } from '../core/timing';
 import { normalizeIndex } from './indexCorpus';
@@ -62,6 +64,7 @@ suite('Workspace scanner and index', () => {
       index: 0,
     } as vscode.WorkspaceFolder;
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [],
       readFile: async () => Buffer.from('', 'utf8'),
@@ -79,6 +82,7 @@ suite('Workspace scanner and index', () => {
     const bad = vscode.Uri.joinPath(workspaceUri, 'notes', 'bad.md');
     const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [good, bad],
       readFile: async (uri) => {
@@ -113,6 +117,7 @@ suite('Workspace scanner and index', () => {
     ]);
     const uriOf = (name: string) => vscode.Uri.joinPath(workspaceUri, name);
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [...texts.keys()].map(uriOf),
       readFile: async (uri) => Buffer.from(texts.get(uri.path.split('/').pop() ?? '') ?? '', 'utf8'),
@@ -180,6 +185,7 @@ suite('Workspace scanner and index', () => {
     let mostAtOnce = 0;
     const reads: string[] = [];
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => names.filter((name) => texts.has(name)).map(uriOf),
       readFile: async (uri) => {
@@ -235,6 +241,7 @@ suite('Workspace scanner and index', () => {
     let reads = 0;
     let finds = 0;
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => {
         finds += 1;
@@ -282,6 +289,7 @@ suite('Workspace scanner and index', () => {
       index: 0,
     } as vscode.WorkspaceFolder;
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [noteUri, templateUri],
       readFile: async () => Buffer.from('# Meeting #project/atlas\n- [ ] Agenda', 'utf8'),
@@ -355,8 +363,9 @@ suite('Workspace scanner and index', () => {
       name: 'deckard-search-exclude',
       index: 0,
     } as vscode.WorkspaceFolder;
-    const excludes: (vscode.GlobPattern | undefined)[] = [];
+    const excludes: (FolderPattern<vscode.Uri> | undefined)[] = [];
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async (_include, exclude) => {
         excludes.push(exclude);
@@ -368,7 +377,8 @@ suite('Workspace scanner and index', () => {
     // VS Code's default search.exclude hides node_modules.
     const files = await scanner.scan();
     const exclude = excludes[0];
-    assert.ok(exclude instanceof vscode.RelativePattern, 'an exclude is passed');
+    assert.ok(exclude, 'an exclude is passed');
+    assert.strictEqual(exclude.folder, workspaceFolder, 'relative to the workspace folder');
     assert.ok(exclude.pattern.includes('**/node_modules'), exclude.pattern);
     assert.deepStrictEqual(files.map((file) => file.filePath), ['readme.md']);
     assert.strictEqual(scanner.isNotesFile(dependencyUri), false);
@@ -385,6 +395,7 @@ suite('Workspace scanner and index', () => {
       index: 0,
     } as vscode.WorkspaceFolder;
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       // The fake returns every file, as a note saved in a hidden folder
       // reaches the scanner through a watcher or save event.
@@ -434,7 +445,8 @@ suite('Workspace scanner and index', () => {
       name: 'deckard-scanner',
       index: 0,
     } as vscode.WorkspaceFolder;
-    const access: WorkspaceFileAccess = {
+    const access: WorkspaceFileAccess<vscode.Uri> = {
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [noteUri, textUri],
       readFile: async () =>
@@ -464,6 +476,8 @@ suite('Workspace scanner and index', () => {
 
   test('does not parse non-Markdown files', () => {
     const scanner = new WorkspaceScanner({
+      ...createVscodeWorkspace(),
+      workspaceFolders: undefined,
       findFiles: async () => [],
       readFile: async () => Buffer.from('', 'utf8'),
     });
@@ -581,7 +595,8 @@ suite('Workspace scanner and index', () => {
       name: 'deckard-inline-overview',
       index: 0,
     } as vscode.WorkspaceFolder;
-    const access: WorkspaceFileAccess = {
+    const access: WorkspaceFileAccess<vscode.Uri> = {
+      ...createVscodeWorkspace(),
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [noteUri],
       readFile: async () => Buffer.from('Inline note #work', 'utf8'),

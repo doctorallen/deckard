@@ -9,6 +9,7 @@ import { SearchStore } from '../core/storage/searchStore';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { WorkspaceScanner } from '../core/workspace/scanner';
+import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import { normalizeIndex } from './indexCorpus';
 
 /** A workspace in memory whose notes a test changes between sessions. */
@@ -25,6 +26,7 @@ function createWorkspace() {
   const nameOf = (uri: vscode.Uri) => uri.path.split('/').pop() ?? '';
   const counts = { reads: 0 };
   const access = {
+    ...createVscodeWorkspace(),
     workspaceFolders: [folder],
     findFiles: async () => [...texts.keys()].map((name) => vscode.Uri.joinPath(workspaceUri, name)),
     readFile: async (uri: vscode.Uri) => {

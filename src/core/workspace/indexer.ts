@@ -93,7 +93,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private staleFromCache = false;
 
   public constructor(
-    private readonly scanner = new WorkspaceScanner(),
+    private readonly scanner: WorkspaceScanner<vscode.Uri>,
     private readonly searchStore?: SearchStore,
     options: WorkspaceIndexerOptions = {},
   ) {
@@ -616,7 +616,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
       .forEach((disposable) => disposable.dispose());
 
     for (const pattern of this.scanner.getPatterns()) {
-      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(pattern.folder, pattern.pattern),
+      );
       this.watcherDisposables.push(watcher);
       // The glob can take in files that are not notes, such as templates.
       const upsertNote = (uri: vscode.Uri) => {

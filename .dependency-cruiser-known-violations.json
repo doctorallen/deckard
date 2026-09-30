@@ -57,20 +57,6 @@
     }
   },
   {
-    "type": "dependency",
-    "from": "src/core/workspace/scanner.ts",
-    "to": "vscode",
-    "unresolvedTo": "vscode",
-    "dependencyTypes": [
-      "core",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-not-to-vscode"
-    }
-  },
-  {
     "type": "cycle",
     "from": "src/ui/state/agendaState.ts",
     "to": "src/ui/state/dashboardState.ts",
