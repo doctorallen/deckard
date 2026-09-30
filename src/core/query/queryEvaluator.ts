@@ -1,6 +1,6 @@
 import { getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
-import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
-import { addDays, startOfDay, TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
+import { DAY_MS, startOfDay } from '../markdown/calendar';
+import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
@@ -18,7 +18,11 @@ import {
   resolveLinkQuery,
   UnitLink,
 } from './queryLinks';
+import { DateDirection, resolveDateRange } from './queryDates';
 import { QueryConditionNode, QueryNode } from './queryTypes';
+
+export type { DateDirection } from './queryDates';
+export { getQueryWeekStart, resolveDateRange, setQueryWeekStart } from './queryDates';
 
 /**
  * Evaluates a parsed DQL query against the workspace index.
@@ -311,21 +315,6 @@ interface QueryUnit {
  * default, with nothing yet mine by name.
  */
 let queryIdentity: string | undefined;
-/** The day a week starts on for `this-week` and its like; Sunday until set. */
-let queryWeekStart: Weekday = 0;
-
-/**
- * Sets the day a search's weeks start on, from `deckard.calendar.weekStart`,
- * as `setQueryIdentity` sets who "me" is: the evaluator runs in many places
- * and none of them reads settings.
- */
-export function setQueryWeekStart(day: Weekday): void {
-  queryWeekStart = day;
-}
-
-export function getQueryWeekStart(): Weekday {
-  return queryWeekStart;
-}
 
 export function setQueryIdentity(person: string | undefined): void {
   queryIdentity = person?.trim() ? person.trim() : undefined;
@@ -742,7 +731,7 @@ function matchesIs(
       return (
         open &&
         unit.dueAt !== undefined &&
-        unit.dueAt < startOfDay(now) + 7 * DAY
+        unit.dueAt < startOfDay(now) + 7 * DAY_MS
       );
     case 'needs-date':
       return open && needsNewDate(unit.dueAt, now);
@@ -753,7 +742,7 @@ function matchesIs(
         return false;
       }
       const today = startOfDay(now);
-      const tomorrow = today + DAY;
+      const tomorrow = today + DAY_MS;
       if (unit.dueAt !== undefined && unit.dueAt < today) {
         return false;
       }
@@ -778,7 +767,7 @@ function matchesIs(
         open &&
         unit.parked !== true &&
         unit.blocked !== true &&
-        (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY) &&
+        (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY_MS) &&
         !getTaskPolicy().onHoldStatuses.includes(unit.status ?? '')
       );
     case 'blocked':
@@ -907,12 +896,6 @@ function matchesPathValue(
 }
 
 /**
- * Whether a relative window such as `7d` looks back from today, as `created`
- * and `updated` do, or ahead, as a due date does.
- */
-export type DateDirection = 'past' | 'future';
-
-/**
  * Task dates answer only for tasks, so `due != today` never lists notes.
  * `none` asks whether the date is written at all.
  */
@@ -1017,96 +1000,6 @@ function matchesDate(
   }
 }
 
-interface DateRange {
-  start: number;
-  end: number;
-  /** True for a relative window such as 7d, rather than one named day. */
-  isWindow: boolean;
-}
-
-/**
- * Turns a date value into the half-open interval it names.
- */
-export function resolveDateRange(
-  value: string,
-  now: number = Date.now(),
-  direction: DateDirection = 'past',
-): DateRange | undefined {
-  const normalized = value.trim().toLowerCase();
-
-  const namedDayOffsets: Record<string, number> = {
-    yesterday: -1,
-    today: 0,
-    tomorrow: 1,
-  };
-  if (Object.hasOwn(namedDayOffsets, normalized)) {
-    const start = startOfDay(now) + namedDayOffsets[normalized] * DAY;
-    return { start, end: start + DAY, isWindow: false };
-  }
-
-  const relative = /^(\d+)([dwmy])$/.exec(normalized);
-  if (relative) {
-    const amount = Number(relative[1]);
-    const unit = relative[2];
-    const days =
-      unit === 'd'
-        ? amount
-        : unit === 'w'
-          ? amount * 7
-          : unit === 'm'
-            ? amount * 30
-            : amount * 365;
-    // A window counts today as its first day: `updated = 7d` is the last seven
-    // days including today, and `due = 7d` is today and the six after it.
-    return direction === 'past'
-      ? {
-          start: startOfDay(now) - (days - 1) * DAY,
-          end: startOfDay(now) + DAY,
-          isWindow: true,
-        }
-      : {
-          start: startOfDay(now),
-          end: startOfDay(now) + days * DAY,
-          isWindow: true,
-        };
-  }
-
-  const absolute = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
-  if (absolute) {
-    const start = new Date(
-      Number(absolute[1]),
-      Number(absolute[2]) - 1,
-      Number(absolute[3]),
-    ).getTime();
-    if (Number.isNaN(start)) {
-      return undefined;
-    }
-    return { start, end: start + DAY, isWindow: false };
-  }
-
-  // A whole week or month: `this-week`, `last-month`, `2026-08`.
-  const period = resolveDatePeriod(normalized, now, queryWeekStart);
-  if (period) {
-    return { ...period, isWindow: false };
-  }
-
-  // Any other day in plain words, with `-` for a space: `friday`,
-  // `end-of-month`, `"oct 3"`. A bare weekday points back for the dates a
-  // note or task already has, and ahead for the ones a task is due.
-  const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
-    direction,
-    weekStart: queryWeekStart,
-  });
-  if (phrase?.date) {
-    const [year, month, day] = phrase.date.split('-').map(Number);
-    const start = new Date(year, month - 1, day).getTime();
-    return { start, end: addDays(start, 1), isWindow: false };
-  }
-
-  return undefined;
-}
-
-const DAY = 24 * 60 * 60 * 1000;
 
 
 /**

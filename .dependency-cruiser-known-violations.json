@@ -208,20 +208,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/core/query/queryParser.ts",
-    "to": "src/core/query/queryEvaluator.ts",
-    "unresolvedTo": "./queryEvaluator",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "query-parser-not-to-evaluator"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/ui/state/calendarState.ts",
     "to": "src/ui/commands/dailyNote.ts",
     "unresolvedTo": "../commands/dailyNote",

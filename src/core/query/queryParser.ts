@@ -1,5 +1,5 @@
 import { parseWikiTarget } from '../workspace/backlinks';
-import { resolveDateRange } from './queryEvaluator';
+import { resolveDateRange } from './queryDates';
 import {
   ParsedQuery,
   QueryConditionNode,
