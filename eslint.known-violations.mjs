@@ -409,7 +409,6 @@ export default {
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
-    "src/ui/state/wordSimilarity.ts": 4,
     "src/ui/views/agendaTree.ts": 6,
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
