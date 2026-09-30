@@ -388,7 +388,7 @@ function createWidget(
           settings.enableKeywordLinks,
           'separate',
           undefined,
-          settings.ranking,
+          { ...settings.ranking, now: options.now },
         ),
         'tags',
         {},

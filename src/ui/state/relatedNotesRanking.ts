@@ -47,6 +47,24 @@ import {
   getTermPostings,
 } from './wordSimilarity';
 
+/** How Related Notes is drawn for one note, beyond the note itself. */
+export interface SidebarSnapshotOptions {
+  /** The moment a note's age is counted to, for the recency weight. */
+  now: number;
+  /** Whether shared wording counts; on unless false. */
+  enableKeywordLinks?: boolean;
+  /** `tags` unless given. */
+  relatedNotesSortMode?: RelatedNotesSortMode;
+  sectionAccessCounts?: Record<string, number>;
+  /** `inline` unless given. */
+  tagTitleDisplayMode?: TagTitleDisplayMode;
+  /** The title of the entry chosen within the note, when one is. */
+  activeEntryTitle?: string;
+  /** How much each of the note's tags counts, when an entry weighs them. */
+  activeTagWeights?: ReadonlyMap<string, number>;
+  rankingOptions?: RelatedNotesRankingOptions;
+}
+
 /**
  * Chooses between tag-overview context and the active Markdown editor context.
  */
@@ -54,14 +72,11 @@ export function createSidebarSnapshot(
   index: WorkspaceIndex,
   activeFilePath: string | undefined,
   activeFile: ParsedFile | undefined,
-  enableKeywordLinks = true,
-  relatedNotesSortMode: RelatedNotesSortMode = 'tags',
-  sectionAccessCounts: Record<string, number> = {},
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  activeEntryTitle?: string,
-  activeTagWeights?: ReadonlyMap<string, number>,
-  rankingOptions?: RelatedNotesRankingOptions,
+  options: SidebarSnapshotOptions,
 ): SidebarNotesSnapshot {
+  const { now, activeEntryTitle, activeTagWeights, rankingOptions } = options;
+  const { enableKeywordLinks = true, relatedNotesSortMode = 'tags' } = options;
+  const { sectionAccessCounts = {}, tagTitleDisplayMode = 'inline' } = options;
   if (!activeFile) {
     return {
       activeTags: [],
@@ -99,7 +114,7 @@ export function createSidebarSnapshot(
     enableKeywordLinks,
     tagTitleDisplayMode,
     activeTagWeights,
-    rankingOptions,
+    { ...rankingOptions, now },
   );
   // A note with no tags has nothing to rank by but its links, so entries
   // worded like it are listed apart, marked weak, with the tags they use.
@@ -189,6 +204,12 @@ export interface RelatedNotesRankingOptions {
   /** Namespaces never suggested as a tag, such as the board's status. */
   excludedTagNamespaces?: string[];
 }
+
+/** A ranking's settings, with the moment a note's age is counted to. */
+export type RelatedNotesRankingAt = RelatedNotesRankingOptions & {
+  /** Now, in milliseconds since the epoch, for the recency weight. */
+  now: number;
+};
 
 /** What a wording-only result needs: two shared terms, or one rare one. */
 const WORDING_MIN_TERMS = 2;
@@ -388,6 +409,11 @@ function findSimilarWording(
   };
 }
 
+/**
+ * The notes related to the active one, by shared tags, the tags learned to
+ * go with them, links, and wording, each scored in `options`; a dated note's
+ * recency is counted to `options.now`.
+ */
 export function rankRelatedNotes(
   index: WorkspaceIndex,
   activeFilePath: string | undefined,
@@ -396,7 +422,7 @@ export function rankRelatedNotes(
   enableKeywordLinks = true,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   activeTagWeights: ReadonlyMap<string, number> = new Map(),
-  options: RelatedNotesRankingOptions = {},
+  options: RelatedNotesRankingAt,
 ): RankedNote[] {
   const activeKeys = new Set(activeTags.map((tag) => tag.key));
   const notes: RankedNote[] = [];
@@ -637,6 +663,7 @@ export function rankRelatedNotes(
         const recencyWeight = getRecencyWeight(
           getRelevantDate(file),
           options.recencyHalfLifeDays,
+          options.now,
         );
         const relevanceScore = Math.round(
           Math.min(
@@ -995,13 +1022,18 @@ function getRelevantDate(
     : { at: file.updatedAt, source: 'updated note' };
 }
 
+/**
+ * A small boost for a recently dated note, halving every `halfLifeDays` of
+ * age counted to `now`, or 0 when the decay is off or the note has no date.
+ */
 function getRecencyWeight(
   date: { at: number } | undefined,
   halfLifeDays: number | undefined,
+  now: number,
 ): number {
   if (!date || !halfLifeDays || halfLifeDays <= 0) {
     return 0;
   }
-  const ageDays = Math.max(0, (Date.now() - date.at) / 86_400_000);
+  const ageDays = Math.max(0, (now - date.at) / 86_400_000);
   return 0.1 * 2 ** (-ageDays / halfLifeDays);
 }

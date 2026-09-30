@@ -666,7 +666,7 @@ suite('Dashboard state', () => {
     const weak = createFile('notes/weak.md', '# Weak #work #other #third');
     const index = createFileIndex([active, related, weak]);
 
-    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() });
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.filePath),
@@ -688,7 +688,7 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([active, weaker, stronger]);
 
-    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() });
 
     const strongerEntries = snapshot.notes.filter(
       (note) => note.filePath === 'notes/z-stronger.md',
@@ -720,7 +720,10 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([active, bridge, associated]);
 
-    const snapshot = createSidebarSnapshot(index, active.filePath, active, false);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, {
+      now: Date.now(),
+      enableKeywordLinks: false,
+    });
 
     const associatedNote = snapshot.notes.find(
       (note) => note.filePath === 'notes/associated.md',
@@ -752,12 +755,7 @@ suite('Dashboard state', () => {
       strong,
     ]);
 
-    const notes = rankRelatedNotes(
-      index,
-      active.filePath,
-      active,
-      [{ key: '#source', label: '#source' }],
-      false,
+    const notes = rankRelatedNotes(index, active.filePath, active, [{ key: '#source', label: '#source' }], false, undefined, undefined, { now: Date.now() }
     );
     const weakNote = notes.find((note) => note.filePath === weak.filePath);
     const strongNote = notes.find((note) => note.filePath === strong.filePath);
@@ -805,12 +803,7 @@ suite('Dashboard state', () => {
         commonAssociation.associatedTagSourceUnitCount,
     );
 
-    const defaultNotes = rankRelatedNotes(
-      index,
-      active.filePath,
-      active,
-      [{ key: '#source', label: '#source' }],
-      false,
+    const defaultNotes = rankRelatedNotes(index, active.filePath, active, [{ key: '#source', label: '#source' }], false, undefined, undefined, { now: Date.now() }
     );
     const minimumSupportNotes = rankRelatedNotes(
       index,
@@ -820,7 +813,7 @@ suite('Dashboard state', () => {
       false,
       'inline',
       new Map(),
-      { associationMinimumSupport: 2 },
+      { now: Date.now(), associationMinimumSupport: 2 },
     );
     assert.ok(defaultNotes.some((note) => note.filePath === rare.filePath));
     assert.strictEqual(
@@ -835,12 +828,10 @@ suite('Dashboard state', () => {
       'notes/2026-09-10.md',
       '# 2026-09-10\n\n## Project Atlas\n\n### Check-in #work',
     );
-    const notes = createSidebarSnapshot(
-      createFileIndex([active, daily]),
-      active.filePath,
-      active,
-      false,
-    ).notes;
+    const notes = createSidebarSnapshot(createFileIndex([active, daily]), active.filePath, active, {
+      now: Date.now(),
+      enableKeywordLinks: false,
+    }).notes;
     const checkIn = notes.find((note) => note.title.startsWith('Check-in'));
 
     assert.ok(checkIn);
@@ -861,11 +852,9 @@ suite('Dashboard state', () => {
       'notes/related.md',
       '# Broad #other\n\n## Target #other\nNeural archive calibration.\n\n## Unrelated #other\nOrdinary journal prose.',
     );
-    const notes = createSidebarSnapshot(
-      createFileIndex([active, related]),
-      active.filePath,
-      active,
-    ).notes;
+    const notes = createSidebarSnapshot(createFileIndex([active, related]), active.filePath, active, {
+      now: Date.now(),
+    }).notes;
     const target = notes.find((note) => note.title.startsWith('Target'));
     const broad = notes.find((note) => note.title.startsWith('Broad'));
     const unrelated = notes.find((note) => note.title.startsWith('Unrelated'));
@@ -889,11 +878,9 @@ suite('Dashboard state', () => {
       'notes/related.md',
       '---\naliases: [Program]\n---\n# Broad #other\n\n## Target #other\nNeural archive calibration.',
     );
-    const target = createSidebarSnapshot(
-      createFileIndex([active, related]),
-      active.filePath,
-      active,
-    ).notes.find((note) => note.title.startsWith('Target'));
+    const target = createSidebarSnapshot(createFileIndex([active, related]), active.filePath, active, {
+      now: Date.now(),
+    }).notes.find((note) => note.title.startsWith('Target'));
 
     assert.strictEqual(target?.relevanceEvidence?.entryLinkWeight, 0.5);
   });
@@ -902,12 +889,7 @@ suite('Dashboard state', () => {
     const active = createFile('notes/current.md', '# Current #work');
     const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');
     const index = createFileIndex([active, daily]);
-    const disabled = rankRelatedNotes(
-      index,
-      active.filePath,
-      active,
-      [{ key: '#work', label: '#work' }],
-      false,
+    const disabled = rankRelatedNotes(index, active.filePath, active, [{ key: '#work', label: '#work' }], false, undefined, undefined, { now: Date.now() }
     );
     const enabled = rankRelatedNotes(
       index,
@@ -917,7 +899,7 @@ suite('Dashboard state', () => {
       false,
       'inline',
       new Map(),
-      { recencyHalfLifeDays: 30 },
+      { now: Date.now(), recencyHalfLifeDays: 30 },
     );
 
     assert.strictEqual(disabled[0].relevanceEvidence?.recencyWeight, 0);
@@ -950,7 +932,7 @@ suite('Dashboard state', () => {
         ['#project-name', 1],
         ['#follow-up', 1],
         ['#management/performance', 0.5],
-      ]),
+      ]), { now: Date.now() }
     );
 
     assert.deepStrictEqual(
@@ -1034,17 +1016,15 @@ suite('Dashboard state', () => {
     const scope = createEntryScope(active, 2);
 
     assert.ok(scope);
-    const snapshot = createSidebarSnapshot(
-      index,
-      active.filePath,
-      scope.file,
-      false,
-      'tags',
-      {},
-      'inline',
-      scope.file.sections[0].heading,
-      scope.tagWeights,
-    );
+    const snapshot = createSidebarSnapshot(index, active.filePath, scope.file, {
+      now: Date.now(),
+      enableKeywordLinks: false,
+      relatedNotesSortMode: 'tags',
+      sectionAccessCounts: {},
+      tagTitleDisplayMode: 'inline',
+      activeEntryTitle: scope.file.sections[0].heading,
+      activeTagWeights: scope.tagWeights,
+    });
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.filePath),
@@ -1096,7 +1076,7 @@ suite('Dashboard state', () => {
       '# 2026-09-10 #project/name #checkin\n\n### Project check-in #project/name #checkin',
     );
     const index = createFileIndex([active, related]);
-    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() });
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.title),
@@ -1129,12 +1109,10 @@ suite('Dashboard state', () => {
     // Shared wording adjusts scores, but a shared tag, association, or link
     // is what makes an entry related, whether keyword links are on or off.
     for (const enableKeywordLinks of [true, false]) {
-      const snapshot = createSidebarSnapshot(
-        index,
-        active.filePath,
-        active,
-        enableKeywordLinks,
-      );
+      const snapshot = createSidebarSnapshot(index, active.filePath, active, {
+        now: Date.now(),
+        enableKeywordLinks: enableKeywordLinks,
+      });
       assert.deepStrictEqual(
         snapshot.notes.map((note) => note.filePath),
         ['notes/linked.md'],
@@ -1155,7 +1133,7 @@ suite('Dashboard state', () => {
     newest.updatedAt = 300;
     mostTags.updatedAt = 200;
     const index = createFileIndex([active, oldest, newest, mostTags]);
-    const notes = createSidebarSnapshot(index, active.filePath, active).notes;
+    const notes = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() }).notes;
 
     assert.strictEqual(
       sortRelatedNotes(notes, 'newest')[0].filePath,
@@ -1221,7 +1199,7 @@ suite('Dashboard state', () => {
     const related = createFile('notes/related.md', '# Related #Alpha');
     const index = createFileIndex([active, related]);
 
-    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() });
 
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
@@ -1245,23 +1223,21 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([active]);
 
-    const snapshot = createSidebarSnapshot(
-      index,
-      active.filePath,
-      active,
-      false,
-      'tags',
-      {},
-      'inline',
-      'Selected note',
-      new Map([
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, {
+      now: Date.now(),
+      enableKeywordLinks: false,
+      relatedNotesSortMode: 'tags',
+      sectionAccessCounts: {},
+      tagTitleDisplayMode: 'inline',
+      activeEntryTitle: 'Selected note',
+      activeTagWeights: new Map([
         ['#contact/miko-tern', 1],
         ['#feature/source-protection', 1],
         ['#project/vesper-nine', 0.5],
         ['#person/sable-ortiz', 0.25],
         ['#team/harbor', 0.1667],
       ]),
-    );
+    });
 
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
@@ -1293,7 +1269,7 @@ suite('Dashboard state', () => {
     const related = createFile('notes/related.md', '# Related #frontmatter');
     const index = createFileIndex([active, related]);
 
-    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() });
 
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
@@ -1309,7 +1285,7 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([active, related]);
 
-    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, { now: Date.now() });
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.title),
@@ -1324,15 +1300,13 @@ suite('Dashboard state', () => {
       [3, 1],
     );
 
-    const separate = createSidebarSnapshot(
-      index,
-      active.filePath,
-      active,
-      true,
-      'tags',
-      {},
-      'separate',
-    );
+    const separate = createSidebarSnapshot(index, active.filePath, active, {
+      now: Date.now(),
+      enableKeywordLinks: true,
+      relatedNotesSortMode: 'tags',
+      sectionAccessCounts: {},
+      tagTitleDisplayMode: 'separate',
+    });
     assert.deepStrictEqual(
       separate.notes.map((note) => note.title),
       ['Second reference', 'First reference'],

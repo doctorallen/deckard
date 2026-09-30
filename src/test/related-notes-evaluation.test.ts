@@ -17,17 +17,15 @@ function rank(workspace: ReturnType<typeof createEvaluationWorkspace>, testCase:
   const file = workspace.files.get(testCase.activeFilePath);
   assert.ok(file);
   const scope = testCase.cursorLine ? createEntryScope(file, testCase.cursorLine) : undefined;
-  return createSidebarSnapshot(
-    workspace.index,
-    testCase.activeFilePath,
-    scope?.file ?? file,
-    true,
-    'tags',
-    {},
-    'inline',
-    scope ? scope.file.sections[0]?.heading : undefined,
-    scope?.tagWeights,
-  ).notes;
+  return createSidebarSnapshot(workspace.index, testCase.activeFilePath, scope?.file ?? file, {
+    now: Date.now(),
+    enableKeywordLinks: true,
+    relatedNotesSortMode: 'tags',
+    sectionAccessCounts: {},
+    tagTitleDisplayMode: 'inline',
+    activeEntryTitle: scope ? scope.file.sections[0]?.heading : undefined,
+    activeTagWeights: scope?.tagWeights,
+  }).notes;
 }
 
 const idOf = (note: RankedNote): string => `${note.filePath}:${note.sourceLine}`;
@@ -69,8 +67,13 @@ suite('Related Notes for a note with no tags', () => {
   const snapshotFor = (filePath: string, content?: string, keywordLinks = true) => {
     const file = content === undefined ? workspace.files.get(filePath) : parseMarkdown(filePath, content);
     assert.ok(file);
-    return createSidebarSnapshot(workspace.index, filePath, file, keywordLinks, 'tags', {}, 'inline', undefined, undefined, {
-      excludedTagNamespaces: ['status'],
+    return createSidebarSnapshot(workspace.index, filePath, file, {
+      now: Date.now(),
+      enableKeywordLinks: keywordLinks,
+      relatedNotesSortMode: 'tags',
+      sectionAccessCounts: {},
+      tagTitleDisplayMode: 'inline',
+      rankingOptions: { excludedTagNamespaces: ['status'] },
     });
   };
 

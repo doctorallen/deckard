@@ -126,7 +126,6 @@ export default {
       "rankEntries"
     ],
     "src/ui/state/relatedNotesRanking.ts": [
-      "createSidebarSnapshot",
       "findSimilarWording",
       "getLinkEvidence",
       "rankRelatedNotes",
@@ -350,7 +349,7 @@ export default {
     "src/core/markdown/taskDraft.ts": 1,
     "src/core/markdown/taskMetadata.ts": 4,
     "src/core/mcp/mcpProtocol.ts": 4,
-    "src/core/query/queryEvaluator.ts": 3,
+    "src/core/query/queryEvaluator.ts": 2,
     "src/core/query/queryLinks.ts": 2,
     "src/core/query/queryTypes.ts": 6,
     "src/core/storage/preferenceSnapshots.ts": 5,
@@ -431,7 +430,7 @@ export default {
     "src/ui/state/queryBlockState.ts": 4,
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
-    "src/ui/state/relatedNotesRanking.ts": 2,
+    "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
     "src/ui/state/searchFacets.ts": 4,

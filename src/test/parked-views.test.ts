@@ -40,7 +40,9 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
   test('Related Notes leaves a parked note out, and keeps it, last, beside a parked note', () => {
     const index = workspace();
     const related = (filePath: string) =>
-      createSidebarSnapshot(index, filePath, index.files.get(filePath)).notes.map((note) => [
+      createSidebarSnapshot(index, filePath, index.files.get(filePath), {
+        now: Date.now(),
+      }).notes.map((note) => [
         note.filePath,
         note.parked === true,
       ]);

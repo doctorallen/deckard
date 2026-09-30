@@ -251,15 +251,13 @@ function createSurfaces(zen) {
       // floor is 220px.
       page: 'sidebarNotes',
       viewport: [240, 700],
-      snapshot: () => createSidebarSnapshot(
-        index,
-        'notes/atlas.md',
-        files.get('notes/atlas.md'),
-        true,
-        'tags',
-        {},
-        'inline',
-      ),
+      snapshot: () => createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
+        now: NOW,
+        enableKeywordLinks: true,
+        relatedNotesSortMode: 'tags',
+        sectionAccessCounts: {},
+        tagTitleDisplayMode: 'inline',
+      }),
       scrollers: ['html'],
       clippers: [],
       hovered: ['.note'],
@@ -279,7 +277,13 @@ function createSurfaces(zen) {
         ].join('\n'));
         untaggedFiles.set('notes/untagged.md', untagged);
         return {
-          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, true, 'tags', {}, 'inline'),
+          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, {
+            now: NOW,
+            enableKeywordLinks: true,
+            relatedNotesSortMode: 'tags',
+            sectionAccessCounts: {},
+            tagTitleDisplayMode: 'inline',
+          }),
           previewLines: 1,
         };
       },
