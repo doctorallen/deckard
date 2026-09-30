@@ -1038,25 +1038,32 @@ function findTagMatches(
   });
 }
 
-/**
- * One compiled pattern per people marker. Building a RegExp is costly and
- * `stripTags` runs for every heading ranking shows. Sharing a global pattern
- * is safe here because `replace` and `matchAll`, its only users, never carry
- * `lastIndex` from one call to the next.
- */
-const tagPatterns = new Map<string, RegExp>();
+/** The tag pattern for one people marker, compiled. */
+function compileTagPattern(personMarker: string): RegExp {
+  const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+  return new RegExp(
+    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
+    'g',
+  );
+}
 
+/** Every people marker getPersonMarker accepts. */
+const PERSON_MARKERS = '!$%&*+,.?:;=@^|~';
+
+/**
+ * One compiled pattern per people marker, made once when the parser loads:
+ * getPersonMarker accepts only these, so the table never grows. Building a
+ * RegExp is costly and `stripTags` runs for every heading ranking shows.
+ * Sharing a global pattern is safe here because `replace` and `matchAll`,
+ * its only users, never carry `lastIndex` from one call to the next.
+ */
+const TAG_PATTERNS: ReadonlyMap<string, RegExp> = new Map(
+  [...PERSON_MARKERS].map((marker) => [marker, compileTagPattern(marker)]),
+);
+
+/** The tag pattern for a people marker getPersonMarker has read. */
 function getTagPattern(personMarker: string): RegExp {
-  let pattern = tagPatterns.get(personMarker);
-  if (!pattern) {
-    const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
-    pattern = new RegExp(
-      `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
-      'g',
-    );
-    tagPatterns.set(personMarker, pattern);
-  }
-  return pattern;
+  return TAG_PATTERNS.get(personMarker) ?? compileTagPattern(personMarker);
 }
 
 /**
