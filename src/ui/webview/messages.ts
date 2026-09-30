@@ -1,5 +1,6 @@
 import { isTaskColumnId } from '../state/resultTable';
 import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
+import { isObject } from '../../core/guards';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,
@@ -33,7 +34,7 @@ import {
 export function parseDashboardMessage(
   value: unknown,
 ): DashboardMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
@@ -128,7 +129,7 @@ export function parseDashboardMessage(
       return { type: 'resetDashboardWidgets' };
     case 'widgetChoices':
       return Array.isArray(value.choices) && value.choices.length <= 200 &&
-        value.choices.every((choice) => isRecord(choice) && typeof choice.value === 'string' && typeof choice.label === 'string' &&
+        value.choices.every((choice) => isObject(choice) && typeof choice.value === 'string' && typeof choice.label === 'string' &&
           (choice.description === undefined || typeof choice.description === 'string'))
         ? {
             type: 'widgetChoices',
@@ -235,7 +236,7 @@ const MAX_DASHBOARD_WIDGETS = 60;
 export function parseSearchPageMessage(
   value: unknown,
 ): SearchPageMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
@@ -399,7 +400,7 @@ function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
 export function parseNotesGraphMessage(
   value: unknown,
 ): NotesGraphMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
@@ -463,7 +464,7 @@ export function parseNotesGraphMessage(
 export function parseSidebarMessage(
   value: unknown,
 ): SidebarMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
@@ -590,7 +591,7 @@ export function parseSidebarMessage(
 export function parseTaskBoardMessage(
   value: unknown,
 ): TaskBoardMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
@@ -741,7 +742,7 @@ export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
  * the host still checks each tag and line against the current index.
  */
 export function parseStatsMessage(value: unknown): StatsMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
@@ -832,7 +833,7 @@ export type HelpMessage =
  * host runs a command only when Help is allowed to run it.
  */
 export function parseHelpMessage(value: unknown): HelpMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
   switch (value.type) {
@@ -860,7 +861,7 @@ export function parseHelpMessage(value: unknown): HelpMessage | undefined {
 export function parseCalendarMessage(
   value: unknown,
 ): CalendarMessage | undefined {
-  if (!isRecord(value) || typeof value.type !== 'string') {
+  if (!isObject(value) || typeof value.type !== 'string') {
     return undefined;
   }
   const date = typeof value.date === 'string' ? value.date : '';
@@ -920,7 +921,7 @@ export function parseCalendarMessage(
 
 /** The calendar page's messages: the sidebar Calendar's, and its gear's and help's. */
 export function parseCalendarPageMessage(value: unknown): CalendarPageMessage | undefined {
-  if (isRecord(value)) {
+  if (isObject(value)) {
     switch (value.type) {
       case 'setShowRepeats':
       case 'setShowWeekends':
@@ -1047,11 +1048,4 @@ function isRelatedNotesSortMode(value: unknown): value is RelatedNotesSortMode {
     value === 'tags' ||
     value === 'access'
   );
-}
-
-/**
- * Narrows non-null objects without making assumptions about their properties.
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }

@@ -6,6 +6,7 @@ import {
   PreferenceSnapshot,
   PreferenceSnapshots,
 } from '../../core/storage/preferenceSnapshots';
+import { isRecord } from '../../core/guards';
 import { pluralize } from '../../core/text';
 import { PersistedPreferences } from '../../core/types';
 import { reportFailure } from './notify';
@@ -206,10 +207,6 @@ function describeAge(at: Date, now = Date.now()): string {
   const hours = Math.round(minutes / 60);
   if (hours < 48) {return `${hours} h ago`;}
   return `${Math.round(hours / 24)} days ago`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export type { PreferenceSnapshot };

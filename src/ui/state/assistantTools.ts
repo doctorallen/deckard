@@ -1,4 +1,5 @@
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
+import { isObject } from '../../core/guards';
 import { pluralize } from '../../core/text';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
 import {
@@ -55,7 +56,7 @@ export interface TagsToolInput {
  * schema, but an extension can call a tool directly, so it is checked again.
  */
 export function readQueryToolInput(value: unknown): QueryToolInput | undefined {
-  if (!isRecord(value) || typeof value.query !== 'string') {
+  if (!isObject(value) || typeof value.query !== 'string') {
     return undefined;
   }
   return {
@@ -70,7 +71,7 @@ export function readQueryToolInput(value: unknown): QueryToolInput | undefined {
 }
 
 export function readTagsToolInput(value: unknown): TagsToolInput {
-  if (!isRecord(value)) {
+  if (!isObject(value)) {
     return {};
   }
   return {
@@ -247,8 +248,4 @@ function clampLimit(
     return fallback;
   }
   return Math.min(max, Math.max(1, Math.floor(value)));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }
