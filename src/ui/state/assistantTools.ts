@@ -8,6 +8,14 @@ import {
   QueryBlockItem,
   QueryBlockSort,
 } from './queryBlockState';
+import {
+  ADD_TASK_TOOL_NAME,
+  AddTaskInput,
+  CHANGE_TASK_TOOL_NAME,
+  ChangeTaskInput,
+  readAddTaskInput,
+  readChangeTaskInput,
+} from './assistantWriteInput';
 
 /**
  * What Deckard answers when an AI assistant in VS Code calls one of its
@@ -251,4 +259,173 @@ function clampLimit(
     return fallback;
   }
   return Math.min(max, Math.max(1, Math.floor(value)));
+}
+
+/**
+ * Which caller a tool answers. The language-model tools are VS Code's: they
+ * ask the user first, the `deckard.assistantTools` setting turns them off,
+ * and VS Code shows a progress line while they run. The MCP server has none
+ * of that; a client on this computer calls it with its token. Each surface
+ * words a refused input its own way and times its calls under its own names,
+ * so the table carries one text of each for both.
+ */
+export type ToolSurface = 'languageModel' | 'mcp';
+
+/** One text for each surface, which may be the same text twice. */
+export type SurfaceText = Readonly<Record<ToolSurface, string>>;
+
+/** What a tool answers: text for the assistant, and whether it was refused. */
+export interface ToolAnswer {
+  text: string;
+  isError?: boolean;
+}
+
+/**
+ * What the tools reach to answer, supplied by the surface: the index, the
+ * settings a query is evaluated under, and the two writes, which need VS
+ * Code's editor and so cannot live here.
+ */
+export interface ToolRunners {
+  /** The index to answer from, read when a tool runs. */
+  getSnapshot(): WorkspaceIndex;
+  /** The query context, read from settings when a query runs. */
+  readQueryContext(): QueryContext;
+  /** Adds a task through the refactor preview, and says what happened. */
+  addTask(input: AddTaskInput): Promise<ToolAnswer>;
+  /** Changes a task through the refactor preview, and says what happened. */
+  changeTask(input: ChangeTaskInput): Promise<ToolAnswer>;
+}
+
+/**
+ * A call whose input has been read: either bound and ready to run, or
+ * refused, with the words each surface refuses it in.
+ */
+export type ToolCall<Result> =
+  | { readonly kind: 'run'; readonly run: () => Result }
+  | { readonly kind: 'invalid'; readonly text: SurfaceText };
+
+/** One tool: its name, how each surface times it, and how a call is read. */
+interface ToolEntry<Kind extends 'read' | 'write', Result> {
+  readonly kind: Kind;
+  /** The name the manifest declares, which both surfaces dispatch on. */
+  readonly name: string;
+  /** The operation each surface times a call under, in Deckard's log. */
+  readonly measure: SurfaceText;
+  /** The line VS Code shows while the tool runs; the MCP server has none. */
+  readonly progressMessage: (value: unknown) => string;
+  /** Reads a call's input and binds it to what the tool does with it. */
+  readonly read: (value: unknown, runners: ToolRunners) => ToolCall<Result>;
+}
+
+/** A tool that answers from the index at once. */
+export type ReadTool = ToolEntry<'read', string>;
+
+/** A tool that writes a note, always through the refactor preview. */
+export type WriteTool = ToolEntry<'write', Promise<ToolAnswer>>;
+
+/** Any of Deckard's assistant tools. */
+export type AssistantTool = ReadTool | WriteTool;
+
+/** A query call without a query, refused alike on both surfaces. */
+const QUERY_INVALID_INPUT =
+  'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.';
+
+/**
+ * Deckard's four assistant tools, in the order VS Code registers them. The
+ * language-model tools and the MCP server both dispatch through this one
+ * table, so the tools cannot drift apart; what differs between the surfaces,
+ * the refusals and the timing names, is written here side by side. The
+ * add-task and change-task refusals were written differently for each
+ * surface, VS Code's the longer, and each is kept as a client receives it.
+ */
+export const ASSISTANT_TOOLS: readonly AssistantTool[] = [
+  {
+    kind: 'read',
+    name: QUERY_TOOL_NAME,
+    measure: { languageModel: 'Assistant query', mcp: 'MCP query' },
+    progressMessage: (value) =>
+      `Searching Deckard notes and tasks: ${shorten(readQueryToolInput(value)?.query ?? '')}`,
+    read: (value, runners) => {
+      const input = readQueryToolInput(value);
+      if (!input) {
+        return {
+          kind: 'invalid',
+          text: { languageModel: QUERY_INVALID_INPUT, mcp: QUERY_INVALID_INPUT },
+        };
+      }
+      return {
+        kind: 'run',
+        run: () => answerQuery(runners.getSnapshot(), input, runners.readQueryContext()),
+      };
+    },
+  },
+  {
+    kind: 'read',
+    name: TAGS_TOOL_NAME,
+    measure: { languageModel: 'Assistant tag list', mcp: 'MCP tag list' },
+    progressMessage: (value) => {
+      const search = readTagsToolInput(value).search?.trim();
+      return search ? `Listing Deckard tags matching ${shorten(search)}` : 'Listing Deckard tags';
+    },
+    // Any input lists tags; one that is not an object lists them all.
+    read: (value, runners) => {
+      const input = readTagsToolInput(value);
+      return { kind: 'run', run: () => answerTags(runners.getSnapshot(), input) };
+    },
+  },
+  {
+    kind: 'write',
+    name: ADD_TASK_TOOL_NAME,
+    measure: { languageModel: 'Assistant add task', mcp: 'MCP add task' },
+    progressMessage: (value) => {
+      const input = readAddTaskInput(value);
+      return input
+        ? `Adding a task${input.note ? ` to ${input.note}` : " to today's note"}: ${shorten(input.text)}`
+        : 'Adding a task';
+    },
+    read: (value, runners) => {
+      const input = readAddTaskInput(value);
+      if (!input) {
+        return {
+          kind: 'invalid',
+          text: {
+            languageModel:
+              'Send the task\'s words as "text", and optionally a workspace-relative "note" to add it to; today\'s note otherwise.',
+            mcp: 'Send the task\'s words as "text", and optionally a workspace-relative "note".',
+          },
+        };
+      }
+      return { kind: 'run', run: () => runners.addTask(input) };
+    },
+  },
+  {
+    kind: 'write',
+    name: CHANGE_TASK_TOOL_NAME,
+    measure: { languageModel: 'Assistant change task', mcp: 'MCP change task' },
+    progressMessage: (value) => {
+      const input = readChangeTaskInput(value);
+      return input
+        ? `Changing the task at ${input.note} line ${input.line}`
+        : 'Changing a task';
+    },
+    read: (value, runners) => {
+      const input = readChangeTaskInput(value);
+      if (!input) {
+        return {
+          kind: 'invalid',
+          text: {
+            languageModel:
+              'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
+            mcp: 'Send "note" and "line" as deckard_query reports them, and at least one change.',
+          },
+        };
+      }
+      return { kind: 'run', run: () => runners.changeTask(input) };
+    },
+  },
+];
+
+/** A tool's input cut to 80 characters for a one-line progress message. */
+function shorten(text: string): string {
+  return text.length > 80 ? `${text.slice(0, 79)}…` : text;
 }

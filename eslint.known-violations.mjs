@@ -188,9 +188,6 @@ export default {
     "src/extension.ts": [
       "deactivate"
     ],
-    "src/ui/commands/assistantWrites.ts": [
-      "readChangeTaskInput"
-    ],
     "src/ui/commands/bulkEdit.ts": [
       "describeBulkEditResult"
     ],
@@ -233,6 +230,9 @@ export default {
     "src/ui/state/agendaState.ts": [
       "createAgenda",
       "placeTask"
+    ],
+    "src/ui/state/assistantWriteInput.ts": [
+      "readChangeTaskInput"
     ],
     "src/ui/state/calendarState.ts": [
       "createCalendar"
@@ -345,8 +345,8 @@ export default {
     "src/test/webviewPage.ts": 2,
     "src/ui/commands/activeNoteContext.ts": 2,
     "src/ui/commands/agendaActions.ts": 1,
-    "src/ui/commands/assistantTools.ts": 3,
-    "src/ui/commands/assistantWrites.ts": 5,
+    "src/ui/commands/assistantTools.ts": 1,
+    "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/bulkEdit.ts": 1,
     "src/ui/commands/capture.ts": 3,
     "src/ui/commands/checkSetup.ts": 4,
@@ -488,9 +488,6 @@ export default {
     ],
     "src/test/webviewPage.ts": [
       "openWebviewPage"
-    ],
-    "src/ui/commands/assistantTools.ts": [
-      "(function)"
     ],
     "src/ui/commands/bulkEdit.ts": [
       "applyBulkEdit"

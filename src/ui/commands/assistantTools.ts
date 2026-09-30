@@ -3,21 +3,18 @@ import * as vscode from 'vscode';
 import { measure, measureAsync } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
-  answerQuery,
-  answerTags,
+  ASSISTANT_TOOLS,
+  AssistantTool,
   QUERY_TOOL_NAME,
-  readQueryToolInput,
-  readTagsToolInput,
   TAGS_TOOL_NAME,
+  ToolAnswer,
+  ToolRunners,
 } from '../state/assistantTools';
 import {
   ADD_TASK_TOOL_NAME,
   addTask,
   CHANGE_TASK_TOOL_NAME,
   changeTask,
-  readAddTaskInput,
-  readChangeTaskInput,
-  WriteAnswer,
 } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
@@ -31,6 +28,10 @@ type RegisterTool = (
   name: string,
   tool: vscode.LanguageModelTool<unknown>,
 ) => vscode.Disposable;
+
+/** What a tool says when `deckard.assistantTools` has turned the tools off. */
+const TOOLS_OFF =
+  "Deckard's assistant tools are turned off. The \"Assistant Tools\" setting in Deckard's settings turns them on.";
 
 /**
  * Registers Deckard's language model tools, which let AI assistants in VS
@@ -58,98 +59,59 @@ export class AssistantTools implements vscode.Disposable {
     private readonly history: WorkspaceWriteHistory,
     register: RegisterTool = (name, tool) => vscode.lm.registerTool(name, tool),
   ) {
-    this.queryTool = {
-      prepareInvocation: (options) =>
-        this.prepare(
-          `Searching Deckard notes and tasks: ${shorten(
-            readQueryToolInput(options.input)?.query ?? '',
-          )}`,
-        ),
-      invoke: (options) =>
-        this.answer('Assistant query', () => {
-          const input = readQueryToolInput(options.input);
-          return input
-            ? answerQuery(this.indexer.getSnapshot(), input, readQueryContext())
-            : 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.';
-        }),
+    const runners: ToolRunners = {
+      getSnapshot: () => this.indexer.getSnapshot(),
+      readQueryContext: () => readQueryContext(),
+      addTask: (input) => addTask(this.indexer, this.history, input),
+      changeTask: (input) => changeTask(this.indexer, this.history, input),
     };
-    this.tagsTool = {
-      prepareInvocation: (options) => {
-        const search = readTagsToolInput(options.input).search?.trim();
-        return this.prepare(
-          search
-            ? `Listing Deckard tags matching ${shorten(search)}`
-            : 'Listing Deckard tags',
-        );
-      },
-      invoke: (options) =>
-        this.answer('Assistant tag list', () =>
-          answerTags(
-            this.indexer.getSnapshot(),
-            readTagsToolInput(options.input),
-          ),
-        ),
-    };
-    // The write tools ask every time, not once a session: a read shows the
-    // assistant what is there, a write changes it, and the reader sees the
-    // exact line in the refactor preview before it lands as well.
-    this.addTaskTool = {
-      prepareInvocation: (options) => {
-        const input = readAddTaskInput(options.input);
-        return this.prepareWrite(
-          input
-            ? `Adding a task${input.note ? ` to ${input.note}` : " to today's note"}: ${shorten(input.text)}`
-            : 'Adding a task',
-        );
-      },
-      invoke: (options) =>
-        this.write('Assistant add task', () => {
-          const input = readAddTaskInput(options.input);
-          return input
-            ? addTask(this.indexer, this.history, input)
-            : Promise.resolve({
-                text: 'Send the task\'s words as "text", and optionally a workspace-relative "note" to add it to; today\'s note otherwise.',
-                isError: true,
-              });
-        }),
-    };
-    this.changeTaskTool = {
-      prepareInvocation: (options) => {
-        const input = readChangeTaskInput(options.input);
-        return this.prepareWrite(
-          input
-            ? `Changing the task at ${input.note} line ${input.line}`
-            : 'Changing a task',
-        );
-      },
-      invoke: (options) =>
-        this.write('Assistant change task', () => {
-          const input = readChangeTaskInput(options.input);
-          return input
-            ? changeTask(this.indexer, this.history, input)
-            : Promise.resolve({
-                text: 'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
-                isError: true,
-              });
-        }),
-    };
-    this.registrations = [
-      register(QUERY_TOOL_NAME, this.queryTool),
-      register(TAGS_TOOL_NAME, this.tagsTool),
-      register(ADD_TASK_TOOL_NAME, this.addTaskTool),
-      register(CHANGE_TASK_TOOL_NAME, this.changeTaskTool),
-    ];
+    const tools = new Map(
+      ASSISTANT_TOOLS.map((tool) => [tool.name, this.adapt(tool, runners)] as const),
+    );
+    this.queryTool = toolNamed(tools, QUERY_TOOL_NAME);
+    this.tagsTool = toolNamed(tools, TAGS_TOOL_NAME);
+    this.addTaskTool = toolNamed(tools, ADD_TASK_TOOL_NAME);
+    this.changeTaskTool = toolNamed(tools, CHANGE_TASK_TOOL_NAME);
+    this.registrations = [...tools].map(([name, tool]) => register(name, tool));
   }
 
+  /** Unregisters the four tools. */
   public dispose(): void {
     this.registrations.forEach((registration) => registration.dispose());
   }
 
   /**
-   * The progress message, and a confirmation until the user has allowed the
-   * tools once this session. VS Code only calls `invoke` after the user
-   * continues, so the first answer marks the session as allowed.
+   * One table entry as a language-model tool. A read asks once a session and
+   * a write asks every time: a read shows the assistant what is there, a
+   * write changes it, and the reader sees the exact line in the refactor
+   * preview before it lands as well.
    */
+  private adapt(
+    tool: AssistantTool,
+    runners: ToolRunners,
+  ): vscode.LanguageModelTool<unknown> {
+    if (tool.kind === 'read') {
+      return {
+        prepareInvocation: (options) => this.prepare(tool.progressMessage(options.input)),
+        invoke: (options) =>
+          this.answer(tool.measure.languageModel, () => {
+            const call = tool.read(options.input, runners);
+            return call.kind === 'run' ? call.run() : call.text.languageModel;
+          }),
+      };
+    }
+    return {
+      prepareInvocation: (options) => this.prepareWrite(tool.progressMessage(options.input)),
+      invoke: (options) =>
+        this.write(tool.measure.languageModel, () => {
+          const call = tool.read(options.input, runners);
+          return call.kind === 'run'
+            ? call.run()
+            : Promise.resolve({ text: call.text.languageModel, isError: true });
+        }),
+    };
+  }
+
   /** A write asks every time: the confirmation is the tool's, the preview is the write's. */
   private prepareWrite(invocationMessage: string): vscode.PreparedToolInvocation {
     if (!areToolsEnabled()) {
@@ -167,21 +129,18 @@ export class AssistantTools implements vscode.Disposable {
   }
 
   /** Runs a write once the tools are on and the index is ready, and answers with its result. */
-  private async write(
+  private write(
     operation: string,
-    run: () => Promise<WriteAnswer>,
+    run: () => Promise<ToolAnswer>,
   ): Promise<vscode.LanguageModelToolResult> {
-    if (!areToolsEnabled()) {
-      return textResult(
-        "Deckard's assistant tools are turned off. The \"Assistant Tools\" setting in Deckard's settings turns them on.",
-      );
-    }
-    this.allowed = true;
-    await this.indexer.ready;
-    const answer = await measureAsync(operation, run);
-    return textResult(answer.text);
+    return this.guarded(async () => (await measureAsync(operation, run)).text);
   }
 
+  /**
+   * The progress message, and a confirmation until the user has allowed the
+   * tools once this session. VS Code only calls `invoke` after the user
+   * continues, so the first answer marks the session as allowed.
+   */
   private prepare(invocationMessage: string): vscode.PreparedToolInvocation {
     if (this.allowed || !areToolsEnabled()) {
       return { invocationMessage };
@@ -197,39 +156,55 @@ export class AssistantTools implements vscode.Disposable {
     };
   }
 
-  /**
-   * Waits for the first scan, so an early call never answers from a partial
-   * index, and times the answer in Deckard's log.
-   */
-  private async answer(
+  /** Answers a read, timed in Deckard's log with the answer's length. */
+  private answer(
     operation: string,
     respond: () => string,
   ): Promise<vscode.LanguageModelToolResult> {
-    if (!areToolsEnabled()) {
-      return textResult(
-        "Deckard's assistant tools are turned off. The \"Assistant Tools\" setting in Deckard's settings turns them on.",
-      );
-    }
-    this.allowed = true;
-    await this.indexer.ready;
-    return textResult(
+    return this.guarded(() =>
       measure(operation, respond, (text) => `${text.length} characters`),
     );
   }
+
+  /**
+   * Refuses while the tools are turned off; otherwise marks the session as
+   * allowed and waits for the first scan, so an early call never answers
+   * from a partial index.
+   */
+  private async guarded(
+    respond: () => string | Promise<string>,
+  ): Promise<vscode.LanguageModelToolResult> {
+    if (!areToolsEnabled()) {
+      return textResult(TOOLS_OFF);
+    }
+    this.allowed = true;
+    await this.indexer.ready;
+    return textResult(await respond());
+  }
 }
 
+/** A tool the table must hold; the four names are the table's own. */
+function toolNamed(
+  tools: ReadonlyMap<string, vscode.LanguageModelTool<unknown>>,
+  name: string,
+): vscode.LanguageModelTool<unknown> {
+  const tool = tools.get(name);
+  if (!tool) {
+    throw new Error(`Deckard has no assistant tool named ${name}.`);
+  }
+  return tool;
+}
+
+/** Whether `deckard.assistantTools` leaves the language-model tools on. */
 export function areToolsEnabled(): boolean {
   return vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('assistantTools', true);
 }
 
+/** A tool result holding one text part. */
 function textResult(text: string): vscode.LanguageModelToolResult {
   return new vscode.LanguageModelToolResult([
     new vscode.LanguageModelTextPart(text),
   ]);
-}
-
-function shorten(text: string): string {
-  return text.length > 80 ? `${text.slice(0, 79)}…` : text;
 }
