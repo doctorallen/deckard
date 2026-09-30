@@ -165,8 +165,15 @@ const ASSIGNEE_PATTERN = new RegExp(
 /** A Dataview inline field in square or round brackets, `[due:: 2026-09-20]`. */
 const DATAVIEW_FIELD_PATTERN =
   /\[[ \t]*([A-Za-z]+)[ \t]*::[ \t]*([^\]]*?)[ \t]*\]|\([ \t]*([A-Za-z]+)[ \t]*::[ \t]*([^)]*?)[ \t]*\)/gu;
-const DATAVIEW_ID_PATTERN =
-  /[ \t]*(?:\[[ \t]*id[ \t]*::[^\]]*\]|\([ \t]*id[ \t]*::[^)]*\))/giu;
+/**
+ * One Dataview field by its key, in square or round brackets, with the
+ * spaces and tabs before it, so taking it out leaves no gap: `[id:: a1]`.
+ * The key is matched in any case.
+ */
+function dataviewFieldPattern(key: string): RegExp {
+  return new RegExp(`[ \\t]*(?:\\[[ \\t]*${key}[ \\t]*::[^\\]]*\\]|\\([ \\t]*${key}[ \\t]*::[^)]*\\))`, 'giu');
+}
+const DATAVIEW_ID_PATTERN = dataviewFieldPattern('id');
 /**
  * A block id: the `^name` an author writes at the end of a line to make that
  * line something a `[[Note#^name]]` link can point at, as Obsidian does.
@@ -388,6 +395,52 @@ export function setTaskLineCompletion(
   return prefix + appendToTaskText(text, formatTaskMetadata('done', doneDate, format));
 }
 
+/** A field a task holds at most one of, which setTaskField replaces whole. */
+type SingleTaskField = 'priority' | 'assignee';
+
+/**
+ * Each single field's two spellings, as setTaskField takes them out: the
+ * emoji form and the Dataview form, each with the spaces and tabs before
+ * it, so the line keeps no gap where the old value was.
+ */
+const SINGLE_FIELD_PATTERNS: Readonly<Record<SingleTaskField, { emoji: RegExp; dataview: RegExp }>> = {
+  priority: {
+    emoji: new RegExp(`[ \\t]*${PRIORITY_PATTERN.source}`, 'gu'),
+    dataview: dataviewFieldPattern('priority'),
+  },
+  assignee: { emoji: ASSIGNEE_PATTERN, dataview: dataviewFieldPattern('assignee') },
+};
+
+/** The value a single field is set to, or undefined to clear it, and the format for a line that has none. */
+interface SingleFieldWrite {
+  value: string | undefined;
+  preferredFormat: TaskMetadataFormat;
+}
+
+/**
+ * Sets or clears a field a task holds at most one of, replacing whichever
+ * marker or Dataview field it had, in either format. A new value is written
+ * in the line's own format, or the preferred one when the line has none, at
+ * the end of its words and ahead of a block id.
+ */
+function setTaskField(
+  line: string,
+  checkboxColumn: number,
+  field: SingleTaskField,
+  write: SingleFieldWrite,
+): string {
+  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
+  const format = parseTaskMetadata(text).format ?? write.preferredFormat;
+  const patterns = SINGLE_FIELD_PATTERNS[field];
+  const cleared = text.replace(patterns.emoji, '').replace(patterns.dataview, '');
+  return (
+    prefix +
+    (write.value
+      ? appendToTaskText(cleared, formatTaskMetadata(field, write.value, format))
+      : cleared)
+  );
+}
+
 /**
  * Sets or clears a task's priority, replacing whichever marker or field it
  * had. A new priority is written in the line's format.
@@ -398,20 +451,7 @@ export function setTaskPriority(
   priority: TaskPriority | undefined,
   preferredFormat: TaskMetadataFormat = 'emoji',
 ): string {
-  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
-  const format = parseTaskMetadata(text).format ?? preferredFormat;
-  const cleared = text
-    .replace(/[ \t]*(?:🔺|⏫|🔼|🔽|⏬)\uFE0F?/gu, '')
-    .replace(
-      /[ \t]*(?:\[[ \t]*priority[ \t]*::[^\]]*\]|\([ \t]*priority[ \t]*::[^)]*\))/giu,
-      '',
-    );
-  return (
-    prefix +
-    (priority
-      ? appendToTaskText(cleared, formatTaskMetadata('priority', priority, format))
-      : cleared)
-  );
+  return setTaskField(line, checkboxColumn, 'priority', { value: priority, preferredFormat });
 }
 
 /**
@@ -428,20 +468,7 @@ export function setTaskAssignee(
   person: string | undefined,
   preferredFormat: TaskMetadataFormat = 'emoji',
 ): string {
-  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
-  const format = parseTaskMetadata(text).format ?? preferredFormat;
-  const cleared = text
-    .replace(ASSIGNEE_PATTERN, '')
-    .replace(
-      /[ \t]*(?:\[[ \t]*assignee[ \t]*::[^\]]*\]|\([ \t]*assignee[ \t]*::[^)]*\))/giu,
-      '',
-    );
-  return (
-    prefix +
-    (person
-      ? appendToTaskText(cleared, formatTaskMetadata('assignee', person, format))
-      : cleared)
-  );
+  return setTaskField(line, checkboxColumn, 'assignee', { value: person, preferredFormat });
 }
 
 /**
