@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { measure, measureAsync } from '../../core/timing';
+import { measure, measureAsync } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   answerQuery,

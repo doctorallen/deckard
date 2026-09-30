@@ -4,7 +4,7 @@
  * server owns transport and authentication; this only answers messages.
  */
 
-import { isRecord } from '../guards';
+import { isRecord } from '../../shared/guards';
 
 /** The protocol versions this server speaks, newest first. */
 export const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];

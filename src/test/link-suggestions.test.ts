@@ -7,10 +7,10 @@ import {
   getWikiLinkCompletionContext,
   WikiLinkCompletionProvider,
 } from '../ui/commands/linkSuggestions';
-import { describeDay, parseDatePhrase } from '../core/markdown/dates';
-import { parseMarkdown } from '../core/markdown/parser';
+import { describeDay, parseDatePhrase } from '../domain/markdown/dates';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createWikiLink } from '../ui/commands/insertLink';
 
 suite('Wiki link suggestions', () => {

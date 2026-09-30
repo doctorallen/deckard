@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
 
-import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../../core/markdown/lineShapes';
-import { getTaskLineId } from '../../core/markdown/parser';
+import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { getTaskLineId } from '../../domain/markdown/parser';
 import {
   formatIsoDate,
   parseTaskMetadata,
   setTaskLineCompletion,
   TaskMetadataFormat,
   writeCompletion,
-} from '../../core/markdown/taskMetadata';
-import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
+} from '../../domain/markdown/taskMetadata';
+import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 import {

@@ -2,13 +2,13 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

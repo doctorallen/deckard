@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { stripTags } from '../../core/markdown/parser';
+import { stripTags } from '../../domain/markdown/parser';
 import { Section } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -12,7 +12,7 @@ import {
   reportFailure,
   reportStale,
 } from './notify';
-import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 
 export async function extractHeadingCommand(
   indexer: WorkspaceIndexer<vscode.Uri>,

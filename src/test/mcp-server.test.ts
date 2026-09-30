@@ -4,8 +4,8 @@ import { request as httpRequest } from 'node:http';
 import * as vscode from 'vscode';
 
 import { readManifestTools } from '../core/mcp/mcpProtocol';
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { DeckardMcpServer, getClaudeCodeSetup } from '../ui/commands/mcpServer';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 

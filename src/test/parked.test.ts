@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 
-import { parseQuery } from '../core/query/queryParser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { formatQuery, fromBuilderTree, toBuilderTree } from '../core/query/queryFormat';
+import { parseQuery } from '../domain/query/queryParser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { formatQuery, fromBuilderTree, toBuilderTree } from '../domain/query/queryFormat';
 import { createQuerySuggestions } from '../ui/state/dashboardState';
 import { WorkspaceIndex } from '../core/types';
 import {
@@ -11,9 +11,9 @@ import {
   NO_PARKED_RULES,
   parkedLast,
   withoutParked,
-} from '../core/workspace/parked';
+} from '../domain/index/parked';
 import { indexWithParking, parkedRules } from './parkedFixture';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /** A task title without its tags. */
 function bare(title: string): string {

@@ -11,7 +11,7 @@ import { summarizeReview } from '../ui/state/reviewState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { countDueTasks } from '../ui/views/taskStatusBar';
 import { indexWithParking } from './parkedFixture';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Noon on Wednesday 2026-09-16. */

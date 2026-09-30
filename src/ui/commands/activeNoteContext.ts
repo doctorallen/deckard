@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { Debouncer } from '../../core/debounce';
-import { findDailyNoteDate } from '../../core/markdown/parser';
+import { Debouncer } from '../../shared/debounce';
+import { findDailyNoteDate } from '../../domain/markdown/parser';
 
 /** What the context needs to know about the index. */
 export interface ActiveNoteIndex {

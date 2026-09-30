@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 import { describeMissingTag, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 
-import { getTagKind } from '../../core/query/queryEvaluator';
+import { getTagKind } from '../../domain/query/queryEvaluator';
 import { TagInfo, TagReference, WorkspaceIndex } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { getExtractedNoteFileName } from './extractHeading';

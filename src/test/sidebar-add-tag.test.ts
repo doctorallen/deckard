@@ -4,10 +4,10 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';

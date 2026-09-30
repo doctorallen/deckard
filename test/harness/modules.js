@@ -19,11 +19,11 @@ const OUT = path.join(__dirname, '..', '..', 'out');
 const MODULES = {
   // core
   changelog: 'core/changelog.js',
-  parser: 'core/markdown/parser.js',
+  parser: 'domain/markdown/parser.js',
   preferences: 'core/storage/preferences.js',
   searchStore: 'core/storage/searchStore.js',
   parsedFileCodec: 'core/storage/parsedFileCodec.js',
-  timing: 'core/timing.js',
+  timing: 'shared/timing.js',
   indexer: 'core/workspace/indexer.js',
   scanner: 'core/workspace/scanner.js',
   // ui/state

@@ -1,4 +1,4 @@
-import { Task, TaskSteps } from '../types';
+import { Task, TaskSteps } from '../model';
 import {
   findListParents,
   findParentTaskLine,

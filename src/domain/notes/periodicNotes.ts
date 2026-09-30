@@ -2,7 +2,7 @@ import {
   findFileDailyNoteDate,
   isPeriodicNotePath,
 } from '../markdown/parser';
-import { WorkspaceIndex } from '../types';
+import { WorkspaceIndex } from '../model';
 import { Weekday } from '../markdown/dates';
 
 /** A daily note in the index, by the day it is for. */

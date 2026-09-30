@@ -1,19 +1,19 @@
 import * as vscode from 'vscode';
 
-import { getTaskLineId, parseMarkdown } from '../../core/markdown/parser';
+import { getTaskLineId, parseMarkdown } from '../../domain/markdown/parser';
 import {
   findCheckboxColumn,
   findStepFamily,
   isCheckedTaskLine,
   readStepsForNextOccurrence,
-} from '../../core/markdown/taskSteps';
+} from '../../domain/markdown/taskSteps';
 import {
   formatIsoDate,
   parseTaskMetadata,
   setTaskLineCompletion,
   TaskMetadataFormat,
   writeCompletion,
-} from '../../core/markdown/taskMetadata';
+} from '../../domain/markdown/taskMetadata';
 import { Task } from '../../core/types';
 import { openSourceAt, resolveSourceUri } from './navigation';
 import {

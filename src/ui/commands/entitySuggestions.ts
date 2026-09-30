@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { extractTags, getEntityKind } from '../../core/markdown/parser';
+import { extractTags, getEntityKind } from '../../domain/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readEntityNamespaceAliases, readPersonMarker } from './parseSettings';
 

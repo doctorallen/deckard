@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { isTaskLineOf, TaskLineShape } from '../../core/markdown/lineShapes';
-import { parseTaskMetadata } from '../../core/markdown/taskMetadata';
+import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { parseTaskMetadata } from '../../domain/markdown/taskMetadata';
 import {
   findCheckboxColumn,
   findStepFamily,
@@ -10,8 +10,8 @@ import {
   parseSuggestedSteps,
   planStepInsertion,
   splitTypedSteps,
-} from '../../core/markdown/taskSteps';
-import { measureAsync, reportError } from '../../core/timing';
+} from '../../domain/markdown/taskSteps';
+import { measureAsync, reportError } from '../../shared/timing';
 import { Task } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveSourceUri } from './navigation';

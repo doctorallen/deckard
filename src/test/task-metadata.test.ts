@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import {
   createNextOccurrence,
   formatIsoDate,
@@ -13,7 +13,7 @@ import {
   setTaskLineCompletion,
   setTaskPriority,
   writeCompletion,
-} from '../core/markdown/taskMetadata';
+} from '../domain/markdown/taskMetadata';
 
 const at = (year: number, month: number, day: number): number =>
   new Date(year, month - 1, day).getTime();

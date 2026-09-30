@@ -1,5 +1,5 @@
 /**
- * A shim that keeps `import … from '../core/types'` compiling while the
+ * A shim that keeps `import … from './types'` compiling while the
  * refactor moves importers to the types' new homes. Phase 7 deletes it.
  *
  * - The domain model (notes, sections, tasks, tags, entities, the workspace

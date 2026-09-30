@@ -1,11 +1,11 @@
-import { matchTaskLine, TaskLineShape } from '../../core/markdown/lineShapes';
-import { findFencedLines } from '../../core/markdown/parser';
+import { matchTaskLine, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { findFencedLines } from '../../domain/markdown/parser';
 import {
   describeDueDate,
   findTaskMetadataSpans,
   parseIsoDate,
-} from '../../core/markdown/taskMetadata';
-import { QueryContext } from '../../core/query/queryContext';
+} from '../../domain/markdown/taskMetadata';
+import { QueryContext } from '../../domain/query/queryContext';
 
 /** A stretch of one line, zero-based. */
 export interface LineSpan {

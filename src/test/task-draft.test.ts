@@ -4,8 +4,8 @@ import {
   formatTaskDraft,
   isTaskLine,
   parseTaskDraft,
-} from '../core/markdown/taskDraft';
-import { nameDay, parseDatePhrase } from '../core/markdown/dates';
+} from '../domain/markdown/taskDraft';
+import { nameDay, parseDatePhrase } from '../domain/markdown/dates';
 
 /** A Monday, so a weekday answer is easy to read. */
 const now = new Date(2026, 8, 21, 9, 0, 0).getTime();

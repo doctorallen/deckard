@@ -7,7 +7,7 @@
  * canonical representation.
  */
 
-import type { QueryDiagnostic, QueryField, QueryOperator } from '../../domain/model/query';
+import type { QueryDiagnostic, QueryField, QueryOperator } from '../model/query';
 
 /**
  * The query shapes a page's snapshot carries live in the domain model, where
@@ -30,7 +30,7 @@ export type {
   QueryTermChip,
   QueryViewState,
   TagReferenceLike,
-} from '../../domain/model/query';
+} from '../model/query';
 
 export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',

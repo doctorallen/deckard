@@ -1,12 +1,12 @@
-import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../core/workspace/parked';
-import { stripTags } from '../../core/markdown/parser';
+import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../domain/index/parked';
+import { stripTags } from '../../domain/markdown/parser';
 import {
   countTagMatches,
   countTagPairMatches,
   evaluateQuery,
-} from '../../core/query/queryEvaluator';
-import { parseQuery } from '../../core/query/queryParser';
-import { QueryContext } from '../../core/query/queryContext';
+} from '../../domain/query/queryEvaluator';
+import { parseQuery } from '../../domain/query/queryParser';
+import { QueryContext } from '../../domain/query/queryContext';
 import {
   DashboardTryNext,
   DashboardWidget,
@@ -17,7 +17,7 @@ import {
   TagTitleDisplayMode,
   WorkspaceIndex,
 } from '../../core/types';
-import { formatLocalDate, listDailyNotes } from '../../core/workspace/periodicNotes';
+import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { createAgenda, selectAgendaTasks } from './agendaState';
 import {
   createDashboardSavedFilters,

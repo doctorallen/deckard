@@ -1,5 +1,5 @@
-import { stripTags } from '../../core/markdown/parser';
-import { getFileName, getFolder } from '../../core/paths';
+import { stripTags } from '../../domain/markdown/parser';
+import { getFileName, getFolder } from '../../shared/paths';
 import { pinKey } from '../../core/storage/preferences';
 import { PinnedNote, Section, WorkspaceIndex } from '../../core/types';
 

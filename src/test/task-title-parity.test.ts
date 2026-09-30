@@ -2,10 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { PersistedPreferences } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseQueryBlockInfo } from '../ui/state/queryBlockState';
 import {
   createDashboardSnapshot,
@@ -18,7 +18,7 @@ import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /**
  * A contract, held across every surface at once: a task's title is Markdown

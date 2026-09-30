@@ -1,18 +1,18 @@
 import type { Disposable } from '../../ports/events';
 import type { Progress, ProgressReport } from '../../ports/progress';
 import type { ResourceUri } from '../../ports/uri';
-import { Emitter } from '../emitter';
+import { Emitter } from '../../shared/emitter';
 import {
   EntrySearchOptions,
   EntrySearchResult,
   ScanCounts,
   SearchStore,
 } from '../storage/searchStore';
-import { measure, measureAsync, reportError } from '../timing';
+import { measure, measureAsync, reportError } from '../../shared/timing';
 import { ParsedFile, UnreadableNote, WorkspaceIndex } from '../types';
 import type { ChangeTarget, QueuedChange } from './changeWatcher';
-import { IndexState, NoteChange } from './indexState';
-import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
+import { IndexState, NoteChange } from '../../domain/index/indexState';
+import { computeParked, NO_PARKED_RULES, ParkedRules } from '../../domain/index/parked';
 import { FileStamp, WorkspaceScanner, describeError } from './scanner';
 import type { ViewPublisher } from './viewPublisher';
 

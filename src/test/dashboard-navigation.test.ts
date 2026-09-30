@@ -2,9 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { PreferencesStore } from '../core/storage/preferences';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';

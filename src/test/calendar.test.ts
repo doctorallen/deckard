@@ -2,14 +2,14 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { parseCalendarMessage } from '../ui/webview/messages';
 import { openWebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 suite('Calendar', () => {
   const note = (filePath: string, content: string) =>

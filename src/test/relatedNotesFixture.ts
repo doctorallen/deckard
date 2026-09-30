@@ -1,6 +1,6 @@
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 
 /**
  * A workspace built to measure Related Notes: one oversized daily note with

@@ -4,7 +4,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import {
   collectTaggedEntries,
   createEntryRelatedNotesHoverMessage,

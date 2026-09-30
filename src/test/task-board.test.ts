@@ -21,7 +21,7 @@ import {
   parseTaskBoardMessage,
 } from '../ui/webview/messages';
 import { isAwaitingIndex } from '../ui/webview/taskBoard';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { KeyedDebouncer } from '../../core/debounce';
-import { measure } from '../../core/timing';
+import { KeyedDebouncer } from '../../shared/debounce';
+import { measure } from '../../shared/timing';
 import { findTaskLineMarks } from '../state/taskLineMarks';
 import { readQueryContext } from './queryContext';
 

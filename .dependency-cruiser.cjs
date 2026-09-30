@@ -95,15 +95,15 @@ module.exports = {
       name: 'query-parser-not-to-evaluator',
       severity: 'error',
       comment: 'Parsing a query must not depend on evaluating one; shared date rules go in a module of their own.',
-      from: { path: '^src/core/query/queryParser\\.ts$' },
-      to: { path: '^src/core/query/queryEvaluator\\.ts$' },
+      from: { path: '^src/domain/query/queryParser\\.ts$' },
+      to: { path: '^src/domain/query/queryEvaluator\\.ts$' },
     },
     {
       name: 'query-format-not-to-parser',
       severity: 'error',
       comment: 'Formatting a query must not depend on parsing one.',
-      from: { path: '^src/core/query/queryFormat\\.ts$' },
-      to: { path: '^src/core/query/queryParser\\.ts$' },
+      from: { path: '^src/domain/query/queryFormat\\.ts$' },
+      to: { path: '^src/domain/query/queryParser\\.ts$' },
     },
 
     // ----- Target layers (19-refactor.md §2.1) ------------------------------
@@ -193,10 +193,10 @@ module.exports = {
       archi: {
         // One node per folder under src and src/ui or src/core, which is the
         // level the layer rules speak at.
-        collapsePattern: '^src/(ui|core)/[^/]+|^src/[^/]+',
+        collapsePattern: '^src/(ui|core|domain)/[^/]+|^src/[^/]+',
       },
       dot: {
-        collapsePattern: '^src/(ui|core)/[^/]+|^src/[^/]+',
+        collapsePattern: '^src/(ui|core|domain)/[^/]+|^src/[^/]+',
       },
     },
   },

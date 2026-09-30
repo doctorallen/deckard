@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { StalePreferences } from '../../core/storage/preferences';
-import { pluralize } from '../../core/text';
+import { pluralize } from '../../shared/text';
 import { WorkspaceIndex } from '../../core/types';
 
 /**

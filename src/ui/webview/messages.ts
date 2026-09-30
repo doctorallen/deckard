@@ -1,6 +1,6 @@
 import { isTaskColumnId } from '../state/resultTable';
 import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
-import { isObject } from '../../core/guards';
+import { isObject } from '../../shared/guards';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,

@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
 
-import { listedParkedTags } from '../../core/workspace/parked';
+import { listedParkedTags } from '../../domain/index/parked';
 import { describeMissingTag, reportFailure } from '../commands/notify';
 import { onDidChangePageChrome } from './components';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
-import { formatEntityTitle } from '../../core/markdown/parser';
-import { formatQuery } from '../../core/query/queryFormat';
-import { parseQuery } from '../../core/query/queryParser';
-import { measure } from '../../core/timing';
+import { formatEntityTitle } from '../../domain/markdown/parser';
+import { formatQuery } from '../../domain/query/queryFormat';
+import { parseQuery } from '../../domain/query/queryParser';
+import { measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
 import {
   SearchPageMessage,

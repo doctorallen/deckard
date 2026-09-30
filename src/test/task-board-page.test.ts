@@ -2,13 +2,13 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /**
  * What the Task Board page does with a board, driven as VS Code drives it.

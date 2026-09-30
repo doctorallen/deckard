@@ -12,7 +12,7 @@ import {
   legacyIdOf,
   parseMarkdown,
   stripTags,
-} from '../core/markdown/parser';
+} from '../domain/markdown/parser';
 
 suite('Markdown parser', () => {
   test('gives two entries whose old ids collided ids of their own', () => {

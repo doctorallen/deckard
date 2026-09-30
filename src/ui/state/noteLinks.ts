@@ -1,7 +1,7 @@
-import { isParkedFile } from '../../core/workspace/parked';
-import { describeDistance, formatShortDay } from '../../core/markdown/dates';
-import { formatIsoDate } from '../../core/markdown/taskMetadata';
-import { isPeriodicNoteFile, stripTags } from '../../core/markdown/parser';
+import { isParkedFile } from '../../domain/index/parked';
+import { describeDistance, formatShortDay } from '../../domain/markdown/dates';
+import { formatIsoDate } from '../../domain/markdown/taskMetadata';
+import { isPeriodicNoteFile, stripTags } from '../../domain/markdown/parser';
 import {
   NoteLinkEntry,
   NoteLinkGroup,
@@ -11,7 +11,7 @@ import {
   Section,
   WorkspaceIndex,
 } from '../../core/types';
-import { getBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
+import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getHeadingPath } from './dashboardState';
 import { findUnlinkedMentions } from './editorLensState';
 

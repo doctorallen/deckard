@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   QUERY_SYNTAX_GUIDE,
   answerQuery,
@@ -9,7 +9,7 @@ import {
   readQueryToolInput,
   readTagsToolInput,
 } from '../ui/state/assistantTools';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 function createIndex() {
   const files = [

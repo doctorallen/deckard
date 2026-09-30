@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
-import { extractTagSpans, parseMarkdown } from '../../core/markdown/parser';
-import { KeyedDebouncer } from '../../core/debounce';
-import { escapeMarkdown } from '../../core/text';
-import { measure } from '../../core/timing';
+import { extractTagSpans, parseMarkdown } from '../../domain/markdown/parser';
+import { KeyedDebouncer } from '../../shared/debounce';
+import { escapeMarkdown } from '../../shared/text';
+import { measure } from '../../shared/timing';
 import { ParsedFile } from '../../core/types';
 import { readParseOptions } from './parseSettings';
 import { createPinHoverUri } from './pinNote';

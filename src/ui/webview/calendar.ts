@@ -3,7 +3,7 @@ import { onDidChangePageChrome } from './components';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 
-import { measure } from '../../core/timing';
+import { measure } from '../../shared/timing';
 import { CalendarMessage, WorkspaceIndex } from '../../core/types';
 import {
   chooseTargetFolder,

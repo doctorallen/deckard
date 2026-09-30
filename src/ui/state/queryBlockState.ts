@@ -1,10 +1,10 @@
-import { stripTags } from '../../core/markdown/parser';
-import { getFileName } from '../../core/paths';
-import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
-import { QueryContext } from '../../core/query/queryContext';
-import { parseQuery } from '../../core/query/queryParser';
-import { pluralize } from '../../core/text';
+import { stripTags } from '../../domain/markdown/parser';
+import { getFileName } from '../../shared/paths';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskMetadata';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { QueryContext } from '../../domain/query/queryContext';
+import { parseQuery } from '../../domain/query/queryParser';
+import { pluralize } from '../../shared/text';
 import {
   ParsedFile,
   Section,

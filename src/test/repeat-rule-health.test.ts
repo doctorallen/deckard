@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseRecurrence, suggestRecurrence } from '../core/markdown/taskMetadata';
+import { parseRecurrence, suggestRecurrence } from '../domain/markdown/taskMetadata';
 import {
   describeRepeatRuleProblem,
   findRepeatRuleProblems,

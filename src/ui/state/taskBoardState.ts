@@ -9,13 +9,13 @@ import {
   quoteTask,
   readNamespaceValues,
 } from './tagGrouping';
-import { describeStepParts, foldSteps } from '../../core/markdown/taskSteps';
-import { mentionsParked, withoutParked } from '../../core/workspace/parked';
-import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
-import { needsNewDate } from '../../core/taskPolicy';
-import { QueryContext } from '../../core/query/queryContext';
-import { escapeRegExp } from '../../core/text';
-import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
+import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
+import { mentionsParked, withoutParked } from '../../domain/index/parked';
+import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
+import { needsNewDate } from '../../domain/tasks/taskPolicy';
+import { QueryContext } from '../../domain/query/queryContext';
+import { escapeRegExp } from '../../shared/text';
+import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
 import {
   addDays,
   appendToTaskText,
@@ -29,11 +29,11 @@ import {
   TASK_PRIORITY_RANKS,
   TaskMetadataFormat,
   describeDueDate,
-} from '../../core/markdown/taskMetadata';
-import { extractTags, readPerson } from '../../core/markdown/parser';
-import { findCodeAndLinkRanges, isInRanges } from '../../core/markdown/inlineRanges';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
-import { parseQuery } from '../../core/query/queryParser';
+} from '../../domain/markdown/taskMetadata';
+import { extractTags, readPerson } from '../../domain/markdown/parser';
+import { findCodeAndLinkRanges, isInRanges } from '../../domain/markdown/inlineRanges';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { parseQuery } from '../../domain/query/queryParser';
 import {
   PersistedPreferences,
   TagTitleDisplayMode,

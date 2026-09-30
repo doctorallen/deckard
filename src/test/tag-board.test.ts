@@ -2,15 +2,15 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { parseTaskBoardMessage } from '../ui/webview/messages';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),

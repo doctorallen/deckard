@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { ParsedFile } from '../core/types';
 import { resolveSampleTokens, sampleFileName } from '../ui/commands/sampleWorkspace';
 

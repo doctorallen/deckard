@@ -9,8 +9,8 @@ import {
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
-import { describeDistance, formatShortDay, parseDatePhrase } from '../../core/markdown/dates';
-import { parseIsoDate } from '../../core/markdown/taskMetadata';
+import { describeDistance, formatShortDay, parseDatePhrase } from '../../domain/markdown/dates';
+import { parseIsoDate } from '../../domain/markdown/taskMetadata';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
 import { captureToToday, formatCapture } from './capture';

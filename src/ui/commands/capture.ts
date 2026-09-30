@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import { MessageAction, noteName, reportFailure } from './notify';
 
-import { readCaptureText } from '../../core/markdown/captureWords';
-import { isTaskLineOf, TaskLineShape } from '../../core/markdown/lineShapes';
+import { readCaptureText } from '../../domain/markdown/captureWords';
+import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
 import { readDateOptions } from './datePrompt';
-import { getPersonMarker } from '../../core/markdown/parser';
+import { getPersonMarker } from '../../domain/markdown/parser';
 import { Section, TagInfo } from '../../core/types';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { createPinForLine } from '../state/pinnedNotes';

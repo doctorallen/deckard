@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { Debouncer, KeyedDebouncer } from '../core/debounce';
+import { Debouncer, KeyedDebouncer } from '../shared/debounce';
 
 /** Waits `milliseconds` of real time, since the debouncers use real timers. */
 function wait(milliseconds: number): Promise<void> {

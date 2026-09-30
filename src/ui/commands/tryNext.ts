@@ -2,9 +2,9 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { noteTitle } from '../../core/workspace/backlinks';
+import { noteTitle } from '../../domain/index/backlinks';
 import { PersistedPreferences, WorkspaceIndex } from '../../core/types';
-import { Weekday } from '../../core/markdown/dates';
+import { Weekday } from '../../domain/markdown/dates';
 import { findTagMergeCandidates } from '../state/tagHygiene';
 import {
   chooseTryNext,

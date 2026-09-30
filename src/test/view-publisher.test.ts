@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { setTimingLog } from '../core/timing';
+import { setTimingLog } from '../shared/timing';
 import type { WorkspaceIndex } from '../core/types';
 import { ViewPublisher } from '../core/workspace/viewPublisher';
 

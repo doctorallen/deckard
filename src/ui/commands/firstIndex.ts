@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { QueryContext } from '../../core/query/queryContext';
-import { pluralize } from '../../core/text';
+import { QueryContext } from '../../domain/query/queryContext';
+import { pluralize } from '../../shared/text';
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda } from '../state/agendaState';
 import { openSettingAction, settingLabel } from './notify';

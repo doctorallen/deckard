@@ -17,4 +17,4 @@ export function normalizeFolder(value: string): string {
 }
 
 // The one copy lives in core/text, beside the other text helpers.
-export { escapeRegExp } from '../text';
+export { escapeRegExp } from '../../shared/text';

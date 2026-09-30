@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { isObject, isRecord } from '../core/guards';
+import { isObject, isRecord } from '../shared/guards';
 
 suite('Type guards', () => {
   test('isRecord accepts a plain object and refuses an array', () => {

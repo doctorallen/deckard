@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import {
   CREATE_LINKED_NOTE_COMMAND,

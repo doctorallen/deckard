@@ -1,4 +1,4 @@
-import { TaskColumnId } from './types';
+import { TaskColumnId } from '../model';
 
 /** A column a task table can show, with the names a query may call it by. */
 export interface TaskColumn {

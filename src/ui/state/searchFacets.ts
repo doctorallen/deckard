@@ -1,27 +1,27 @@
-import { formatMonthName } from '../../core/markdown/dates';
-import { countLinkTargets, resolveLinkQuery } from '../../core/query/queryLinks';
+import { formatMonthName } from '../../domain/markdown/dates';
+import { countLinkTargets, resolveLinkQuery } from '../../domain/query/queryLinks';
 import {
   collectQueryTagKeys,
   quoteValue,
   visitConditions,
-} from '../../core/query/queryFormat';
-import { parseQuery } from '../../core/query/queryParser';
-import { QueryFacet, QueryFacetValue } from '../../core/query/queryTypes';
+} from '../../domain/query/queryFormat';
+import { parseQuery } from '../../domain/query/queryParser';
+import { QueryFacet, QueryFacetValue } from '../../domain/query/queryTypes';
 import {
   ParsedFile,
   Section,
   Task,
   WorkspaceIndex,
 } from '../../core/types';
-import { noteTitle } from '../../core/workspace/backlinks';
+import { noteTitle } from '../../domain/index/backlinks';
 import {
   isParkedFile,
   isParkedOnlyTag,
   isParkedSection,
   isParkedTask,
   mentionsParked,
-} from '../../core/workspace/parked';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+} from '../../domain/index/parked';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 
 /**
  * Counts what a set of results could still be narrowed by.

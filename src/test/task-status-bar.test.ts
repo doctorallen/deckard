@@ -2,9 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   countDueTasks,
   describeDueTasks,
@@ -15,7 +15,7 @@ import {
   REMINDER_DATE_KEY,
   TaskStatusBar,
 } from '../ui/views/taskStatusBar';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(

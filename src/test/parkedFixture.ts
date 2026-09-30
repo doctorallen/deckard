@@ -1,9 +1,9 @@
 import picomatch = require('picomatch');
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { computeParked, ParkedRules, toParkedTagKey } from '../core/workspace/parked';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { computeParked, ParkedRules, toParkedTagKey } from '../domain/index/parked';
 
 /** Rules as the settings would give them: tags as written, folder globs. */
 export function parkedRules(options: { tags?: string[]; folders?: string[] } = {}): ParkedRules {

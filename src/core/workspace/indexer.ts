@@ -19,9 +19,9 @@ import { ChangeWatcher } from './changeWatcher';
 import { IndexService, IndexServiceOptions, RefreshOptions } from './indexService';
 import { ViewUpdateOptions } from './publishing';
 import { ViewPublisher } from './viewPublisher';
-import { ParkedRules } from './parked';
+import { ParkedRules } from '../../domain/index/parked';
 
-export { buildWorkspaceIndex } from './indexState';
+export { buildWorkspaceIndex } from '../../domain/index/indexState';
 
 /** What the indexer can be given beyond its scanner and cache. */
 export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> extends IndexServiceOptions {

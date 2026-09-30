@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { Debouncer } from '../../core/debounce';
+import { Debouncer } from '../../shared/debounce';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { measure } from '../../core/timing';
+import { measure } from '../../shared/timing';
 import { writeSetting } from '../commands/settings';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
@@ -16,7 +16,7 @@ import {
   mapOutlineParents,
   OutlineNode,
 } from '../state/outlineState';
-import { getBacklinkIndex } from '../../core/workspace/backlinks';
+import { getBacklinkIndex } from '../../domain/index/backlinks';
 import { revealLine } from '../commands/navigation';
 import { reportFailure } from '../commands/notify';
 

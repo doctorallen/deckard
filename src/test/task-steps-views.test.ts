@@ -2,10 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createAgenda } from '../ui/state/agendaState';
 import { createDashboardTask, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
@@ -13,7 +13,7 @@ import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const NOTE = [
   '# Offsite',

@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { describeSteps } from '../../core/markdown/taskSteps';
-import { escapeMarkdown } from '../../core/text';
-import { QueryContext } from '../../core/query/queryContext';
+import { describeSteps } from '../../domain/markdown/taskSteps';
+import { escapeMarkdown } from '../../shared/text';
+import { QueryContext } from '../../domain/query/queryContext';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { stripTrailingTags } from '../state/queryBlockState';
 import { resolveSourceUri } from '../commands/navigation';

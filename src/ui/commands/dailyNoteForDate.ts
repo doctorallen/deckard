@@ -6,8 +6,8 @@ import {
   describeDistance,
   formatShortDay,
   parseDatePhrase,
-} from '../../core/markdown/dates';
-import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../core/markdown/taskMetadata';
+} from '../../domain/markdown/dates';
+import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../domain/markdown/taskMetadata';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   chooseWorkspaceFolder,

@@ -1,8 +1,8 @@
-import { formatIsoDate } from '../../core/markdown/taskMetadata';
-import { isObject } from '../../core/guards';
-import { pluralize } from '../../core/text';
+import { formatIsoDate } from '../../domain/markdown/taskMetadata';
+import { isObject } from '../../shared/guards';
+import { pluralize } from '../../shared/text';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
-import { QueryContext } from '../../core/query/queryContext';
+import { QueryContext } from '../../domain/query/queryContext';
 import {
   getQueryBlockSnapshot,
   QueryBlockItem,

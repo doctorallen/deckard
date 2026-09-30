@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 
-import { reportError } from '../timing';
+import { reportError } from '../../shared/timing';
 import { SearchWorkerReply, SearchWorkerRequest } from './searchStoreWorker';
 
 /**

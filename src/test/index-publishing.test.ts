@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { Emitter } from '../core/emitter';
-import { setTimingLog, TimingLog } from '../core/timing';
+import { Emitter } from '../shared/emitter';
+import { setTimingLog, TimingLog } from '../shared/timing';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import {
   onIndexUpdateInTurn,

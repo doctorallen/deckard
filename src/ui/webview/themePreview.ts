@@ -1,4 +1,4 @@
-import { Emitter } from '../../core/emitter';
+import { Emitter } from '../../shared/emitter';
 import type { Event } from '../../ports/events';
 import type { DeckardTheme } from './themeNames';
 

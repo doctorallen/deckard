@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   collectExcludePatterns,
   createExcludeMatcher,
@@ -14,7 +14,7 @@ import { FileStat, FileType } from '../ports/fileSystem';
 import type { ResourceUri } from '../ports/uri';
 import type { FolderPattern } from '../ports/workspace';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
-import { setTimingLog } from '../core/timing';
+import { setTimingLog } from '../shared/timing';
 import {
   createFakeAccess,
   fakeFolder,
@@ -24,7 +24,7 @@ import {
   joinUri,
 } from './fakeWorkspace';
 import { normalizeIndex } from './normalizeIndex';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const defaultPreferences = {
   searchPageSize: 30 as const,

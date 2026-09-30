@@ -2,12 +2,12 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { findBlockIds, findFencedLines, parseMarkdown } from '../core/markdown/parser';
+import { findBlockIds, findFencedLines, parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import {
   buildBacklinkIndex,
   parseWikiTarget,
-} from '../core/workspace/backlinks';
+} from '../domain/index/backlinks';
 import {
   findWikiLinkTargets,
   getBlockCompletionContext,

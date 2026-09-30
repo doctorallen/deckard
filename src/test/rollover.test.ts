@@ -4,10 +4,10 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { markMigrated } from '../core/markdown/taskMetadata';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { markMigrated } from '../domain/markdown/taskMetadata';
 import {
   applyRollover,
   describeRollover,

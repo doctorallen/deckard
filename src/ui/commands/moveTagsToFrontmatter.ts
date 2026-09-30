@@ -8,12 +8,12 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   isBuiltInEntityKind,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import {
   getFrontmatterBounds,
   splitValues,
   unquote,
-} from '../../core/markdown/frontmatterTags';
+} from '../../domain/markdown/frontmatterTags';
 import { TagReference } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 

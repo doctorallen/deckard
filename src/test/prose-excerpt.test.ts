@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { formatExcerpt, readProseLines } from '../core/markdown/proseExcerpt';
+import { formatExcerpt, readProseLines } from '../domain/markdown/proseExcerpt';
 import { parseSidebarMessage } from '../ui/webview/messages';
 
 suite('Prose excerpts', () => {

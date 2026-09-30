@@ -4,7 +4,7 @@ import {
   BLOCK_ID_PATTERN,
   findFencedLines,
   parseMarkdown,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -12,7 +12,7 @@ import {
   noteTitle,
   parseWikiTarget,
   resolveWikiTarget,
-} from '../../core/workspace/backlinks';
+} from '../../domain/index/backlinks';
 import { createPreviewSourceHref } from './queryBlockHtml';
 import { escapeHtml } from '../../shared/html';
 

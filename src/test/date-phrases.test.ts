@@ -7,8 +7,8 @@ import {
   parseDatePhrase,
   resolveDatePeriod,
   startOfWeek,
-} from '../core/markdown/dates';
-import { formatIsoDate } from '../core/markdown/taskMetadata';
+} from '../domain/markdown/dates';
+import { formatIsoDate } from '../domain/markdown/taskMetadata';
 import { localeWeekStart, numericOrderFor } from '../ui/commands/datePrompt';
 
 suite('Dates in plain words', () => {

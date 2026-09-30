@@ -2,9 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   createDashboardSnapshot,
   createSearchPageSnapshot,
@@ -15,7 +15,7 @@ import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
 class MemoryMemento implements vscode.Memento {

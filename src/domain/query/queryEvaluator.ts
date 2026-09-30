@@ -1,6 +1,6 @@
-import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../taskPolicy';
+import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../tasks/taskPolicy';
 import { DAY_MS, startOfDay } from '../markdown/calendar';
-import { getFileName } from '../paths';
+import { getFileName } from '../../shared/paths';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
@@ -9,8 +9,8 @@ import {
   Task,
   TaskPriority,
   WorkspaceIndex,
-} from '../types';
-import { resolveIndexedTagKey } from '../workspace/tagNavigation';
+} from '../model';
+import { resolveIndexedTagKey } from '../index/tagNavigation';
 import {
   getQueryLinkState,
   LinkQuery,

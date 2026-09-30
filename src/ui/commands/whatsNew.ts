@@ -8,7 +8,7 @@ import {
   releasesWithHighlights,
   shortVersion,
 } from '../../core/changelog';
-import { reportError } from '../../core/timing';
+import { reportError } from '../../shared/timing';
 
 /**
  * What is new since the reader last ran Deckard.

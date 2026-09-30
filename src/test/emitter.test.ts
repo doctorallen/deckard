@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { Emitter } from '../core/emitter';
+import { Emitter } from '../shared/emitter';
 import type { Disposable } from '../ports/events';
 
 suite('Emitter', () => {

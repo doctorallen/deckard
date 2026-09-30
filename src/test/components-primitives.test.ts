@@ -2,9 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCss, getZenCss } from '../ui/webview/components';
@@ -15,7 +15,7 @@ import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { renderablePages } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,

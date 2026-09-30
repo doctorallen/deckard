@@ -1,4 +1,4 @@
-import { Task } from './types';
+import { Task } from '../model';
 
 /**
  * How Deckard reads tasks, from settings.

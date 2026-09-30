@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
 
 suite('Tag navigation', () => {
   test('resolves canonical and markerless namespaced keys', () => {

@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
-import { setTimingLog } from './core/timing';
+import { setTimingLog } from './shared/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { WorkspaceScanner } from './core/workspace/scanner';
 import { createVscodeProgress } from './platform/vscodeProgress';

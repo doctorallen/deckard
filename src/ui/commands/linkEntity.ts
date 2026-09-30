@@ -4,7 +4,7 @@ import {
   extractTags,
   getPersonMarker,
   stripTags,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import { Entity, EntityKind } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { isMarkdownFile } from '../../core/workspace/scanner';

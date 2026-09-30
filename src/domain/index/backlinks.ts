@@ -1,5 +1,5 @@
 import { findFencedLines, stripTags } from '../markdown/parser';
-import { ParsedFile, Section, WorkspaceIndex } from '../types';
+import { ParsedFile, Section, WorkspaceIndex } from '../model';
 
 /**
  * Wiki links between notes, found once per index so the editor can count and

@@ -8,12 +8,12 @@ import {
 } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
 import { createTaskGlance } from '../ui/state/dashboardState';
 import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();

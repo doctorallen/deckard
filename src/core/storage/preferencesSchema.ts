@@ -7,8 +7,8 @@
  * format can be tested without a store. `PreferencesRepository` reads and
  * writes through it, and every write passes through `normalizePreferences`.
  */
-import { legacyIdOf } from '../markdown/parser';
-import { isTaskColumnId } from '../taskColumns';
+import { legacyIdOf } from '../../domain/markdown/parser';
+import { isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
   DashboardColumnCount,
   DashboardViewState,

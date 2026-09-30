@@ -1,18 +1,18 @@
 import {
   findDailyNoteDate,
   findFencedLines,
-} from '../../core/markdown/parser';
-import { findCodeAndLinkRanges } from '../../core/markdown/inlineRanges';
-import { escapeRegExp } from '../../core/text';
+} from '../../domain/markdown/parser';
+import { findCodeAndLinkRanges } from '../../domain/markdown/inlineRanges';
+import { escapeRegExp } from '../../shared/text';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   noteTitle,
   parseWikiTarget,
   resolveWikiTarget,
-} from '../../core/workspace/backlinks';
-import { findAdjacentDailyNote, listDailyNotes } from '../../core/workspace/periodicNotes';
-import { planRollover } from '../../core/workspace/rolloverPlan';
+} from '../../domain/index/backlinks';
+import { findAdjacentDailyNote, listDailyNotes } from '../../domain/notes/periodicNotes';
+import { planRollover } from '../../domain/notes/rolloverPlan';
 import { createSourceParser, findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
 
 /**

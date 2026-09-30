@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
 
-import { KeyedDebouncer } from '../../core/debounce';
-import { matchTaskLine, TaskLineShape } from '../../core/markdown/lineShapes';
-import { findFencedLines } from '../../core/markdown/parser';
+import { KeyedDebouncer } from '../../shared/debounce';
+import { matchTaskLine, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { findFencedLines } from '../../domain/markdown/parser';
 import {
   findTaskMetadataSpans,
   parseRecurrence,
   suggestRecurrence,
-} from '../../core/markdown/taskMetadata';
-import { measure } from '../../core/timing';
+} from '../../domain/markdown/taskMetadata';
+import { measure } from '../../shared/timing';
 
 /** An open task's repeat rule Deckard cannot read. */
 export interface RepeatRuleProblem {

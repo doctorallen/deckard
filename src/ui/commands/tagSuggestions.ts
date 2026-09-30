@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 
-import { findFencedLines, hasAtxHeadingClosingHashes } from '../../core/markdown/parser';
-import { isInCodeOrLink } from '../../core/markdown/inlineRanges';
+import { findFencedLines, hasAtxHeadingClosingHashes } from '../../domain/markdown/parser';
+import { isInCodeOrLink } from '../../domain/markdown/inlineRanges';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 import { whenPublished } from '../../core/workspace/publishing';
-import { isParkedFile, isParkedOnlyTag } from '../../core/workspace/parked';
+import { isParkedFile, isParkedOnlyTag } from '../../domain/index/parked';
 import { readPersonMarker } from './parseSettings';
 
 interface TagIndexSource {

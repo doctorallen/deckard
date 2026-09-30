@@ -1,6 +1,6 @@
 import type { Disposable, Event } from '../../ports/events';
-import { Emitter } from '../emitter';
-import { measure, reportError } from '../timing';
+import { Emitter } from '../../shared/emitter';
+import { measure, reportError } from '../../shared/timing';
 import type { WorkspaceIndex } from '../types';
 import type { ViewUpdateOptions } from './publishing';
 

@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 
 import { listOverdueTasks } from './agendaTree';
 
-import { QueryContext } from '../../core/query/queryContext';
-import { escapeMarkdown } from '../../core/text';
+import { QueryContext } from '../../domain/query/queryContext';
+import { escapeMarkdown } from '../../shared/text';
 import { WorkspaceIndex } from '../../core/types';
 import { readQueryContext } from '../commands/queryContext';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';

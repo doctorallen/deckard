@@ -1,7 +1,7 @@
 import type MarkdownIt from 'markdown-it';
 
-import { formatIsoDate, describeDueDate } from '../../core/markdown/taskMetadata';
-import { QueryContext } from '../../core/query/queryContext';
+import { formatIsoDate, describeDueDate } from '../../domain/markdown/taskMetadata';
+import { QueryContext } from '../../domain/query/queryContext';
 import { WorkspaceIndex } from '../../core/types';
 import {
   getQueryBlockSnapshot,

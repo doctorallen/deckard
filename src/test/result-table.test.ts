@@ -7,7 +7,7 @@ import {
   parseTaskColumns,
   TableTask,
 } from '../ui/state/resultTable';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();

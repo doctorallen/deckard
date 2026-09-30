@@ -6,8 +6,8 @@ import {
   PreferenceSnapshot,
   PreferenceSnapshots,
 } from '../../core/storage/preferenceSnapshots';
-import { isRecord } from '../../core/guards';
-import { pluralize } from '../../core/text';
+import { isRecord } from '../../shared/guards';
+import { pluralize } from '../../shared/text';
 import { PersistedPreferences } from '../../core/types';
 import { reportFailure } from './notify';
 

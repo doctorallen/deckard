@@ -1,12 +1,12 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { layoutTaskBoard, resolveTaskMove } from '../ui/state/taskBoardState';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const notes = {
   'notes/atlas.md': [

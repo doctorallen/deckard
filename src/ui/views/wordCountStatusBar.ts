@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 
-import { Debouncer } from '../../core/debounce';
+import { Debouncer } from '../../shared/debounce';
 import {
   countNoteWords,
   describeWordCount,
   maskNoteForWords,
-} from '../../core/markdown/wordCount';
+} from '../../domain/markdown/wordCount';
 
 const RECOUNT_DELAY_MS = 250;
 

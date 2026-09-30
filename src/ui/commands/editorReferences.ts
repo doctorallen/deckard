@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
 
-import { extractTagSpans, findFencedLines } from '../../core/markdown/parser';
-import { escapeMarkdown, pluralize } from '../../core/text';
-import { measure } from '../../core/timing';
+import { extractTagSpans, findFencedLines } from '../../domain/markdown/parser';
+import { escapeMarkdown, pluralize } from '../../shared/text';
+import { measure } from '../../shared/timing';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 import {
   BacklinkIndex,
   buildBacklinkIndex,
   findWikiLinkAt,
   WikiLinkOccurrence,
-} from '../../core/workspace/backlinks';
+} from '../../domain/index/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   countSharedTagEntries,

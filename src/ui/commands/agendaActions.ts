@@ -6,8 +6,8 @@ import {
   setTaskDate,
   startOfDay,
   TASK_PRIORITY_RANKS,
-} from '../../core/markdown/taskMetadata';
-import { pluralize } from '../../core/text';
+} from '../../domain/markdown/taskMetadata';
+import { pluralize } from '../../shared/text';
 import { Task } from '../../core/types';
 import { applyBulkEdit, reportBulkEditResult } from './bulkEdit';
 import { askForDate } from './datePrompt';

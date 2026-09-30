@@ -4,7 +4,7 @@ import {
   addFrontmatterTag,
   readFrontmatterTagValues,
   removeFrontmatterTags,
-} from '../core/markdown/frontmatterTags';
+} from '../domain/markdown/frontmatterTags';
 
 suite('Front matter tags', () => {
   test('adds a front matter to a note that has none', () => {

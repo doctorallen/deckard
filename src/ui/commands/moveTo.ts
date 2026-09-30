@@ -11,13 +11,13 @@ import {
   MoveRefusalReason,
   readMoveBlock,
   TextSplice,
-} from '../../core/markdown/moveLines';
-import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
-import { parseTaskDraft } from '../../core/markdown/taskDraft';
-import { stripTags } from '../../core/markdown/parser';
+} from '../../domain/markdown/moveLines';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { parseTaskDraft } from '../../domain/markdown/taskDraft';
+import { stripTags } from '../../domain/markdown/parser';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { Section, Task } from '../../core/types';
-import { noteTitle } from '../../core/workspace/backlinks';
+import { noteTitle } from '../../domain/index/backlinks';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { createPinForLine } from '../state/pinnedNotes';
 import { findSameSection, getCaptureInsertion } from './capture';

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { ParsedFile, WorkspaceIndex } from '../../core/types';
-import { noteTitle } from '../../core/workspace/backlinks';
+import { noteTitle } from '../../domain/index/backlinks';
 import { findUnlinkedMentions } from '../state/editorLensState';
 import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory } from './workspaceWrites';

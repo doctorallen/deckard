@@ -4,7 +4,7 @@ import {
   findDailyNoteDate,
   isPeriodicNoteFile,
   isPeriodicNotePath,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import { onDidChangePageChrome } from './components';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
@@ -16,8 +16,8 @@ import {
   SidebarGraphContext,
   WorkspaceIndex,
 } from '../../core/types';
-import { logTrace, measure } from '../../core/timing';
-import { noteTitle } from '../../core/workspace/backlinks';
+import { logTrace, measure } from '../../shared/timing';
+import { noteTitle } from '../../domain/index/backlinks';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openResultAt, openSourceAt } from '../commands/navigation';
 import {

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { readCaptureText } from '../core/markdown/captureWords';
+import { readCaptureText } from '../domain/markdown/captureWords';
 import { formatNoteLine } from '../ui/commands/capture';
 
 suite('Capture reads its last words', () => {

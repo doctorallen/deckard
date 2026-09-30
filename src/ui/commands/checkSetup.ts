@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
-import { getPersonMarker } from '../../core/markdown/parser';
-import { matchesPerson } from '../../core/query/queryEvaluator';
-import { pluralize } from '../../core/text';
+import { getPersonMarker } from '../../domain/markdown/parser';
+import { matchesPerson } from '../../domain/query/queryEvaluator';
+import { pluralize } from '../../shared/text';
 import { UnreadableNote, WorkspaceIndex } from '../../core/types';
 import { WorkspaceScanner } from '../../core/workspace/scanner';
 

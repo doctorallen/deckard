@@ -15,7 +15,7 @@ import {
   McpTool,
   PARSE_ERROR,
 } from '../../core/mcp/mcpProtocol';
-import { measure, measureAsync } from '../../core/timing';
+import { measure, measureAsync } from '../../shared/timing';
 import { writeSetting } from './settings';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { WorkspaceIndex } from '../../core/types';

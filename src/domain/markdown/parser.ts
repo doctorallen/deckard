@@ -7,7 +7,7 @@ import {
   Section,
   TagReference,
   Task,
-} from '../types';
+} from '../model';
 import {
   BLOCK_ID_PATTERN,
   MIGRATED_TASK_LINE,

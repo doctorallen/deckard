@@ -7,19 +7,19 @@ import {
   fromBuilderTree,
   getQueryTagIntersection,
   toBuilderTree,
-} from '../core/query/queryFormat';
-import { parseQuery } from '../core/query/queryParser';
-import { hasAvailableTerm, toggleAvailable } from '../core/query/queryEdit';
+} from '../domain/query/queryFormat';
+import { parseQuery } from '../domain/query/queryParser';
+import { hasAvailableTerm, toggleAvailable } from '../domain/query/queryEdit';
 import {
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
-} from '../core/query/queryTypes';
+} from '../domain/query/queryTypes';
 import {
   evaluateQuery,
   resolveDateRange,
-} from '../core/query/queryEvaluator';
-import { formatIsoDate, startOfDay } from '../core/markdown/taskMetadata';
-import { startOfWeek, Weekday } from '../core/markdown/dates';
+} from '../domain/query/queryEvaluator';
+import { formatIsoDate, startOfDay } from '../domain/markdown/taskMetadata';
+import { startOfWeek, Weekday } from '../domain/markdown/dates';
 import {
   ParsedFile,
   PersistedPreferences,
@@ -31,7 +31,7 @@ import {
 import {
   createSearchPageSnapshot,
 } from '../ui/state/dashboardState';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {

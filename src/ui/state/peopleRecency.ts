@@ -1,11 +1,11 @@
-import { isPersonTag } from '../../core/markdown/parser';
+import { isPersonTag } from '../../domain/markdown/parser';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
 import {
   isParkedFile,
   isParkedOnlyTag,
   isParkedSection,
   isParkedTask,
-} from '../../core/workspace/parked';
+} from '../../domain/index/parked';
 
 /**
  * When each person, or any tag of a namespace, was last written about, and

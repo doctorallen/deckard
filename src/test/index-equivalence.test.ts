@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { ParsedFile } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { createEntityKindMemo, IndexState, NoteChange } from '../core/workspace/indexState';
-import { getEntityKind } from '../core/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createEntityKindMemo, IndexState, NoteChange } from '../domain/index/indexState';
+import { getEntityKind } from '../domain/markdown/parser';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { buildLegacyWorkspaceIndex } from './fixtures/legacyWorkspaceIndex';
 import {

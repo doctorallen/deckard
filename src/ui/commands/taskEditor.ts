@@ -5,14 +5,14 @@ import {
   extractTags,
   isPersonTag,
   readPerson,
-} from '../../core/markdown/parser';
-import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../core/markdown/dates';
+} from '../../domain/markdown/parser';
+import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../domain/markdown/dates';
 import {
   formatTaskDraft,
   isTaskLine,
   parseTaskDraft,
   TaskDraft,
-} from '../../core/markdown/taskDraft';
+} from '../../domain/markdown/taskDraft';
 import {
   CompletionWrite,
   formatIsoDate,
@@ -20,9 +20,9 @@ import {
   suggestRecurrence,
   TaskDateField,
   writeCompletion,
-} from '../../core/markdown/taskMetadata';
+} from '../../domain/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
-import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
+import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { askForDate } from './datePrompt';
 import { showQuickPickUntilHidden } from './prompts';

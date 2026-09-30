@@ -5,7 +5,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   stripTags,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import { Section, Task } from '../../core/types';
 import {
   applyBulkEdit,

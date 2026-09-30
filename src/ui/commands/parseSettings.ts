@@ -4,7 +4,7 @@ import {
   EntityNamespaceAliases,
   getEntityNamespaceAliases,
   getPersonMarker,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 
 /**
  * The settings that decide how a line's tags are read, as the editor's

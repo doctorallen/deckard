@@ -4,13 +4,13 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import {
   buildBacklinkIndex,
   findWikiLinkAt,
-} from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+} from '../domain/index/backlinks';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { EditorReferences } from '../ui/commands/editorReferences';
 import {
   countSharedTagEntries,

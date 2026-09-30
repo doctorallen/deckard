@@ -10,7 +10,7 @@ import {
   summarizeReview,
   writeReviewInto,
 } from '../state/reviewState';
-import { formatIsoDate } from '../../core/markdown/taskMetadata';
+import { formatIsoDate } from '../../domain/markdown/taskMetadata';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
@@ -21,7 +21,7 @@ import {
   NotePeriod,
   parseLocalDate,
 } from './dailyNote';
-import { Weekday } from '../../core/markdown/dates';
+import { Weekday } from '../../domain/markdown/dates';
 import { readWeekStart } from './datePrompt';
 import { readQueryContext } from './queryContext';
 import { revealLine } from './navigation';

@@ -4,15 +4,15 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { createNextOccurrence, parseRecurrence } from '../core/markdown/taskMetadata';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { QUERY_FIELDS, QUERY_HAS_VALUES, QUERY_IS_VALUES, QueryNode } from '../core/query/queryTypes';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createNextOccurrence, parseRecurrence } from '../domain/markdown/taskMetadata';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { QUERY_FIELDS, QUERY_HAS_VALUES, QUERY_IS_VALUES, QueryNode } from '../domain/query/queryTypes';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
-import { findMissingLinkTargets } from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { computeParked } from '../core/workspace/parked';
+import { findMissingLinkTargets } from '../domain/index/backlinks';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { computeParked } from '../domain/index/parked';
 import { listDailyNotes } from '../ui/commands/dailyNote';
 import {
   getSampleStorageUri,
@@ -26,7 +26,7 @@ import {
 import { createAgenda } from '../ui/state/agendaState';
 import { rankSimilarWording } from '../ui/state/relatedNotesRanking';
 import { findTagLookalikes, findTagMergeCandidates } from '../ui/state/tagHygiene';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 suite('Sample workspace', () => {
   const extensionUri = vscode.Uri.file(path.resolve(__dirname, '..', '..'));

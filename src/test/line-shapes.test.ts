@@ -7,7 +7,7 @@ import {
   matchHeading,
   matchTaskLine,
   TaskLineShape,
-} from '../core/markdown/lineShapes';
+} from '../domain/markdown/lineShapes';
 
 /** Which of `lines` a shape accepts. */
 function accepted(shape: TaskLineShape, lines: readonly string[]): string[] {

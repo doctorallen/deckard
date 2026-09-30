@@ -3,13 +3,13 @@ import * as vscode from 'vscode';
 import {
   parseTaskDraft,
   TaskDraft,
-} from '../../core/markdown/taskDraft';
+} from '../../domain/markdown/taskDraft';
 import {
   CompletionWrite,
   formatIsoDate,
   TaskMetadataFormat,
-} from '../../core/markdown/taskMetadata';
-import { isRecord } from '../../core/guards';
+} from '../../domain/markdown/taskMetadata';
+import { isRecord } from '../../shared/guards';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { formatCaptureLine, getCaptureInsertion } from './capture';
 import { ensureDailyNote } from './dailyNote';

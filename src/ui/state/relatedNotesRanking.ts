@@ -5,7 +5,7 @@
  * score, and a more specific entry outranks the broad heading it sits under.
  */
 
-import { isParkedFile, isParkedSection, isParkedTask } from '../../core/workspace/parked';
+import { isParkedFile, isParkedSection, isParkedTask } from '../../domain/index/parked';
 import {
   ParsedFile,
   RelatedNotesSortMode,
@@ -26,9 +26,9 @@ import {
   isPeriodicNoteFile,
   isPersonTag,
   stripTags,
-} from '../../core/markdown/parser';
-import { getFileName } from '../../core/paths';
-import { countTagMatches } from '../../core/query/queryEvaluator';
+} from '../../domain/markdown/parser';
+import { getFileName } from '../../shared/paths';
+import { countTagMatches } from '../../domain/query/queryEvaluator';
 import {
   findTagAssociation,
   getHeadingPath,

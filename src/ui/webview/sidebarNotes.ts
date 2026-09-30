@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 
-import { listedParkedTags } from '../../core/workspace/parked';
+import { listedParkedTags } from '../../domain/index/parked';
 import { onDidChangePageChrome } from './components';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 
 import { PreferencesStore } from '../../core/storage/preferences';
-import { logTrace, measure } from '../../core/timing';
+import { logTrace, measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { refineQueryText } from '../../core/query/queryEdit';
+import { refineQueryText } from '../../domain/query/queryEdit';
 import {
   LinkMentionMessage,
   ParsedFile,
@@ -30,8 +30,8 @@ import { createWikiLink, insertWikiLink } from '../commands/insertLink';
 import { openSourceAt, resolveSourceUri } from '../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../commands/notify';
 import { appendTagToLine } from '../commands/bulkEdit';
-import { findTagTarget } from '../../core/markdown/tagTarget';
-import { getEntityNamespaceAliases, getPersonMarker } from '../../core/markdown/parser';
+import { findTagTarget } from '../../domain/markdown/tagTarget';
+import { getEntityNamespaceAliases, getPersonMarker } from '../../domain/markdown/parser';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveCalendar } from './activeCalendar';
 import { ActiveHome } from './activeHome';

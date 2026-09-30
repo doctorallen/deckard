@@ -13,9 +13,9 @@ import {
   NoteBoundaries,
   parseMarkdown,
   PARSE_FORMAT,
-} from '../markdown/parser';
-import { reportError } from '../timing';
-import { ParkedRules, toParkedTagKey } from './parked';
+} from '../../domain/markdown/parser';
+import { reportError } from '../../shared/timing';
+import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
 import { ParsedFile,
   UnreadableNote,
 } from '../types';

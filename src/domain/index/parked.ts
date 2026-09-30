@@ -1,5 +1,5 @@
 import { QueryNode } from '../query/queryTypes';
-import { ParkedState, ParsedFile, Section, Task, WorkspaceIndex } from '../types';
+import { ParkedState, ParsedFile, Section, Task, WorkspaceIndex } from '../model';
 
 export type { ParkedState };
 

@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery, readTaskTagKeys } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery, readTaskTagKeys } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
 import { Task, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   formatNamespaceValue,
   listTaskNamespaces,
@@ -16,7 +16,7 @@ import * as vscode from 'vscode';
 
 import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider, groupColumnId } from '../ui/views/agendaTree';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),

@@ -2,16 +2,16 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 import { reportFailure, reportNeedsFolder } from './notify';
 
-import { findFencedLines } from '../../core/markdown/parser';
-import { pluralize } from '../../core/text';
-import { measure } from '../../core/timing';
+import { findFencedLines } from '../../domain/markdown/parser';
+import { pluralize } from '../../shared/text';
+import { measure } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   findWikiTargetPaths,
   parseWikiTarget,
   WIKI_LINK,
-} from '../../core/workspace/backlinks';
+} from '../../domain/index/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   onIndexUpdateInTurn,

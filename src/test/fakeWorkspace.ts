@@ -3,7 +3,7 @@
 // and indexer read, so those suites run under plain mocha.
 import * as path from 'path';
 
-import { Emitter } from '../core/emitter';
+import { Emitter } from '../shared/emitter';
 import type { WorkspaceFileAccess } from '../core/workspace/scanner';
 import type { ConfigurationSection } from '../ports/configuration';
 import { FileStat, FileSystem, FileType } from '../ports/fileSystem';

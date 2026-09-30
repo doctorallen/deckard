@@ -1,14 +1,14 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { formatQuery } from '../core/query/queryFormat';
-import { parseQuery } from '../core/query/queryParser';
-import { QueryConditionNode } from '../core/query/queryTypes';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { formatQuery } from '../domain/query/queryFormat';
+import { parseQuery } from '../domain/query/queryParser';
+import { QueryConditionNode } from '../domain/query/queryTypes';
 import { WorkspaceIndex } from '../core/types';
-import { findMissingLinkTargets, getBacklinkIndex } from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { createQueryContext } from '../core/query/queryContext';
+import { findMissingLinkTargets, getBacklinkIndex } from '../domain/index/backlinks';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createQueryContext } from '../domain/query/queryContext';
 
 function condition(text: string): QueryConditionNode {
   const parsed = parseQuery(text);

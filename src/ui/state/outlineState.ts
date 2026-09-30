@@ -1,4 +1,4 @@
-import { stripTags } from '../../core/markdown/parser';
+import { stripTags } from '../../domain/markdown/parser';
 import { ParsedFile, Section, TagReference } from '../../core/types';
 
 /**

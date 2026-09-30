@@ -1,4 +1,4 @@
-import type { Section, TagReference, Task } from '../types';
+import type { Section, TagReference, Task } from '../model';
 
 /**
  * How the index finds evidence that two tags are related, walked once for

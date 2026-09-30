@@ -1,4 +1,4 @@
-import { TaskPriority } from '../types';
+import { TaskPriority } from '../model';
 import { isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
 import {
   BLOCK_ID_PATTERN,

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import {
   appendCapture,
   CaptureDrafts,
@@ -17,7 +17,7 @@ import {
   getTagSuggestions,
 } from '../ui/commands/capture';
 import { buildDestinationItems } from '../ui/commands/destinationPicker';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 
 /** The content once an insertion is made, as the editor would make it. */
 function applyInsertion(content: string, insertion: CaptureInsertion): string {

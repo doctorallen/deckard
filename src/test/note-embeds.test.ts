@@ -2,9 +2,9 @@ import * as assert from 'assert';
 
 import MarkdownIt = require('markdown-it');
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   addNoteEmbedRenderer,
   createSourceParser,

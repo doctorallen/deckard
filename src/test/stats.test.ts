@@ -2,10 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { parseQuery } from '../core/query/queryParser';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { parseQuery } from '../domain/query/queryParser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
 import { getStatsHtml } from '../ui/webview/statsHtml';

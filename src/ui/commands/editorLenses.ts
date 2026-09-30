@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { pluralize } from '../../core/text';
-import { measure } from '../../core/timing';
+import { pluralize } from '../../shared/text';
+import { measure } from '../../shared/timing';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {

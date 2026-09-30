@@ -1,4 +1,4 @@
-import { Emitter } from '../emitter';
+import { Emitter } from '../../shared/emitter';
 import type { Event } from '../../ports/events';
 
 /**

@@ -1,12 +1,12 @@
 import * as assert from 'assert';
 
-import { findCodeAndLinkRanges } from '../core/markdown/inlineRanges';
+import { findCodeAndLinkRanges } from '../domain/markdown/inlineRanges';
 import {
   extractTagSpans,
   extractTags,
   parseMarkdown,
   stripTags,
-} from '../core/markdown/parser';
+} from '../domain/markdown/parser';
 import { appendTagToLine } from '../ui/commands/bulkEdit';
 import { moveInlineTagsToFrontmatterContent } from '../ui/commands/moveTagsToFrontmatter';
 import { replaceIndexedTag } from '../ui/commands/renameTag';

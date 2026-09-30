@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { parseQuery } from '../core/query/queryParser';
-import { escapeRegExp, isWildcard, normalizeFolder } from '../core/query/queryValues';
+import { parseQuery } from '../domain/query/queryParser';
+import { escapeRegExp, isWildcard, normalizeFolder } from '../domain/query/queryValues';
 
 suite('Query values', () => {
   test('a wildcard holds * or ?', () => {

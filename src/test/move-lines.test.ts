@@ -7,8 +7,8 @@ import {
   leaveBehind,
   MoveBlock,
   readMoveBlock,
-} from '../core/markdown/moveLines';
-import { parseMarkdown } from '../core/markdown/parser';
+} from '../domain/markdown/moveLines';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { suggestNoteName } from '../ui/commands/moveTo';
 
 const cursor = (line: number) => ({ start: { line, character: 0 }, end: { line, character: 0 }, isEmpty: true });

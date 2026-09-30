@@ -6,9 +6,9 @@ import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
-import { parseQuery } from '../../core/query/queryParser';
+import { parseQuery } from '../../domain/query/queryParser';
 import { PreferencesStore } from '../../core/storage/preferences';
-import { measure } from '../../core/timing';
+import { measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
 import { openResultAt } from '../commands/navigation';

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import { SearchStore } from '../core/storage/searchStore';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { WorkspaceScanner } from '../core/workspace/scanner';
 import { FileType } from '../ports/fileSystem';
 import type { ResourceUri } from '../ports/uri';

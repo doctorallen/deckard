@@ -4,8 +4,8 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { formatIsoDate } from '../core/markdown/taskMetadata';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { formatIsoDate } from '../domain/markdown/taskMetadata';
 import { toggleTask } from '../ui/commands/taskActions';
 import { toggleTaskLines } from '../ui/commands/toggleTaskDone';
 import {

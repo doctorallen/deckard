@@ -1,4 +1,4 @@
-import { Emitter } from '../emitter';
+import { Emitter } from '../../shared/emitter';
 import type { Disposable, Event } from '../../ports/events';
 import type { KeyValueStore } from '../../ports/keyValueStore';
 

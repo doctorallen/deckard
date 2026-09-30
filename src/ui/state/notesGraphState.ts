@@ -10,8 +10,8 @@ import {
   Section,
   WorkspaceIndex,
 } from '../../core/types';
-import { extractWikiLinks, stripTags } from '../../core/markdown/parser';
-import { getFileName } from '../../core/paths';
+import { extractWikiLinks, stripTags } from '../../domain/markdown/parser';
+import { getFileName } from '../../shared/paths';
 
 /** Association edges connect only tag nodes, limited per source tag. */
 const maximumAssociationsPerTag = 5;

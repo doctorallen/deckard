@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { stripTags } from '../../core/markdown/parser';
+import { stripTags } from '../../domain/markdown/parser';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { PersistedPreferences, Section, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from '../state/dashboardState';

@@ -3,18 +3,18 @@ import {
   isParkedOnlyTag,
   isParkedSection,
   isParkedTask,
-} from '../../core/workspace/parked';
-import { stripTags } from '../../core/markdown/parser';
-import { getFileName } from '../../core/paths';
-import { getPlainTextTerms } from '../../core/query/queryEdit';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
-import { QueryContext } from '../../core/query/queryContext';
+} from '../../domain/index/parked';
+import { stripTags } from '../../domain/markdown/parser';
+import { getFileName } from '../../shared/paths';
+import { getPlainTextTerms } from '../../domain/query/queryEdit';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { QueryContext } from '../../domain/query/queryContext';
 import {
   collectQueryTagKeys,
   visitConditions,
-} from '../../core/query/queryFormat';
-import { parseQuery } from '../../core/query/queryParser';
-import { QueryNode, QuerySuggestion } from '../../core/query/queryTypes';
+} from '../../domain/query/queryFormat';
+import { parseQuery } from '../../domain/query/queryParser';
+import { QueryNode, QuerySuggestion } from '../../domain/query/queryTypes';
 import { EntrySearchResult } from '../../core/storage/searchStore';
 import {
   ParsedFile,
@@ -24,7 +24,7 @@ import {
   Task,
   WorkspaceIndex,
 } from '../../core/types';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { describeTagMatches, getHeadingPath } from './dashboardState';
 import { frecencyScore } from './frecency';
 import { createPinForLine, findPinnedSection, resolvePin } from './pinnedNotes';

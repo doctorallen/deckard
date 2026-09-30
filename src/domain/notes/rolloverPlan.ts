@@ -1,5 +1,5 @@
-import { isParkedTask } from './parked';
-import { Task, WorkspaceIndex } from '../types';
+import { isParkedTask } from '../index/parked';
+import { Task, WorkspaceIndex } from '../model';
 import { formatLocalDate, listDailyNotes, parseLocalDate } from './periodicNotes';
 
 /** What a rollover would carry, and where from. */

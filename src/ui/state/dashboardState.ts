@@ -1,10 +1,10 @@
-import { describeSteps } from '../../core/markdown/taskSteps';
+import { describeSteps } from '../../domain/markdown/taskSteps';
 import {
   isParkedFile,
   isParkedSection,
   isParkedTask,
   parkedLast,
-} from '../../core/workspace/parked';
+} from '../../domain/index/parked';
 import {
   DashboardSavedFilter,
   DashboardSnapshot,
@@ -42,7 +42,7 @@ import {
   isPeriodicNoteFile,
   isPersonTag,
   stripTags,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import {
   canAppendTerm,
   correctQueryText,
@@ -50,20 +50,20 @@ import {
   getTextWords,
   getTopLevelJoin,
   getTopLevelTerms,
-} from '../../core/query/queryEdit';
+} from '../../domain/query/queryEdit';
 import {
   countTagMatches,
   evaluateQuery,
   QueryResults,
-} from '../../core/query/queryEvaluator';
-import { QueryContext } from '../../core/query/queryContext';
+} from '../../domain/query/queryEvaluator';
+import { QueryContext } from '../../domain/query/queryContext';
 import {
   collectQueryTagKeys,
   getQueryTagIntersection,
   quoteValue,
   toBuilderTree,
-} from '../../core/query/queryFormat';
-import { FIELD_ALIASES, parseQuery } from '../../core/query/queryParser';
+} from '../../domain/query/queryFormat';
+import { FIELD_ALIASES, parseQuery } from '../../domain/query/queryParser';
 import {
   ParsedQuery,
   QueryFacet,
@@ -73,24 +73,24 @@ import {
   QUERY_FIELD_OPERATORS,
   QUERY_FIELDS,
   QUERY_PRIORITY_VALUES,
-} from '../../core/query/queryTypes';
-import { addDays, describeDueDate } from '../../core/markdown/taskMetadata';
+} from '../../domain/query/queryTypes';
+import { addDays, describeDueDate } from '../../domain/markdown/taskMetadata';
 import {
   formatMonthDay,
   formatMonthName,
   formatShortDay,
   parseDatePhrase,
   resolveDatePeriod,
-} from '../../core/markdown/dates';
+} from '../../domain/markdown/dates';
 import {
   findMissingLinkTargets,
   getBacklinkIndex,
   noteTitle,
-} from '../../core/workspace/backlinks';
-import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
-import { getFileName } from '../../core/paths';
-import { pluralize } from '../../core/text';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+} from '../../domain/index/backlinks';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { getFileName } from '../../shared/paths';
+import { pluralize } from '../../shared/text';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';

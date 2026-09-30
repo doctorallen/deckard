@@ -7,9 +7,9 @@ import {
   getEntityKind,
   getEntityNamespaceAliases,
   getPersonMarker,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import { PreferencesStore } from '../../core/storage/preferences';
-import { pluralize } from '../../core/text';
+import { pluralize } from '../../shared/text';
 import {
   HeadingTagSpan,
   TagInfo,
@@ -17,7 +17,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { resolveSourceUri } from './navigation';
 import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { WorkspaceWriteHistory } from './workspaceWrites';

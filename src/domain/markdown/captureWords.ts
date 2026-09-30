@@ -1,4 +1,4 @@
-import { TaskPriority } from '../types';
+import { TaskPriority } from '../model';
 import { DatePhraseOptions, parseDatePhrase } from './dates';
 import { parseTaskDraft, formatTaskDraft } from './taskDraft';
 import { parseRecurrence, TaskMetadataFormat } from './taskMetadata';

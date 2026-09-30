@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { escapeMarkdown, escapeRegExp, pluralize } from '../core/text';
+import { escapeMarkdown, escapeRegExp, pluralize } from '../shared/text';
 
 suite('Text helpers', () => {
   suite('pluralize', () => {

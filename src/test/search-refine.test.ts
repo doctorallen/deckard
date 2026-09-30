@@ -2,8 +2,8 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
 import {
   canAppendTerm,
   correctQueryText,
@@ -12,18 +12,18 @@ import {
   getTopLevelJoin,
   getTopLevelTerms,
   refineQueryText,
-} from '../core/query/queryEdit';
-import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+} from '../domain/query/queryEdit';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { PreferencesStore } from '../core/storage/preferences';
-import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
 import {
   createQuerySuggestions,
   createSearchPageSnapshot,
   tagMentionWord,
 } from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

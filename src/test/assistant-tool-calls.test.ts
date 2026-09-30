@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { AssistantTools } from '../ui/commands/assistantTools';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 

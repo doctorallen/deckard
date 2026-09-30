@@ -6,14 +6,14 @@ import {
   addFrontmatterTag,
   readFrontmatterTagValues,
   removeFrontmatterTags,
-} from '../../core/markdown/frontmatterTags';
-import { countTagMatches } from '../../core/query/queryEvaluator';
-import { pluralize } from '../../core/text';
+} from '../../domain/markdown/frontmatterTags';
+import { countTagMatches } from '../../domain/query/queryEvaluator';
+import { pluralize } from '../../shared/text';
 import { WorkspaceIndex } from '../../core/types';
-import { noteTitle } from '../../core/workspace/backlinks';
-import { isUnderParkedTag, ParkedRules, toParkedTagKey } from '../../core/workspace/parked';
+import { noteTitle } from '../../domain/index/backlinks';
+import { isUnderParkedTag, ParkedRules, toParkedTagKey } from '../../domain/index/parked';
 import { createExcludeMatcher } from '../../core/workspace/scanner';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { listExcludedFolders, readExcludeKey, relativeExcludeKey, withExcludeKey } from './excludeFolders';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { writeSetting } from './settings';

@@ -4,10 +4,10 @@ import {
   DEFAULT_TASK_POLICY,
   needsNewDate,
   readLineStatus,
-} from '../core/taskPolicy';
+} from '../domain/tasks/taskPolicy';
 import { Task, WorkspaceIndex } from '../core/types';
 import { createAgenda } from '../ui/state/agendaState';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const at = (month: number, day: number): number => new Date(2026, month - 1, day).getTime();
 /** Mid-morning on Friday 2026-09-25. */

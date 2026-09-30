@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
-import { findFencedLines, stripTags } from '../../core/markdown/parser';
-import { pluralize } from '../../core/text';
-import { measure } from '../../core/timing';
+import { findFencedLines, stripTags } from '../../domain/markdown/parser';
+import { pluralize } from '../../shared/text';
+import { measure } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -11,7 +11,7 @@ import {
   noteTitle,
   resolveWikiTarget,
   WIKI_LINK_WITH_TEXT,
-} from '../../core/workspace/backlinks';
+} from '../../domain/index/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findHeadingAtLine } from './extractHeading';
 import { resolveSourceUri } from './navigation';

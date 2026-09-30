@@ -1,10 +1,10 @@
-import { isParkedFile } from '../../core/workspace/parked';
+import { isParkedFile } from '../../domain/index/parked';
 import * as vscode from 'vscode';
 
-import { BLOCK_ID_PATTERN, stripTags } from '../../core/markdown/parser';
-import { describeDay, parseDatePhrase } from '../../core/markdown/dates';
+import { BLOCK_ID_PATTERN, stripTags } from '../../domain/markdown/parser';
+import { describeDay, parseDatePhrase } from '../../domain/markdown/dates';
 import { readDateOptions } from './datePrompt';
-import { measureAsync } from '../../core/timing';
+import { measureAsync } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -13,7 +13,7 @@ import {
   noteTitle,
   parseWikiTarget,
   resolveWikiTarget,
-} from '../../core/workspace/backlinks';
+} from '../../domain/index/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
 import { frecencyScore } from '../state/frecency';

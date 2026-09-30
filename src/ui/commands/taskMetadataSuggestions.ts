@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { findFencedLines, isPersonTag } from '../../core/markdown/parser';
+import { findFencedLines, isPersonTag } from '../../domain/markdown/parser';
 import {
   addDays,
   formatIsoDate,
@@ -9,7 +9,7 @@ import {
   startOfDay,
   TaskMetadataField,
   TaskMetadataFormat,
-} from '../../core/markdown/taskMetadata';
+} from '../../domain/markdown/taskMetadata';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readTaskMetadataFormat } from './taskActions';

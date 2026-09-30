@@ -1,9 +1,9 @@
-import { isParkedTask } from '../../core/workspace/parked';
-import { needsNewDateBefore } from '../../core/taskPolicy';
-import { stripTags } from '../../core/markdown/parser';
-import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
-import { QueryContext } from '../../core/query/queryContext';
-import { projectRepeats, TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
+import { isParkedTask } from '../../domain/index/parked';
+import { needsNewDateBefore } from '../../domain/tasks/taskPolicy';
+import { stripTags } from '../../domain/markdown/parser';
+import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
+import { QueryContext } from '../../domain/query/queryContext';
+import { projectRepeats, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskMetadata';
 import { CalendarDayDetail, DashboardTask, Task, WorkspaceIndex } from '../../core/types';
 import { createDashboardTask } from './dashboardState';
 import {
@@ -12,7 +12,7 @@ import {
   getPeriodicNote,
   isPeriodicNoteName,
   listDailyNotes,
-} from '../../core/workspace/periodicNotes';
+} from '../../domain/notes/periodicNotes';
 
 /** How many tasks and headings a day's tooltip names. */
 const TOOLTIP_ITEMS = 5;

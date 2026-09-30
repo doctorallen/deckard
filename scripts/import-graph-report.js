@@ -23,12 +23,16 @@ const importsVscode = (source) => graph.get(source).includes(VSCODE);
 
 /**
  * The folder a module belongs to at the level the layer rules speak at:
- * `src/core/<area>` and `src/ui/<area>`, or `src/extension.ts` on its own.
+ * `src/core/<area>`, `src/domain/<area>`, and `src/ui/<area>`, `src/shared`, or a
+ * file directly under `src`, such as `src/extension.ts`, on its own.
  */
 function folderOf(source) {
-  const match = /^src\/(core|ui)\/([^/]+)\//.exec(source);
+  const match = /^src\/(core|ui|domain)\/([^/]+)\//.exec(source);
   if (match) {
     return `src/${match[1]}/${match[2]}`;
+  }
+  if (source.startsWith('src/shared/')) {
+    return 'src/shared';
   }
   return source.startsWith('src/test/') ? 'src/test' : source;
 }
@@ -227,9 +231,9 @@ out.push(table(
 // where it was declared, how to recognize the declaration, and which
 // functions read or write it while it exists.
 const globals = [
-  ['`queryIdentity`, `queryWeekStart`', ['src/core/query/queryEvaluator.ts', 'src/core/query/queryDates.ts'], /^let query(Identity|WeekStart)\b/m, /\b(set|get)Query(Identity|WeekStart)\b/],
-  ['`policy`', ['src/core/taskPolicy.ts'], /^let policy\b/m, /\b(setTaskPolicy|getTaskPolicy)\b/],
-  ['`log`', ['src/core/timing.ts'], /^let log\b/m, /\b(setTimingLog|reportError|measure|measureAsync|logTrace)\b/],
+  ['`queryIdentity`, `queryWeekStart`', ['src/domain/query/queryEvaluator.ts', 'src/domain/query/queryDates.ts'], /^let query(Identity|WeekStart)\b/m, /\b(set|get)Query(Identity|WeekStart)\b/],
+  ['`policy`', ['src/domain/tasks/taskPolicy.ts'], /^let policy\b/m, /\b(setTaskPolicy|getTaskPolicy)\b/],
+  ['`log`', ['src/shared/timing.ts'], /^let log\b/m, /\b(setTimingLog|reportError|measure|measureAsync|logTrace)\b/],
   ['`keepTaskRank`', ['src/ui/commands/taskActions.ts'], /^let keepTaskRank\b/m, /\bsetTaskRankKeeper\b/],
   ['`workspaceWrites`', ['src/ui/commands/workspaceWrites.ts'], /^export const workspaceWrites\b/m, /\bworkspaceWrites\.(lastWrite|undo|apply)/],
   ['`ownWrites`', ['src/core/workspace/ownWrites.ts'], /^(export )?const ownWrites\b/m, /\b(noteOwnWrite|takeOwnWrite)\b/],

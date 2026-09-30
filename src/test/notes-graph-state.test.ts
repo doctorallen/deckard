@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   createLocalGraphSnapshot,
   createNotesGraphConnections,

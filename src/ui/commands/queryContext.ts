@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { createQueryContext, QueryContext } from '../../core/query/queryContext';
-import { TaskPolicy } from '../../core/taskPolicy';
+import { createQueryContext, QueryContext } from '../../domain/query/queryContext';
+import { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { readWeekStart } from './datePrompt';
 
 /**

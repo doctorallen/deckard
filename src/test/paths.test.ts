@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { getFileName, getFolder } from '../core/paths';
+import { getFileName, getFolder } from '../shared/paths';
 
 suite('Index paths', () => {
   test('getFileName keeps the last segment and its extension', () => {

@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
-import { markMigrated } from '../../core/markdown/taskMetadata';
-import { pluralize } from '../../core/text';
-import { findLastDescendantLine } from '../../core/markdown/taskSteps';
+import { markMigrated } from '../../domain/markdown/taskMetadata';
+import { pluralize } from '../../shared/text';
+import { findLastDescendantLine } from '../../domain/markdown/taskSteps';
 import { Task } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   planRollover,
   RolloverMode,
   RolloverPlan,
-} from '../../core/workspace/rolloverPlan';
+} from '../../domain/notes/rolloverPlan';
 import { getCaptureInsertion } from './capture';
 import {
   chooseTargetFolder,
@@ -23,8 +23,8 @@ import {
 import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
-export { planRollover } from '../../core/workspace/rolloverPlan';
-export type { RolloverMode, RolloverPlan } from '../../core/workspace/rolloverPlan';
+export { planRollover } from '../../domain/notes/rolloverPlan';
+export type { RolloverMode, RolloverPlan } from '../../domain/notes/rolloverPlan';
 
 /**
  * Carries yesterday's unfinished tasks into today's note.

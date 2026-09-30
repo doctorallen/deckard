@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
-import { readCaptureText } from '../../core/markdown/captureWords';
+import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { parseMarkdown } from '../../core/markdown/parser';
-import { QueryContext } from '../../core/query/queryContext';
+import { parseMarkdown } from '../../domain/markdown/parser';
+import { QueryContext } from '../../domain/query/queryContext';
 import { Task } from '../../core/types';
 import {
   isValidStatusName,

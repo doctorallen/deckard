@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { isTaskLineOf, TaskLineShape } from '../../core/markdown/lineShapes';
-import { parseTaskDraft, formatTaskDraft } from '../../core/markdown/taskDraft';
-import { TaskMetadataFormat } from '../../core/markdown/taskMetadata';
+import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { parseTaskDraft, formatTaskDraft } from '../../domain/markdown/taskDraft';
+import { TaskMetadataFormat } from '../../domain/markdown/taskMetadata';
 import { WorkspaceIndex } from '../../core/types';
 import { createPinForLine, findPinnedSection } from '../state/pinnedNotes';
 import { createWikiLink } from './insertLink';

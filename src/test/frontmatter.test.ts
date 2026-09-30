@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { findFrontmatterEnd, splitFrontmatterValues, unquote } from '../core/markdown/frontmatter';
+import { findFrontmatterEnd, splitFrontmatterValues, unquote } from '../domain/markdown/frontmatter';
 
 suite('Front matter bounds and values', () => {
   test('both rules close on ---', () => {

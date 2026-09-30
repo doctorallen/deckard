@@ -15,7 +15,7 @@ import {
   isQueryBlockLine,
   parseQueryBlockInfo,
 } from '../ui/state/queryBlockState';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 suite('Deckard query blocks', () => {
   test('recognizes only deckard fences and reads their options', () => {

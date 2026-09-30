@@ -4,9 +4,9 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { formatLocalDate } from '../ui/commands/dailyNote';
 import {
   findOpenPeriod,
@@ -20,7 +20,7 @@ import {
   summarizeReview,
   writeReviewInto,
 } from '../ui/state/reviewState';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Monday 2026-09-14 to Sunday 2026-09-20. */

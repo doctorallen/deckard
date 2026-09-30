@@ -2,11 +2,11 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { SearchStore } from '../core/storage/searchStore';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQuerySuggestions } from '../ui/state/dashboardState';
 import {
   buildQuickFindResults,
@@ -16,8 +16,8 @@ import {
 } from '../ui/state/quickFindState';
 import { findDailyNoteRow, isNoteName, keyLabel, toPickItems } from '../ui/commands/quickFind';
 import { formatCapture } from '../ui/commands/capture';
-import { parseDatePhrase } from '../core/markdown/dates';
-import { createQueryContext } from '../core/query/queryContext';
+import { parseDatePhrase } from '../domain/markdown/dates';
+import { createQueryContext } from '../domain/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

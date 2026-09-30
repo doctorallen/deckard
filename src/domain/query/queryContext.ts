@@ -1,5 +1,5 @@
 import { Weekday } from '../markdown/dates';
-import { DEFAULT_TASK_POLICY, TaskPolicy } from '../taskPolicy';
+import { DEFAULT_TASK_POLICY, TaskPolicy } from '../tasks/taskPolicy';
 
 /**
  * What a search's answer depends on besides the index and the search: who

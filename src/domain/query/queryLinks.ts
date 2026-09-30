@@ -1,10 +1,10 @@
-import { ParsedFile, WorkspaceIndex } from '../types';
+import { ParsedFile, WorkspaceIndex } from '../model';
 import {
   createNoteTitleMap,
   getBacklinkIndex,
   normalizeHeading,
   parseWikiTarget,
-} from '../workspace/backlinks';
+} from '../index/backlinks';
 
 /**
  * What a search's `link` condition reads: every `[[link]]` in the workspace,

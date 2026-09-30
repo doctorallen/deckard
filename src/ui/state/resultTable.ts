@@ -3,8 +3,8 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
   describeDueDate,
-} from '../../core/markdown/taskMetadata';
-import { QueryContext } from '../../core/query/queryContext';
+} from '../../domain/markdown/taskMetadata';
+import { QueryContext } from '../../domain/query/queryContext';
 import {
   TableCell,
   TableSort,
@@ -12,7 +12,7 @@ import {
   TaskColumnId,
   TaskPriority,
 } from '../../core/types';
-import { TASK_COLUMNS, TaskColumn } from '../../core/taskColumns';
+import { TASK_COLUMNS, TaskColumn } from '../../domain/tasks/taskColumns';
 
 /**
  * A query's results as rows, with the query's own fields as columns.
@@ -24,8 +24,8 @@ import { TASK_COLUMNS, TaskColumn } from '../../core/taskColumns';
  */
 
 export type { TableCell, TableSort, TableSortDirection, TaskColumnId };
-export { isTaskColumnId, TASK_COLUMNS } from '../../core/taskColumns';
-export type { TaskColumn } from '../../core/taskColumns';
+export { isTaskColumnId, TASK_COLUMNS } from '../../domain/tasks/taskColumns';
+export type { TaskColumn } from '../../domain/tasks/taskColumns';
 
 /** The columns a table shows until asked for others. */
 export const DEFAULT_TASK_COLUMNS: readonly TaskColumnId[] = [

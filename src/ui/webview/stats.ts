@@ -5,13 +5,13 @@ import { ThemePreview } from './themePreview';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { WorkspaceIndex } from '../../core/types';
-import { measure } from '../../core/timing';
+import { measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { openResultAt, resolveSourceUri } from '../commands/navigation';
 import { createMissingNotes, reportCreatedNotes } from '../commands/linkHealth';
-import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
-import { findMissingLinkTargets } from '../../core/workspace/backlinks';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { findMissingLinkTargets } from '../../domain/index/backlinks';
 import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';

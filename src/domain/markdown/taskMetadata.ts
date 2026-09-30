@@ -1,5 +1,5 @@
-import { needsNewDate, TaskPolicy } from '../taskPolicy';
-import { TaskPriority } from '../types';
+import { needsNewDate, TaskPolicy } from '../tasks/taskPolicy';
+import { TaskPriority } from '../model';
 import {
   addDays,
   addMonths,

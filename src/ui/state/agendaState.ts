@@ -1,18 +1,18 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
-import { mentionsParked, withoutParked } from '../../core/workspace/parked';
-import { describeSteps, isPlainStep } from '../../core/markdown/taskSteps';
-import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
+import { mentionsParked, withoutParked } from '../../domain/index/parked';
+import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
+import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
 import {
   addDays,
   formatIsoDate,
   formatTaskMetadata,
   startOfDay,
   TASK_PRIORITY_RANKS,
-} from '../../core/markdown/taskMetadata';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
-import { parseQuery } from '../../core/query/queryParser';
-import { QueryContext } from '../../core/query/queryContext';
-import { needsNewDate, readLineStatus, TaskPolicy } from '../../core/taskPolicy';
+} from '../../domain/markdown/taskMetadata';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { parseQuery } from '../../domain/query/queryParser';
+import { QueryContext } from '../../domain/query/queryContext';
+import { needsNewDate, readLineStatus, TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';

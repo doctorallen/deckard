@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { findTagTarget } from '../core/markdown/tagTarget';
+import { findTagTarget } from '../domain/markdown/tagTarget';
 import { parseSidebarMessage } from '../ui/webview/messages';
 
 suite('Where a suggested tag goes', () => {

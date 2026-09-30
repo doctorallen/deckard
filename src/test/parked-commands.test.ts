@@ -11,7 +11,7 @@ import {
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
   const store = new PreferencesStore({

@@ -2,16 +2,16 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
 import { parseCalendarMessage } from '../ui/webview/messages';
 import { describeDateChange } from '../ui/commands/agendaActions';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 export function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(

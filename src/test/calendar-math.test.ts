@@ -11,7 +11,7 @@ import {
   parseIsoDate,
   startOfDay,
   WEEKDAY_NAMES,
-} from '../core/markdown/calendar';
+} from '../domain/markdown/calendar';
 
 suite('Calendar math', () => {
   test('makeDay returns local midnight for a real day', () => {

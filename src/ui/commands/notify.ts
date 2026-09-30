@@ -2,7 +2,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { reportError } from '../../core/timing';
+import { reportError } from '../../shared/timing';
 
 /**
  * How Deckard says that something did not happen.

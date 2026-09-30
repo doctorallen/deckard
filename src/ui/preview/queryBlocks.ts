@@ -1,8 +1,8 @@
 import type MarkdownIt from 'markdown-it';
 import * as vscode from 'vscode';
 
-import { QueryContext } from '../../core/query/queryContext';
-import { measure } from '../../core/timing';
+import { QueryContext } from '../../domain/query/queryContext';
+import { measure } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {

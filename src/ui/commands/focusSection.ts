@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { findFencedLines } from '../../core/markdown/parser';
+import { findFencedLines } from '../../domain/markdown/parser';
 
 /** Context key for whether a section is focused, which offers the way back. */
 export const SECTION_FOCUSED = 'deckard.sectionFocused';

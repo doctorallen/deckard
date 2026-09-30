@@ -1,4 +1,4 @@
-import { Weekday } from '../../core/markdown/dates';
+import { Weekday } from '../../domain/markdown/dates';
 
 /**
  * Home's Try next: one suggestion at a time, the first that applies, for

@@ -2,15 +2,15 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { SearchPageSize, SearchPageSnapshot } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /**
  * What a search page does, driven as VS Code drives it: the host's state goes

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { isTaskLine } from '../../core/markdown/taskDraft';
+import { isTaskLine } from '../../domain/markdown/taskDraft';
 import { pinKey } from '../../core/storage/preferences';
 import { WorkspaceIndex } from '../../core/types';
 import { createPinForLine } from '../state/pinnedNotes';

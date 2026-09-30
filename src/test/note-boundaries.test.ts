@@ -1,12 +1,12 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { NoteBoundaries } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { NoteBoundaries } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
-import { createQueryContext } from '../core/query/queryContext';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createQueryContext } from '../domain/query/queryContext';
 
 /**
  * Where one note ends and the next begins.

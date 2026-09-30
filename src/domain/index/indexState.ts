@@ -9,7 +9,7 @@ import {
   TagReference,
   Task,
   WorkspaceIndex,
-} from '../types';
+} from '../model';
 import { AssociationSink, collectAssociationEvidence, EvidenceSource } from './associationEvidence';
 
 /**

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { reportNeedsFolder } from './notify';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { Weekday } from '../../core/markdown/dates';
+import { Weekday } from '../../domain/markdown/dates';
 import {
   findAdjacentDailyNote,
   findPeriodicNoteNames,
@@ -11,7 +11,7 @@ import {
   listDailyNotes,
   NotePeriod,
   PeriodicNoteVariables,
-} from '../../core/workspace/periodicNotes';
+} from '../../domain/notes/periodicNotes';
 import { readWeekStart } from './datePrompt';
 import { resolveSourceUri } from './navigation';
 
@@ -26,12 +26,12 @@ export {
   isPeriodicNoteName,
   listDailyNotes,
   parseLocalDate,
-} from '../../core/workspace/periodicNotes';
+} from '../../domain/notes/periodicNotes';
 export type {
   DailyNoteEntry,
   NotePeriod,
   PeriodicNoteVariables,
-} from '../../core/workspace/periodicNotes';
+} from '../../domain/notes/periodicNotes';
 
 /**
  * Opens the daily note before or after the one in the editor, or before or

@@ -4,7 +4,7 @@
  * `src/core/workspace/indexer.ts`), kept so the equivalence test can hold the
  * new build to the old one. Do not change it: it is the reference.
  */
-import { getEntityKind } from '../../core/markdown/parser';
+import { getEntityKind } from '../../domain/markdown/parser';
 import {
   Entity,
   ParsedFile,

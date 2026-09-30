@@ -4,8 +4,8 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { formatIsoDate } from '../core/markdown/taskMetadata';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { formatIsoDate } from '../domain/markdown/taskMetadata';
 import { createDailyNote } from '../ui/commands/dailyNote';
 import {
   describeExtractFailure,
@@ -14,7 +14,7 @@ import {
   getExtractedNoteFileName,
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   applyHubTemplate,
   createHubNoteContent,

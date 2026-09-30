@@ -1,4 +1,4 @@
-import { formatExcerpt, readProseLines } from '../../core/markdown/proseExcerpt';
+import { formatExcerpt, readProseLines } from '../../domain/markdown/proseExcerpt';
 import { Section } from '../../core/types';
 import { getSectionLexicalContent } from './wordSimilarity';
 

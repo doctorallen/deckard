@@ -5,7 +5,7 @@ import {
   describeDay,
   parseDatePhrase,
   Weekday,
-} from '../../core/markdown/dates';
+} from '../../domain/markdown/dates';
 
 /**
  * The one date box.

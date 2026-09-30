@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { ActiveHome, HomeSource, HomeWidgetChoice } from './activeHome';
 
-import { listedParkedTags } from '../../core/workspace/parked';
+import { listedParkedTags } from '../../domain/index/parked';
 import { setPinned } from '../commands/pinNote';
-import { QueryContext } from '../../core/query/queryContext';
+import { QueryContext } from '../../domain/query/queryContext';
 import { readQueryContext } from '../commands/queryContext';
 import { TryNextSuggestion } from '../state/tryNext';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../commands/tryNext';
@@ -14,12 +14,12 @@ import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import {
   isDefaultHomeLayout,
   PreferencesStore,
 } from '../../core/storage/preferences';
-import { measure } from '../../core/timing';
+import { measure } from '../../shared/timing';
 import {
   DashboardColumnCount,
   DashboardMessage,

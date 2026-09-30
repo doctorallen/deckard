@@ -1,16 +1,16 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   DashboardWidgetConfig,
   PersistedPreferences,
   WorkspaceIndex,
 } from '../core/types';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { createQueryContext } from '../core/query/queryContext';
+import { createQueryContext } from '../domain/query/queryContext';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date(2026, 8, 16, 12).getTime();

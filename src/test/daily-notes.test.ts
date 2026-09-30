@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import {
   fillPeriodicTemplate,

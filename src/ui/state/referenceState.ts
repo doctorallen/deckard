@@ -1,4 +1,4 @@
-import { BLOCK_ID_PATTERN } from '../../core/markdown/parser';
+import { BLOCK_ID_PATTERN } from '../../domain/markdown/parser';
 import {
   BacklinkIndex,
   createNoteTitleMap,
@@ -8,7 +8,7 @@ import {
   noteTitle,
   WikiLinkOccurrence,
   WikiLinkTarget,
-} from '../../core/workspace/backlinks';
+} from '../../domain/index/backlinks';
 import { ParsedFile, Section, Task, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';

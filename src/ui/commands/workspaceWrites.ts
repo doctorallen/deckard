@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { pluralize } from '../../core/text';
+import { pluralize } from '../../shared/text';
 import { WriteHistory, WriteMark } from '../../core/workspace/writeHistory';
 import { reportStale } from './notify';
 

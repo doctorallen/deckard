@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { readPerson } from '../core/markdown/parser';
+import { readPerson } from '../domain/markdown/parser';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import {
   formatTaskDraft,
   parseTaskDraft,
-} from '../core/markdown/taskDraft';
+} from '../domain/markdown/taskDraft';
 import {
   appendTag,
   completeDraft,

@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 
-import { createQueryContext, QueryContextSettings } from '../core/query/queryContext';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
+import { createQueryContext, QueryContextSettings } from '../domain/query/queryContext';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
 import { Section, Task, WorkspaceIndex } from '../core/types';
 
 /** Local midnight `days` from today, so relative windows stay meaningful. */
