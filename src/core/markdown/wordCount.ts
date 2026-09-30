@@ -1,3 +1,4 @@
+import { matchTaskLine, TaskLineShape } from './lineShapes';
 import { findFencedLines } from './parser';
 import { findTaskMetadataSpans } from './taskMetadata';
 
@@ -9,7 +10,8 @@ import { findTaskMetadataSpans } from './taskMetadata';
 /** Words a minute an adult reads silently, on average. */
 export const READING_WORDS_PER_MINUTE = 238;
 
-const TASK_LINE = /^(\s*[-*+][ \t]+\[[ xX]\])/;
+/** A task line whose checkbox and metadata are masked: any mark but `[>]`. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]/;
 const BLOCK_ID = /[ \t]+\^[A-Za-z0-9-]+[ \t]*$/;
 
@@ -89,14 +91,14 @@ export function maskNoteForWords(lines: readonly string[]): string[] {
     line = line.replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, (whole, target: string, alias: string) =>
       `  ${blank(target)} ${alias}  `.slice(0, whole.length),
     );
-    const task = TASK_LINE.exec(line);
+    const task = matchTaskLine(line, TASK_LINE);
     if (task) {
-      const offset = task[1].length;
+      const offset = task.head.length;
       let body = line.slice(offset);
       for (const span of findTaskMetadataSpans(body)) {
         body = blankRange(body, span.start, span.end);
       }
-      line = blank(task[1]) + body;
+      line = blank(task.head) + body;
     } else {
       line = line.replace(BLOCK_ID, blank);
     }

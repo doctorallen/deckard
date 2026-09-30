@@ -1,5 +1,6 @@
 import { needsNewDate } from '../taskPolicy';
 import { TaskPriority } from '../types';
+import { TaskLineShape } from './lineShapes';
 
 /**
  * Reads and writes task metadata in both formats of the Obsidian Tasks
@@ -1146,7 +1147,7 @@ export function appendToTaskText(text: string, token: string): string {
  * `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`. It is not a task to the
  * index, so it stops counting as open, and it is not a note either.
  */
-export const MIGRATED_TASK_LINE = /^\s*[-*+][ \t]+\[>\]/;
+export const MIGRATED_TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: '>' };
 
 /**
  * Marks a task line as migrated to a day's note: its box becomes `[>]` and

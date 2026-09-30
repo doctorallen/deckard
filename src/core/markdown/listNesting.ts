@@ -1,3 +1,5 @@
+import { isTaskLineOf, TaskLineShape } from './lineShapes';
+
 /**
  * Which list item each list item is written under, read from indentation
  * alone: the one rule the parser, Break into Steps…, completion, and
@@ -9,7 +11,8 @@
  */
 
 const LIST_ITEM = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+/;
-const TASK_ITEM = /^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+/;
+/** A step's checkbox: indented by spaces and tabs only, with a gap after it. */
+const TASK_ITEM: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
 const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
@@ -40,7 +43,7 @@ export function isListItemLine(line: string): boolean {
 
 /** Whether a line is a checkbox task, as the parser reads one. */
 export function isTaskItemLine(line: string): boolean {
-  return TASK_ITEM.test(line);
+  return isTaskLineOf(line, TASK_ITEM);
 }
 
 /**

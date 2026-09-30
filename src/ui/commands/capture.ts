@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MessageAction, noteName, reportFailure } from './notify';
 
 import { readCaptureText } from '../../core/markdown/captureWords';
+import { isTaskLineOf, TaskLineShape } from '../../core/markdown/lineShapes';
 import { readDateOptions } from './datePrompt';
 import { getPersonMarker } from '../../core/markdown/parser';
 import { Section, TagInfo } from '../../core/types';
@@ -252,10 +253,13 @@ export function formatNoteLine(text: string): string {
   return `- ${text.trim().replace(/^[-*+][ \t]+(?:\[[ xX]\][ \t]+)?/, '')}`;
 }
 
+/** A task written as Deckard writes one: no indent, and one space either side of the box. */
+const WRITTEN_TASK: TaskLineShape = { indent: 'none', bulletGap: 'one-space', marks: ' xX', after: 'one-space' };
+
 /** Writes a capture as an open task, unless it is already written as a task. */
 export function formatCaptureLine(text: string): string {
   const trimmed = text.trim();
-  return /^[-*+] \[[ xX]\] /.test(trimmed)
+  return isTaskLineOf(trimmed, WRITTEN_TASK)
     ? trimmed
     : `- [ ] ${trimmed.replace(/^[-*+]\s+/, '')}`;
 }

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../../core/markdown/lineShapes';
 import { getTaskLineId } from '../../core/markdown/parser';
 import {
   formatIsoDate,
@@ -19,7 +20,7 @@ import {
 } from './taskActions';
 
 /** The checkbox a line must open with to be toggled. */
-const TASK_LINE = /^(\s*[-*+][ \t]+\[)([ xX])\]/;
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
 
 /** One task line under a cursor, as it is and as it will be written. */
 export interface ToggledLine {
@@ -78,16 +79,16 @@ export function toggleTaskLines(
   },
 ): ToggleResult {
   const tasks = lines
-    .map((entry) => ({ ...entry, match: TASK_LINE.exec(entry.text) }))
-    .filter((entry): entry is typeof entry & { match: RegExpExecArray } => entry.match !== null);
-  const completed = tasks.some((entry) => entry.match[2] === ' ');
+    .map((entry) => ({ ...entry, match: matchTaskLine(entry.text, TASK_LINE) }))
+    .filter((entry): entry is typeof entry & { match: TaskLineMatch } => entry.match !== undefined);
+  const completed = tasks.some((entry) => entry.match.mark === ' ');
   const toggled: ToggledLine[] = [];
   for (const { line, text, match } of tasks) {
-    const open = match[2] === ' ';
+    const open = match.mark === ' ';
     if (completed !== open) {
       continue;
     }
-    const checkboxColumn = match[1].length;
+    const checkboxColumn = match.opening.length;
     const marked = setTaskLineCompletion(
       text,
       checkboxColumn,

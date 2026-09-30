@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isTaskLineOf, TaskLineShape } from '../../core/markdown/lineShapes';
 import { parseTaskMetadata } from '../../core/markdown/taskMetadata';
 import {
   findCheckboxColumn,
@@ -485,6 +486,9 @@ export async function addTaskSteps(
   }
 }
 
+/** A task with words after its box, which is what can be broken into steps. */
+const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap-then-words' };
+
 /**
  * The task on the cursor's line, read from the editor itself, so a task
  * typed a moment ago can be broken into steps before the index has it.
@@ -498,7 +502,7 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
   const lines = editor.document.getText().split(/\r?\n/);
   const text = lines[lineIndex] ?? '';
   const column = findCheckboxColumn(text);
-  if (column < 0 || !/^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+\S/.test(text)) {
+  if (column < 0 || !isTaskLineOf(text, CURSOR_TASK)) {
     return undefined;
   }
   const words = text.slice(column + 2).trim();

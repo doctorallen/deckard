@@ -1,3 +1,4 @@
+import { matchTaskLine, TaskLineShape } from './lineShapes';
 import { findFencedLines, stripTags } from './parser';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
 
@@ -12,7 +13,8 @@ const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 const TABLE_ROW = /^\s*\|/;
 const RULE = /^\s*([-*_])(?:\s*\1){2,}\s*$/;
 const IMAGE_ONLY = /^\s*(?:!\[[^\]]*\]\([^)]*\)|!\[\[[^\]]*\]\])\s*$/;
-const TASK = /^\s*[-*+][ \t]+\[[ xX>]\][ \t]+/;
+/** A task line of any kind, migrated `[>]` included, with a gap before its words. */
+const TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX>', after: 'gap' };
 const LIST_OR_QUOTE = /^\s*(?:>\s*)*(?:(?:[-*+]|\d+[.)])[ \t]+)?/;
 
 /** One line's words: links read as their text, and marks, tags, and ids gone. */
@@ -58,9 +60,9 @@ export function readProseLines(markdown: string, options: { personMarker?: strin
     ) {
       return;
     }
-    const task = line.match(TASK);
+    const task = matchTaskLine(line, TASK);
     if (task) {
-      const words = cleanLine(parseTaskMetadata(line.slice(task[0].length)).title, options.personMarker);
+      const words = cleanLine(parseTaskMetadata(task.body).title, options.personMarker);
       if (words) {
         tasks.push(words);
       }

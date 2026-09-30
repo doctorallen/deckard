@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isTaskLineOf, TaskLineShape } from '../../core/markdown/lineShapes';
 import { parseTaskDraft, formatTaskDraft } from '../../core/markdown/taskDraft';
 import { TaskMetadataFormat } from '../../core/markdown/taskMetadata';
 import { WorkspaceIndex } from '../../core/types';
@@ -50,6 +51,9 @@ export function captureSeed(
   return { text, link: createWikiLink(index, filePath, section?.id).text };
 }
 
+/** A line the link goes into as part of a task's words rather than after them. */
+const SEEDED_TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+
 /**
  * A captured line with a link back to where it came from: after the words
  * and before any task metadata, so the date and priority stay last, as
@@ -63,7 +67,7 @@ export function withSourceLink(
   if (!link) {
     return line;
   }
-  if (!/^\s*[-*+][ \t]+\[[ xX]\]/.test(line)) {
+  if (!isTaskLineOf(line, SEEDED_TASK)) {
     return `${line.replace(/[ \t]+$/, '')} ${link}`;
   }
   const draft = parseTaskDraft(line, format);

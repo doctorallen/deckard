@@ -1,4 +1,5 @@
 import { TaskPriority } from '../types';
+import { isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
 import {
   BLOCK_ID_PATTERN,
   formatTaskMetadata,
@@ -49,8 +50,11 @@ export interface TaskDraft {
   format: TaskMetadataFormat;
 }
 
-/** The checkbox line a draft is read from and written back to. */
-const TASK_LINE = /^(\s*[-*+][ \t]+\[)([ xX])(\][ \t]?)/;
+/**
+ * The checkbox line a draft is read from and written back to. The one blank
+ * after the box is read as part of it, so the description starts after it.
+ */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
 /** An on-completion marker, in either format, which is kept as written. */
 const ON_COMPLETION =
   /🏁️?[ \t]*(?:keep|delete)|\[[ \t]*onCompletion[ \t]*::[^\]]*\]/giu;
@@ -67,7 +71,7 @@ const DATE_ORDER: readonly TaskDateField[] = [
 
 /** Whether a line is a checklist item Deckard can edit as a task. */
 export function isTaskLine(line: string): boolean {
-  return TASK_LINE.test(line);
+  return isTaskLineOf(line, TASK_LINE);
 }
 
 /**
@@ -78,18 +82,16 @@ export function parseTaskDraft(
   line: string,
   fallbackFormat: TaskMetadataFormat = 'emoji',
 ): TaskDraft {
-  const match = TASK_LINE.exec(line);
-  const prefix = match
-    ? `${match[1]}${match[2]}${match[3].trimEnd()} `
-    : `${/^\s*/.exec(line)?.[0] ?? ''}- [ ] `;
-  const body = match ? line.slice(match[0].length) : line.trim();
+  const match = matchTaskLine(line, TASK_LINE);
+  const prefix = match ? `${match.head} ` : `${/^\s*/.exec(line)?.[0] ?? ''}- [ ] `;
+  const body = match ? match.body : line.trim();
 
   const extras = body.match(ON_COMPLETION) ?? [];
   const blockId = BLOCK_ID_PATTERN.exec(body)?.[1];
   const { metadata, title, format } = parseTaskMetadata(body);
   return {
     prefix,
-    completed: match ? match[2] !== ' ' : false,
+    completed: match ? match.mark !== ' ' : false,
     description: title,
     ...metadata,
     dependsOn: metadata.dependsOn,

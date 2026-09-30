@@ -16,6 +16,7 @@ import {
 } from './taskMetadata';
 import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
 import { findListParents, findParentTaskLine } from './listNesting';
+import { isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
@@ -60,7 +61,11 @@ function getTagField(field: string): string {
 }
 
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
-const taskPattern = /^(\s*)([-*+])[ \t]+\[([ xX])\][ \t]+(.*)$/;
+/**
+ * A task the index reads: any mark but `[>]`, a gap after the box, and the
+ * rest of the line on one line.
+ */
+const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
@@ -1274,9 +1279,9 @@ function findInlineSections(
     if (
       fencedLines.has(lineIndex) ||
       headingPattern.test(line) ||
-      taskPattern.test(line) ||
+      isTaskLineOf(line, taskShape) ||
       // A task migrated to another day is neither a task nor a note.
-      MIGRATED_TASK_LINE.test(line)
+      isTaskLineOf(line, MIGRATED_TASK_LINE)
     ) {
       lineIndex += 1;
       continue;
@@ -1325,7 +1330,7 @@ function findInlineSections(
       if (
         fencedLines.has(lineIndex) ||
         headingPattern.test(continuation) ||
-        taskPattern.test(continuation) ||
+        isTaskLineOf(continuation, taskShape) ||
         getListItemMatch(continuation) ||
         extractTags(continuation, undefined, personMarker).length === 0
       ) {
@@ -1420,14 +1425,14 @@ function findTasks(
     if (fencedLines.has(lineIndex)) {
       return [];
     }
-    const match = line.match(taskPattern);
+    const match = matchTaskLine(line, taskShape);
     if (!match) {
       return [];
     }
 
     const lineNumber = lineIndex + 1;
     const section = findNearestSection(sections, lineNumber);
-    const inlineTags = extractTags(match[4], undefined, personMarker);
+    const inlineTags = extractTags(match.body, undefined, personMarker);
     const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
     const inheritedLabels =
       section?.tagLabels ??
@@ -1437,17 +1442,17 @@ function findTasks(
       inlineTags.map((tag) => tag.key),
     );
     const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
-    const checkboxColumn = match[1].length + match[2].length + 2;
-    const checkboxValue = match[3] as ' ' | 'x' | 'X';
+    const checkboxColumn = match.indent.length + match.bullet.length + 2;
+    const checkboxValue = match.mark as ' ' | 'x' | 'X';
     // Obsidian Tasks markers become fields and leave the title, so a ✅ date
     // is never read as a due date and titles read the way Tasks shows them.
-    const { metadata: fields, title } = parseTaskMetadata(match[4]);
+    const { metadata: fields, title } = parseTaskMetadata(match.body);
     const dueDate =
       fields.due !== undefined
         ? toTaskDate(fields.due)
         : findTaskDate(title, dateAnchor);
 
-    const id = createId('task', `${filePath}:${lineNumber}:${match[4]}`);
+    const id = createId('task', `${filePath}:${lineNumber}:${match.body}`);
     idsByLine.set(lineIndex, id);
     const parentLine = findParentTaskLine(lines, listParents, lineIndex);
     const parentTaskId = parentLine === undefined ? undefined : idsByLine.get(parentLine);
@@ -1457,7 +1462,7 @@ function findTasks(
         id,
         filePath,
         sectionId: section?.id,
-        title: title || match[4],
+        title: title || match.body,
         completed: checkboxValue !== ' ',
         tags,
         tagLabels,
@@ -1843,9 +1848,9 @@ export function getTaskLineId(
   lineNumber: number,
   lineText: string,
 ): string | undefined {
-  const match = lineText.match(taskPattern);
+  const match = matchTaskLine(lineText, taskShape);
   return match
-    ? createId('task', `${filePath}:${lineNumber}:${match[4]}`)
+    ? createId('task', `${filePath}:${lineNumber}:${match.body}`)
     : undefined;
 }
 
