@@ -31,7 +31,7 @@ export interface ChangeTarget<U extends ResourceUri = ResourceUri> {
 /** What the watcher needs of the scanner: which files are notes, and the globs that find them. */
 export type WatchedNotes<U extends ResourceUri> = Pick<WorkspaceScanner<U>, 'isNotesFile' | 'getPatterns'>;
 
-/** How long the queue waits after the last change before it lets the batch go, in milliseconds. */
+/** How long the queue holds a batch after its first change before it lets it go, in milliseconds. */
 const DEBOUNCE_MS = 200;
 
 /**
@@ -40,9 +40,10 @@ const DEBOUNCE_MS = 200;
  * the watchers and the change queue itself, the rest through its target.
  *
  * The queue is keyed by URI and keeps only the newest change for each. It
- * lets the batch go 200 ms after the last change, or at once for a note
- * Deckard just saved itself, so typing and a burst of watcher events cost
- * one update rather than one each.
+ * lets the batch go 200 ms after the first change it holds, not the last:
+ * a later change joins the batch without putting it off. A note Deckard
+ * just saved itself lets it go at once. So typing and a burst of watcher
+ * events cost one update rather than one each.
  */
 export class ChangeWatcher<U extends ResourceUri = ResourceUri> implements Disposable {
   private readonly disposables: Disposable[] = [];

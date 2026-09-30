@@ -8,9 +8,14 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 
 | File | What it does |
 | --- | --- |
-| [`src/core/workspace/indexer.ts`](../../src/core/workspace/indexer.ts) | `WorkspaceIndexer`: lifecycle, warm start, change queue, and publishing |
+| [`src/core/workspace/indexer.ts`](../../src/core/workspace/indexer.ts) | `WorkspaceIndexer`: the facade every caller uses, which puts the four pieces below together and hands each call to one |
+| [`src/core/workspace/indexService.ts`](../../src/core/workspace/indexService.ts) | `IndexService`: lifecycle, warm start, the cache fingerprint, scans and their progress, the fold, parking, the full-text cache, and the notes that could not be read |
+| [`src/core/workspace/changeReactions.ts`](../../src/core/workspace/changeReactions.ts) | `reactionsTo`: what each change to the workspace requires, as a pure table |
+| [`src/core/workspace/changeWatcher.ts`](../../src/core/workspace/changeWatcher.ts) | `ChangeWatcher`: the workspace's events and file watchers, and the debounced change queue |
+| [`src/core/workspace/viewPublisher.ts`](../../src/core/workspace/viewPublisher.ts) | `ViewPublisher`: the plain listeners, and the views redrawn one host turn at a time |
 | [`src/core/workspace/scanner.ts`](../../src/core/workspace/scanner.ts) | `WorkspaceScanner`: finds, reads, and parses notes, and builds the parse fingerprint |
 | [`src/core/workspace/indexState.ts`](../../src/core/workspace/indexState.ts) | `IndexState`: the index as a fold over each note's contribution |
+| [`src/core/workspace/associationEvidence.ts`](../../src/core/workspace/associationEvidence.ts) | `collectAssociationEvidence`: the one walk that finds how tags relate, for the fold and the direct build |
 | [`src/core/storage/searchStore.ts`](../../src/core/storage/searchStore.ts) | `SearchStore`: the full-text cache, searched on the extension host |
 | [`src/core/storage/searchDatabase.ts`](../../src/core/storage/searchDatabase.ts) | The SQLite layout and writer, shared by the host and the worker |
 | [`src/core/storage/searchStoreWorker.ts`](../../src/core/storage/searchStoreWorker.ts) | The worker thread that writes large batches |
@@ -18,7 +23,7 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 | [`src/ports/`](../../src/ports/) | The interfaces the index reads VS Code through: `uri.ts`, `workspace.ts`, `fileSystem.ts`, `configuration.ts`, `workspaceEvents.ts`, `progress.ts`, and `events.ts` |
 | [`src/platform/`](../../src/platform/) | Their VS Code implementations: `vscodeWorkspace.ts`, `vscodeWorkspaceEvents.ts`, and `vscodeProgress.ts`, which `extension.ts` builds and passes in |
 
-None of the modules in `src/core` imports `vscode`. The scanner reads folders, files, and settings through one `WorkspaceFileAccess` made of the workspace, file-system, and configuration ports. The indexer hears about changes through the `WorkspaceEvents` port, shows a scan's progress through the `Progress` port, and announces updates with core's own `Emitter`. `SearchStore` takes the storage folder as a path, and `PreferenceSnapshots` writes through the file-system port. Each port call goes to the same VS Code API with the same arguments as before, so nothing a reader sees changed.
+None of the modules in `src/core` imports `vscode`. The scanner reads folders, files, and settings through one `WorkspaceFileAccess` made of the workspace, file-system, and configuration ports. The `ChangeWatcher` hears about changes through the `WorkspaceEvents` port, the `IndexService` shows a scan's progress through the `Progress` port, and the `ViewPublisher` announces updates with core's own `Emitter`. `SearchStore` takes the storage folder as a path, and `PreferenceSnapshots` writes through the file-system port. Each port call goes to the same VS Code API with the same arguments as before, so nothing a reader sees changed.
 
 Both the scanner and the indexer are generic in the URI type they are given, `WorkspaceScanner<U>` and `WorkspaceIndexer<U>`. The extension gives them `vscode.Uri`, so every URI they hand back, such as `getUri` or `getNotesFolderUri`, is a `vscode.Uri` the UI passes to VS Code as it is. A UI function that does so names its parameter `WorkspaceIndexer<vscode.Uri>`. A test gives them plain objects from `src/test/fakeWorkspace.ts`, so the scanner, indexer, and cache suites run under `test:unit`.
 
@@ -41,11 +46,15 @@ Everything the index holds about a tag is the sum of what each note says about i
 
 One thing a note's part cannot know is whether another note repeats one of its ids. Ids are hashed from path, line, and text, so a repeat means a hash collision. When one happens, the index is built the direct way, note by note, until the repeat goes away.
 
-`getSnapshot()` builds the derived `WorkspaceIndex` once per change and shares it until the next. Editor features ask for it on every keystroke, and rebuilding it per call was the main cost of typing in a large workspace. Parking is applied to the snapshot afterwards, because `deckard.parked` is a setting, not part of a note, and changing it should not reread any note.
+Both ways find the evidence that two tags are related with the same walk, `collectAssociationEvidence`: each section's tag groups, then its heading's tags against each tagged heading above it, then each task's tag groups. Each way passes its own sink, which keeps what it needs: the fold keeps each note's part of each pair, and the direct build keeps one relation per pair over the whole workspace. The direct build ranks with its own comparator, not the fold's, because the fold places a tie by where it first saw the pair and the direct build leaves ties in the order the sort is given.
+
+`getSnapshot()` builds the derived `WorkspaceIndex` once per change and shares it until the next. Editor features ask for it on every keystroke, and rebuilding it per call was the main cost of typing in a large workspace. Parking is applied to the snapshot afterwards, because `deckard.parked` is a setting, not part of a note, and changing it should not reread any note. Every path that changes the state derives the snapshot through one `publishState`, so none can leave parking out.
 
 ## Changes after the first scan
 
-The indexer registers its listeners before the first scan, so an edit during startup is queued rather than lost. Its listeners come through the `WorkspaceEvents` port, whose VS Code implementation forwards each to the same `vscode.workspace` event and makes each watcher over a `RelativePattern` on the notes glob of each folder. A scan's progress shows in the status bar as "Deckard: Indexing workspace", or "Deckard: Checking notes for changes" on a warm start.
+The `ChangeWatcher` registers its listeners before the first scan, so an edit during startup is queued rather than lost. Its listeners come through the `WorkspaceEvents` port, whose VS Code implementation forwards each to the same `vscode.workspace` event and makes each watcher over a `RelativePattern` on the notes glob of each folder. It needs nothing of VS Code beyond the port, so it lives in `src/core/workspace` with the rest of the index rather than in `src/platform`. A scan's progress shows in the status bar as "Deckard: Indexing workspace", or "Deckard: Checking notes for changes" on a warm start.
+
+What each change requires is decided by `reactionsTo(change)`, a pure function whose settings rows are the data `SETTING_ROWS`, so `change-reactions.test.ts` pins every row without VS Code. The watcher carries out the answer in one order: forget the parked rules, republish parking, replace the watchers, rescan, then queue the file. The reactions are:
 
 | Source | Reaction |
 | --- | --- |
@@ -54,10 +63,12 @@ The indexer registers its listeners before the first scan, so an edit during sta
 | Saving a note | Queue a read; a write Deckard just made skips the debounce |
 | A parse setting: `noteBoundaries`, `parseInlineTags`, `personMarker`, or `entityNamespaceAliases` | Rescan and reparse every note, since the fingerprint changed |
 | `deckard.exclude`, `files.exclude`, `search.exclude`, or `deckard.templatesFolder` | Rescan, reusing each note whose stat is unchanged |
-| `deckard.notesFolder` or the workspace folders | Replace the watchers, then rescan |
-| `deckard.parked` | Recompute parking and republish, with no reads |
+| `deckard.entityNamespaceAliases` | Also forget the parked rules, since parked tags are keyed through the aliases |
+| `deckard.notesFolder` or the workspace folders | Replace the watchers, then rescan; a folder change also forgets the parked rules |
+| `deckard.parked` | Recompute parking and republish, with no reads, once a first scan has built the index |
+| Any other setting, or a create, change, or save of a file that is not a note | Nothing |
 
-The queue is keyed by URI and keeps only the newest change for each. It flushes 200 ms after the last change, and applies the whole batch at once, so no listener sees half a batch.
+The queue is keyed by URI and keeps only the newest change for each. It flushes 200 ms after the first change it holds, since a later change joins the batch without putting the flush off, and applies the whole batch at once, so no listener sees half a batch.
 
 ## The cache and its fingerprint
 
@@ -96,7 +107,7 @@ flowchart LR
   publish --> views["Views, one host turn each, front first"]
 ```
 
-A publish first resolves `published`, then fires `onDidUpdate` for plain listeners that only keep the index or fire a cheap event. Views that register with `onDidUpdateView` then redraw one per host turn. They go in priority order, read at publish time: the active panel first, then visible views, then hidden ones, then housekeeping. A save used to redraw every open view in one turn, so the view in front waited on the ones behind it, and so did every other extension. A publish while views are still waiting starts the order again, and each waiting view still runs once.
+The `ViewPublisher` does this. A publish first resolves `published`, then fires `onDidUpdate` for plain listeners that only keep the index or fire a cheap event. Views that register with `onDidUpdateView` then redraw one per host turn. They go in priority order, read at publish time: the active panel first, then visible views, then hidden ones, then housekeeping. A save used to redraw every open view in one turn, so the view in front waited on the ones behind it, and so did every other extension. A publish while views are still waiting starts the order again, and each waiting view still runs once.
 
 A surface that only displays notes waits for `published`, which a warm start reaches at once. A surface that writes, or answers for the whole workspace, waits for `ready`, which follows the check against the files.
 
@@ -108,8 +119,5 @@ The mechanism above stays. The cache format and the fingerprint do not change, s
 | --- | --- |
 | 1 | `buildWorkspaceIndex` moves to `domain/index`, and `panelPriority` and `viewPriority` move to the webview host. |
 | 2 | Done: the scanner and indexer take the workspace, `FileSystem`, `Configuration`, `WorkspaceEvents`, and `Progress` ports; their `EventEmitter`s and `withProgress` left core. `SearchStore` takes a path instead of a `Uri`. The workspace, warm-start, index-publishing, search-store, and preference-snapshots suites run under `test:unit`. |
-| 3 | `WorkspaceIndexer` splits into an `IndexService`, a `ChangeWatcher` in `platform/`, and a `ViewPublisher`. |
-
-The `ChangeWatcher` owns the VS Code watchers and events. Its decision about what a change requires becomes a pure `reactionsTo(affects)` table, the reaction table above written as data, so it can be tested without VS Code. The `ViewPublisher` owns the in-turn, priority-ordered redraw. The `IndexService` owns the lifecycle, the warm start, and the fold.
-
-Phase 3 also merges the two association walks in `indexState.ts` into one `collectAssociationEvidence`. The two copies must stay identical for the hash-collision fallback to equal the fold, and one copy cannot drift from itself. Facades keep the old surfaces working for one phase, and the index-equivalence suite gates the change.
+| 3 | Done: `WorkspaceIndexer` split into an `IndexService`, a `ChangeWatcher` with its pure `reactionsTo` table, and a `ViewPublisher`, and the two association walks became one `collectAssociationEvidence`. The watcher stayed in core, since it needs only the `WorkspaceEvents` port. `WorkspaceIndexer` is a facade with its old surface. |
+| 4 | Callers move from the `WorkspaceIndexer` facade to the piece each uses, and the facade is deleted. |
