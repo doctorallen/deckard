@@ -54,9 +54,6 @@ export default {
     "src/ui/commands/linkMaintenance.ts": [
       "planHeadingRenameRewrites"
     ],
-    "src/ui/commands/linkSuggestions.ts": [
-      "completeBlockIds"
-    ],
     "src/ui/commands/navigation.ts": [
       "openSourceAt"
     ],
@@ -72,9 +69,6 @@ export default {
     ],
     "src/ui/commands/sampleWorkspace.ts": [
       "installSample"
-    ],
-    "src/ui/commands/tagDecorations.ts": [
-      "createEntryRelatedNotesHoverMessage"
     ],
     "src/ui/commands/taskActions.ts": [
       "readCompletionFamily"
@@ -92,6 +86,12 @@ export default {
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
       "renderGroup"
+    ],
+    "src/ui/providers/linkSuggestions.ts": [
+      "completeBlockIds"
+    ],
+    "src/ui/providers/tagDecorations.ts": [
+      "createEntryRelatedNotesHoverMessage"
     ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
@@ -183,9 +183,6 @@ export default {
     "src/extension.ts": [
       "deactivate"
     ],
-    "src/ui/commands/assistantWrites.ts": [
-      "readChangeTaskInput"
-    ],
     "src/ui/commands/bulkEdit.ts": [
       "describeBulkEditResult"
     ],
@@ -228,6 +225,9 @@ export default {
     "src/ui/state/agendaState.ts": [
       "createAgenda",
       "placeTask"
+    ],
+    "src/ui/state/assistantWriteInput.ts": [
+      "readChangeTaskInput"
     ],
     "src/ui/state/calendarState.ts": [
       "createCalendar"
@@ -337,16 +337,13 @@ export default {
     "src/test/webviewPage.ts": 2,
     "src/ui/commands/activeNoteContext.ts": 2,
     "src/ui/commands/agendaActions.ts": 1,
-    "src/ui/commands/assistantTools.ts": 3,
-    "src/ui/commands/assistantWrites.ts": 5,
+    "src/ui/commands/assistantTools.ts": 1,
+    "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/bulkEdit.ts": 1,
     "src/ui/commands/capture.ts": 3,
     "src/ui/commands/checkSetup.ts": 4,
     "src/ui/commands/chooseTheme.ts": 2,
     "src/ui/commands/destinationPicker.ts": 2,
-    "src/ui/commands/editorLenses.ts": 4,
-    "src/ui/commands/editorReferences.ts": 5,
-    "src/ui/commands/entitySuggestions.ts": 2,
     "src/ui/commands/excludeFolders.ts": 2,
     "src/ui/commands/exportResults.ts": 6,
     "src/ui/commands/extractHeading.ts": 3,
@@ -354,7 +351,6 @@ export default {
     "src/ui/commands/linkEntity.ts": 1,
     "src/ui/commands/linkHealth.ts": 2,
     "src/ui/commands/linkMaintenance.ts": 2,
-    "src/ui/commands/linkSuggestions.ts": 4,
     "src/ui/commands/mcpServer.ts": 4,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/noteVisits.ts": 5,
@@ -365,14 +361,9 @@ export default {
     "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/quickFindActions.ts": 4,
     "src/ui/commands/renameTag.ts": 1,
-    "src/ui/commands/repeatRuleHealth.ts": 2,
     "src/ui/commands/sampleWorkspace.ts": 2,
     "src/ui/commands/selectionSeed.ts": 2,
-    "src/ui/commands/tagDecorations.ts": 4,
-    "src/ui/commands/tagSuggestions.ts": 1,
     "src/ui/commands/taskEditor.ts": 5,
-    "src/ui/commands/taskLineDecorations.ts": 2,
-    "src/ui/commands/taskMetadataSuggestions.ts": 5,
     "src/ui/commands/taskSteps.ts": 3,
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/commands/tryNext.ts": 5,
@@ -475,9 +466,6 @@ export default {
     "src/test/webviewPage.ts": [
       "openWebviewPage"
     ],
-    "src/ui/commands/assistantTools.ts": [
-      "(function)"
-    ],
     "src/ui/commands/bulkEdit.ts": [
       "applyBulkEdit"
     ],
@@ -513,9 +501,6 @@ export default {
     "src/ui/commands/rollover.ts": [
       "applyRollover"
     ],
-    "src/ui/commands/tagSuggestions.ts": [
-      "provideCompletionItems"
-    ],
     "src/ui/commands/taskEditor.ts": [
       "readField"
     ],
@@ -525,6 +510,9 @@ export default {
     ],
     "src/ui/commands/templates.ts": [
       "newNoteFromTemplate"
+    ],
+    "src/ui/providers/tagSuggestions.ts": [
+      "provideCompletionItems"
     ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
@@ -654,14 +642,14 @@ export default {
     "src/test/tag-grouping.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 1,
     "src/ui/commands/bulkEdit.ts": 2,
-    "src/ui/commands/editorReferences.ts": 1,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/parking.ts": 4,
     "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/renameTag.ts": 1,
     "src/ui/commands/rollover.ts": 1,
-    "src/ui/commands/tagSuggestions.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 2,
+    "src/ui/providers/editorReferences.ts": 1,
+    "src/ui/providers/tagSuggestions.ts": 1,
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
@@ -689,7 +677,6 @@ export default {
     "src/test/note-links.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/linkSuggestions.ts": 1,
     "src/ui/commands/notify.ts": 1,
     "src/ui/commands/parking.ts": 2,
     "src/ui/commands/pinNote.ts": 1,

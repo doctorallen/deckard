@@ -19,22 +19,8 @@ import { measure, measureAsync } from '../../shared/timing';
 import { writeSetting } from './settings';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { WorkspaceIndex } from '../../core/types';
-import {
-  answerQuery,
-  answerTags,
-  QUERY_TOOL_NAME,
-  readQueryToolInput,
-  readTagsToolInput,
-  TAGS_TOOL_NAME,
-} from '../state/assistantTools';
-import {
-  ADD_TASK_TOOL_NAME,
-  addTask,
-  CHANGE_TASK_TOOL_NAME,
-  changeTask,
-  readAddTaskInput,
-  readChangeTaskInput,
-} from './assistantWrites';
+import { ASSISTANT_TOOLS, ToolRunners } from '../state/assistantTools';
+import { addTask, changeTask } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 
@@ -301,38 +287,38 @@ export class DeckardMcpServer implements vscode.Disposable {
         // An early call waits for the first scan rather than answer from part of it.
         await this.indexer.ready;
         const index = this.indexer.getSnapshot();
-        if (name === QUERY_TOOL_NAME) {
-          const input = readQueryToolInput(args);
-          return input
-            ? { text: measure('MCP query', () => answerQuery(index, input, readQueryContext())) }
-            : {
-                text: 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.',
-                isError: true,
-              };
+        const tool = ASSISTANT_TOOLS.find((entry) => entry.name === name);
+        if (!tool) {
+          return { text: `Unknown tool: ${name}`, isError: true };
         }
-        if (name === TAGS_TOOL_NAME) {
-          return {
-            text: measure('MCP tag list', () =>
-              answerTags(index, readTagsToolInput(args)),
-            ),
-          };
+        const runners = this.createRunners(index);
+        if (tool.kind === 'read') {
+          const call = tool.read(args, runners);
+          return call.kind === 'run'
+            ? { text: measure(tool.measure.mcp, call.run) }
+            : { text: call.text.mcp, isError: true };
         }
         // A write over MCP has no dialog of its own; the refactor preview is
         // where the reader sees the line and can decline it.
-        if (name === ADD_TASK_TOOL_NAME) {
-          const input = readAddTaskInput(args);
-          return input
-            ? measureAsync('MCP add task', () => addTask(this.indexer, this.history, input))
-            : { text: 'Send the task\'s words as "text", and optionally a workspace-relative "note".', isError: true };
-        }
-        if (name === CHANGE_TASK_TOOL_NAME) {
-          const input = readChangeTaskInput(args);
-          return input
-            ? measureAsync('MCP change task', () => changeTask(this.indexer, this.history, input))
-            : { text: 'Send "note" and "line" as deckard_query reports them, and at least one change.', isError: true };
-        }
-        return { text: `Unknown tool: ${name}`, isError: true };
+        const call = tool.read(args, runners);
+        return call.kind === 'run'
+          ? measureAsync(tool.measure.mcp, call.run)
+          : { text: call.text.mcp, isError: true };
       },
+    };
+  }
+
+  /**
+   * What the tools answer with over MCP: the index read once the first scan
+   * was done, for every tool in the call, and the same writes VS Code's
+   * tools make, into the same history.
+   */
+  private createRunners(index: WorkspaceIndex): ToolRunners {
+    return {
+      getSnapshot: () => index,
+      readQueryContext: () => readQueryContext(),
+      addTask: (input) => addTask(this.indexer, this.history, input),
+      changeTask: (input) => changeTask(this.indexer, this.history, input),
     };
   }
 }

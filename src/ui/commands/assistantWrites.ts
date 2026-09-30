@@ -9,8 +9,8 @@ import {
   formatIsoDate,
   TaskMetadataFormat,
 } from '../../domain/markdown/taskMetadata';
-import { isRecord } from '../../shared/guards';
-import { TaskPriority, WorkspaceIndex } from '../../core/types';
+import { WorkspaceIndex } from '../../core/types';
+import { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
 import { formatCaptureLine, getCaptureInsertion } from './capture';
 import { ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
@@ -35,78 +35,13 @@ import { WorkspaceWriteHistory } from './workspaceWrites';
  * whatever is on that line now.
  */
 
-export const ADD_TASK_TOOL_NAME = 'deckard_add_task';
-export const CHANGE_TASK_TOOL_NAME = 'deckard_change_task';
-
-export interface AddTaskInput {
-  /** The task's words; metadata such as 📅 2026-09-20 or ⏫ may be written in them. */
-  text: string;
-  /** A workspace-relative note to add it to; today's daily note when absent. */
-  note?: string;
-}
-
-/** `null` clears a field; absent leaves it. */
-export interface ChangeTaskInput {
-  note: string;
-  line: number;
-  title?: string;
-  complete?: boolean;
-  due?: string | null;
-  priority?: TaskPriority | null;
-  assignee?: string | null;
-}
-
-const PRIORITIES: readonly TaskPriority[] = ['highest', 'high', 'medium', 'low', 'lowest'];
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_TEXT = 500;
-
-export function readAddTaskInput(value: unknown): AddTaskInput | undefined {
-  if (!isRecord(value) || typeof value.text !== 'string') {
-    return undefined;
-  }
-  const text = value.text.trim().replace(/\s+/g, ' ');
-  if (!text || text.length > MAX_TEXT) {
-    return undefined;
-  }
-  const note = typeof value.note === 'string' ? value.note.trim() : '';
-  return note ? { text, note } : { text };
-}
-
-export function readChangeTaskInput(value: unknown): ChangeTaskInput | undefined {
-  if (
-    !isRecord(value) ||
-    typeof value.note !== 'string' ||
-    !value.note.trim() ||
-    typeof value.line !== 'number' ||
-    !Number.isInteger(value.line) ||
-    value.line < 1
-  ) {
-    return undefined;
-  }
-  const input: ChangeTaskInput = { note: value.note.trim(), line: value.line };
-  if (value.title !== undefined) {
-    if (typeof value.title !== 'string' || !value.title.trim() || value.title.length > MAX_TEXT) {return undefined;}
-    input.title = value.title.trim().replace(/\s+/g, ' ');
-  }
-  if (value.complete !== undefined) {
-    if (typeof value.complete !== 'boolean') {return undefined;}
-    input.complete = value.complete;
-  }
-  if (value.due !== undefined) {
-    if (value.due !== null && (typeof value.due !== 'string' || !ISO_DAY.test(value.due))) {return undefined;}
-    input.due = value.due;
-  }
-  if (value.priority !== undefined) {
-    if (value.priority !== null && !PRIORITIES.includes(value.priority as TaskPriority)) {return undefined;}
-    input.priority = value.priority as TaskPriority | null;
-  }
-  if (value.assignee !== undefined) {
-    if (value.assignee !== null && (typeof value.assignee !== 'string' || !/^\S{1,80}$/.test(value.assignee))) {return undefined;}
-    input.assignee = value.assignee;
-  }
-  const fields = ['title', 'complete', 'due', 'priority', 'assignee'] as const;
-  return fields.some((field) => input[field] !== undefined) ? input : undefined;
-}
+export {
+  ADD_TASK_TOOL_NAME,
+  CHANGE_TASK_TOOL_NAME,
+  readAddTaskInput,
+  readChangeTaskInput,
+} from '../state/assistantWriteInput';
+export type { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
 
 /** The task line an added task becomes. */
 export function addedTaskLine(text: string): string {

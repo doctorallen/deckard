@@ -38,8 +38,8 @@ import { newNoteFromTemplate } from './ui/commands/templates';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
-import { TaskLineDecorations } from './ui/commands/taskLineDecorations';
-import { RepeatRuleHealth } from './ui/commands/repeatRuleHealth';
+import { TaskLineDecorations } from './ui/providers/taskLineDecorations';
+import { RepeatRuleHealth } from './ui/providers/repeatRuleHealth';
 import { WordCountStatusBar } from './ui/views/wordCountStatusBar';
 import { SectionFocus } from './ui/commands/focusSection';
 import {
@@ -58,7 +58,7 @@ import {
 } from './ui/commands/parking';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
-import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
+import { EntityHeadingSuggestions } from './ui/providers/entitySuggestions';
 import {
   CREATE_LINKED_NOTE_COMMAND,
   CREATE_MISSING_NOTES_COMMAND,
@@ -89,7 +89,7 @@ import {
   LinkMaintenance,
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
-import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
+import { WikiLinkCompletionProvider } from './ui/providers/linkSuggestions';
 import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
@@ -98,15 +98,15 @@ import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
   EditorTagDecorations,
   isMarkdownDocument,
-} from './ui/commands/tagDecorations';
-import { TagCompletionProvider } from './ui/commands/tagSuggestions';
-import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
-import { EditorLenses } from './ui/commands/editorLenses';
+} from './ui/providers/tagDecorations';
+import { TagCompletionProvider } from './ui/providers/tagSuggestions';
+import { TaskMetadataCompletionProvider } from './ui/providers/taskMetadataSuggestions';
+import { EditorLenses } from './ui/providers/editorLenses';
 import {
   LINK_MENTIONS_COMMAND,
   linkMentions,
 } from './ui/commands/unlinkedMentions';
-import { EditorReferences } from './ui/commands/editorReferences';
+import { EditorReferences } from './ui/providers/editorReferences';
 import { AssistantTools } from './ui/commands/assistantTools';
 import { QuickFind } from './ui/commands/quickFind';
 import { DashboardPanel } from './ui/webview/dashboard';
@@ -269,7 +269,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     writes: taskWrites,
     themePreview,
   });
-  const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri));
+  const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
   // The hover on an entry offers to pin it, so it has to know which entries
   // are pinned; preferences answer, and a change redraws the hovers.
   const readPinned = (): void => {
@@ -284,8 +284,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   };
   readPinned();
   context.subscriptions.push(preferences.onDidChange(() => readPinned()));
-  const tagSuggestions = new TagCompletionProvider(indexer);
-  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
+  const tagSuggestions = new TagCompletionProvider(indexer).register();
+  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   // A workspace's first index says what it read, once; a very large one is
@@ -343,9 +343,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     new ActiveNoteContext(indexer),
     // A task's metadata steps back, and an overdue task says so on its line.
-    new TaskLineDecorations((uri) => indexer.isNotesFile(uri)),
+    new TaskLineDecorations((uri) => indexer.isNotesFile(uri)).register(),
     // A repeat rule Deckard cannot read is marked before the task is done.
-    new RepeatRuleHealth((uri) => indexer.isNotesFile(uri)),
+    new RepeatRuleHealth((uri) => indexer.isNotesFile(uri)).register(),
     // The words in the note, or the selection, beside the task count.
     new WordCountStatusBar((uri) => indexer.isNotesFile(uri)),
   );
@@ -360,8 +360,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       vscode.commands.executeCommand('setContext', 'deckard.canUndo', canUndo),
     ),
   );
-  const editorReferences = new EditorReferences(indexer);
-  const editorLenses = new EditorLenses(indexer);
+  const editorReferences = new EditorReferences(indexer).register();
+  const editorLenses = new EditorLenses(indexer).register();
   const assistantTools = new AssistantTools(indexer, history);
   const mcpServer = new DeckardMcpServer({
     indexer,
@@ -374,10 +374,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   void mcpServer.restart();
   // Notes are offered in the order Find ranks them, opened ones first.
-  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences);
+  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences).register();
   const entitySuggestions = new EntityHeadingSuggestions((uri) =>
     indexer.isNotesFile(uri),
-  );
+  ).register();
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer, taskWrites, themePreview);

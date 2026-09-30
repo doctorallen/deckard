@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { PreferencesStore } from '../core/storage/preferences';
 import { PersistedPreferences } from '../core/types';
 import { buildSetupReport, SetupFacts } from '../ui/commands/checkSetup';
-import { TagCompletionProvider } from '../ui/commands/tagSuggestions';
+import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
 import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
 import { collectNoteLinks } from '../ui/state/noteLinks';
 import { createNotesGraphSnapshot, graphInputsChanged } from '../ui/state/notesGraphState';

@@ -46,6 +46,8 @@ src/
 | `webview` | Page code that runs in the sandbox | Its own folder, `webview/shared`, `ui/protocol`, and Preact |
 | `extension.ts` | The composition root: builds the ports and services, then registers each feature | Every layer. It is the only module that may import `platform` |
 
+`ui/providers` exists now. Each completion, CodeLens, hover, decoration, and diagnostic provider takes only its collaborators in its constructor and subscribes to VS Code in `register()`, which returns the provider, so `extension.ts` builds and registers each in one expression at the point in activation where it always registered. What a provider draws with, its decoration types or its diagnostic collection, is still made with it, so a test can call its draw and check methods without registering anything. The rules the providers apply are in `domain`, where `test:unit` runs their tests: `markdown/completionContext`, `markdown/taggedEntries`, `markdown/repeatRuleProblems`, and `index/wikiLinkTargets`. `ui/providers/codeLenses` holds the lazy lens and the `locate` lookup the two lens providers share. Each provider's old path under `ui/commands` re-exports it until Phase 7.
+
 ## The rule
 
 ```mermaid

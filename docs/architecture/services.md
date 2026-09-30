@@ -38,6 +38,8 @@ A service owns one capability. It is a class with three properties:
 
 Phase 4 also moves review, templates, quick find's action table, and the assistant tool table into services. The assistant table is shared by the MCP server and the language-model tools, whose refusal strings have already drifted apart today.
 
+The assistant tool table exists now: `ASSISTANT_TOOLS` in `src/ui/state/assistantTools.ts` names each of the four tools, reads its input, binds it to what it runs, and carries each surface's refusal text and timing name side by side. `AssistantTools` (the language-model tools) and `DeckardMcpServer` both iterate it, and each only adapts a call to its transport. The language-model side alone keeps the `deckard.assistantTools` guard, the once-a-session confirmation, and the progress messages; the MCP server waits for the first scan and has no guard. The two writes are handed to the table as runners, since they need the editor. The table sits in `ui/state` rather than `services` because it answers through `getQueryBlockSnapshot`, which is still there.
+
 ## What an adapter is
 
 A command handler, a message handler, and a tree action are all adapters. Each does exactly three things, in order:
