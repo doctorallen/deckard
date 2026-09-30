@@ -5,7 +5,7 @@
 // status columns, so these check each of those through real messages.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview } = require('./support.js');
 const { TaskBoardPanel } = require('../../out/ui/webview/taskBoard.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
 const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
@@ -84,9 +84,6 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
     view.findAll('.board-card').filter((card) => !card.hidden).map((card) => card.dataset.taskId).sort();
   return { view, panel, board, preferences, updates, lastState, cards, shownCards, activeSearch, index };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -642,22 +639,3 @@ test('a hidden board skips updates and catches up when shown', async () => {
   assert.strictEqual(panel._toWebview.length, before + 1, 'showing it draws once');
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.stack || error.message).split('\n').slice(0, 3).join('\n       '));
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

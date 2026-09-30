@@ -5,7 +5,7 @@
 // the index no longer has opens nothing.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview, createGlobalState } = require('./support.js');
 const { StatsPanel } = require('../../out/ui/webview/stats.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
 
@@ -45,17 +45,6 @@ function createIndex() {
   };
 }
 
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
-  };
-}
-
 /** Lets the host finish handling a message the page posted. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -88,9 +77,6 @@ async function openStats(files = []) {
   const rows = () => view.findAll('.stat-row');
   return { view, panel, updates, index, preferences, openedTags, rows };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -223,22 +209,3 @@ test('a row the index no longer has opens nothing', async () => {
   assert.deepStrictEqual(preferences.value.sectionAccessCounts, before);
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

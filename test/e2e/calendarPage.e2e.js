@@ -6,7 +6,7 @@
 // it could not.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview } = require('./support.js');
 const { CalendarPanel } = require('../../out/ui/webview/calendarPage.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
@@ -57,12 +57,9 @@ async function openPage() {
   panel._toWebview.forEach((message) => panel._deliver(message));
   await settle();
   const cell = (date) => view.find(`.day-cell[data-drop-date="${date}"]`);
-  const chips = (date) => cell(date).querySelectorAll('.cal-chip').map((chip) => [chip.dataset.kind, chip.textContent.replace(/^[↻⏳ ]+/, '')]);
+  const chips = (date) => [...cell(date).querySelectorAll('.cal-chip')].map((chip) => [chip.dataset.kind, chip.textContent.replace(/^[↻⏳ ]+/, '')]);
   return { page, panel, view, cell, chips };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -196,19 +193,3 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   }
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let failed = 0;
-  for (const { name, fn } of tests) {
-    try {
-      await fn();
-      console.log(`  ok   ${name}`);
-    } catch (error) {
-      failed += 1;
-      console.log(`  FAIL ${name}\n       ${error && error.stack ? error.stack.split('\n').slice(0, 3).join('\n       ') : error}`);
-    }
-  }
-  console.log(`\n${tests.length - failed} passed, ${failed} failed`);
-  process.exit(failed ? 1 : 0);
-})();

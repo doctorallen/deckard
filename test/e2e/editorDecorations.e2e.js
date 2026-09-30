@@ -33,9 +33,6 @@ const settle = (milliseconds = 250) =>
 const type = (document) =>
   vscode._test.emitters.textDocument.fire({ document, contentChanges: [{ text: 'x' }] });
 
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
-
 // ---------------------------------------------------------------------------
 
 test('a burst of edits redraws tags once, after typing pauses', async () => {
@@ -78,22 +75,3 @@ test('edits to a file that is not Markdown redraw nothing', async () => {
   }
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

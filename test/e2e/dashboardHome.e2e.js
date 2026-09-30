@@ -6,7 +6,7 @@
 // these also check that typing survives that round trip.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview, createGlobalState } = require('./support.js');
 const { DashboardPanel } = require('../../out/ui/webview/dashboard.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
@@ -34,17 +34,6 @@ function createIndex() {
     entities: new Map(),
     tagAssociations: new Map(),
     updatedAt: Date.now(),
-  };
-}
-
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
   };
 }
 
@@ -121,9 +110,6 @@ function createNavigation() {
     },
   };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 /** A note in the editor, a note sharing its tags, and a tag with no hub. */
 function createNotesIndex() {
@@ -337,7 +323,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   assert.strictEqual(tasksConfig().count, 10);
 
   const add = view.find('[data-action="add-widget"]');
-  const offered = add.children.map((option) => option.getAttribute('value'));
+  const offered = [...add.children].map((option) => option.getAttribute('value'));
   assert.ok(offered.includes('agenda'), 'a removed widget can be added again');
   assert.ok(!offered.includes('search'), 'a widget Home holds once is not offered twice');
   assert.ok(offered.includes('tasks'), 'a tasks widget can be added again');
@@ -492,7 +478,7 @@ test('the namespace filter narrows the Tags tab and keeps its choice', async () 
     Array.from(view.findAll('.tag-row')).map((row) => row.dataset.tagKey).sort();
 
   assert.deepStrictEqual(
-    namespace().children.map((option) => option.getAttribute('value')),
+    [...namespace().children].map((option) => option.getAttribute('value')),
     ['', 'project', 'topic', '/'],
     'each namespace in use, then None',
   );
@@ -542,7 +528,7 @@ test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
     Array.from(view.findAll('.tag-row')).map((row) => row.dataset.tagKey).sort();
 
   assert.deepStrictEqual(
-    namespace().children.map((option) => option.getAttribute('value')),
+    [...namespace().children].map((option) => option.getAttribute('value')),
     ['', 'person', '/'],
     'people under one Person namespace, not None',
   );
@@ -697,7 +683,7 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
 
     // Related notes follow the note in the editor.
     assert.match(widget('related').querySelector('.home-widget-source').textContent, /Current work/);
-    const related = widget('related').querySelectorAll('[data-action="open-source"]');
+    const related = [...widget('related').querySelectorAll('[data-action="open-source"]')];
     assert.deepStrictEqual(
       related.map((row) => row.dataset.filePath).sort(),
       ['notes/atlas.md', 'notes/contract.md', 'notes/vendor.md'],
@@ -776,20 +762,3 @@ test('the gear turns zen on through the host, and the page carries the marker', 
   }
 });
 
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

@@ -3,7 +3,7 @@
 // that holds a search's Refine options.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview, createGlobalState } = require('./support.js');
 const { SearchPanels } = require('../../out/ui/webview/searchPage.js');
 const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
@@ -41,17 +41,6 @@ function createIndexer(index) {
     // These notes are held in memory, so nothing here is misspelled.
     suggestWords: () => new Map(),
     _emitter: emitter,
-  };
-}
-
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
   };
 }
 
@@ -152,10 +141,6 @@ async function removeChips(view) {
 const title = (view) => view.find('h1').textContent.trim();
 const settle = (milliseconds = 10) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-const tests = [];
-const only = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -714,23 +699,3 @@ test('a Markdown editor takes the sidebar back, and the page its Refine', async 
   assert.strictEqual(view.find('.query-facets.is-elsewhere'), null);
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  const list = only.length ? only : tests;
-  for (const entry of list) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n').slice(0, 8).join('\n       '));
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

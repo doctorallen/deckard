@@ -6,7 +6,7 @@
 // while a missing one is only offered, never created unasked.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview } = require('./support.js');
 const { CalendarView } = require('../../out/ui/webview/calendar.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
@@ -64,9 +64,6 @@ async function openCalendar() {
     );
   return { host, view, updates, day, monthButton };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -210,22 +207,3 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
   }
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

@@ -4,7 +4,7 @@
 // until the reader asks for more.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
+const { mountWebview, createGlobalState } = require('./support.js');
 const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
 const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
@@ -24,17 +24,6 @@ function createIndex(count, { dated = false } = {}) {
     );
   });
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-}
-
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
-  };
 }
 
 /**
@@ -133,9 +122,6 @@ async function openForEditor() {
 }
 
 const relatedPaths = (state) => state.notes.map((note) => note.filePath);
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -396,22 +382,3 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   }
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();
