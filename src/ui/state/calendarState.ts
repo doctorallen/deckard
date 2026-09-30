@@ -1,6 +1,7 @@
 import { isParkedTask } from '../../core/workspace/parked';
 import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
+import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import { Weekday } from '../../core/markdown/dates';
 import { projectRepeats, TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
 import { CalendarDayDetail, DashboardTask, Task, WorkspaceIndex } from '../../core/types';
@@ -264,7 +265,6 @@ export interface CalendarOptions {
   selectedDate?: string;
 }
 
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const monthTitle = new Intl.DateTimeFormat('en', {
   month: 'long',
@@ -454,7 +454,7 @@ export function createCalendar(
     ...(needsNewDateBefore(now.getTime()) !== undefined
       ? { needsNewDateBefore: formatLocalDate(new Date(needsNewDateBefore(now.getTime())!)) }
       : {}),
-    weekdays: Array.from({ length: 7 }, (_, offset) => WEEKDAY_SHORT[(weekStart + offset) % 7]),
+    weekdays: Array.from({ length: 7 }, (_, offset) => SHORT_WEEKDAY_NAMES[(weekStart + offset) % 7]),
     weeks,
     ...(options.showRepeats ? { showRepeats: true } : {}),
     ...(options.showWeekends === false ? { hideWeekends: true } : {}),

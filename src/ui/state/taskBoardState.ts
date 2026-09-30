@@ -14,6 +14,7 @@ import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
 import { needsNewDate } from '../../core/taskPolicy';
 import { escapeRegExp } from '../../core/text';
+import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import {
   addDays,
   appendToTaskText,
@@ -627,7 +628,7 @@ export function resolveTaskMove(
           return { kind: 'unchanged' };
         }
         const [year, month, day] = value.split('-').map(Number);
-        const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(year, month - 1, day).getDay()];
+        const weekday = SHORT_WEEKDAY_NAMES[new Date(year, month - 1, day).getDay()];
         return {
           kind: 'edit',
           label: `Due ${weekday} ${value}`,

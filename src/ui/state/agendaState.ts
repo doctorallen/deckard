@@ -1,6 +1,7 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { describeSteps, isPlainStep } from '../../core/markdown/taskSteps';
+import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import {
   addDays,
   formatIsoDate,
@@ -188,7 +189,6 @@ const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
   'none',
 ];
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**
  * The date an undated task sorts by. Nothing placed it, so it sorts after
@@ -324,7 +324,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 /** A day as a group names it, `Mon Sep 28`, with no locale comma. */
 function formatDayLabel(at: number): string {
   const date = new Date(at);
-  return `${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+  return `${SHORT_WEEKDAY_NAMES[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
 /**
@@ -633,5 +633,5 @@ function compareSource(left: AgendaEntry, right: AgendaEntry): number {
 
 /** Writes a date as "Mon 2026-09-14", so a week reads at a glance. */
 function formatDay(at: number): string {
-  return `${WEEKDAYS[new Date(at).getDay()]} ${formatIsoDate(at)}`;
+  return `${SHORT_WEEKDAY_NAMES[new Date(at).getDay()]} ${formatIsoDate(at)}`;
 }

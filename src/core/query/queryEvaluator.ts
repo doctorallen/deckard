@@ -1,5 +1,6 @@
 import { getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
 import { DAY_MS, startOfDay } from '../markdown/calendar';
+import { getFileName } from '../paths';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
@@ -1018,6 +1019,3 @@ export function createGlob(value: string, anchored: boolean): RegExp {
   return new RegExp(anchored ? `^${body}$` : body, 'i');
 }
 
-function getFileName(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
-}

@@ -1,5 +1,6 @@
 import { isParkedTask } from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
+import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
@@ -213,10 +214,9 @@ export function summarizeReview(
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SECTION_LIMIT = 20;
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function formatDayShort(at: number): string {
-  return `${WEEKDAY_SHORT[new Date(at).getDay()]} ${formatIsoDate(at)}`;
+  return `${SHORT_WEEKDAY_NAMES[new Date(at).getDay()]} ${formatIsoDate(at)}`;
 }
 
 /**

@@ -25,6 +25,12 @@ export const WEEKDAY_NAMES: readonly string[] = [
   'saturday',
 ];
 
+/**
+ * Short weekday names in `Date.getDay()` order, Sunday first, as dates are
+ * labeled in English wherever Deckard writes one, such as "Mon 2026-09-14".
+ */
+export const SHORT_WEEKDAY_NAMES: readonly string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 /** Month names and their short forms, as the month number `Date` uses. */
 export const MONTH_NUMBERS: Readonly<Record<string, number>> = {
   january: 0,

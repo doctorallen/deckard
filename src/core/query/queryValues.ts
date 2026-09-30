@@ -16,7 +16,5 @@ export function normalizeFolder(value: string): string {
   return value.replace(/^\.\//, '').replace(/\/+$/, '');
 }
 
-/** Text with every character a regular expression treats specially escaped, to match it literally. */
-export function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// The one copy lives in core/text, beside the other text helpers.
+export { escapeRegExp } from '../text';

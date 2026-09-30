@@ -6,6 +6,7 @@ import {
   makeDay,
   MONTH_NUMBERS,
   parseIsoDate,
+  SHORT_WEEKDAY_NAMES,
   startOfDay,
   WEEKDAY_NAMES,
 } from './calendar';
@@ -45,7 +46,6 @@ export interface DatePhraseOptions {
   direction?: 'future' | 'past';
 }
 
-const SHORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SHORT_MONTHS = [
   'Jan',
   'Feb',
@@ -320,7 +320,7 @@ export function formatShortDay(date: string, now: number = Date.now()): string {
     return date;
   }
   const day = new Date(at);
-  const text = `${SHORT_WEEKDAYS[day.getDay()]}, ${SHORT_MONTHS[day.getMonth()]} ${day.getDate()}`;
+  const text = `${SHORT_WEEKDAY_NAMES[day.getDay()]}, ${SHORT_MONTHS[day.getMonth()]} ${day.getDate()}`;
   return day.getFullYear() === new Date(now).getFullYear()
     ? text
     : `${text}, ${day.getFullYear()}`;
