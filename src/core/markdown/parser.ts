@@ -11,10 +11,9 @@ import {
 import {
   BLOCK_ID_PATTERN,
   MIGRATED_TASK_LINE,
-  parseIsoDate,
   parseTaskMetadata,
 } from './taskMetadata';
-import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
+import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
 import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
 import { findListParents, findParentTaskLine } from './listNesting';
 import { findFencedLines, isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
@@ -1588,7 +1587,7 @@ function omitUndefined<T extends object>(value: T): Partial<T> {
 function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   const explicit = text.match(explicitDatePattern);
   if (explicit) {
-    const at = createLocalDate(
+    const at = makeDay(
       Number(explicit[1]),
       Number(explicit[2]) - 1,
       Number(explicit[3]),
@@ -1605,7 +1604,7 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
     const at =
       month === undefined
         ? undefined
-        : createLocalDate(year, month, Number(monthDate[2]));
+        : makeDay(year, month, Number(monthDate[2]));
     return at === undefined ? undefined : { at, text: monthDate[0] };
   }
 
@@ -1624,23 +1623,6 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
 
 const monthNumbers = MONTH_NUMBERS;
 const weekdayNames = WEEKDAY_NAMES;
-
-function createLocalDate(
-  year: number,
-  month: number,
-  day: number,
-): number | undefined {
-  const date = new Date(year, month, day);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month ||
-    date.getDate() !== day
-  ) {
-    return undefined;
-  }
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
 
 /**
  * The block ids a note carries, each with the one-based line it marks.

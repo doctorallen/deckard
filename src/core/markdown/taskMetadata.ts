@@ -1,6 +1,18 @@
 import { needsNewDate } from '../taskPolicy';
 import { TaskPriority } from '../types';
+import {
+  addDays,
+  addMonths,
+  DAY_MS,
+  daysInMonth,
+  formatIsoDate,
+  parseIsoDate,
+  startOfDay,
+  WEEKDAY_NAMES,
+} from './calendar';
 import { TaskLineShape } from './lineShapes';
+
+export { addDays, formatIsoDate, parseIsoDate, startOfDay } from './calendar';
 
 /**
  * Reads and writes task metadata in both formats of the Obsidian Tasks
@@ -166,8 +178,6 @@ const DATAVIEW_ID_PATTERN =
 export const BLOCK_ID_PATTERN = /[ \t]+\^([A-Za-z0-9-]+)[ \t]*$/;
 
 const PRIORITY_NAMES: ReadonlySet<string> = new Set(PRIORITY_MARKERS.values());
-
-const DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Separates a task's metadata from its title.
@@ -615,16 +625,6 @@ export interface RecurrenceRule {
   next(from: number): number;
 }
 
-const WEEKDAY_NAMES = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-];
-
 /** The nth weekday of a month, as a rule names it. */
 const ORDINALS: Readonly<Record<string, number | 'last'>> = {
   first: 1,
@@ -905,36 +905,6 @@ function nextNthWeekday(from: number, months: number, weekday: number, nth: numb
   return addMonths(from, months);
 }
 
-/** Reads a `YYYY-MM-DD` date as local midnight, rejecting impossible dates. */
-export function parseIsoDate(value: string | undefined): number | undefined {
-  const match = value ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
-  if (!match) {
-    return undefined;
-  }
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
-  const day = Number(match[3]);
-  const date = new Date(year, month, day);
-  return date.getFullYear() === year &&
-    date.getMonth() === month &&
-    date.getDate() === day
-    ? date.getTime()
-    : undefined;
-}
-
-/** Writes a timestamp as the local `YYYY-MM-DD` date Tasks uses. */
-export function formatIsoDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  const pad = (value: number): string => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-export function startOfDay(timestamp: number): number {
-  const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
 /** How a due date reads beside today, and whether it has passed. */
 export interface DueDescription {
   /**
@@ -955,7 +925,6 @@ export interface DueDescription {
   days: number;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 /** Beyond this many days either way, the distance is left to the date. */
 const RELATIVE_DUE_LIMIT_DAYS = 30;
 
@@ -992,30 +961,8 @@ export function describeDueDate(
   return { relative, label, overdue, days };
 }
 
-/** Moves by calendar days, so a daylight-saving change never shifts the date. */
-export function addDays(timestamp: number, days: number): number {
-  const date = new Date(timestamp);
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate() + days,
-  ).getTime();
-}
-
-/** Moves by calendar months, keeping the day where the month allows it. */
-function addMonths(timestamp: number, months: number): number {
-  const date = new Date(timestamp);
-  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
-  target.setDate(Math.min(date.getDate(), daysInMonth(target)));
-  return target.getTime();
-}
-
-function daysInMonth(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-}
-
 function daysBetween(from: number, to: number): number {
-  return Math.round((startOfDay(to) - startOfDay(from)) / DAY);
+  return Math.round((startOfDay(to) - startOfDay(from)) / DAY_MS);
 }
 
 function nextDayWhere(

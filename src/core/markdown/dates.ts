@@ -1,4 +1,16 @@
-import { addDays, formatIsoDate, parseIsoDate, startOfDay } from './taskMetadata';
+import {
+  addDays,
+  addMonths,
+  DAY_MS,
+  formatIsoDate,
+  makeDay,
+  MONTH_NUMBERS,
+  parseIsoDate,
+  startOfDay,
+  WEEKDAY_NAMES,
+} from './calendar';
+
+export { MONTH_NUMBERS, WEEKDAY_NAMES } from './calendar';
 
 /**
  * One way to read a date written in plain words.
@@ -10,8 +22,8 @@ import { addDays, formatIsoDate, parseIsoDate, startOfDay } from './taskMetadata
  * `describeDay`, so a date typed anywhere means the same day.
  *
  * The indexer's reader for dates inside prose (`parser.ts`) stays its own: it
- * anchors a date to the note's day, not to today. It shares the month and
- * weekday tables here and nothing else.
+ * anchors a date to the note's day, not to today. It shares calendar.ts, the
+ * month and weekday tables and the day arithmetic, and nothing else.
  */
 
 /** A day of the week, 0 for Sunday, as `Date.getDay()` numbers them. */
@@ -32,45 +44,6 @@ export interface DatePhraseOptions {
    */
   direction?: 'future' | 'past';
 }
-
-/** Month names and their short forms, as the month number `Date` uses. */
-export const MONTH_NUMBERS: Readonly<Record<string, number>> = {
-  january: 0,
-  jan: 0,
-  february: 1,
-  feb: 1,
-  march: 2,
-  mar: 2,
-  april: 3,
-  apr: 3,
-  may: 4,
-  june: 5,
-  jun: 5,
-  july: 6,
-  jul: 6,
-  august: 7,
-  aug: 7,
-  september: 8,
-  sep: 8,
-  sept: 8,
-  october: 9,
-  oct: 9,
-  november: 10,
-  nov: 10,
-  december: 11,
-  dec: 11,
-};
-
-/** Weekday names in `Date.getDay()` order, Sunday first. */
-export const WEEKDAY_NAMES: readonly string[] = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-];
 
 const SHORT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SHORT_MONTHS = [
@@ -127,23 +100,6 @@ function monthNumber(word: string): number | undefined {
 export function startOfWeek(at: number, weekStart: Weekday = 0): number {
   const day = startOfDay(at);
   return addDays(day, -((new Date(day).getDay() - weekStart + 7) % 7));
-}
-
-/** Moves by calendar months, keeping the day where the month allows it. */
-function addMonthsClamped(timestamp: number, months: number): number {
-  const date = new Date(timestamp);
-  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
-  const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  target.setDate(Math.min(date.getDate(), last));
-  return target.getTime();
-}
-
-/** A real local day, or undefined for one such as February 31st. */
-function makeDay(year: number, month: number, day: number): number | undefined {
-  const made = new Date(year, month, day);
-  return made.getFullYear() === year && made.getMonth() === month && made.getDate() === day
-    ? made.getTime()
-    : undefined;
 }
 
 /**
@@ -234,7 +190,7 @@ function readPhrase(
     if (unit === 'w') {
       return addDays(today, count * 7);
     }
-    return addMonthsClamped(today, unit === 'm' ? count : count * 12);
+    return addMonths(today, unit === 'm' ? count : count * 12);
   }
 
   // "friday", "next friday", "this friday", "on friday", "last friday"
@@ -341,7 +297,7 @@ export function nameDay(date: string): string {
 
 /** `today`, `in 3 days`, `3 days ago`; nothing beyond 31 days. */
 export function describeDistance(at: number, now: number = Date.now()): string | undefined {
-  const days = Math.round((startOfDay(at) - startOfDay(now)) / (24 * 60 * 60 * 1000));
+  const days = Math.round((startOfDay(at) - startOfDay(now)) / DAY_MS);
   if (days === 0) {
     return 'today';
   }

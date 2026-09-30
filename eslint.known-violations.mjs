@@ -347,7 +347,7 @@ export default {
     "src/core/markdown/moveLines.ts": 2,
     "src/core/markdown/parser.ts": 4,
     "src/core/markdown/taskDraft.ts": 1,
-    "src/core/markdown/taskMetadata.ts": 5,
+    "src/core/markdown/taskMetadata.ts": 4,
     "src/core/mcp/mcpProtocol.ts": 4,
     "src/core/query/queryEvaluator.ts": 4,
     "src/core/query/queryFormat.ts": 1,
