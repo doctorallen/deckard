@@ -10,6 +10,7 @@ import {
   createNoteTitleMap,
   findLinkedBlock,
   findLinkedSection,
+  noteTitle,
   parseWikiTarget,
   resolveWikiTarget,
 } from '../../core/workspace/backlinks';
@@ -154,7 +155,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
       .flatMap((file) => [
         {
           filePath: file.filePath,
-          title: getNoteTitle(file.filePath),
+          title: noteTitle(file.filePath),
           isAlias: false,
         },
         ...(file.aliases ?? []).map((alias) => ({
@@ -267,7 +268,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     const seen = new Set<string>();
     const found: { title: string; heading: string; filePath: string; score: number }[] = [];
     for (const file of files) {
-      const title = getNoteTitle(file.filePath);
+      const title = noteTitle(file.filePath);
       for (const section of file.sections) {
         if (section.isInline) {
           continue;
@@ -477,11 +478,6 @@ export function getBlockCompletionContext(
     note: query.slice(0, caret).trim(),
     query: query.slice(caret + 2),
   };
-}
-
-function getNoteTitle(filePath: string): string {
-  const fileName = filePath.split('/').pop() ?? filePath;
-  return fileName.replace(/\.md$/i, '');
 }
 
 interface WikiLinkTarget {

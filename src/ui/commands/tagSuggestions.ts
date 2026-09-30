@@ -1,16 +1,13 @@
 import * as vscode from 'vscode';
 
-import {
-  findFencedLines,
-  getPersonMarker,
-  hasAtxHeadingClosingHashes,
-} from '../../core/markdown/parser';
+import { findFencedLines, hasAtxHeadingClosingHashes } from '../../core/markdown/parser';
 import { isInCodeOrLink } from '../../core/markdown/inlineRanges';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 import { whenPublished } from '../../core/workspace/publishing';
 import { isParkedFile, isParkedOnlyTag } from '../../core/workspace/parked';
+import { readPersonMarker } from './parseSettings';
 
 interface TagIndexSource {
   readonly ready: Promise<void>;
@@ -105,11 +102,7 @@ export class TagCompletionProvider implements vscode.Disposable {
     // Punctuation such as `.` and `,` also triggers completion, so the cursor's
     // line is checked for a tag before anything reads the whole document.
     const line = document.lineAt(position.line).text;
-    const personMarker = getPersonMarker(
-      vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<unknown>('personMarker', '@'),
-    );
+    const personMarker = readPersonMarker(document.uri);
     const context = getTagCompletionContext(
       line,
       position.character,

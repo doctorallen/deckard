@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { pluralize } from '../../core/text';
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda } from '../state/agendaState';
 import { openSettingAction, settingLabel } from './notify';
@@ -24,20 +25,16 @@ export interface FirstIndexCounts {
   tags: number;
 }
 
-function count(value: number, one: string, many: string): string {
-  return `${value.toLocaleString('en-US')} ${value === 1 ? one : many}`;
-}
-
 /** One sentence: `Deckard read 412 notes: 1,204 open tasks (17 overdue) and 185 tags.` */
 export function describeFirstIndex(counts: FirstIndexCounts): string {
-  const notes = count(counts.notes, 'note', 'notes');
+  const notes = pluralize(counts.notes, 'note', 'notes', { locale: true });
   const tasks =
     counts.openTasks > 0
-      ? `${count(counts.openTasks, 'open task', 'open tasks')}${
+      ? `${pluralize(counts.openTasks, 'open task', 'open tasks', { locale: true })}${
           counts.overdue > 0 ? ` (${counts.overdue.toLocaleString('en-US')} overdue)` : ''
         }`
       : '';
-  const tags = counts.tags > 0 ? count(counts.tags, 'tag', 'tags') : '';
+  const tags = counts.tags > 0 ? pluralize(counts.tags, 'tag', 'tags', { locale: true }) : '';
   if (tasks && tags) {
     return `Deckard read ${notes}: ${tasks} and ${tags}.`;
   }

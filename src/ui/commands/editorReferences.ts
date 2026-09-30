@@ -1,11 +1,7 @@
 import * as vscode from 'vscode';
 
-import {
-  extractTagSpans,
-  findFencedLines,
-  getEntityNamespaceAliases,
-  getPersonMarker,
-} from '../../core/markdown/parser';
+import { extractTagSpans, findFencedLines } from '../../core/markdown/parser';
+import { escapeMarkdown, pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 import {
@@ -25,6 +21,7 @@ import {
 } from '../state/referenceState';
 import { createEntryScope } from '../state/entryScope';
 import { resolveSourceUri } from './navigation';
+import { readParseOptions } from './parseSettings';
 
 interface ReferenceIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
@@ -228,17 +225,12 @@ export class EditorReferences
       );
     }
 
-    const configuration = vscode.workspace.getConfiguration(
-      'deckard',
-      document.uri,
-    );
+    const options = readParseOptions(document.uri);
     const span = extractTagSpans(
       text,
-      configuration.get<boolean>('parseInlineTags', true),
-      getEntityNamespaceAliases(
-        configuration.get<unknown>('entityNamespaceAliases', {}),
-      ),
-      getPersonMarker(configuration.get<unknown>('personMarker', '@')),
+      options.parseInlineTags,
+      options.entityNamespaceAliases,
+      options.personMarker,
     ).find(
       (candidate) =>
         candidate.lineNumber - 1 === position.line &&
@@ -465,12 +457,4 @@ async function linkToLine(
   return uri
     ? `[${escapeMarkdown(title)}](${uri.with({ fragment: `L${line}` }).toString()})`
     : escapeMarkdown(title);
-}
-
-function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
-
-function escapeMarkdown(value: string): string {
-  return value.replace(/[\\`*_[\]{}()#+.!|<>]/g, '\\$&');
 }

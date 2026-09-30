@@ -41,7 +41,19 @@ export interface WikiLinkTarget {
   block?: string;
 }
 
-const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+/**
+ * A `[[target]]` or `[[target|display text]]` link, with the target as group
+ * 1 and the display text not captured. It is global and shared, so use it
+ * only with `matchAll` or `replace`, which leave its `lastIndex` alone;
+ * `exec` or `test` on it would move where the next caller starts.
+ */
+export const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+
+/**
+ * The same link with its display text captured as group 2, for a rewrite
+ * that must keep what the link shows. Shared like `WIKI_LINK`.
+ */
+export const WIKI_LINK_WITH_TEXT = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
 export function parseWikiTarget(text: string): WikiLinkTarget {
   const hash = text.indexOf('#');

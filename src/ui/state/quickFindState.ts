@@ -5,6 +5,7 @@ import {
   isParkedTask,
 } from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
+import { getFileName } from '../../core/paths';
 import { getPlainTextTerms } from '../../core/query/queryEdit';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import {
@@ -939,9 +940,6 @@ function isBareWord(token: string): boolean {
   return /^[\p{L}\p{N}][\p{L}\p{N}_/-]*$/u.test(token);
 }
 
-function getFileName(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
-}
 
 function firstLine(content: string, skip?: string): string | undefined {
   const line = content

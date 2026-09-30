@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { KeyedDebouncer } from '../../core/debounce';
 import { findFencedLines } from '../../core/markdown/parser';
 import {
   findTaskMetadataSpans,
@@ -76,7 +77,7 @@ export function describeRepeatRuleProblem(problem: Pick<RepeatRuleProblem, 'rule
 export class RepeatRuleHealth implements vscode.Disposable {
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('deckard-tasks');
   private readonly disposables: vscode.Disposable[] = [this.diagnostics];
-  private readonly pending = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly pending = new KeyedDebouncer(CHECK_DELAY_MS);
   /** Each diagnostic's suggestions, so the quick fix need not work them out again. */
   private readonly suggestions = new WeakMap<vscode.Diagnostic, string[]>();
 
@@ -94,7 +95,7 @@ export class RepeatRuleHealth implements vscode.Disposable {
         }
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
-        clearTimeout(this.pending.get(document.uri.toString()));
+        this.pending.cancel(document.uri.toString());
         this.diagnostics.delete(document.uri);
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -111,8 +112,7 @@ export class RepeatRuleHealth implements vscode.Disposable {
   }
 
   public dispose(): void {
-    this.pending.forEach((handle) => clearTimeout(handle));
-    this.pending.clear();
+    this.pending.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -177,14 +177,6 @@ export class RepeatRuleHealth implements vscode.Disposable {
   }
 
   private schedule(document: vscode.TextDocument): void {
-    const key = document.uri.toString();
-    clearTimeout(this.pending.get(key));
-    this.pending.set(
-      key,
-      setTimeout(() => {
-        this.pending.delete(key);
-        this.check(document);
-      }, CHECK_DELAY_MS),
-    );
+    this.pending.schedule(document.uri.toString(), () => this.check(document));
   }
 }

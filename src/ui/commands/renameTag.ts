@@ -9,6 +9,7 @@ import {
   getPersonMarker,
 } from '../../core/markdown/parser';
 import { PreferencesStore } from '../../core/storage/preferences';
+import { pluralize } from '../../core/text';
 import {
   HeadingTagSpan,
   TagInfo,
@@ -417,7 +418,7 @@ async function rewriteTag(
   // tag's menu, is not something a reader thinks to find in the palette.
   void vscode.window
     .showInformationMessage(
-      `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
+      `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${pluralize(
         written.notes.length,
         'note',
         'notes',
@@ -435,7 +436,7 @@ async function rewriteTag(
         return;
       }
       const result = await workspaceWrites.undo();
-      reportUndo(result, `Put back ${sourceTag.label} in ${formatCount(result?.restored ?? 0, 'note', 'notes')}.`);
+      reportUndo(result, `Put back ${sourceTag.label} in ${pluralize(result?.restored ?? 0, 'note', 'notes')}.`);
     });
   return replacement;
 }
@@ -498,7 +499,7 @@ async function chooseIndexedTag(
   const picked = await vscode.window.showQuickPick(
     tags.map((tag) => ({
       label: tag.label,
-      description: formatCount(tag.count, 'indexed entry', 'indexed entries'),
+      description: pluralize(tag.count, 'indexed entry', 'indexed entries'),
       detail: tag.key === tag.label ? undefined : `Canonical key: ${tag.key}`,
       tag,
     })),
@@ -530,7 +531,7 @@ async function chooseMergeTarget(
   const picked = await vscode.window.showQuickPick(
     tags.map((tag) => ({
       label: tag.label,
-      description: formatCount(tag.count, 'indexed entry', 'indexed entries'),
+      description: pluralize(tag.count, 'indexed entry', 'indexed entries'),
       tag,
     })),
     {
@@ -935,9 +936,5 @@ function sortTags(tags: TagInfo[]): TagInfo[] {
 }
 
 function formatEntries(count: number): string {
-  return formatCount(count, 'entry', 'entries');
-}
-
-function formatCount(count: number, singular: string, plural: string): string {
-  return `${count} ${count === 1 ? singular : plural}`;
+  return pluralize(count, 'entry', 'entries');
 }

@@ -27,10 +27,10 @@ import {
   isPersonTag,
   stripTags,
 } from '../../core/markdown/parser';
+import { getFileName } from '../../core/paths';
 import { countTagMatches } from '../../core/query/queryEvaluator';
 import {
   findTagAssociation,
-  getFileName,
   getHeadingPath,
   getInlineSource,
   getNoteTitle,

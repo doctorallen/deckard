@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { KeyedDebouncer } from '../../core/debounce';
 import { measure } from '../../core/timing';
 import { findTaskLineMarks } from '../state/taskLineMarks';
 
@@ -30,7 +31,7 @@ function readOptions(uri: vscode.Uri): { dim: boolean; hints: boolean } {
  */
 export class TaskLineDecorations implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
-  private readonly pending = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly pending = new KeyedDebouncer(DELAY_MS);
   private midnight: ReturnType<typeof setTimeout> | undefined;
   private readonly dimType = vscode.window.createTextEditorDecorationType({ opacity: '0.7' });
   private readonly overdueType = vscode.window.createTextEditorDecorationType({
@@ -75,8 +76,7 @@ export class TaskLineDecorations implements vscode.Disposable {
   }
 
   public dispose(): void {
-    this.pending.forEach((handle) => clearTimeout(handle));
-    this.pending.clear();
+    this.pending.dispose();
     if (this.midnight) {
       clearTimeout(this.midnight);
     }
@@ -134,16 +134,11 @@ export class TaskLineDecorations implements vscode.Disposable {
 
   private schedule(document: vscode.TextDocument): void {
     const key = document.uri.toString();
-    clearTimeout(this.pending.get(key));
-    this.pending.set(
-      key,
-      setTimeout(() => {
-        this.pending.delete(key);
-        vscode.window.visibleTextEditors
-          .filter((editor) => editor.document.uri.toString() === key)
-          .forEach((editor) => this.update(editor));
-      }, DELAY_MS),
-    );
+    this.pending.schedule(key, () => {
+      vscode.window.visibleTextEditors
+        .filter((editor) => editor.document.uri.toString() === key)
+        .forEach((editor) => this.update(editor));
+    });
   }
 
   /** Redraws just after the next local midnight, when "today" moves. */

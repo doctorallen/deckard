@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { chooseTargetFolder, formatLocalDate } from './dailyNote';
@@ -158,7 +159,7 @@ export async function newNoteFromTemplate(
 
   const notesUri = noteFolderFor(indexer.getNotesFolderUri(folder), targetFolder);
   const noteUri = vscode.Uri.joinPath(notesUri, fileName);
-  if (await exists(noteUri)) {
+  if (await fileExists(noteUri)) {
     void reportFailure({
       outcome: `${fileName} already exists, so Deckard did not create it.`,
       fix: 'Choose another title.',
@@ -185,13 +186,4 @@ export async function newNoteFromTemplate(
 /** Where a new note is written: the folder chosen, else the notes folder. */
 export function noteFolderFor(notesUri: vscode.Uri, targetFolder?: vscode.Uri): vscode.Uri {
   return targetFolder ?? notesUri;
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }

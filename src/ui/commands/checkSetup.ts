@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 
 import { getPersonMarker } from '../../core/markdown/parser';
 import { matchesPerson } from '../../core/query/queryEvaluator';
+import { pluralize } from '../../core/text';
 import { UnreadableNote, WorkspaceIndex } from '../../core/types';
 import { WorkspaceScanner } from '../../core/workspace/scanner';
 
@@ -62,11 +64,11 @@ export async function collectSetupFacts(
     folders.push({
       name: folder.name,
       notesFolder,
-      notesFolderExists: await exists(scanner.getNotesFolderUri(folder)),
+      notesFolderExists: await fileExists(scanner.getNotesFolderUri(folder)),
       ...(templatesUri
         ? {
             templatesFolder: configuration.get<string>('templatesFolder', 'templates'),
-            templatesFolderExists: await exists(templatesUri),
+            templatesFolderExists: await fileExists(templatesUri),
           }
         : {}),
     });
@@ -155,7 +157,7 @@ export function buildSetupReport(facts: SetupFacts, now = new Date()): string {
   }
   if (facts.unreadable.length > 0) {
     warn(
-      `${facts.unreadable.length} ${facts.unreadable.length === 1 ? 'note' : 'notes'} could not be read, so ${facts.unreadable.length === 1 ? 'it is' : 'they are'} not indexed:\n${facts.unreadable.map((note) => `  - \`${note.filePath}\` — ${note.reason}`).join('\n')}`,
+      `${pluralize(facts.unreadable.length, 'note')} could not be read, so ${facts.unreadable.length === 1 ? 'it is' : 'they are'} not indexed:\n${facts.unreadable.map((note) => `  - \`${note.filePath}\` — ${note.reason}`).join('\n')}`,
       'Fix the cause, then run `Deckard: Reindex Workspace`.',
     );
   } else if (scan.read > 0) {
@@ -206,13 +208,4 @@ export async function checkSetup(indexer: SetupIndexer): Promise<void> {
     content: buildSetupReport(facts),
   });
   await vscode.window.showTextDocument(document, { preview: true });
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }

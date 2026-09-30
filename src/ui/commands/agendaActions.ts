@@ -7,6 +7,7 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
 } from '../../core/markdown/taskMetadata';
+import { pluralize } from '../../core/text';
 import { Task } from '../../core/types';
 import { applyBulkEdit, reportBulkEditResult } from './bulkEdit';
 import { askForDate } from './datePrompt';
@@ -300,7 +301,7 @@ export async function setTasksDueEach(
   if (context) {
     await context.refresh();
   }
-  const notes = `${result.notes} ${result.notes === 1 ? 'note' : 'notes'}`;
+  const notes = pluralize(result.notes, 'note');
   const dates = [...new Set(open.map((task) => choice.dates.get(task.id) as string))].sort();
   const now = Date.now();
   const today = dueDateFor('today', now);

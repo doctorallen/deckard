@@ -13,6 +13,7 @@ import { describeStepParts, foldSteps } from '../../core/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
 import { needsNewDate } from '../../core/taskPolicy';
+import { escapeRegExp } from '../../core/text';
 import {
   addDays,
   appendToTaskText,
@@ -1158,8 +1159,4 @@ function formatStatusLabel(status: string): string {
 
 function refuse(reason: string): TaskMove {
   return { kind: 'refused', reason };
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

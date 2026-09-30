@@ -1,4 +1,5 @@
 import { stripTags } from '../../core/markdown/parser';
+import { getFileName, getFolder } from '../../core/paths';
 import { pinKey } from '../../core/storage/preferences';
 import { PinnedNote, Section, WorkspaceIndex } from '../../core/types';
 
@@ -58,9 +59,7 @@ export function resolvePin(
     return undefined;
   }
   const fileName = getFileName(pin.filePath);
-  const folder = pin.filePath.includes('/')
-    ? pin.filePath.slice(0, pin.filePath.lastIndexOf('/'))
-    : '';
+  const folder = getFolder(pin.filePath);
   const place = folder ? `${fileName} · ${folder}` : fileName;
 
   const section = pin.heading ? findPinnedSection(file.sections, pin) : undefined;
@@ -147,8 +146,4 @@ function countSameHeadingsBefore(
       candidate.headingLevel === section.headingLevel &&
       candidate.startLine < section.startLine,
   ).length;
-}
-
-function getFileName(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
 }

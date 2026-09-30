@@ -4,6 +4,8 @@
  * server owns transport and authentication; this only answers messages.
  */
 
+import { isRecord } from '../guards';
+
 /** The protocol versions this server speaks, newest first. */
 export const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
@@ -146,8 +148,4 @@ function failure(
   message: string,
 ): JsonRpcResponse {
   return { jsonrpc: '2.0', id, error: { code, message } };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { Debouncer } from '../../core/debounce';
 import {
   countNoteWords,
   describeWordCount,
@@ -16,7 +17,8 @@ const RECOUNT_DELAY_MS = 250;
 export class WordCountStatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly disposables: vscode.Disposable[] = [];
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  /** The recount waiting for typing or selecting to pause. */
+  private readonly pendingRecount = new Debouncer(RECOUNT_DELAY_MS);
   /** The masked lines of one version of one note, reused for selections. */
   private cache: { uri: string; version: number; masked: string[]; total: number } | undefined;
   private visible = false;
@@ -42,9 +44,7 @@ export class WordCountStatusBar implements vscode.Disposable {
   }
 
   public dispose(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
+    this.pendingRecount.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -78,12 +78,6 @@ export class WordCountStatusBar implements vscode.Disposable {
   }
 
   private schedule(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-    this.timer = setTimeout(() => {
-      this.timer = undefined;
-      this.update();
-    }, RECOUNT_DELAY_MS);
+    this.pendingRecount.schedule(() => this.update());
   }
 }

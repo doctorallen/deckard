@@ -6,6 +6,7 @@ import { PersistedPreferences, Section, WorkspaceIndex } from '../../core/types'
 import { getHeadingPath } from '../state/dashboardState';
 import { frecencyScore } from '../state/frecency';
 import { findPinnedSection } from '../state/pinnedNotes';
+import { showQuickPickUntilHidden } from './prompts';
 
 /**
  * Where Capture Under a Heading and Move to… put something: a heading, and
@@ -124,27 +125,18 @@ export function pickDestination(
     void vscode.window.showInformationMessage('There are no headings in your notes yet.');
     return Promise.resolve(undefined);
   }
-  const picker = vscode.window.createQuickPick<DestinationItem>();
-  picker.title = options.title;
-  picker.placeholder = options.placeholder;
-  picker.matchOnDescription = true;
-  picker.items = items;
-  const firstRecent = items.findIndex((item) => item.label === 'Recent');
-  if (firstRecent >= 0 && items[firstRecent + 1]) {
-    picker.activeItems = [items[firstRecent + 1]];
-  }
-  return new Promise((resolve) => {
-    let chosen: Destination | undefined;
-    picker.onDidAccept(() => {
-      chosen = picker.activeItems[0]?.destination;
-      if (chosen) {
-        picker.hide();
+  return showQuickPickUntilHidden<DestinationItem, Destination>({
+    configure: (picker) => {
+      picker.title = options.title;
+      picker.placeholder = options.placeholder;
+      picker.matchOnDescription = true;
+      picker.items = items;
+      const firstRecent = items.findIndex((item) => item.label === 'Recent');
+      if (firstRecent >= 0 && items[firstRecent + 1]) {
+        picker.activeItems = [items[firstRecent + 1]];
       }
-    });
-    picker.onDidHide(() => {
-      resolve(chosen);
-      picker.dispose();
-    });
-    picker.show();
+    },
+    accept: (picker) => picker.activeItems[0]?.destination,
+    stayOpenWithoutAnswer: true,
   });
 }

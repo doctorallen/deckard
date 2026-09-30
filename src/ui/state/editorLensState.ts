@@ -3,6 +3,7 @@ import {
   findFencedLines,
 } from '../../core/markdown/parser';
 import { findCodeAndLinkRanges } from '../../core/markdown/inlineRanges';
+import { escapeRegExp } from '../../core/text';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -330,10 +331,6 @@ function findFrontmatterEnd(lines: readonly string[]): number {
   }
   const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
   return end < 0 ? -1 : end;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function append<T>(map: Map<string, T[]>, key: string, value: T): void {

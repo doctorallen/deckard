@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { formatLocalDate } from './dailyNote';
+import { fileExists } from './fs';
 import { reportFailure } from './notify';
 
 /**
@@ -102,7 +103,7 @@ export async function installSample(
   options: { replace?: boolean } = {},
 ): Promise<{ target: vscode.Uri; notes: number }> {
   const target = vscode.Uri.joinPath(storageUri, SAMPLE_FOLDER_NAME);
-  if (await exists(fs, target)) {
+  if (await fileExists(target, fs)) {
     if (!options.replace) {
       throw new SampleFolderExistsError(target);
     }
@@ -168,7 +169,7 @@ export async function createSampleWorkspace(context: vscode.ExtensionContext): P
   const storage = getSampleStorageUri(context.globalStorageUri);
   const target = vscode.Uri.joinPath(storage, SAMPLE_FOLDER_NAME);
   let replace = false;
-  if (await exists(vscode.workspace.fs, target)) {
+  if (await fileExists(target)) {
     const choice = await vscode.window.showWarningMessage(
       'Replace the sample with a fresh copy? Anything changed in it is lost.',
       { modal: true, detail: 'A sample that is open in a window shows its notes as deleted until it reloads.' },
@@ -181,7 +182,7 @@ export async function createSampleWorkspace(context: vscode.ExtensionContext): P
     replace = choice === 'Replace';
   }
   let notes: number | undefined;
-  if (replace || !(await exists(vscode.workspace.fs, target))) {
+  if (replace || !(await fileExists(target))) {
     try {
       notes = (
         await installSample(context.extensionUri, storage, new Date(), vscode.workspace.fs, {
@@ -214,13 +215,4 @@ export async function createSampleWorkspace(context: vscode.ExtensionContext): P
   }
   await context.globalState.update(SAMPLE_README_KEY, target.toString());
   await vscode.commands.executeCommand('vscode.openFolder', target, { forceNewWindow });
-}
-
-async function exists(fs: Pick<SampleFileAccess, 'stat'>, uri: vscode.Uri): Promise<boolean> {
-  try {
-    await fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }

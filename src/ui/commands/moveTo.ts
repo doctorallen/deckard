@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 
 import {
   applySplices,
@@ -310,14 +311,14 @@ async function resolveTarget(
           return invalid;
         }
         const uri = await newNoteUri(indexer, sources[0].uri, value);
-        return uri && (await exists(uri)) ? `A note called “${value.trim()}” already exists.` : undefined;
+        return uri && (await fileExists(uri)) ? `A note called “${value.trim()}” already exists.` : undefined;
       },
     });
     if (name === undefined) {
       return undefined;
     }
     const uri = await newNoteUri(indexer, sources[0].uri, name);
-    if (!uri || (await exists(uri))) {
+    if (!uri || (await fileExists(uri))) {
       return undefined;
     }
     const title = noteTitle(uri.path);
@@ -376,15 +377,6 @@ async function newNoteUri(
   const fileName = getExtractedNoteFileName(name);
   const folder = vscode.workspace.getWorkspaceFolder(from) ?? vscode.workspace.workspaceFolders?.[0];
   return fileName && folder ? vscode.Uri.joinPath(indexer.getNotesFolderUri(folder), fileName) : undefined;
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function reportStaleMove(): Thenable<unknown> {

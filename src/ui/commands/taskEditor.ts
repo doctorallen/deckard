@@ -25,6 +25,7 @@ import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { askForDate } from './datePrompt';
+import { showQuickPickUntilHidden } from './prompts';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 
 /**
@@ -186,22 +187,14 @@ function pickField(
   draft: TaskDraft,
   title: string,
 ): Promise<FieldRow | undefined> {
-  return new Promise((resolve) => {
-    const pick = vscode.window.createQuickPick<FieldRow>();
-    pick.title = title;
-    pick.placeholder = formatTaskDraft(draft).trim();
-    pick.items = createEditorRows(draft);
-    pick.ignoreFocusOut = true;
-    let picked: FieldRow | undefined;
-    pick.onDidAccept(() => {
-      picked = pick.selectedItems[0];
-      pick.hide();
-    });
-    pick.onDidHide(() => {
-      pick.dispose();
-      resolve(picked);
-    });
-    pick.show();
+  return showQuickPickUntilHidden<FieldRow, FieldRow>({
+    configure: (pick) => {
+      pick.title = title;
+      pick.placeholder = formatTaskDraft(draft).trim();
+      pick.items = createEditorRows(draft);
+      pick.ignoreFocusOut = true;
+    },
+    accept: (pick) => pick.selectedItems[0],
   });
 }
 
@@ -440,22 +433,14 @@ function pickOrWrite(options: {
   placeholder: string;
   items: vscode.QuickPickItem[];
 }): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    const pick = vscode.window.createQuickPick();
-    pick.title = options.title;
-    pick.placeholder = options.placeholder;
-    pick.items = options.items;
-    pick.ignoreFocusOut = true;
-    let value: string | undefined;
-    pick.onDidAccept(() => {
-      value = pick.selectedItems[0]?.label ?? pick.value.trim();
-      pick.hide();
-    });
-    pick.onDidHide(() => {
-      pick.dispose();
-      resolve(value);
-    });
-    pick.show();
+  return showQuickPickUntilHidden<vscode.QuickPickItem, string>({
+    configure: (pick) => {
+      pick.title = options.title;
+      pick.placeholder = options.placeholder;
+      pick.items = options.items;
+      pick.ignoreFocusOut = true;
+    },
+    accept: (pick) => pick.selectedItems[0]?.label ?? pick.value.trim(),
   });
 }
 

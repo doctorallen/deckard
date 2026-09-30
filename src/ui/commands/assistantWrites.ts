@@ -9,6 +9,7 @@ import {
   formatIsoDate,
   TaskMetadataFormat,
 } from '../../core/markdown/taskMetadata';
+import { isRecord } from '../../core/guards';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { formatCaptureLine, getCaptureInsertion } from './capture';
 import { ensureDailyNote } from './dailyNote';
@@ -262,10 +263,6 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
 
 function shorten(text: string): string {
   return text.length > 60 ? `${text.slice(0, 59)}…` : text;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export { formatIsoDate as formatDayForTask };

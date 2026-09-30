@@ -11,6 +11,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { extractWikiLinks, stripTags } from '../../core/markdown/parser';
+import { getFileName } from '../../core/paths';
 
 /** Association edges connect only tag nodes, limited per source tag. */
 const maximumAssociationsPerTag = 5;
@@ -631,9 +632,6 @@ function normalizeHeading(value: string): string {
   return stripTags(value).trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-function getFileName(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
-}
 
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();

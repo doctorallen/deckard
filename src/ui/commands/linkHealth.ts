@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 import { reportFailure, reportNeedsFolder } from './notify';
 
 import { findFencedLines } from '../../core/markdown/parser';
+import { pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   findWikiTargetPaths,
   parseWikiTarget,
+  WIKI_LINK,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
@@ -44,7 +47,6 @@ export const CREATE_LINKED_NOTE_COMMAND = 'deckard.createLinkedNote';
 /** The command the Create missing notes lens runs. */
 export const CREATE_MISSING_NOTES_COMMAND = 'deckard.createMissingNotes';
 
-const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 /** How long typing must pause before a changed note is checked again. */
 const CHECK_DELAY_MS = 300;
 const MISSING_NOTE = 'missing-note';
@@ -192,7 +194,7 @@ export async function createMissingNotes(
     const fileName = getExtractedNoteFileName(name);
     if (
       fileName &&
-      !(await exists(vscode.Uri.joinPath(notesFolderUri, fileName))) &&
+      !(await fileExists(vscode.Uri.joinPath(notesFolderUri, fileName))) &&
       (await createNoteNamed(notesFolderUri, name))
     ) {
       created += 1;
@@ -207,17 +209,8 @@ export async function createMissingNotes(
 /** Says how many notes were made for links that named none. */
 export function reportCreatedNotes(created: number): void {
   void vscode.window.showInformationMessage(
-    `Created ${created} ${created === 1 ? 'note' : 'notes'} for links that named no note.`,
+    `Created ${pluralize(created, 'note')} for links that named no note.`,
   );
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**

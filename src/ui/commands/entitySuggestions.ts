@@ -1,12 +1,8 @@
 import * as vscode from 'vscode';
 
-import {
-  extractTags,
-  getEntityKind,
-  getEntityNamespaceAliases,
-  getPersonMarker,
-} from '../../core/markdown/parser';
+import { extractTags, getEntityKind } from '../../core/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { readEntityNamespaceAliases, readPersonMarker } from './parseSettings';
 
 /**
  * Offers a quiet, reviewable entry point for headings that lack an entity tag.
@@ -40,16 +36,8 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
       return [];
     }
     const line = document.lineAt(range.start.line).text;
-    const aliases = getEntityNamespaceAliases(
-      vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<unknown>('entityNamespaceAliases', {}),
-    );
-    const personMarker = getPersonMarker(
-      vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<unknown>('personMarker', '@'),
-    );
+    const aliases = readEntityNamespaceAliases(document.uri);
+    const personMarker = readPersonMarker(document.uri);
     if (
       !/^ {0,3}#{1,6}[ \t]+/.test(line) ||
       extractTags(line, aliases, personMarker).some((tag) =>

@@ -2,15 +2,18 @@ import * as vscode from 'vscode';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import { findFencedLines, stripTags } from '../../core/markdown/parser';
+import { pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
-import { Section, WorkspaceIndex } from '../../core/types';
+import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   normalizeHeading,
   noteTitle,
   resolveWikiTarget,
+  WIKI_LINK_WITH_TEXT,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { findHeadingAtLine } from './extractHeading';
 import { resolveSourceUri } from './navigation';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
@@ -45,7 +48,6 @@ interface IndexSource {
   isNotesFile(uri: vscode.Uri): boolean;
 }
 
-const WIKI_LINK = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
 /**
  * What a link is made of, so a rewrite can change the note it names and leave
@@ -147,7 +149,7 @@ function findRewrites(
       if (fenced.has(line)) {
         return;
       }
-      for (const match of text.matchAll(WIKI_LINK)) {
+      for (const match of text.matchAll(WIKI_LINK_WITH_TEXT)) {
         const parts = readLinkParts(match[1], match[2]);
         const next = rewrite(parts, sourcePath);
         if (!next || match.index === undefined) {
@@ -315,7 +317,7 @@ export class LinkMaintenance implements vscode.Disposable {
 
     if (rewritten > 0) {
       void vscode.window.showInformationMessage(
-        `Deckard updated ${count(rewritten, 'link', 'links')} in ${count(
+        `Deckard updated ${pluralize(rewritten, 'link', 'links')} in ${pluralize(
           notes,
           'note',
           'notes',
@@ -472,7 +474,7 @@ export async function renameHeadingCommand(
   void vscode.window.showInformationMessage(
     others <= 0
       ? `Renamed the heading to "${next.trim()}".`
-      : `Renamed the heading to "${next.trim()}" and the links to it in ${count(
+      : `Renamed the heading to "${next.trim()}" and the links to it in ${pluralize(
           others,
           'other note',
           'other notes',
@@ -481,29 +483,9 @@ export async function renameHeadingCommand(
   return next.trim();
 }
 
-/** The innermost heading a one-based line sits in. */
-export function findHeadingAtLine(
-  sections: readonly Section[],
-  line: number,
-): Section | undefined {
-  return sections
-    .filter(
-      (section) =>
-        !section.isInline && section.startLine <= line && section.endLine >= line,
-    )
-    .sort(
-      (left, right) =>
-        right.startLine - left.startLine ||
-        right.headingLevel - left.headingLevel,
-    )[0];
-}
 
 function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('updateLinksOnRename', true);
-}
-
-function count(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
 }
