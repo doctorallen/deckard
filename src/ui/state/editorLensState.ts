@@ -13,7 +13,7 @@ import {
 } from '../../core/workspace/backlinks';
 import { findAdjacentDailyNote, listDailyNotes } from '../../core/workspace/periodicNotes';
 import { planRollover } from '../../core/workspace/rolloverPlan';
-import { findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
+import { createSourceParser, findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
 
 /**
  * What the editor's action lenses decide, apart from VS Code. Each function
@@ -181,6 +181,8 @@ export function findEmbedProblems(
     return [];
   }
   const titles = createNoteTitleMap(index);
+  // The note itself is read once, for every embed of itself it holds.
+  const parseSource = createSourceParser();
   return embeds.flatMap(({ line, target }) => {
     const { note } = parseWikiTarget(target);
     const filePath = note
@@ -189,7 +191,7 @@ export function findEmbedProblems(
     if (note && !filePath) {
       return [];
     }
-    const embed = resolveEmbed(target, file.content, index);
+    const embed = resolveEmbed(target, file.content, index, parseSource);
     if (embed.kind !== 'missing') {
       return [];
     }
