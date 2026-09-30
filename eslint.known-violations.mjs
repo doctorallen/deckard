@@ -110,9 +110,6 @@ export default {
     "src/ui/state/entryScope.ts": [
       "(arrow function)"
     ],
-    "src/ui/state/notesGraphState.ts": [
-      "addEdge"
-    ],
     "src/ui/state/quickFindState.ts": [
       "buildQuickFindResults",
       "matchTags",
@@ -389,7 +386,6 @@ export default {
     "src/ui/state/dashboardState.ts": 2,
     "src/ui/state/editorLensState.ts": 4,
     "src/ui/state/noteLinks.ts": 2,
-    "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/queryBlockState.ts": 3,
     "src/ui/state/quickFindState.ts": 5,
@@ -551,9 +547,6 @@ export default {
     "src/ui/state/noteLinks.ts": [
       "collectNoteLinks"
     ],
-    "src/ui/state/notesGraphState.ts": [
-      "createLocalGraphSnapshot"
-    ],
     "src/ui/state/quickFindState.ts": [
       "buildEmptyResults",
       "rankEntries"
@@ -677,7 +670,7 @@ export default {
     "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
     "src/ui/state/dashboardWidgets.ts": 1,
-    "src/ui/state/notesGraphState.ts": 3,
+    "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/referenceState.ts": 2,
     "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
@@ -739,7 +732,6 @@ export default {
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
-    "src/ui/state/notesGraphState.ts": 3,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/searchFacets.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
