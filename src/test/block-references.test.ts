@@ -8,11 +8,8 @@ import {
   buildBacklinkIndex,
   parseWikiTarget,
 } from '../domain/index/backlinks';
-import {
-  findWikiLinkTargets,
-  getBlockCompletionContext,
-  WikiLinkCompletionProvider,
-} from '../ui/commands/linkSuggestions';
+import { findWikiLinkTargets } from '../domain/index/wikiLinkTargets';
+import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { createLinkPreview } from '../ui/state/referenceState';
 
 /**
@@ -224,19 +221,6 @@ suite('Block references', () => {
       ['^lift-slip'],
     );
     provider.dispose();
-  });
-
-  test('knows when a caret is being typed, and for which note', () => {
-    assert.deepStrictEqual(getBlockCompletionContext('Check-in#^li'), {
-      note: 'Check-in',
-      query: 'li',
-    });
-    assert.deepStrictEqual(getBlockCompletionContext('#^'), {
-      note: '',
-      query: '',
-    });
-    assert.strictEqual(getBlockCompletionContext('Check-in#Vendor'), undefined);
-    assert.strictEqual(getBlockCompletionContext('Check-in'), undefined);
   });
 });
 

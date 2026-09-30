@@ -54,9 +54,6 @@ export default {
     "src/ui/commands/linkMaintenance.ts": [
       "planHeadingRenameRewrites"
     ],
-    "src/ui/commands/linkSuggestions.ts": [
-      "completeBlockIds"
-    ],
     "src/ui/commands/navigation.ts": [
       "openSourceAt"
     ],
@@ -92,6 +89,9 @@ export default {
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
       "renderGroup"
+    ],
+    "src/ui/providers/linkSuggestions.ts": [
+      "completeBlockIds"
     ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
@@ -362,7 +362,6 @@ export default {
     "src/ui/commands/linkEntity.ts": 1,
     "src/ui/commands/linkHealth.ts": 2,
     "src/ui/commands/linkMaintenance.ts": 2,
-    "src/ui/commands/linkSuggestions.ts": 4,
     "src/ui/commands/mcpServer.ts": 4,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/noteVisits.ts": 5,
@@ -711,7 +710,6 @@ export default {
     "src/test/note-links.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/linkSuggestions.ts": 1,
     "src/ui/commands/notify.ts": 1,
     "src/ui/commands/parking.ts": 2,
     "src/ui/commands/pinNote.ts": 1,

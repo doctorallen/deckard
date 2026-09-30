@@ -1,7 +1,10 @@
 import * as assert from 'assert';
 
 import {
+  getBlockCompletionContext,
+  getHeadingCompletionContext,
   getTagCompletionContext,
+  getWikiLinkCompletionContext,
   matchesTagCompletion,
 } from '../domain/markdown/completionContext';
 
@@ -55,5 +58,37 @@ suite('Tag completion context', () => {
     assert.strictEqual(matchesTagCompletion(ren, '~', 'ren', '~'), true);
     assert.strictEqual(matchesTagCompletion(atHome, '@', 'ho', '~'), true);
     assert.strictEqual(matchesTagCompletion(ren, '@', 'ren', '~'), false);
+  });
+});
+
+suite('Wiki link completion context', () => {
+  test('finds only an unfinished Wiki link target', () => {
+    assert.deepStrictEqual(getWikiLinkCompletionContext('See [[Atlas', 11), {
+      query: 'Atlas',
+      startColumn: 6,
+    });
+    assert.strictEqual(getWikiLinkCompletionContext('See [Atlas]', 11), undefined);
+  });
+
+  test('reads the note and heading past a #, and every note past ##', () => {
+    assert.deepStrictEqual(getHeadingCompletionContext('Atlas#Deci'), { note: 'Atlas', query: 'Deci' });
+    assert.deepStrictEqual(getHeadingCompletionContext(' Atlas #'), { note: 'Atlas', query: '' });
+    assert.deepStrictEqual(getHeadingCompletionContext('#Deci'), { note: '', query: 'Deci' });
+    assert.deepStrictEqual(getHeadingCompletionContext('##Deci'), { note: undefined, query: 'Deci' });
+    assert.strictEqual(getHeadingCompletionContext('Atlas'), undefined);
+    assert.strictEqual(getHeadingCompletionContext('Atlas#^li'), undefined, 'a caret is a block, not a heading');
+  });
+
+  test('knows when a caret is being typed, and for which note', () => {
+    assert.deepStrictEqual(getBlockCompletionContext('Check-in#^li'), {
+      note: 'Check-in',
+      query: 'li',
+    });
+    assert.deepStrictEqual(getBlockCompletionContext('#^'), {
+      note: '',
+      query: '',
+    });
+    assert.strictEqual(getBlockCompletionContext('Check-in#Vendor'), undefined);
+    assert.strictEqual(getBlockCompletionContext('Check-in'), undefined);
   });
 });

@@ -89,7 +89,7 @@ import {
   LinkMaintenance,
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
-import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
+import { WikiLinkCompletionProvider } from './ui/providers/linkSuggestions';
 import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
@@ -374,7 +374,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   void mcpServer.restart();
   // Notes are offered in the order Find ranks them, opened ones first.
-  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences);
+  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences).register();
   const entitySuggestions = new EntityHeadingSuggestions((uri) =>
     indexer.isNotesFile(uri),
   );

@@ -3,7 +3,8 @@ import { isInCodeOrLink } from './inlineRanges';
 /**
  * What the editor's completions are being asked to complete, read from the
  * line the cursor is on: a tag after `#`, `@`, or the person marker, and
- * which tags match what has been typed.
+ * which tags match what has been typed; or a note, heading, or `^block` id
+ * inside an unclosed `[[`.
  *
  * These are the rules behind the completion providers in `ui/providers`,
  * kept free of VS Code so they can be tested without it.
@@ -91,5 +92,65 @@ export function getTagCompletionContext(
     query,
     startColumn,
     endColumn: character + suffix.length,
+  };
+}
+
+/**
+ * The note name being typed inside an unclosed `[[`, and the column it
+ * starts at, or nothing when the cursor is not in one. A `|` or `]` ends
+ * the name, so an alias or a closed link is never completed.
+ */
+export function getWikiLinkCompletionContext(
+  line: string,
+  character: number,
+): { query: string; startColumn: number } | undefined {
+  const prefix = line.slice(0, character);
+  const match = prefix.match(/\[\[([^\]|]*)$/);
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    query: match[1],
+    startColumn: character - match[1].length,
+  };
+}
+
+/**
+ * The note and partial heading being completed past a `#`, or nothing when
+ * the caret is not past one. `##words` searches every note's headings, which
+ * is a note of `undefined`; `#words` is the note the link is written in.
+ */
+export function getHeadingCompletionContext(
+  query: string,
+): { note: string | undefined; query: string } | undefined {
+  if (query.includes('#^')) {
+    return undefined;
+  }
+  if (query.startsWith('##')) {
+    return { note: undefined, query: query.slice(2) };
+  }
+  const hash = query.indexOf('#');
+  if (hash < 0) {
+    return undefined;
+  }
+  return { note: query.slice(0, hash).trim(), query: query.slice(hash + 1) };
+}
+
+/**
+ * The note and partial id being completed past a `#^`, or nothing when the
+ * caret is not in one. An empty note means the link points into the note it
+ * is written in, as `[[#^id]]` does.
+ */
+export function getBlockCompletionContext(
+  query: string,
+): { note: string; query: string } | undefined {
+  const caret = query.indexOf('#^');
+  if (caret < 0) {
+    return undefined;
+  }
+  return {
+    note: query.slice(0, caret).trim(),
+    query: query.slice(caret + 2),
   };
 }
