@@ -11,7 +11,7 @@ import {
   findWikiLinkAt,
 } from '../domain/index/backlinks';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { EditorReferences } from '../ui/commands/editorReferences';
+import { EditorReferences } from '../ui/providers/editorReferences';
 import {
   countSharedTagEntries,
   createLinkPreview,

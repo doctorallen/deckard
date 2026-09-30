@@ -101,12 +101,12 @@ import {
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/providers/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/providers/taskMetadataSuggestions';
-import { EditorLenses } from './ui/commands/editorLenses';
+import { EditorLenses } from './ui/providers/editorLenses';
 import {
   LINK_MENTIONS_COMMAND,
   linkMentions,
 } from './ui/commands/unlinkedMentions';
-import { EditorReferences } from './ui/commands/editorReferences';
+import { EditorReferences } from './ui/providers/editorReferences';
 import { AssistantTools } from './ui/commands/assistantTools';
 import { QuickFind } from './ui/commands/quickFind';
 import { DashboardPanel } from './ui/webview/dashboard';
@@ -360,8 +360,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       vscode.commands.executeCommand('setContext', 'deckard.canUndo', canUndo),
     ),
   );
-  const editorReferences = new EditorReferences(indexer);
-  const editorLenses = new EditorLenses(indexer);
+  const editorReferences = new EditorReferences(indexer).register();
+  const editorLenses = new EditorLenses(indexer).register();
   const assistantTools = new AssistantTools(indexer, history);
   const mcpServer = new DeckardMcpServer({
     indexer,
