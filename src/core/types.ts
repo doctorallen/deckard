@@ -6,125 +6,30 @@ import type {
   Task,
   UnreadableNote,
 } from '../domain/model';
+import type {
+  DashboardColumnCount,
+  DashboardMode,
+  DashboardSearchField,
+  DashboardViewState,
+  DashboardWidgetConfig,
+  RelatedNotesSortMode,
+  RenderMode,
+  SearchPageSize,
+  SearchPreview,
+  TableSort,
+  TagOverviewLayout,
+  TagOverviewSortMode,
+  TagSortMode,
+  TaskBoardGroupBy,
+  TaskColumnId,
+  TaskLayout,
+  TaskSortMode,
+} from '../domain/model/preferences';
 
 export type * from '../domain/model';
-
-export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
-export type TaskSortMode = 'rank' | 'created' | 'updated';
-export type DashboardColumnCount = 1 | 2 | 3 | 4;
-export type TagOverviewSortMode =
-  | 'alphabetical'
-  | 'created'
-  | 'updated'
-  | 'access';
-
-export type TagOverviewLayout = 'tabs' | 'split';
-
-/**
- * The page sizes a search page offers.
- *
- * Thirty is a screenful or two, which is what a reader looks through before
- * narrowing the search instead. The larger sizes are for reading a whole
- * result through, and cost more to send and draw the larger they are.
- */
-export const SEARCH_PAGE_SIZES = [10, 30, 50, 100, 200] as const;
-
-export type SearchPageSize = (typeof SEARCH_PAGE_SIZES)[number];
-
-export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
-
-export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
-
-
-
-/**
- * The Dashboard's tabs: Home, and Tags. Searches open search pages, and tasks
- * have the Task Board.
- */
-export type DashboardMode = 'home' | 'browse';
-
-export type DashboardSearchField = 'tags';
-
-export interface DashboardViewState {
-  mode: DashboardMode;
-  tagSearchQuery: string;
-}
-
-/** The widgets Home can show. */
-export type DashboardWidgetKind =
-  | 'search'
-  | 'tasks'
-  | 'agenda'
-  | 'favoriteTags'
-  | 'topTags'
-  | 'savedSearches'
-  | 'recentSearches'
-  | 'recentNotes'
-  | 'stats'
-  | 'savedQuery'
-  | 'todayNote'
-  | 'quickAdd'
-  | 'staleTasks'
-  | 'relatedNotes'
-  | 'tagPairs'
-  | 'unhubbedTags'
-  | 'newTags'
-  | 'quietPeople'
-  | 'pinnedNotes'
-  | 'tryNext';
-
-/** Whether a widget takes one of Home's two columns or both. */
-export type DashboardWidgetWidth = 'half' | 'full';
-
-/** One widget on Home, as the reader arranged it. */
-export interface DashboardWidgetConfig {
-  /** Unique on the page, so a kind that can repeat is told apart. */
-  id: string;
-  kind: DashboardWidgetKind;
-  width: DashboardWidgetWidth;
-  /** How many entries a list widget shows, or holds on a page when paged. */
-  count?: number;
-  /**
-   * Whether the widget pages through everything it found rather than showing
-   * the first few and leaving the rest to the view it links to.
-   */
-  paged?: boolean;
-  /** Which page it is showing, 1-based and clamped to the pages it has. */
-  page?: number;
-  /** The search a tasks widget lists. */
-  query?: string;
-  /** The saved search a saved-search widget shows. */
-  filterId?: string;
-  /**
-   * How many days a widget looks back: how long a stale task's note has gone
-   * unchanged, or how recently a new tag was first seen.
-   */
-  days?: number;
-  /** The namespace Gone quiet watches: `person` by default, or `project`. */
-  namespace?: string;
-  /** Whether Gone quiet lists only the tags with no open task. */
-  noOpenTasks?: boolean;
-}
+export { DEFAULT_SEARCH_PAGE_SIZE, SEARCH_PAGE_SIZES } from '../domain/model/preferences';
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
-
-export type RenderMode = 'markdown' | 'html';
-/** How much of each result a search page shows: none, three lines, or all. */
-export type SearchPreview = 'none' | 'lines' | 'full';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /** The tag a search page is about, as the page draws it. */
 export interface SearchPageTag {
@@ -142,87 +47,6 @@ export interface SearchPageEntity {
   kind: EntityKind;
   name: string;
   count: number;
-}
-
-
-
-
-export interface PersistedPreferences {
-  version: 1;
-  favoriteTags: string[];
-  favoriteEntities: string[];
-  tagSortMode: TagSortMode;
-  entitySortMode: TagSortMode;
-  tagAccessOrder: string[];
-  tagAccessCounts: Record<string, number>;
-  entityAccessOrder: string[];
-  entityAccessCounts: Record<string, number>;
-  taskOrder: string[];
-  taskSortMode: TaskSortMode;
-  dashboardTaskColumns: DashboardColumnCount;
-  dashboardNoteColumns: DashboardColumnCount;
-  dashboardTagColumns: DashboardColumnCount;
-  dashboardViewState: DashboardViewState;
-  renderMode: RenderMode;
-  /** Set once Format is chosen; a stored Source without it reads as Rendered. */
-  renderModeChosen?: true;
-  tagOverviewSortMode: TagOverviewSortMode;
-  tagOverviewLayout: TagOverviewLayout;
-  /** How many notes, and how many tasks, a search page shows at a time. */
-  searchPageSize: SearchPageSize;
-  /** How much of each result a search page shows. */
-  searchPreview: SearchPreview;
-  relatedNotesSortMode: RelatedNotesSortMode;
-  /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
-  hideDailyNotes?: true;
-  /** Lines of excerpt on a Related Notes card, when not the default 1. */
-  relatedNotesPreviewLines?: 0 | 2;
-  /** The results chosen in Find for what was typed, which it offers first. */
-  findChoices?: FindChoice[];
-  /** The headings Capture and Move to… went under last, newest first. */
-  recentHeadings?: PinnedNote[];
-  sectionAccessCounts: Record<string, number>;
-  savedFilters: SavedFilter[];
-  /** When each tag was last opened, in epoch milliseconds, for frecency. */
-  tagAccessTimes?: Record<string, number>;
-  /** When each note section was last opened, in epoch milliseconds. */
-  sectionAccessTimes?: Record<string, number>;
-  /** Searches run recently, newest first. */
-  recentQueries?: string[];
-  /** How the Task Board shows its tasks. */
-  taskBoardLayout: TaskLayout;
-  /** The table layout's columns, in order; the defaults when unset. */
-  taskTableColumns?: TaskColumnId[];
-  /** What the table layout is sorted by; unset is the rank order. */
-  taskTableSort?: TableSort;
-  /** What the Task Board's columns group tasks by. */
-  taskBoardGroup: TaskBoardGroupBy;
-  /** The namespace whose tags are the board's columns when grouped by tag. */
-  taskBoardGroupNamespace?: string;
-
-  /** The widgets on the Dashboard's Home, in order. */
-  dashboardWidgets: DashboardWidgetConfig[];
-  /**
-   * When Deckard first indexed each tag, in epoch milliseconds. Tags already
-   * in use when this began to be kept are 0, so none of them count as new.
-   */
-  tagFirstSeen?: Record<string, number>;
-  /** Notes pinned to Home, by path, in the order they were pinned. */
-  pinnedNotes?: PinnedNote[];
-}
-
-/**
- * A named, reusable view: either an intersection of at least two canonical tag
- * keys, or a Deckard query when the view needs more than an intersection.
- */
-export interface SavedFilter {
-  id: string;
-  name: string;
-  tagKeys: string[];
-  /** Present when the saved view was created from an advanced query. */
-  query?: string;
-  /** Set when the search was saved on the Task Board, which reopens it. */
-  page?: 'taskBoard';
 }
 
 /**
@@ -561,7 +385,6 @@ export interface TagOverviewCard {
   long?: boolean;
 }
 
-
 export interface RankedNote {
   /** Parked: listed only beside a parked note, after the rest. */
   parked?: true;
@@ -658,7 +481,6 @@ export interface StatsNoteItem {
   detail: string;
   open: OpenSourceMessage;
 }
-
 
 /** An unreadable note as Stats lists it: the note, why, and what opens it. */
 export interface StatsUnreadableItem extends UnreadableNote {
@@ -1319,34 +1141,6 @@ export interface AddNextActionMessage {
   tagKey: string;
 }
 
-/**
- * A note pinned to Home: an entry of a file, or the file itself.
- *
- * A note in Deckard is a heading and what is written under it, so a pin
- * names one. It is kept as what a reader would use to find that heading
- * again rather than as the section's id, which is a hash of the heading's
- * line and text and changes whenever anything above it is written.
- */
-/** What Find learned: the result chosen after typing a search. */
-export interface FindChoice {
-  /** What was typed, trimmed, lowercased, spaces collapsed. */
-  input: string;
-  /** The result, by what it is rather than where it sits. */
-  key: string;
-  count: number;
-  /** When it was last chosen. */
-  at: number;
-}
-
-export interface PinnedNote {
-  filePath: string;
-  /** The heading it pins, as written; absent when it pins the whole note. */
-  heading?: string;
-  headingLevel?: number;
-  /** Which heading of that text and level it is, counted from zero. */
-  occurrence?: number;
-}
-
 /** Pins the note at a line to Home, or unpins the pin a row names. */
 export interface PinNoteMessage {
   type: 'pinNote' | 'unpinNote';
@@ -1689,9 +1483,6 @@ export type SidebarMessage =
   | InsertLinkMessage
   | RefineActiveSearchMessage;
 
-/** How the task board arranges its columns. */
-export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee' | 'tag';
-
 export interface TaskBoardCard {
   taskId: string;
   title: string;
@@ -1826,37 +1617,6 @@ export interface TaskBoardSettings {
    * column that is on the board is in the list that orders it.
    */
   columns?: { status: string; openTasks: number }[];
-}
-
-/** Whether the Task Board shows its tasks as a list or as columns. */
-export type TaskLayout = 'list' | 'board' | 'table';
-
-/**
- * A table of tasks: the query's results as rows, its fields as columns. The
- * model that makes the cells and sorts the rows is `resultTable.ts`; these
- * are the names a snapshot, a message, and a preference carry.
- */
-export type TaskColumnId =
-  | 'title'
-  | 'due'
-  | 'scheduled'
-  | 'start'
-  | 'done'
-  | 'priority'
-  | 'assignee'
-  | 'status'
-  | 'tags'
-  | 'note'
-  | 'created'
-  | 'updated'
-  | 'blockedBy'
-  | 'id';
-
-export type TableSortDirection = 'asc' | 'desc';
-
-export interface TableSort {
-  column: TaskColumnId;
-  direction: TableSortDirection;
 }
 
 /**

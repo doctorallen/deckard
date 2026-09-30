@@ -8,3 +8,4 @@ export type * from './query';
 export type * from './tags';
 export type * from './tasks';
 export type * from './workspaceIndex';
+export * from './preferences';
