@@ -12,6 +12,7 @@ import {
   TaskService,
   WrittenTaskLine,
 } from '../../services/taskService';
+import { MoveService } from '../../services/moveService';
 import { openSourceAt } from './navigation';
 import {
   describeRejectedEdit,
@@ -38,6 +39,8 @@ export interface TaskWrites {
   readonly history: WorkspaceWriteHistory;
   readonly keepRank: TaskRankKeeper;
   readonly tasks: TaskService<vscode.Uri, WriteHandle>;
+  /** Move to…, which takes tasks and lines to another heading or note. */
+  readonly moves: MoveService<vscode.Uri, WriteHandle>;
 }
 
 /** What an edit to a task line may need to know about its document. */

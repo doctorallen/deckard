@@ -13,7 +13,7 @@ import { createVscodeProgress } from './platform/vscodeProgress';
 import { createVscodeWorkspace } from './platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
-import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
+import { capture, CaptureDrafts, captureToToday, getCaptureInsertion } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
 import {
@@ -30,6 +30,7 @@ import {
   TaskRankKeeper,
   TaskWrites,
 } from './ui/commands/taskActions';
+import { MoveService } from './services/moveService';
 import { TaskService } from './services/taskService';
 import { resolveSourceUri } from './ui/commands/navigation';
 import {
@@ -269,6 +270,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       resolveUri: (filePath) => resolveSourceUri(filePath),
       configuration: vscodeWorkspace,
       clock: { now: () => Date.now() },
+    }),
+    moves: new MoveService<vscode.Uri, WriteHandle>({
+      notes: createVscodeEditApplier(),
+      history: createVscodeHistoryWriter(history),
+      files: vscodeWorkspace,
+      configuration: vscodeWorkspace,
+      getFilePath: (uri) => indexer.getFilePath(uri),
+      keepRank,
+      resolveUri: (filePath) => resolveSourceUri(filePath),
+      placeInsertion: getCaptureInsertion,
     }),
   };
   // The theme Choose Theme… shows on the open pages before one is kept.

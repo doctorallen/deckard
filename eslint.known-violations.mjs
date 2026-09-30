@@ -197,9 +197,6 @@ export default {
     "src/ui/commands/checkSetup.ts": [
       "buildSetupReport"
     ],
-    "src/ui/commands/moveTo.ts": [
-      "moveBlocks"
-    ],
     "src/ui/commands/parking.ts": [
       "parkFolder",
       "parkNotes",
@@ -501,9 +498,6 @@ export default {
     ],
     "src/ui/commands/linkMaintenance.ts": [
       "renameHeadingCommand"
-    ],
-    "src/ui/commands/moveTo.ts": [
-      "moveBlocks"
     ],
     "src/ui/commands/parking.ts": [
       "unparkNotes"
