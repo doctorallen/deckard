@@ -17,8 +17,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Every suite CI runs, run again on the merged source: a merge whose CI run
+  # was cancelled, or that CI never saw, is not released untested.
+  validate:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/ci.yml
+
   release:
     if: github.event_name == 'push'
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -53,10 +60,6 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Run automated tests
-        if: steps.tag.outputs.exists != 'true'
-        run: xvfb-run --auto-servernum npm test
 
       - name: Build release VSIX
         if: steps.tag.outputs.exists != 'true'

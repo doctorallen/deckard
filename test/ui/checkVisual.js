@@ -15,6 +15,8 @@
 //
 //   npm run test:visual               compare
 //   npm run test:visual -- --update   record what is drawn now as the baseline
+//   npm run test:visual -- --ci       compare, and fail for a surface with no
+//                                     baseline rather than record one
 //   VISUAL_ONLY=cooper+zen:taskBoard  one surface
 //   VISUAL_KEEP=<dir>                 leave the screenshots and diffs there
 const path = require('node:path');
@@ -44,6 +46,10 @@ const FAIL_ABOVE = 0.0001;
 
 const BASELINES = path.join(__dirname, 'visual-baseline', process.platform);
 const updating = process.argv.includes('--update');
+// On CI a missing baseline is a failure: recording one and passing is how
+// the guard went quiet on Linux, where no baseline had ever been kept. The
+// surface is still recorded, so the run's artifact holds the image to commit.
+const ci = process.argv.includes('--ci');
 const keep = process.env.VISUAL_KEEP;
 const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-visual-'));
 if (keep) mkdirSync(keep, { recursive: true });
@@ -141,6 +147,10 @@ try {
 }
 if (recorded) {
   console.log(`\n${recorded} baseline(s) ${updating ? 'updated' : 'recorded'} under test/ui/visual-baseline/${process.platform}; commit them.`);
+  if (ci && !updating) {
+    failed += recorded;
+    console.log('--ci: a surface without a baseline was recorded rather than compared, so this run fails.');
+  }
 }
 if (failed) {
   console.log(`\n${failed} surface(s) look different${keep ? '' : `; screenshots and diffs are in ${dir}`}`);
