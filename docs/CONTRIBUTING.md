@@ -27,6 +27,48 @@ Help and the guide must describe the same current behavior before a change is
 merged. A new guide page also needs a line in `docs/guide/README.md`, and, if
 Help has a section for it, the page named in that section's **Read more**.
 
+## How the code is built
+
+[How Deckard is built](architecture/README.md) explains the design for
+contributors: the layers and the one rule for which may import which, the
+index, the services, the webview pages, preferences, the test suites, and
+the decisions behind them. It is published beside the guide at
+<https://deckard.esperinnovations.com/architecture/>. Keep a page there
+current in the same change as the code it describes, as Help and the guide
+are kept current with what users see. `npm run lint` checks the import
+rules, and each rule says why it exists in `.dependency-cruiser.cjs`.
+
+## Comments and doc blocks
+
+Comments are written for the next person to change the code, who can read
+what it does but not why it is shaped that way.
+
+- **Every exported function, class, method, and type gets a doc block**, and
+  so does every private function that is not trivial. The block states the
+  contract: what the function is for, what it returns when there is nothing,
+  what it refuses, and why it exists when that is not obvious. Write
+  `@param` and `@returns` only when the name and type do not already say
+  it. A block that restates the signature is worse than none.
+- **Inline comments say why, never what.** Write one for a constraint, a
+  trade-off, a workaround, a bug it prevents, or a choice that looks wrong
+  but is not: "The page may hold a snapshot from before a tag was renamed,
+  so the key is resolved again." Delete a comment that narrates the next
+  line. The task, daily-note, and capture commands in `src/ui/commands` are
+  the ones to imitate.
+- **A doc block sits directly above what it documents.** Nothing goes
+  between a block and its declaration. A constant that must sit above a
+  function gets its own one-line block, above the function's.
+- **A comment moves with its code.** When a function is split or moved, its
+  doc block and comments go with it, rewritten if the reason changed.
+
+`npm run lint` enforces what a machine can see, with eslint-plugin-jsdoc:
+exports, class methods, and exported types need a block; parameter names
+must match; a block that documents some parameters documents them all; and
+a block that only repeats its name fails. Code written before these rules
+is listed in `eslint.known-violations.mjs` and is brought up to them as it
+is touched. Whether a comment explains why is for a reviewer to judge, so a
+review asks it of every block and comment the change adds.
+
 ## Webview components
 
 Shared styling and page-script helpers live in `src/ui/webview/components.ts`,
