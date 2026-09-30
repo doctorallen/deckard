@@ -10,6 +10,10 @@ import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
+import { WorkspaceScanner } from './core/workspace/scanner';
+import { createVscodeProgress } from './platform/vscodeProgress';
+import { createVscodeWorkspace } from './platform/vscodeWorkspace';
+import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
 import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
@@ -265,14 +269,19 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     { dispose: () => setQueryIdentity(undefined) },
     { dispose: () => setQueryWeekStart(0) },
   );
+  // The index reads the workspace through ports; this is VS Code's.
+  const vscodeWorkspace = createVscodeWorkspace();
+  const scanner = new WorkspaceScanner(vscodeWorkspace);
   const indexer = new WorkspaceIndexer(
-    undefined,
-    new SearchStore(context.storageUri),
+    scanner,
+    new SearchStore(context.storageUri?.fsPath),
     {
       version: String(context.extension.packageJSON.version),
       // A developer's parser edits do not change the version, so only an
       // installed Deckard starts from the notes the cache kept.
       readCache: context.extensionMode === vscode.ExtensionMode.Production,
+      events: createVscodeWorkspaceEvents(),
+      progress: createVscodeProgress(),
     },
   );
   // Favorites, pins and view counts name what is in a workspace, so they are
@@ -287,7 +296,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   void preferences.initialize();
   // A copy of what this workspace remembers, a moment after each change,
   // so one bad write is something a reader can take back.
-  const snapshots = new PreferenceSnapshots(context.storageUri, preferences);
+  const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
   context.subscriptions.push(snapshots);
   // A task's id comes from its own text, so an edit Deckard writes makes it a
   // new task to anything keyed by id. This keeps its place in a ranked list
@@ -879,7 +888,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       restorePreferences(preferences, snapshots),
     ),
     vscode.commands.registerCommand('deckard.checkSetup', () =>
-      checkSetup(indexer),
+      checkSetup(indexer, scanner),
     ),
     vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
       createSampleWorkspace(context),

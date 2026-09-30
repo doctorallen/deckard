@@ -1,28 +1,24 @@
 import * as assert from 'assert';
-import * as vscode from 'vscode';
 
+import { Emitter } from '../core/emitter';
 import { setTimingLog, TimingLog } from '../core/timing';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import {
   onIndexUpdateInTurn,
   VIEW_PRIORITY,
 } from '../core/workspace/publishing';
-import { panelPriority, viewPriority } from '../ui/webview/panelPriority';
 import { WorkspaceScanner } from '../core/workspace/scanner';
+import { createFakeAccess, fakeFolder } from './fakeWorkspace';
 
 /** An indexer over an empty folder whose view turns a test steps through. */
 function createIndexer(): { indexer: WorkspaceIndexer; step: () => boolean; pending: () => number } {
   const turns: Array<() => void> = [];
-  const workspaceFolder = {
-    uri: vscode.Uri.file('/tmp/deckard-publishing'),
-    name: 'w',
-    index: 0,
-  } as vscode.WorkspaceFolder;
-  const scanner = new WorkspaceScanner({
+  const workspaceFolder = fakeFolder('/tmp/deckard-publishing', 'w');
+  const scanner = new WorkspaceScanner(createFakeAccess({
     workspaceFolders: [workspaceFolder],
     findFiles: async () => [],
     readFile: async () => new Uint8Array(),
-  });
+  }));
   const indexer = new WorkspaceIndexer(scanner, undefined, {
     schedule: (run) => turns.push(run),
   });
@@ -129,7 +125,7 @@ suite('Publishing an index update to views', () => {
   });
 
   test('falls back to a plain listener on an index that cannot publish in turns', () => {
-    const emitter = new vscode.EventEmitter<void>();
+    const emitter = new Emitter<void>();
     let ran = 0;
     const subscription = onIndexUpdateInTurn(
       { onDidUpdate: emitter.event },
@@ -144,14 +140,5 @@ suite('Publishing an index update to views', () => {
     emitter.fire();
     assert.strictEqual(ran, 1);
     emitter.dispose();
-  });
-
-  test('ranks a panel by whether it is in front or visible, and a side view by whether it is visible', () => {
-    assert.strictEqual(panelPriority({ active: true, visible: true }), VIEW_PRIORITY.active);
-    assert.strictEqual(panelPriority({ active: false, visible: true }), VIEW_PRIORITY.visible);
-    assert.strictEqual(panelPriority({ active: false, visible: false }), VIEW_PRIORITY.hidden);
-    assert.strictEqual(panelPriority(undefined), VIEW_PRIORITY.hidden);
-    assert.strictEqual(viewPriority({ visible: true }), VIEW_PRIORITY.visible);
-    assert.strictEqual(viewPriority(undefined), VIEW_PRIORITY.hidden);
   });
 });

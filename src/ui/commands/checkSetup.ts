@@ -52,7 +52,7 @@ interface SetupIndexer {
 
 export async function collectSetupFacts(
   indexer: SetupIndexer,
-  scanner = new WorkspaceScanner(),
+  scanner: WorkspaceScanner<vscode.Uri>,
 ): Promise<SetupFacts> {
   await indexer.ready;
   const index = indexer.getSnapshot();
@@ -201,8 +201,11 @@ export function buildSetupReport(facts: SetupFacts, now = new Date()): string {
   return lines.join('\n') + '\n';
 }
 
-export async function checkSetup(indexer: SetupIndexer): Promise<void> {
-  const facts = await collectSetupFacts(indexer);
+export async function checkSetup(
+  indexer: SetupIndexer,
+  scanner: WorkspaceScanner<vscode.Uri>,
+): Promise<void> {
+  const facts = await collectSetupFacts(indexer, scanner);
   const document = await vscode.workspace.openTextDocument({
     language: 'markdown',
     content: buildSetupReport(facts),

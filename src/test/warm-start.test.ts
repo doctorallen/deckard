@@ -3,18 +3,18 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import * as vscode from 'vscode';
-
 import { SearchStore } from '../core/storage/searchStore';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { WorkspaceScanner } from '../core/workspace/scanner';
-import { normalizeIndex } from './indexCorpus';
+import { FileType } from '../ports/fileSystem';
+import type { ResourceUri } from '../ports/uri';
+import { createFakeAccess, fakeFolder, joinUri } from './fakeWorkspace';
+import { normalizeIndex } from './normalizeIndex';
 
 /** A workspace in memory whose notes a test changes between sessions. */
 function createWorkspace() {
-  const workspaceUri = vscode.Uri.file('/tmp/deckard-warm');
-  const folder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+  const folder = fakeFolder('/tmp/deckard-warm', 'w');
   const texts = new Map<string, string>([
     ['a.md', '# A #project/atlas\n- [ ] Call #person/dana'],
     ['b.md', '# B #project/atlas #topic/maps\n## Child #topic/detail'],
@@ -22,23 +22,22 @@ function createWorkspace() {
     ['d.md', '# D #topic/maps'],
   ]);
   const times = new Map<string, number>([...texts.keys()].map((name) => [name, 1000]));
-  const nameOf = (uri: vscode.Uri) => uri.path.split('/').pop() ?? '';
+  const nameOf = (uri: ResourceUri) => uri.path.split('/').pop() ?? '';
   const counts = { reads: 0 };
-  const access = {
+  const access = createFakeAccess({
     workspaceFolders: [folder],
-    findFiles: async () => [...texts.keys()].map((name) => vscode.Uri.joinPath(workspaceUri, name)),
-    readFile: async (uri: vscode.Uri) => {
+    findFiles: async () => [...texts.keys()].map((name) => joinUri(folder.uri, name)),
+    readFile: async (uri) => {
       counts.reads += 1;
       return Buffer.from(texts.get(nameOf(uri)) ?? '', 'utf8');
     },
-    stat: async (uri: vscode.Uri) => ({
-      type: vscode.FileType.File,
+    stat: async (uri) => ({
+      type: FileType.File,
       ctime: 1,
       mtime: times.get(nameOf(uri)) ?? 0,
       size: Buffer.byteLength(texts.get(nameOf(uri)) ?? '', 'utf8'),
-      permissions: undefined,
     }),
-  };
+  });
   return { texts, times, counts, access };
 }
 
@@ -59,10 +58,10 @@ function openSession(
     const isNotesFile = scanner.isNotesFile.bind(scanner);
     scanner.isNotesFile = (uri) => !uri.path.endsWith(`/${options.excluded}`) && isNotesFile(uri);
     const findFiles = workspace.access.findFiles;
-    workspace.access.findFiles = async () =>
-      (await findFiles()).filter((uri) => !uri.path.endsWith(`/${options.excluded}`));
+    workspace.access.findFiles = async (...args) =>
+      (await findFiles(...args)).filter((uri) => !uri.path.endsWith(`/${options.excluded}`));
   }
-  const store = new SearchStore(vscode.Uri.file(directory));
+  const store = new SearchStore(directory);
   const indexer = new WorkspaceIndexer(scanner, store, {
     version: options.version ?? '1.0.0',
     readCache: options.readCache ?? true,

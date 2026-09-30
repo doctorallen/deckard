@@ -78,7 +78,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private lastSnapshot: TaskBoardSnapshot | undefined;
 
   public constructor(
-    private readonly indexer: WorkspaceIndexer,
+    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly openTag: (tagKey: string) => Promise<void>,

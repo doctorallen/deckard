@@ -59,7 +59,7 @@ export class SearchPanels implements vscode.Disposable {
   private readonly panels = new Set<SearchPanel>();
 
   public constructor(
-    private readonly indexer: WorkspaceIndexer,
+    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
@@ -360,7 +360,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   public constructor(
     private readonly originQuery: string,
     private queryText: string,
-    private readonly indexer: WorkspaceIndexer,
+    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,

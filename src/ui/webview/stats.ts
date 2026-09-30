@@ -29,7 +29,7 @@ export class StatsPanel implements vscode.Disposable {
   private isStale = false;
 
   public constructor(
-    private readonly indexer: WorkspaceIndexer,
+    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,

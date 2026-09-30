@@ -1,8 +1,10 @@
 import * as path from 'path';
 import picomatch = require('picomatch');
 
-import * as vscode from 'vscode';
-
+import type { Configuration, ConfigurationSection } from '../../ports/configuration';
+import type { FileStat, FileSystem } from '../../ports/fileSystem';
+import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
+import type { FolderPattern, WorkspaceFiles } from '../../ports/workspace';
 import {
   extractTags,
   getEntityNamespaceAliases,
@@ -18,15 +20,23 @@ import { ParsedFile,
   UnreadableNote,
 } from '../types';
 
-export interface WorkspaceFileAccess {
-  readonly workspaceFolders?: readonly vscode.WorkspaceFolder[];
-  findFiles(
-    include: vscode.GlobPattern,
-    exclude?: vscode.GlobPattern,
-    maxResults?: number,
-  ): Thenable<vscode.Uri[]>;
-  readFile(uri: vscode.Uri): Thenable<Uint8Array>;
-  stat?(uri: vscode.Uri): Thenable<vscode.FileStat>;
+/**
+ * What the scanner reads the workspace through: its folders, finding and
+ * naming files in them, the settings, joining paths, and reading files.
+ *
+ * Every part is a port, so the extension passes the VS Code workspace
+ * (`platform/vscodeWorkspace.ts`) and a test passes plain objects. `U` is
+ * the URI type both work in; the scanner hands back URIs of that type.
+ */
+export interface WorkspaceFileAccess<U extends ResourceUri = ResourceUri>
+  extends WorkspaceFiles<U>,
+    Configuration<U>,
+    Pick<FileSystem<U>, 'joinPath' | 'readFile'> {
+  /**
+   * A note's stat. Optional: without it, notes carry no file times, and a
+   * scan cannot tell an unchanged note from a changed one.
+   */
+  stat?(uri: U): PromiseLike<FileStat>;
 }
 
 /**
@@ -61,17 +71,17 @@ const READS_IN_FLIGHT = 8;
  * Reads only the configured Markdown surface of a workspace.
  *
  * File access is injected so path and parsing behavior can be tested without
- * requiring a live VS Code workspace, while the default adapter uses VS Code
- * storage and file APIs in production.
+ * requiring a live VS Code workspace, while extension.ts passes the VS Code
+ * workspace from platform/vscodeWorkspace.ts in production.
  */
 /** The configured note boundary, falling back when the setting is stale. */
 function getNoteBoundaries(value: unknown): NoteBoundaries {
   return value === 'heading' || value === 'marked' ? value : 'line';
 }
 
-export class WorkspaceScanner {
+export class WorkspaceScanner<U extends ResourceUri = ResourceUri> {
   public constructor(
-    private readonly access: WorkspaceFileAccess = createDefaultAccess(),
+    private readonly access: WorkspaceFileAccess<U>,
   ) {}
 
   /**
@@ -101,7 +111,7 @@ export class WorkspaceScanner {
     /** Called with each note read and parsed, between reads. */
     onParsed?: (file: ParsedFile) => void,
   ): Promise<ParsedFile[]> {
-    const entries: ScanEntry[] = [];
+    const entries: Array<ScanEntry<U>> = [];
     const failures: UnreadableNote[] = [];
     let found = 0;
     let templates = 0;
@@ -117,7 +127,7 @@ export class WorkspaceScanner {
       const excludeGlob = toExcludeGlob(excludePatterns);
       const uris = await this.access.findFiles(
         pattern,
-        excludeGlob ? new vscode.RelativePattern(workspaceFolder, excludeGlob) : undefined,
+        excludeGlob ? { folder: workspaceFolder, pattern: excludeGlob } : undefined,
       );
       const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
       const isExcluded = createExcludeMatcherFromPatterns(excludePatterns);
@@ -127,7 +137,7 @@ export class WorkspaceScanner {
         (uri) => !templatesUri || !isWithinWorkspace(uri, templatesUri),
       );
       const kept = outsideTemplates.filter(
-        (uri) => !isExcluded(getRelativePath(uri, workspaceFolder)),
+        (uri) => !isExcluded(getRelativePath(uri, workspaceFolder, this.access)),
       );
       found += markdown.length;
       templates += markdown.length - outsideTemplates.length;
@@ -181,7 +191,7 @@ export class WorkspaceScanner {
    * the note as the file stands, its text.
    */
   private async readEntry(
-    entry: ScanEntry,
+    entry: ScanEntry<U>,
     reuse: ReuseParsedFile | undefined,
     onParsed: ((file: ParsedFile) => void) | undefined,
   ): Promise<ParsedFile> {
@@ -202,7 +212,7 @@ export class WorkspaceScanner {
    * Reads a saved note together with filesystem timestamps used by date sorts.
    */
   public async read(
-    uri: vscode.Uri,
+    uri: U,
     workspaceFolder = this.findWorkspaceFolder(uri),
     /** A stat already read, or null when it could not be, to skip another. */
     stamp?: FileStamp | null,
@@ -232,7 +242,7 @@ export class WorkspaceScanner {
    * filesystem stat to replace the file's creation and update timestamps.
    */
   public parse(
-    uri: vscode.Uri,
+    uri: U,
     content: string,
     metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   ): ParsedFile {
@@ -296,7 +306,7 @@ export class WorkspaceScanner {
     });
     const cache = new Map<string, boolean>();
     const options = this.getParseOptions(folders[0]);
-    const written = vscode.workspace.getConfiguration('deckard').get<unknown>('parked.tags', ['parked']);
+    const written = this.access.getConfiguration('deckard').get<unknown>('parked.tags', ['parked']);
     const tags = [
       ...new Set(
         (Array.isArray(written) ? written : [])
@@ -336,7 +346,7 @@ export class WorkspaceScanner {
   /**
    * Returns the watcher patterns for all roots using their current settings.
    */
-  public getPatterns(): vscode.RelativePattern[] {
+  public getPatterns(): Array<FolderPattern<U>> {
     return (this.access.workspaceFolders ?? []).map((workspaceFolder) =>
       this.createPattern(workspaceFolder),
     );
@@ -346,15 +356,15 @@ export class WorkspaceScanner {
    * Produces a stable index key and prefixes multi-root paths to avoid clashes.
    */
   public getFilePath(
-    uri: vscode.Uri,
-    workspaceFolder?: vscode.WorkspaceFolder,
+    uri: U,
+    workspaceFolder?: WorkspaceFolder<U>,
   ): string {
     const folder = workspaceFolder ?? this.findWorkspaceFolder(uri);
     if (!folder) {
       return uri.fsPath.replaceAll('\\', '/');
     }
 
-    const relativePath = getRelativePath(uri, folder);
+    const relativePath = getRelativePath(uri, folder, this.access);
     if ((this.access.workspaceFolders?.length ?? 0) <= 1) {
       return relativePath.replaceAll('\\', '/');
     }
@@ -366,34 +376,34 @@ export class WorkspaceScanner {
    * The file an index path names: the inverse of `getFilePath`. Undefined
    * when no open workspace folder holds it.
    */
-  public getUri(filePath: string): vscode.Uri | undefined {
+  public getUri(filePath: string): U | undefined {
     const folders = this.access.workspaceFolders ?? [];
     if (folders.length === 1) {
-      return vscode.Uri.joinPath(folders[0].uri, ...filePath.split('/'));
+      return this.access.joinPath(folders[0].uri, ...filePath.split('/'));
     }
     const [name, ...rest] = filePath.split('/');
     const folder = folders.find((candidate) => candidate.name === name);
-    return folder && rest.length > 0 ? vscode.Uri.joinPath(folder.uri, ...rest) : undefined;
+    return folder && rest.length > 0 ? this.access.joinPath(folder.uri, ...rest) : undefined;
   }
 
   /**
    * Resolves the optional configured notes folder without assuming it is non-empty.
    */
   public getNotesFolderUri(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.Uri {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): U {
     const notesFolder = this.getNotesFolder(workspaceFolder);
     if (!notesFolder) {
       return workspaceFolder.uri;
     }
 
-    return vscode.Uri.joinPath(workspaceFolder.uri, ...notesFolder.split('/'));
+    return this.access.joinPath(workspaceFolder.uri, ...notesFolder.split('/'));
   }
 
   /**
    * Normalizes user configuration before it is used in VS Code glob/path APIs.
    */
-  public getNotesFolder(workspaceFolder?: vscode.WorkspaceFolder): string {
+  public getNotesFolder(workspaceFolder?: WorkspaceFolder<U>): string {
     const configuration = this.getConfiguration(workspaceFolder);
     const configuredFolder = configuration
       .get<string>('notesFolder', '')
@@ -406,15 +416,15 @@ export class WorkspaceScanner {
    * and tasks stay out of the notes. Undefined when the setting is empty.
    */
   public getTemplatesFolderUri(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.Uri | undefined {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): U | undefined {
     const folder = this.getConfiguration(workspaceFolder)
       .get<string>('templatesFolder', 'templates')
       .trim()
       .replaceAll('\\', '/')
       .replace(/^\/+|\/+$/g, '');
     return folder && folder !== '.'
-      ? vscode.Uri.joinPath(workspaceFolder.uri, ...folder.split('/'))
+      ? this.access.joinPath(workspaceFolder.uri, ...folder.split('/'))
       : undefined;
   }
 
@@ -422,7 +432,7 @@ export class WorkspaceScanner {
    * Supplies parser options from the same workspace scope as the note.
    */
   public getParseOptions(
-    workspaceFolder?: vscode.WorkspaceFolder,
+    workspaceFolder?: WorkspaceFolder<U>,
   ): MarkdownParseOptions {
     return {
       parseInlineTags: this.getConfiguration(workspaceFolder).get<boolean>(
@@ -459,7 +469,7 @@ export class WorkspaceScanner {
    * Checks the Markdown extension, configured-folder containment, and the
    * exclude settings, so watchers and editors agree with the full scan.
    */
-  public isNotesFile(uri: vscode.Uri): boolean {
+  public isNotesFile(uri: U): boolean {
     if (!isMarkdownFile(uri)) {
       return false;
     }
@@ -473,7 +483,7 @@ export class WorkspaceScanner {
       isWithinWorkspace(uri, this.getNotesFolderUri(workspaceFolder)) &&
       !(templatesUri && isWithinWorkspace(uri, templatesUri)) &&
       !this.getExcludeMatcher(workspaceFolder)(
-        getRelativePath(uri, workspaceFolder),
+        getRelativePath(uri, workspaceFolder, this.access),
       )
     );
   }
@@ -482,19 +492,19 @@ export class WorkspaceScanner {
    * Builds the narrowest watcher glob so unrelated Markdown is not indexed.
    */
   private createPattern(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.RelativePattern {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): FolderPattern<U> {
     const notesFolder = this.getNotesFolder(workspaceFolder);
     const pattern = notesFolder ? `${notesFolder}/**/*.md` : '**/*.md';
-    return new vscode.RelativePattern(workspaceFolder, pattern);
+    return { folder: workspaceFolder, pattern };
   }
 
   /**
    * Finds the owning root before resolving root-scoped settings and paths.
    */
   private findWorkspaceFolder(
-    uri: vscode.Uri,
-  ): vscode.WorkspaceFolder | undefined {
+    uri: U,
+  ): WorkspaceFolder<U> | undefined {
     return this.access.workspaceFolders?.find((folder) =>
       isWithinWorkspace(uri, folder.uri),
     );
@@ -507,14 +517,14 @@ export class WorkspaceScanner {
    * state layer already handles undefined dates deterministically.
    */
   private async readMetadata(
-    uri: vscode.Uri,
+    uri: U,
   ): Promise<Pick<ParsedFile, 'createdAt' | 'updatedAt'> | undefined> {
     const stamp = await this.readStamp(uri);
     return stamp ? { createdAt: stamp.ctime, updatedAt: stamp.mtime } : undefined;
   }
 
   /** The note's times and size, or nothing when they cannot be read. */
-  private async readStamp(uri: vscode.Uri): Promise<FileStamp | undefined> {
+  private async readStamp(uri: U): Promise<FileStamp | undefined> {
     if (!this.access.stat) {
       return undefined;
     }
@@ -531,7 +541,7 @@ export class WorkspaceScanner {
    * stays out just as it does in the full scan.
    */
   private getExcludeMatcher(
-    workspaceFolder: vscode.WorkspaceFolder,
+    workspaceFolder: WorkspaceFolder<U>,
   ): ExcludeMatcher {
     return createExcludeMatcherFromPatterns(
       this.getExcludePatterns(workspaceFolder),
@@ -544,9 +554,9 @@ export class WorkspaceScanner {
    * A pattern with a `when` clause is skipped, because checking for its
    * sibling file would need a filesystem read on every call.
    */
-  private getExcludePatterns(workspaceFolder: vscode.WorkspaceFolder): string[] {
+  private getExcludePatterns(workspaceFolder: WorkspaceFolder<U>): string[] {
     const read = (section: string): unknown =>
-      vscode.workspace
+      this.access
         .getConfiguration(section, workspaceFolder.uri)
         .get<unknown>('exclude', {});
     return collectExcludePatterns(read('deckard'), read('files'), read('search'));
@@ -556,31 +566,31 @@ export class WorkspaceScanner {
    * Reads configuration at the correct root for single- and multi-root workspaces.
    */
   private getConfiguration(
-    workspaceFolder?: vscode.WorkspaceFolder,
-  ): vscode.WorkspaceConfiguration {
+    workspaceFolder?: WorkspaceFolder<U>,
+  ): ConfigurationSection {
     return workspaceFolder
-      ? vscode.workspace.getConfiguration('deckard', workspaceFolder.uri)
-      : vscode.workspace.getConfiguration('deckard');
+      ? this.access.getConfiguration('deckard', workspaceFolder.uri)
+      : this.access.getConfiguration('deckard');
   }
 }
 
-interface ScanEntry {
-  uri: vscode.Uri;
-  workspaceFolder: vscode.WorkspaceFolder;
+interface ScanEntry<U extends ResourceUri> {
+  uri: U;
+  workspaceFolder: WorkspaceFolder<U>;
 }
 
 /**
  * Uses the URI path rather than language mode because extension behavior must
  * also cover unsaved or manually associated Markdown documents.
  */
-export function isMarkdownFile(uri: vscode.Uri): boolean {
+export function isMarkdownFile(uri: Pick<ResourceUri, 'path'>): boolean {
   return uri.path.toLowerCase().endsWith('.md');
 }
 
 /**
  * Fails fast at parser boundaries so non-Markdown files cannot enter the index.
  */
-function assertMarkdownFile(uri: vscode.Uri): void {
+function assertMarkdownFile(uri: ResourceUri): void {
   if (!isMarkdownFile(uri)) {
     throw new Error(`Deckard only parses Markdown files: ${uri.toString()}`);
   }
@@ -589,9 +599,10 @@ function assertMarkdownFile(uri: vscode.Uri): void {
 /**
  * Uses native filesystem paths for file URIs and VS Code's resolver otherwise.
  */
-function getRelativePath(
-  uri: vscode.Uri,
-  workspaceFolder: vscode.WorkspaceFolder,
+function getRelativePath<U extends ResourceUri>(
+  uri: U,
+  workspaceFolder: WorkspaceFolder<U>,
+  workspace: Pick<WorkspaceFiles<U>, 'asRelativePath'>,
 ): string {
   if (uri.scheme === 'file' && workspaceFolder.uri.scheme === 'file') {
     return path
@@ -599,14 +610,14 @@ function getRelativePath(
       .replaceAll(path.sep, '/');
   }
 
-  return vscode.workspace.asRelativePath(uri, false);
+  return workspace.asRelativePath(uri, false);
 }
 
 /**
  * Performs boundary-aware containment checks instead of trusting a string
  * prefix, which would incorrectly treat sibling paths as children.
  */
-function isWithinWorkspace(uri: vscode.Uri, workspaceUri: vscode.Uri): boolean {
+function isWithinWorkspace(uri: ResourceUri, workspaceUri: ResourceUri): boolean {
   if (uri.scheme !== workspaceUri.scheme) {
     return false;
   }
@@ -716,21 +727,6 @@ export function createExcludeMatcherFromPatterns(
   return createExcludeMatcher(
     Object.fromEntries(patterns.map((pattern) => [pattern, true])),
   );
-}
-
-/**
- * Adapts the real VS Code workspace APIs to the scanner's testable interface.
- */
-function createDefaultAccess(): WorkspaceFileAccess {
-  return {
-    get workspaceFolders() {
-      return vscode.workspace.workspaceFolders;
-    },
-    findFiles: (include, exclude, maxResults) =>
-      vscode.workspace.findFiles(include, exclude, maxResults),
-    readFile: (uri) => vscode.workspace.fs.readFile(uri),
-    stat: (uri) => vscode.workspace.fs.stat(uri),
-  };
 }
 
 /** An error as one line a reader can act on, not a stack. */

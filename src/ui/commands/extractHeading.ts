@@ -15,7 +15,7 @@ import {
 import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
 
 export async function extractHeadingCommand(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
   const choice = await chooseHeading(indexer);
