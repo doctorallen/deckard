@@ -1,9 +1,10 @@
 import * as assert from 'assert';
 
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
+import { openWebviewPage } from './webviewPage';
 
 /**
- * Drives the overview webview's own script against a stub DOM.
+ * Drives the overview webview's own script in jsdom.
  *
  * The other webview tests assert that a script parses and that its source
  * contains the right markup, which cannot catch a control that renders
@@ -44,7 +45,7 @@ suite('Tag overview query builder', () => {
   test('builds an OR of tags with a NOT beside it from nothing, without typing the query', () => {
     // What Refine makes with three clicks and an Alt: built here by hand,
     // which the builder could not do while it had only one shape.
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     const state = createState('') as { query: Record<string, unknown> };
     state.query.text = '';
     state.query.builder = { join: 'and', items: [] };
@@ -65,8 +66,8 @@ suite('Tag overview query builder', () => {
     view.key(view.type(row('0'), '#d'), 'Enter');
     view.change({ dataset: { action: 'builder-set-operator', path: '0' } }, 'neq');
 
-    // A search is a round trip through the host, which the stub does not
-    // answer, so the query posted is what is checked, not a redraw.
+    // The mount answers each search with its text alone, not the host's
+    // rows for it, so the query posted is what is checked, not a redraw.
     const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
     assert.strictEqual(last?.query, 'tag != #d AND (tag = #a OR tag = #b OR tag = #c)');
   });
@@ -107,7 +108,7 @@ suite('Tag overview query builder', () => {
     // Reported: with #person/mara-vale as the first row of a nested OR group,
     // typing "harb" in the group's next row and choosing #team/harbor turned
     // the first row into "tag = undefined".
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     const state = createState('tag = #person/sable-ortiz') as {
       query: { suggestions: { values: { tag: Array<{ value: string; label: string }> } }; builder: unknown; text: string };
     };
@@ -124,8 +125,7 @@ suite('Tag overview query builder', () => {
     view.key(view.type(pending('2.0'), '#person/mara-vale'), 'Enter');
     const second = view.type(pending('2.1'), 'harb');
     assert.match(view.suggestionsFor('p2_1'), /#team\/harbor/, 'the completion is offered');
-    // Chosen from the keyboard: the stub's click cannot reach a completion,
-    // since it closes the list for any click outside the input's shell.
+    // Chosen from the keyboard, as a reader who is typing would.
     view.key(second, 'ArrowDown');
     view.key(second, 'Enter');
 
@@ -181,9 +181,10 @@ suite('Tag overview query builder', () => {
   });
 
   test('offers a builder row only the values its field accepts', () => {
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     view.send(createState());
     view.click({ action: 'toggle-builder' });
+    view.change({ dataset: { action: 'builder-set-field', path: '0' } }, 'task');
 
     view.type(
       {
@@ -263,7 +264,7 @@ suite('Tag overview query builder', () => {
   });
 
   test('builds a link row from [[Atlas plan]] typed in a new row, and writes its brackets once', () => {
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     const state = createState('') as { query: Record<string, unknown> };
     state.query.text = '';
     state.query.builder = { join: 'and', items: [] };
@@ -553,8 +554,12 @@ suite('Tag overview query builder', () => {
     );
 
     view.posted.length = 0;
+    const box = view.find('[data-suggest-key="query"]');
+    const clear = view.find('[data-action="clear-query"]');
     view.type({ dataset: { action: 'query-input', suggestKey: 'query' } }, 'vendor');
-    assert.strictEqual(view.html(), html, 'typing does not redraw the bar');
+    // The shell notes what is typed in an attribute; the elements stay.
+    assert.strictEqual(view.find('[data-suggest-key="query"]'), box, 'typing does not redraw the box');
+    assert.strictEqual(view.find('[data-action="clear-query"]'), clear, 'or anything beside it');
   });
 
   test('sends the query when a condition is removed', () => {
@@ -572,181 +577,124 @@ suite('Tag overview query builder', () => {
   });
 });
 
+/** What names an element: its `data-*` attributes, as a dataset. */
+interface ElementDescriptor {
+  dataset: Record<string, string>;
+}
+
 interface MountedView {
   posted: Array<Record<string, unknown>>;
+  find: (selector: string) => Element;
   send: (state: unknown) => void;
   click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
-  key: (input: Record<string, unknown>, key: string) => void;
-  focus: (input: Record<string, unknown>, value: string) => void;
-  change: (input: Record<string, unknown>, value: string) => void;
+  key: (input: Element, key: string) => void;
+  focus: (input: ElementDescriptor, value: string) => void;
+  change: (input: ElementDescriptor, value: string) => void;
   html: () => string;
   countRows: () => number;
   countGroups: () => number;
-  type: (
-    input: Record<string, unknown>,
-    value: string,
-  ) => Record<string, unknown>;
+  type: (input: ElementDescriptor, value: string) => Element;
   suggestionsFor: (key: string) => string;
 }
 
 /**
- * Evaluates the overview script with the smallest DOM it will accept.
+ * The selector for the element whose `data-*` attributes are a dataset's,
+ * such as `[data-action="builder-set-value"][data-path="1.0"]`.
  */
-function mountTagOverview(): MountedView {
-  const html = getSearchPageHtml({ cspSource: 'vscode-webview://deckard' });
-  const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? '';
-  assert.notStrictEqual(script, '', 'the overview should render a script');
+function datasetSelector(dataset: Record<string, string>): string {
+  return Object.entries(dataset)
+    .map(([name, value]) => {
+      const attribute = name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      return `[data-${attribute}="${value.replace(/["\\]/g, '\\$&')}"]`;
+    })
+    .join('');
+}
 
-  const app = createStubElement('main');
-  const listeners: Record<string, Array<(event: unknown) => void>> = {};
-  const posted: Array<Record<string, unknown>> = [];
-  const scope = globalThis as unknown as Record<string, unknown>;
-  const saved = {
-    document: scope.document,
-    window: scope.window,
-    NodeFilter: scope.NodeFilter,
-    acquireVsCodeApi: scope.acquireVsCodeApi,
+/**
+ * Opens the search page in jsdom and drives it the way a reader would: each
+ * action finds the element its data attributes name and raises real events
+ * on it, so a control that renders but does nothing fails here.
+ *
+ * With `answerQueries`, each query the page runs is answered as the host
+ * would answer it, for a test that goes on to use what the answer draws.
+ * Without it, as for most tests, the host stays silent, so a test sees only
+ * what the page does on its own and what it posts.
+ */
+function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedView {
+  const page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }));
+  const { window, document } = page;
+  const app = page.find('#app');
+  let shown: { query: { text: string } } | undefined;
+  const answered = new WeakSet<object>();
+  const show = (state: unknown): void => {
+    shown = JSON.parse(JSON.stringify(state)) as { query: { text: string } };
+    page.send(state);
   };
-
-  const addListener = (type: string, handler: (event: unknown) => void) => {
-    listeners[type] = listeners[type] ?? [];
-    listeners[type].push(handler);
-  };
-
-  // Elements the script looks up by attribute are kept in one registry so a
-  // completion list can be inspected after it renders.
-  const registry = new Map<string, ReturnType<typeof createStubElement>>();
-  const lookup = (selector: string) => {
-    const existing = registry.get(selector);
-    if (existing) {
-      return existing;
-    }
-    if (
-      selector.startsWith('[data-suggestions=') ||
-      selector.startsWith('[data-suggest-key=')
-    ) {
-      const created = createStubElement('div');
-      registry.set(selector, created);
-      return created;
-    }
-    return null;
-  };
-
-  const stubs = {
-    document: {
-      addEventListener: addListener,
-      getElementById: (id: string) => (id === 'app' ? app : null),
-      querySelector: lookup,
-      querySelectorAll: () => [],
-      createElement: createStubElement,
-      body: createStubElement('body'),
-    },
-    window: {
-      addEventListener: addListener,
-      innerWidth: 1200,
-      innerHeight: 800,
-      scrollX: 0,
-      scrollY: 0,
-      scrollTo: () => undefined,
-    },
-    NodeFilter: { SHOW_TEXT: 4 },
-    acquireVsCodeApi: () => ({
-      postMessage: (message: Record<string, unknown>) => posted.push(message),
-      setState: () => undefined,
-    }),
-  };
-
   /**
-   * The script's handlers reach for these globals long after it is evaluated,
-   * so the stubs are installed around every call into it and removed again
-   * afterwards rather than left in place for the rest of the suite.
+   * Answers each query the page ran as the host would, with the state for
+   * that query, since the page draws a committed row only once the host has
+   * answered. Only the text changes: while it is what the page sent, the
+   * page keeps its own draft of the builder rather than the host's.
    */
-  const withStubs = <T>(run: () => T): T => {
-    Object.assign(scope, stubs);
-    try {
-      return run();
-    } finally {
-      Object.assign(scope, saved);
+  const answerHost = (): void => {
+    if (!options.answerQueries) {
+      return;
+    }
+    for (const message of page.posted) {
+      if (answered.has(message) || message.type !== 'setOverviewQuery' || !shown) {
+        continue;
+      }
+      answered.add(message);
+      show({ ...shown, query: { ...shown.query, text: String(message.query) } });
     }
   };
-
-  withStubs(() => new Function(script)());
-
-  const dispatch = (type: string, event: unknown): void => {
-    withStubs(() => {
-      (listeners[type] ?? []).forEach((handler) => handler(event));
-    });
+  const element = (dataset: Record<string, string>): HTMLElement => {
+    const selector = datasetSelector(dataset);
+    const found = document.querySelector<HTMLElement>(selector);
+    if (!found) {
+      throw new Error(`The page has no ${selector}.`);
+    }
+    return found;
+  };
+  const raise = (target: Element, event: Event): void => {
+    target.dispatchEvent(event);
+    answerHost();
+  };
+  const fill = (target: HTMLElement, value: string): void => {
+    (target as HTMLInputElement).value = value;
   };
 
   return {
-    posted,
-    send: (state) => dispatch('message', { data: { type: 'state', data: state } }),
-    click: (dataset, modifiers = {}) => {
-      const target = Object.assign(createStubElement('button'), { dataset });
-      dispatch('click', {
-        target: {
-          closest: (selector: string) =>
-            selector === '[data-action]' ? target : null,
-        },
-        preventDefault: () => undefined,
-        ...modifiers,
-      });
-    },
-    key: (input, key) => {
-      const target = Object.assign(input, {
-        closest: (selector: string) =>
-          selector === '[data-suggest-key]' ? input : null,
-      });
-      dispatch('keydown', { target, key, preventDefault: () => undefined });
-    },
+    posted: page.posted as Array<Record<string, unknown>>,
+    find: (selector) => page.find(selector),
+    send: show,
+    click: (dataset, modifiers = {}) =>
+      raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers })),
+    key: (input, key) =>
+      raise(input, new window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, key })),
     focus: (input, value) => {
-      const target = Object.assign(createStubElement('input'), input, { value });
-      registry.set(
-        `[data-suggest-key="${String((input.dataset as Record<string, string>).suggestKey)}"]`,
-        target,
-      );
-      dispatch('focusin', { target });
+      const target = element(input.dataset);
+      fill(target, value);
+      target.focus();
     },
     change: (input, value) => {
-      const target = Object.assign(createStubElement('select'), input, { value });
-      dispatch('change', { target });
+      const target = element(input.dataset);
+      fill(target, value);
+      raise(target, new window.Event('change', { bubbles: true }));
     },
     html: () => app.innerHTML,
     countRows: () => (app.innerHTML.match(/builder-set-value/g) ?? []).length,
     countGroups: () =>
       (app.innerHTML.match(/class="query-builder-group[ "]/g) ?? []).length,
-    type: (input: Record<string, unknown>, value: string) => {
-      const target = Object.assign(createStubElement('input'), input, { value });
-      registry.set(
-        `[data-suggest-key="${String((input.dataset as Record<string, string>).suggestKey)}"]`,
-        target,
-      );
-      dispatch('input', { target });
+    type: (input, value) => {
+      const target = element(input.dataset);
+      target.focus();
+      fill(target, value);
+      raise(target, new window.Event('input', { bubbles: true }));
       return target;
     },
-    suggestionsFor: (key: string) =>
-      registry.get(`[data-suggestions="${key}"]`)?.innerHTML ?? '',
-  };
-}
-
-function createStubElement(tagName: string): any {
-  return {
-    tagName,
-    dataset: {} as Record<string, string>,
-    innerHTML: '',
-    hidden: false,
-    style: {},
-    classList: { contains: () => false, add: () => undefined, remove: () => undefined },
-    appendChild: (child: unknown) => child,
-    setAttribute: () => undefined,
-    removeAttribute: () => undefined,
-    getAttribute: () => null,
-    focus: () => undefined,
-    setSelectionRange: () => undefined,
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    closest: () => null,
-    getBoundingClientRect: () => ({ width: 0, height: 0 }),
+    suggestionsFor: (key) =>
+      document.querySelector(`[data-suggestions="${key}"]`)?.innerHTML ?? '',
   };
 }
 
