@@ -49,7 +49,7 @@
     "dependencyTypes": [
       "local",
       "type-only",
-      "import"
+      "export"
     ],
     "rule": {
       "severity": "error",

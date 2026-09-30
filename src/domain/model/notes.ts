@@ -108,7 +108,7 @@ export interface FrontmatterProperty {
   values: FrontmatterValue[];
 }
 
-/** One value of a front-matter property, and the tag it names when it names one. */
+/** One value of a front-matter property, and the tag it names, if any. */
 export interface FrontmatterValue {
   text: string;
   /** Set when the value names a tag, such as `owner: "@dana"`. */
