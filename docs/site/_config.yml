@@ -14,7 +14,8 @@ defaults:
     values:
       layout: default
 
-# The side navigation, in the guide's own order.
+# The side navigation, in the guide's own order, then the contributors'
+# section staged from docs/architecture.
 nav:
   - title: Start
     pages:
@@ -42,3 +43,13 @@ nav:
       - { title: Commands, url: /commands.html }
       - { title: Settings, url: /settings.html }
       - { title: Privacy and troubleshooting, url: /privacy-and-troubleshooting.html }
+  - title: How Deckard is built
+    pages:
+      - { title: Overview, url: /architecture/ }
+      - { title: Layers, url: /architecture/layers.html }
+      - { title: Indexing, url: /architecture/indexing.html }
+      - { title: Services, url: /architecture/services.html }
+      - { title: Webviews, url: /architecture/webviews.html }
+      - { title: Preferences, url: /architecture/preferences.html }
+      - { title: Testing, url: /architecture/testing.html }
+      - { title: Decisions, url: /architecture/decisions/ }
