@@ -1,3 +1,4 @@
+import { findFrontmatterEnd } from './frontmatter';
 import { findFencedLines, matchHeading } from './lineShapes';
 import { stripTags } from './parser';
 
@@ -19,11 +20,8 @@ const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]+/;
 /** The lines of the note's front matter, 0-based, if it opens with some. */
 function findFrontMatter(lines: readonly string[]): Set<number> {
   const held = new Set<number>();
-  if (lines[0]?.trim() !== '---') {
-    return held;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && /^(?:---|\.\.\.)\s*$/.test(line));
-  if (end < 0) {
+  const end = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (end === undefined) {
     return held;
   }
   for (let index = 0; index <= end; index += 1) {

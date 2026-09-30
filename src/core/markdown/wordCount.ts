@@ -1,3 +1,4 @@
+import { findFrontmatterEnd } from './frontmatter';
 import { findFencedLines, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findTaskMetadataSpans } from './taskMetadata';
 
@@ -33,14 +34,12 @@ function blankRange(line: string, start: number, end: number): string {
 export function maskNoteForWords(lines: readonly string[]): string[] {
   const masked = [...lines];
   let start = 0;
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-    if (end > 0) {
-      for (let at = 0; at <= end; at += 1) {
-        masked[at] = blank(masked[at]);
-      }
-      start = end + 1;
+  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (frontmatterEnd !== undefined) {
+    for (let at = 0; at <= frontmatterEnd; at += 1) {
+      masked[at] = blank(masked[at]);
     }
+    start = frontmatterEnd + 1;
   }
   const fenced = findFencedLines([...lines]);
   let inComment = false;

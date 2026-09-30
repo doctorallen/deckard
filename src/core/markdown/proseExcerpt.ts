@@ -1,3 +1,4 @@
+import { findFrontmatterEnd } from './frontmatter';
 import { findFencedLines, isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
@@ -39,11 +40,9 @@ function cleanLine(line: string, personMarker?: string): string {
  */
 export function readProseLines(markdown: string, options: { personMarker?: string } = {}): string[] {
   let lines = markdown.split(/\r?\n/);
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, index) => index > 0 && /^(?:---|\.\.\.)\s*$/.test(line));
-    if (end > 0) {
-      lines = lines.slice(end + 1);
-    }
+  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (frontmatterEnd !== undefined) {
+    lines = lines.slice(frontmatterEnd + 1);
   }
   const fenced = findFencedLines(lines);
   const prose: string[] = [];

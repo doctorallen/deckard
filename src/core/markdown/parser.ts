@@ -15,6 +15,7 @@ import {
   parseTaskMetadata,
 } from './taskMetadata';
 import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
+import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
 import { findListParents, findParentTaskLine } from './listNesting';
 import { findFencedLines, isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
@@ -448,11 +449,8 @@ function formatTitlePart(value: string): string {
     entityNamespaceAliases?: EntityNamespaceAliases,
     personMarker?: string,
   ): Frontmatter {
-    if (lines[0]?.trim() !== '---') {
-      return { tags: [], links: [], tagSpans: [] };
-    }
-    const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-    if (end < 0) {
+    const end = findFrontmatterEnd(lines, 'dashes');
+    if (end === undefined) {
       return { tags: [], links: [], tagSpans: [] };
     }
 
@@ -464,7 +462,7 @@ function formatTitlePart(value: string): string {
       const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
       if (property) {
         currentKey = property[1].toLowerCase();
-        values.set(currentKey, splitFrontmatterValues(property[2]));
+        values.set(currentKey, splitFrontmatterValues(property[2], { keepEmptyValue: true }));
         const valueStart = line.indexOf(property[2], property[1].length + 1);
         tagSpans.push(
           ...createFrontmatterTagSpans(
@@ -591,25 +589,6 @@ function formatTitlePart(value: string): string {
           })),
       },
     };
-  }
-
-  function splitFrontmatterValues(value: string): string[] {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return [];
-    }
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      return trimmed
-        .slice(1, -1)
-        .split(',')
-        .map((item) => unquote(item.trim()))
-        .filter(Boolean);
-    }
-    return [unquote(trimmed)];
-  }
-
-  function unquote(value: string): string {
-    return value.replace(/^['"]|['"]$/g, '');
   }
 
   function frontmatterValueToTag(

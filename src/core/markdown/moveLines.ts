@@ -1,3 +1,4 @@
+import { findFrontmatterEnd } from './frontmatter';
 import {
   findFencedLines,
   HeadingShape,
@@ -72,7 +73,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
       return { refused: 'blank' };
     }
   }
-  const frontMatterEnd = findFrontMatterEnd(lines);
+  const frontMatterEnd = findFrontmatterEnd(lines, 'dashes');
   if (frontMatterEnd !== undefined && start <= frontMatterEnd) {
     return { refused: 'frontMatter' };
   }
@@ -219,14 +220,6 @@ export function lineOffsets(text: string): number[] {
     }
   }
   return offsets;
-}
-
-function findFrontMatterEnd(lines: readonly string[]): number | undefined {
-  if (lines[0]?.trim() !== '---') {
-    return undefined;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end > 0 ? end : undefined;
 }
 
 function leading(line: string): number {

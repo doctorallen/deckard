@@ -343,7 +343,6 @@ export default {
     "src/core/changelog.ts": 1,
     "src/core/markdown/captureWords.ts": 2,
     "src/core/markdown/dates.ts": 1,
-    "src/core/markdown/frontmatterTags.ts": 1,
     "src/core/markdown/inlineRanges.ts": 1,
     "src/core/markdown/moveLines.ts": 2,
     "src/core/markdown/parser.ts": 4,
