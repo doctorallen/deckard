@@ -99,7 +99,7 @@ import {
   EditorTagDecorations,
   isMarkdownDocument,
 } from './ui/commands/tagDecorations';
-import { TagCompletionProvider } from './ui/commands/tagSuggestions';
+import { TagCompletionProvider } from './ui/providers/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
 import { EditorLenses } from './ui/commands/editorLenses';
 import {
@@ -284,7 +284,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   };
   readPinned();
   context.subscriptions.push(preferences.onDidChange(() => readPinned()));
-  const tagSuggestions = new TagCompletionProvider(indexer);
+  const tagSuggestions = new TagCompletionProvider(indexer).register();
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();

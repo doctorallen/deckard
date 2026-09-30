@@ -10,7 +10,7 @@ import {
 import { appendTagToLine } from '../ui/commands/bulkEdit';
 import { moveInlineTagsToFrontmatterContent } from '../ui/commands/moveTagsToFrontmatter';
 import { replaceIndexedTag } from '../ui/commands/renameTag';
-import { getTagCompletionContext } from '../ui/commands/tagSuggestions';
+import { getTagCompletionContext } from '../domain/markdown/completionContext';
 import { setTaskNamespaceTags, setTaskStatusTag } from '../ui/state/taskBoardState';
 
 const keys = (text: string): string[] => extractTags(text).map((tag) => tag.key);

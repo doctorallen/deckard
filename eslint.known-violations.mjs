@@ -377,7 +377,6 @@ export default {
     "src/ui/commands/sampleWorkspace.ts": 2,
     "src/ui/commands/selectionSeed.ts": 2,
     "src/ui/commands/tagDecorations.ts": 4,
-    "src/ui/commands/tagSuggestions.ts": 1,
     "src/ui/commands/taskEditor.ts": 5,
     "src/ui/commands/taskLineDecorations.ts": 2,
     "src/ui/commands/taskMetadataSuggestions.ts": 5,
@@ -524,9 +523,6 @@ export default {
     "src/ui/commands/rollover.ts": [
       "applyRollover"
     ],
-    "src/ui/commands/tagSuggestions.ts": [
-      "provideCompletionItems"
-    ],
     "src/ui/commands/taskEditor.ts": [
       "readField"
     ],
@@ -536,6 +532,9 @@ export default {
     ],
     "src/ui/commands/templates.ts": [
       "newNoteFromTemplate"
+    ],
+    "src/ui/providers/tagSuggestions.ts": [
+      "provideCompletionItems"
     ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
@@ -682,8 +681,8 @@ export default {
     "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/renameTag.ts": 1,
     "src/ui/commands/rollover.ts": 1,
-    "src/ui/commands/tagSuggestions.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 2,
+    "src/ui/providers/tagSuggestions.ts": 1,
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
