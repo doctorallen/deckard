@@ -2,23 +2,17 @@ import { Emitter } from '../emitter';
 import type { Disposable } from '../../ports/events';
 import type { KeyValueStore } from '../../ports/keyValueStore';
 
-import { legacyIdOf } from '../markdown/parser';
-import { isTaskColumnId } from '../taskColumns';
 import {
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
   DashboardViewState,
   DashboardWidgetConfig,
-  DashboardWidgetKind,
-  FindChoice,
-  DEFAULT_SEARCH_PAGE_SIZE,
   PersistedPreferences,
   PinnedNote,
   RelatedNotesSortMode,
   RenderMode,
   SavedFilter,
-  SEARCH_PAGE_SIZES,
   SearchPageSize,
   SearchPreview,
   TagOverviewLayout,
@@ -30,6 +24,51 @@ import {
   TaskLayout,
   TaskSortMode,
 } from '../types';
+import {
+  areTagKeyListsEqual,
+  bumped,
+  carryLegacyIds,
+  cloneSavedFilter,
+  clonePreferences,
+  cloneWidgets,
+  DEFAULT_DASHBOARD_WIDGETS,
+  FIND_CHOICE_LIMIT,
+  findChoiceFilePath,
+  normalizeDashboardViewState,
+  normalizeDashboardWidgets,
+  normalizeFindInput,
+  normalizePreferences,
+  normalizeSavedFilterTagKeys,
+  normalizeTableColumns,
+  normalizeTableSort,
+  omitWorkspacePreferences,
+  pickWorkspacePreferences,
+  PINNED_NOTE_LIMIT,
+  pinKey,
+  RECENT_HEADING_LIMIT,
+  RECENT_QUERY_LIMIT,
+  toggled,
+  upsertById,
+} from './preferencesSchema';
+
+export {
+  carryLegacyIds,
+  DASHBOARD_WIDGET_COUNT_LIMIT,
+  DASHBOARD_WIDGET_DAYS_LIMIT,
+  DASHBOARD_WIDGET_DEFAULT_DAYS,
+  DASHBOARD_WIDGET_KINDS,
+  DEFAULT_DASHBOARD_WIDGETS,
+  FIND_CHOICE_LIMIT,
+  findChoiceFilePath,
+  isDefaultHomeLayout,
+  normalizeDashboardWidgets,
+  normalizeFindInput,
+  normalizePinnedNotes,
+  PINNED_NOTE_LIMIT,
+  pinKey,
+  RECENT_HEADING_LIMIT,
+  RECENT_QUERY_LIMIT,
+} from './preferencesSchema';
 
 const preferencesKey = 'deckard.preferences';
 /** What `findStale` reports: deliberate choices the index no longer backs. */
@@ -42,141 +81,6 @@ export interface StalePreferences {
 
 /** Set once the machine-wide store has handed its content to a workspace. */
 const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
-
-/**
- * The preferences that name what is in a workspace rather than how Deckard
- * looks, and so belong to that workspace.
- *
- * These were kept machine-wide until 1.19, and pruned against whichever
- * window last built an index. Opening any other folder holding a Markdown
- * file — a repository with a README was enough — deleted the favorites,
- * pins and view counts belonging to the notes workspace, because that
- * folder's index did not contain them.
- *
- * What stays machine-wide is presentation: sort modes, column counts,
- * layouts, page sizes. Those mean the same thing in any workspace, and
- * nothing prunes them.
- */
-const workspacePreferenceKeys = [
-  'favoriteTags',
-  'favoriteEntities',
-  'tagAccessOrder',
-  'tagAccessCounts',
-  'tagAccessTimes',
-  'entityAccessOrder',
-  'entityAccessCounts',
-  'taskOrder',
-  'sectionAccessCounts',
-  'sectionAccessTimes',
-  'savedFilters',
-  'recentQueries',
-  'findChoices',
-  'recentHeadings',
-  'tagFirstSeen',
-  'pinnedNotes',
-  'dashboardWidgets',
-  'dashboardViewState',
-] as const satisfies readonly (keyof PersistedPreferences)[];
-
-/** Everything except the workspace's share: what stays machine-wide. */
-function omitWorkspacePreferences(
-  value: Partial<PersistedPreferences> | undefined,
-): Partial<PersistedPreferences> {
-  const kept: Record<string, unknown> = { ...(value ?? {}) };
-  for (const key of workspacePreferenceKeys) {
-    delete kept[key];
-  }
-  return kept as Partial<PersistedPreferences>;
-}
-
-/** The workspace's share of a whole preference blob. */
-function pickWorkspacePreferences(
-  value: Partial<PersistedPreferences> | undefined,
-): Partial<PersistedPreferences> {
-  const picked: Record<string, unknown> = {};
-  if (!value) {
-    return picked;
-  }
-  for (const key of workspacePreferenceKeys) {
-    if (value[key] !== undefined) {
-      picked[key] = value[key];
-    }
-  }
-  return picked as Partial<PersistedPreferences>;
-}
-/** Whether a stored value is one of the page sizes a search page offers. */
-function isSearchPageSize(value: unknown): value is SearchPageSize {
-  return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value);
-}
-
-/** How many recent searches are kept. */
-export const RECENT_QUERY_LIMIT = 20;
-
-/** The widgets Home starts with, and returns to on Reset. */
-export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
-  // One suggestion, when the notes are ready for it, and nothing otherwise.
-  { id: 'tryNext', kind: 'tryNext', width: 'full' },
-  { id: 'search', kind: 'search', width: 'full' },
-  // The Tasks view widget leads: what is overdue and due today comes before
-  // every open task.
-  { id: 'agenda', kind: 'agenda', width: 'half', count: 5 },
-  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
-  { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
-  { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
-];
-
-/** The widgets Home can show, and whether a page may hold more than one. */
-/**
- * What each kind of widget can do. `listed` widgets show a number of entries
- * and offer a count; of those, all but two can be paged through — the Agenda
- * counts each of its groups separately, and a saved search lists notes
- * beside tasks, so neither is one list for a page number to walk.
- */
-export const DASHBOARD_WIDGET_KINDS: Readonly<
-  Record<
-    DashboardWidgetKind,
-    { repeatable: boolean; listed: boolean; pageable?: false }
-  >
-> = {
-  search: { repeatable: false, listed: false },
-  tasks: { repeatable: true, listed: true },
-  agenda: { repeatable: false, listed: true, pageable: false },
-  favoriteTags: { repeatable: false, listed: true },
-  topTags: { repeatable: false, listed: true },
-  savedSearches: { repeatable: false, listed: false },
-  recentSearches: { repeatable: false, listed: true },
-  recentNotes: { repeatable: false, listed: true },
-  stats: { repeatable: false, listed: false },
-  savedQuery: { repeatable: true, listed: true, pageable: false },
-  todayNote: { repeatable: false, listed: true },
-  quickAdd: { repeatable: false, listed: false },
-  staleTasks: { repeatable: false, listed: true },
-  relatedNotes: { repeatable: false, listed: true },
-  tagPairs: { repeatable: false, listed: true },
-  unhubbedTags: { repeatable: false, listed: true },
-  newTags: { repeatable: false, listed: true },
-  quietPeople: { repeatable: false, listed: true },
-  pinnedNotes: { repeatable: false, listed: true },
-  tryNext: { repeatable: false, listed: false },
-};
-
-/** How many days back each widget that looks back starts at. */
-export const DASHBOARD_WIDGET_DEFAULT_DAYS: Readonly<
-  Partial<Record<DashboardWidgetKind, number>>
-> = {
-  staleTasks: 30,
-  newTags: 14,
-  quietPeople: 90,
-};
-/** The furthest back a widget can look, in days. */
-export const DASHBOARD_WIDGET_DAYS_LIMIT = 365;
-/** The most notes Home keeps pinned. */
-export const PINNED_NOTE_LIMIT = 50;
-
-/** The most entries a list widget can show. */
-export const DASHBOARD_WIDGET_COUNT_LIMIT = 20;
-const DASHBOARD_WIDGET_LIMIT = 30;
-const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
 
 /**
  * Persists UI-only state without adding metadata to Markdown notes.
@@ -272,23 +176,11 @@ export class PreferencesStore implements Disposable {
    * Toggles favorites without coupling tag presentation to note content.
    */
   public async toggleFavorite(tagKey: string): Promise<void> {
-    const favorites = new Set(this.preferences.favoriteTags);
-    if (favorites.has(tagKey)) {
-      favorites.delete(tagKey);
-    } else {
-      favorites.add(tagKey);
-    }
-    await this.update({ favoriteTags: [...favorites] });
+    await this.update({ favoriteTags: toggled(this.preferences.favoriteTags, tagKey) });
   }
 
   public async toggleFavoriteEntity(entityKey: string): Promise<void> {
-    const favorites = new Set(this.preferences.favoriteEntities);
-    if (favorites.has(entityKey)) {
-      favorites.delete(entityKey);
-    } else {
-      favorites.add(entityKey);
-    }
-    await this.update({ favoriteEntities: [...favorites] });
+    await this.update({ favoriteEntities: toggled(this.preferences.favoriteEntities, entityKey) });
   }
 
   /**
@@ -336,10 +228,7 @@ export class PreferencesStore implements Disposable {
    * notes the time so recently opened tags rank first in search.
    */
   public async recordTagAccess(tagKey: string, now = Date.now()): Promise<void> {
-    const tagAccessCounts = {
-      ...this.preferences.tagAccessCounts,
-      [tagKey]: (this.preferences.tagAccessCounts[tagKey] ?? 0) + 1,
-    };
+    const tagAccessCounts = bumped(this.preferences.tagAccessCounts, tagKey);
     const tagAccessTimes = {
       ...this.preferences.tagAccessTimes,
       [tagKey]: now,
@@ -408,10 +297,7 @@ export class PreferencesStore implements Disposable {
   }
 
   public async recordEntityAccess(entityKey: string): Promise<void> {
-    const entityAccessCounts = {
-      ...this.preferences.entityAccessCounts,
-      [entityKey]: (this.preferences.entityAccessCounts[entityKey] ?? 0) + 1,
-    };
+    const entityAccessCounts = bumped(this.preferences.entityAccessCounts, entityKey);
     await this.update({ entityAccessCounts });
   }
 
@@ -656,10 +542,7 @@ export class PreferencesStore implements Disposable {
     now = Date.now(),
     options: { quiet?: boolean } = {},
   ): Promise<void> {
-    const sectionAccessCounts = {
-      ...this.preferences.sectionAccessCounts,
-      [sectionId]: (this.preferences.sectionAccessCounts[sectionId] ?? 0) + 1,
-    };
+    const sectionAccessCounts = bumped(this.preferences.sectionAccessCounts, sectionId);
     const sectionAccessTimes = {
       ...this.preferences.sectionAccessTimes,
       [sectionId]: now,
@@ -717,13 +600,7 @@ export class PreferencesStore implements Disposable {
       name: normalizedName,
       tagKeys: normalizedTagKeys,
     };
-    await this.update({
-      savedFilters: existing
-        ? this.preferences.savedFilters.map((filter) =>
-            filter.id === existing.id ? savedFilter : filter,
-          )
-        : [...this.preferences.savedFilters, savedFilter],
-    });
+    await this.update({ savedFilters: upsertById(this.preferences.savedFilters, savedFilter) });
     return cloneSavedFilter(savedFilter);
   }
 
@@ -824,13 +701,7 @@ export class PreferencesStore implements Disposable {
       query: normalizedQuery,
       ...(page ? { page } : {}),
     };
-    await this.update({
-      savedFilters: existing
-        ? this.preferences.savedFilters.map((filter) =>
-            filter.id === existing.id ? savedFilter : filter,
-          )
-        : [...this.preferences.savedFilters, savedFilter],
-    });
+    await this.update({ savedFilters: upsertById(this.preferences.savedFilters, savedFilter) });
     return cloneSavedFilter(savedFilter);
   }
 
@@ -1146,308 +1017,6 @@ export class PreferencesStore implements Disposable {
 }
 
 /**
- * Reconstructs a valid preference shape from persisted or legacy state.
- */
-function normalizePreferences(
-  value: Partial<PersistedPreferences> | undefined,
-): PersistedPreferences {
-  const tagSortMode = value?.tagSortMode;
-  const entitySortMode = value?.entitySortMode;
-  const taskSortMode = value?.taskSortMode;
-  const dashboardTaskColumns = value?.dashboardTaskColumns;
-  const dashboardNoteColumns = value?.dashboardNoteColumns;
-  const dashboardTagColumns = value?.dashboardTagColumns;
-  const dashboardViewState = value?.dashboardViewState;
-  const renderMode = value?.renderMode;
-  const tagOverviewSortMode = value?.tagOverviewSortMode;
-  const tagOverviewLayout = value?.tagOverviewLayout;
-  const searchPageSize = value?.searchPageSize;
-  const relatedNotesSortMode = value?.relatedNotesSortMode;
-
-  return {
-    version: 1,
-    favoriteTags: uniqueStrings(value?.favoriteTags),
-    favoriteEntities: uniqueStrings(value?.favoriteEntities),
-    tagSortMode:
-      tagSortMode === 'count' ||
-      tagSortMode === 'access' ||
-      tagSortMode === 'custom'
-        ? tagSortMode
-        : 'alphabetical',
-    entitySortMode:
-      entitySortMode === 'count' ||
-      entitySortMode === 'access' ||
-      entitySortMode === 'custom'
-        ? entitySortMode
-        : 'alphabetical',
-    tagAccessOrder: uniqueStrings(value?.tagAccessOrder),
-    tagAccessCounts: normalizeAccessCounts(value?.tagAccessCounts),
-    entityAccessOrder: uniqueStrings(value?.entityAccessOrder),
-    entityAccessCounts: normalizeAccessCounts(value?.entityAccessCounts),
-    taskOrder: uniqueStrings(value?.taskOrder),
-    taskSortMode:
-      taskSortMode === 'created' || taskSortMode === 'updated'
-        ? taskSortMode
-        : 'rank',
-    dashboardTaskColumns: isDashboardColumnCount(dashboardTaskColumns)
-      ? dashboardTaskColumns
-      : 1,
-    dashboardNoteColumns: isDashboardColumnCount(dashboardNoteColumns)
-      ? dashboardNoteColumns
-      : 1,
-    dashboardTagColumns: isDashboardColumnCount(dashboardTagColumns)
-      ? dashboardTagColumns
-      : 2,
-    dashboardViewState: normalizeDashboardViewState(dashboardViewState),
-    // Every saved blob stored Source whether or not it was chosen, so
-    // Source is kept only once it has been chosen since Rendered became the
-    // default; everyone else is switched to Rendered once.
-    renderMode:
-      renderMode === 'markdown' && value?.renderModeChosen === true ? 'markdown' : 'html',
-    ...(value?.renderModeChosen === true ? { renderModeChosen: true as const } : {}),
-    tagOverviewSortMode:
-      tagOverviewSortMode === 'created' ||
-      tagOverviewSortMode === 'updated' ||
-      tagOverviewSortMode === 'access'
-        ? tagOverviewSortMode
-        : 'alphabetical',
-    tagOverviewLayout: tagOverviewLayout === 'split' ? 'split' : 'tabs',
-    searchPageSize: isSearchPageSize(searchPageSize)
-      ? searchPageSize
-      : DEFAULT_SEARCH_PAGE_SIZE,
-    searchPreview:
-      value?.searchPreview === 'none' || value?.searchPreview === 'full'
-        ? value.searchPreview
-        : 'lines',
-    relatedNotesSortMode:
-      relatedNotesSortMode === 'newest' ||
-      relatedNotesSortMode === 'oldest' ||
-      relatedNotesSortMode === 'access'
-        ? relatedNotesSortMode
-        : 'tags',
-    ...(value?.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
-    ...(value?.relatedNotesPreviewLines === 0 || value?.relatedNotesPreviewLines === 2
-      ? { relatedNotesPreviewLines: value.relatedNotesPreviewLines }
-      : {}),
-    sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
-    savedFilters: normalizeSavedFilters(value?.savedFilters),
-    taskBoardLayout:
-      value?.taskBoardLayout === 'list' || value?.taskBoardLayout === 'table'
-        ? value.taskBoardLayout
-        : 'board',
-    taskTableColumns: normalizeTableColumns(value?.taskTableColumns),
-    taskTableSort: normalizeTableSort(value?.taskTableSort),
-    // Every grouping the board offers is read back, or choosing one would
-    // be forgotten the next time preferences were read.
-    taskBoardGroup:
-      value?.taskBoardGroup === 'priority' ||
-      value?.taskBoardGroup === 'due' ||
-      value?.taskBoardGroup === 'assignee' ||
-      // A tag grouping holds only with a namespace to group by.
-      (value?.taskBoardGroup === 'tag' && isBoardNamespace(value?.taskBoardGroupNamespace))
-        ? value.taskBoardGroup
-        : 'status',
-    ...(isBoardNamespace(value?.taskBoardGroupNamespace)
-      ? { taskBoardGroupNamespace: value.taskBoardGroupNamespace.toLowerCase() }
-      : {}),
-    tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
-    sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
-    recentQueries: uniqueStrings(
-      (Array.isArray(value?.recentQueries) ? value.recentQueries : [])
-        .filter((query): query is string => typeof query === 'string')
-        .map((query) => query.trim()),
-    ).slice(0, RECENT_QUERY_LIMIT),
-    // Preferences saved before Home had widgets start with its defaults.
-    dashboardWidgets: Array.isArray(value?.dashboardWidgets)
-      ? normalizeDashboardWidgets(value.dashboardWidgets)
-      : cloneWidgets(DEFAULT_DASHBOARD_WIDGETS),
-    // Left out until the first index is seen, which marks every tag known.
-    ...(typeof value?.tagFirstSeen === 'object' && value.tagFirstSeen !== null
-      ? { tagFirstSeen: normalizeFirstSeenTimes(value.tagFirstSeen) }
-      : {}),
-    pinnedNotes: normalizePinnedNotes(value?.pinnedNotes),
-    ...(Array.isArray(value?.findChoices) && value.findChoices.length > 0
-      ? { findChoices: normalizeFindChoices(value.findChoices) }
-      : {}),
-    ...(Array.isArray(value?.recentHeadings) && value.recentHeadings.length > 0
-      ? { recentHeadings: normalizePinnedNotes(value.recentHeadings).slice(0, RECENT_HEADING_LIMIT) }
-      : {}),
-  };
-}
-
-/** How many headings Capture and Move to… remember. */
-export const RECENT_HEADING_LIMIT = 5;
-
-/** The most Find choices kept; the least recently chosen goes first. */
-export const FIND_CHOICE_LIMIT = 200;
-
-function normalizeFindChoices(value: readonly unknown[]): FindChoice[] {
-  return value
-    .filter(
-      (choice): choice is FindChoice =>
-        typeof choice === 'object' &&
-        choice !== null &&
-        typeof (choice as FindChoice).input === 'string' &&
-        (choice as FindChoice).input.length > 0 &&
-        typeof (choice as FindChoice).key === 'string' &&
-        Number.isFinite((choice as FindChoice).count) &&
-        (choice as FindChoice).count > 0 &&
-        Number.isFinite((choice as FindChoice).at),
-    )
-    .map(({ input, key, count, at }) => ({ input, key, count, at }))
-    .sort((left, right) => right.at - left.at)
-    .slice(0, FIND_CHOICE_LIMIT);
-}
-
-/** The note a Find choice's key names, when it names one. */
-export function findChoiceFilePath(key: string): string | undefined {
-  if (!key.startsWith('note:') && !key.startsWith('task:')) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(key.slice(5)) as unknown;
-    return Array.isArray(parsed) && typeof parsed[0] === 'string' ? parsed[0] : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Keeps only widgets Home can draw: a known kind, a unique id, one of the
- * two widths, and options that kind uses, within their bounds. A kind that
- * cannot repeat keeps its first widget.
- */
-export function normalizeDashboardWidgets(
-  values: readonly unknown[],
-): DashboardWidgetConfig[] {
-  const ids = new Set<string>();
-  const kinds = new Set<DashboardWidgetKind>();
-  const widgets: DashboardWidgetConfig[] = [];
-  for (const value of values) {
-    if (typeof value !== 'object' || value === null) {
-      continue;
-    }
-    const candidate = value as Partial<Record<keyof DashboardWidgetConfig, unknown>>;
-    const kind = candidate.kind;
-    if (typeof kind !== 'string' || !Object.hasOwn(DASHBOARD_WIDGET_KINDS, kind)) {
-      continue;
-    }
-    const widgetKind = kind as DashboardWidgetKind;
-    const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
-    const traits = DASHBOARD_WIDGET_KINDS[widgetKind];
-    if (
-      !id ||
-      id.length > 64 ||
-      ids.has(id) ||
-      (!traits.repeatable && kinds.has(widgetKind))
-    ) {
-      continue;
-    }
-    const widget: DashboardWidgetConfig = {
-      id,
-      kind: widgetKind,
-      width: candidate.width === 'full' ? 'full' : 'half',
-    };
-    if (traits.listed) {
-      const count = candidate.count;
-      widget.count =
-        typeof count === 'number' && Number.isInteger(count)
-          ? Math.min(DASHBOARD_WIDGET_COUNT_LIMIT, Math.max(1, count))
-          : 5;
-    }
-    // Only a widget that lists one kind of entry can be paged: the Agenda
-    // counts its groups separately, and a saved search lists notes beside
-    // tasks, so one page number would not say which list it meant.
-    if (traits.listed && traits.pageable !== false) {
-      if (candidate.paged === true) {
-        widget.paged = true;
-        const page = candidate.page;
-        widget.page =
-          typeof page === 'number' && Number.isInteger(page) && page > 0
-            ? Math.min(DASHBOARD_WIDGET_PAGE_LIMIT, page)
-            : 1;
-      }
-    }
-    if (widgetKind === 'tasks') {
-      widget.query =
-        typeof candidate.query === 'string' &&
-        candidate.query.length <= DASHBOARD_WIDGET_QUERY_LIMIT
-          ? candidate.query.trim()
-          : 'is:open';
-    }
-    const defaultDays = DASHBOARD_WIDGET_DEFAULT_DAYS[widgetKind];
-    if (defaultDays !== undefined) {
-      const days = candidate.days;
-      widget.days =
-        typeof days === 'number' && Number.isInteger(days)
-          ? Math.min(DASHBOARD_WIDGET_DAYS_LIMIT, Math.max(1, days))
-          : defaultDays;
-    }
-    if (widgetKind === 'quietPeople') {
-      const namespace = typeof candidate.namespace === 'string' ? candidate.namespace.trim() : '';
-      if (namespace && namespace.length <= 64 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace) && namespace.toLowerCase() !== 'person') {
-        widget.namespace = namespace.toLowerCase();
-      }
-      if (candidate.noOpenTasks === true) {
-        widget.noOpenTasks = true;
-      }
-    }
-    if (widgetKind === 'savedQuery') {
-      if (typeof candidate.filterId !== 'string' || !candidate.filterId) {
-        continue;
-      }
-      widget.filterId = candidate.filterId;
-    }
-    ids.add(id);
-    kinds.add(widgetKind);
-    widgets.push(widget);
-    if (widgets.length >= DASHBOARD_WIDGET_LIMIT) {
-      break;
-    }
-  }
-  return widgets;
-}
-
-/**
- * The furthest page a widget may be left on. A page number is clamped to the
- * pages it actually has when it is drawn; this only keeps a stored number
- * from being unreasonable.
- */
-const DASHBOARD_WIDGET_PAGE_LIMIT = 10000;
-
-function cloneWidgets(
-  widgets: readonly DashboardWidgetConfig[],
-): DashboardWidgetConfig[] {
-  return widgets.map((widget) => ({ ...widget }));
-}
-
-/**
- * Whether Home still holds the widgets it started with, in their order and
- * with their settings. Home says it can be arranged only while this is so:
- * once a reader has moved, sized, or swapped a widget, they know.
- */
-export function isDefaultHomeLayout(
-  widgets: readonly DashboardWidgetConfig[],
-): boolean {
-  const same = (
-    left: DashboardWidgetConfig,
-    right: DashboardWidgetConfig,
-  ): boolean =>
-    left.id === right.id &&
-    left.kind === right.kind &&
-    left.width === right.width &&
-    left.count === right.count &&
-    left.query === right.query &&
-    left.paged === right.paged;
-  return (
-    widgets.length === DEFAULT_DASHBOARD_WIDGETS.length &&
-    widgets.every((widget, index) =>
-      same(widget, DEFAULT_DASHBOARD_WIDGETS[index]),
-    )
-  );
-}
-
-/**
  * A search with one tag renamed where it stands as a whole tag, leaving the
  * rest of what was written alone.
  */
@@ -1463,334 +1032,6 @@ function replaceTagInQuery(
   );
 }
 
-/**
- * Keeps only positive, finite timestamps.
- */
-/** First-seen times, where 0 marks a tag known before times were kept. */
-function normalizeFirstSeenTimes(
-  values: Record<string, number>,
-): Record<string, number> {
-  return Object.fromEntries(
-    Object.entries(values).filter(
-      ([key, time]) =>
-        key.length > 0 && typeof time === 'number' && Number.isFinite(time) && time >= 0,
-    ),
-  );
-}
-
-function normalizeAccessTimes(
-  values: Record<string, number> | undefined,
-): Record<string, number> {
-  return Object.fromEntries(
-    Object.entries(
-      typeof values === 'object' && values !== null ? values : {},
-    ).filter(
-      ([key, time]) =>
-        key.length > 0 && typeof time === 'number' && Number.isFinite(time) && time > 0,
-    ),
-  );
-}
-
-function isDashboardColumnCount(
-  value: unknown,
-): value is DashboardColumnCount {
-  return value === 1 || value === 2 || value === 3 || value === 4;
-}
-
-function normalizeDashboardViewState(
-  value: Partial<DashboardViewState> | undefined,
-): DashboardViewState {
-  // Tasks moved to the Task Board and searches to their own pages, so a
-  // Dashboard left on either opens on Home.
-  return {
-    mode: value?.mode === 'browse' ? 'browse' : 'home',
-    tagSearchQuery: normalizeSearchQuery(value?.tagSearchQuery),
-  };
-}
-
-function normalizeSearchQuery(value: string | undefined): string {
-  return typeof value === 'string' ? value : '';
-}
-
-/**
- * Removes duplicate and empty identifiers before they reach ordering logic.
- */
-/**
- * Reads the pins a workspace kept, whichever shape they were written in.
- *
- * Pins were paths before a pin could name an entry, so a string is read as a
- * pin on the whole note — which is what it meant.
- */
-export function normalizePinnedNotes(value: unknown): PinnedNote[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const pins: PinnedNote[] = [];
-  for (const entry of value) {
-    const pin =
-      typeof entry === 'string'
-        ? { filePath: entry }
-        : isPinRecord(entry) && typeof entry.filePath === 'string'
-          ? {
-              filePath: entry.filePath,
-              ...(typeof entry.heading === 'string' && entry.heading
-                ? { heading: entry.heading }
-                : {}),
-              ...(typeof entry.headingLevel === 'number' &&
-              Number.isInteger(entry.headingLevel)
-                ? { headingLevel: entry.headingLevel }
-                : {}),
-              ...(typeof entry.occurrence === 'number' &&
-              Number.isInteger(entry.occurrence) &&
-              entry.occurrence >= 0
-                ? { occurrence: entry.occurrence }
-                : {}),
-            }
-          : undefined;
-    if (!pin || !pin.filePath) {
-      continue;
-    }
-    if (!pins.some((kept) => pinKey(kept) === pinKey(pin))) {
-      pins.push(pin);
-    }
-  }
-  return pins.slice(0, PINNED_NOTE_LIMIT);
-}
-
-/** Whether a stored value could be a pin at all. */
-function isPinRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-/**
- * A pin's identity: its note, the heading it named, and which heading of
- * that text it was. Kept here so preferences can compare pins without
- * reaching into the view layer that resolves them.
- */
-/** A typed search as Find remembers it: trimmed, lowercased, spaces collapsed. */
-export function normalizeFindInput(input: string): string {
-  return input.trim().toLocaleLowerCase().replace(/\s+/g, ' ').slice(0, 100);
-}
-
-export function pinKey(pin: PinnedNote): string {
-  // Printable, because a row carries this key in an HTML attribute and a
-  // separator such as NUL does not survive being written into one.
-  return JSON.stringify([pin.filePath, pin.heading ?? '', pin.occurrence ?? 0]);
-}
-
-function uniqueStrings(values: readonly unknown[] | undefined): string[] {
-  return [
-    ...new Set(
-      (Array.isArray(values) ? values : []).filter(
-        (value): value is string =>
-          typeof value === 'string' && value.length > 0,
-      ),
-    ),
-  ];
-}
-
-/**
- * Keeps only finite-looking persisted counters accepted by the preference API.
- */
-function normalizeAccessCounts(
-  values: Record<string, number> | undefined,
-): Record<string, number> {
-  return Object.fromEntries(
-    Object.entries(values ?? {}).filter(
-      ([key, count]) => key.length > 0 && Number.isInteger(count) && count >= 0,
-    ),
-  );
-}
-
-/**
- * Ensures filters remain valid version-one preference data, even when read
- * from an old or manually modified global-state value.
- */
-function normalizeSavedFilters(values: SavedFilter[] | undefined): SavedFilter[] {
-  const seenTagSets = new Set<string>();
-  const seenIds = new Set<string>();
-  return (values ?? []).flatMap((value) => {
-    if (
-      typeof value !== 'object' ||
-      value === null ||
-      typeof value.id !== 'string' ||
-      !value.id.trim() ||
-      typeof value.name !== 'string'
-    ) {
-      return [];
-    }
-    const name = value.name.trim();
-    const tagKeys = normalizeSavedFilterTagKeys(value.tagKeys);
-    const query =
-      typeof value.query === 'string' && value.query.trim()
-        ? value.query.trim()
-        : undefined;
-    // A saved view is identified by its query when it has one and by its tag
-    // set otherwise, so the two kinds never collide.
-    const page = query && value.page === 'taskBoard' ? value.page : undefined;
-    const identity = query
-      ? `query\u0000${page ?? ''}\u0000${query}`
-      : `tags\u0000${tagKeys.join('\u0000')}`;
-    if (
-      !name ||
-      (!query && tagKeys.length < 2) ||
-      seenIds.has(value.id) ||
-      seenTagSets.has(identity)
-    ) {
-      return [];
-    }
-    seenIds.add(value.id);
-    seenTagSets.add(identity);
-    return query
-      ? [{ id: value.id, name, tagKeys, query, ...(page ? { page } : {}) }]
-      : [{ id: value.id, name, tagKeys }];
-  });
-}
-
-function normalizeSavedFilterTagKeys(tagKeys: unknown): string[] {
-  if (!Array.isArray(tagKeys)) {
-    return [];
-  }
-  return [
-    ...new Set(
-      tagKeys
-        .filter(
-          (tagKey): tagKey is string =>
-            typeof tagKey === 'string' && tagKey.trim().length > 0,
-        )
-        .map((tagKey) => tagKey.trim()),
-    ),
-  ].sort();
-}
-
-function areTagKeyListsEqual(
-  left: readonly string[],
-  right: readonly string[],
-): boolean {
-  return (
-    left.length === right.length &&
-    left.every((key, index) => key === right[index])
-  );
-}
-
 function createSavedFilterId(): string {
   return `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function cloneSavedFilter(value: SavedFilter): SavedFilter {
-  return { ...value, tagKeys: [...value.tagKeys] };
-}
-
-/**
- * Clones nested arrays and records so a snapshot cannot mutate stored state.
- */
-function clonePreferences(value: PersistedPreferences): PersistedPreferences {
-  return {
-    ...value,
-    favoriteTags: [...value.favoriteTags],
-    favoriteEntities: [...value.favoriteEntities],
-    tagAccessOrder: [...value.tagAccessOrder],
-    tagAccessCounts: { ...value.tagAccessCounts },
-    entityAccessOrder: [...value.entityAccessOrder],
-    entityAccessCounts: { ...value.entityAccessCounts },
-    taskOrder: [...value.taskOrder],
-    dashboardViewState: { ...value.dashboardViewState },
-    sectionAccessCounts: { ...value.sectionAccessCounts },
-    savedFilters: value.savedFilters.map(cloneSavedFilter),
-    tagAccessTimes: { ...value.tagAccessTimes },
-    sectionAccessTimes: { ...value.sectionAccessTimes },
-    recentQueries: [...(value.recentQueries ?? [])],
-    dashboardWidgets: cloneWidgets(value.dashboardWidgets),
-    ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
-    ...(value.recentHeadings ? { recentHeadings: value.recentHeadings.map((pin) => ({ ...pin })) } : {}),
-  };
-}
-
-/** The columns a stored value names, title first; nothing for an empty or unusable value. */
-function normalizeTableColumns(value: unknown): TaskColumnId[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const columns = value.filter(isTaskColumnId);
-  const unique = ['title' as const, ...columns.filter((column) => column !== 'title')]
-    .filter((column, at, all) => all.indexOf(column) === at);
-  return unique.length > 1 ? unique : undefined;
-}
-
-function normalizeTableSort(value: unknown): TableSort | undefined {
-  if (!value || typeof value !== 'object') {
-    return undefined;
-  }
-  const { column, direction } = value as { column?: unknown; direction?: unknown };
-  return isTaskColumnId(column)
-    ? { column, direction: direction === 'desc' ? 'desc' : 'asc' }
-    : undefined;
-}
-
-/**
- * The id-keyed preferences with each id from before 1.23 renamed to the
- * entry's id now, when the index has an entry whose id it is the first half
- * of. Nothing is looked up unless an old id is actually kept.
- */
-export function carryLegacyIds(
-  preferences: Pick<
-    PersistedPreferences,
-    'taskOrder' | 'sectionAccessCounts' | 'sectionAccessTimes'
-  >,
-  validTaskIds: ReadonlySet<string>,
-  validSectionIds: ReadonlySet<string> | undefined,
-): Pick<PersistedPreferences, 'taskOrder' | 'sectionAccessCounts' | 'sectionAccessTimes'> {
-  const isLegacy = (id: string): boolean => /^[a-z]+-[0-9a-z]+$/.test(id);
-  const stale = (id: string, valid: ReadonlySet<string> | undefined) =>
-    !valid?.has(id) && isLegacy(id);
-  const sectionKeys = [
-    ...Object.keys(preferences.sectionAccessCounts),
-    ...Object.keys(preferences.sectionAccessTimes ?? {}),
-  ];
-  const tasksNeed = preferences.taskOrder.some((id) => stale(id, validTaskIds));
-  const sectionsNeed =
-    validSectionIds !== undefined && sectionKeys.some((id) => stale(id, validSectionIds));
-  if (!tasksNeed && !sectionsNeed) {
-    return preferences;
-  }
-  const renames = (valid: ReadonlySet<string> | undefined): Map<string, string> => {
-    const map = new Map<string, string>();
-    valid?.forEach((id) => {
-      const legacy = legacyIdOf(id);
-      // Two entries sharing an old id is the collision this fixes; the
-      // first keeps what was stored, as the index kept one of them.
-      if (legacy && !map.has(legacy)) {
-        map.set(legacy, id);
-      }
-    });
-    return map;
-  };
-  const taskRenames = tasksNeed ? renames(validTaskIds) : new Map<string, string>();
-  const sectionRenames = sectionsNeed ? renames(validSectionIds) : new Map<string, string>();
-  const renameKeys = <T>(record: Record<string, T>): Record<string, T> => {
-    const renamed: Record<string, T> = {};
-    Object.entries(record).forEach(([id, value]) => {
-      const next = sectionRenames.get(id) ?? id;
-      // A count already kept under the new id wins over the old one.
-      if (!(next in renamed) || next === id) {
-        renamed[next] = value;
-      }
-    });
-    return renamed;
-  };
-  const seen = new Set<string>();
-  return {
-    taskOrder: preferences.taskOrder
-      .map((id) => taskRenames.get(id) ?? id)
-      .filter((id) => !seen.has(id) && Boolean(seen.add(id))),
-    sectionAccessCounts: renameKeys(preferences.sectionAccessCounts),
-    sectionAccessTimes: preferences.sectionAccessTimes
-      ? renameKeys(preferences.sectionAccessTimes)
-      : preferences.sectionAccessTimes,
-  };
-}
-
-/** A namespace the board can group by: `project`, `context`. */
-function isBoardNamespace(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-z][a-z0-9_-]*$/.test(value.toLowerCase());
 }
