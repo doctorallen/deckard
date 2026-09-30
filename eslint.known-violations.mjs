@@ -63,9 +63,6 @@ export default {
     "src/ui/commands/pinNote.ts": [
       "setNotePinnedCommand"
     ],
-    "src/ui/commands/review.ts": [
-      "writeReview"
-    ],
     "src/ui/commands/sampleWorkspace.ts": [
       "installSample"
     ],
@@ -204,9 +201,6 @@ export default {
       "runAction",
       "toPickItems",
       "triggerItemButton"
-    ],
-    "src/ui/commands/review.ts": [
-      "writeReview"
     ],
     "src/ui/commands/taskEditor.ts": [
       "readField"

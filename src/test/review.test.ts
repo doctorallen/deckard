@@ -8,11 +8,8 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { formatLocalDate } from '../ui/commands/dailyNote';
-import {
-  findOpenPeriod,
-  getIsoWeekStart,
-  getReviewRange,
-} from '../ui/commands/review';
+import { getIsoWeekStart, getReviewRange } from '../domain/notes/reviewPeriods';
+import { findOpenPeriod } from '../ui/commands/review';
 import {
   formatReview,
   REVIEW_END,

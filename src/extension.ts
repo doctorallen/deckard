@@ -21,7 +21,9 @@ import {
   rollTasksForward,
 } from './ui/commands/rollover';
 import {
+  createReviewService,
   openPeriodicNoteWithReview,
+  ReviewWrites,
   writeReviewCommand,
 } from './ui/commands/review';
 import {
@@ -277,6 +279,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // What carries unfinished tasks into today's note, for every command
   // and page that opens today's note or rolls tasks forward.
   const rollover = createRolloverService(history, indexer);
+  // What writes a week's or a month's review into its note.
+  const reviewWrites: ReviewWrites = {
+    reviews: createReviewService(history, indexer),
+    preferences,
+  };
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
   const themePreview = new ThemePreview();
@@ -1020,13 +1027,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openAdjacentDailyNote(indexer, 'next'),
     ),
     vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
-      openPeriodicNoteWithReview(indexer, { history, preferences }, 'week'),
+      openPeriodicNoteWithReview(indexer, reviewWrites, 'week'),
     ),
     vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
-      openPeriodicNoteWithReview(indexer, { history, preferences }, 'month'),
+      openPeriodicNoteWithReview(indexer, reviewWrites, 'month'),
     ),
     vscode.commands.registerCommand('deckard.writeReview', async () => {
-      await writeReviewCommand(indexer, { history, preferences });
+      await writeReviewCommand(indexer, reviewWrites);
       await tryNext.retire('weeklyReview');
     }),
     // One editor, two names: which one the palette offers is decided by
