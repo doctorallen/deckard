@@ -92,7 +92,11 @@ suite('Searches keep parked notes, last', () => {
         defaults(),
         'vendor',
         (text) => store.searchEntries(text, { limit: 200 }),
-        { queryContext: createQueryContext(Date.now()), conditions: createQuerySuggestions(index, [], createQueryContext(Date.now())).conditions, formatCapture: (text) => formatCapture(text) },
+        {
+          queryContext: createQueryContext(Date.now()),
+          conditions: createQuerySuggestions(index, [], createQueryContext(Date.now())).conditions,
+          formatCapture: (text) => formatCapture(text, Date.now()),
+        },
       );
       assert.deepStrictEqual(
         results.notes.map((note) => [note.filePath, note.description]),

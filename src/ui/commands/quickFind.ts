@@ -544,7 +544,7 @@ export class QuickFind implements vscode.Disposable {
       {
         queryContext,
         conditions: createQuerySuggestions(index, [], queryContext).conditions,
-        formatCapture: (text) => formatCapture(text),
+        formatCapture: (text) => formatCapture(text, queryContext.now),
       },
     );
     picker.items = toPickItems(

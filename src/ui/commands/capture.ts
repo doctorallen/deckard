@@ -114,7 +114,7 @@ export async function capture(
     return;
   }
   const line = withSourceLink(
-    writeCapture(answer),
+    writeCapture(answer, Date.now()),
     answer.link,
     readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
   );
@@ -223,17 +223,20 @@ export function completeLastWord(value: string, label: string): string {
 
 /**
  * The line a capture is written as: a note line, the task as typed, or the
- * task with the date, priority, and repeat rule its last words name. Find's
- * Capture row writes through this too, so it shows the same line.
+ * task with the date, priority, and repeat rule its last words name, read
+ * on the day `now` falls on. Find's Capture row writes through this too, so
+ * it shows the same line.
  */
 export function formatCapture(
   text: string,
+  now: number,
   options: { literal?: boolean; asNote?: boolean } = {},
 ): string {
-  return writeCapture({ text, literal: options.literal === true, asNote: options.asNote === true });
+  return writeCapture({ text, literal: options.literal === true, asNote: options.asNote === true }, now);
 }
 
-function writeCapture(answer: Omit<CaptureAnswer, 'target'>): string {
+/** The line for an answer, its dates read on the day `now` falls on. */
+function writeCapture(answer: Omit<CaptureAnswer, 'target'>, now: number): string {
   if (answer.asNote) {
     return formatNoteLine(answer.text);
   }
@@ -243,7 +246,7 @@ function writeCapture(answer: Omit<CaptureAnswer, 'target'>): string {
     : readCaptureText(
         line,
         readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
-        Date.now(),
+        now,
         readDateOptions(),
       ).line;
 }
@@ -443,7 +446,7 @@ function askForCapture(
       }),
     );
     const written = value
-      ? withSourceLink(writeCapture({ text: value, asNote: false, literal }), linkBack ? link : undefined)
+      ? withSourceLink(writeCapture({ text: value, asNote: false, literal }, Date.now()), linkBack ? link : undefined)
       : '';
     const add: CaptureItem = {
       label: value,

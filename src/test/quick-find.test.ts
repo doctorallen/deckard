@@ -62,7 +62,11 @@ function createFinder(notes: Record<string, string>) {
         preferences,
         input,
         (text) => store.searchEntries(text, { limit: 200 }),
-        { queryContext: createQueryContext(Date.now()), conditions, formatCapture: (text) => formatCapture(text) },
+        {
+          queryContext: createQueryContext(Date.now()),
+          conditions,
+          formatCapture: (text) => formatCapture(text, Date.now()),
+        },
       ),
     dispose: () => store.dispose(),
   };
