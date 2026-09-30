@@ -223,21 +223,35 @@ out.push(table(
 ));
 
 // ----- Module-level state -----------------------------------------------------
+// Each piece of hidden state the refactor replaces (19-refactor.md §1.3):
+// where it was declared, how to recognize the declaration, and which
+// functions read or write it while it exists.
 const globals = [
-  ['`queryIdentity`, `queryWeekStart`', 'src/core/query/queryEvaluator.ts', /\b(set|get)Query(Identity|WeekStart)\b/],
-  ['`policy`', 'src/core/taskPolicy.ts', /\b(setTaskPolicy|getTaskPolicy|needsNewDate|needsNewDateBefore|readLineStatus)\b/],
-  ['`log`', 'src/core/timing.ts', /\b(setTimingLog|reportError|measure|measureAsync|logTrace)\b/],
-  ['`keepTaskRank`', 'src/ui/commands/taskActions.ts', /\b(setTaskRankKeeper|carryTaskRank|carryMovedTaskRank)\b/],
-  ['`workspaceWrites`', 'src/ui/commands/workspaceWrites.ts', /\bworkspaceWrites\b/],
-  ['`ownWrites`', 'src/core/workspace/ownWrites.ts', /\b(noteOwnWrite|takeOwnWrite)\b/],
-  ['`previewTheme`', 'src/ui/webview/themes.ts', /\b(previewDeckardTheme|getDeckardTheme|onDidChangeThemePreview)\b/],
-  ['`focusedIn`', 'src/ui/commands/focusSection.ts', /\b(focusSectionCommand|unfoldAllSectionsCommand|trackSectionFocus)\b/],
+  ['`queryIdentity`, `queryWeekStart`', ['src/core/query/queryEvaluator.ts', 'src/core/query/queryDates.ts'], /^let query(Identity|WeekStart)\b/m, /\b(set|get)Query(Identity|WeekStart)\b/],
+  ['`policy`', ['src/core/taskPolicy.ts'], /^let policy\b/m, /\b(setTaskPolicy|getTaskPolicy)\b/],
+  ['`log`', ['src/core/timing.ts'], /^let log\b/m, /\b(setTimingLog|reportError|measure|measureAsync|logTrace)\b/],
+  ['`keepTaskRank`', ['src/ui/commands/taskActions.ts'], /^let keepTaskRank\b/m, /\bsetTaskRankKeeper\b/],
+  ['`workspaceWrites`', ['src/ui/commands/workspaceWrites.ts'], /^export const workspaceWrites\b/m, /\bworkspaceWrites\.(lastWrite|undo|apply)/],
+  ['`ownWrites`', ['src/core/workspace/ownWrites.ts'], /^(export )?const ownWrites\b/m, /\b(noteOwnWrite|takeOwnWrite)\b/],
+  ['`previewTheme`', ['src/ui/webview/themes.ts'], /^let previewTheme\b/m, /\bpreviewDeckardTheme\b/],
+  ['`focusedIn`', ['src/ui/commands/focusSection.ts'], /^let focusedIn\b/m, /\b(focusSectionCommand|unfoldAllSectionsCommand|trackSectionFocus)\b/],
 ];
-out.push('\n## Readers of module-level state\n');
-out.push('Files other than the owner that use a function which reads or writes the state:\n');
-out.push(table(['State', 'Owner', 'Source files', 'Test files'], globals.map(([name, owner, pattern]) => {
+const readSource = (file) => {
+  try {
+    return readFileSync(path.join(ROOT, file), 'utf8');
+  } catch {
+    return '';
+  }
+};
+out.push('\n## Module-level state\n');
+out.push('Whether each piece of hidden state is still declared at module level, and, while it is, how many other files use a function that reads or writes it:\n');
+out.push(table(['State', 'Declared in', 'Still module-level', 'Source files', 'Test files'], globals.map(([name, owners, declaration, pattern]) => {
+  const owner = owners.find((file) => declaration.test(readSource(file)));
+  if (!owner) {
+    return [name, owners.map((file) => `\`${file}\``).join(', '), 'no', '—', '—'];
+  }
   const users = sources.filter((source) => source !== owner && pattern.test(readFileSync(path.join(ROOT, source), 'utf8')));
-  return [name, `\`${owner}\``, users.filter((user) => !user.startsWith('src/test/')).length, users.filter((user) => user.startsWith('src/test/')).length];
+  return [name, `\`${owner}\``, 'yes', users.filter((user) => !user.startsWith('src/test/')).length, users.filter((user) => user.startsWith('src/test/')).length];
 })));
 
 // ----- Known violations -------------------------------------------------------
