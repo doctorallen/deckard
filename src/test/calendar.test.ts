@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { setTaskPolicy } from '../core/taskPolicy';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';

@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createAgenda } from '../ui/state/agendaState';
 import { createDashboardTask, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';

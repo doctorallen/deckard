@@ -14,7 +14,7 @@ import {
   refineQueryText,
 } from '../core/query/queryEdit';
 import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { PreferencesStore } from '../core/storage/preferences';
 import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
 import {

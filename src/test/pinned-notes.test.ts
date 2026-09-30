@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { normalizePinnedNotes, pinKey } from '../core/storage/preferences';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { parseSearchPageMessage } from '../ui/webview/messages';
 import { createPinForLine, resolvePin } from '../ui/state/pinnedNotes';
 

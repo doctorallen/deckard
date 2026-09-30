@@ -1037,6 +1037,20 @@ function removeFrom(map: Map<string, Set<string>>, key: string, value: string): 
 }
 
 /**
+ * Aggregates per-file parse results into stable section, task, and tag lookups.
+ *
+ * The source files remain the canonical cache; these maps make cross-note
+ * queries cheap without duplicating parsing logic in each UI surface. The
+ * index is a fold of each note's own contribution (see `IndexState`), so a
+ * full build and an update after a save are the same code.
+ */
+export function buildWorkspaceIndex(
+  files: Map<string, ParsedFile>,
+): WorkspaceIndex {
+  return { ...IndexState.build(files.values()).snapshot(), files };
+}
+
+/**
  * The index built note by note over the whole workspace, as it was before
  * the fold. Used only while two entries share an id, when one replaces the
  * other across notes and no note's own part can say so.

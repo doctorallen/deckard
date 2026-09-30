@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { collectNoteLinks, createLinksSearchQuery } from '../ui/state/noteLinks';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 

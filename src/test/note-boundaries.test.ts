@@ -5,7 +5,7 @@ import { NoteBoundaries } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { evaluateQuery } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 
 /**
  * Where one note ends and the next begins.

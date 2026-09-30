@@ -17,7 +17,7 @@ import {
 import { evaluateQuery } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { Task } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 
 function tasksOf(markdown: string): Task[] {
   return parseMarkdown('notes/plan.md', markdown).tasks;

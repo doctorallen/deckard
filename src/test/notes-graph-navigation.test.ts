@@ -4,7 +4,8 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex, WorkspaceIndexer } from '../core/workspace/indexer';
+import { WorkspaceIndexer } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import {
   NotesGraphMessage,
   PersistedPreferences,

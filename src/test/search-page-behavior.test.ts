@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { SearchPageSize, SearchPageSnapshot } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';

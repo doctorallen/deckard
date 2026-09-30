@@ -4,7 +4,7 @@ import MarkdownIt = require('markdown-it');
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import {
   addNoteEmbedRenderer,
   resolveEmbed,

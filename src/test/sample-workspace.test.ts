@@ -11,7 +11,7 @@ import { parseQuery } from '../core/query/queryParser';
 import { QUERY_FIELDS, QUERY_HAS_VALUES, QUERY_IS_VALUES, QueryNode } from '../core/query/queryTypes';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
 import { findMissingLinkTargets } from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { computeParked } from '../core/workspace/parked';
 import { listDailyNotes } from '../ui/commands/dailyNote';
 import {

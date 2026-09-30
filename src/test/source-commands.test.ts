@@ -14,7 +14,7 @@ import {
   getExtractedNoteFileName,
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import {
   applyHubTemplate,
   createHubNoteContent,

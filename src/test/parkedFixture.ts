@@ -2,7 +2,7 @@ import picomatch = require('picomatch');
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { computeParked, ParkedRules, toParkedTagKey } from '../core/workspace/parked';
 
 /** Rules as the settings would give them: tags as written, folder globs. */

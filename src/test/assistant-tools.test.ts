@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import {
   QUERY_SYNTAX_GUIDE,
   answerQuery,
