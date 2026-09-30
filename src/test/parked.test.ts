@@ -13,6 +13,7 @@ import {
   withoutParked,
 } from '../core/workspace/parked';
 import { indexWithParking, parkedRules } from './parkedFixture';
+import { createQueryContext } from '../core/query/queryContext';
 
 /** A task title without its tags. */
 function bare(title: string): string {
@@ -185,7 +186,7 @@ suite('Parked notes', () => {
 
   test('the builder offers is:parked and writes it back as typed', () => {
     const index = indexWithParking({ 'a.md': '# A\n' });
-    const offered = (createQuerySuggestions(index).values.is ?? []).map((item) => item.value);
+    const offered = (createQuerySuggestions(index, [], createQueryContext(Date.now())).values.is ?? []).map((item) => item.value);
     assert.ok(offered.includes('parked'));
     ['is:parked', 'is:open -is:parked'].forEach((query) => {
       const text = fromBuilderTree(toBuilderTree(parseQuery(query).node));

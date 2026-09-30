@@ -2,6 +2,7 @@ import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { isObject } from '../../core/guards';
 import { pluralize } from '../../core/text';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
+import { QueryContext } from '../../core/query/queryContext';
 import {
   getQueryBlockSnapshot,
   QueryBlockItem,
@@ -83,18 +84,20 @@ export function readTagsToolInput(value: unknown): TagsToolInput {
 /**
  * Runs a Deckard query and lists what it matches: tasks first, since that is
  * what an assistant is most often asked for, then note sections. Each result
- * carries its path and line so the assistant can open or cite it.
+ * carries its path and line so the assistant can open or cite it. The query
+ * is evaluated in `context`.
  */
 export function answerQuery(
   index: WorkspaceIndex,
   input: QueryToolInput,
+  context: QueryContext,
 ): string {
   const limit = clampLimit(input.limit, DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT);
   const snapshot = getQueryBlockSnapshot(index, input.query, {
     limit,
     ...(input.sort ? { sort: input.sort } : {}),
     warnings: [],
-  });
+  }, { queryContext: context });
   const lines = [`Deckard query: ${snapshot.query}`];
 
   if (snapshot.hasError) {

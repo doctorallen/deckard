@@ -4,6 +4,7 @@ import { ActiveHome, HomeSource, HomeWidgetChoice } from './activeHome';
 import { listedParkedTags } from '../../core/workspace/parked';
 import { setPinned } from '../commands/pinNote';
 import { readWeekStart } from '../commands/datePrompt';
+import { readQueryContext } from '../commands/queryContext';
 import { TryNextSuggestion } from '../state/tryNext';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../commands/tryNext';
 import { WhatsNew } from '../commands/whatsNew';
@@ -450,6 +451,9 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       configuration.get<unknown>('tagTitleDisplayMode', 'inline'),
     );
     const index = this.indexer.getSnapshot();
+    // One moment and one reading of the settings for the whole page, so its
+    // tiles and its widgets agree about what today is.
+    const queryContext = readQueryContext();
     const viewPreferences = {
       ...preferences,
       dashboardTagColumns: this.dashboardTagColumns,
@@ -464,7 +468,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         viewPreferences,
         undefined,
         tagTitleDisplayMode,
-        { agendaQuery: configuration.get<string>('agenda.query', ''), now: Date.now() },
+        { agendaQuery: configuration.get<string>('agenda.query', ''), queryContext },
       ),
       homeArranged: !isDefaultHomeLayout(preferences.dashboardWidgets),
       ...(this.whatsNew?.pending() ? { whatsNew: this.whatsNew.pending() } : {}),
@@ -472,7 +476,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       ...(this.dashboardMode === 'home'
         ? {
             widgets: createDashboardWidgets(index, viewPreferences, {
-              now: Date.now(),
+              queryContext,
               upcomingDays: configuration.get<number>('agenda.upcomingDays', 7),
               agendaQuery: configuration.get<string>('agenda.query', ''),
               tagTitleDisplayMode,

@@ -23,6 +23,7 @@ import {
 } from './dailyNote';
 import { Weekday } from '../../core/markdown/dates';
 import { readWeekStart } from './datePrompt';
+import { readQueryContext } from './queryContext';
 import { revealLine } from './navigation';
 import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
 
@@ -109,6 +110,7 @@ export async function writeReview(
     next: getReviewRange(period, new Date(range.end), weekStart),
     nextLabel: period === 'week' ? 'next week' : 'next month',
     sections: readReviewSections(options.noteUri ?? folder?.uri),
+    queryContext: readQueryContext(),
   });
   const review = formatReview(summary);
 

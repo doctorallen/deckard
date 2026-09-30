@@ -26,6 +26,7 @@ import {
 import { createAgenda } from '../ui/state/agendaState';
 import { rankSimilarWording } from '../ui/state/relatedNotesRanking';
 import { findTagLookalikes, findTagMergeCandidates } from '../ui/state/tagHygiene';
+import { createQueryContext } from '../core/query/queryContext';
 
 suite('Sample workspace', () => {
   const extensionUri = vscode.Uri.file(path.resolve(__dirname, '..', '..'));
@@ -257,7 +258,7 @@ suite('Sample workspace', () => {
       );
 
       // The Tasks view, as the Tasks note describes it.
-      const agenda = createAgenda(index, Date.now(), {
+      const agenda = createAgenda(index, createQueryContext(Date.now()), {
         upcomingDays: 7,
         doneToday: true,
         tasks: [...index.tasks.values()].filter((task) => !index.parked?.tasks.has(task.id)),

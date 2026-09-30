@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 
+import { QueryContext } from '../../core/query/queryContext';
 import { pluralize } from '../../core/text';
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda } from '../state/agendaState';
 import { openSettingAction, settingLabel } from './notify';
+import { readQueryContext } from './queryContext';
 
 /**
  * What a workspace's first index found, said once.
@@ -49,12 +51,16 @@ export function describeFirstIndex(counts: FirstIndexCounts): string {
 
 /**
  * The counts, with overdue as the Tasks view's Overdue group over every open
- * task, so a task long past its date that needs a new one is not counted.
+ * task on the context's today, so a task long past its date that needs a new
+ * one is not counted.
  */
-export function countFirstIndex(index: WorkspaceIndex, now: number): FirstIndexCounts {
+export function countFirstIndex(
+  index: WorkspaceIndex,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+): FirstIndexCounts {
   const open = [...index.tasks.values()].filter((task) => !task.completed);
   const overdue =
-    createAgenda(index, now, { tasks: open, upcomingDays: 7 }).find((group) => group.id === 'overdue')
+    createAgenda(index, context, { tasks: open, upcomingDays: 7 }).find((group) => group.id === 'overdue')
       ?.entries.length ?? 0;
   return { notes: index.files.size, openTasks: open.length, overdue, tags: index.tags.size };
 }
@@ -94,7 +100,7 @@ export async function summarizeFirstIndex(
   if (!shouldSummarize({ ...gate, alreadyShown, notes: index.files.size })) {
     return false;
   }
-  const counts = countFirstIndex(index, options.now ?? Date.now());
+  const counts = countFirstIndex(index, readQueryContext(options.now));
   const large = counts.notes >= LARGE_WORKSPACE_NOTES && options.excludeIsEmpty;
   const text =
     describeFirstIndex(counts) +

@@ -9,6 +9,7 @@ import {
   readQueryToolInput,
   readTagsToolInput,
 } from '../ui/state/assistantTools';
+import { createQueryContext } from '../core/query/queryContext';
 
 function createIndex() {
   const files = [
@@ -32,7 +33,7 @@ suite('Assistant tools', () => {
   test('answers open tasks for a tag with their paths, lines, and details', () => {
     const text = answerQuery(createIndex(), {
       query: 'tag = #project/atlas AND task = open',
-    });
+    }, createQueryContext(Date.now()));
 
     assert.match(text, /^Deckard query: tag = #project\/atlas AND task = open$/m);
     assert.match(text, /^Found 0 notes and 2 tasks \(2 open\)\.$/m);
@@ -45,21 +46,21 @@ suite('Assistant tools', () => {
   });
 
   test('says how many results a higher limit would show', () => {
-    const text = answerQuery(createIndex(), { query: 'task = any', limit: 1 });
+    const text = answerQuery(createIndex(), { query: 'task = any', limit: 1 }, createQueryContext(Date.now()));
 
     assert.match(text, /^Showing the first 1 of 3 tasks\.$/m);
     assert.match(text, /higher limit \(up to 200\)/);
   });
 
   test('returns why a query could not run, with the syntax', () => {
-    const text = answerQuery(createIndex(), { query: '(tag = #project/atlas' });
+    const text = answerQuery(createIndex(), { query: '(tag = #project/atlas' }, createQueryContext(Date.now()));
 
     assert.match(text, /^The query could not run:$/m);
     assert.match(text, /Deckard query syntax:/);
   });
 
   test('points at the tag list when nothing matches', () => {
-    const text = answerQuery(createIndex(), { query: 'tag = #project/nowhere' });
+    const text = answerQuery(createIndex(), { query: 'tag = #project/nowhere' }, createQueryContext(Date.now()));
 
     assert.match(text, /Found 0 notes and 0 tasks/);
     assert.match(text, /deckard_list_tags lists the tags that exist/);

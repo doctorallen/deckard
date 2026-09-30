@@ -1,7 +1,7 @@
 import type MarkdownIt from 'markdown-it';
 
 import { formatIsoDate, describeDueDate } from '../../core/markdown/taskMetadata';
-import { getTaskPolicy } from '../../core/taskPolicy';
+import { QueryContext } from '../../core/query/queryContext';
 import { WorkspaceIndex } from '../../core/types';
 import {
   getQueryBlockSnapshot,
@@ -34,6 +34,8 @@ export interface QueryBlockPreviewSource {
   onDidRender?(): void;
   /** The namespace of status tags, from `deckard.board.statusNamespace`. */
   getStatusNamespace?(): string;
+  /** The settings a block is evaluated in, for a render made at `now`. */
+  getQueryContext(now: number): QueryContext;
 }
 
 /**
@@ -58,30 +60,36 @@ export function addQueryBlockRenderer(
       return fallback(tokens, index, options, env, self);
     }
     source.onDidRender?.();
-    return renderQueryBlockHtml(
-      token.content,
-      blockOptions,
-      source.getIndex(),
-      token.map?.[0],
-      Date.now(),
-      source.getStatusNamespace?.(),
-    );
+    return renderQueryBlockHtml(token.content, blockOptions, source.getIndex(), {
+      queryContext: source.getQueryContext(Date.now()),
+      sourceLine: token.map?.[0],
+      statusNamespace: source.getStatusNamespace?.(),
+    });
   };
   return md;
 }
 
-/**
- * Renders one block. `sourceLine` is the zero-based line of the opening fence,
- * which the preview uses to keep scrolling in step with the editor.
- */
+/** How one block is rendered, beyond its query and options. */
+export interface QueryBlockRendering {
+  /** The settings and moment the block is evaluated, and its dates worded, in. */
+  queryContext: QueryContext;
+  /**
+   * The zero-based line of the opening fence, which the preview uses to keep
+   * scrolling in step with the editor.
+   */
+  sourceLine?: number;
+  /** The namespace of status tags; `status` unless given. */
+  statusNamespace?: string;
+}
+
+/** Renders one block, in the rendering's context. */
 export function renderQueryBlockHtml(
   queryText: string,
   options: QueryBlockOptions,
   index: WorkspaceIndex | undefined,
-  sourceLine?: number,
-  now: number = Date.now(),
-  statusNamespace = 'status',
+  rendering: QueryBlockRendering,
 ): string {
+  const { queryContext, sourceLine } = rendering;
   const open =
     sourceLine === undefined
       ? '<div class="deckard-query">'
@@ -96,7 +104,10 @@ export function renderQueryBlockHtml(
     ].join('');
   }
 
-  const snapshot = getQueryBlockSnapshot(index, queryText, options, statusNamespace);
+  const snapshot = getQueryBlockSnapshot(index, queryText, options, {
+    queryContext,
+    statusNamespace: rendering.statusNamespace ?? 'status',
+  });
   return [
     open,
     renderHeader(
@@ -104,7 +115,7 @@ export function renderQueryBlockHtml(
       snapshot.hasError ? undefined : describeQueryBlockCounts(snapshot),
     ),
     ...snapshot.messages.map(renderMessage),
-    ...(snapshot.hasError ? [] : renderResults(snapshot, options, now)),
+    ...(snapshot.hasError ? [] : renderResults(snapshot, options, queryContext)),
     '</div>',
   ].join('');
 }
@@ -144,7 +155,7 @@ function renderMessage(message: QueryBlockMessage): string {
 function renderResults(
   snapshot: QueryBlockSnapshot,
   options: QueryBlockOptions,
-  now: number,
+  context: QueryContext,
 ): string[] {
   if (snapshot.noteCount === 0 && snapshot.taskCount === 0) {
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
@@ -152,9 +163,9 @@ function renderResults(
   return [
     ...renderGroup('notes', 'Notes', snapshot.notes, snapshot.noteCount, renderNote),
     ...(options.view === 'table'
-      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], now)
+      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context)
       : renderGroup('tasks', 'Tasks', snapshot.tasks, snapshot.taskCount, (item) =>
-          renderTask(item, now),
+          renderTask(item, context),
         )),
   ];
 }
@@ -168,7 +179,7 @@ function renderResults(
 function renderTaskTable(
   snapshot: QueryBlockSnapshot,
   columns: readonly TaskColumnId[],
-  now: number,
+  context: QueryContext,
 ): string[] {
   if (snapshot.tasks.length === 0) {
     return [];
@@ -178,7 +189,7 @@ function renderTaskTable(
     .join('');
   const rows = snapshot.tasks.map((item) => {
     const done = item.completed === true;
-    const cells = createTaskCells(toTableTask(item), columns, now).map((cell, at) => {
+    const cells = createTaskCells(toTableTask(item), columns, context).map((cell, at) => {
       const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '']
         .filter(Boolean)
         .join(' ');
@@ -256,17 +267,19 @@ function renderPriority(priority: string): string {
   return `<span class="deckard-query-priority priority-${key}" title="${word} priority">${mark ? `<span aria-hidden="true">${mark}</span> ` : ''}${word}</span>`;
 }
 
-function renderTask(item: QueryBlockItem, now: number): string {
+/** One task row, its due date worded against the context's today and policy. */
+function renderTask(item: QueryBlockItem, context: QueryContext): string {
+  const { now, taskPolicy } = context;
   const done = item.completed === true;
   const due =
-    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, getTaskPolicy(), item.dueText) : undefined;
+    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, taskPolicy, item.dueText) : undefined;
   const overdue =
     !done && item.dueAt !== undefined && item.dueAt < startOfDay(now) && !due?.stale;
   // An open task's due date reads beside today, "overdue 12 days ·
   // 2026-09-01", so the state is in the words and not the color alone.
   const dueLabel =
     item.dueAt !== undefined && !done
-      ? describeDueDate(item.dueAt, now, getTaskPolicy(), item.dueText).label
+      ? describeDueDate(item.dueAt, now, taskPolicy, item.dueText).label
       : item.dueText
         ? `due ${item.dueText}`
         : '';

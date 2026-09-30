@@ -12,7 +12,8 @@ import {
 import { describeStepParts, foldSteps } from '../../core/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
-import { getTaskPolicy, needsNewDate } from '../../core/taskPolicy';
+import { needsNewDate } from '../../core/taskPolicy';
+import { QueryContext } from '../../core/query/queryContext';
 import { escapeRegExp } from '../../core/text';
 import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import {
@@ -81,7 +82,11 @@ import { buildSearchFacets } from './searchFacets';
  */
 
 export interface TaskBoardOptions {
-  now: number;
+  /**
+   * The settings and moment the board is built in: its search is evaluated,
+   * its due bands drawn, and its dates worded against them.
+   */
+  queryContext: QueryContext;
   /** Namespace that holds a task's status, `status` for `#status/doing`. */
   statusNamespace: string;
   /** Status columns in order. Other statuses found on tasks follow them. */
@@ -162,7 +167,7 @@ export function createTaskBoard(
   options: TaskBoardOptions,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): TaskBoardSnapshot {
-  const selected = selectTasks(index, search.query);
+  const selected = selectTasks(index, search.query, options.queryContext);
   // A plain step rides on its task's card, so five steps are not five cards.
   const tasks = foldSteps(selected.tasks);
   const { parkedLeftOut } = selected;
@@ -188,9 +193,10 @@ export function createTaskBoard(
               index,
               { sections: [], files: [], tasks },
               search.query,
-              { parkedLeftOut },
+              { parkedLeftOut, now: options.queryContext.now },
             )
           : [],
+        queryContext: options.queryContext,
       },
     ),
     layout,
@@ -200,7 +206,7 @@ export function createTaskBoard(
     tasks:
       layout === 'list'
         ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
-            .map((task) => createDashboardTask(task, index.sections))
+            .map((task) => createDashboardTask(task, index.sections, options.queryContext))
         : undefined,
     table:
       layout === 'table'
@@ -257,7 +263,7 @@ export function createTaskTable(
       filePath: task.filePath,
       line: task.lineNumber,
       completed: task.completed,
-      cells: createTaskCells(table, columns, options.now),
+      cells: createTaskCells(table, columns, options.queryContext),
     })),
   };
 }
@@ -267,7 +273,7 @@ function createTaskMenus(
   tasks: readonly Task[],
   options: TaskBoardOptions,
 ): Record<string, TaskMenuState> {
-  const today = startOfDay(options.now);
+  const today = startOfDay(options.queryContext.now);
   return Object.fromEntries(
     tasks.map((task) => [
       task.id,
@@ -332,7 +338,7 @@ export function layoutTaskBoard(
       .map((task) => task.dependencyId as string),
   );
   const toCard = (task: Task, draft?: ColumnDraft): TaskBoardCard => {
-    const card = createCard(task, groupBy, options.now, openDependencyIds, index.sections, options.statusNamespace);
+    const card = createCard(task, groupBy, options.queryContext, openDependencyIds, index.sections, options.statusNamespace);
     const others = draft?.alsoIn?.get(task.id);
     const withTags =
       groupBy === 'tag' && namespace
@@ -359,7 +365,7 @@ export function layoutTaskBoard(
           ? createAssigneeColumns(open, index)
           : groupBy === 'tag' && namespace
             ? createTagColumns(open, index, namespace)
-            : createDueColumns(open, options.now);
+            : createDueColumns(open, options.queryContext);
 
   const columns: TaskBoardColumn[] = [
     ...drafts.map((draft) => {
@@ -635,12 +641,12 @@ export function resolveTaskMove(
           edit: (line) => setTaskDate(reopen(line), column, 'due', value, options.format),
         };
       }
-      if (!task.completed && getDueBand(task.dueAt, options.now) === value) {
+      if (!task.completed && getDueBand(task.dueAt, options.queryContext) === value) {
         return { kind: 'unchanged' };
       }
       if (value === 'today' || value === 'tomorrow') {
         const date = formatIsoDate(
-          addDays(startOfDay(options.now), value === 'today' ? 0 : 1),
+          addDays(startOfDay(options.queryContext.now), value === 'today' ? 0 : 1),
         );
         return {
           kind: 'edit',
@@ -865,10 +871,11 @@ export function readTaskStatus(
 function selectTasks(
   index: WorkspaceIndex,
   query: string,
+  context: QueryContext,
 ): { tasks: Task[]; parkedLeftOut: number } {
   const parsed = query.trim() ? parseQuery(query) : undefined;
   const found = parsed?.node
-    ? evaluateQuery(index, parsed.node).tasks
+    ? evaluateQuery(index, parsed.node, context).tasks
     : [...index.tasks.values()];
   if (mentionsParked(parsed?.node) || !index.parked || index.parked.tasks.size === 0) {
     return { tasks: found, parkedLeftOut: 0 };
@@ -1010,21 +1017,26 @@ const DUE_BANDS: ReadonlyArray<[string, string, boolean]> = [
   ['', 'No due date', true],
 ];
 
-function createDueColumns(open: Task[], now: number): ColumnDraft[] {
+function createDueColumns(open: Task[], context: QueryContext): ColumnDraft[] {
   return DUE_BANDS.map(([band, label, droppable]) => ({
     id: `due:${band}`,
     label,
     droppable,
-    tasks: open.filter((task) => getDueBand(task.dueAt, now) === band),
+    tasks: open.filter((task) => getDueBand(task.dueAt, context) === band),
   }));
 }
 
-function getDueBand(dueAt: number | undefined, now: number): string {
+/** The due band a date falls in on the context's today, or '' for none. */
+function getDueBand(
+  dueAt: number | undefined,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+): string {
   if (dueAt === undefined) {
     return '';
   }
+  const { now } = context;
   const today = startOfDay(now);
-  if (needsNewDate(dueAt, now)) {
+  if (needsNewDate(dueAt, now, context.taskPolicy)) {
     return 'needsdate';
   }
   if (dueAt < today) {
@@ -1042,13 +1054,14 @@ function getDueBand(dueAt: number | undefined, now: number): string {
 function createCard(
   task: Task,
   groupBy: TaskBoardGroupBy,
-  now: number,
+  context: QueryContext,
   openDependencyIds: ReadonlySet<string>,
   sections: ReadonlyMap<string, Section>,
   statusNamespace: string,
 ): TaskBoardCard {
   const section = task.sectionId ? sections.get(task.sectionId) : undefined;
   const title = stripTrailingTags(task.title) || task.title;
+  const { now, taskPolicy } = context;
   const today = startOfDay(now);
   const open = !task.completed;
   const blockers = (task.dependsOn ?? []).filter((id) =>
@@ -1064,14 +1077,14 @@ function createCard(
     completed: task.completed,
     filePath: task.filePath,
     line: task.lineNumber,
-    overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now),
-    ...(open && needsNewDate(task.dueAt, now) ? { stale: true } : {}),
+    overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
+    ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
     details: [
       !open && task.doneAt !== undefined
         ? `done ${formatIsoDate(task.doneAt)}`
         : '',
       open && task.dueAt !== undefined
-        ? describeDueDate(task.dueAt, today, getTaskPolicy(), task.dueText).label
+        ? describeDueDate(task.dueAt, today, taskPolicy, task.dueText).label
         : open && task.dueText
           ? `due ${task.dueText}`
           : '',

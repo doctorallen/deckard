@@ -10,6 +10,7 @@ import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 /**
  * What the Dashboard does with the workspace it is given, driven as VS Code
@@ -75,11 +76,11 @@ suite('Dashboard behavior', () => {
     store = new PreferencesStore(new MemoryMemento());
     const preferences = { ...store.value, ...changes };
     const snapshot: DashboardSnapshot = {
-      ...createDashboardSnapshot(index, preferences),
+      ...createDashboardSnapshot(index, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
       ...(preferences.dashboardViewState.mode === 'home'
         ? {
             widgets: createDashboardWidgets(index, preferences, {
-              now: Date.now(),
+              queryContext: createQueryContext(Date.now()),
               upcomingDays: 7,
               tagTitleDisplayMode: 'inline',
             }),
@@ -311,7 +312,7 @@ suite('Dashboard behavior', () => {
     }
     const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
     store = new PreferencesStore(new MemoryMemento());
-    const size = JSON.stringify(createDashboardSnapshot(index, store.value)).length;
+    const size = JSON.stringify(createDashboardSnapshot(index, store.value, undefined, undefined, { queryContext: createQueryContext(Date.now()) })).length;
     assert.ok(index.tags.size >= 2000, `${index.tags.size} tags`);
     assert.ok(size < 300 * 1024, `${Math.round(size / 1024)} KB`);
   });

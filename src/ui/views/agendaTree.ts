@@ -2,9 +2,11 @@ import * as vscode from 'vscode';
 
 import { describeSteps } from '../../core/markdown/taskSteps';
 import { escapeMarkdown } from '../../core/text';
+import { QueryContext } from '../../core/query/queryContext';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { stripTrailingTags } from '../state/queryBlockState';
 import { resolveSourceUri } from '../commands/navigation';
+import { readQueryContext } from '../commands/queryContext';
 import { writeSetting } from '../commands/settings';
 import {
   readTaskMetadataFormat,
@@ -243,8 +245,11 @@ export class AgendaTreeProvider
     const days = getUpcomingDays();
     const groupBy = getAgendaGrouping();
     const query = getAgendaQuery();
-    const selected = selectAgendaTasks(this.index, query);
-    const groups = createAgenda(this.index, Date.now(), {
+    // One moment and one reading of the settings for the whole view, so the
+    // list and its badge agree about what today is.
+    const context = readQueryContext();
+    const selected = selectAgendaTasks(this.index, query, context);
+    const groups = createAgenda(this.index, context, {
       tasks: selected.tasks,
       upcomingDays: days,
       groupBy,
@@ -256,7 +261,7 @@ export class AgendaTreeProvider
     });
     // The badge counts what is overdue or due today however the Agenda is
     // grouped, since that is what it is a badge for.
-    const urgent = createAgenda(this.index, Date.now(), {
+    const urgent = createAgenda(this.index, context, {
       tasks: selected.tasks,
       upcomingDays: days,
     })
@@ -422,7 +427,7 @@ export class AgendaTreeProvider
       );
       return;
     }
-    const options = readBoardOptions();
+    const options = readBoardOptions(readQueryContext());
     // A refusal explains a rule, so it is said once, after the moves that
     // could be made, rather than once for every task it held back.
     const refused: string[] = [];
@@ -821,11 +826,14 @@ export function groupColumnId(
   return undefined;
 }
 
-/** The board settings a drop writes with, read the way the board reads them. */
-function readBoardOptions(): TaskBoardOptions {
+/**
+ * The board settings a drop writes with, read the way the board reads them,
+ * for a drop made in `queryContext`.
+ */
+function readBoardOptions(queryContext: QueryContext): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
   return {
-    now: Date.now(),
+    queryContext,
     statuses: configuration.get<string[]>('board.statuses', []) ?? [],
     statusNamespace:
       configuration.get<string>('board.statusNamespace', 'status').trim() ||
@@ -834,11 +842,14 @@ function readBoardOptions(): TaskBoardOptions {
   };
 }
 
-/** The open tasks the Tasks view lists as overdue, as its query selects them. */
-export function listOverdueTasks(index: WorkspaceIndex, now = Date.now()): Task[] {
-  const selected = selectAgendaTasks(index, getAgendaQuery());
+/**
+ * The open tasks the Tasks view lists as overdue on the context's today, as
+ * its query selects them.
+ */
+export function listOverdueTasks(index: WorkspaceIndex, context: QueryContext): Task[] {
+  const selected = selectAgendaTasks(index, getAgendaQuery(), context);
   return (
-    createAgenda(index, now, {
+    createAgenda(index, context, {
       tasks: selected.tasks,
       upcomingDays: getUpcomingDays(),
     })

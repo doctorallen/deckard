@@ -10,6 +10,7 @@ import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 /**
  * What a search page does, driven as VS Code drives it: the host's state goes
@@ -33,7 +34,7 @@ suite('Search page behavior', () => {
   const open = (
     notes: Record<string, string>,
     query: string,
-    options: Parameters<typeof createSearchPageSnapshot>[3] & {
+    options: Omit<Parameters<typeof createSearchPageSnapshot>[3], 'queryContext'> & {
       pageSize?: SearchPageSize;
     } = {},
   ): { page: WebviewPage; snapshot: SearchPageSnapshot } => {
@@ -52,7 +53,7 @@ suite('Search page behavior', () => {
         ? store.value
         : { ...store.value, searchPageSize: options.pageSize },
       query,
-      options,
+      { queryContext: createQueryContext(Date.now()), ...options },
     );
     page = openWebviewPage(
       getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }),

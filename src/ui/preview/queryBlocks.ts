@@ -1,6 +1,7 @@
 import type MarkdownIt from 'markdown-it';
 import * as vscode from 'vscode';
 
+import { QueryContext } from '../../core/query/queryContext';
 import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -16,6 +17,7 @@ import {
 } from '../state/queryBlockState';
 import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
+import { readQueryContext } from '../commands/queryContext';
 
 interface IndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
@@ -75,6 +77,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
           .getConfiguration('deckard')
           .get<string>('board.statusNamespace', 'status')
           .trim() || 'status',
+      getQueryContext: (now: number) => readQueryContext(now),
     };
     return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);
   }
@@ -83,11 +86,12 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     if (!isMarkdownFile(document.uri)) {
       return [];
     }
+    const queryContext = readQueryContext();
     return measure(
       'Query block lenses',
       () =>
         findQueryBlocks(document.getText()).flatMap((block) =>
-          this.createCodeLenses(block),
+          this.createCodeLenses(block, queryContext),
         ),
       (lenses) => `${lenses.length} lenses`,
     );
@@ -97,7 +101,8 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     this.disposables.forEach((disposable) => disposable.dispose());
   }
 
-  private createCodeLenses(block: QueryBlockSource): vscode.CodeLens[] {
+  /** The lenses above one block, its query run in `queryContext`. */
+  private createCodeLenses(block: QueryBlockSource, queryContext: QueryContext): vscode.CodeLens[] {
     const range = new vscode.Range(block.startLine, 0, block.startLine, 0);
     const label = (title: string): vscode.CodeLens =>
       new vscode.CodeLens(range, { title, command: '' });
@@ -106,11 +111,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       return [label('Deckard is indexing the workspace…')];
     }
 
-    const snapshot = getQueryBlockSnapshot(
-      this.index,
-      block.query,
-      block.options,
-    );
+    const snapshot = getQueryBlockSnapshot(this.index, block.query, block.options, { queryContext });
     const warnings = snapshot.messages
       .filter((message) => message.severity === 'warning')
       .map((message) => label(`Warning: ${message.text}`));

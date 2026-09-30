@@ -48,7 +48,8 @@ export interface FacetOptions {
    * results, since an association ranks better than a count can.
    */
   related?: SearchFacetValue[];
-  now?: number;
+  /** The moment the Due and Created values are counted from. */
+  now: number;
   /**
    * Open parked tasks a list of things to do left out that its search
    * otherwise finds, offered as one value that asks for them.
@@ -66,9 +67,9 @@ export function buildSearchFacets(
   index: WorkspaceIndex,
   source: FacetSource,
   queryText: string,
-  options: FacetOptions = {},
+  options: FacetOptions,
 ): SearchFacet[] {
-  const now = options.now ?? Date.now();
+  const { now } = options;
   const total = source.sections.length + source.files.length + source.tasks.length;
   if (total === 0) {
     return parkedFacet(options.parkedLeftOut);

@@ -6,6 +6,7 @@ import { parseQuery } from '../core/query/queryParser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { layoutTaskBoard, resolveTaskMove } from '../ui/state/taskBoardState';
+import { createQueryContext } from '../core/query/queryContext';
 
 const notes = {
   'notes/atlas.md': [
@@ -160,7 +161,7 @@ suite('Task assignees', () => {
       [...index.tasks.values()],
       'assignee',
       {
-        now: Date.now(),
+        queryContext: createQueryContext(Date.now()),
         statuses: [],
         statusNamespace: 'status',
         format: 'emoji',
@@ -187,7 +188,7 @@ suite('Task assignees', () => {
 
   test('hands a task over when its card is dropped on a person', () => {
     const options = {
-      now: Date.now(),
+      queryContext: createQueryContext(Date.now()),
       statuses: [],
       statusNamespace: 'status',
       format: 'emoji' as const,

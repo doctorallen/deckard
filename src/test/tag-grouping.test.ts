@@ -15,9 +15,10 @@ import { createAgenda } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
 import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider, groupColumnId } from '../ui/views/agendaTree';
+import { createQueryContext } from '../core/query/queryContext';
 
 const options: TaskBoardOptions = {
-  now: new Date(2026, 8, 13, 9).getTime(),
+  queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),
   statusNamespace: 'status',
   statuses: ['todo'],
   format: 'emoji',
@@ -140,7 +141,7 @@ suite('Grouping tasks by a tag namespace', () => {
   test('the Tasks view groups by a namespace, counting inherited tags, a task in each of its groups', () => {
     const index = indexOf({ 'a.md': NOTE });
     const groups = (namespace: string) =>
-      createAgenda(index, options.now, { upcomingDays: 7, groupBy: 'tag', groupNamespace: namespace }).map(
+      createAgenda(index, createQueryContext(options.queryContext.now), { upcomingDays: 7, groupBy: 'tag', groupNamespace: namespace }).map(
         (group) => [
           group.id,
           group.label,
@@ -152,7 +153,7 @@ suite('Grouping tasks by a tag namespace', () => {
       ['tag:context/computer', 'Computer', ['Draft']],
       ['tag:context/', 'No context', ['Loose', 'Pay']],
     ]);
-    const draft = createAgenda(index, options.now, { upcomingDays: 7, groupBy: 'tag', groupNamespace: 'context' })[0]
+    const draft = createAgenda(index, createQueryContext(options.queryContext.now), { upcomingDays: 7, groupBy: 'tag', groupNamespace: 'context' })[0]
       .entries.find((entry) => entry.title.startsWith('Draft'));
     assert.strictEqual(draft?.details[draft.details.length - 1], 'also in Computer');
     assert.deepStrictEqual(groups('project').map(([id, , titles]) => [id, (titles as string[]).length]), [['tag:project/atlas', 4]]);

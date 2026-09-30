@@ -3,6 +3,7 @@ import { stripTags } from '../../core/markdown/parser';
 import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
+import { QueryContext } from '../../core/query/queryContext';
 import { parseQuery } from '../../core/query/queryParser';
 import { WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../core/workspace/backlinks';
@@ -42,6 +43,8 @@ export interface ReviewOptions {
   nextLabel?: string;
   /** Sections of the reader's own, each a title and a Deckard search. */
   sections?: readonly ReviewSectionSetting[];
+  /** The settings and moment the sections' searches are evaluated in. */
+  queryContext: QueryContext;
 }
 
 /** One section from `deckard.periodicNote.reviewSections`. */
@@ -98,7 +101,7 @@ const DEFAULT_LIMIT = 20;
 export function summarizeReview(
   index: WorkspaceIndex,
   range: ReviewRange,
-  options: ReviewOptions = {},
+  options: ReviewOptions,
 ): ReviewSummary {
   const inRange = (at: number | undefined): boolean =>
     at !== undefined && at >= range.start && at < range.end;
@@ -195,7 +198,7 @@ export function summarizeReview(
       task.doneAt < task.dueAt + DAY_MS,
   ).length;
 
-  const custom = (options.sections ?? []).map((section) => readSection(index, section));
+  const custom = (options.sections ?? []).map((section) => readSection(index, section, options.queryContext));
 
   return {
     range,
@@ -220,10 +223,14 @@ function formatDayShort(at: number): string {
 }
 
 /**
- * A section of the reader's own: what its search finds now, written down as
- * a list, so it says what was true when the review was written.
+ * A section of the reader's own: what its search finds in `context`, written
+ * down as a list, so it says what was true when the review was written.
  */
-function readSection(index: WorkspaceIndex, section: ReviewSectionSetting): ReviewCustomSection {
+function readSection(
+  index: WorkspaceIndex,
+  section: ReviewSectionSetting,
+  context: QueryContext,
+): ReviewCustomSection {
   const parsed = parseQuery(section.query);
   const error = parsed.diagnostics.find((diagnostic) => diagnostic.severity === 'error');
   if (!parsed.node || error) {
@@ -233,7 +240,7 @@ function readSection(index: WorkspaceIndex, section: ReviewSectionSetting): Revi
       error: error?.message ?? 'This search is empty.',
     };
   }
-  const results = evaluateQuery(index, parsed.node);
+  const results = evaluateQuery(index, parsed.node, context);
   const items: ReviewItem[] = [
     ...results.tasks.map((task) => ({ title: clean(task.title), note: noteTitle(task.filePath) })),
     ...results.sections.map((entry) => ({ title: noteTitle(entry.filePath), note: noteTitle(entry.filePath) })),
@@ -264,7 +271,7 @@ function readSection(index: WorkspaceIndex, section: ReviewSectionSetting): Revi
  */
 export function formatReview(
   summary: ReviewSummary,
-  options: ReviewOptions = {},
+  options: Omit<ReviewOptions, 'queryContext'> = {},
 ): string {
   const limit = options.limit ?? DEFAULT_LIMIT;
   const { range } = summary;

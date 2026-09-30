@@ -10,9 +10,10 @@ import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { parseTaskBoardMessage } from '../ui/webview/messages';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 const options: TaskBoardOptions = {
-  now: Date.parse('2026-09-21T12:00:00Z'),
+  queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),
   statusNamespace: 'status',
   statuses: ['todo'],
   format: 'emoji',

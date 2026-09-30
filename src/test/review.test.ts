@@ -20,6 +20,7 @@ import {
   summarizeReview,
   writeReviewInto,
 } from '../ui/state/reviewState';
+import { createQueryContext } from '../core/query/queryContext';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Monday 2026-09-14 to Sunday 2026-09-20. */
@@ -81,6 +82,7 @@ const index = indexOf({
 suite('Periodic review', () => {
   test('reads the week out of the index', () => {
     const summary = summarizeReview(index, range, {
+      queryContext: createQueryContext(Date.now()),
       tagFirstSeen: {
         '#risk/vendor': new Date(2026, 8, 16).getTime(),
         '#project/atlas': new Date(2026, 0, 4).getTime(),
@@ -116,6 +118,7 @@ suite('Periodic review', () => {
   test('writes it as Markdown that carries no tags of its own', () => {
     const review = formatReview(
       summarizeReview(index, range, {
+        queryContext: createQueryContext(Date.now()),
         tagFirstSeen: { '#risk/vendor': new Date(2026, 8, 16).getTime() },
       }),
     );
@@ -162,7 +165,7 @@ suite('Periodic review', () => {
         '- [ ] Starts then 🛫 2026-09-26',
       ].join('\n'),
     });
-    const summary = summarizeReview(ahead, range, { next, nextLabel: 'next week' });
+    const summary = summarizeReview(ahead, range, { queryContext: createQueryContext(Date.now()), next, nextLabel: 'next week' });
     assert.deepStrictEqual(
       summary.comingUp.map((item) => [item.title, item.detail]),
       [
@@ -175,7 +178,7 @@ suite('Periodic review', () => {
     assert.ok(review.includes('### Coming up'), review);
     assert.ok(review.includes('- Mon 2026-09-21 · Book the room — [[2026-09-19]] (due)'), review);
     assert.ok(
-      formatReview(summarizeReview(indexOf({}), range, { next, nextLabel: 'next week' })).includes(
+      formatReview(summarizeReview(indexOf({}), range, { queryContext: createQueryContext(Date.now()), next, nextLabel: 'next week' })).includes(
         'Nothing is due, scheduled, or starting next week.',
       ),
     );
@@ -183,7 +186,7 @@ suite('Periodic review', () => {
 
   test('writes sections of your own, and says when a search does not parse', () => {
     const review = formatReview(
-      summarizeReview(index, range, {
+      summarizeReview(index, range, { queryContext: createQueryContext(Date.now()),
         sections: [
           { title: 'Open for Atlas', query: '#project/atlas is:open' },
           { title: 'Broken', query: '(is:open' },
@@ -197,7 +200,7 @@ suite('Periodic review', () => {
 
   test('says so when a period held nothing', () => {
     const review = formatReview(
-      summarizeReview(indexOf({}), range, {}),
+      summarizeReview(indexOf({}), range, { queryContext: createQueryContext(Date.now()) }),
     );
     assert.ok(review.includes('Nothing was completed in this period.'));
     assert.ok(review.includes('No tags were first seen in this period.'));
@@ -275,7 +278,7 @@ suite('Periodic review', () => {
       uri,
       Buffer.from('# 2026-W38\n\nWhat I meant to do.\n', 'utf8'),
     );
-    const review = formatReview(summarizeReview(index, range, {}));
+    const review = formatReview(summarizeReview(index, range, { queryContext: createQueryContext(Date.now()) }));
     await vscode.workspace.fs.writeFile(
       uri,
       Buffer.from(

@@ -32,6 +32,7 @@ import {
 import {
   createSearchPageSnapshot,
 } from '../ui/state/dashboardState';
+import { createQueryContext } from '../core/query/queryContext';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
@@ -401,7 +402,7 @@ suite('Deckard search page state', () => {
       index,
       createPreferences(),
       'tag = #risk/vendor OR tag = #project/atlas',
-      { originQuery: '#project/atlas' },
+      { queryContext: createQueryContext(Date.now()), originQuery: '#project/atlas' },
     );
 
     assert.strictEqual(snapshot.tag, undefined);
@@ -412,14 +413,11 @@ suite('Deckard search page state', () => {
   test('a search of one tag is that tag\'s page, however it is written', () => {
     const index = createIndex();
     for (const text of ['#project/atlas', 'tag = #project/atlas', 'tag:#project/atlas']) {
-      const snapshot = createSearchPageSnapshot(index, createPreferences(), text);
+      const snapshot = createSearchPageSnapshot(index, createPreferences(), text, { queryContext: createQueryContext(Date.now()) });
       assert.strictEqual(snapshot.tag?.key, '#project/atlas', text);
       assert.strictEqual(snapshot.query.text, text, 'the box keeps what was typed');
     }
-    const narrowed = createSearchPageSnapshot(
-      index,
-      createPreferences(),
-      '#project/atlas is:open',
+    const narrowed = createSearchPageSnapshot(index, createPreferences(), '#project/atlas is:open', { queryContext: createQueryContext(Date.now()) }
     );
     assert.strictEqual(narrowed.tag, undefined, 'anything more is a search');
   });

@@ -15,6 +15,7 @@ import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
 class MemoryMemento implements vscode.Memento {
@@ -106,9 +107,9 @@ suite('Zen mode', () => {
     const preferences = store.value;
     const built = index();
     const snapshot = {
-      ...createDashboardSnapshot(built, preferences),
+      ...createDashboardSnapshot(built, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
       widgets: createDashboardWidgets(built, preferences, {
-        now: Date.parse('2026-09-21T00:00:00Z'),
+        queryContext: createQueryContext(Date.parse('2026-09-21T00:00:00Z')),
         upcomingDays: 7,
         tagTitleDisplayMode: 'inline' as const,
       }),
@@ -125,7 +126,7 @@ suite('Zen mode', () => {
     store = new PreferencesStore(new MemoryMemento());
     const page = openWebviewPage(
       getSearchPageHtml(webview),
-      createSearchPageSnapshot(index(), store.value, '#project/atlas'),
+      createSearchPageSnapshot(index(), store.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }),
     );
     pages.push(page);
     return page;

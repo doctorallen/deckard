@@ -17,6 +17,7 @@ import {
 import { findDailyNoteRow, isNoteName, keyLabel, toPickItems } from '../ui/commands/quickFind';
 import { formatCapture } from '../ui/commands/capture';
 import { parseDatePhrase } from '../core/markdown/dates';
+import { createQueryContext } from '../core/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -49,7 +50,7 @@ function createFinder(notes: Record<string, string>) {
   );
   const store = new SearchStore(undefined);
   store.replace(files);
-  const conditions = createQuerySuggestions(index).conditions;
+  const conditions = createQuerySuggestions(index, [], createQueryContext(Date.now())).conditions;
   return {
     index,
     find: (
@@ -61,7 +62,7 @@ function createFinder(notes: Record<string, string>) {
         preferences,
         input,
         (text) => store.searchEntries(text, { limit: 200 }),
-        { conditions, formatCapture: (text) => formatCapture(text) },
+        { queryContext: createQueryContext(Date.now()), conditions, formatCapture: (text) => formatCapture(text) },
       ),
     dispose: () => store.dispose(),
   };

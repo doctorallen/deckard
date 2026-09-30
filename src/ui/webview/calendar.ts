@@ -17,6 +17,7 @@ import { openSourceAt } from '../commands/navigation';
 import { setTaskDateField } from '../commands/agendaActions';
 import { openTask, toggleTask } from '../commands/taskActions';
 import { readWeekStart } from '../commands/datePrompt';
+import { readQueryContext } from '../commands/queryContext';
 import { CalendarOptions, CalendarSnapshot, clampToMonth, createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
@@ -157,7 +158,7 @@ export class CalendarController {
   /** The calendar as it is now, for the host to post. */
   public snapshot(options: CalendarOptions = {}): CalendarSnapshot {
     return measure('Calendar', () =>
-      createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart(), {
+      createCalendar(this.indexer.getSnapshot(), this.month, readQueryContext(), {
         dayPanel: this.dayPanel(),
         selectedDate: this.selectedDate,
         showRepeats: readShowRepeats(),

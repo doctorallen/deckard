@@ -15,6 +15,7 @@ import {
   isQueryBlockLine,
   parseQueryBlockInfo,
 } from '../ui/state/queryBlockState';
+import { createQueryContext } from '../core/query/queryContext';
 
 suite('Deckard query blocks', () => {
   test('recognizes only deckard fences and reads their options', () => {
@@ -59,7 +60,7 @@ suite('Deckard query blocks', () => {
     const titles = (info: string) =>
       createQueryBlockSnapshot(createIndex(), 'tag = #project/atlas', {
         ...parseQueryBlockInfo(info)!,
-      }).tasks.map((task) => task.title);
+      }, { queryContext: createQueryContext(Date.now()) }).tasks.map((task) => task.title);
     assert.deepStrictEqual(
       titles('deckard sort=due'),
       ['Send summary', 'Draft agenda', 'Book room', 'Collect export'],
@@ -81,8 +82,7 @@ suite('Deckard query blocks', () => {
       'tag = #project/atlas',
       parseQueryBlockInfo('deckard view=table columns=due,note')!,
       createIndex(),
-      undefined,
-      new Date(2026, 8, 13).getTime(),
+      { queryContext: createQueryContext(new Date(2026, 8, 13).getTime()) },
     );
     assert.ok(html.includes('<table class="deckard-query-table">'));
     assert.ok(
@@ -111,8 +111,7 @@ suite('Deckard query blocks', () => {
       'tag = #project/atlas',
       parseQueryBlockInfo('deckard view=table columns=due')!,
       index,
-      undefined,
-      new Date(2026, 8, 13).getTime(),
+      { queryContext: createQueryContext(new Date(2026, 8, 13).getTime()) },
     );
 
     assert.ok(html.includes('Send the <strong>signed</strong> copy to'), 'the Markdown is drawn');
@@ -167,10 +166,7 @@ suite('Deckard query blocks', () => {
   });
 
   test('lists notes with heading context and tasks open first by due date', () => {
-    const snapshot = createQueryBlockSnapshot(
-      createIndex(),
-      'tag = #project/atlas',
-      { warnings: [] },
+    const snapshot = createQueryBlockSnapshot(createIndex(), 'tag = #project/atlas', { warnings: [] }, { queryContext: createQueryContext(Date.now()) }
     );
 
     assert.deepStrictEqual(
@@ -191,10 +187,7 @@ suite('Deckard query blocks', () => {
   });
 
   test('sorts by date and limits each list while keeping the totals', () => {
-    const snapshot = createQueryBlockSnapshot(
-      createIndex(),
-      'tag = #project/atlas',
-      { sort: 'updated', limit: 1, warnings: [] },
+    const snapshot = createQueryBlockSnapshot(createIndex(), 'tag = #project/atlas', { sort: 'updated', limit: 1, warnings: [] }, { queryContext: createQueryContext(Date.now()) }
     );
 
     assert.deepStrictEqual(snapshot.notes.map((note) => note.id), ['child']);
@@ -205,17 +198,14 @@ suite('Deckard query blocks', () => {
   });
 
   test('reports a query that cannot run', () => {
-    const invalid = createQueryBlockSnapshot(
-      createIndex(),
-      '(tag = #project/atlas',
-      { warnings: [] },
+    const invalid = createQueryBlockSnapshot(createIndex(), '(tag = #project/atlas', { warnings: [] }, { queryContext: createQueryContext(Date.now()) }
     );
     assert.strictEqual(invalid.hasError, true);
     assert.strictEqual(invalid.messages[0]?.severity, 'error');
 
     const empty = createQueryBlockSnapshot(createIndex(), '  ', {
       warnings: [],
-    });
+    }, { queryContext: createQueryContext(Date.now()) });
     assert.strictEqual(empty.hasError, true);
     assert.match(empty.messages[0]?.text ?? '', /Write a Deckard query/);
   });
@@ -224,6 +214,7 @@ suite('Deckard query blocks', () => {
     let renders = 0;
     const md = addQueryBlockRenderer(new MarkdownIt(), {
       getIndex: () => createIndex(),
+      getQueryContext: (now) => createQueryContext(now),
       onDidRender: () => {
         renders += 1;
       },
@@ -243,8 +234,7 @@ suite('Deckard query blocks', () => {
       'tag = #project/atlas',
       { warnings: [] },
       createIndex(),
-      undefined,
-      new Date(2026, 8, 13).getTime(),
+      { queryContext: createQueryContext(new Date(2026, 8, 13).getTime()) },
     );
 
     assert.ok(
@@ -261,6 +251,7 @@ suite('Deckard query blocks', () => {
   test('leaves other fences to the existing renderer', () => {
     const md = addQueryBlockRenderer(new MarkdownIt(), {
       getIndex: () => createIndex(),
+      getQueryContext: (now) => createQueryContext(now),
     });
     assert.ok(
       md
@@ -272,12 +263,13 @@ suite('Deckard query blocks', () => {
   test('explains an empty block and a block rendered before indexing', () => {
     const md = addQueryBlockRenderer(new MarkdownIt(), {
       getIndex: () => undefined,
+      getQueryContext: (now) => createQueryContext(now),
     });
     assert.ok(
       md.render('```deckard\n#project/atlas\n```\n').includes('Deckard is indexing'),
     );
 
-    const html = renderQueryBlockHtml('', { warnings: [] }, createIndex());
+    const html = renderQueryBlockHtml('', { warnings: [] }, createIndex(), { queryContext: createQueryContext(Date.now()) });
     assert.ok(html.includes('deckard-query-message is-error'));
   });
 
@@ -293,7 +285,7 @@ suite('Deckard query blocks', () => {
     );
     const snapshot = createQueryBlockSnapshot(index, 'text ~ "pair"', {
       warnings: [],
-    });
+    }, { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(
       snapshot.tasks.map((task) => task.title),
       ['Pair @ren with @dax on the audit.'],
@@ -324,10 +316,7 @@ suite('Deckard query blocks', () => {
     );
     index.tags.get('#risk/vendor')?.sectionIds.push('daily-check-in');
 
-    const html = renderQueryBlockHtml(
-      'tag = #risk/vendor',
-      { warnings: [] },
-      index,
+    const html = renderQueryBlockHtml('tag = #risk/vendor', { warnings: [] }, index, { queryContext: createQueryContext(Date.now()) }
     );
     assert.ok(html.includes('<div class="deckard-query-group-title">Notes</div>'));
     // A daily note's date heading already names its file.

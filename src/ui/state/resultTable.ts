@@ -4,7 +4,7 @@ import {
   TASK_PRIORITY_RANKS,
   describeDueDate,
 } from '../../core/markdown/taskMetadata';
-import { getTaskPolicy } from '../../core/taskPolicy';
+import { QueryContext } from '../../core/query/queryContext';
 import {
   TableCell,
   TableSort,
@@ -98,12 +98,16 @@ export interface TableTask {
   dependencyId?: string;
 }
 
-/** The cells of one task, in the order of `columns`. */
+/**
+ * The cells of one task, in the order of `columns`, its dates read against
+ * the context's today and task policy.
+ */
 export function createTaskCells(
   task: TableTask,
   columns: readonly TaskColumnId[],
-  now: number,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): TableCell[] {
+  const { now } = context;
   const today = startOfDay(now);
   const date = (at: number | undefined): TableCell =>
     at === undefined ? { text: '' } : { text: formatIsoDate(at) };
@@ -121,7 +125,7 @@ export function createTaskCells(
           : task.completed
             ? { text: task.dueText ?? formatIsoDate(task.dueAt) }
             : (() => {
-                const due = describeDueDate(task.dueAt, now, getTaskPolicy(), task.dueText);
+                const due = describeDueDate(task.dueAt, now, context.taskPolicy, task.dueText);
                 return {
                   text: due.label,
                   ...(due.stale ? { kind: 'muted' as const } : task.dueAt < today ? { kind: 'overdue' as const } : {}),

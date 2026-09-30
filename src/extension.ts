@@ -1,6 +1,7 @@
 import { captureNextAction } from './ui/commands/taskBoardActions';
 import { setTaskPolicy } from './core/taskPolicy';
 import { readWeekStart } from './ui/commands/datePrompt';
+import { readQueryContext } from './ui/commands/queryContext';
 import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
 
@@ -673,7 +674,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // reschedule choices and again after the write.
   const rescheduleContext = (): RescheduleContext => ({
     load: (date) =>
-      countLoad(selectAgendaTasks(indexer.getSnapshot(), getAgendaQuery()).tasks, date),
+      countLoad(selectAgendaTasks(indexer.getSnapshot(), getAgendaQuery(), readQueryContext()).tasks, date),
     refresh: async () => {
       try {
         await indexer.refresh();
@@ -682,7 +683,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       }
     },
     todayCount: () =>
-      countDueTasks(indexer.getSnapshot(), Date.now(), getAgendaQuery()).today,
+      countDueTasks(indexer.getSnapshot(), readQueryContext(), getAgendaQuery()).today,
   });
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
@@ -719,7 +720,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     }),
     vscode.commands.registerCommand('deckard.rescheduleOverdue', async () => {
       await indexer.ready;
-      const overdue = listOverdueTasks(indexer.getSnapshot());
+      const overdue = listOverdueTasks(indexer.getSnapshot(), readQueryContext());
       if (overdue.length === 0) {
         void vscode.window.showInformationMessage('Nothing is overdue.');
         return;

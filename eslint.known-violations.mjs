@@ -94,14 +94,10 @@ export default {
     ],
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
-      "renderGroup",
-      "renderQueryBlockHtml"
+      "renderGroup"
     ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
-    ],
-    "src/ui/state/calendarState.ts": [
-      "createCalendar"
     ],
     "src/ui/state/dashboardState.ts": [
       "createDashboardSnapshot",
@@ -427,7 +423,7 @@ export default {
     "src/ui/state/noteLinks.ts": 2,
     "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/queryBlockState.ts": 4,
+    "src/ui/state/queryBlockState.ts": 3,
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
     "src/ui/state/relatedNotesRanking.ts": 1,
@@ -441,7 +437,7 @@ export default {
     "src/ui/state/wordSimilarity.ts": 4,
     "src/ui/views/agendaTree.ts": 6,
     "src/ui/views/outlineTree.ts": 3,
-    "src/ui/views/taskStatusBar.ts": 4,
+    "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/activeCalendar.ts": 5,
     "src/ui/webview/activeHome.ts": 6,

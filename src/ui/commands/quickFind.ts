@@ -14,6 +14,7 @@ import { parseIsoDate } from '../../core/markdown/taskMetadata';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
 import { captureToToday, formatCapture } from './capture';
+import { readQueryContext } from './queryContext';
 import { createWikiLink } from './insertLink';
 import { createLinkedNote } from './linkHealth';
 import { openSourceAt } from './navigation';
@@ -532,20 +533,24 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     const index = this.indexer.getSnapshot();
+    // One moment and one reading of the settings for everything this
+    // keystroke lists.
+    const queryContext = readQueryContext();
     const results = buildQuickFindResults(
       index,
       this.preferences.value,
       picker.value,
       (text) => this.indexer.searchEntries(text, { limit: 200 }),
       {
-        conditions: createQuerySuggestions(index).conditions,
+        queryContext,
+        conditions: createQuerySuggestions(index, [], queryContext).conditions,
         formatCapture: (text) => formatCapture(text),
       },
     );
     picker.items = toPickItems(
       results,
       picker.value,
-      findDailyNoteRow(picker.value, Date.now(), readDateOptions()),
+      findDailyNoteRow(picker.value, queryContext.now, readDateOptions()),
     );
     if (activeKey !== undefined) {
       const again = picker.items.find((row) => row.item && rowKey(row.item) === activeKey);

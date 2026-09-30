@@ -12,6 +12,7 @@ import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 const NOTE = [
   '# Offsite',
@@ -33,7 +34,7 @@ function titleOf(index: WorkspaceIndex, id: string): string {
 }
 
 const options: TaskBoardOptions = {
-  now: new Date(2026, 8, 13, 9).getTime(),
+  queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),
   statusNamespace: 'status',
   statuses: ['todo', 'doing'],
   format: 'emoji',
@@ -53,7 +54,7 @@ function preferencesWith(values: Partial<PersistedPreferences>): PersistedPrefer
 suite('Steps in the views', () => {
   test('the Tasks view folds plain steps into their task and lists the rest', () => {
     const index = createIndex();
-    const groups = createAgenda(index, options.now, { upcomingDays: 7 });
+    const groups = createAgenda(index, createQueryContext(options.queryContext.now), { upcomingDays: 7 });
     const titles = groups.flatMap((group) => group.entries.map((entry) => entry.title)).sort();
     assert.deepStrictEqual(titles, [
       'Call the caterer',
@@ -97,7 +98,7 @@ suite('Steps in the views', () => {
     const plan = [...index.tasks.values()].find((task) => task.title === 'Plan the offsite');
     assert.ok(plan);
     assert.strictEqual(
-      createDashboardTask(plan, index.sections).stepsLabel,
+      createDashboardTask(plan, index.sections, createQueryContext(Date.now())).stepsLabel,
       '1 of 4 steps · next: Draft the email',
     );
     assert.strictEqual(plan.steps?.ids.map((id) => titleOf(index, id)).length, 4);
@@ -105,7 +106,7 @@ suite('Steps in the views', () => {
 
   test('a search page lists steps as it finds them, and a task row says how far along', () => {
     const index = createIndex();
-    const snapshot = createSearchPageSnapshot(index, preferencesWith({}), 'is:open');
+    const snapshot = createSearchPageSnapshot(index, preferencesWith({}), 'is:open', { queryContext: createQueryContext(Date.now()) });
     const page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }), snapshot);
     try {
       const rows = page.findAll('.task-row');

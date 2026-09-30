@@ -8,6 +8,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -57,7 +58,7 @@ suite('Where an entry is written', () => {
     store = new PreferencesStore(new MemoryMemento());
     page = openWebviewPage(
       getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }),
-      createSearchPageSnapshot(index, store.value, '#team/harbor', {}),
+      createSearchPageSnapshot(index, store.value, '#team/harbor', { queryContext: createQueryContext(Date.now()) }),
     );
 
     assert.strictEqual(page.text('.card .source'), '2026-09-22 / line 1');
