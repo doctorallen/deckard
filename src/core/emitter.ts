@@ -8,8 +8,9 @@ import type { Disposable, Event } from '../ports/events';
  *
  * Listeners are told synchronously, in the order they subscribed. A listener
  * that throws does not stop the others, as with VS Code's emitter; its error
- * is reported to the console. A listener added or removed while a value is
- * being delivered takes effect from the next value.
+ * is reported to the console. A listener added while a value is being
+ * delivered hears from the next value on; one removed then is not told of
+ * that value if it has not been told already, as VS Code's emitter skips it.
  */
 export class Emitter<T> implements Disposable {
   private listeners: Array<{ listener: (value: T) => unknown; thisArgs: unknown }> = [];
@@ -33,7 +34,11 @@ export class Emitter<T> implements Disposable {
 
   /** Tells every listener of `value`. Does nothing once disposed. */
   public fire(value: T): void {
-    for (const { listener, thisArgs } of this.listeners) {
+    for (const entry of this.listeners) {
+      if (!this.listeners.includes(entry)) {
+        continue;
+      }
+      const { listener, thisArgs } = entry;
       try {
         listener.call(thisArgs, value);
       } catch (error) {

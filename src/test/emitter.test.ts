@@ -37,6 +37,37 @@ suite('Emitter', () => {
     assert.strictEqual(owner.calls, 1);
   });
 
+  test('a listener removed while a value is delivered is not told of it', () => {
+    const emitter = new Emitter<number>();
+    const heard: string[] = [];
+    let second: { dispose(): unknown } | undefined;
+    emitter.event((value) => {
+      heard.push(`a${value}`);
+      second?.dispose();
+    });
+    second = emitter.event((value) => heard.push(`b${value}`));
+    emitter.event((value) => heard.push(`c${value}`));
+    emitter.fire(1);
+    assert.deepStrictEqual(heard, ['a1', 'c1']);
+  });
+
+  test('a listener added while a value is delivered hears from the next one', () => {
+    const emitter = new Emitter<number>();
+    const heard: string[] = [];
+    let added = false;
+    emitter.event((value) => {
+      heard.push(`a${value}`);
+      if (added) {
+        return;
+      }
+      added = true;
+      emitter.event((next) => heard.push(`b${next}`));
+    });
+    emitter.fire(1);
+    emitter.fire(2);
+    assert.deepStrictEqual(heard, ['a1', 'a2', 'b2']);
+  });
+
   test('a listener that throws does not stop the others', () => {
     const emitter = new Emitter<number>();
     const heard: number[] = [];
