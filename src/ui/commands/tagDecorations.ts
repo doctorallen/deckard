@@ -6,6 +6,7 @@ import {
   getPersonMarker,
   parseMarkdown,
 } from '../../core/markdown/parser';
+import { KeyedDebouncer } from '../../core/debounce';
 import { escapeMarkdown } from '../../core/text';
 import { measure } from '../../core/timing';
 import { ParsedFile } from '../../core/types';
@@ -34,10 +35,7 @@ export class EditorTagDecorations implements vscode.Disposable {
    */
   private isPinned: (filePath: string, line: number) => boolean = () => false;
   /** Redraws waiting for typing to pause, by document URI. */
-  private readonly pendingUpdates = new Map<
-    string,
-    ReturnType<typeof setTimeout>
-  >();
+  private readonly pendingUpdates = new KeyedDebouncer(decorationDelayMs);
   private readonly decorationType =
     vscode.window.createTextEditorDecorationType({
       border: '1px solid',
@@ -165,8 +163,7 @@ export class EditorTagDecorations implements vscode.Disposable {
   }
 
   public dispose(): void {
-    this.pendingUpdates.forEach((handle) => clearTimeout(handle));
-    this.pendingUpdates.clear();
+    this.pendingUpdates.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -212,16 +209,11 @@ export class EditorTagDecorations implements vscode.Disposable {
    */
   private scheduleUpdate(document: vscode.TextDocument): void {
     const key = document.uri.toString();
-    clearTimeout(this.pendingUpdates.get(key));
-    this.pendingUpdates.set(
-      key,
-      setTimeout(() => {
-        this.pendingUpdates.delete(key);
-        vscode.window.visibleTextEditors
-          .filter((editor) => editor.document.uri.toString() === key)
-          .forEach((editor) => this.updateEditor(editor));
-      }, decorationDelayMs),
-    );
+    this.pendingUpdates.schedule(key, () => {
+      vscode.window.visibleTextEditors
+        .filter((editor) => editor.document.uri.toString() === key)
+        .forEach((editor) => this.updateEditor(editor));
+    });
   }
 
   /**

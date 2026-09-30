@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { Debouncer } from '../../core/debounce';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { measure } from '../../core/timing';
 import { writeSetting } from '../commands/settings';
@@ -53,8 +54,8 @@ export class OutlineTreeProvider
   private allRoots: OutlineNode[] = [];
   private parents = new Map<string, OutlineNode>();
   private documentUri: vscode.Uri | undefined;
-  private rebuildHandle: ReturnType<typeof setTimeout> | undefined;
-  private followHandle: ReturnType<typeof setTimeout> | undefined;
+  private readonly pendingRebuild = new Debouncer(rebuildDelayMs);
+  private readonly pendingFollow = new Debouncer(followCursorDelayMs);
   private rebuildPending = false;
   /**
    * The tag the Outline is narrowed to, kept across notes until it is
@@ -200,14 +201,8 @@ export class OutlineTreeProvider
    * Releases timers and listeners so a late rebuild cannot outlive the view.
    */
   public dispose(): void {
-    if (this.rebuildHandle) {
-      clearTimeout(this.rebuildHandle);
-      this.rebuildHandle = undefined;
-    }
-    if (this.followHandle) {
-      clearTimeout(this.followHandle);
-      this.followHandle = undefined;
-    }
+    this.pendingRebuild.dispose();
+    this.pendingFollow.dispose();
     this.view = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
@@ -220,20 +215,11 @@ export class OutlineTreeProvider
       this.rebuildPending = true;
       return;
     }
-    if (this.rebuildHandle) {
-      clearTimeout(this.rebuildHandle);
-    }
-    this.rebuildHandle = setTimeout(() => {
-      this.rebuildHandle = undefined;
-      this.rebuild();
-    }, rebuildDelayMs);
+    this.pendingRebuild.schedule(() => this.rebuild());
   }
 
   private rebuildNow(): void {
-    if (this.rebuildHandle) {
-      clearTimeout(this.rebuildHandle);
-      this.rebuildHandle = undefined;
-    }
+    this.pendingRebuild.cancel();
     if (this.view && !this.view.visible) {
       this.rebuildPending = true;
       return;
@@ -308,13 +294,7 @@ export class OutlineTreeProvider
    * Follows the cursor after a pause so a held arrow key does not thrash reveal.
    */
   private scheduleFollowCursor(): void {
-    if (this.followHandle) {
-      clearTimeout(this.followHandle);
-    }
-    this.followHandle = setTimeout(() => {
-      this.followHandle = undefined;
-      void this.followCursor();
-    }, followCursorDelayMs);
+    this.pendingFollow.schedule(() => void this.followCursor());
   }
 
   private async followCursor(): Promise<void> {

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { Debouncer } from '../../core/debounce';
 import { findDailyNoteDate } from '../../core/markdown/parser';
 
 /** What the context needs to know about the index. */
@@ -65,7 +66,8 @@ export function isDailyNoteText(filePath: string, lines: readonly string[]): boo
 export class ActiveNoteContext implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly state = new Map<string, boolean>();
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  /** The re-read waiting for typing in the active note to pause. */
+  private readonly pendingSync = new Debouncer(200);
 
   public constructor(
     private readonly index: ActiveNoteIndex,
@@ -89,9 +91,7 @@ export class ActiveNoteContext implements vscode.Disposable {
   }
 
   public dispose(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
+    this.pendingSync.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -112,13 +112,7 @@ export class ActiveNoteContext implements vscode.Disposable {
   }
 
   private schedule(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-    this.timer = setTimeout(() => {
-      this.timer = undefined;
-      this.sync(vscode.window.activeTextEditor);
-    }, 200);
+    this.pendingSync.schedule(() => this.sync(vscode.window.activeTextEditor));
   }
 
   private update(key: string, value: boolean): void {
