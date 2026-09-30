@@ -329,13 +329,12 @@ export default {
     ]
   },
   curly: {
-    "test/e2e/webviewRuntime.js": 10,
     "test/ui/checkContrast.js": 54,
     "test/ui/checkLayout.js": 5,
     "test/ui/checkRenderedContrast.js": 1,
     "test/ui/checkVisual.js": 4,
     "test/ui/pages.js": 4,
-    "test/ui/verifyWebviews.js": 14
+    "test/ui/verifyWebviews.js": 13
   },
   "jsdoc/escape-inline-tags": {
     "src/test/components-primitives.test.ts": 1,
@@ -345,17 +344,14 @@ export default {
     "src/core/changelog.ts": 1,
     "src/core/markdown/captureWords.ts": 2,
     "src/core/markdown/dates.ts": 1,
-    "src/core/markdown/frontmatterTags.ts": 1,
     "src/core/markdown/inlineRanges.ts": 1,
     "src/core/markdown/moveLines.ts": 2,
-    "src/core/markdown/parser.ts": 5,
+    "src/core/markdown/parser.ts": 4,
     "src/core/markdown/taskDraft.ts": 1,
-    "src/core/markdown/taskMetadata.ts": 5,
+    "src/core/markdown/taskMetadata.ts": 4,
     "src/core/mcp/mcpProtocol.ts": 4,
-    "src/core/query/queryEvaluator.ts": 4,
-    "src/core/query/queryFormat.ts": 1,
+    "src/core/query/queryEvaluator.ts": 3,
     "src/core/query/queryLinks.ts": 2,
-    "src/core/query/queryParser.ts": 1,
     "src/core/query/queryTypes.ts": 6,
     "src/core/storage/preferenceSnapshots.ts": 5,
     "src/core/storage/preferences.ts": 11,
@@ -478,7 +474,6 @@ export default {
     "src/test/naming.test.ts": 1,
     "src/ui/commands/parking.ts": 1,
     "src/ui/commands/taskActions.ts": 1,
-    "test/e2e/webviewRuntime.js": 1,
     "test/ui/checkContrast.js": 2,
     "test/ui/checkLayout.js": 17,
     "test/ui/checkRenderedContrast.js": 5,
@@ -692,9 +687,6 @@ export default {
     "src/ui/webview/themes.ts": [
       "getDeckardThemeCss"
     ],
-    "test/e2e/webviewRuntime.js": [
-      "mountWebview"
-    ],
     "test/perf/indexSpeed.js": [
       "bench"
     ],
@@ -716,10 +708,9 @@ export default {
   },
   "no-nested-ternary": {
     "src/core/markdown/dates.ts": 1,
-    "src/core/markdown/listNesting.ts": 1,
     "src/core/markdown/parser.ts": 1,
     "src/core/markdown/taskMetadata.ts": 2,
-    "src/core/query/queryEvaluator.ts": 2,
+    "src/core/query/queryDates.ts": 2,
     "src/core/query/queryFormat.ts": 1,
     "src/core/storage/preferences.ts": 2,
     "src/core/workspace/indexState.ts": 2,
@@ -757,8 +748,7 @@ export default {
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 2,
-    "test/ui/pages.js": 1
+    "test/ui/checkLayout.js": 2
   },
   "unicorn/no-negated-condition": {
     "src/core/markdown/parser.ts": 2,
@@ -814,7 +804,6 @@ export default {
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/activeHome.ts": 1,
     "src/ui/webview/sidebarNotes.ts": 3,
-    "src/ui/webview/taskBoard.ts": 1,
-    "test/e2e/webviewRuntime.js": 1
+    "src/ui/webview/taskBoard.ts": 1
   }
 };

@@ -1,4 +1,6 @@
-import { findFencedLines, stripTags } from './parser';
+import { findFrontmatterEnd } from './frontmatter';
+import { findFencedLines, isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
+import { stripTags } from './parser';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
 
 /**
@@ -8,11 +10,11 @@ import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
  * preview drops the same Markdown the same way.
  */
 
-const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 const TABLE_ROW = /^\s*\|/;
 const RULE = /^\s*([-*_])(?:\s*\1){2,}\s*$/;
 const IMAGE_ONLY = /^\s*(?:!\[[^\]]*\]\([^)]*\)|!\[\[[^\]]*\]\])\s*$/;
-const TASK = /^\s*[-*+][ \t]+\[[ xX>]\][ \t]+/;
+/** A task line of any kind, migrated `[>]` included, with a gap before its words. */
+const TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX>', after: 'gap' };
 const LIST_OR_QUOTE = /^\s*(?:>\s*)*(?:(?:[-*+]|\d+[.)])[ \t]+)?/;
 
 /** One line's words: links read as their text, and marks, tags, and ids gone. */
@@ -38,11 +40,9 @@ function cleanLine(line: string, personMarker?: string): string {
  */
 export function readProseLines(markdown: string, options: { personMarker?: string } = {}): string[] {
   let lines = markdown.split(/\r?\n/);
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, index) => index > 0 && /^(?:---|\.\.\.)\s*$/.test(line));
-    if (end > 0) {
-      lines = lines.slice(end + 1);
-    }
+  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (frontmatterEnd !== undefined) {
+    lines = lines.slice(frontmatterEnd + 1);
   }
   const fenced = findFencedLines(lines);
   const prose: string[] = [];
@@ -51,16 +51,16 @@ export function readProseLines(markdown: string, options: { personMarker?: strin
     if (
       fenced.has(index) ||
       line.trim() === '' ||
-      HEADING.test(line) ||
+      isHeadingLine(line, { allowBare: true }) ||
       TABLE_ROW.test(line) ||
       RULE.test(line) ||
       IMAGE_ONLY.test(line)
     ) {
       return;
     }
-    const task = line.match(TASK);
+    const task = matchTaskLine(line, TASK);
     if (task) {
-      const words = cleanLine(parseTaskMetadata(line.slice(task[0].length)).title, options.personMarker);
+      const words = cleanLine(parseTaskMetadata(task.body).title, options.personMarker);
       if (words) {
         tasks.push(words);
       }

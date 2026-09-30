@@ -5,6 +5,7 @@ import {
   isTaskItemLine,
   lineIndent,
 } from './listNesting';
+import { isHeadingLine, isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
 import { setTaskLineCompletion } from './taskMetadata';
 
@@ -110,15 +111,20 @@ export function findStepFamily(lines: readonly string[], lineIndex: number): Ste
   return { ...(parent !== undefined ? { parent } : {}), steps };
 }
 
+/** A checked task, `[x]` or `[X]`, indented by spaces and tabs only. */
+const CHECKED_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'xX' };
+/** A bullet and the `[` of a box, whatever follows it. */
+const BOX_OPENING: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'unread' };
+
 /** Whether a task line is checked. */
 export function isCheckedTaskLine(line: string): boolean {
-  return /^[ \t]*[-*+][ \t]+\[[xX]\]/.test(line);
+  return isTaskLineOf(line, CHECKED_TASK);
 }
 
 /** The 0-based column of a task line's checkbox mark, between its brackets. */
 export function findCheckboxColumn(line: string): number {
-  const match = line.match(/^[ \t]*[-*+][ \t]+\[/);
-  return match ? match[0].length : -1;
+  const match = matchTaskLine(line, BOX_OPENING);
+  return match ? match.opening.length : -1;
 }
 
 /**
@@ -133,7 +139,7 @@ export function findLastDescendantLine(lines: readonly string[], lineIndex: numb
     if (line.trim() === '') {
       continue;
     }
-    if (lineIndent(line) <= indent || /^ {0,3}#{1,6}(?:[ \t]|$)/.test(line)) {
+    if (lineIndent(line) <= indent || isHeadingLine(line, { allowBare: true })) {
       break;
     }
     last = index;

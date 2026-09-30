@@ -7,6 +7,7 @@ import {
   QueryNode,
   QueryTermChip,
 } from './queryTypes';
+import { escapeRegExp, isWildcard } from './queryValues';
 
 /**
  * Edits query text by the terms a person wrote, rather than by rewriting it.
@@ -212,8 +213,7 @@ export function extractTagTerms(
       node.type !== 'condition' ||
       node.field !== 'tag' ||
       node.operator !== 'eq' ||
-      node.value.includes('*') ||
-      node.value.includes('?') ||
+      isWildcard(node.value) ||
       span.start === undefined ||
       span.end === undefined
     ) {
@@ -387,7 +387,7 @@ function mergeAlternative(
   existing: string,
   clause: string,
 ): string | undefined {
-  const escaped = existing.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escaped = escapeRegExp(existing);
   const match = new RegExp(`(^|[\\s(])${escaped}(?=$|[\\s)])`, 'i').exec(text);
   if (!match) {
     return undefined;

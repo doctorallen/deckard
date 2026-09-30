@@ -1,4 +1,5 @@
-import { findFencedLines } from './parser';
+import { findFrontmatterEnd } from './frontmatter';
+import { findFencedLines, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findTaskMetadataSpans } from './taskMetadata';
 
 /**
@@ -9,7 +10,8 @@ import { findTaskMetadataSpans } from './taskMetadata';
 /** Words a minute an adult reads silently, on average. */
 export const READING_WORDS_PER_MINUTE = 238;
 
-const TASK_LINE = /^(\s*[-*+][ \t]+\[[ xX]\])/;
+/** A task line whose checkbox and metadata are masked: any mark but `[>]`. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]/;
 const BLOCK_ID = /[ \t]+\^[A-Za-z0-9-]+[ \t]*$/;
 
@@ -32,14 +34,12 @@ function blankRange(line: string, start: number, end: number): string {
 export function maskNoteForWords(lines: readonly string[]): string[] {
   const masked = [...lines];
   let start = 0;
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-    if (end > 0) {
-      for (let at = 0; at <= end; at += 1) {
-        masked[at] = blank(masked[at]);
-      }
-      start = end + 1;
+  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (frontmatterEnd !== undefined) {
+    for (let at = 0; at <= frontmatterEnd; at += 1) {
+      masked[at] = blank(masked[at]);
     }
+    start = frontmatterEnd + 1;
   }
   const fenced = findFencedLines([...lines]);
   let inComment = false;
@@ -89,14 +89,14 @@ export function maskNoteForWords(lines: readonly string[]): string[] {
     line = line.replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, (whole, target: string, alias: string) =>
       `  ${blank(target)} ${alias}  `.slice(0, whole.length),
     );
-    const task = TASK_LINE.exec(line);
+    const task = matchTaskLine(line, TASK_LINE);
     if (task) {
-      const offset = task[1].length;
+      const offset = task.head.length;
       let body = line.slice(offset);
       for (const span of findTaskMetadataSpans(body)) {
         body = blankRange(body, span.start, span.end);
       }
-      line = blank(task[1]) + body;
+      line = blank(task.head) + body;
     } else {
       line = line.replace(BLOCK_ID, blank);
     }

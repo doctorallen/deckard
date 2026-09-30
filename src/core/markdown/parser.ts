@@ -11,14 +11,16 @@ import {
 import {
   BLOCK_ID_PATTERN,
   MIGRATED_TASK_LINE,
-  parseIsoDate,
   parseTaskMetadata,
 } from './taskMetadata';
-import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
+import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
+import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
 import { findListParents, findParentTaskLine } from './listNesting';
+import { findFencedLines, isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
+export { findFencedLines } from './lineShapes';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds
@@ -59,8 +61,16 @@ function getTagField(field: string): string {
   return field === 'describes' ? 'tags' : field;
 }
 
-const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
-const taskPattern = /^(\s*)([-*+])[ \t]+\[([ xX])\][ \t]+(.*)$/;
+/** Whether a line is a heading as the parser reads one, words and all. */
+function isParsedHeading(line: string): boolean {
+  return matchHeading(line, 'kept') !== undefined;
+}
+
+/**
+ * A task the index reads: any mark but `[>]`, a gap after the box, and the
+ * rest of the line on one line.
+ */
+const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
@@ -438,11 +448,8 @@ function formatTitlePart(value: string): string {
     entityNamespaceAliases?: EntityNamespaceAliases,
     personMarker?: string,
   ): Frontmatter {
-    if (lines[0]?.trim() !== '---') {
-      return { tags: [], links: [], tagSpans: [] };
-    }
-    const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-    if (end < 0) {
+    const end = findFrontmatterEnd(lines, 'dashes');
+    if (end === undefined) {
       return { tags: [], links: [], tagSpans: [] };
     }
 
@@ -454,7 +461,7 @@ function formatTitlePart(value: string): string {
       const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
       if (property) {
         currentKey = property[1].toLowerCase();
-        values.set(currentKey, splitFrontmatterValues(property[2]));
+        values.set(currentKey, splitFrontmatterValues(property[2], { keepEmptyValue: true }));
         const valueStart = line.indexOf(property[2], property[1].length + 1);
         tagSpans.push(
           ...createFrontmatterTagSpans(
@@ -581,25 +588,6 @@ function formatTitlePart(value: string): string {
           })),
       },
     };
-  }
-
-  function splitFrontmatterValues(value: string): string[] {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return [];
-    }
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      return trimmed
-        .slice(1, -1)
-        .split(',')
-        .map((item) => unquote(item.trim()))
-        .filter(Boolean);
-    }
-    return [unquote(trimmed)];
-  }
-
-  function unquote(value: string): string {
-    return value.replace(/^['"]|['"]$/g, '');
   }
 
   function frontmatterValueToTag(
@@ -776,11 +764,11 @@ function collectTagSpans(
       return [];
     }
 
-    const heading = line.match(headingPattern);
+    const heading = matchHeading(line, 'kept');
     if (heading) {
-      const headingTextStart = heading[0].indexOf(heading[2]);
+      const headingTextStart = line.indexOf(heading.text);
       return createTagSpans(
-        heading[2],
+        heading.text,
         lineIndex + 1,
         headingTextStart,
         entityNamespaceAliases,
@@ -1093,12 +1081,12 @@ function findHeadings(
     if (fencedLines.has(lineIndex)) {
       return;
     }
-    const match = line.match(headingPattern);
+    const match = matchHeading(line, 'kept');
     if (match) {
       headings.push({
         lineNumber: lineIndex + 1,
-        level: match[1].length,
-        text: stripClosingHeadingHashes(match[2].trim()),
+        level: match.level,
+        text: stripClosingHeadingHashes(match.text.trim()),
       });
     }
   });
@@ -1273,10 +1261,10 @@ function findInlineSections(
     const line = lines[lineIndex];
     if (
       fencedLines.has(lineIndex) ||
-      headingPattern.test(line) ||
-      taskPattern.test(line) ||
+      isParsedHeading(line) ||
+      isTaskLineOf(line, taskShape) ||
       // A task migrated to another day is neither a task nor a note.
-      MIGRATED_TASK_LINE.test(line)
+      isTaskLineOf(line, MIGRATED_TASK_LINE)
     ) {
       lineIndex += 1;
       continue;
@@ -1324,8 +1312,8 @@ function findInlineSections(
       const continuation = lines[lineIndex];
       if (
         fencedLines.has(lineIndex) ||
-        headingPattern.test(continuation) ||
-        taskPattern.test(continuation) ||
+        isParsedHeading(continuation) ||
+        isTaskLineOf(continuation, taskShape) ||
         getListItemMatch(continuation) ||
         extractTags(continuation, undefined, personMarker).length === 0
       ) {
@@ -1420,14 +1408,14 @@ function findTasks(
     if (fencedLines.has(lineIndex)) {
       return [];
     }
-    const match = line.match(taskPattern);
+    const match = matchTaskLine(line, taskShape);
     if (!match) {
       return [];
     }
 
     const lineNumber = lineIndex + 1;
     const section = findNearestSection(sections, lineNumber);
-    const inlineTags = extractTags(match[4], undefined, personMarker);
+    const inlineTags = extractTags(match.body, undefined, personMarker);
     const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
     const inheritedLabels =
       section?.tagLabels ??
@@ -1437,17 +1425,17 @@ function findTasks(
       inlineTags.map((tag) => tag.key),
     );
     const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
-    const checkboxColumn = match[1].length + match[2].length + 2;
-    const checkboxValue = match[3] as ' ' | 'x' | 'X';
+    const checkboxColumn = match.indent.length + match.bullet.length + 2;
+    const checkboxValue = match.mark as ' ' | 'x' | 'X';
     // Obsidian Tasks markers become fields and leave the title, so a ✅ date
     // is never read as a due date and titles read the way Tasks shows them.
-    const { metadata: fields, title } = parseTaskMetadata(match[4]);
+    const { metadata: fields, title } = parseTaskMetadata(match.body);
     const dueDate =
       fields.due !== undefined
         ? toTaskDate(fields.due)
         : findTaskDate(title, dateAnchor);
 
-    const id = createId('task', `${filePath}:${lineNumber}:${match[4]}`);
+    const id = createId('task', `${filePath}:${lineNumber}:${match.body}`);
     idsByLine.set(lineIndex, id);
     const parentLine = findParentTaskLine(lines, listParents, lineIndex);
     const parentTaskId = parentLine === undefined ? undefined : idsByLine.get(parentLine);
@@ -1457,7 +1445,7 @@ function findTasks(
         id,
         filePath,
         sectionId: section?.id,
-        title: title || match[4],
+        title: title || match.body,
         completed: checkboxValue !== ' ',
         tags,
         tagLabels,
@@ -1599,7 +1587,7 @@ function omitUndefined<T extends object>(value: T): Partial<T> {
 function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   const explicit = text.match(explicitDatePattern);
   if (explicit) {
-    const at = createLocalDate(
+    const at = makeDay(
       Number(explicit[1]),
       Number(explicit[2]) - 1,
       Number(explicit[3]),
@@ -1616,7 +1604,7 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
     const at =
       month === undefined
         ? undefined
-        : createLocalDate(year, month, Number(monthDate[2]));
+        : makeDay(year, month, Number(monthDate[2]));
     return at === undefined ? undefined : { at, text: monthDate[0] };
   }
 
@@ -1636,27 +1624,6 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
 const monthNumbers = MONTH_NUMBERS;
 const weekdayNames = WEEKDAY_NAMES;
 
-function createLocalDate(
-  year: number,
-  month: number,
-  day: number,
-): number | undefined {
-  const date = new Date(year, month, day);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month ||
-    date.getDate() !== day
-  ) {
-    return undefined;
-  }
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
-/**
- * Marks fence delimiters and their contents in one pass so every Markdown
- * feature can ignore examples without maintaining a second parser.
- */
 /**
  * The block ids a note carries, each with the one-based line it marks.
  *
@@ -1679,31 +1646,6 @@ export function findBlockIds(
     }
   });
   return blockIds;
-}
-
-export function findFencedLines(lines: string[]): Set<number> {
-  const fencedLines = new Set<number>();
-  let fenceCharacter: '`' | '~' | undefined;
-
-  lines.forEach((line, lineIndex) => {
-    const fence = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (fence) {
-      fencedLines.add(lineIndex);
-      const nextFenceCharacter = fence[1][0] as '`' | '~';
-      if (fenceCharacter === undefined) {
-        fenceCharacter = nextFenceCharacter;
-      } else if (fenceCharacter === nextFenceCharacter) {
-        fenceCharacter = undefined;
-      }
-      return;
-    }
-
-    if (fenceCharacter !== undefined) {
-      fencedLines.add(lineIndex);
-    }
-  });
-
-  return fencedLines;
 }
 
 /**
@@ -1810,12 +1752,12 @@ function mergeTagLabels(
  * Tells completion whether a trailing hash belongs to ATX syntax, not a tag.
  */
 export function hasAtxHeadingClosingHashes(line: string): boolean {
-  const match = line.match(headingPattern);
+  const match = matchHeading(line, 'kept');
   if (!match) {
     return false;
   }
 
-  const text = match[2].trim();
+  const text = match.text.trim();
   return stripClosingHeadingHashes(text) !== text;
 }
 
@@ -1843,9 +1785,9 @@ export function getTaskLineId(
   lineNumber: number,
   lineText: string,
 ): string | undefined {
-  const match = lineText.match(taskPattern);
+  const match = matchTaskLine(lineText, taskShape);
   return match
-    ? createId('task', `${filePath}:${lineNumber}:${match[4]}`)
+    ? createId('task', `${filePath}:${lineNumber}:${match.body}`)
     : undefined;
 }
 

@@ -1,4 +1,6 @@
-import { findFencedLines, stripTags } from './parser';
+import { findFrontmatterEnd } from './frontmatter';
+import { findFencedLines, matchHeading } from './lineShapes';
+import { stripTags } from './parser';
 
 /**
  * Where a tag offered to an untagged note is written: the heading or line
@@ -13,17 +15,13 @@ export interface TagTarget {
   label: string;
 }
 
-const HEADING = /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*(?:#+[ \t]*)?$/;
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]+/;
 
 /** The lines of the note's front matter, 0-based, if it opens with some. */
 function findFrontMatter(lines: readonly string[]): Set<number> {
   const held = new Set<number>();
-  if (lines[0]?.trim() !== '---') {
-    return held;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && /^(?:---|\.\.\.)\s*$/.test(line));
-  if (end < 0) {
+  const end = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (end === undefined) {
     return held;
   }
   for (let index = 0; index <= end; index += 1) {
@@ -33,9 +31,9 @@ function findFrontMatter(lines: readonly string[]): Set<number> {
 }
 
 function headingTarget(lines: readonly string[], index: number): TagTarget | undefined {
-  const match = HEADING.exec(lines[index]);
+  const match = matchHeading(lines[index], 'dropped');
   return match
-    ? { line: index + 1, kind: 'heading', label: stripTags(match[2]) || match[2] }
+    ? { line: index + 1, kind: 'heading', label: stripTags(match.text) || match.text }
     : undefined;
 }
 

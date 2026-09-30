@@ -1,3 +1,7 @@
+import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
+
+export { unquote } from './frontmatter';
+
 /**
  * Adding a tag to a note's front matter, and taking tags out of it, without
  * touching anything else the front matter says.
@@ -8,31 +12,21 @@
  * values written with their `#`. Line endings are kept as the note has them.
  */
 
-/** The line the front matter closes on, when the note opens with one. */
+/**
+ * The line the front matter closes on, when the note opens with one. Only
+ * `---` closes it here, trimmed, as the parser reads it.
+ */
 export function getFrontmatterBounds(lines: readonly string[]): { end: number } | undefined {
-  if (lines[0]?.trim() !== '---') {
-    return undefined;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end >= 0 ? { end } : undefined;
+  const end = findFrontmatterEnd(lines, 'dashes');
+  return end === undefined ? undefined : { end };
 }
 
-/** The values of a front-matter field written on its own line. */
+/**
+ * The values of a front-matter field written on its own line; a lone value
+ * that is empty once unquoted is dropped.
+ */
 export function splitValues(value: string): string[] {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return [];
-  }
-  return (trimmed.startsWith('[') && trimmed.endsWith(']')
-    ? trimmed.slice(1, -1).split(',')
-    : [trimmed]
-  )
-    .map((item) => unquote(item.trim()))
-    .filter(Boolean);
-}
-
-export function unquote(value: string): string {
-  return value.replace(/^['"]|['"]$/g, '');
+  return splitFrontmatterValues(value);
 }
 
 /** A tag as front matter compares it: no `#`, no quotes, any case. */

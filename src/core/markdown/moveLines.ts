@@ -1,4 +1,14 @@
-import { findFencedLines, findListItemEndLine, listItemIndentation } from './parser';
+import { findFrontmatterEnd } from './frontmatter';
+import {
+  findFencedLines,
+  HeadingShape,
+  isHeadingLine,
+  isTaskLineOf,
+  matchTaskLine,
+  TaskLineMatch,
+  TaskLineShape,
+} from './lineShapes';
+import { findListItemEndLine, listItemIndentation } from './parser';
 import { markMigrated } from './taskMetadata';
 
 /**
@@ -34,9 +44,12 @@ export interface MoveSelection {
   isEmpty: boolean;
 }
 
-const HEADING = /^ {0,3}#{1,6}[ \t]+/;
-const OPEN_TASK = /^(\s*[-*+][ \t]+\[) \]/;
-const ANY_TASK = /^\s*[-*+][ \t]+\[[ xX>]\]/;
+/** A heading a move refuses to take: hashes alone, `#`, are not one here. */
+const HEADING: HeadingShape = { allowBare: false };
+/** An open task, which a move can leave behind marked `[>]`. */
+const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ' };
+/** A task of any kind: open, done, or migrated. */
+const ANY_TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX>' };
 
 /**
  * The block a move takes: the selected lines, or with nothing selected the
@@ -53,14 +66,14 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   }
   if (selection.isEmpty) {
     const text = lines[start] ?? '';
-    if (HEADING.test(text)) {
+    if (isHeadingLine(text, HEADING)) {
       return { refused: 'heading' };
     }
     if (!text.trim()) {
       return { refused: 'blank' };
     }
   }
-  const frontMatterEnd = findFrontMatterEnd(lines);
+  const frontMatterEnd = findFrontmatterEnd(lines, 'dashes');
   if (frontMatterEnd !== undefined && start <= frontMatterEnd) {
     return { refused: 'frontMatter' };
   }
@@ -82,7 +95,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   while (end > start && !(lines[end] ?? '').trim()) {
     end -= 1;
   }
-  if (rangeOf(start, end).some((line) => HEADING.test(lines[line] ?? ''))) {
+  if (rangeOf(start, end).some((line) => isHeadingLine(lines[line] ?? '', HEADING))) {
     return { refused: 'heading' };
   }
   const fenced = findFencedLines([...lines]);
@@ -98,8 +111,11 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   const topLevel = rangeOf(start, end).filter(
     (line) => (lines[line] ?? '').trim() && leading(lines[line]) === base,
   );
-  const openTasks = topLevel.every((line) => OPEN_TASK.test(lines[line]))
-    ? topLevel.map((line) => ({ line, checkboxColumn: (OPEN_TASK.exec(lines[line]) as RegExpExecArray)[1].length }))
+  const openTasks = topLevel.every((line) => isTaskLineOf(lines[line], OPEN_TASK))
+    ? topLevel.map((line) => ({
+        line,
+        checkboxColumn: (matchTaskLine(lines[line], OPEN_TASK) as TaskLineMatch).opening.length,
+      }))
     : undefined;
   return {
     start,
@@ -112,7 +128,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
 
 /** Whether a line is a task of any kind, open, done, or migrated. */
 export function isAnyTaskLine(line: string): boolean {
-  return ANY_TASK.test(line);
+  return isTaskLineOf(line, ANY_TASK);
 }
 
 /**
@@ -204,14 +220,6 @@ export function lineOffsets(text: string): number[] {
     }
   }
   return offsets;
-}
-
-function findFrontMatterEnd(lines: readonly string[]): number | undefined {
-  if (lines[0]?.trim() !== '---') {
-    return undefined;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end > 0 ? end : undefined;
 }
 
 function leading(line: string): number {

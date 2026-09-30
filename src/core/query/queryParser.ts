@@ -1,5 +1,6 @@
-import { parseWikiTarget } from '../workspace/backlinks';
-import { resolveDateRange } from './queryEvaluator';
+import { resolveDateRange } from './queryDates';
+import { readLinkValue } from './queryLinks';
+import { normalizeFolder } from './queryValues';
 import {
   ParsedQuery,
   QueryConditionNode,
@@ -9,8 +10,16 @@ import {
   QueryOperator,
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
+  QUERY_HAS_VALUES,
+  QUERY_IS_VALUES,
+  QUERY_PRIORITY_VALUES,
   QUERY_TASK_DATE_FIELDS,
+  QUERY_TASK_VALUES,
+  describeOperator,
 } from './queryTypes';
+
+export { readLinkValue } from './queryLinks';
+export { describeOperator } from './queryTypes';
 
 /**
  * Parses DQL, the Deckard query language.
@@ -726,7 +735,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, due, today, needs-date, waiting, available, blocked, blocking, mine, assigned, unassigned, daily, periodic, parked, or step — not "${value}".`,
+          message: `is: accepts ${listAlternatives(QUERY_IS_VALUES)} — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -740,7 +749,7 @@ class Parser {
       const normalized = HAS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `has: and no: accept due, scheduled, start, done, priority, id, dependsOn, or steps — not "${value}".`,
+          message: `has: and no: accept ${listAlternatives(QUERY_HAS_VALUES)} — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -751,7 +760,7 @@ class Parser {
     }
 
     if (field === 'in') {
-      const folder = value.replace(/^\.\//, '').replace(/\/+$/, '');
+      const folder = normalizeFolder(value);
       if (!folder) {
         this.diagnostics.push({
           message: 'in: needs a folder, such as in:notes/projects.',
@@ -768,7 +777,7 @@ class Parser {
       const normalized = TASK_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `task accepts open, done, or any — not "${value}".`,
+          message: `task accepts ${listAlternatives(QUERY_TASK_VALUES)} — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -805,7 +814,7 @@ class Parser {
       const normalized = PRIORITY_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `priority accepts highest, high, medium, none, low, or lowest — not "${value}".`,
+          message: `priority accepts ${listAlternatives(QUERY_PRIORITY_VALUES)} — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -864,33 +873,6 @@ class Parser {
 }
 
 /**
- * The note a `link` value names, as the AST keeps it: without brackets or an
- * alias after `|`, such as `Atlas`, `Atlas#Decision`, or `Atlas#^q3`. Empty
- * when no note is named, as in `[[#Decision]]`.
- */
-export function readLinkValue(value: string): string {
-  let inner = value.trim();
-  if (inner.startsWith('[[')) {
-    inner = inner.slice(2);
-  }
-  if (inner.endsWith(']]')) {
-    inner = inner.slice(0, -2);
-  }
-  const bar = inner.indexOf('|');
-  if (bar >= 0) {
-    inner = inner.slice(0, bar);
-  }
-  const target = parseWikiTarget(inner);
-  if (!target.note) {
-    return '';
-  }
-  if (target.block) {
-    return `${target.note}#^${target.block}`;
-  }
-  return target.heading ? `${target.note}#${target.heading}` : target.note;
-}
-
-/**
  * Maps written operators onto the evaluator's operator set.
  */
 function readOperator(value: string, field: QueryField): QueryOperator {
@@ -914,25 +896,16 @@ function readOperator(value: string, field: QueryField): QueryOperator {
   }
 }
 
-export function describeOperator(operator: QueryOperator): string {
-  switch (operator) {
-    case 'eq':
-      return '=';
-    case 'neq':
-      return '!=';
-    case 'contains':
-      return '~';
-    case 'notContains':
-      return '!~';
-    case 'gt':
-      return '>';
-    case 'gte':
-      return '>=';
-    case 'lt':
-      return '<';
-    case 'lte':
-      return '<=';
+/**
+ * The values a field accepts, as an error message lists them: `a, b, or c`,
+ * or `a or b` for two. Built from the QUERY_*_VALUES lists, so a value its
+ * list gains is named in its message too.
+ */
+function listAlternatives(values: readonly string[]): string {
+  if (values.length <= 2) {
+    return values.join(' or ');
   }
+  return `${values.slice(0, -1).join(', ')}, or ${values[values.length - 1]}`;
 }
 
 /**

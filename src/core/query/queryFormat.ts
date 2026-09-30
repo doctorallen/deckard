@@ -1,5 +1,7 @@
-import { describeOperator, readLinkValue } from './queryParser';
+import { readLinkValue } from './queryLinks';
+import { isWildcard } from './queryValues';
 import {
+  describeOperator,
   QUERY_OPERATOR_INVERSES,
   QUERY_SHORTHAND_FIELDS,
   QueryBuilderGroup,
@@ -9,6 +11,8 @@ import {
   QueryField,
   QueryNode,
 } from './queryTypes';
+
+export { isWildcard } from './queryValues';
 
 /**
  * Renders an AST back into canonical DQL text.
@@ -128,10 +132,6 @@ export function getQueryTagIntersection(
     tagKeys.push(condition.value);
   }
   return tagKeys;
-}
-
-export function isWildcard(value: string): boolean {
-  return value.includes('*') || value.includes('?');
 }
 
 /**

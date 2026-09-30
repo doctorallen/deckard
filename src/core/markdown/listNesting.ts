@@ -1,3 +1,5 @@
+import { findFencedLines, isHeadingLine, isTaskLineOf, TaskLineShape } from './lineShapes';
+
 /**
  * Which list item each list item is written under, read from indentation
  * alone: the one rule the parser, Break into Steps…, completion, and
@@ -9,9 +11,8 @@
  */
 
 const LIST_ITEM = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+/;
-const TASK_ITEM = /^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+/;
-const HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+/** A step's checkbox: indented by spaces and tabs only, with a gap after it. */
+const TASK_ITEM: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
 
 /** How far a line's whitespace reaches, with a tab counted to the next multiple of 4. */
 export function measureIndent(whitespace: string): number {
@@ -40,7 +41,7 @@ export function isListItemLine(line: string): boolean {
 
 /** Whether a line is a checkbox task, as the parser reads one. */
 export function isTaskItemLine(line: string): boolean {
-  return TASK_ITEM.test(line);
+  return isTaskLineOf(line, TASK_ITEM);
 }
 
 /**
@@ -54,9 +55,9 @@ export function findListParents(
 ): Map<number, number | undefined> {
   const parents = new Map<number, number | undefined>();
   const stack: Array<{ width: number; line: number }> = [];
-  const fenced = fencedLines ?? findFences(lines);
+  const fenced = fencedLines ?? findFencedLines(lines);
   lines.forEach((line, index) => {
-    if (fenced.has(index) || HEADING.test(line)) {
+    if (fenced.has(index) || isHeadingLine(line, { allowBare: true })) {
       stack.length = 0;
       return;
     }
@@ -78,23 +79,6 @@ export function findListParents(
     stack.push({ width, line: index });
   });
   return parents;
-}
-
-/** The lines of fenced code blocks, fences included, as the parser finds them. */
-function findFences(lines: readonly string[]): Set<number> {
-  const fenced = new Set<number>();
-  let open: string | undefined;
-  lines.forEach((line, index) => {
-    const match = line.match(FENCE);
-    if (match) {
-      fenced.add(index);
-      const character = match[1][0];
-      open = open === undefined ? character : open === character ? undefined : open;
-    } else if (open !== undefined) {
-      fenced.add(index);
-    }
-  });
-  return fenced;
 }
 
 /**

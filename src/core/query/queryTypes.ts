@@ -111,6 +111,28 @@ export const QUERY_PRIORITY_VALUES = [
   'lowest',
 ] as const;
 
+/** The operator as a query writes it: `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=`. */
+export function describeOperator(operator: QueryOperator): string {
+  switch (operator) {
+    case 'eq':
+      return '=';
+    case 'neq':
+      return '!=';
+    case 'contains':
+      return '~';
+    case 'notContains':
+      return '!~';
+    case 'gt':
+      return '>';
+    case 'gte':
+      return '>=';
+    case 'lt':
+      return '<';
+    case 'lte':
+      return '<=';
+  }
+}
+
 /**
  * Operators each field accepts, in the order the visual builder offers them.
  *
