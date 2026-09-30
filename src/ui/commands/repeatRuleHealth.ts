@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { KeyedDebouncer } from '../../core/debounce';
+import { matchTaskLine, TaskLineShape } from '../../core/markdown/lineShapes';
 import { findFencedLines } from '../../core/markdown/parser';
 import {
   findTaskMetadataSpans,
@@ -19,7 +20,8 @@ export interface RepeatRuleProblem {
   suggestions: string[];
 }
 
-const OPEN_TASK = /^(\s*[-*+][ \t]+\[ \][ \t]?)/;
+/** An open task line; one space or tab after its box belongs to the box. */
+const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ', after: 'optional-blank' };
 const UNREADABLE_REPEAT = 'unreadable-repeat';
 const CHECK_DELAY_MS = 300;
 
@@ -38,11 +40,11 @@ export function findRepeatRuleProblems(lines: readonly string[]): RepeatRuleProb
   }
   const problems: RepeatRuleProblem[] = [];
   lines.forEach((text, line) => {
-    const task = OPEN_TASK.exec(text);
+    const task = matchTaskLine(text, OPEN_TASK);
     if (!task || line < skip || fenced.has(line)) {
       return;
     }
-    const offset = task[1].length;
+    const offset = task.head.length + task.gap.length;
     const body = text.slice(offset);
     for (const span of findTaskMetadataSpans(body)) {
       if (span.field !== 'repeat' || !span.value || parseRecurrence(span.value)) {

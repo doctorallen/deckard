@@ -1,3 +1,4 @@
+import { matchTaskLine, TaskLineShape } from '../../core/markdown/lineShapes';
 import { findFencedLines } from '../../core/markdown/parser';
 import {
   describeDueDate,
@@ -27,8 +28,8 @@ export interface TaskLineMarks {
   hints: TaskLineHint[];
 }
 
-/** A task line: its checkbox, and the text after it. */
-const TASK_LINE = /^(\s*[-*+][ \t]+\[([ xX])\][ \t]?)/;
+/** An open or done task line; one space or tab after its box belongs to the box. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
 /** A block id at the end of any line. */
 const BLOCK_ID = /[ \t]+(\^[A-Za-z0-9-]+)[ \t]*$/;
 
@@ -61,7 +62,7 @@ export function findTaskLineMarks(
     if (line < skip || fenced.has(line)) {
       return;
     }
-    const task = TASK_LINE.exec(text);
+    const task = matchTaskLine(text, TASK_LINE);
     if (!task) {
       const blockId = BLOCK_ID.exec(text);
       if (options.dim && blockId) {
@@ -70,8 +71,8 @@ export function findTaskLineMarks(
       }
       return;
     }
-    const offset = task[1].length;
-    const open = task[2] === ' ';
+    const offset = task.head.length + task.gap.length;
+    const open = task.mark === ' ';
     const spans = findTaskMetadataSpans(text.slice(offset));
     const due = spans.find((span) => span.field === 'due');
     const dueAt = open && due ? parseIsoDate(due.value) : undefined;
