@@ -3,7 +3,7 @@ import { ActiveHome, HomeSource, HomeWidgetChoice } from './activeHome';
 
 import { listedParkedTags } from '../../core/workspace/parked';
 import { setPinned } from '../commands/pinNote';
-import { readWeekStart } from '../commands/datePrompt';
+import { QueryContext } from '../../core/query/queryContext';
 import { readQueryContext } from '../commands/queryContext';
 import { TryNextSuggestion } from '../state/tryNext';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../commands/tryNext';
@@ -407,15 +407,19 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     }
   }
 
-  /** Try next's suggestion now, only while Home holds the widget. */
+  /**
+   * Try next's suggestion in `queryContext`, its week start and its moment,
+   * only while Home holds the widget.
+   */
   private currentTryNext(
     index: WorkspaceIndex,
     preferences: PersistedPreferences,
+    queryContext: QueryContext,
   ): TryNextSuggestion | undefined {
     if (!this.tryNext || !preferences.dashboardWidgets.some((widget) => widget.kind === 'tryNext')) {
       return undefined;
     }
-    return suggestTryNext(this.tryNext, index, preferences, readWeekStart(), Date.now());
+    return suggestTryNext(this.tryNext, index, preferences, queryContext.weekStart, queryContext.now);
   }
 
   /**
@@ -439,11 +443,13 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     }
     const index = this.indexer.getSnapshot();
     const preferences = this.preferences.value;
-    const suggestion = this.currentTryNext(index, preferences);
+    // One week start and one moment for the suggestion and what it runs on.
+    const queryContext = readQueryContext();
+    const suggestion = this.currentTryNext(index, preferences, queryContext);
     if (!suggestion || suggestion.key !== key) {
       return;
     }
-    await runTryNext(suggestion, collectTryNextInput(index, preferences, readWeekStart(), Date.now()), {
+    await runTryNext(suggestion, collectTryNextInput(index, preferences, queryContext.weekStart, queryContext.now), {
       run: (command, ...args) => vscode.commands.executeCommand(command, ...args),
       pin: async (filePath, line) => {
         const pinned = await setPinned(index, this.preferences, { filePath, line }, true);
@@ -494,6 +500,9 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         mode: this.dashboardMode,
       },
     };
+    // Home alone shows Try next, so only Home asks for its suggestion.
+    const tryNext =
+      this.dashboardMode === 'home' ? this.currentTryNext(index, viewPreferences, queryContext) : undefined;
     const data: DashboardSnapshot = {
       ...createDashboardSnapshot(
         index,
@@ -513,9 +522,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
               agendaQuery: configuration.get<string>('agenda.query', ''),
               tagTitleDisplayMode,
               sourceNotePath: this.getSourceNotePath(),
-              ...(this.currentTryNext(index, viewPreferences)
-                ? { tryNext: this.currentTryNext(index, viewPreferences) }
-                : {}),
+              ...(tryNext ? { tryNext } : {}),
               relatedNotes: {
                 enableKeywordLinks: configuration.get<boolean>(
                   'enableKeywordLinks',
