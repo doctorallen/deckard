@@ -17,7 +17,8 @@ src/
     index/         IndexState, associations, backlinks
     ranking/       related notes, similarity, quick find, frecency, tag hygiene
     tasks/         agenda placement, board moves, reschedule, columns
-    graph/         notes graph construction
+    graph/         notes graph construction, local graphs, change detection
+    search/        search facets, unlinked mentions
   services/        Application logic: one class per capability, vscode-free.
   ports/           Interfaces the services need.
   platform/        vscode implementations of the ports.
@@ -76,7 +77,8 @@ Some examples from the audit:
 
 | Today | Target | Why |
 | --- | --- | --- |
-| `rankRelatedNotes` in `ui/state/relatedNotesRanking.ts` | `domain/ranking` | It is a pure ranking engine wearing a view-model name. |
+| `rankRelatedNotes` in `ui/state/relatedNotesRanking.ts` | `domain/ranking/relatedNotes.ts` (done in Phase 4) | It is a pure ranking engine wearing a view-model name. `createSidebarSnapshot`, which shapes its result for the sidebar, stays in `ui/state`. |
+| `createNotesGraphSnapshot` in `ui/state/notesGraphState.ts` | `domain/graph/notesGraph.ts` (done in Phase 4) | It builds a graph from the index. `toWire`, which trims it for the page, stays in `ui/state`. |
 | `buildWorkspaceIndex` in `core/workspace/indexer.ts` | `domain/index` | It is pure, and 54 test files import it through a module that imports `vscode`. |
 | `listOverdueTasks` in `ui/views/agendaTree.ts` | `AgendaService` | The status bar and `extension.ts` import a domain query from a tree view. |
 | `panelPriority` and `viewPriority` in `core/workspace/publishing.ts` | `ui/webview/host` | They map a panel's visibility to a redraw priority, which is a UI concern. |

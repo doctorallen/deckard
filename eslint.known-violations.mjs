@@ -110,16 +110,12 @@ export default {
     "src/ui/state/entryScope.ts": [
       "(arrow function)"
     ],
-    "src/ui/state/notesGraphState.ts": [
-      "addEdge"
-    ],
     "src/ui/state/quickFindState.ts": [
       "buildQuickFindResults",
       "matchTags",
       "rankEntries"
     ],
     "src/ui/state/relatedNotesRanking.ts": [
-      "findSimilarWording",
       "rankRelatedNotes",
       "rankSimilarWording"
     ],
@@ -147,7 +143,6 @@ export default {
     "src/ui/commands/taskEditor.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/state/quickFindState.ts": 1,
-    "src/ui/state/tagHygiene.ts": 1,
     "src/ui/webview/calendarPage.ts": 1
   },
   complexity: {
@@ -251,9 +246,6 @@ export default {
     ],
     "src/ui/state/referenceState.ts": [
       "createLinkPreview"
-    ],
-    "src/ui/state/relatedNotesRanking.ts": [
-      "(arrow function)"
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard",
@@ -391,25 +383,19 @@ export default {
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 3,
     "src/ui/state/calendarState.ts": 1,
-    "src/ui/state/dashboardState.ts": 6,
-    "src/ui/state/editorLensState.ts": 4,
-    "src/ui/state/entryExcerpt.ts": 1,
-    "src/ui/state/frecency.ts": 1,
+    "src/ui/state/dashboardState.ts": 2,
+    "src/ui/state/editorLensState.ts": 3,
     "src/ui/state/noteLinks.ts": 2,
-    "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/queryBlockState.ts": 3,
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
-    "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
-    "src/ui/state/searchFacets.ts": 4,
     "src/ui/state/searchHistory.ts": 2,
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
-    "src/ui/state/wordSimilarity.ts": 4,
     "src/ui/views/agendaTree.ts": 6,
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
@@ -560,24 +546,13 @@ export default {
     "src/ui/state/noteLinks.ts": [
       "collectNoteLinks"
     ],
-    "src/ui/state/notesGraphState.ts": [
-      "createLocalGraphSnapshot"
-    ],
     "src/ui/state/quickFindState.ts": [
       "buildEmptyResults",
       "rankEntries"
     ],
-    "src/ui/state/relatedNotesRanking.ts": [
-      "(arrow function)",
-      "rankRelatedNotes",
-      "rankSimilarWording"
-    ],
     "src/ui/state/reviewState.ts": [
       "formatReview",
       "summarizeReview"
-    ],
-    "src/ui/state/searchFacets.ts": [
-      "buildSearchFacets"
     ],
     "src/ui/state/taskBoardState.ts": [
       "resolveTaskMove"
@@ -691,9 +666,8 @@ export default {
     "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
     "src/ui/state/dashboardWidgets.ts": 1,
-    "src/ui/state/notesGraphState.ts": 3,
+    "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/referenceState.ts": 2,
-    "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
     "src/ui/views/agendaTree.ts": 6,
@@ -754,9 +728,7 @@ export default {
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
-    "src/ui/state/notesGraphState.ts": 3,
     "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/searchFacets.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/activeHome.ts": 1,

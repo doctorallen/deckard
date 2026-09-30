@@ -96,10 +96,20 @@ import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaS
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 import { createPinForLine, pinKey } from './pinnedNotes';
 import { findTagLookalikes, findTagMergeCandidates } from './tagHygiene';
+import {
+  getHeadingPath,
+  getInlineSource,
+  getNoteTitle,
+  getTitleTags,
+} from '../../domain/ranking/entryLabels';
+import { findTagAssociation } from '../../domain/ranking/tagAssociations';
 
 // dashboardWidgets.ts still imports getFileName from here; the re-export
 // keeps that path compiling until it imports core/paths itself.
 export { getFileName };
+// The entry labels and the association lookup moved to domain/ranking with
+// the Related Notes engine; these keep their importers here compiling.
+export { findTagAssociation, getHeadingPath, getInlineSource, getNoteTitle, getTitleTags };
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state,
@@ -1460,16 +1470,6 @@ function hasAllTagOverviewEntries(
   );
 }
 
-export function findTagAssociation(
-  index: WorkspaceIndex,
-  tagKey: string,
-  associatedTagKey: string,
-): TagAssociation | undefined {
-  return index.tagAssociations?.get(tagKey)?.find(
-    (relationship) => relationship.associatedTag.key === associatedTagKey,
-  );
-}
-
 function sectionIncludesTag(
   index: WorkspaceIndex,
   section: Section,
@@ -1589,28 +1589,6 @@ export function sortEntities(
 }
 
 /**
- * Lists a section's heading and its ancestors, outermost first, without tags.
- */
-export function getHeadingPath(
-  section: Section,
-  sectionsById: ReadonlyMap<string, Section>,
-): string[] {
-  const path = [stripTags(section.heading)];
-  const visited = new Set<string>([section.id]);
-  let parentId = section.parentSectionId;
-  while (parentId && !visited.has(parentId)) {
-    visited.add(parentId);
-    const parent = sectionsById.get(parentId);
-    if (!parent) {
-      break;
-    }
-    path.unshift(stripTags(parent.heading));
-    parentId = parent.parentSectionId;
-  }
-  return path.filter(Boolean);
-}
-
-/**
  * Adds rendered task text and source context without changing the domain task.
  * An open task's due date is worded against the context's today and policy.
  */
@@ -1725,26 +1703,6 @@ export function normalizeTagTitleDisplayMode(
   return value === 'separate' ? 'separate' : 'inline';
 }
 
-export function getNoteTitle(
-  heading: string,
-  tagTitleDisplayMode: TagTitleDisplayMode,
-): string {
-  return tagTitleDisplayMode === 'separate' ? stripTags(heading) : heading;
-}
-
-export function getTitleTags(
-  tagKeys: string[],
-  tagLabels: Record<string, string>,
-  title: string,
-): TagReference[] {
-  return tagKeys
-    .map((key) => ({
-      key,
-      label: tagLabels[key] ?? `#${key}`,
-    }))
-    .filter((tag) => title.includes(tag.label));
-}
-
 /**
  * Works out which page of a list is being shown.
  *
@@ -1834,12 +1792,6 @@ function suggestSearch(
     return undefined;
   }
   return correctQueryText(text, parsed.node, (word) => corrections.get(word));
-}
-
-export function getInlineSource(section: Section): string {
-  return section.isInline && section.rawContent
-    ? section.rawContent
-    : section.heading;
 }
 
 /**

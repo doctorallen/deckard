@@ -79,3 +79,36 @@ export interface Entity {
   isFavorite: boolean;
   updatedAt?: number;
 }
+
+/**
+ * Why two tags look like two spellings of one idea, most confusable first:
+ * the same name written with a different marker or under a different
+ * namespace, punctuated differently, pluralized, or simply mistyped.
+ */
+export type TagMergeReason =
+  | 'marker'
+  | 'namespace'
+  | 'separator'
+  | 'plural'
+  | 'spelling';
+
+/** Two tags that look alike, and what merging them would spend and keep. */
+export interface TagMergeCandidate {
+  /** The tag with fewer entries, which a merge spends. */
+  sourceKey: string;
+  sourceLabel: string;
+  sourceCount: number;
+  /** The tag a merge keeps. */
+  targetKey: string;
+  targetLabel: string;
+  targetCount: number;
+  reason: TagMergeReason;
+  /** Why the pair was picked, as the row reads it. */
+  detail: string;
+}
+
+/**
+ * Whether tags stay where a title writes them, or are taken out and shown as
+ * separate controls.
+ */
+export type TagTitleDisplayMode = 'inline' | 'separate';
