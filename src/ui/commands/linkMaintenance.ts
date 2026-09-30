@@ -10,6 +10,7 @@ import {
   normalizeHeading,
   noteTitle,
   resolveWikiTarget,
+  WIKI_LINK_WITH_TEXT,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
@@ -46,7 +47,6 @@ interface IndexSource {
   isNotesFile(uri: vscode.Uri): boolean;
 }
 
-const WIKI_LINK = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
 /**
  * What a link is made of, so a rewrite can change the note it names and leave
@@ -148,7 +148,7 @@ function findRewrites(
       if (fenced.has(line)) {
         return;
       }
-      for (const match of text.matchAll(WIKI_LINK)) {
+      for (const match of text.matchAll(WIKI_LINK_WITH_TEXT)) {
         const parts = readLinkParts(match[1], match[2]);
         const next = rewrite(parts, sourcePath);
         if (!next || match.index === undefined) {

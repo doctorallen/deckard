@@ -10,6 +10,7 @@ import {
   createNoteTitleMap,
   findWikiTargetPaths,
   parseWikiTarget,
+  WIKI_LINK,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
@@ -46,7 +47,6 @@ export const CREATE_LINKED_NOTE_COMMAND = 'deckard.createLinkedNote';
 /** The command the Create missing notes lens runs. */
 export const CREATE_MISSING_NOTES_COMMAND = 'deckard.createMissingNotes';
 
-const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 /** How long typing must pause before a changed note is checked again. */
 const CHECK_DELAY_MS = 300;
 const MISSING_NOTE = 'missing-note';
