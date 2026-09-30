@@ -58,7 +58,7 @@ import {
 } from './ui/commands/parking';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
-import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
+import { EntityHeadingSuggestions } from './ui/providers/entitySuggestions';
 import {
   CREATE_LINKED_NOTE_COMMAND,
   CREATE_MISSING_NOTES_COMMAND,
@@ -100,7 +100,7 @@ import {
   isMarkdownDocument,
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/providers/tagSuggestions';
-import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
+import { TaskMetadataCompletionProvider } from './ui/providers/taskMetadataSuggestions';
 import { EditorLenses } from './ui/commands/editorLenses';
 import {
   LINK_MENTIONS_COMMAND,
@@ -285,7 +285,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   readPinned();
   context.subscriptions.push(preferences.onDidChange(() => readPinned()));
   const tagSuggestions = new TagCompletionProvider(indexer).register();
-  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
+  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   // A workspace's first index says what it read, once; a very large one is
@@ -377,7 +377,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences).register();
   const entitySuggestions = new EntityHeadingSuggestions((uri) =>
     indexer.isNotesFile(uri),
-  );
+  ).register();
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer, taskWrites, themePreview);
