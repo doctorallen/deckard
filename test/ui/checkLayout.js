@@ -30,6 +30,7 @@ if (!existsSync(compiled)) {
 }
 const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
 const modules = require('../harness/modules.js');
+const { readPageNonce } = require('../harness/loadPage.js');
 const { createTaskBoard } = modules.taskBoardState;
 const { createSidebarSnapshot } = modules.relatedNotesRanking;
 const { createSearchPageSnapshot, createDeckardStatsSnapshot } = modules.dashboardState;
@@ -451,30 +452,36 @@ function probeScript(surface) {
  */
 function buildPage(html, surface, probe = probeScript(surface)) {
   const snapshot = surface.snapshot();
-  const bridge = `<script>
+  // The page keeps its Content-Security-Policy, which Chrome enforces as VS
+  // Code does, so a page that needs something its policy blocks fails here
+  // too. What the harness adds carries the page's nonce to be let through,
+  // and the parent page carries the same policy, since a srcdoc frame
+  // inherits its parent's as well as reading its own.
+  const policy = (html.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/) || [''])[0];
+  const nonce = readPageNonce(html);
+  const nonced = nonce ? ` nonce="${nonce}"` : '';
+  const bridge = `<script${nonced}>
 window.acquireVsCodeApi = function () {
   return { postMessage: function () {}, getState: function () {}, setState: function () {} };
 };
 </script>`;
-  const drive = `<script>
+  const drive = `<script${nonced}>
 window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(snapshot)} } }));
 setTimeout(function () { ${probe} }, 50);
 </script>`;
   const inner = html
-    // The page's CSP names a nonce these scripts do not have.
-    .replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '')
     // VS Code sets its tokens on the document; here a style block does.
-    .replace('<head>', `<head><style>${vscodePaletteCss('dark')}</style>`)
+    .replace('<head>', `<head><style${nonced}>${vscodePaletteCss('dark')}</style>`)
     .replace(/<script/, `${bridge}<script`)
     .replace(/<\/body>/, `${drive}</body>`);
   const [width, height] = surface.viewport;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">${policy}<style${nonced}>
 html, body { margin: 0; padding: 0; background: #888; }
 iframe { display: block; border: 0; width: ${width}px; height: ${height}px; }
 </style></head><body>
 <iframe id="page" srcdoc="${inner.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></iframe>
 <pre id="layout-probe"></pre>
-<script>
+<script${nonced}>
 setTimeout(function () {
   var doc = document.getElementById('page').contentDocument;
   var probe = doc && doc.getElementById('layout-probe');
