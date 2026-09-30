@@ -6,6 +6,7 @@ import * as path from 'path';
 import { Emitter } from '../core/emitter';
 import type { WorkspaceFileAccess } from '../core/workspace/scanner';
 import type { ConfigurationSection } from '../ports/configuration';
+import { FileStat, FileSystem, FileType } from '../ports/fileSystem';
 import type { ResourceUri, WorkspaceFolder } from '../ports/uri';
 import type { FolderPattern } from '../ports/workspace';
 import type {
@@ -180,5 +181,80 @@ export class FakeWorkspaceEvents implements WorkspaceEvents {
       affectsConfiguration: (section) =>
         names.some((name) => name === section || name.startsWith(`${section}.`)),
     });
+  }
+}
+
+/**
+ * Files and folders in memory, by `fsPath`, behind the file-system port. A
+ * missing file rejects as VS Code's does; writing a file needs its folder
+ * to exist, and creating a folder creates its parents.
+ */
+export class FakeFileSystem implements FileSystem {
+  /** Each file's bytes, by path. */
+  public readonly files = new Map<string, Uint8Array>();
+  /** Each folder, by path. */
+  public readonly folders = new Set<string>();
+
+  /** Joins as {@link joinUri}. */
+  public joinPath(base: ResourceUri, ...segments: string[]): ResourceUri {
+    return joinUri(base, ...segments);
+  }
+
+  /** A file's size and kind; times are zero. */
+  public async stat(uri: ResourceUri): Promise<FileStat> {
+    const bytes = this.files.get(uri.fsPath);
+    if (bytes) {
+      return { type: FileType.File, ctime: 0, mtime: 0, size: bytes.byteLength };
+    }
+    if (this.folders.has(uri.fsPath)) {
+      return { type: FileType.Directory, ctime: 0, mtime: 0, size: 0 };
+    }
+    throw new Error(`ENOENT: ${uri.fsPath}`);
+  }
+
+  /** A file's bytes; rejects for a missing file. */
+  public async readFile(uri: ResourceUri): Promise<Uint8Array> {
+    const bytes = this.files.get(uri.fsPath);
+    if (!bytes) {
+      throw new Error(`ENOENT: ${uri.fsPath}`);
+    }
+    return bytes;
+  }
+
+  /** Writes a file whole; rejects when its folder does not exist. */
+  public async writeFile(uri: ResourceUri, content: Uint8Array): Promise<void> {
+    if (!this.folders.has(path.dirname(uri.fsPath))) {
+      throw new Error(`ENOENT: ${path.dirname(uri.fsPath)}`);
+    }
+    this.files.set(uri.fsPath, Uint8Array.from(content));
+  }
+
+  /** The files and folders directly in a folder; rejects for a missing one. */
+  public async readDirectory(uri: ResourceUri): Promise<Array<[string, number]>> {
+    if (!this.folders.has(uri.fsPath)) {
+      throw new Error(`ENOENT: ${uri.fsPath}`);
+    }
+    const inFolder = (candidate: string) => path.dirname(candidate) === uri.fsPath;
+    return [
+      ...[...this.folders].filter(inFolder).map((folder): [string, number] => [path.basename(folder), FileType.Directory]),
+      ...[...this.files.keys()].filter(inFolder).map((file): [string, number] => [path.basename(file), FileType.File]),
+    ];
+  }
+
+  /** Creates a folder and its parents. */
+  public async createDirectory(uri: ResourceUri): Promise<void> {
+    for (let folder = uri.fsPath; !this.folders.has(folder); folder = path.dirname(folder)) {
+      this.folders.add(folder);
+      if (path.dirname(folder) === folder) {
+        return;
+      }
+    }
+  }
+
+  /** Deletes a file; rejects for a missing one. */
+  public async delete(uri: ResourceUri): Promise<void> {
+    if (!this.files.delete(uri.fsPath)) {
+      throw new Error(`ENOENT: ${uri.fsPath}`);
+    }
   }
 }

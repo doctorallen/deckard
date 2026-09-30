@@ -11,6 +11,7 @@ import {
   SNAPSHOTS_KEPT,
 } from '../core/storage/preferenceSnapshots';
 import { PreferencesStore } from '../core/storage/preferences';
+import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import {
   createExport,
   describePreferences,
@@ -53,7 +54,7 @@ suite('Preference backups', () => {
 
   test('writes a copy of the store into workspace storage, newest first', async () => {
     const store = new PreferencesStore(new MemoryMemento());
-    const snapshots = new PreferenceSnapshots(storage, store);
+    const snapshots = new PreferenceSnapshots(storage, store, createVscodeWorkspace());
     await store.toggleFavorite('#project/relay');
     await snapshots.writeNow();
     await store.pinNote({ filePath: 'notes/relay.md' });
@@ -71,7 +72,7 @@ suite('Preference backups', () => {
 
   test('keeps only the last few, and lets the oldest go', async () => {
     const store = new PreferencesStore(new MemoryMemento());
-    const snapshots = new PreferenceSnapshots(storage, store);
+    const snapshots = new PreferenceSnapshots(storage, store, createVscodeWorkspace());
     for (let i = 0; i < SNAPSHOTS_KEPT + 5; i += 1) {
       await store.recordTagAccess('#project/relay', 1_000_000 + i);
       await snapshots.writeNow();
@@ -84,7 +85,7 @@ suite('Preference backups', () => {
 
   test('writes nothing, and lists nothing, when there is no workspace storage', async () => {
     const store = new PreferencesStore(new MemoryMemento());
-    const snapshots = new PreferenceSnapshots(undefined, store);
+    const snapshots = new PreferenceSnapshots(undefined, store, createVscodeWorkspace());
     await store.toggleFavorite('#project/relay');
     await snapshots.writeNow();
     assert.deepStrictEqual(await snapshots.list(), []);

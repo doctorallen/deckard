@@ -353,7 +353,7 @@ export default {
     "src/core/query/queryEvaluator.ts": 3,
     "src/core/query/queryLinks.ts": 2,
     "src/core/query/queryTypes.ts": 6,
-    "src/core/storage/preferenceSnapshots.ts": 5,
+    "src/core/storage/preferenceSnapshots.ts": 4,
     "src/core/storage/preferences.ts": 11,
     "src/core/storage/searchDatabase.ts": 6,
     "src/core/storage/searchStore.ts": 6,

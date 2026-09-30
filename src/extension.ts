@@ -296,7 +296,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   void preferences.initialize();
   // A copy of what this workspace remembers, a moment after each change,
   // so one bad write is something a reader can take back.
-  const snapshots = new PreferenceSnapshots(context.storageUri, preferences);
+  const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
   context.subscriptions.push(snapshots);
   // A task's id comes from its own text, so an edit Deckard writes makes it a
   // new task to anything keyed by id. This keeps its place in a ranked list

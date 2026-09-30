@@ -1,5 +1,6 @@
-import * as vscode from 'vscode';
-
+import type { Disposable, Event } from '../../ports/events';
+import { FileSystem, FileType } from '../../ports/fileSystem';
+import type { ResourceUri } from '../../ports/uri';
 import { PersistedPreferences } from '../types';
 
 /**
@@ -19,29 +20,35 @@ export const SNAPSHOTS_KEPT = 20;
 /** Long enough to fold a burst of changes into one copy. */
 const SETTLE_MS = 2000;
 
-export interface PreferenceSnapshot {
-  uri: vscode.Uri;
+export interface PreferenceSnapshot<U extends ResourceUri = ResourceUri> {
+  uri: U;
   /** When it was written, from its name. */
   at: Date;
 }
 
 interface SnapshotSource {
   readonly value: PersistedPreferences;
-  readonly onDidChange: vscode.Event<PersistedPreferences>;
+  readonly onDidChange: Event<PersistedPreferences>;
 }
 
-export class PreferenceSnapshots implements vscode.Disposable {
-  private readonly folder: vscode.Uri | undefined;
-  private readonly disposables: vscode.Disposable[] = [];
+export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements Disposable {
+  private readonly folder: U | undefined;
+  private readonly disposables: Disposable[] = [];
   private pending: NodeJS.Timeout | undefined;
   private writing: Promise<void> = Promise.resolve();
 
+  /**
+   * Copies `source` into `preference-snapshots` under `storageUri`, the
+   * workspace's storage folder, reading and writing through `fileSystem`;
+   * with no storage folder, it writes and lists nothing.
+   */
   public constructor(
-    storageUri: vscode.Uri | undefined,
+    storageUri: U | undefined,
     private readonly source: SnapshotSource,
+    private readonly fileSystem: FileSystem<U>,
   ) {
     this.folder = storageUri
-      ? vscode.Uri.joinPath(storageUri, 'preference-snapshots')
+      ? fileSystem.joinPath(storageUri, 'preference-snapshots')
       : undefined;
     if (this.folder) {
       this.disposables.push(source.onDidChange(() => this.schedule()));
@@ -49,20 +56,21 @@ export class PreferenceSnapshots implements vscode.Disposable {
   }
 
   /** Every copy there is, newest first. */
-  public async list(): Promise<PreferenceSnapshot[]> {
-    if (!this.folder) {
+  public async list(): Promise<Array<PreferenceSnapshot<U>>> {
+    const folder = this.folder;
+    if (!folder) {
       return [];
     }
-    let entries: [string, vscode.FileType][];
+    let entries: Array<[string, number]>;
     try {
-      entries = await vscode.workspace.fs.readDirectory(this.folder);
+      entries = await this.fileSystem.readDirectory(folder);
     } catch {
       return [];
     }
     return entries
-      .filter(([name, type]) => type === vscode.FileType.File && /\.json$/.test(name))
+      .filter(([name, type]) => type === FileType.File && /\.json$/.test(name))
       .map(([name]) => ({
-        uri: vscode.Uri.joinPath(this.folder as vscode.Uri, name),
+        uri: this.fileSystem.joinPath(folder, name),
         at: dateFromName(name),
       }))
       .filter((snapshot) => !Number.isNaN(snapshot.at.getTime()))
@@ -70,8 +78,8 @@ export class PreferenceSnapshots implements vscode.Disposable {
   }
 
   /** Reads one copy back. Throws if it is not what Deckard wrote. */
-  public async read(snapshot: PreferenceSnapshot): Promise<unknown> {
-    const bytes = await vscode.workspace.fs.readFile(snapshot.uri);
+  public async read(snapshot: PreferenceSnapshot<U>): Promise<unknown> {
+    const bytes = await this.fileSystem.readFile(snapshot.uri);
     return JSON.parse(Buffer.from(bytes).toString('utf8'));
   }
 
@@ -108,16 +116,16 @@ export class PreferenceSnapshots implements vscode.Disposable {
       return;
     }
     const job = async (): Promise<void> => {
-      await vscode.workspace.fs.createDirectory(folder);
+      await this.fileSystem.createDirectory(folder);
       const name = `${nameFromDate(new Date())}.json`;
       const body = JSON.stringify(this.source.value, null, 2);
-      await vscode.workspace.fs.writeFile(
-        vscode.Uri.joinPath(folder, name),
+      await this.fileSystem.writeFile(
+        this.fileSystem.joinPath(folder, name),
         Buffer.from(body, 'utf8'),
       );
       const all = await this.list();
       for (const old of all.slice(SNAPSHOTS_KEPT)) {
-        await vscode.workspace.fs.delete(old.uri);
+        await this.fileSystem.delete(old.uri);
       }
     };
     // One write at a time, so a burst cannot interleave its directory reads
