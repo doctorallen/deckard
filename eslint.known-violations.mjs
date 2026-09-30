@@ -186,9 +186,6 @@ export default {
       "createCondition",
       "tokenize"
     ],
-    "src/core/storage/preferences.ts": [
-      "prune"
-    ],
     "src/extension.ts": [
       "deactivate"
     ],
@@ -478,9 +475,6 @@ export default {
       "createCondition",
       "parseWordCondition",
       "tokenize"
-    ],
-    "src/core/storage/preferences.ts": [
-      "prune"
     ],
     "src/core/workspace/indexState.ts": [
       "buildAssociationsDirectly",
