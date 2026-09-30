@@ -428,17 +428,19 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     writes: taskWrites,
     themePreview,
   });
-  const quickFind = new QuickFind(
+  const quickFind = new QuickFind({
     indexer,
     preferences,
-    {
+    actions: {
       openTag: (tagKey) => searchPanels.show(tagKey),
       openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
       showSearch: (query) => searchPanels.showQuery(query),
       moveTask: (task) => moveTasks(indexer, preferences, taskWrites, [task]),
     },
-    taskWrites,
-  );
+    writes: taskWrites,
+    pins,
+    linkNotes,
+  });
   const sidebarNotes = new SidebarNotesView({
     indexer,
     preferences,

@@ -136,7 +136,6 @@ export default {
     "src/ui/commands/bulkEdit.ts": 1,
     "src/ui/commands/exportResults.ts": 2,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
-    "src/ui/commands/quickFind.ts": 2,
     "src/ui/commands/quickFindActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
@@ -202,7 +201,6 @@ export default {
     ],
     "src/ui/commands/quickFind.ts": [
       "accept",
-      "runAction",
       "toPickItems",
       "triggerItemButton"
     ],
@@ -357,7 +355,6 @@ export default {
     "src/ui/commands/parking.ts": 4,
     "src/ui/commands/pinNote.ts": 2,
     "src/ui/commands/preferenceBackups.ts": 5,
-    "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/quickFindActions.ts": 4,
     "src/ui/commands/renameTag.ts": 1,
     "src/ui/commands/repeatRuleHealth.ts": 2,
@@ -495,7 +492,6 @@ export default {
       "unparkNotes"
     ],
     "src/ui/commands/quickFind.ts": [
-      "runAction",
       "toPickItems"
     ],
     "src/ui/commands/quickFindActions.ts": [
@@ -662,7 +658,6 @@ export default {
     "src/ui/commands/editorReferences.ts": 1,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/parking.ts": 4,
-    "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/renameTag.ts": 1,
     "src/ui/commands/rollover.ts": 1,
     "src/ui/commands/tagSuggestions.ts": 1,
@@ -726,7 +721,6 @@ export default {
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/noteVisits.ts": 1,
     "src/ui/commands/parking.ts": 1,
-    "src/ui/commands/quickFind.ts": 3,
     "src/ui/commands/savedSearchHome.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/commands/tidyPreferences.ts": 1,

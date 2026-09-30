@@ -26,13 +26,18 @@ suite('Find while indexing', () => {
     };
     const store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const opened: string[] = [];
-    const find = new QuickFind(indexer as never, store, {
-      openTag: async () => undefined,
-      openSavedFilter: async () => undefined,
-      showSearch: async (query) => {
-        opened.push(query);
+    const find = new QuickFind({
+      indexer: indexer as never,
+      preferences: store,
+      actions: {
+        openTag: async () => undefined,
+        openSavedFilter: async () => undefined,
+        showSearch: async (query) => {
+          opened.push(query);
+        },
       },
-    }, { history: new WorkspaceWriteHistory(), keepRank: () => undefined });
+      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    });
     try {
       await find.show('atlas');
       const picker = (find as unknown as { picker: vscode.QuickPick<vscode.QuickPickItem & { indexing?: boolean }> }).picker;

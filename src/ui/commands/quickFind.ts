@@ -19,10 +19,10 @@ import { createWikiLink } from './insertLink';
 import { createLinkedNote } from './linkHealth';
 import { openSourceAt } from './navigation';
 import { Task } from '../../core/types';
-import { pinKey } from '../../core/storage/preferences';
-import { createPinForLine } from '../state/pinnedNotes';
+import { LinkNoteService } from '../../services/linkService';
+import { PinService } from '../../services/pinService';
 import { askForDueDate, dueDateFor, pickReschedule, setTasksDue } from './agendaActions';
-import { buildRowActions, RowActionId, STAYING_ACTIONS } from './quickFindActions';
+import { buildRowActions, ROW_ACTIONS, RowActionHost, RowActionId, rowKey } from './quickFindActions';
 import { quoteTaskTitle, TaskWrites, toggleTask } from './taskActions';
 import { keyLabel } from './quickFindKeys';
 import { shortSelection } from './selectionSeed';
@@ -31,6 +31,7 @@ import { whenPublished } from '../../core/workspace/publishing';
 /** Set while Quick Find is open, so Tab completes in it and nowhere else. */
 export const QUICK_FIND_CONTEXT = 'deckard.quickFindOpen';
 
+/** Where a chosen row goes: the pages and commands Find hands it to. */
 export interface QuickFindActions {
   openTag(tagKey: string): Promise<void>;
   openSavedFilter(filterId: string): Promise<void>;
@@ -94,7 +95,20 @@ export function findDailyNoteRow(
   };
 }
 
-export { keyLabel };
+export { keyLabel, rowKey };
+
+/** What Find reads, writes through, and hands a chosen row to. */
+export interface QuickFindOptions {
+  indexer: WorkspaceIndexer<vscode.Uri>;
+  preferences: PreferencesStore;
+  actions: QuickFindActions;
+  /** What completing or dating a task from a row writes through. */
+  writes: TaskWrites;
+  /** Which entry a note row pins; over `indexer` and `preferences` when not given. */
+  pins?: PinService;
+  /** Where a note Find offers to create is made; VS Code's file system when not given. */
+  linkNotes?: LinkNoteService<vscode.Uri>;
+}
 
 const ADD_TO_SEARCH: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('add'),
@@ -142,14 +156,29 @@ export class QuickFind implements vscode.Disposable {
   /** The editor Find was opened from, where Insert link writes. */
   private editor: vscode.TextEditor | undefined;
 
-  public constructor(
-    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
-    private readonly preferences: PreferencesStore,
-    private readonly actions: QuickFindActions,
-    /** What completing or dating a task from a row writes through. */
-    private readonly writes: TaskWrites,
-  ) {}
+  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly preferences: PreferencesStore;
+  private readonly actions: QuickFindActions;
+  private readonly writes: TaskWrites;
+  private readonly pins: PinService;
+  private readonly linkNotes: LinkNoteService<vscode.Uri> | undefined;
 
+  /** Find over `options.indexer`, writing through the services `options` gives. */
+  public constructor(options: QuickFindOptions) {
+    this.indexer = options.indexer;
+    this.preferences = options.preferences;
+    this.actions = options.actions;
+    this.writes = options.writes;
+    this.pins = options.pins ?? new PinService({ index: options.indexer, store: options.preferences });
+    this.linkNotes = options.linkNotes;
+  }
+
+  /**
+   * Opens Find on `initialQuery`, or on the words selected in the editor,
+   * with the row `activeKey` names highlighted when it is listed. Coming
+   * back from a row's own list passes the key, and keeps the editor Find
+   * was first opened from.
+   */
   public async show(initialQuery?: string, activeKey?: string): Promise<void> {
     // Coming back from a row's own list keeps the editor Find was opened from.
     if (activeKey === undefined) {
@@ -237,7 +266,7 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     await this.rememberChoice(this.picker?.value ?? '', item);
-    await this.openResultBeside(item);
+    await this.openItem(item, true);
   }
 
   /** Alt+Enter: links the highlighted note, or a task's heading, at the cursor. */
@@ -263,13 +292,8 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     const value = picker.value;
-    const index = this.indexer.getSnapshot();
-    const pin =
-      item.kind === 'note' && item.filePath && item.line
-        ? createPinForLine(index, item.filePath, item.line)
-        : undefined;
     const groups = buildRowActions(item, {
-      pinned: pin !== undefined && (this.preferences.value.pinnedNotes ?? []).some((each) => pinKey(each) === pinKey(pin)),
+      pinned: item.kind === 'note' && !!item.filePath && !!item.line && this.pins.isLinePinned(item.filePath, item.line),
       favorite: item.tagKey !== undefined && this.preferences.value.favoriteTags.includes(item.tagKey),
       canMove: this.actions.moveTask !== undefined,
     });
@@ -297,141 +321,64 @@ export class QuickFind implements vscode.Disposable {
   }
 
   /**
-   * Does one row action. One that leaves things where they are comes back
-   * to Find; one that goes somewhere does not.
+   * Does one row action, as the action table says. One that leaves things
+   * where they are comes back to Find; one that goes somewhere does not.
    */
   private async runAction(action: RowActionId, item: QuickFindItem, value?: string): Promise<void> {
     const returnTo = value ?? this.picker?.value ?? '';
     if (item.kind !== 'recent') {
       await this.rememberChoice(returnTo, item);
     }
-    const back = () => (STAYING_ACTIONS.has(action) ? this.show(returnTo, rowKey(item)) : Promise.resolve());
-    const index = this.indexer.getSnapshot();
+    const entry = ROW_ACTIONS[action];
     const task = item.taskId ? this.indexer.getTask(item.taskId) : undefined;
-    if (item.kind === 'task' && !task && ['complete', 'reopen', 'dueToday', 'dueTomorrow', 'dueDate', 'noDue', 'editTask', 'moveTo'].includes(action)) {
+    if (item.kind === 'task' && !task && entry.needsTask) {
       void vscode.window.showInformationMessage('That task is no longer in its note.');
       return;
     }
-    switch (action) {
-      case 'open':
-        if (item.kind === 'savedView' && item.savedFilterId) {
-          this.picker?.hide();
-          await this.actions.openSavedFilter(item.savedFilterId);
-        } else if (item.filePath && item.line) {
-          this.picker?.hide();
-          await openSourceAt(item.filePath, item.line);
-          if (item.kind === 'note' && item.sectionId) {
-            await this.preferences.recordSectionAccess(item.sectionId);
-          }
-        }
-        return;
-      case 'openBeside':
-        if (!this.picker) {
-          await this.show(returnTo, rowKey(item));
-        }
-        await this.openResultBeside(item);
-        return;
-      case 'insertLink':
-        if (item.filePath) {
-          this.picker?.hide();
-          await this.insertLink(item.filePath, item.sectionId);
-        }
-        return;
-      case 'copyLink':
-        if (item.filePath) {
-          const link = createWikiLink(index, item.filePath, item.sectionId);
-          await vscode.env.clipboard.writeText(link.text);
-          void vscode.window.showInformationMessage(`Copied ${link.text}.`);
-        }
-        return back();
-      case 'pin':
-      case 'unpin': {
-        const pin = item.filePath && item.line ? createPinForLine(index, item.filePath, item.line) : undefined;
-        if (pin) {
-          if (action === 'pin') {
-            await this.preferences.pinNote(pin);
-          } else {
-            await this.preferences.unpinNote(pinKey(pin));
-          }
-        }
-        return back();
-      }
-      case 'editTask':
-        if (task) {
-          this.picker?.hide();
-          await openSourceAt(task.filePath, task.lineNumber);
-          await vscode.commands.executeCommand('deckard.editTask');
-        }
-        return;
-      case 'complete':
-      case 'reopen':
-        if (task) {
-          await toggleTask(this.writes, task, action === 'complete');
-        }
-        // Find stays open, and redraws the row when the index has it.
-        return this.picker ? undefined : back();
-      case 'dueToday':
-      case 'dueTomorrow':
-      case 'noDue':
-        if (task) {
-          await setTasksDue(
-            this.writes,
-            [task],
-            action === 'noDue' ? undefined : dueDateFor(action === 'dueToday' ? 'today' : 'tomorrow', Date.now()),
-          );
-        }
-        return back();
-      case 'dueDate':
-        if (task) {
-          const date = await askForDueDate(quoteTaskTitle(task));
-          if (date !== null) {
-            await setTasksDue(this.writes, [task], date);
-          }
-        }
-        return back();
-      case 'moveTo':
-        if (task && this.actions.moveTask) {
-          this.picker?.hide();
-          await this.actions.moveTask(task);
-        }
-        return;
-      case 'openTag':
-        if (item.tagKey) {
-          this.picker?.hide();
-          await this.actions.openTag(item.tagKey);
-        }
-        return;
-      case 'addToSearch':
-      case 'putInBox':
-        await this.show(item.completion ?? returnTo, rowKey(item));
-        return;
-      case 'favorite':
-      case 'unfavorite':
-        if (item.tagKey) {
-          await this.preferences.toggleFavorite(item.tagKey);
-        }
-        return back();
-      case 'renameTag':
-        if (item.tagKey) {
-          this.picker?.hide();
-          await vscode.commands.executeCommand('deckard.renameTag', item.tagKey);
-        }
-        return;
-      case 'search':
-        await this.show(item.query ?? returnTo);
-        return;
-      case 'saveSearch':
-        if (item.query) {
-          this.picker?.hide();
-          await this.saveSearch(item.query);
-        }
-        return;
-      case 'removeRecent':
-        if (item.query) {
-          await this.preferences.removeRecentQuery(item.query);
-        }
-        return this.show(returnTo);
-    }
+    await entry.run(item, {
+      host: this.rowActionHost(),
+      task,
+      returnTo,
+      back: () => (entry.staysOpen ? this.show(returnTo, rowKey(item)) : Promise.resolve()),
+    });
+  }
+
+  /** What a row action does its work through: this Find, and its services. */
+  private rowActionHost(): RowActionHost {
+    const moveTask = this.actions.moveTask;
+    return {
+      isOpen: () => this.picker !== undefined,
+      hide: () => this.picker?.hide(),
+      show: (query, activeKey) => this.show(query, activeKey),
+      openItem: (item, beside) => this.openItem(item, beside),
+      openSavedFilter: (filterId) => this.actions.openSavedFilter(filterId),
+      openTag: (tagKey) => this.actions.openTag(tagKey),
+      insertLink: (filePath, sectionId) => this.insertLink(filePath, sectionId),
+      copyLink: async (filePath, sectionId) => {
+        const link = createWikiLink(this.indexer.getSnapshot(), filePath, sectionId);
+        await vscode.env.clipboard.writeText(link.text);
+        void vscode.window.showInformationMessage(`Copied ${link.text}.`);
+      },
+      editTask: async (task) => {
+        await openSourceAt(task.filePath, task.lineNumber);
+        await vscode.commands.executeCommand('deckard.editTask');
+      },
+      ...(moveTask ? { moveTask: (task: Task) => moveTask(task) } : {}),
+      renameTag: async (tagKey) => {
+        await vscode.commands.executeCommand('deckard.renameTag', tagKey);
+      },
+      saveSearch: (query) => this.saveSearch(query),
+      pins: this.pins,
+      preferences: this.preferences,
+      tasks: {
+        toggle: async (task, completed) => {
+          await toggleTask(this.writes, task, completed);
+        },
+        setDue: (task, date) => setTasksDue(this.writes, [task], date),
+        askForDueDate: (task) => askForDueDate(quoteTaskTitle(task)),
+        dueDate: (day) => dueDateFor(day, Date.now()),
+      },
+    };
   }
 
   /** Set due on a task row: the usual choices, then back to Find. */
@@ -459,16 +406,18 @@ export class QuickFind implements vscode.Disposable {
       validateInput: (value) =>
         value.trim() ? undefined : 'A saved search needs a name.',
     });
-    if (name !== undefined) {
-      const saved = await this.preferences.saveSavedQueryFilter(name, query);
-      if (saved) {
-        void vscode.window.showInformationMessage(
-          `Saved the search "${saved.name}".`,
-        );
-      }
+    if (name === undefined) {
+      return;
+    }
+    const saved = await this.preferences.saveSavedQueryFilter(name, query);
+    if (saved) {
+      void vscode.window.showInformationMessage(
+        `Saved the search "${saved.name}".`,
+      );
     }
   }
 
+  /** Closes Find, if it is open. */
   public dispose(): void {
     this.picker?.dispose();
     this.picker = undefined;
@@ -488,12 +437,19 @@ export class QuickFind implements vscode.Disposable {
     }
   }
 
-  /** Opens a result beside the editor without taking focus from Find. */
-  private async openResultBeside(item: QuickFindItem): Promise<void> {
+  /**
+   * Opens a note or task row where it is written, or beside the editor
+   * without taking focus from Find, and records a note's visit, which is
+   * what ranks it among the notes opened last. A row with no place to open
+   * is left alone.
+   */
+  private async openItem(item: QuickFindItem, beside = false): Promise<void> {
     if (!item.filePath || !item.line) {
       return;
     }
-    await openSourceAt(item.filePath, item.line, undefined, true, false, true);
+    await (beside
+      ? openSourceAt(item.filePath, item.line, undefined, true, false, true)
+      : openSourceAt(item.filePath, item.line));
     if (item.kind === 'note' && item.sectionId) {
       await this.preferences.recordSectionAccess(item.sectionId);
     }
@@ -556,11 +512,12 @@ export class QuickFind implements vscode.Disposable {
       picker.value,
       findDailyNoteRow(picker.value, queryContext.now, readDateOptions()),
     );
-    if (activeKey !== undefined) {
-      const again = picker.items.find((row) => row.item && rowKey(row.item) === activeKey);
-      if (again) {
-        picker.activeItems = [again];
-      }
+    if (activeKey === undefined) {
+      return;
+    }
+    const again = picker.items.find((row) => row.item && rowKey(row.item) === activeKey);
+    if (again) {
+      picker.activeItems = [again];
     }
   }
 
@@ -597,7 +554,7 @@ export class QuickFind implements vscode.Disposable {
       const from =
         this.editor?.document.uri ?? vscode.workspace.workspaceFolders?.[0]?.uri;
       if (from) {
-        await createLinkedNote(this.indexer, from, chosen.create);
+        await createLinkedNote(this.indexer, from, chosen.create, this.linkNotes);
       }
       return;
     }
@@ -618,14 +575,13 @@ export class QuickFind implements vscode.Disposable {
     }
     if (item.kind === 'tag' && item.tagKey) {
       await this.actions.openTag(item.tagKey);
-    } else if (item.kind === 'savedView' && item.savedFilterId) {
-      await this.actions.openSavedFilter(item.savedFilterId);
-    } else if (item.filePath && item.line) {
-      await openSourceAt(item.filePath, item.line);
-      if (item.kind === 'note' && item.sectionId) {
-        await this.preferences.recordSectionAccess(item.sectionId);
-      }
+      return;
     }
+    if (item.kind === 'savedView' && item.savedFilterId) {
+      await this.actions.openSavedFilter(item.savedFilterId);
+      return;
+    }
+    await this.openItem(item);
   }
 
   /** Writes a link to the note, at its heading, where the cursor was. */
@@ -672,7 +628,7 @@ export class QuickFind implements vscode.Disposable {
     if (event.button === OPEN_BESIDE && item.filePath && item.line) {
       // The list stays open, so the next result can be opened beside too.
       await this.rememberChoice(picker.value, item);
-      await this.openResultBeside(item);
+      await this.openItem(item, true);
       return;
     }
     if (event.button === COMPLETE || event.button === REOPEN) {
@@ -689,11 +645,12 @@ export class QuickFind implements vscode.Disposable {
       await this.insertLink(item.filePath, item.sectionId);
       return;
     }
-    if (event.button === SAVE_AS_VIEW && item.query) {
-      const query = item.query;
-      picker.hide();
-      await this.saveSearch(query);
+    if (event.button !== SAVE_AS_VIEW || !item.query) {
+      return;
     }
+    const query = item.query;
+    picker.hide();
+    await this.saveSearch(query);
   }
 }
 
@@ -733,18 +690,7 @@ export function toPickItems(
     detail: item.detail,
     alwaysShow: true,
     item,
-    buttons:
-      item.kind === 'tag'
-        ? [ADD_TO_SEARCH]
-        : item.kind === 'recent'
-          ? [SAVE_AS_VIEW]
-          : item.kind === 'note'
-            ? [OPEN_BESIDE, INSERT_LINK]
-            : item.kind === 'task'
-              ? item.completed
-                ? [OPEN_BESIDE, REOPEN]
-                : [OPEN_BESIDE, COMPLETE, SET_DUE]
-              : undefined,
+    buttons: buttonsFor(item),
   });
 
   if (results.message) {
@@ -783,7 +729,8 @@ export function toPickItems(
   const named = results.notes.some(
     (note) => note.label.trim().toLowerCase() === name.toLowerCase(),
   );
-  if (name && !named && !dateRow && isNoteName(name)) {
+  const offersCreate = Boolean(name) && !named && !dateRow && isNoteName(name);
+  if (offersCreate) {
     items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     items.push({
       label: `$(new-file) Create note “${name}”`,
@@ -794,7 +741,7 @@ export function toPickItems(
 
   // What could not be found may be something to do.
   if (name && results.capture) {
-    if (!(name && !named && !dateRow && isNoteName(name))) {
+    if (!offersCreate) {
       items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     }
     items.push({
@@ -817,24 +764,6 @@ export function toPickItems(
   return items;
 }
 
-/**
- * A row's identity across redraws: what it opens, not where it is listed.
- */
-export function rowKey(item: QuickFindItem): string {
-  switch (item.kind) {
-    case 'task':
-      return `task:${item.taskId ?? `${item.filePath}:${item.line}`}`;
-    case 'note':
-      return `note:${item.sectionId ?? `${item.filePath}:${item.line}`}`;
-    case 'tag':
-      return `tag:${item.tagKey}`;
-    case 'savedView':
-      return `view:${item.savedFilterId}`;
-    default:
-      return `${item.kind}:${item.query ?? item.label}`;
-  }
-}
-
 /** A row's label in quotes, cut as a task's title is in a message. */
 function quoteLabel(label: string): string {
   const text = label.trim();
@@ -853,6 +782,25 @@ export function isNoteName(text: string): boolean {
   );
 }
 
+/** The buttons a row carries, by what it is: none for a condition, a saved search, or a message. */
+function buttonsFor(item: QuickFindItem): vscode.QuickInputButton[] | undefined {
+  switch (item.kind) {
+    case 'tag':
+      return [ADD_TO_SEARCH];
+    case 'recent':
+      return [SAVE_AS_VIEW];
+    case 'note':
+      return [OPEN_BESIDE, INSERT_LINK];
+    case 'task':
+      return item.completed ? [OPEN_BESIDE, REOPEN] : [OPEN_BESIDE, COMPLETE, SET_DUE];
+    case 'condition':
+    case 'savedView':
+    case 'message':
+      return undefined;
+  }
+}
+
+/** The icon a row's label starts with, by what it is. */
 function iconFor(item: QuickFindItem): string {
   switch (item.kind) {
     case 'tag':
@@ -867,7 +815,7 @@ function iconFor(item: QuickFindItem): string {
       return item.completed ? '$(pass-filled)' : '$(circle-large-outline)';
     case 'note':
       return item.pinned ? '$(pinned)' : '$(note)';
-    default:
+    case 'message':
       return '$(info)';
   }
 }

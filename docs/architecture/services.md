@@ -38,6 +38,8 @@ A service owns one capability. It is a class with three properties:
 
 Phase 4 also moves review, templates, quick find's action table, and the assistant tool table into services. The assistant table is shared by the MCP server and the language-model tools, whose refusal strings have already drifted apart today.
 
+Find's row actions are one table, `ROW_ACTIONS` in [`src/ui/commands/quickFindActions.ts`](../../src/ui/commands/quickFindActions.ts): for each action, whether it needs the row's task, whether it leaves Find open, and what it does, through a `RowActionHost` that holds Find's own opening and showing and the services the writes go to (`PinService`, the favorites and recent searches of the preferences, and the task functions every view writes with). `STAYING_ACTIONS` is read from it, and `QuickFind.runAction` only refuses a task that is gone and runs the entry.
+
 ## What an adapter is
 
 A command handler, a message handler, and a tree action are all adapters. Each does exactly three things, in order:
