@@ -5,6 +5,7 @@
  */
 export type * from './notes';
 export type * from './query';
+export type * from './relatedNotes';
 export type * from './tags';
 export type * from './tasks';
 export type * from './workspaceIndex';

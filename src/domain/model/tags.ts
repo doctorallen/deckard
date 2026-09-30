@@ -106,3 +106,9 @@ export interface TagMergeCandidate {
   /** Why the pair was picked, as the row reads it. */
   detail: string;
 }
+
+/**
+ * Whether tags stay where a title writes them, or are taken out and shown as
+ * separate controls.
+ */
+export type TagTitleDisplayMode = 'inline' | 'separate';

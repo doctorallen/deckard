@@ -7,11 +7,7 @@ import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
 import type { Task } from '../../domain/model/tasks';
 
-/**
- * Whether tags stay where a title writes them, or are taken out and shown as
- * separate controls.
- */
-export type TagTitleDisplayMode = 'inline' | 'separate';
+export type { TagTitleDisplayMode } from '../../domain/model/tags';
 
 /**
  * A task as a list draws it: the task, its title rendered, and where it

@@ -119,7 +119,6 @@ export default {
       "rankEntries"
     ],
     "src/ui/state/relatedNotesRanking.ts": [
-      "findSimilarWording",
       "rankRelatedNotes",
       "rankSimilarWording"
     ],
@@ -250,9 +249,6 @@ export default {
     ],
     "src/ui/state/referenceState.ts": [
       "createLinkPreview"
-    ],
-    "src/ui/state/relatedNotesRanking.ts": [
-      "(arrow function)"
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard",
@@ -390,16 +386,14 @@ export default {
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 3,
     "src/ui/state/calendarState.ts": 1,
-    "src/ui/state/dashboardState.ts": 6,
+    "src/ui/state/dashboardState.ts": 2,
     "src/ui/state/editorLensState.ts": 4,
-    "src/ui/state/entryExcerpt.ts": 1,
     "src/ui/state/noteLinks.ts": 2,
     "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/queryBlockState.ts": 3,
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
-    "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
     "src/ui/state/searchFacets.ts": 4,
@@ -564,11 +558,6 @@ export default {
       "buildEmptyResults",
       "rankEntries"
     ],
-    "src/ui/state/relatedNotesRanking.ts": [
-      "(arrow function)",
-      "rankRelatedNotes",
-      "rankSimilarWording"
-    ],
     "src/ui/state/reviewState.ts": [
       "formatReview",
       "summarizeReview"
@@ -690,7 +679,6 @@ export default {
     "src/ui/state/dashboardWidgets.ts": 1,
     "src/ui/state/notesGraphState.ts": 3,
     "src/ui/state/referenceState.ts": 2,
-    "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
     "src/ui/views/agendaTree.ts": 6,
