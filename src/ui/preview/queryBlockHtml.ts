@@ -1,6 +1,7 @@
 import type MarkdownIt from 'markdown-it';
 
 import { formatIsoDate, describeDueDate } from '../../core/markdown/taskMetadata';
+import { getTaskPolicy } from '../../core/taskPolicy';
 import { WorkspaceIndex } from '../../core/types';
 import {
   getQueryBlockSnapshot,
@@ -258,14 +259,14 @@ function renderPriority(priority: string): string {
 function renderTask(item: QueryBlockItem, now: number): string {
   const done = item.completed === true;
   const due =
-    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, item.dueText) : undefined;
+    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, getTaskPolicy(), item.dueText) : undefined;
   const overdue =
     !done && item.dueAt !== undefined && item.dueAt < startOfDay(now) && !due?.stale;
   // An open task's due date reads beside today, "overdue 12 days ·
   // 2026-09-01", so the state is in the words and not the color alone.
   const dueLabel =
     item.dueAt !== undefined && !done
-      ? describeDueDate(item.dueAt, now, item.dueText).label
+      ? describeDueDate(item.dueAt, now, getTaskPolicy(), item.dueText).label
       : item.dueText
         ? `due ${item.dueText}`
         : '';

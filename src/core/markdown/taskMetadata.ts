@@ -1,4 +1,4 @@
-import { needsNewDate } from '../taskPolicy';
+import { needsNewDate, TaskPolicy } from '../taskPolicy';
 import { TaskPriority } from '../types';
 import {
   addDays,
@@ -959,15 +959,19 @@ const RELATIVE_DUE_LIMIT_DAYS = 30;
  * Words a due date the way a reader decides on it: how far from today it is,
  * then the date itself for anyone who cites or compares dates. The word
  * "overdue" is in the text, so the state never rests on color alone.
+ *
+ * Today is the day `now` falls on, and `taskPolicy` says when an overdue date
+ * is stale: the wording depends on nothing else.
  */
 export function describeDueDate(
   dueAt: number,
   now: number,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
   dueText?: string,
 ): DueDescription {
   const days = Math.round((startOfDay(dueAt) - startOfDay(now)) / DAY_MS);
   const date = dueText ?? formatIsoDate(dueAt);
-  if (days < 0 && needsNewDate(dueAt, now)) {
+  if (days < 0 && needsNewDate(dueAt, now, taskPolicy)) {
     return { relative: 'was due', label: `was due ${date}`, overdue: false, stale: true, days };
   }
   const overdue = days < 0;

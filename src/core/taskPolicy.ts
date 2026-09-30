@@ -38,11 +38,16 @@ export function getTaskPolicy(): Readonly<TaskPolicy> {
 }
 
 /**
- * True for a due date more than `needsNewDateAfterDays` behind today: a task
- * exactly 30 days overdue is still Overdue, and at 31 it needs a new date.
+ * True for a due date more than the policy's `needsNewDateAfterDays` behind
+ * the day `now` falls on: a task exactly 30 days overdue is still Overdue,
+ * and at 31 it needs a new date. Never true when the policy's days are 0.
  */
-export function needsNewDate(dueAt: number | undefined, now: number): boolean {
-  const days = policy.needsNewDateAfterDays;
+export function needsNewDate(
+  dueAt: number | undefined,
+  now: number,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'> = policy,
+): boolean {
+  const days = taskPolicy.needsNewDateAfterDays;
   return (
     dueAt !== undefined &&
     days > 0 &&
@@ -50,13 +55,22 @@ export function needsNewDate(dueAt: number | undefined, now: number): boolean {
   );
 }
 
-/** The first day that is not yet past the line, as a timestamp, or undefined when it is off. */
-export function needsNewDateBefore(now: number): number | undefined {
-  const days = policy.needsNewDateAfterDays;
+/**
+ * The first day that is not yet past the policy's line, counted back from
+ * the day `now` falls on, as a timestamp, or undefined when the line is off.
+ */
+export function needsNewDateBefore(
+  now: number,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'> = policy,
+): number | undefined {
+  const days = taskPolicy.needsNewDateAfterDays;
   return days > 0 ? daysBefore(now, days) : undefined;
 }
 
-/** The status written on a task's own line, in the policy's namespace, or ''. */
+/**
+ * The status written on a task's own line, in `namespace` (the policy's
+ * `statusNamespace`, as the caller passes it), or ''.
+ */
 export function readLineStatus(
   task: Pick<Task, 'associationTagGroups'>,
   namespace: string = policy.statusNamespace,

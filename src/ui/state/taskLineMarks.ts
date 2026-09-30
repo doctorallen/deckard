@@ -5,6 +5,7 @@ import {
   findTaskMetadataSpans,
   parseIsoDate,
 } from '../../core/markdown/taskMetadata';
+import { getTaskPolicy } from '../../core/taskPolicy';
 
 /** A stretch of one line, zero-based. */
 export interface LineSpan {
@@ -76,7 +77,7 @@ export function findTaskLineMarks(
     const spans = findTaskMetadataSpans(text.slice(offset));
     const due = spans.find((span) => span.field === 'due');
     const dueAt = open && due ? parseIsoDate(due.value) : undefined;
-    const described = dueAt === undefined ? undefined : describeDueDate(dueAt, now);
+    const described = dueAt === undefined ? undefined : describeDueDate(dueAt, now, getTaskPolicy());
     for (const span of spans) {
       const at = { line, start: offset + span.start, end: offset + span.end };
       if (span === due && described?.overdue) {

@@ -4,6 +4,7 @@ import {
   TASK_PRIORITY_RANKS,
   describeDueDate,
 } from '../../core/markdown/taskMetadata';
+import { getTaskPolicy } from '../../core/taskPolicy';
 import {
   TableCell,
   TableSort,
@@ -120,7 +121,7 @@ export function createTaskCells(
           : task.completed
             ? { text: task.dueText ?? formatIsoDate(task.dueAt) }
             : (() => {
-                const due = describeDueDate(task.dueAt, now, task.dueText);
+                const due = describeDueDate(task.dueAt, now, getTaskPolicy(), task.dueText);
                 return {
                   text: due.label,
                   ...(due.stale ? { kind: 'muted' as const } : task.dueAt < today ? { kind: 'overdue' as const } : {}),

@@ -12,7 +12,7 @@ import {
 import { describeStepParts, foldSteps } from '../../core/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
-import { needsNewDate } from '../../core/taskPolicy';
+import { getTaskPolicy, needsNewDate } from '../../core/taskPolicy';
 import { escapeRegExp } from '../../core/text';
 import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
 import {
@@ -1071,7 +1071,7 @@ function createCard(
         ? `done ${formatIsoDate(task.doneAt)}`
         : '',
       open && task.dueAt !== undefined
-        ? describeDueDate(task.dueAt, today, task.dueText).label
+        ? describeDueDate(task.dueAt, today, getTaskPolicy(), task.dueText).label
         : open && task.dueText
           ? `due ${task.dueText}`
           : '',

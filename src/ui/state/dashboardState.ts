@@ -75,6 +75,7 @@ import {
   QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
 import { addDays, describeDueDate } from '../../core/markdown/taskMetadata';
+import { getTaskPolicy } from '../../core/taskPolicy';
 import {
   formatMonthDay,
   formatMonthName,
@@ -1613,7 +1614,7 @@ export function createDashboardTask(
 ): DashboardTask {
   const due =
     !task.completed && task.dueAt !== undefined
-      ? describeDueDate(task.dueAt, now, task.dueText)
+      ? describeDueDate(task.dueAt, now, getTaskPolicy(), task.dueText)
       : undefined;
   return {
     task,
