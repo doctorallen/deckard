@@ -1,5 +1,4 @@
-import { Emitter } from '../emitter';
-import type { Disposable } from '../../ports/events';
+import type { Disposable, Event } from '../../ports/events';
 import type { KeyValueStore } from '../../ports/keyValueStore';
 
 import {
@@ -29,7 +28,6 @@ import {
   bumped,
   carryLegacyIds,
   cloneSavedFilter,
-  clonePreferences,
   cloneWidgets,
   DEFAULT_DASHBOARD_WIDGETS,
   FIND_CHOICE_LIMIT,
@@ -41,8 +39,6 @@ import {
   normalizeSavedFilterTagKeys,
   normalizeTableColumns,
   normalizeTableSort,
-  omitWorkspacePreferences,
-  pickWorkspacePreferences,
   PINNED_NOTE_LIMIT,
   pinKey,
   RECENT_HEADING_LIMIT,
@@ -50,6 +46,7 @@ import {
   toggled,
   upsertById,
 } from './preferencesSchema';
+import { PreferencesRepository } from './preferencesRepository';
 
 export {
   carryLegacyIds,
@@ -70,7 +67,6 @@ export {
   RECENT_QUERY_LIMIT,
 } from './preferencesSchema';
 
-const preferencesKey = 'deckard.preferences';
 /** What `findStale` reports: deliberate choices the index no longer backs. */
 export interface StalePreferences {
   favoriteTags: string[];
@@ -79,9 +75,6 @@ export interface StalePreferences {
   savedFilters: SavedFilter[];
 }
 
-/** Set once the machine-wide store has handed its content to a workspace. */
-const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
-
 /**
  * Persists UI-only state without adding metadata to Markdown notes.
  *
@@ -89,13 +82,16 @@ const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
  * cannot leak unsupported sort modes, duplicate IDs, or invalid access counts.
  */
 export class PreferencesStore implements Disposable {
-  private readonly changeEmitter = new Emitter<PersistedPreferences>();
-  private readonly visitEmitter = new Emitter<void>();
-  private preferences: PersistedPreferences;
-  private updateQueue: Promise<void> = Promise.resolve();
+  private readonly repository: PreferencesRepository;
 
-  /** A seed from the machine-wide store, waiting to be written. */
-  private seeded: Partial<PersistedPreferences> | undefined;
+  /** Fires after each change is kept, with a copy of the whole blob. */
+  public readonly onDidChange: Event<PersistedPreferences>;
+
+  /**
+   * Fires when a visit or a carried view count was kept quietly: only Home's
+   * Recently opened needs to hear it.
+   */
+  public readonly onDidRecordVisit: Event<void>;
 
   /**
    * `workspaceState` carries the preferences that name workspace content. It
@@ -103,73 +99,31 @@ export class PreferencesStore implements Disposable {
    * them and nothing to index; the store then reads and writes the
    * machine-wide blob alone, as it always did.
    */
-  public constructor(
-    private readonly state: KeyValueStore,
-    private readonly workspaceState?: KeyValueStore,
-  ) {
-    const global = state.get<Partial<PersistedPreferences>>(preferencesKey);
-    if (!this.workspaceState) {
-      this.preferences = normalizePreferences(global);
-      return;
-    }
-    const workspace =
-      this.workspaceState.get<Partial<PersistedPreferences>>(preferencesKey);
-    // The first workspace opened after the upgrade adopts what was kept
-    // machine-wide, so a reader with one set of notes sees no change at all.
-    // Later workspaces start clean rather than inheriting another's tags,
-    // which they would prune away anyway.
-    if (
-      workspace === undefined &&
-      !state.get<boolean>(workspaceScopedKey, false)
-    ) {
-      this.seeded = pickWorkspacePreferences(global);
-    }
-    // The machine-wide blob keeps a whole copy, so its workspace keys have to
-    // be dropped before the workspace's own are laid over it. Without that, a
-    // workspace with nothing stored would read the last one's favorites.
-    this.preferences = normalizePreferences({
-      ...omitWorkspacePreferences(global),
-      ...(workspace ?? this.seeded ?? {}),
-    });
+  public constructor(state: KeyValueStore, workspaceState?: KeyValueStore) {
+    this.repository = new PreferencesRepository(state, workspaceState);
+    this.onDidChange = this.repository.onDidChange;
+    this.onDidRecordVisit = this.repository.onDidRecordVisit;
   }
 
   /**
    * Writes a seed taken from the machine-wide store into the workspace, and
    * records that it has been handed over. Call once, after construction.
-   *
-   * The machine-wide blob keeps a whole copy. That is what an older Deckard
-   * reads, and what seeds a workspace whose own storage VS Code has since
-   * cleaned up; it is never read while the workspace has one of its own.
    */
-  public async initialize(): Promise<void> {
-    if (!this.workspaceState || this.seeded === undefined) {
-      return;
-    }
-    this.seeded = undefined;
-    // Through the same queue as every other write, so a preference changed
-    // before the handover lands is not overwritten by it.
-    const write = async (): Promise<void> => {
-      await this.persist(clonePreferences(this.preferences));
-      await this.state.update(workspaceScopedKey, true);
-    };
-    const queued = this.updateQueue.then(write, write);
-    this.updateQueue = queued;
-    await queued;
+  public initialize(): Promise<void> {
+    return this.repository.initialize();
   }
 
-  public readonly onDidChange = this.changeEmitter.event;
-  /**
-   * Fires when a visit or a carried view count was kept quietly: only Home's
-   * Recently opened needs to hear it.
-   */
-  public readonly onDidRecordVisit = this.visitEmitter.event;
+  /** The blob as it stands, which the methods below read and never mutate. */
+  private get preferences(): PersistedPreferences {
+    return this.repository.current;
+  }
 
   /**
    * Returns a defensive copy because callers use snapshots as freely mutable
    * view-model input while the store must keep its persisted state private.
    */
   public get value(): PersistedPreferences {
-    return clonePreferences(this.preferences);
+    return this.repository.snapshot();
   }
 
   /**
@@ -956,41 +910,22 @@ export class PreferencesStore implements Disposable {
   }
 
   /**
-   * Releases the event source owned by this store.
+   * Releases the event sources owned by this store.
    */
   public dispose(): void {
-    this.changeEmitter.dispose();
-    this.visitEmitter.dispose();
+    this.repository.dispose();
   }
 
-  /**
-   * Normalizes, persists, and broadcasts one state transition.
-   */
   /**
    * Stores a change. A quiet one is kept without telling every open page,
    * since a visit recorded on each note switch would redraw them all; only
    * `onDidRecordVisit` hears of it.
    */
-  private async update(
+  private update(
     changes: Partial<PersistedPreferences>,
     quiet = false,
   ): Promise<void> {
-    this.preferences = normalizePreferences({
-      ...this.preferences,
-      ...changes,
-    });
-    const nextPreferences = clonePreferences(this.preferences);
-    const persist = async (): Promise<void> => {
-      await this.persist(nextPreferences);
-      if (quiet) {
-        this.visitEmitter.fire();
-      } else {
-        this.changeEmitter.fire(clonePreferences(nextPreferences));
-      }
-    };
-    const queuedUpdate = this.updateQueue.then(persist, persist);
-    this.updateQueue = queuedUpdate;
-    await queuedUpdate;
+    return this.repository.update(changes, quiet);
   }
 
   /**
@@ -1001,18 +936,6 @@ export class PreferencesStore implements Disposable {
    */
   public async importPreferences(value: PersistedPreferences): Promise<void> {
     await this.update(normalizePreferences(value));
-  }
-
-  /**
-   * Writes one blob to the two stores it is split across. The workspace's
-   * share is authoritative; the machine-wide copy is a backup and a seed.
-   */
-  private async persist(next: PersistedPreferences): Promise<void> {
-    await this.state.update(preferencesKey, next);
-    await this.workspaceState?.update(
-      preferencesKey,
-      pickWorkspacePreferences(next),
-    );
   }
 }
 
