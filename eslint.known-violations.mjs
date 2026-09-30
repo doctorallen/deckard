@@ -199,12 +199,6 @@ export default {
     "src/ui/commands/moveTo.ts": [
       "moveBlocks"
     ],
-    "src/ui/commands/parking.ts": [
-      "parkFolder",
-      "parkNotes",
-      "unparkNotes",
-      "unparkTag"
-    ],
     "src/ui/commands/quickFind.ts": [
       "accept",
       "runAction",
@@ -348,7 +342,6 @@ export default {
     "src/ui/commands/editorLenses.ts": 4,
     "src/ui/commands/editorReferences.ts": 5,
     "src/ui/commands/entitySuggestions.ts": 2,
-    "src/ui/commands/excludeFolders.ts": 2,
     "src/ui/commands/exportResults.ts": 6,
     "src/ui/commands/extractHeading.ts": 3,
     "src/ui/commands/firstIndex.ts": 2,
@@ -360,7 +353,6 @@ export default {
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/noteVisits.ts": 5,
     "src/ui/commands/notify.ts": 2,
-    "src/ui/commands/parking.ts": 4,
     "src/ui/commands/pinNote.ts": 2,
     "src/ui/commands/preferenceBackups.ts": 5,
     "src/ui/commands/quickFind.ts": 4,
@@ -433,7 +425,6 @@ export default {
     "src/domain/markdown/wordCount.ts": 1,
     "src/domain/query/queryParser.ts": 2,
     "src/test/naming.test.ts": 1,
-    "src/ui/commands/parking.ts": 1,
     "src/ui/commands/taskActions.ts": 1,
     "test/ui/checkContrast.js": 2,
     "test/ui/checkLayout.js": 17,
@@ -502,9 +493,6 @@ export default {
     ],
     "src/ui/commands/moveTo.ts": [
       "moveBlocks"
-    ],
-    "src/ui/commands/parking.ts": [
-      "unparkNotes"
     ],
     "src/ui/commands/quickFind.ts": [
       "runAction",
@@ -670,7 +658,6 @@ export default {
     "src/ui/commands/bulkEdit.ts": 2,
     "src/ui/commands/editorReferences.ts": 1,
     "src/ui/commands/moveTo.ts": 2,
-    "src/ui/commands/parking.ts": 4,
     "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/rollover.ts": 1,
     "src/ui/commands/tagSuggestions.ts": 1,
@@ -705,7 +692,6 @@ export default {
     "src/ui/commands/focusSection.ts": 1,
     "src/ui/commands/linkSuggestions.ts": 1,
     "src/ui/commands/notify.ts": 1,
-    "src/ui/commands/parking.ts": 2,
     "src/ui/commands/pinNote.ts": 1,
     "src/ui/commands/settings.ts": 1,
     "src/ui/commands/taskBoardActions.ts": 1,
@@ -735,7 +721,6 @@ export default {
     "src/ui/commands/mcpServer.ts": 1,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/noteVisits.ts": 1,
-    "src/ui/commands/parking.ts": 1,
     "src/ui/commands/quickFind.ts": 3,
     "src/ui/commands/savedSearchHome.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,

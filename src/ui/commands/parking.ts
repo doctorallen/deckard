@@ -2,19 +2,26 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import {
-  addFrontmatterTag,
-  readFrontmatterTagValues,
-  removeFrontmatterTags,
-} from '../../domain/markdown/frontmatterTags';
 import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { pluralize } from '../../shared/text';
 import { WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
-import { isUnderParkedTag, ParkedRules, toParkedTagKey } from '../../domain/index/parked';
-import { createExcludeMatcher } from '../../core/workspace/scanner';
-import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
-import { listExcludedFolders, readExcludeKey, relativeExcludeKey, withExcludeKey } from './excludeFolders';
+import { listExcludedFolders } from '../../domain/index/excludeKeys';
+import { ParkedRules } from '../../domain/index/parked';
+import {
+  ParkFolderResult,
+  ParkingEdit,
+  ParkingService,
+  ParkingSettings,
+  ParkingWriteLabel,
+  ParkingWriteOutcome,
+  ParkNotesResult,
+  ParkTagResult,
+  SettingPlace,
+  UnparkFolderResult,
+  UnparkNotesResult,
+  UnparkTagResult,
+} from '../../services/parkingService';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { writeSetting } from './settings';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
@@ -22,13 +29,12 @@ import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 /**
  * Park Note, Park Folder, and Park Tag, and their Unpark counterparts.
  *
- * A parked note stays indexed and searchable, and is left out of the lists
- * of things to do. Park Note writes the first parked tag into the note's
- * front matter rather than moving the file: a tag travels with the note, and
- * a move would break every link and tool that knows its path. Folders and
- * tags are parked in `deckard.parked.folders` and `deckard.parked.tags`.
+ * Which notes, folders, and tags can be parked, and why the others cannot,
+ * is ParkingService's decision; these commands gather what was chosen, ask
+ * where the service needs an answer, and say what came of it.
  */
 
+/** What the parking commands and context keys read of the index. */
 export interface ParkingIndex {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
@@ -39,6 +45,29 @@ export interface ParkingIndex {
   onDidUpdate: vscode.Event<unknown>;
   /** Reads the notes again, after an Undo puts some back. */
   refresh(): Promise<void>;
+}
+
+/** The parking service as the commands use it, over VS Code's URIs and writes. */
+export type VscodeParkingService = ParkingService<vscode.Uri, WriteHandle>;
+
+/** What the parking commands work through: the index they read, and the service that decides. */
+export interface ParkingCommands {
+  indexer: ParkingIndex;
+  parking: VscodeParkingService;
+}
+
+/**
+ * The parking service over VS Code: its settings, its workspace folders,
+ * and writes through the history, so Undo Last Change takes a park back.
+ */
+export function createParkingService(indexer: ParkingIndex, history: WorkspaceWriteHistory): VscodeParkingService {
+  return new ParkingService<vscode.Uri, WriteHandle>({
+    index: indexer,
+    workspace: vscode.workspace,
+    configuration: vscode.workspace,
+    settings: vscodeParkingSettings,
+    edits: () => new NoteDocumentEdit(history),
+  });
 }
 
 const STAYS = 'It stays searchable with is:parked.';
@@ -58,36 +87,84 @@ function chosenNotes(uri?: unknown, uris?: unknown): vscode.Uri[] {
 
 const quoted = (filePath: string): string => `"${noteTitle(filePath)}"`;
 
-/** The folder of a note that a parked-folder pattern matches, nearest first. */
-function parkingFolder(rules: ParkedRules, filePath: string): string | undefined {
-  const parts = filePath.split('/').slice(0, -1);
-  for (let end = 1; end <= parts.length; end += 1) {
-    const folder = parts.slice(0, end).join('/');
-    if (rules.isParkedPath(folder)) {
-      return folder;
-    }
+/**
+ * One write to the notes, through VS Code: each note's document is opened
+ * once, and replaced whole through the editor's copy, so an open note keeps
+ * what the reader has not saved.
+ */
+class NoteDocumentEdit implements ParkingEdit<vscode.Uri, WriteHandle> {
+  private readonly edit = new vscode.WorkspaceEdit();
+  private readonly documents = new Map<string, vscode.TextDocument>();
+
+  public constructor(private readonly history: WorkspaceWriteHistory) {}
+
+  /** The note's text as its document holds it now. */
+  public async read(uri: vscode.Uri): Promise<string> {
+    const document = this.documents.get(uri.toString()) ?? (await vscode.workspace.openTextDocument(uri));
+    this.documents.set(uri.toString(), document);
+    return document.getText();
   }
-  return rules.isParkedPath(filePath) ? filePath : undefined;
+
+  /** Replaces the whole of a note read through this edit. */
+  public replace(uri: vscode.Uri, content: string): void {
+    const document = this.documents.get(uri.toString());
+    if (!document) {
+      throw new Error(`Deckard did not read ${uri.toString()} before changing it.`);
+    }
+    this.edit.replace(
+      document.uri,
+      new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)),
+      content,
+    );
+  }
+
+  /** Writes every note replaced, as one write Undo takes back. */
+  public async write(label: ParkingWriteLabel): Promise<ParkingWriteOutcome<WriteHandle>> {
+    const result = await this.history.write(this.edit, {
+      label: `${label.action} ${pluralize(label.notes, 'note')}`,
+    });
+    return result.applied ? { applied: true, handle: result.handle } : { applied: false };
+  }
 }
 
-/** The note's front-matter tags that park it. */
-function parkingTags(index: WorkspaceIndex, rules: ParkedRules, filePath: string): string[] {
-  return (index.files.get(filePath)?.frontmatterTags ?? [])
-    .filter((tag) => isUnderParkedTag(tag.key, rules.tags))
-    .map((tag) => tag.key);
+/**
+ * Where a parking setting is written: where it is already set most
+ * specifically, else the folder's own settings in a multi-root workspace and
+ * the workspace's otherwise, or the user's when `unset` is `global`. The
+ * value is read from that same place, so a user-level value is not copied
+ * into the workspace.
+ */
+function settingPlace(
+  key: string,
+  scope?: vscode.Uri,
+  unset: 'default' | 'global' = 'default',
+): { configuration: vscode.WorkspaceConfiguration; target: vscode.ConfigurationTarget; current: unknown } {
+  const configuration = vscode.workspace.getConfiguration('deckard', scope);
+  const inspected = configuration.inspect(key);
+  if (scope && inspected?.workspaceFolderValue !== undefined) {
+    return { configuration, target: vscode.ConfigurationTarget.WorkspaceFolder, current: inspected.workspaceFolderValue };
+  }
+  if (inspected?.workspaceValue !== undefined) {
+    return { configuration, target: vscode.ConfigurationTarget.Workspace, current: inspected.workspaceValue };
+  }
+  if (inspected?.globalValue !== undefined || unset === 'global') {
+    return { configuration, target: vscode.ConfigurationTarget.Global, current: inspected?.globalValue };
+  }
+  const multiRoot = vscode.workspace.workspaceFile !== undefined && scope !== undefined;
+  return {
+    configuration,
+    target: multiRoot ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Workspace,
+    current: inspected?.defaultValue,
+  };
 }
 
-async function readNote(uri: vscode.Uri): Promise<vscode.TextDocument> {
-  return vscode.workspace.openTextDocument(uri);
-}
-
-function replaceAll(edit: vscode.WorkspaceEdit, document: vscode.TextDocument, content: string): void {
-  edit.replace(
-    document.uri,
-    new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)),
-    content,
-  );
-}
+/** The parking settings as VS Code writes them, saying so when a write is refused. */
+const vscodeParkingSettings: ParkingSettings<vscode.Uri> = {
+  place(key: string, scope?: vscode.Uri, unset?: 'default' | 'global'): SettingPlace {
+    const { configuration, target, current } = settingPlace(key, scope, unset);
+    return { current, write: (value) => writeSetting(key, value, target, configuration) };
+  },
+};
 
 /**
  * The Undo button on a write to the notes: it takes back the last write as
@@ -99,212 +176,144 @@ function offerUndo(indexer: ParkingIndex, written: WriteHandle, text: string): v
 }
 
 /** Park Note: writes the first parked tag into each note's front matter. */
-export async function parkNotes(indexer: ParkingIndex, history: WorkspaceWriteHistory, uri?: unknown, uris?: unknown): Promise<void> {
+export async function parkNotes(commands: ParkingCommands, uri?: unknown, uris?: unknown): Promise<void> {
   const chosen = chosenNotes(uri, uris);
   if (chosen.length === 0) {
     void vscode.window.showInformationMessage('Open a note, or right-click one in the Explorer, to park it.');
     return;
   }
-  await indexer.ready;
-  const index = indexer.getSnapshot();
-  const rules = indexer.getParkedRules();
-  const tag = rules.tags.find((candidate) => candidate.startsWith('#'));
-  if (!tag) {
-    void vscode.window.showInformationMessage(
-      `The "${settingLabel('parked.tags')}" setting names no tag, so Park Note has nothing to write. Add one, such as parked.`,
-    );
-    return;
-  }
-  const edit = new vscode.WorkspaceEdit();
-  const parked: string[] = [];
-  const unreadable: string[] = [];
-  for (const noteUri of chosen) {
-    const filePath = indexer.getFilePath(noteUri);
-    if (!indexer.isNotesFile(noteUri) || !index.files.has(filePath)) {
-      if (chosen.length === 1) {
-        void vscode.window.showInformationMessage(
-          `Deckard does not index ${path.basename(noteUri.path)}, so there is nothing to park.`,
-        );
-        return;
-      }
-      continue;
-    }
-    const folder = parkingFolder(rules, filePath);
-    if (folder && chosen.length === 1) {
-      const choice = await vscode.window.showInformationMessage(
-        `${quoted(filePath)} is already parked: it is in ${folder}, which is parked.`,
-        'Unpark Folder',
+  await commands.indexer.ready;
+  await reportParkedNotes(commands, await commands.parking.parkNotes(commands.indexer.getSnapshot(), chosen));
+}
+
+/** Says what Park Note came to, offering to unpark the folder that already parks a note. */
+async function reportParkedNotes(
+  commands: ParkingCommands,
+  result: ParkNotesResult<vscode.Uri, WriteHandle>,
+): Promise<void> {
+  if (result.kind === 'refused') {
+    if (result.reason === 'parked-by-folder') {
+      await offerUnparkFolder(
+        commands,
+        `${quoted(result.filePath)} is already parked: it is in ${result.folder}, which is parked.`,
+        result.folder,
       );
-      if (choice === 'Unpark Folder') {
-        await unparkFolders(indexer, indexer.getUri(folder));
-      }
       return;
     }
-    if (folder || parkingTags(index, rules, filePath).length > 0) {
-      if (chosen.length === 1) {
-        void vscode.window.showInformationMessage(`${quoted(filePath)} is already parked.`);
-        return;
-      }
-      continue;
-    }
-    const document = await readNote(noteUri);
-    const next = addFrontmatterTag(document.getText(), tag.slice(1));
-    if (next === undefined) {
-      unreadable.push(filePath);
-      continue;
-    }
-    replaceAll(edit, document, next);
-    parked.push(filePath);
+    void vscode.window.showInformationMessage(describeParkRefusal(result));
+    return;
   }
-  if (unreadable.length > 0 && parked.length === 0) {
+  if (result.kind === 'unreadable') {
     void reportFailure({
-      outcome: `Deckard could not read the front matter of ${quoted(unreadable[0])}, so it did not change it.`,
-      fix: `Add ${tag.slice(1)} to its tags by hand.`,
+      outcome: `Deckard could not read the front matter of ${quoted(result.filePath)}, so it did not change it.`,
+      fix: `Add ${result.tag} to its tags by hand.`,
     });
     return;
   }
-  if (parked.length === 0) {
-    void vscode.window.showInformationMessage('Every note chosen is parked already.');
+  if (result.kind === 'not-applied') {
     return;
   }
-  const result = await history.write(edit, {
-    label: `parking ${pluralize(parked.length, 'note')}`,
-  });
-  if (!result.applied) {
-    return;
+  const parked = result.filePaths;
+  offerUndo(
+    commands.indexer,
+    result.handle,
+    parked.length === 1 ? `Parked ${quoted(parked[0])}. ${STAYS}` : `Parked ${parked.length} notes. ${STAY}`,
+  );
+}
+
+/** The one sentence for each reason Park Note wrote nothing. */
+function describeParkRefusal(
+  result: Exclude<Extract<ParkNotesResult<vscode.Uri, WriteHandle>, { kind: 'refused' }>, { reason: 'parked-by-folder' }>,
+): string {
+  switch (result.reason) {
+    case 'no-parked-tag':
+      return `The "${settingLabel('parked.tags')}" setting names no tag, so Park Note has nothing to write. Add one, such as parked.`;
+    case 'not-indexed':
+      return `Deckard does not index ${path.basename(result.uri.path)}, so there is nothing to park.`;
+    case 'already-parked':
+      return `${quoted(result.filePath)} is already parked.`;
+    case 'all-parked':
+      return 'Every note chosen is parked already.';
   }
-  offerUndo(indexer, result.handle, parked.length === 1 ? `Parked ${quoted(parked[0])}. ${STAYS}` : `Parked ${parked.length} notes. ${STAY}`);
 }
 
 /** Unpark Note: takes the parked tags out of each note's front matter. */
-export async function unparkNotes(indexer: ParkingIndex, history: WorkspaceWriteHistory, uri?: unknown, uris?: unknown): Promise<void> {
+export async function unparkNotes(commands: ParkingCommands, uri?: unknown, uris?: unknown): Promise<void> {
   const chosen = chosenNotes(uri, uris);
   if (chosen.length === 0) {
     void vscode.window.showInformationMessage('Open a note, or right-click one in the Explorer, to unpark it.');
     return;
   }
-  await indexer.ready;
-  const index = indexer.getSnapshot();
-  const rules = indexer.getParkedRules();
-  // The tag Park Note writes, and any other written the same way, is taken
-  // out without asking; another parked tag says more than "parked".
-  const writtenTag = rules.tags.find((candidate) => candidate.startsWith('#'));
-  const edit = new vscode.WorkspaceEdit();
-  const unparked: string[] = [];
-  for (const noteUri of chosen) {
-    const filePath = indexer.getFilePath(noteUri);
-    const single = chosen.length === 1;
-    const folder = parkingFolder(rules, filePath);
-    if (folder) {
-      if (single) {
-        const choice = await vscode.window.showInformationMessage(
-          `${quoted(filePath)} is parked by its folder, ${folder}.`,
-          'Unpark Folder',
-        );
-        if (choice === 'Unpark Folder') {
-          await unparkFolders(indexer, indexer.getUri(folder));
-        }
-        return;
-      }
-      continue;
-    }
-    const tags = parkingTags(index, rules, filePath);
-    if (tags.length === 0) {
-      if (single) {
-        void vscode.window.showInformationMessage(`${quoted(filePath)} is not parked.`);
-        return;
-      }
-      continue;
-    }
-    const document = await readNote(noteUri);
-    const values = readFrontmatterTagValues(document.getText());
-    if (values === undefined) {
-      if (single) {
-        void reportFailure({
-          outcome: `Deckard could not read the front matter of ${quoted(filePath)}, so it did not change it.`,
-          fix: 'Take the parked tag out of its tags by hand.',
-        });
-        return;
-      }
-      continue;
-    }
-    const other = tags.find((key) => key !== writtenTag);
-    if (other && single) {
-      const label = index.tags.get(other)?.label ?? other;
-      const remove = 'Remove the Tag from This Note';
-      const unparkTagChoice = `Unpark ${label}`;
-      const choice = await vscode.window.showInformationMessage(
-        `${quoted(filePath)} is parked by its tag ${label}.`,
-        remove,
-        unparkTagChoice,
-      );
-      if (choice === unparkTagChoice) {
-        await unparkTag(indexer, other);
-        return;
-      }
-      if (choice !== remove) {
-        return;
-      }
-    } else if (other) {
-      continue;
-    }
-    const next = removeFrontmatterTags(document.getText(), tags);
-    if (next === undefined) {
-      continue;
-    }
-    replaceAll(edit, document, next);
-    unparked.push(filePath);
-  }
-  if (unparked.length === 0) {
-    return;
-  }
-  const result = await history.write(edit, {
-    label: `unparking ${pluralize(unparked.length, 'note')}`,
-  });
-  if (!result.applied) {
-    return;
-  }
-  offerUndo(indexer, result.handle, unparked.length === 1 ? `Unparked ${quoted(unparked[0])}.` : `Unparked ${unparked.length} notes.`);
+  await commands.indexer.ready;
+  await reportUnparkedNotes(commands, await commands.parking.unparkNotes(commands.indexer.getSnapshot(), chosen));
 }
 
 /**
- * Where a parking setting is written: where it is already set most
- * specifically, else the folder's own settings in a multi-root workspace and
- * the workspace's otherwise. The value is read from that same place, so a
- * user-level value is not copied into the workspace.
+ * Says what Unpark Note came to. A note parked by its folder offers to
+ * unpark the folder; one parked by a tag Park Note did not write asks
+ * whether to take the tag out of the note or unpark the tag.
  */
-function settingPlace(
-  key: 'parked.folders' | 'parked.tags',
-  scope?: vscode.Uri,
-): { configuration: vscode.WorkspaceConfiguration; target: vscode.ConfigurationTarget; current: unknown } {
-  const configuration = vscode.workspace.getConfiguration('deckard', scope);
-  const inspected = configuration.inspect(key);
-  if (scope && inspected?.workspaceFolderValue !== undefined) {
-    return { configuration, target: vscode.ConfigurationTarget.WorkspaceFolder, current: inspected.workspaceFolderValue };
+async function reportUnparkedNotes(commands: ParkingCommands, result: UnparkNotesResult<WriteHandle>): Promise<void> {
+  switch (result.kind) {
+    case 'refused':
+      if (result.reason === 'not-parked') {
+        void vscode.window.showInformationMessage(`${quoted(result.filePath)} is not parked.`);
+        return;
+      }
+      await offerUnparkFolder(commands, `${quoted(result.filePath)} is parked by its folder, ${result.folder}.`, result.folder);
+      return;
+    case 'unreadable':
+      void reportFailure({
+        outcome: `Deckard could not read the front matter of ${quoted(result.filePath)}, so it did not change it.`,
+        fix: 'Take the parked tag out of its tags by hand.',
+      });
+      return;
+    case 'parked-by-tag':
+      await askAboutParkingTag(commands, result);
+      return;
+    case 'nothing':
+    case 'not-applied':
+      return;
+    case 'unparked':
+      offerUndo(
+        commands.indexer,
+        result.handle,
+        result.filePaths.length === 1 ? `Unparked ${quoted(result.filePaths[0])}.` : `Unparked ${result.filePaths.length} notes.`,
+      );
   }
-  if (inspected?.workspaceValue !== undefined) {
-    return { configuration, target: vscode.ConfigurationTarget.Workspace, current: inspected.workspaceValue };
-  }
-  if (inspected?.globalValue !== undefined) {
-    return { configuration, target: vscode.ConfigurationTarget.Global, current: inspected.globalValue };
-  }
-  const multiRoot = vscode.workspace.workspaceFile !== undefined && scope !== undefined;
-  return {
-    configuration,
-    target: multiRoot ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Workspace,
-    current: inspected?.defaultValue,
-  };
 }
 
-/** How many indexed notes a folder holds. */
-function countNotesIn(index: WorkspaceIndex, folderPath: string): number {
-  let count = 0;
-  index.files.forEach((_, filePath) => {
-    if (filePath.startsWith(`${folderPath}/`)) {
-      count += 1;
-    }
-  });
-  return count;
+/** Says a note is parked by its folder, with a button that unparks the folder. */
+async function offerUnparkFolder(commands: ParkingCommands, message: string, folder: string): Promise<void> {
+  const choice = await vscode.window.showInformationMessage(message, 'Unpark Folder');
+  if (choice === 'Unpark Folder') {
+    await unparkFolders(commands, commands.indexer.getUri(folder));
+  }
+}
+
+/**
+ * Asks what to do about a note parked by a tag Park Note did not write:
+ * take the tag out of this note, or unpark the tag everywhere.
+ */
+async function askAboutParkingTag(
+  commands: ParkingCommands,
+  result: Extract<UnparkNotesResult<WriteHandle>, { kind: 'parked-by-tag' }>,
+): Promise<void> {
+  const remove = 'Remove the Tag from This Note';
+  const unparkTagChoice = `Unpark ${result.label}`;
+  const choice = await vscode.window.showInformationMessage(
+    `${quoted(result.filePath)} is parked by its tag ${result.label}.`,
+    remove,
+    unparkTagChoice,
+  );
+  if (choice === unparkTagChoice) {
+    await unparkTag(commands, result.tag);
+    return;
+  }
+  if (choice !== remove) {
+    return;
+  }
+  await reportUnparkedNotes(commands, await result.removeTag());
 }
 
 /** The folders that hold notes, most notes first, for the palette. */
@@ -337,164 +346,141 @@ function folderUri(folder: string): vscode.Uri | undefined {
   return root ? vscode.Uri.joinPath(root.uri, ...rest) : undefined;
 }
 
-/** A folder's index path: relative to its workspace folder, named in multi-root. */
-function folderPathOf(uri: vscode.Uri): { key: string; indexPath: string; root: vscode.WorkspaceFolder } | undefined {
-  const root = vscode.workspace.getWorkspaceFolder(uri);
-  if (!root) {
-    return undefined;
-  }
-  const key = relativeExcludeKey(uri.path.replace(/\/+$/, ''), root.uri.path.replace(/\/+$/, ''));
-  if (key === undefined) {
-    return undefined;
-  }
-  const relative = readExcludeKey(key);
-  const multiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
-  return { key, indexPath: multiRoot ? `${root.name}/${relative}` : relative, root };
-}
-
 /** Park Folder…: adds the folder to `deckard.parked.folders`, with Undo. */
-export async function parkFolders(indexer: ParkingIndex, uri?: unknown, uris?: unknown): Promise<void> {
-  await indexer.ready;
-  const index = indexer.getSnapshot();
-  const chosen = Array.isArray(uris) && uris.length > 0
-    ? (uris as vscode.Uri[])
-    : uri instanceof vscode.Uri
-      ? [uri]
-      : [await pickFolder(index, 'Choose a folder to park')].filter((item): item is vscode.Uri => item !== undefined);
-  for (const folder of chosen) {
-    await parkFolder(indexer, index, folder);
+export async function parkFolders(commands: ParkingCommands, uri?: unknown, uris?: unknown): Promise<void> {
+  await commands.indexer.ready;
+  const index = commands.indexer.getSnapshot();
+  for (const folder of await chosenFolders(index, uri, uris)) {
+    await reportParkedFolder(await commands.parking.parkFolder(index, folder));
   }
 }
 
-async function parkFolder(indexer: ParkingIndex, index: WorkspaceIndex, uri: vscode.Uri): Promise<void> {
-  const place = folderPathOf(uri);
-  if (!place) {
-    void vscode.window.showInformationMessage('Choose a folder inside the workspace to park.');
+/** The folders Park Folder was given: the Explorer's selection, a URI, or one picked from those that hold notes. */
+async function chosenFolders(index: WorkspaceIndex, uri?: unknown, uris?: unknown): Promise<vscode.Uri[]> {
+  if (Array.isArray(uris) && uris.length > 0) {
+    return uris as vscode.Uri[];
+  }
+  if (uri instanceof vscode.Uri) {
+    return [uri];
+  }
+  return [await pickFolder(index, 'Choose a folder to park')].filter((item): item is vscode.Uri => item !== undefined);
+}
+
+/**
+ * Says what Park Folder came to. A folder the exclude setting leaves out
+ * cannot be parked until it is taken out of that setting, which the reader
+ * can have done for them when the setting names it by an exact key.
+ */
+async function reportParkedFolder(result: ParkFolderResult): Promise<void> {
+  switch (result.kind) {
+    case 'refused':
+      void vscode.window.showInformationMessage(
+        result.reason === 'outside-workspace'
+          ? 'Choose a folder inside the workspace to park.'
+          : `${result.name} is parked already.`,
+      );
+      return;
+    case 'excluded':
+      await askAboutExcludedFolder(result);
+      return;
+    case 'not-written':
+      return;
+    case 'parked':
+      void vscode.window
+        .showInformationMessage(
+          `Parked ${result.name} and its ${pluralize(result.notes, 'note')}. ${result.notes === 1 ? STAYS : STAY}`,
+          'Undo',
+        )
+        .then(async (choice) => {
+          if (choice === 'Undo') {
+            await result.undo();
+          }
+        });
+  }
+}
+
+/** Asks whether to park a folder the exclude setting leaves out, or to open that setting. */
+async function askAboutExcludedFolder(result: Extract<ParkFolderResult, { kind: 'excluded' }>): Promise<void> {
+  const choice = await vscode.window.showInformationMessage(
+    `${result.name} is left out by the "${settingLabel('exclude')}" setting, so Deckard does not index or search it. Park it instead to keep it searchable.`,
+    'Park Instead',
+    'Open Setting',
+  );
+  if (choice === 'Open Setting' || (choice === 'Park Instead' && !result.parkInstead)) {
+    await openSettingAction('exclude').run();
     return;
   }
-  const { key, indexPath, root } = place;
-  const name = readExcludeKey(key);
-  const excludeSetting = vscode.workspace.getConfiguration('deckard', root.uri).get<unknown>('exclude', {});
-  if (createExcludeMatcher(excludeSetting)(name)) {
-    const exact =
-      excludeSetting && typeof excludeSetting === 'object'
-        ? Object.keys(excludeSetting).find((candidate) => readExcludeKey(candidate.replace(/\/+$/, '')) === name)
-        : undefined;
-    const choice = await vscode.window.showInformationMessage(
-      `${name} is left out by the "${settingLabel('exclude')}" setting, so Deckard does not index or search it. Park it instead to keep it searchable.`,
-      'Park Instead',
-      'Open Setting',
-    );
-    if (choice === 'Open Setting' || (choice === 'Park Instead' && !exact)) {
-      await openSettingAction('exclude').run();
-      return;
-    }
-    if (choice !== 'Park Instead' || !exact) {
-      return;
-    }
-    const configuration = vscode.workspace.getConfiguration('deckard', root.uri);
-    const inspected = configuration.inspect('exclude');
-    const target =
-      inspected?.workspaceFolderValue !== undefined
-        ? vscode.ConfigurationTarget.WorkspaceFolder
-        : inspected?.workspaceValue !== undefined
-          ? vscode.ConfigurationTarget.Workspace
-          : vscode.ConfigurationTarget.Global;
-    const current =
-      target === vscode.ConfigurationTarget.WorkspaceFolder
-        ? inspected?.workspaceFolderValue
-        : target === vscode.ConfigurationTarget.Workspace
-          ? inspected?.workspaceValue
-          : inspected?.globalValue;
-    if (!(await writeSetting('exclude', withExcludeKey(current, exact, false), target, configuration))) {
-      return;
-    }
-  }
-  const { configuration, target, current } = settingPlace('parked.folders', root.uri);
-  if (indexer.getParkedRules().isParkedPath(indexPath)) {
-    void vscode.window.showInformationMessage(`${name} is parked already.`);
+  if (choice !== 'Park Instead' || !result.parkInstead) {
     return;
   }
-  if (!(await writeSetting('parked.folders', withExcludeKey(current, key, true), target, configuration))) {
-    return;
-  }
-  const count = countNotesIn(index, indexPath);
-  void vscode.window
-    .showInformationMessage(`Parked ${name} and its ${pluralize(count, 'note')}. ${count === 1 ? STAYS : STAY}`, 'Undo')
-    .then(async (choice) => {
-      if (choice === 'Undo') {
-        await writeSetting('parked.folders', current, target, configuration);
-      }
-    });
+  await reportParkedFolder(await result.parkInstead());
 }
 
 /** Unpark Folder…: takes the folder's key out of `deckard.parked.folders`. */
-export async function unparkFolders(indexer: ParkingIndex, uri?: unknown, uris?: unknown): Promise<void> {
-  await indexer.ready;
-  const index = indexer.getSnapshot();
-  let chosen: vscode.Uri[];
-  if (Array.isArray(uris) && uris.length > 0) {
-    chosen = uris as vscode.Uri[];
-  } else if (uri instanceof vscode.Uri) {
-    chosen = [uri];
-  } else {
-    const listed = (vscode.workspace.workspaceFolders ?? []).flatMap((folder) =>
-      listExcludedFolders(
-        [{ root: folder.uri.path, exclude: vscode.workspace.getConfiguration('deckard', folder.uri).get<unknown>('parked.folders', {}) }],
-        (root, relative) => path.posix.join(root, relative),
-      ).map((folderPath) => folder.uri.with({ path: folderPath })),
-    );
-    if (listed.length === 0) {
-      void vscode.window.showInformationMessage(`No folder is parked by name in the "${settingLabel('parked.folders')}" setting.`);
-      return;
-    }
-    const picked = await vscode.window.showQuickPick(
-      listed.map((folder) => ({ label: vscode.workspace.asRelativePath(folder, false), folder })),
-      { placeHolder: 'Choose a folder to unpark' },
-    );
-    chosen = picked ? [picked.folder] : [];
+export async function unparkFolders(commands: ParkingCommands, uri?: unknown, uris?: unknown): Promise<void> {
+  await commands.indexer.ready;
+  const index = commands.indexer.getSnapshot();
+  const chosen = await chosenParkedFolders(uri, uris);
+  if (!chosen) {
+    void vscode.window.showInformationMessage(`No folder is parked by name in the "${settingLabel('parked.folders')}" setting.`);
+    return;
   }
   for (const folder of chosen) {
-    await unparkFolder(index, folder);
+    await reportUnparkedFolder(await commands.parking.unparkFolder(index, folder));
   }
 }
 
-async function unparkFolder(index: WorkspaceIndex, uri: vscode.Uri): Promise<void> {
-  const place = folderPathOf(uri);
-  if (!place) {
-    return;
+/**
+ * The folders Unpark Folder was given: the Explorer's selection, a URI, or
+ * one picked from those the setting parks by name. Undefined when there is
+ * none to pick from.
+ */
+async function chosenParkedFolders(uri?: unknown, uris?: unknown): Promise<vscode.Uri[] | undefined> {
+  if (Array.isArray(uris) && uris.length > 0) {
+    return uris as vscode.Uri[];
   }
-  const { key, indexPath, root } = place;
-  const name = readExcludeKey(key);
-  const { configuration, target, current } = settingPlace('parked.folders', root.uri);
-  const keys = current && typeof current === 'object' ? Object.keys(current) : [];
-  const written = keys.find((candidate) => readExcludeKey(candidate.replace(/\/+$/, '')) === name);
-  if (!written) {
-    const everywhere = vscode.workspace.getConfiguration('deckard', root.uri).get<Record<string, unknown>>('parked.folders', {});
-    const pattern = Object.entries(everywhere).find(
-      ([candidate, on]) => on === true && createExcludeMatcher({ [candidate]: true })(name),
-    )?.[0];
-    if (pattern) {
-      const choice = await vscode.window.showInformationMessage(`${name} is parked by the pattern ${pattern}.`, 'Open Setting');
+  if (uri instanceof vscode.Uri) {
+    return [uri];
+  }
+  const listed = (vscode.workspace.workspaceFolders ?? []).flatMap((folder) =>
+    listExcludedFolders(
+      [{ root: folder.uri.path, exclude: vscode.workspace.getConfiguration('deckard', folder.uri).get<unknown>('parked.folders', {}) }],
+      (root, relative) => path.posix.join(root, relative),
+    ).map((folderPath) => folder.uri.with({ path: folderPath })),
+  );
+  if (listed.length === 0) {
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(
+    listed.map((folder) => ({ label: vscode.workspace.asRelativePath(folder, false), folder })),
+    { placeHolder: 'Choose a folder to unpark' },
+  );
+  return picked ? [picked.folder] : [];
+}
+
+/** Says what Unpark Folder came to; a folder a pattern parks offers the setting. */
+async function reportUnparkedFolder(result: UnparkFolderResult): Promise<void> {
+  switch (result.kind) {
+    case 'refused':
+      if (result.reason === 'not-parked') {
+        void vscode.window.showInformationMessage(`${result.name} is not parked.`);
+      }
+      return;
+    case 'parked-by-pattern': {
+      const choice = await vscode.window.showInformationMessage(`${result.name} is parked by the pattern ${result.pattern}.`, 'Open Setting');
       if (choice === 'Open Setting') {
         await openSettingAction('parked.folders').run();
       }
       return;
     }
-    void vscode.window.showInformationMessage(`${name} is not parked.`);
-    return;
+    case 'not-written':
+      return;
+    case 'unparked':
+      void vscode.window.showInformationMessage(`Unparked ${result.name} and its ${pluralize(result.notes, 'note')}.`);
   }
-  if (!(await writeSetting('parked.folders', withExcludeKey(current, written, false), target, configuration))) {
-    return;
-  }
-  void vscode.window.showInformationMessage(`Unparked ${name} and its ${pluralize(countNotesIn(index, indexPath), 'note')}.`);
 }
 
-/** How a parked tag is written in the setting: `project/old`, `@ren`. */
-function settingValue(key: string): string {
-  return key.startsWith('#') ? key.slice(1) : key;
-}
-
+/** The indexed tags, or those `keys` names, by label, for the palette. */
 async function pickTag(index: WorkspaceIndex, placeHolder: string, keys?: readonly string[]): Promise<string | undefined> {
   const counts = countTagMatches(index);
   const items = (keys ?? [...index.tags.keys()]).map((key) => {
@@ -513,97 +499,95 @@ async function pickTag(index: WorkspaceIndex, placeHolder: string, keys?: readon
 }
 
 /** Park Tag…: adds the tag to `deckard.parked.tags`, with Undo. */
-export async function parkTag(indexer: ParkingIndex, tagKey?: unknown): Promise<void> {
-  await indexer.ready;
-  const index = indexer.getSnapshot();
+export async function parkTag(commands: ParkingCommands, tagKey?: unknown): Promise<void> {
+  await commands.indexer.ready;
+  const index = commands.indexer.getSnapshot();
   const requested = typeof tagKey === 'string' ? tagKey : await pickTag(index, 'Choose a tag to park');
   if (!requested) {
     return;
   }
-  const key = resolveIndexedTagKey(index.tags, requested) ?? toParkedTagKey(requested);
-  if (!key) {
-    return;
-  }
-  const label = index.tags.get(key)?.label ?? key;
-  const rules = indexer.getParkedRules();
-  const lower = key.toLowerCase();
-  if (rules.tags.includes(lower)) {
-    void vscode.window.showInformationMessage(`${label} is parked already.`);
-    return;
-  }
-  const parent = rules.tags.find((tag) => lower.startsWith(`${tag}/`));
-  if (parent) {
-    const button = `Unpark ${parent}`;
-    const choice = await vscode.window.showInformationMessage(
-      `${label} is already parked through ${parent}.`,
-      button,
-    );
-    if (choice === button) {
-      await unparkTag(indexer, parent);
-    }
-    return;
-  }
-  const { configuration, target, current } = settingPlace('parked.tags');
-  const list = Array.isArray(current) ? (current as unknown[]).filter((value): value is string => typeof value === 'string') : [];
-  if (!(await writeSetting('parked.tags', [...list, settingValue(key)], target, configuration))) {
-    return;
-  }
-  const count = countTagMatches(index).get(key) ?? { notes: 0, tasks: 0 };
-  void vscode.window
-    .showInformationMessage(
-      `Parked ${label}: ${pluralize(count.notes, 'note')} and ${pluralize(count.tasks, 'task')}. ${count.notes + count.tasks === 1 ? STAYS : STAY}`,
-      'Undo',
-    )
-    .then(async (choice) => {
-      if (choice === 'Undo') {
-        await writeSetting('parked.tags', current, target, configuration);
+  await reportParkedTag(commands, await commands.parking.parkTag(index, requested));
+}
+
+/** Says what Park Tag came to; a tag parked through its parent offers to unpark the parent. */
+async function reportParkedTag(commands: ParkingCommands, result: ParkTagResult): Promise<void> {
+  switch (result.kind) {
+    case 'refused':
+      if (result.reason === 'already-parked') {
+        void vscode.window.showInformationMessage(`${result.label} is parked already.`);
       }
-    });
+      return;
+    case 'parked-through':
+      await offerUnparkParent(commands, `${result.label} is already parked through ${result.parent}.`, result.parent);
+      return;
+    case 'not-written':
+      return;
+    case 'parked':
+      void vscode.window
+        .showInformationMessage(
+          `Parked ${result.label}: ${pluralize(result.notes, 'note')} and ${pluralize(result.tasks, 'task')}. ${result.notes + result.tasks === 1 ? STAYS : STAY}`,
+          'Undo',
+        )
+        .then(async (choice) => {
+          if (choice === 'Undo') {
+            await result.undo();
+          }
+        });
+  }
+}
+
+/** Says a tag is parked through its parent, with a button that unparks the parent. */
+async function offerUnparkParent(commands: ParkingCommands, message: string, parent: string): Promise<void> {
+  const button = `Unpark ${parent}`;
+  const choice = await vscode.window.showInformationMessage(message, button);
+  if (choice === button) {
+    await unparkTag(commands, parent);
+  }
 }
 
 /** Unpark Tag…: takes the tag out of `deckard.parked.tags`. */
-export async function unparkTag(indexer: ParkingIndex, tagKey?: unknown): Promise<void> {
-  await indexer.ready;
-  const index = indexer.getSnapshot();
-  const rules = indexer.getParkedRules();
-  const requested =
-    typeof tagKey === 'string'
-      ? tagKey
-      : rules.tags.length === 0
-        ? undefined
-        : (
-            await vscode.window.showQuickPick(
-              rules.tags.map((tag) => ({ label: index.tags.get(tag)?.label ?? tag, tag })),
-              { placeHolder: 'Choose a tag to unpark' },
-            )
-          )?.tag;
+export async function unparkTag(commands: ParkingCommands, tagKey?: unknown): Promise<void> {
+  await commands.indexer.ready;
+  const index = commands.indexer.getSnapshot();
+  const rules = commands.indexer.getParkedRules();
+  if (typeof tagKey !== 'string' && rules.tags.length === 0) {
+    void vscode.window.showInformationMessage('No tag is parked.');
+    return;
+  }
+  const requested = typeof tagKey === 'string' ? tagKey : await pickParkedTag(index, rules);
   if (requested === undefined) {
-    if (typeof tagKey !== 'string' && rules.tags.length === 0) {
-      void vscode.window.showInformationMessage('No tag is parked.');
-    }
     return;
   }
-  const key = toParkedTagKey(requested);
-  if (!key) {
-    return;
-  }
-  const label = index.tags.get(resolveIndexedTagKey(index.tags, key) ?? key)?.label ?? key;
-  const { configuration, target, current } = settingPlace('parked.tags');
-  const list = Array.isArray(current) ? (current as unknown[]).filter((value): value is string => typeof value === 'string') : [];
-  const kept = list.filter((value) => toParkedTagKey(value) !== key);
-  if (kept.length === list.length) {
-    const parent = rules.tags.find((tag) => key.startsWith(`${tag}/`));
-    if (parent) {
-      const button = `Unpark ${parent}`;
-      const choice = await vscode.window.showInformationMessage(`${label} is parked through ${parent}.`, button);
-      if (choice === button) {
-        await unparkTag(indexer, parent);
+  await reportUnparkedTag(commands, await commands.parking.unparkTag(index, requested, rules));
+}
+
+/** One of the parked tags, by label, for the palette. */
+async function pickParkedTag(index: WorkspaceIndex, rules: ParkedRules): Promise<string | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    rules.tags.map((tag) => ({ label: index.tags.get(tag)?.label ?? tag, tag })),
+    { placeHolder: 'Choose a tag to unpark' },
+  );
+  return picked?.tag;
+}
+
+/**
+ * Says what Unpark Tag came to. A tag parked through its parent offers to
+ * unpark the parent, and one parked where Deckard does not write offers the
+ * setting.
+ */
+async function reportUnparkedTag(commands: ParkingCommands, result: UnparkTagResult): Promise<void> {
+  switch (result.kind) {
+    case 'refused':
+      if (result.reason === 'not-parked') {
+        void vscode.window.showInformationMessage(`${result.label} is not parked.`);
       }
       return;
-    }
-    if (rules.tags.includes(key)) {
+    case 'parked-through':
+      await offerUnparkParent(commands, `${result.label} is parked through ${result.parent}.`, result.parent);
+      return;
+    case 'parked-elsewhere': {
       const choice = await vscode.window.showInformationMessage(
-        `${label} is parked by a setting Deckard does not write here.`,
+        `${result.label} is parked by a setting Deckard does not write here.`,
         'Open Setting',
       );
       if (choice === 'Open Setting') {
@@ -611,13 +595,11 @@ export async function unparkTag(indexer: ParkingIndex, tagKey?: unknown): Promis
       }
       return;
     }
-    void vscode.window.showInformationMessage(`${label} is not parked.`);
-    return;
+    case 'not-written':
+      return;
+    case 'unparked':
+      void vscode.window.showInformationMessage(`Unparked ${result.label}.`);
   }
-  if (!(await writeSetting('parked.tags', kept, target, configuration))) {
-    return;
-  }
-  void vscode.window.showInformationMessage(`Unparked ${label}.`);
 }
 
 export const ACTIVE_NOTE_PARKED = 'deckard.activeNoteParked';
@@ -633,6 +615,7 @@ export class ParkingContext implements vscode.Disposable {
   private notes = '';
   private folders = '';
 
+  /** Starts in step with the note in front, and follows the editor, the index, and the settings. */
   public constructor(private readonly indexer: ParkingIndex) {
     const sync = (): void => this.sync();
     this.disposables.push(
@@ -647,10 +630,12 @@ export class ParkingContext implements vscode.Disposable {
     sync();
   }
 
+  /** Stops following the editor, the index, and the settings. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
+  /** Sets each context key that no longer says what is true now. */
   public sync(): void {
     const index = this.indexer.getSnapshot();
     const uri = vscode.window.activeTextEditor?.document.uri;
@@ -679,9 +664,10 @@ export class ParkingContext implements vscode.Disposable {
       (root, relative) => path.join(root, ...relative.split('/')),
     );
     const foldersKey = folders.join('\n');
-    if (foldersKey !== this.folders) {
-      this.folders = foldersKey;
-      void vscode.commands.executeCommand('setContext', 'deckard.parkedFolders', folders);
+    if (foldersKey === this.folders) {
+      return;
     }
+    this.folders = foldersKey;
+    void vscode.commands.executeCommand('setContext', 'deckard.parkedFolders', folders);
   }
 }

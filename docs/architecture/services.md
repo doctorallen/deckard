@@ -21,7 +21,7 @@ A service owns one capability. It is a class with three properties:
 | Service | What it owns |
 | --- | --- |
 | `TagService` | Renaming and merging a tag, in [`src/services/tagService.ts`](../../src/services/tagService.ts). `rewrite()` plans the edits against the index with `domain/markdown/tagRename`, checks each note it touches against its text now, writes them as one write, and moves the tag's preferences; it returns `refused`, `confirm-merge` (with the `merge()` to run once the reader confirms), `stale`, `not-found`, `rejected`, `unchanged`, or `written`. Rename Tag and Merge Tags ask, confirm, and word the result. Tag hygiene is still the pure `ui/state/tagHygiene.ts` |
-| `ParkingService` | Which notes can be parked or unparked, and why the others cannot |
+| `ParkingService` | Which notes, folders, and tags can be parked or unparked, and why the others cannot, in [`src/services/parkingService.ts`](../../src/services/parkingService.ts). `parkNotes`, `unparkNotes`, `parkFolder`, `unparkFolder`, `parkTag`, and `unparkTag` each return a result the command words; a single note's three refusals stay apart, and a result that waits on the reader carries the step that follows (`removeTag()`, `parkInstead()`), and a settings write its `undo()`. The pure rules are `domain/index/parkingRules` and `domain/index/excludeKeys` |
 | `RolloverService` | Carrying unfinished tasks forward, as `applyRollover` does today |
 | `TaskService` | Every task edit: update a line, toggle, steps, move, and the board's capture into a column. A `TaskRankKeeper` collaborator carries a task's rank |
 | `AgendaService` | The agenda's writes, `listOverdueTasks`, and the reschedule context |

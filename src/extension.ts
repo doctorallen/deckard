@@ -48,6 +48,8 @@ import {
   includeFolderCommand,
 } from './ui/commands/excludeFolders';
 import {
+  createParkingService,
+  ParkingCommands,
   ParkingContext,
   parkFolders,
   parkNotes,
@@ -264,6 +266,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     history,
     preferences,
     tags: new TagService({ index: indexer, preferences }),
+  };
+  // What the parking commands read, and the service that decides what they
+  // may park and writes it.
+  const parkingCommands: ParkingCommands = {
+    indexer,
+    parking: createParkingService(indexer, history),
   };
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
@@ -1081,16 +1089,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     new ExcludedFoldersContext(),
     vscode.commands.registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
-      parkNotes(indexer, history, uri, uris),
+      parkNotes(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.unparkNote', (uri?: unknown, uris?: unknown) =>
-      unparkNotes(indexer, history, uri, uris),
+      unparkNotes(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.parkFolder', (uri?: unknown, uris?: unknown) =>
-      parkFolders(indexer, uri, uris),
+      parkFolders(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.unparkFolder', (uri?: unknown, uris?: unknown) =>
-      unparkFolders(indexer, uri, uris),
+      unparkFolders(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.parkTag', async (tag?: unknown) => {
       const outlineNode = asOutlineNode(tag);
@@ -1100,7 +1108,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       if (outlineNode && !key) {
         return;
       }
-      await parkTag(indexer, key);
+      await parkTag(parkingCommands, key);
     }),
     vscode.commands.registerCommand('deckard.unparkTag', async (tag?: unknown) => {
       const outlineNode = asOutlineNode(tag);
@@ -1110,7 +1118,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       if (outlineNode && !key) {
         return;
       }
-      await unparkTag(indexer, key);
+      await unparkTag(parkingCommands, key);
     }),
     new ParkingContext(indexer),
     vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
