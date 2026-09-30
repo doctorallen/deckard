@@ -9,7 +9,7 @@ import {
 } from '../domain/markdown/parser';
 import { appendTagToLine } from '../ui/commands/bulkEdit';
 import { moveInlineTagsToFrontmatterContent } from '../ui/commands/moveTagsToFrontmatter';
-import { replaceIndexedTag } from '../ui/commands/renameTag';
+import { replaceIndexedTag } from '../domain/markdown/tagRename';
 import { getTagCompletionContext } from '../domain/markdown/completionContext';
 import { setTaskNamespaceTags, setTaskStatusTag } from '../ui/state/taskBoardState';
 

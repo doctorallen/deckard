@@ -1,13 +1,12 @@
 import * as assert from 'assert';
 
 import {
-  folderName,
   listExcludedFolders,
   readExcludeKey,
-  refuseExclude,
   relativeExcludeKey,
   withExcludeKey,
-} from '../ui/commands/excludeFolders';
+} from '../domain/index/excludeKeys';
+import { folderName, refuseExclude } from '../ui/commands/excludeFolders';
 import { createExcludeMatcher } from '../core/workspace/scanner';
 import { noteFolderFor } from '../ui/commands/templates';
 import * as vscode from 'vscode';

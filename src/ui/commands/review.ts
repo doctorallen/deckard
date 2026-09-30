@@ -3,36 +3,44 @@ import * as vscode from 'vscode';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
+  parsePeriodicNoteName,
+  PeriodicNoteName,
+  ReviewPeriod,
+  reviewPeriodOfNote,
+} from '../../domain/notes/reviewPeriods';
+import {
+  ReviewNote,
+  ReviewNotes,
+  ReviewResult,
+  ReviewService,
+  ReviewWriteOutcome,
+} from '../../services/reviewService';
+import {
   formatReview,
   REVIEW_START,
-  ReviewRange,
   ReviewSectionSetting,
+  ReviewSummary,
   summarizeReview,
   writeReviewInto,
 } from '../state/reviewState';
-import { formatIsoDate } from '../../domain/markdown/taskMetadata';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
   findExistingPeriodicNote,
-  getPeriodEnd,
-  getPeriodicNote,
-  getPeriodStart,
   NotePeriod,
-  parseLocalDate,
 } from './dailyNote';
-import { Weekday } from '../../domain/markdown/dates';
 import { readWeekStart } from './datePrompt';
 import { readQueryContext } from './queryContext';
 import { revealLine } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
 /**
- * Writes a week's or a month's review into its periodic note.
+ * Write Review, and the review a new weekly or monthly note starts with.
  *
- * A periodic note that opens from its template alone gives a reader nothing
- * to read. The review is the report the index can already answer, written
- * into the note as ordinary Markdown so it stays true after the period ends.
+ * Which days a review covers, what it looks ahead at, and whether the note
+ * needs writing are ReviewService's decisions; these choose the period and
+ * the note, read the settings, and say what was written, with the way to
+ * read it and the way back.
  */
 
 /** Whether a newly created periodic note gets its review written into it. */
@@ -56,112 +64,161 @@ export function readReviewSections(uri?: vscode.Uri): ReviewSectionSetting[] {
     : [];
 }
 
-/** The days a period covers: its first midnight, and the midnight after it. */
-export function getReviewRange(
-  period: Exclude<NotePeriod, 'day'>,
-  day: Date,
-  weekStart: Weekday = 0,
-): ReviewRange {
-  const { name } = getPeriodicNote(period, day, weekStart);
-  const start = getPeriodStart(period, day, weekStart);
-  const last = getPeriodEnd(period, start);
-  // The day after the last, so a date inside the period is `>= start` and
-  // `< end` whatever hour it carries.
-  const end = new Date(
-    last.getFullYear(),
-    last.getMonth(),
-    last.getDate() + 1,
-  );
-  return {
-    name,
-    title: `${formatIsoDate(start.getTime())} to ${formatIsoDate(last.getTime())}`,
-    start: start.getTime(),
-    end: end.getTime(),
-  };
+/** The review service as the commands use it, over VS Code's URIs and writes. */
+export type VscodeReviewService = ReviewService<vscode.Uri, WriteHandle, ReviewSummary>;
+
+/**
+ * The review service over VS Code: it opens the note through its editor,
+ * writes through the history as one write, and reads the notes again
+ * through `index` once it has.
+ */
+export function createReviewService(
+  history: WorkspaceWriteHistory,
+  index: { refresh(): Promise<void> },
+): VscodeReviewService {
+  return new ReviewService<vscode.Uri, WriteHandle, ReviewSummary>({
+    notes: new ReviewDocuments(history),
+    report: { summarize: summarizeReview, format: formatReview, writeInto: writeReviewInto },
+    index,
+  });
+}
+
+/** The note a review is written into, opened through VS Code. */
+class ReviewDocuments implements ReviewNotes<vscode.Uri, WriteHandle> {
+  public constructor(private readonly history: WorkspaceWriteHistory) {}
+
+  /** Opens the note, to be replaced whole through that same document. */
+  public async open(uri: vscode.Uri): Promise<ReviewNote<WriteHandle>> {
+    const document = await vscode.workspace.openTextDocument(uri);
+    return {
+      text: document.getText(),
+      write: (content, title) => this.write(uri, document, content, title),
+    };
+  }
+
+  /** Writes the note whole, as one write Undo takes back. */
+  private async write(
+    uri: vscode.Uri,
+    document: vscode.TextDocument,
+    content: string,
+    title: string,
+  ): Promise<ReviewWriteOutcome<WriteHandle>> {
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(
+      uri,
+      new vscode.Range(
+        new vscode.Position(0, 0),
+        document.lineAt(Math.max(document.lineCount - 1, 0)).range.end,
+      ),
+      content,
+    );
+    const written = await this.history.write(edit, {
+      label: `the review of ${title}`,
+      // One note, written by asking for it; the reader is watching it happen.
+      preview: 'never',
+    });
+    return written.applied ? { applied: true, handle: written.handle } : { applied: false };
+  }
 }
 
 /**
- * What a review is written with besides the index: the history that keeps it
- * as the write Undo takes back, and the preferences that say when each tag
- * was first seen, when there are any.
+ * What a review is written with besides the index: the service that writes
+ * it, and the preferences that say when each tag was first seen, when there
+ * are any.
  */
 export interface ReviewWrites {
-  history: WorkspaceWriteHistory;
+  reviews: VscodeReviewService;
   preferences?: Pick<PreferencesStore, 'value'>;
+}
+
+/** Which review to write, and whether to say so. */
+interface ReviewCommandRequest {
+  period: Exclude<NotePeriod, 'day'>;
+  /** A day in the period; today when absent. */
+  day?: Date;
+  silent?: boolean;
+  /** The days to review, when a note already says which it covers. */
+  range?: ReviewPeriod;
+  /** The note to write into, rather than the one for the period. */
+  noteUri?: vscode.Uri;
 }
 
 /**
  * Writes the review of a period into its note, creating the note when it is
- * not there yet, and replacing the review already in it.
+ * not there yet, and replacing the review already in it. Returns the
+ * review's title, or undefined when nothing was chosen or written.
  */
-export async function writeReview(
+async function writeReview(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
   writes: ReviewWrites,
-  period: Exclude<NotePeriod, 'day'>,
-  day: Date = new Date(),
-  options: {
-    silent?: boolean;
-    /** The days to review, when a note already says which it covers. */
-    range?: ReviewRange;
-    /** The note to write into, rather than the one for the period. */
-    noteUri?: vscode.Uri;
-  } = {},
+  request: ReviewCommandRequest,
 ): Promise<string | undefined> {
-  const folder = options.noteUri ? undefined : await chooseTargetFolder();
-  if (!folder && !options.noteUri) {
+  const { period, day = new Date() } = request;
+  const target = await chooseReviewNote(period, day, request.noteUri);
+  if (!target) {
     return undefined;
   }
   await indexer.ready;
   const weekStart = readWeekStart();
-  const range = options.range ?? getReviewRange(period, day, weekStart);
-  const summary = summarizeReview(indexer.getSnapshot(), range, {
-    tagFirstSeen: writes.preferences?.value.tagFirstSeen,
-    // The period after this one, which the review looks ahead at.
-    next: getReviewRange(period, new Date(range.end), weekStart),
-    nextLabel: period === 'week' ? 'next week' : 'next month',
-    sections: readReviewSections(options.noteUri ?? folder?.uri),
+  const result = await writes.reviews.write({
+    index: indexer.getSnapshot(),
+    period,
+    day,
+    weekStart,
+    range: request.range,
+    note: target.note,
+    sections: readReviewSections(target.scope),
     queryContext: readQueryContext(),
+    tagFirstSeen: writes.preferences?.value.tagFirstSeen,
   });
-  const review = formatReview(summary);
+  return reportReview(result, request.silent, indexer);
+}
 
-  const noteUri = options.noteUri ?? (await ensurePeriodicNote(folder!, period, day));
-  const document = await vscode.workspace.openTextDocument(noteUri);
-  const updated = writeReviewInto(document.getText(), review);
-  if (updated === document.getText()) {
-    return range.title;
+/**
+ * The note a review goes into: the one given, or the period's note in the
+ * folder the reader is in or picks, created only once the review is read.
+ * `scope` is where the review's sections are read from. Undefined when no
+ * folder was chosen.
+ */
+async function chooseReviewNote(
+  period: Exclude<NotePeriod, 'day'>,
+  day: Date,
+  noteUri?: vscode.Uri,
+): Promise<{ note: () => Promise<vscode.Uri>; scope: vscode.Uri } | undefined> {
+  if (noteUri) {
+    return { note: () => Promise.resolve(noteUri), scope: noteUri };
   }
-
-  const edit = new vscode.WorkspaceEdit();
-  edit.replace(
-    noteUri,
-    new vscode.Range(
-      new vscode.Position(0, 0),
-      document.lineAt(Math.max(document.lineCount - 1, 0)).range.end,
-    ),
-    updated,
-  );
-  const written = await writes.history.write(edit, {
-    label: `the review of ${range.title}`,
-    // One note, written by asking for it; the reader is watching it happen.
-    preview: 'never',
-  });
-  if (!written.applied) {
+  const folder = await chooseTargetFolder();
+  if (!folder) {
     return undefined;
   }
-  try {
-    await indexer.refresh();
-  } catch {
-    // The watcher picks the note up; the review itself is written.
+  return { note: () => ensurePeriodicNote(folder, period, day), scope: folder.uri };
+}
+
+/** Says a review was written, unless `silent`, and returns its title; undefined when nothing was written. */
+function reportReview(
+  result: ReviewResult<vscode.Uri, WriteHandle, ReviewSummary>,
+  silent: boolean | undefined,
+  indexer: Pick<WorkspaceIndexer, 'refresh'>,
+): string | undefined {
+  switch (result.kind) {
+    case 'unchanged':
+      return result.title;
+    case 'not-applied':
+      return undefined;
+    case 'written': {
+      const { summary } = result;
+      if (!silent) {
+        offerReview(
+          `Wrote the review of ${result.title}: ${summary.completed.length} done, ${summary.slipped.length} still open, ${summary.comingUp.length} coming up.`,
+          result.noteUri,
+          result.handle,
+          indexer,
+        );
+      }
+      return result.title;
+    }
   }
-  if (!options.silent) {
-    offerReview(
-      `Wrote the review of ${range.title}: ${summary.completed.length} done, ${summary.slipped.length} still open, ${summary.comingUp.length} coming up.`,
-      noteUri,
-      written.handle,
-      indexer,
-    );
-  }
-  return range.title;
 }
 
 /**
@@ -213,36 +270,30 @@ export async function writeReviewCommand(
   writes: ReviewWrites,
 ): Promise<string | undefined> {
   const open = findOpenPeriod();
-  const period =
-    open?.period ??
-    (
-      await vscode.window.showQuickPick(
-        [
-          { label: 'This week', period: 'week' as const },
-          { label: 'This month', period: 'month' as const },
-        ],
-        { title: 'Write a review', placeHolder: 'Which period?' },
-      )
-    )?.period;
+  const period = open ? open.period : await pickReviewPeriod();
   if (!period) {
     return undefined;
   }
   // A note already open is reviewed for the days its own name holds, and
   // written into, whatever week start was set when it was made.
   const noteUri = vscode.window.activeTextEditor?.document.uri;
-  if (open?.start && open.end && noteUri) {
-    const last = new Date(open.end.getFullYear(), open.end.getMonth(), open.end.getDate() - 1);
-    return writeReview(indexer, writes, period, open.day, {
-      range: {
-        name: open.name ?? fileNameOf(noteUri),
-        title: `${formatIsoDate(open.start.getTime())} to ${formatIsoDate(last.getTime())}`,
-        start: open.start.getTime(),
-        end: open.end.getTime(),
-      },
-      noteUri,
-    });
+  const range = open && noteUri ? reviewPeriodOfNote(open, noteFileName(noteUri)) : undefined;
+  if (open && range && noteUri) {
+    return writeReview(indexer, writes, { period, day: open.day, range, noteUri });
   }
-  return writeReview(indexer, writes, period, open?.day ?? new Date());
+  return writeReview(indexer, writes, { period, day: open?.day ?? new Date() });
+}
+
+/** This week or this month, as the reader picks; undefined when they dismiss the pick. */
+async function pickReviewPeriod(): Promise<Exclude<NotePeriod, 'day'> | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    [
+      { label: 'This week', period: 'week' as const },
+      { label: 'This month', period: 'month' as const },
+    ],
+    { title: 'Write a review', placeHolder: 'Which period?' },
+  );
+  return picked?.period;
 }
 
 /**
@@ -260,9 +311,7 @@ export async function openPeriodicNoteWithReview(
   const isNew = !(await findExistingPeriodicNote(folder, period, new Date()));
   const noteUri = await ensurePeriodicNote(folder, period, new Date());
   if (isNew && isReviewOnCreateEnabled(folder.uri)) {
-    await writeReview(indexer, writes, period, new Date(), {
-      silent: true,
-    });
+    await writeReview(indexer, writes, { period, day: new Date(), silent: true });
   }
   const document = await vscode.workspace.openTextDocument(noteUri);
   await vscode.window.showTextDocument(document, { preview: false });
@@ -274,84 +323,18 @@ export async function openPeriodicNoteWithReview(
  * days a note holds, or the ISO week and year-month Deckard wrote before.
  */
 export function findOpenPeriod(
-  fileName = vscode.window.activeTextEditor?.document.uri.path
-    .split('/')
-    .pop()
-    ?.replace(/\.md$/i, ''),
-):
-  | {
-      period: Exclude<NotePeriod, 'day'>;
-      day: Date;
-      /** A week note's own first day, and the midnight after its last. */
-      start?: Date;
-      end?: Date;
-      name?: string;
-    }
-  | undefined {
-  if (!fileName) {
-    return undefined;
-  }
-  const span = /^week-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/i.exec(fileName);
-  const start = span ? parseLocalDate(span[1]) : undefined;
-  const last = span ? parseLocalDate(span[2]) : undefined;
-  if (start && last) {
-    return {
-      period: 'week',
-      day: start,
-      start,
-      end: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1),
-      name: fileName,
-    };
-  }
-  const named = /^month-([a-z]+)-(\d{4})$/i.exec(fileName);
-  if (named) {
-    const month = MONTHS.indexOf(named[1].toLowerCase());
-    if (month >= 0) {
-      return { period: 'month', day: new Date(Number(named[2]), month, 1) };
-    }
-  }
-  const week = /^(\d{4})-W(\d{2})$/.exec(fileName);
-  if (week) {
-    const monday = getIsoWeekStart(Number(week[1]), Number(week[2]));
-    return {
-      period: 'week',
-      day: monday,
-      start: monday,
-      end: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7),
-      name: fileName,
-    };
-  }
-  const month = /^(\d{4})-(\d{2})$/.exec(fileName);
-  return month
-    ? {
-        period: 'month',
-        day: new Date(Number(month[1]), Number(month[2]) - 1, 1),
-      }
-    : undefined;
+  fileName = activeNoteFileName(),
+): PeriodicNoteName | undefined {
+  return fileName ? parsePeriodicNoteName(fileName) : undefined;
 }
 
-const MONTHS = [
-  'january',
-  'february',
-  'march',
-  'april',
-  'may',
-  'june',
-  'july',
-  'august',
-  'september',
-  'october',
-  'november',
-  'december',
-];
-
-/** The Monday of an ISO week, which is the day its note is named for. */
-export function getIsoWeekStart(year: number, week: number): Date {
-  const january4 = new Date(year, 0, 4);
-  const weekday = (january4.getDay() + 6) % 7;
-  return new Date(year, 0, 4 - weekday + (week - 1) * 7);
+/** The file name of the note in the editor, without `.md`. */
+function activeNoteFileName(): string | undefined {
+  const uri = vscode.window.activeTextEditor?.document.uri;
+  return uri ? noteFileName(uri) : undefined;
 }
 
-function fileNameOf(uri: vscode.Uri): string {
+/** A note's file name without `.md`. */
+function noteFileName(uri: vscode.Uri): string {
   return (uri.path.split('/').pop() ?? '').replace(/\.md$/i, '');
 }

@@ -1,56 +1,19 @@
 import * as vscode from 'vscode';
-import { fileExists } from './fs';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { chooseTargetFolder, formatLocalDate } from './dailyNote';
+import { findTemplatePrompts } from '../../domain/notes/templates';
+import { TemplateNoteResult, TemplateService } from '../../services/templateService';
+import { chooseTargetFolder } from './dailyNote';
 import { getExtractedNoteFileName } from './extractHeading';
 import { openNoteAction, openSettingAction, reportFailure, settingLabel } from './notify';
 
-/** A placeholder: `{ask:Question}`, or a variable such as `{date}`. */
-const PLACEHOLDER = /\{(?:ask:([^{}]*)|([a-z]+))\}/g;
+export { fillTemplate, findTemplatePrompts, getTemplateVariables } from '../../domain/notes/templates';
 
 /**
- * The questions a template asks with `{ask:Question}`, each once, in the order
- * they first appear.
+ * New Note from Template: the prompts, and what they came to. Filling the
+ * template and making the note, never over one already there, is
+ * TemplateService's.
  */
-export function findTemplatePrompts(template: string): string[] {
-  const questions = [...template.matchAll(PLACEHOLDER)]
-    .map((match) => match[1]?.trim())
-    .filter((question): question is string => Boolean(question));
-  return [...new Set(questions)];
-}
-
-/**
- * Fills a template's placeholders in one pass, so a value that itself holds
- * braces is written as it is. A placeholder without a value is left as written.
- */
-export function fillTemplate(
-  template: string,
-  variables: Readonly<Record<string, string>>,
-  answers: ReadonlyMap<string, string> = new Map(),
-): string {
-  return template.replace(
-    PLACEHOLDER,
-    (placeholder, question: string | undefined, name: string | undefined) => {
-      if (question !== undefined) {
-        return answers.get(question.trim()) ?? placeholder;
-      }
-      return name !== undefined && Object.hasOwn(variables, name)
-        ? variables[name]
-        : placeholder;
-    },
-  );
-}
-
-/** The variables every template can use: `{title}`, `{date}`, and `{time}`. */
-export function getTemplateVariables(
-  title: string,
-  now: Date,
-): Record<string, string> {
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return { title, date: formatLocalDate(now), time: `${hours}:${minutes}` };
-}
 
 /**
  * Asks each question a template holds, once. Undefined when one is dismissed.
@@ -80,6 +43,8 @@ export async function listTemplates(
   return uris.sort((left, right) => left.path.localeCompare(right.path));
 }
 
+const TITLE = 'Deckard: New Note from Template';
+
 /**
  * Creates a note from a template in the templates folder, asking for its title
  * and anything the template asks, and opens it. An existing note is never
@@ -91,20 +56,63 @@ export async function listTemplates(
  */
 export async function newNoteFromTemplate(
   indexer: WorkspaceIndexer<vscode.Uri>,
+  templates: TemplateService<vscode.Uri>,
   targetFolder?: vscode.Uri,
 ): Promise<vscode.Uri | undefined> {
-  const title = 'Deckard: New Note from Template';
-  const folder = targetFolder
-    ? vscode.workspace.getWorkspaceFolder(targetFolder)
-    : await chooseTargetFolder();
+  const folder = await chooseFolder(targetFolder);
   if (!folder) {
-    if (targetFolder) {
-      void vscode.window.showInformationMessage(
-        'Deckard writes notes inside a workspace folder. Choose a folder in the workspace.',
-      );
-    }
     return undefined;
   }
+  const chosen = await chooseTemplate(indexer, folder);
+  if (!chosen) {
+    return undefined;
+  }
+  const fileName = await askFileName();
+  if (!fileName) {
+    return undefined;
+  }
+  const template = Buffer.from(
+    await vscode.workspace.fs.readFile(chosen),
+  ).toString('utf8');
+  const answers = await askTemplateQuestions(template, TITLE);
+  if (!answers) {
+    return undefined;
+  }
+
+  const result = await templates.createNote({
+    template,
+    fileName,
+    answers,
+    folder: noteFolderFor(indexer.getNotesFolderUri(folder), targetFolder),
+  });
+  return reportNote(result, fileName, targetFolder);
+}
+
+/**
+ * The workspace folder the note goes in: the right-clicked folder's, or the
+ * one the reader is in or picks. A folder outside the workspace is said so.
+ */
+async function chooseFolder(targetFolder?: vscode.Uri): Promise<vscode.WorkspaceFolder | undefined> {
+  if (!targetFolder) {
+    return chooseTargetFolder();
+  }
+  const folder = vscode.workspace.getWorkspaceFolder(targetFolder);
+  if (!folder) {
+    void vscode.window.showInformationMessage(
+      'Deckard writes notes inside a workspace folder. Choose a folder in the workspace.',
+    );
+  }
+  return folder;
+}
+
+/**
+ * The template the reader picks from the templates folder. Says why, and
+ * returns undefined, when there is no templates folder or nothing in it.
+ */
+async function chooseTemplate(
+  indexer: WorkspaceIndexer<vscode.Uri>,
+  folder: vscode.WorkspaceFolder,
+): Promise<vscode.Uri | undefined> {
   const templatesUri = indexer.getTemplatesFolderUri(folder);
   if (!templatesUri) {
     const open = openSettingAction('templatesFolder');
@@ -131,56 +139,48 @@ export async function newNoteFromTemplate(
         .replace(/\.md$/i, ''),
       uri,
     })),
-    { title, placeHolder: 'Choose a template' },
+    { title: TITLE, placeHolder: 'Choose a template' },
   );
-  if (!picked) {
-    return undefined;
-  }
+  return picked?.uri;
+}
+
+/** The new note's file name, from the title the reader types; undefined when dismissed. */
+async function askFileName(): Promise<string | undefined> {
   const name = await vscode.window.showInputBox({
-    title,
+    title: TITLE,
     prompt: 'The new note’s title, which is also its file name',
     validateInput: (value) =>
       getExtractedNoteFileName(value)
         ? undefined
         : 'Use a title that can be a file name, without / \\ : * ? " < > or |.',
   });
-  const fileName = name === undefined ? undefined : getExtractedNoteFileName(name);
-  if (!fileName) {
-    return undefined;
-  }
+  return name === undefined ? undefined : getExtractedNoteFileName(name);
+}
 
-  const template = Buffer.from(
-    await vscode.workspace.fs.readFile(picked.uri),
-  ).toString('utf8');
-  const answers = await askTemplateQuestions(template, title);
-  if (!answers) {
-    return undefined;
-  }
-
-  const notesUri = noteFolderFor(indexer.getNotesFolderUri(folder), targetFolder);
-  const noteUri = vscode.Uri.joinPath(notesUri, fileName);
-  if (await fileExists(noteUri)) {
+/**
+ * Opens the note made, saying when it went where Deckard does not look, or
+ * says why none was made. Returns the note, or undefined when none was.
+ */
+async function reportNote(
+  result: TemplateNoteResult<vscode.Uri>,
+  fileName: string,
+  targetFolder?: vscode.Uri,
+): Promise<vscode.Uri | undefined> {
+  if (result.kind === 'exists') {
     void reportFailure({
       outcome: `${fileName} already exists, so Deckard did not create it.`,
       fix: 'Choose another title.',
-      action: openNoteAction(noteUri),
+      action: openNoteAction(result.uri),
     });
     return undefined;
   }
-  const content = fillTemplate(
-    template,
-    getTemplateVariables(fileName.replace(/\.md$/i, ''), new Date()),
-    answers,
-  );
-  await vscode.workspace.fs.createDirectory(notesUri);
-  await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
-  await vscode.window.showTextDocument(noteUri, { preview: false });
-  if (targetFolder && !indexer.isNotesFile(noteUri)) {
+  await vscode.window.showTextDocument(result.uri, { preview: false });
+  if (targetFolder && !result.indexed) {
     void vscode.window.showInformationMessage(
       `Deckard does not index ${vscode.workspace.asRelativePath(targetFolder, false)}, so it will not list this note.`,
     );
   }
-  return noteUri;
+  return result.uri;
 }
 
 /** Where a new note is written: the folder chosen, else the notes folder. */

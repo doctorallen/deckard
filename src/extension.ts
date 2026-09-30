@@ -17,10 +17,13 @@ import { createHubNote } from './ui/commands/hubNote';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
 import {
   createDailyNoteWithRollover,
+  createRolloverService,
   rollTasksForward,
 } from './ui/commands/rollover';
 import {
+  createReviewService,
   openPeriodicNoteWithReview,
+  ReviewWrites,
   writeReviewCommand,
 } from './ui/commands/review';
 import {
@@ -35,6 +38,7 @@ import {
 } from './ui/commands/taskEditor';
 import { breakIntoStepsCommand } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
+import { TemplateService } from './services/templateService';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
@@ -48,6 +52,8 @@ import {
   includeFolderCommand,
 } from './ui/commands/excludeFolders';
 import {
+  createParkingService,
+  ParkingCommands,
   ParkingContext,
   parkFolders,
   parkNotes,
@@ -94,7 +100,8 @@ import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
 import { carrySectionIds } from './ui/state/frecency';
-import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
+import { mergeIndexedTag, renameIndexedTag, TagWrites } from './ui/commands/renameTag';
+import { TagService } from './services/tagService';
 import {
   EditorTagDecorations,
   isMarkdownDocument,
@@ -257,6 +264,33 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       void preferences.replaceTaskInOrder(previousId, nextId);
     },
   };
+  // What renaming or merging a tag writes through, for the commands that
+  // rename one; the service decides what a rename does.
+  const tagWrites: TagWrites = {
+    history,
+    preferences,
+    tags: new TagService({ index: indexer, preferences }),
+  };
+  // What the parking commands read, and the service that decides what they
+  // may park and writes it.
+  const parkingCommands: ParkingCommands = {
+    indexer,
+    parking: createParkingService(indexer, history),
+  };
+  // What carries unfinished tasks into today's note, for every command
+  // and page that opens today's note or rolls tasks forward.
+  const rollover = createRolloverService(history, indexer);
+  // What writes a week's or a month's review into its note.
+  const reviewWrites: ReviewWrites = {
+    reviews: createReviewService(history, indexer),
+    preferences,
+  };
+  // What makes a note from a template, never over one already there.
+  const templates = new TemplateService<vscode.Uri>({
+    files: vscodeWorkspace,
+    index: indexer,
+    clock: { now: () => Date.now() },
+  });
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
   const themePreview = new ThemePreview();
@@ -410,7 +444,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openSearch: (query) => searchPanels.showQuery(query),
       openTaskBoard: (query) => taskBoard.show(query),
       openDailyNote: async () => {
-        await createDailyNoteWithRollover(indexer, history);
+        await createDailyNoteWithRollover(indexer, history, undefined, rollover);
       },
       quickAdd: (text) => captureToToday(text),
       createHubNote: async (tagKey) => {
@@ -766,7 +800,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           'Choose a tag to rename',
         );
         if (tagKey) {
-          await renameIndexedTag(indexer, tagKey, { history, preferences });
+          await renameIndexedTag(indexer, tagKey, tagWrites);
         }
       },
     ),
@@ -985,13 +1019,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
-      createDailyNoteWithRollover(indexer, history),
+      createDailyNoteWithRollover(indexer, history, undefined, rollover),
     ),
     vscode.commands.registerCommand('deckard.openDailyNoteForDate', () =>
       openDailyNoteForDate(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.rollTasksForward', () =>
-      rollTasksForward(indexer, history),
+      rollTasksForward(indexer, rollover),
     ),
     vscode.commands.registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),
@@ -1000,13 +1034,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openAdjacentDailyNote(indexer, 'next'),
     ),
     vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
-      openPeriodicNoteWithReview(indexer, { history, preferences }, 'week'),
+      openPeriodicNoteWithReview(indexer, reviewWrites, 'week'),
     ),
     vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
-      openPeriodicNoteWithReview(indexer, { history, preferences }, 'month'),
+      openPeriodicNoteWithReview(indexer, reviewWrites, 'month'),
     ),
     vscode.commands.registerCommand('deckard.writeReview', async () => {
-      await writeReviewCommand(indexer, { history, preferences });
+      await writeReviewCommand(indexer, reviewWrites);
       await tryNext.retire('weeklyReview');
     }),
     // One editor, two names: which one the palette offers is decided by
@@ -1059,11 +1093,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       capture(indexer, 'heading', captureDrafts, preferences),
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
-      newNoteFromTemplate(indexer),
+      newNoteFromTemplate(indexer, templates),
     ),
     // The Explorer passes the folder that was right-clicked.
     vscode.commands.registerCommand('deckard.newNoteFromTemplateHere', (folder?: unknown) =>
-      newNoteFromTemplate(indexer, folder instanceof vscode.Uri ? folder : undefined),
+      newNoteFromTemplate(indexer, templates, folder instanceof vscode.Uri ? folder : undefined),
     ),
     vscode.commands.registerCommand('deckard.excludeFromIndex', (folder?: unknown) =>
       excludeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
@@ -1073,16 +1107,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     new ExcludedFoldersContext(),
     vscode.commands.registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
-      parkNotes(indexer, history, uri, uris),
+      parkNotes(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.unparkNote', (uri?: unknown, uris?: unknown) =>
-      unparkNotes(indexer, history, uri, uris),
+      unparkNotes(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.parkFolder', (uri?: unknown, uris?: unknown) =>
-      parkFolders(indexer, uri, uris),
+      parkFolders(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.unparkFolder', (uri?: unknown, uris?: unknown) =>
-      unparkFolders(indexer, uri, uris),
+      unparkFolders(parkingCommands, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.parkTag', async (tag?: unknown) => {
       const outlineNode = asOutlineNode(tag);
@@ -1092,7 +1126,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       if (outlineNode && !key) {
         return;
       }
-      await parkTag(indexer, key);
+      await parkTag(parkingCommands, key);
     }),
     vscode.commands.registerCommand('deckard.unparkTag', async (tag?: unknown) => {
       const outlineNode = asOutlineNode(tag);
@@ -1102,7 +1136,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       if (outlineNode && !key) {
         return;
       }
-      await unparkTag(indexer, key);
+      await unparkTag(parkingCommands, key);
     }),
     new ParkingContext(indexer),
     vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
@@ -1193,7 +1227,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         renameIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
-          { history, preferences },
+          tagWrites,
         ),
     ),
     vscode.commands.registerCommand('deckard.renameHeading', () =>
@@ -1208,7 +1242,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         mergeIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
-          { history, preferences },
+          tagWrites,
           getCommandTagArgument(requestedTargetKey),
         ),
     ),

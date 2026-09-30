@@ -4,7 +4,7 @@ import {
   fillTemplate,
   findTemplatePrompts,
   getTemplateVariables,
-} from '../ui/commands/templates';
+} from '../domain/notes/templates';
 
 suite('Note templates', () => {
   test('asks each question a template holds once, in order', () => {

@@ -1,23 +1,27 @@
 import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
-import { markMigrated } from '../../domain/markdown/taskMetadata';
 import { pluralize } from '../../shared/text';
-import { findLastDescendantLine } from '../../domain/markdown/taskSteps';
-import { Task } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { readRolloverMode } from '../../domain/notes/carryForward';
 import {
-  planRollover,
   RolloverMode,
   RolloverPlan,
 } from '../../domain/notes/rolloverPlan';
+import {
+  RolloverEdit,
+  RolloverNotes,
+  RolloverOutcome,
+  RolloverService,
+  RolloverSource,
+  RolloverWriteOutcome,
+} from '../../services/rolloverService';
 import { getCaptureInsertion } from './capture';
 import {
   chooseTargetFolder,
   chooseWorkspaceFolder,
   createDailyNote,
   ensureDailyNote,
-  formatLocalDate,
   getPeriodicNoteUri,
 } from './dailyNote';
 import { resolveSourceUri } from './navigation';
@@ -27,39 +31,22 @@ export { planRollover } from '../../domain/notes/rolloverPlan';
 export type { RolloverMode, RolloverPlan } from '../../domain/notes/rolloverPlan';
 
 /**
- * Carries yesterday's unfinished tasks into today's note.
+ * Roll Tasks Forward, and the rollover a new daily note starts with.
  *
- * A daily note that starts empty every morning loses what was still open the
- * night before, so the tasks are written into today's note, under Carried
- * over, as they were written yesterday, metadata and all. Moving them takes
- * them out of the note they came from; migrating marks the line left behind
- * `[>]` with a link to today.
+ * What a rollover carries, and what it changes in the notes the tasks came
+ * from, is RolloverService's decision; these choose the folder, read the
+ * settings, and say what came of it, with today's note and the way back.
  */
 
 /** `copy`, the older name, reads as migrate. */
 export function getRolloverMode(uri?: vscode.Uri): RolloverMode {
-  const setting = vscode.workspace
-    .getConfiguration('deckard', uri)
-    .get<string>('dailyNote.rollover', 'off');
-  return setting === 'move'
-    ? 'move'
-    : setting === 'migrate' || setting === 'copy'
-      ? 'migrate'
-      : 'off';
+  return readRolloverMode(
+    vscode.workspace.getConfiguration('deckard', uri).get<string>('dailyNote.rollover', 'off'),
+  );
 }
 
 /** The heading carried tasks go under, in today's note. */
 export const CARRIED_OVER_HEADING = 'Carried over';
-
-/**
- * A block of lines moved to the top level: the first line's indentation
- * taken off every line that starts with it, so steps stay nested under
- * their task by the same amount.
- */
-function outdent(lines: readonly string[]): string[] {
-  const indent = lines[0]?.match(/^[ \t]*/)?.[0] ?? '';
-  return lines.map((line) => (line.startsWith(indent) ? line.slice(indent.length) : line.trimStart()));
-}
 
 /** What a rollover did, so the command can say it in one sentence. */
 export interface RolloverResult {
@@ -78,14 +65,98 @@ export interface RolloverWrite extends RolloverResult {
   handle?: WriteHandle;
 }
 
+/** The rollover service as the commands use it, over VS Code's URIs and writes. */
+export type VscodeRolloverService = RolloverService<vscode.Uri, WriteHandle>;
+
+/**
+ * The rollover service over VS Code: it opens the notes through their
+ * editors, writes through the history as one write, and reads the notes
+ * again through `index` once it has.
+ */
+export function createRolloverService(
+  history: WorkspaceWriteHistory,
+  index: { refresh(): Promise<void> },
+): VscodeRolloverService {
+  return new RolloverService<vscode.Uri, WriteHandle>({
+    notes: new RolloverDocuments(history),
+    place: placeCarriedOver,
+    index,
+    clock: { now: () => Date.now() },
+  });
+}
+
+/**
+ * The notes a rollover reads and writes, through VS Code. A note is read
+ * through its document, so an open note's unsaved text is what is compared
+ * and carried, and the write goes through the history, never previewed.
+ */
+class RolloverDocuments implements RolloverNotes<vscode.Uri, WriteHandle> {
+  public constructor(private readonly history: WorkspaceWriteHistory) {}
+
+  /** Today's note's text, as its document holds it. */
+  public async readToday(uri: vscode.Uri): Promise<string> {
+    return (await vscode.workspace.openTextDocument(uri)).getText();
+  }
+
+  /** A note the plan draws from, or undefined when it cannot be found or opened. */
+  public async openSource(filePath: string): Promise<RolloverSource<vscode.Uri> | undefined> {
+    const uri = await resolveSourceUri(filePath);
+    if (!uri) {
+      return undefined;
+    }
+    try {
+      const document = await vscode.workspace.openTextDocument(uri);
+      return { uri, text: () => document.getText() };
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Writes the rollover as one write, which Undo takes back. */
+  public async write(
+    edits: readonly RolloverEdit<vscode.Uri>[],
+    carried: number,
+  ): Promise<RolloverWriteOutcome<WriteHandle>> {
+    const edit = new vscode.WorkspaceEdit();
+    edits.forEach(({ uri, range, text }) => {
+      edit.replace(
+        uri,
+        new vscode.Range(range.start.line, range.start.character, range.end.line, range.end.character),
+        text,
+      );
+    });
+    const written = await this.history.write(edit, {
+      label: `carrying ${pluralize(carried, 'task', 'tasks')} forward`,
+      // A rollover is one gesture over a few notes; showing it every morning
+      // would be in the way. Undo is what takes it back.
+      preview: 'never',
+    });
+    return written.applied ? { applied: true, handle: written.handle } : { applied: false };
+  }
+}
+
+/** A rollover's outcome in the shape the commands and their callers report it. */
+function toRolloverWrite(result: RolloverOutcome<WriteHandle>): RolloverWrite | undefined {
+  switch (result.kind) {
+    case 'not-applied':
+      return undefined;
+    case 'nothing-carried':
+      return { carried: 0, skipped: result.skipped, fromDates: result.fromDates, notes: 0 };
+    case 'carried':
+      return {
+        carried: result.carried,
+        skipped: result.skipped,
+        fromDates: result.fromDates,
+        notes: result.notes,
+        handle: result.handle,
+      };
+  }
+}
+
 /**
  * Writes the plan's tasks into today's note, and takes them out of the note
- * they came from when moving.
- *
- * Each task is compared with the line the index recorded before it is moved,
- * the way every other Deckard task edit is, and a task whose line has changed
- * is left where it is. The whole rollover is one write, so
- * `Deckard: Undo Last Change` takes it back.
+ * they came from when moving, as RolloverService decides, through a service
+ * made for this one write. Undefined when VS Code did not apply the write.
  */
 export async function applyRollover(
   plan: RolloverPlan,
@@ -98,171 +169,10 @@ export async function applyRollover(
     todayName?: string;
   },
 ): Promise<RolloverWrite | undefined> {
-  const { history, todayName } = options;
-  if (mode === 'copy') {
-    mode = 'migrate';
-  }
-  const today = await vscode.workspace.openTextDocument(todayUri);
-  const todayText = today.getText();
-  const todayLines = new Set(
-    todayText.split(/\r?\n/).map((line) => line.trim()),
-  );
-
-  // Each note the plan draws from is read once, and each task is compared
-  // with the line the index recorded before it is moved.
-  const sources = new Map<string, { uri: vscode.Uri; document: vscode.TextDocument }>();
-  for (const filePath of new Set(plan.tasks.map((task) => task.filePath))) {
-    const uri = await resolveSourceUri(filePath);
-    if (!uri) {
-      continue;
-    }
-    try {
-      sources.set(filePath, {
-        uri,
-        document: await vscode.workspace.openTextDocument(uri),
-      });
-    } catch {
-      continue;
-    }
-  }
-
-  // A task still reading as it was indexed, from a note that could be read.
-  const valid = plan.tasks.filter((task) => {
-    const source = sources.get(task.filePath);
-    const line = task.lineNumber - 1;
-    return (
-      source !== undefined &&
-      line < source.document.lineCount &&
-      source.document.lineAt(line).text === task.sourceLineText
-    );
-  });
-  let skipped = plan.tasks.length - valid.length;
-  const validIds = new Set(valid.map((task) => task.id));
-  const byId = new Map(valid.map((task) => [task.id, task]));
-  // A step goes with the task it is written under when that task goes too;
-  // a step whose task stays behind (done, changed, or parked) goes on its
-  // own, at the top level, never nested under whatever precedes it.
-  const rootOf = (task: Task): Task => {
-    let root = task;
-    while (root.parentTaskId !== undefined && validIds.has(root.parentTaskId)) {
-      root = byId.get(root.parentTaskId) ?? root;
-    }
-    return root;
-  };
-  const groups = new Map<string, { root: Task; steps: Task[] }>();
-  valid.forEach((task) => {
-    const root = rootOf(task);
-    const group = groups.get(root.id) ?? { root, steps: [] };
-    if (root !== task) {
-      group.steps.push(task);
-    }
-    groups.set(root.id, group);
-  });
-  // Already in today's note, which is what running this twice would do: the
-  // task stays, and its steps with it.
-  const kept = [...groups.values()].filter((group) => {
-    if (todayLines.has(group.root.sourceLineText.trim())) {
-      skipped += 1 + group.steps.length;
-      return false;
-    }
-    return true;
-  });
-  const carried = kept.flatMap((group) => [group.root, ...group.steps]);
-  const drawnFrom = new Set(carried.map((task) => task.filePath));
-  if (carried.length === 0) {
-    return { carried: 0, skipped, fromDates: plan.fromDates, notes: 0 };
-  }
-
-  const edit = new vscode.WorkspaceEdit();
-  // Moving takes everything written under a task along, done steps and
-  // notes included, so nothing is left orphaned under another task; a
-  // migrate copies the open steps and marks each line it leaves behind.
-  const blocks = kept.map((group) => {
-    const document = sources.get(group.root.filePath)?.document as vscode.TextDocument;
-    const first = group.root.lineNumber - 1;
-    const last =
-      mode === 'move'
-        ? findLastDescendantLine(document.getText().split(/\r?\n/), first)
-        : first;
-    const written =
-      mode === 'move'
-        ? Array.from({ length: last - first + 1 }, (_, at) => document.lineAt(first + at).text)
-        : [
-            group.root.sourceLineText,
-            ...[...group.steps]
-              .sort((left, right) => left.lineNumber - right.lineNumber)
-              .map((step) => step.sourceLineText),
-          ];
-    return { group, first, last, lines: outdent(written) };
-  }).filter((block, at, all) =>
-    // A task written under a plain bullet under another carried task is in
-    // that task's block already, and moves with it.
-    !all.some(
-      (other, otherAt) =>
-        otherAt !== at &&
-        other.group.root.filePath === block.group.root.filePath &&
-        other.first < block.first &&
-        other.last >= block.last,
-    ),
-  );
-  const placed = placeCarriedOver(todayText, blocks.flatMap((block) => block.lines));
-  edit.replace(
-    todayUri,
-    new vscode.Range(placed.start.line, placed.start.character, placed.end.line, placed.end.character),
-    placed.text,
-  );
-  if (mode === 'migrate') {
-    // The line left behind says where the task went, and links there.
-    const target = todayName ?? todayUri.path.split('/').pop()?.replace(/\.md$/i, '') ?? '';
-    carried.forEach((task) => {
-      const source = sources.get(task.filePath);
-      if (!source) {
-        return;
-      }
-      const line = task.lineNumber - 1;
-      edit.replace(
-        source.uri,
-        source.document.lineAt(line).range,
-        markMigrated(task.sourceLineText, task.checkboxColumn, target),
-      );
-    });
-  }
-  if (mode === 'move') {
-    blocks.forEach(({ group, first, last }) => {
-      const source = sources.get(group.root.filePath);
-      if (!source) {
-        return;
-      }
-      const document = source.document;
-      edit.delete(
-        source.uri,
-        last + 1 < document.lineCount
-          ? new vscode.Range(first, 0, last + 1, 0)
-          : new vscode.Range(
-              Math.max(first - 1, 0),
-              first > 0 ? document.lineAt(first - 1).text.length : 0,
-              last,
-              document.lineAt(last).text.length,
-            ),
-      );
-    });
-  }
-
-  const written = await history.write(edit, {
-    label: `carrying ${pluralize(carried.length, 'task', 'tasks')} forward`,
-    // A rollover is one gesture over a few notes; showing it every morning
-    // would be in the way. Undo is what takes it back.
-    preview: 'never',
-  });
-  return written.applied
-    ? {
-        carried: carried.length,
-        skipped,
-        fromDates: plan.fromDates,
-        notes: drawnFrom.size,
-        handle: written.handle,
-      }
-    : undefined;
+  // Applying a plan on its own never reads the notes again, so the service
+  // is given nothing to refresh.
+  const rollover = createRolloverService(options.history, { refresh: () => Promise.resolve() });
+  return toRolloverWrite(await rollover.apply({ plan, todayUri, mode, todayName: options.todayName }));
 }
 
 /**
@@ -271,7 +181,7 @@ export async function applyRollover(
  */
 export async function rollTasksForward(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
-  history: WorkspaceWriteHistory,
+  rollover: VscodeRolloverService,
   options: { mode?: Exclude<RolloverMode, 'off'>; silent?: boolean } = {},
 ): Promise<RolloverResult | undefined> {
   const folder = await chooseTargetFolder();
@@ -281,13 +191,13 @@ export async function rollTasksForward(
   await indexer.ready;
   const mode =
     options.mode ?? (getRolloverMode(folder.uri) === 'migrate' ? 'migrate' : 'move');
-  const plan = planRollover(
-    indexer.getSnapshot(),
-    formatLocalDate(new Date()),
-    getRolloverLookbackDays(folder.uri),
+  const result = await rollover.rollForward({
+    index: indexer.getSnapshot(),
     mode,
-  );
-  if (!plan) {
+    lookbackDays: getRolloverLookbackDays(folder.uri),
+    ensureToday: () => ensureDailyNote(folder),
+  });
+  if (result.kind === 'nothing-waiting') {
     if (!options.silent) {
       void vscode.window.showInformationMessage(
         'No unfinished tasks are waiting in an earlier daily note.',
@@ -295,31 +205,21 @@ export async function rollTasksForward(
     }
     return undefined;
   }
-
-  const todayUri = await ensureDailyNote(folder);
-  const result = await applyRollover(plan, todayUri, mode, {
-    history,
-    todayName: todayUri.path.split('/').pop()?.replace(/\.md$/i, ''),
-  });
-  if (!result) {
+  const written = toRolloverWrite(result);
+  if (result.kind === 'not-applied' || !written) {
     return undefined;
   }
-  try {
-    await indexer.refresh();
-  } catch {
-    // The watcher picks the notes up; the tasks themselves are written.
-  }
-  if (!options.silent || result.carried > 0) {
+  if (!options.silent || written.carried > 0) {
     // A rollover writes into notes nobody opened, so both the note it wrote
     // into and the way back are offered where it is announced.
     void offerRollover(
-      describeRollover(result, mode),
-      todayUri,
-      result.handle,
+      describeRollover(written, mode),
+      result.todayUri,
+      written.handle,
       indexer,
     );
   }
-  return result;
+  return written;
 }
 
 /**
@@ -454,12 +354,15 @@ export function getRolloverLookbackDays(uri?: vscode.Uri): number {
  * daily note's unfinished tasks in when the setting asks for it.
  *
  * Only a note Deckard creates rolls tasks in, so opening today's note again
- * later in the day does not carry the same tasks twice.
+ * later in the day does not carry the same tasks twice. `rollover` is the
+ * service the extension made when it started; a caller that has only the
+ * history gets one made from it.
  */
 export async function createDailyNoteWithRollover(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
   history: WorkspaceWriteHistory,
   workspaceFolder?: vscode.WorkspaceFolder,
+  rollover: VscodeRolloverService = createRolloverService(history, indexer),
 ): Promise<vscode.Uri | undefined> {
   const folder = workspaceFolder ?? (await chooseWorkspaceFolder());
   if (!folder) {
@@ -474,7 +377,7 @@ export async function createDailyNoteWithRollover(
   const isNew = !(await fileExists(getPeriodicNoteUri(folder, 'day', new Date())));
   const opened = await createDailyNote(folder);
   if (opened && isNew) {
-    await rollTasksForward(indexer, history, { mode, silent: true });
+    await rollTasksForward(indexer, rollover, { mode, silent: true });
   }
   return opened;
 }
