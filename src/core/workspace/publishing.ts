@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import type { Disposable } from '../../ports/events';
 
 /**
  * How soon a view redraws after the index changes, lowest first. A save used
@@ -30,11 +30,11 @@ export interface ViewUpdateOptions {
  * the index when its turn comes, so the listener is given nothing.
  */
 export interface ViewUpdateSource {
-  onDidUpdate(listener: () => void): vscode.Disposable;
+  onDidUpdate(listener: () => void): Disposable;
   onDidUpdateView?(
     listener: () => void,
     options: ViewUpdateOptions,
-  ): vscode.Disposable;
+  ): Disposable;
 }
 
 /**
@@ -45,7 +45,7 @@ export function onIndexUpdateInTurn(
   source: ViewUpdateSource,
   options: ViewUpdateOptions,
   listener: () => void,
-): vscode.Disposable {
+): Disposable {
   return source.onDidUpdateView
     ? source.onDidUpdateView(listener, options)
     : source.onDidUpdate(listener);
