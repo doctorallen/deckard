@@ -7,9 +7,9 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { findHeadingAtLine } from '../ui/commands/extractHeading';
 import {
   createLinkRewriteEdit,
-  findHeadingAtLine,
   LinkMaintenance,
   planHeadingRenameRewrites,
   planNoteRenameRewrites,

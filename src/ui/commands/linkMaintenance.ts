@@ -4,7 +4,7 @@ import { describeRejectedEdit, noteName, reportFailure } from './notify';
 import { findFencedLines, stripTags } from '../../core/markdown/parser';
 import { pluralize } from '../../core/text';
 import { measure } from '../../core/timing';
-import { Section, WorkspaceIndex } from '../../core/types';
+import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   normalizeHeading,
@@ -13,6 +13,7 @@ import {
   WIKI_LINK_WITH_TEXT,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { findHeadingAtLine } from './extractHeading';
 import { resolveSourceUri } from './navigation';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
@@ -482,22 +483,6 @@ export async function renameHeadingCommand(
   return next.trim();
 }
 
-/** The innermost heading a one-based line sits in. */
-export function findHeadingAtLine(
-  sections: readonly Section[],
-  line: number,
-): Section | undefined {
-  return sections
-    .filter(
-      (section) =>
-        !section.isInline && section.startLine <= line && section.endLine >= line,
-    )
-    .sort(
-      (left, right) =>
-        right.startLine - left.startLine ||
-        right.headingLevel - left.headingLevel,
-    )[0];
-}
 
 function isEnabled(): boolean {
   return vscode.workspace

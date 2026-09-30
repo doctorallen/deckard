@@ -15,6 +15,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { logTrace, measure } from '../../core/timing';
+import { noteTitle } from '../../core/workspace/backlinks';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openResultAt, openSourceAt } from '../commands/navigation';
 import {
@@ -450,7 +451,7 @@ export class NotesGraphPanel implements vscode.Disposable {
       skipPeriodic: this.scope.skipPeriodic,
       workspaceNodeCount: workspace.nodes.length,
       ...(this.focusPath
-        ? { filePath: this.focusPath, title: getNoteTitle(this.focusPath) }
+        ? { filePath: this.focusPath, title: noteTitle(this.focusPath) }
         : {}),
     };
     if (!this.scope.local || !this.focusPath) {
@@ -498,11 +499,6 @@ export class NotesGraphPanel implements vscode.Disposable {
         line === 1,
     );
   }
-}
-
-/** A note's title: its file name without the extension. */
-function getNoteTitle(filePath: string): string {
-  return (filePath.split('/').pop() ?? filePath).replace(/\.md$/i, '');
 }
 
 /** The scope of a graph drawn around one note: that note, one hop out. */
