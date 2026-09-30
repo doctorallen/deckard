@@ -55,10 +55,18 @@ export {
 export type { PruneIndex, PruneKeys, StalePreferences } from './preferencesMaintenance';
 
 /**
- * Persists UI-only state without adding metadata to Markdown notes.
+ * Persists UI-only state without adding metadata to Markdown notes, as one
+ * object with the surface every caller has used since before Phase 3.
  *
- * Values are normalized at the boundary so old or malformed global state
- * cannot leak unsupported sort modes, duplicate IDs, or invalid access counts.
+ * It is a facade. `PreferencesRepository` keeps the blob, the pure
+ * `preferencesSchema` says what shape it may have, and one service holds
+ * each capability; every method here keeps its name and signature and
+ * forwards to the service its doc block names, which does exactly what the
+ * method did. The services are also properties, so a caller can take the
+ * one capability it needs.
+ *
+ * The refactor plan keeps an old surface for one phase after its code
+ * moves: Phase 4 moves the callers to the services and deletes this class.
  */
 export class PreferencesStore implements Disposable {
   private readonly repository: PreferencesRepository;
