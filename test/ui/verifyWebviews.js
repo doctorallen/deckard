@@ -166,10 +166,14 @@ for (const [name, render] of pages) {
   // names. The page comes through the page loader, so a bundle it loads by
   // URI is counted here as the inline script it becomes.
   const nonce = readPageNonce(html);
-  if (!nonce) problems.push('the CSP names no nonce');
+  if (!nonce) {
+    problems.push('the CSP names no nonce');
+  }
   const ungated = [...html.matchAll(/<(script|style)\b([^>]*)>/g)]
     .filter(([, , attributes]) => !attributes.includes(`nonce="${nonce}"`));
-  if (ungated.length) problems.push(`${ungated.length} inline style or script without the page's nonce`);
+  if (ungated.length) {
+    problems.push(`${ungated.length} inline style or script without the page's nonce`);
+  }
   if (problems.length) { fail++; console.log(`  FAIL ${name}\n       ` + problems.join('\n       ')); }
   else console.log(`  ok   ${name}  (${(html.length/1024).toFixed(0)}kb, ${scripts.length} script)`);
 }
