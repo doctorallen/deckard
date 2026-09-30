@@ -28,7 +28,6 @@ export default {
       "prune"
     ],
     "src/core/workspace/indexState.ts": [
-      "(arrow function)",
       "forget",
       "remember"
     ],
@@ -489,8 +488,6 @@ export default {
       "prune"
     ],
     "src/core/workspace/indexState.ts": [
-      "buildAssociationsDirectly",
-      "computeAssociationParts",
       "rank"
     ],
     "src/core/workspace/parked.ts": [
