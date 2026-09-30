@@ -501,9 +501,6 @@ export default {
     "src/ui/commands/quickFindActions.ts": [
       "buildRowActions"
     ],
-    "src/ui/commands/rollover.ts": [
-      "applyRollover"
-    ],
     "src/ui/commands/tagSuggestions.ts": [
       "provideCompletionItems"
     ],
@@ -659,7 +656,6 @@ export default {
     "src/ui/commands/editorReferences.ts": 1,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/quickFind.ts": 4,
-    "src/ui/commands/rollover.ts": 1,
     "src/ui/commands/tagSuggestions.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 2,
     "src/ui/state/agendaState.ts": 3,

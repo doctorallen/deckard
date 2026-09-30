@@ -17,6 +17,7 @@ import { createHubNote } from './ui/commands/hubNote';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
 import {
   createDailyNoteWithRollover,
+  createRolloverService,
   rollTasksForward,
 } from './ui/commands/rollover';
 import {
@@ -273,6 +274,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     indexer,
     parking: createParkingService(indexer, history),
   };
+  // What carries unfinished tasks into today's note, for every command
+  // and page that opens today's note or rolls tasks forward.
+  const rollover = createRolloverService(history, indexer);
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
   const themePreview = new ThemePreview();
@@ -426,7 +430,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openSearch: (query) => searchPanels.showQuery(query),
       openTaskBoard: (query) => taskBoard.show(query),
       openDailyNote: async () => {
-        await createDailyNoteWithRollover(indexer, history);
+        await createDailyNoteWithRollover(indexer, history, undefined, rollover);
       },
       quickAdd: (text) => captureToToday(text),
       createHubNote: async (tagKey) => {
@@ -1001,13 +1005,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
-      createDailyNoteWithRollover(indexer, history),
+      createDailyNoteWithRollover(indexer, history, undefined, rollover),
     ),
     vscode.commands.registerCommand('deckard.openDailyNoteForDate', () =>
       openDailyNoteForDate(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.rollTasksForward', () =>
-      rollTasksForward(indexer, history),
+      rollTasksForward(indexer, rollover),
     ),
     vscode.commands.registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),
