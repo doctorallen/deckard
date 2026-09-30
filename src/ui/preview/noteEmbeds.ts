@@ -1,4 +1,4 @@
-import MarkdownIt = require('markdown-it');
+import type MarkdownIt from 'markdown-it';
 
 import {
   BLOCK_ID_PATTERN,

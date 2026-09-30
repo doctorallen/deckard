@@ -1,4 +1,4 @@
-import MarkdownIt = require('markdown-it');
+import type MarkdownIt from 'markdown-it';
 
 import { formatIsoDate, describeDueDate } from '../../core/markdown/taskMetadata';
 import { WorkspaceIndex } from '../../core/types';
