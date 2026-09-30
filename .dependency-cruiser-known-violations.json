@@ -30,20 +30,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/core/storage/preferences.ts",
-    "to": "vscode",
-    "unresolvedTo": "vscode",
-    "dependencyTypes": [
-      "core",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-not-to-vscode"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/core/storage/preferenceSnapshots.ts",
     "to": "vscode",
     "unresolvedTo": "vscode",

@@ -1,4 +1,6 @@
-import * as vscode from 'vscode';
+import { Emitter } from '../emitter';
+import type { Disposable } from '../../ports/events';
+import type { KeyValueStore } from '../../ports/keyValueStore';
 
 import { legacyIdOf } from '../markdown/parser';
 import { isTaskColumnId } from '../taskColumns';
@@ -182,10 +184,9 @@ const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
  * Values are normalized at the boundary so old or malformed global state
  * cannot leak unsupported sort modes, duplicate IDs, or invalid access counts.
  */
-export class PreferencesStore implements vscode.Disposable {
-  private readonly changeEmitter =
-    new vscode.EventEmitter<PersistedPreferences>();
-  private readonly visitEmitter = new vscode.EventEmitter<void>();
+export class PreferencesStore implements Disposable {
+  private readonly changeEmitter = new Emitter<PersistedPreferences>();
+  private readonly visitEmitter = new Emitter<void>();
   private preferences: PersistedPreferences;
   private updateQueue: Promise<void> = Promise.resolve();
 
@@ -199,8 +200,8 @@ export class PreferencesStore implements vscode.Disposable {
    * machine-wide blob alone, as it always did.
    */
   public constructor(
-    private readonly state: vscode.Memento,
-    private readonly workspaceState?: vscode.Memento,
+    private readonly state: KeyValueStore,
+    private readonly workspaceState?: KeyValueStore,
   ) {
     const global = state.get<Partial<PersistedPreferences>>(preferencesKey);
     if (!this.workspaceState) {
