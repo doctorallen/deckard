@@ -43,6 +43,21 @@
   },
   {
     "type": "dependency",
+    "from": "src/core/types.ts",
+    "to": "src/ui/protocol/index.ts",
+    "unresolvedTo": "../ui/protocol",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-not-to-ui"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "src/core/storage/preferences.ts",
     "to": "vscode",
     "unresolvedTo": "vscode",
