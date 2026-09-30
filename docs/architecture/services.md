@@ -25,7 +25,7 @@ A service owns one capability. It is a class with three properties:
 | `RolloverService` | Carrying unfinished tasks forward, as `applyRollover` does today |
 | `TaskService` | Every task edit: update a line, toggle, steps, move, and the board's capture into a column. A `TaskRankKeeper` collaborator carries a task's rank |
 | `AgendaService` | The agenda's writes, `listOverdueTasks`, and the reschedule context |
-| `LinkService` | Link maintenance, link health, mentions, and extracting a heading |
+| `LinkService` | Link maintenance, link health, mentions, and extracting a heading. In [`src/services/linkService.ts`](../../src/services/linkService.ts): `LinkService` plans the rewrites a note rename or a heading rename carries along (`planNoteRenames`, `planHeadingRename`) and the links a note's mentions become (`planMentionLinks`), each checked against the notes as they stand now; `LinkNoteService` makes the note a link names (`createNoteNamed`, `createMissingNotes`) and takes a heading out into one (`extractHeading`), whose swap of the section for its link still bypasses the write history. The pure rewrite and problem rules are in `src/domain/links` |
 | `CaptureService` | Capture into a note |
 | `SavedSearchService` | Saved searches |
 | `PinService` | Pinned notes |

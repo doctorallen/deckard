@@ -89,6 +89,9 @@ import {
   LinkMaintenance,
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
+import { vscodeLiveNotes } from './ui/commands/linkMaintenancePorts';
+import { LinkNoteService, LinkService } from './services/linkService';
+import { findUnlinkedMentions } from './ui/state/editorLensState';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
@@ -379,7 +382,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     indexer.isNotesFile(uri),
   );
   const linkHealth = new LinkHealth(indexer);
-  const linkMaintenance = new LinkMaintenance(indexer);
+  // Which links a rename carries and which mentions become links, and the
+  // notes links name, each decided once for every command that asks.
+  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions });
+  const linkNotes = new LinkNoteService(vscodeWorkspace);
+  const linkMaintenance = new LinkMaintenance(indexer, links);
   const calendar = new CalendarView(indexer, taskWrites, themePreview);
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
@@ -1115,7 +1122,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       CREATE_LINKED_NOTE_COMMAND,
       (documentUri: unknown, name: unknown) =>
         typeof documentUri === 'string' && typeof name === 'string'
-          ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name)
+          ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name, linkNotes)
           : undefined,
     ),
     vscode.commands.registerCommand(
@@ -1124,20 +1131,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         typeof documentUri === 'string' &&
         Array.isArray(names) &&
         names.every((name) => typeof name === 'string')
-          ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names)
+          ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names, { notes: linkNotes })
           : undefined,
     ),
     vscode.commands.registerCommand(
       LINK_MENTIONS_COMMAND,
       (documentUri: unknown) =>
         typeof documentUri === 'string'
-          ? linkMentions(indexer, history, vscode.Uri.parse(documentUri))
+          ? linkMentions(indexer, history, vscode.Uri.parse(documentUri), links)
           : undefined,
     ),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.extractHeading', () =>
-      extractHeadingCommand(indexer),
+      extractHeadingCommand(indexer, linkNotes),
     ),
     vscode.commands.registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, preferences, taskWrites),
@@ -1197,7 +1204,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         ),
     ),
     vscode.commands.registerCommand('deckard.renameHeading', () =>
-      renameHeadingCommand(indexer, history),
+      renameHeadingCommand(indexer, history, links),
     ),
     vscode.commands.registerCommand('deckard.undoLastChange', () =>
       history.undoLast(() => indexer.refresh()),

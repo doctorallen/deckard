@@ -1,37 +1,22 @@
 import * as vscode from 'vscode';
-import { fileExists } from './fs';
 import { reportFailure, reportNeedsFolder } from './notify';
 
-import { findFencedLines } from '../../domain/markdown/parser';
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import { WorkspaceIndex } from '../../core/types';
-import {
-  createNoteTitleMap,
-  findWikiTargetPaths,
-  parseWikiTarget,
-  WIKI_LINK,
-} from '../../domain/index/backlinks';
+import { findLinkProblems, LinkProblem } from '../../domain/links/linkProblems';
+import { parseWikiTarget } from '../../domain/index/backlinks';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   onIndexUpdateInTurn,
   VIEW_PRIORITY,
 } from '../../core/workspace/publishing';
-import { getExtractedNoteFileName } from './extractHeading';
+import { LinkNoteService } from '../../services/linkService';
+import { vscodeLinkNotes } from './linkMaintenancePorts';
 
-/** A `[[link]]` that opens no note. */
-export interface LinkProblem {
-  /** Zero-based line, and the columns of the whole `[[…]]`. */
-  line: number;
-  startColumn: number;
-  endColumn: number;
-  /** The note name the link uses, as written. */
-  name: string;
-  /** No note has the name, or several do. */
-  kind: 'missing' | 'ambiguous';
-  /** The notes that share the name, when several do. */
-  paths: readonly string[];
-}
+export { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkProblems';
+export type { LinkProblem } from '../../domain/links/linkProblems';
 
 interface LinkHealthSource {
   readonly ready: Promise<void>;
@@ -53,48 +38,6 @@ const MISSING_NOTE = 'missing-note';
 const AMBIGUOUS_NOTE = 'ambiguous-note';
 
 /**
- * The links in a note that open no note: a name no note has, or one several
- * notes share. Links in code fences and `[[#Heading]]` links into the note
- * itself are left alone, as is a heading a note lacks, since the link still
- * opens the note.
- */
-export function findLinkProblems(
-  content: string,
-  index: WorkspaceIndex,
-  sourcePath: string,
-): LinkProblem[] {
-  const titles = createNoteTitleMap(index);
-  const lines = content.split(/\r?\n/);
-  const fenced = findFencedLines(lines);
-  const problems: LinkProblem[] = [];
-  lines.forEach((text, line) => {
-    if (fenced.has(line)) {
-      return;
-    }
-    for (const match of text.matchAll(WIKI_LINK)) {
-      const { note } = parseWikiTarget(match[1]);
-      if (!note) {
-        continue;
-      }
-      const paths = findWikiTargetPaths(titles, note, sourcePath);
-      if (paths.length === 1) {
-        continue;
-      }
-      const startColumn = match.index ?? 0;
-      problems.push({
-        line,
-        startColumn,
-        endColumn: startColumn + match[0].length,
-        name: note,
-        kind: paths.length === 0 ? 'missing' : 'ambiguous',
-        paths: [...paths].sort(),
-      });
-    }
-  });
-  return problems;
-}
-
-/**
  * Creates a note for a link's name in a notes folder, titled with the name,
  * unless a note with that file name is already there. Undefined when the name
  * cannot be a file name.
@@ -102,22 +45,10 @@ export function findLinkProblems(
 export async function createNoteNamed(
   notesFolderUri: vscode.Uri,
   name: string,
+  notes: LinkNoteService<vscode.Uri> = vscodeLinkNotes,
 ): Promise<vscode.Uri | undefined> {
-  const fileName = getExtractedNoteFileName(name);
-  if (!fileName) {
-    return undefined;
-  }
-  const noteUri = vscode.Uri.joinPath(notesFolderUri, fileName);
-  try {
-    await vscode.workspace.fs.stat(noteUri);
-  } catch {
-    await vscode.workspace.fs.createDirectory(notesFolderUri);
-    await vscode.workspace.fs.writeFile(
-      noteUri,
-      Buffer.from(`# ${name}\n\n`, 'utf8'),
-    );
-  }
-  return noteUri;
+  const created = await notes.createNoteNamed(notesFolderUri, name);
+  return created.kind === 'invalid-name' ? undefined : created.uri;
 }
 
 /**
@@ -128,6 +59,7 @@ export async function createLinkedNote(
   indexer: Pick<LinkHealthSource, 'getNotesFolderUri'>,
   documentUri: vscode.Uri,
   name: string,
+  notes: LinkNoteService<vscode.Uri> = vscodeLinkNotes,
 ): Promise<vscode.Uri | undefined> {
   const folder =
     vscode.workspace.getWorkspaceFolder(documentUri) ??
@@ -136,7 +68,7 @@ export async function createLinkedNote(
     void reportNeedsFolder();
     return undefined;
   }
-  const noteUri = await createNoteNamed(indexer.getNotesFolderUri(folder), name);
+  const noteUri = await createNoteNamed(indexer.getNotesFolderUri(folder), name, notes);
   if (!noteUri) {
     void reportFailure({
       outcome: `"${name}" cannot be a file name, so Deckard did not create the note.`,
@@ -145,28 +77,6 @@ export async function createLinkedNote(
   }
   await vscode.window.showTextDocument(noteUri, { preview: false });
   return noteUri;
-}
-
-/**
- * The note names a note's missing links use, once each whatever their letter
- * case, that could be file names. A name several notes share is not missing:
- * another note would only make it more ambiguous.
- */
-export function findMissingNoteNames(
-  problems: readonly LinkProblem[],
-): string[] {
-  const names = new Map<string, string>();
-  for (const problem of problems) {
-    const key = problem.name.trim().toLocaleLowerCase();
-    if (
-      problem.kind === 'missing' &&
-      !names.has(key) &&
-      getExtractedNoteFileName(problem.name)
-    ) {
-      names.set(key, problem.name.trim());
-    }
-  }
-  return [...names.values()];
 }
 
 /**
@@ -179,7 +89,7 @@ export async function createMissingNotes(
   indexer: Pick<LinkHealthSource, 'getNotesFolderUri'>,
   documentUri: vscode.Uri,
   names: readonly string[],
-  options: { report?: boolean } = {},
+  options: { report?: boolean; notes?: LinkNoteService<vscode.Uri> } = {},
 ): Promise<number> {
   const folder =
     vscode.workspace.getWorkspaceFolder(documentUri) ??
@@ -188,25 +98,15 @@ export async function createMissingNotes(
     void reportNeedsFolder();
     return 0;
   }
-  const notesFolderUri = indexer.getNotesFolderUri(folder);
-  let created = 0;
-  for (const name of names) {
-    const fileName = getExtractedNoteFileName(name);
-    if (
-      fileName &&
-      !(await fileExists(vscode.Uri.joinPath(notesFolderUri, fileName))) &&
-      (await createNoteNamed(notesFolderUri, name))
-    ) {
-      created += 1;
-    }
-  }
+  const notes = options.notes ?? vscodeLinkNotes;
+  const created = await notes.createMissingNotes(indexer.getNotesFolderUri(folder), names);
   if (options.report !== false) {
     reportCreatedNotes(created);
   }
   return created;
 }
 
-/** Says how many notes were made for links that named none. */
+/** Says how many notes were made for links that named no note. */
 export function reportCreatedNotes(created: number): void {
   void vscode.window.showInformationMessage(
     `Created ${pluralize(created, 'note')} for links that named no note.`,
@@ -232,6 +132,7 @@ export class LinkHealth implements vscode.Disposable {
   /** Before the first scan every link would look missing. */
   private isReady = false;
 
+  /** Checks open notes against `indexer`'s notes once it is ready, and as they change. */
   public constructor(private readonly indexer: LinkHealthSource) {
     this.disposables.push(
       vscode.languages.registerCodeActionsProvider(
@@ -269,6 +170,7 @@ export class LinkHealth implements vscode.Disposable {
     });
   }
 
+  /** Stops checking, and clears the marks and the checks still waiting. */
   public dispose(): void {
     this.pendingChecks.forEach((handle) => clearTimeout(handle));
     this.pendingChecks.clear();

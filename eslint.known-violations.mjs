@@ -51,9 +51,6 @@ export default {
     "src/ui/commands/hubNote.ts": [
       "applyHubTemplate"
     ],
-    "src/ui/commands/linkMaintenance.ts": [
-      "planHeadingRenameRewrites"
-    ],
     "src/ui/commands/linkSuggestions.ts": [
       "completeBlockIds"
     ],
@@ -357,11 +354,8 @@ export default {
     "src/ui/commands/entitySuggestions.ts": 2,
     "src/ui/commands/excludeFolders.ts": 2,
     "src/ui/commands/exportResults.ts": 6,
-    "src/ui/commands/extractHeading.ts": 3,
     "src/ui/commands/firstIndex.ts": 2,
     "src/ui/commands/linkEntity.ts": 1,
-    "src/ui/commands/linkHealth.ts": 2,
-    "src/ui/commands/linkMaintenance.ts": 2,
     "src/ui/commands/linkSuggestions.ts": 4,
     "src/ui/commands/mcpServer.ts": 4,
     "src/ui/commands/moveTo.ts": 2,
@@ -504,9 +498,6 @@ export default {
     ],
     "src/ui/commands/extractHeading.ts": [
       "replaceSectionWithLink"
-    ],
-    "src/ui/commands/linkMaintenance.ts": [
-      "renameHeadingCommand"
     ],
     "src/ui/commands/moveTo.ts": [
       "moveBlocks"
@@ -743,7 +734,6 @@ export default {
     "src/ui/commands/capture.ts": 2,
     "src/ui/commands/chooseTheme.ts": 1,
     "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/linkMaintenance.ts": 1,
     "src/ui/commands/mcpServer.ts": 1,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/noteVisits.ts": 1,

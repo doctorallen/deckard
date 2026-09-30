@@ -4,6 +4,13 @@ import { stripTags } from '../../domain/markdown/parser';
 import { Section } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { findHeadingAtLine } from '../../domain/notes/headingLookup';
+import {
+  LinkNoteService,
+  ReplaceOutcome,
+  SectionReplacer,
+} from '../../services/linkService';
+import { vscodeLinkNotes } from './linkMaintenancePorts';
 import { resolveSourceUri } from './navigation';
 import {
   describeRejectedEdit,
@@ -14,8 +21,17 @@ import {
 } from './notify';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 
+export type { ReplaceOutcome } from '../../services/linkService';
+export { findHeadingAtLine };
+export { getExtractedNoteFileName };
+
+/**
+ * Takes the heading the cursor is in, or one chosen from every note's, out
+ * into a note of its own, and leaves a link to it in its place.
+ */
 export async function extractHeadingCommand(
   indexer: WorkspaceIndexer<vscode.Uri>,
+  notes: LinkNoteService<vscode.Uri> = vscodeLinkNotes,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
   const choice = await chooseHeading(indexer);
@@ -32,97 +48,68 @@ export async function extractHeadingCommand(
     return undefined;
   }
 
-  return extractHeadingNote(
-    choice.section,
-    choice.sourceUri,
-    indexer.getNotesFolderUri(choice.workspaceFolder),
+  return extractAndReport(notes, {
+    section: choice.section,
+    sourceUri: choice.sourceUri,
+    notesFolderUri: indexer.getNotesFolderUri(choice.workspaceFolder),
     name,
-  );
+  });
 }
 
-/** The innermost heading a one-based line is in, tagged or not. */
-export function findHeadingAtLine(
-  sections: readonly Section[],
-  line: number,
-): Section | undefined {
-  return sections
-    .filter(
-      (section) =>
-        !section.isInline &&
-        section.startLine <= line &&
-        section.endLine >= line,
-    )
-    .sort(
-      (left, right) =>
-        right.startLine - left.startLine ||
-        right.headingLevel - left.headingLevel,
-    )[0];
-}
-
-export { getExtractedNoteFileName };
-
+/** Why a name cannot be the new note's, or undefined when it can. */
 export function validateExtractedNoteName(name: string): string | undefined {
   return getExtractedNoteFileName(name)
     ? undefined
     : 'Use a name that can be a file name, without / \\ : * ? " < > or |.';
 }
 
+/**
+ * Writes a heading's section into a new note named `name` and leaves a
+ * link to it in its place, then opens the new note. Returns the new note's
+ * URI, or undefined when nothing was extracted: a tagged line, a name that
+ * cannot be a file name, a note already at the name (which is said), or a
+ * source that could not be changed, in which case the new note is deleted
+ * on 'unchanged' and kept on 'half'.
+ */
 export async function extractHeadingNote(
   section: Section,
   sourceUri: vscode.Uri,
   notesFolderUri: vscode.Uri,
   name: string,
   /** Swaps the section for its link; stood in for by tests of the failures. */
-  replace: typeof replaceSectionWithLink = replaceSectionWithLink,
+  replace: SectionReplacer<vscode.Uri> = replaceSectionWithLink,
 ): Promise<vscode.Uri | undefined> {
-  if (section.isInline) {
-    return undefined;
-  }
+  return extractAndReport(vscodeLinkNotes, { section, sourceUri, notesFolderUri, name }, replace);
+}
 
-  const fileName = getExtractedNoteFileName(name);
-  if (!fileName) {
-    return undefined;
-  }
-
-  const noteUri = vscode.Uri.joinPath(notesFolderUri, fileName);
-  await vscode.workspace.fs.createDirectory(notesFolderUri);
-
-  try {
-    await vscode.workspace.fs.stat(noteUri);
+/**
+ * Extracts through `notes` and reports: a note already at the name is said
+ * with a way to open it, and an extracted note is opened. The source's own
+ * failures are said by `replace`.
+ */
+async function extractAndReport(
+  notes: LinkNoteService<vscode.Uri>,
+  extraction: Parameters<LinkNoteService<vscode.Uri>['extractHeading']>[0],
+  replace: SectionReplacer<vscode.Uri> = replaceSectionWithLink,
+): Promise<vscode.Uri | undefined> {
+  const result = await notes.extractHeading(extraction, replace);
+  if (result.kind === 'exists') {
     void reportFailure({
-      outcome: `${fileName} already exists, so Deckard did not extract the heading.`,
+      outcome: `${result.fileName} already exists, so Deckard did not extract the heading.`,
       fix: 'Choose another name.',
-      action: openNoteAction(noteUri),
+      action: openNoteAction(result.noteUri),
     });
     return undefined;
-  } catch {
-    await vscode.workspace.fs.writeFile(
-      noteUri,
-      Buffer.from(section.rawContent, 'utf8'),
-    );
   }
-
-  // Wiki links resolve against the file name, so the link names the new file.
-  const link = `[[${fileName.slice(0, -'.md'.length)}]]`;
-  const replaced = await replace(sourceUri, section, link, noteUri);
-  if (replaced === 'unchanged') {
-    // The source is as it was, so the new note is the only trace; it goes.
-    try {
-      await vscode.workspace.fs.delete(noteUri, { useTrash: false });
-    } catch {}
+  // The source's editor may hold the link while its file on disk still
+  // holds the heading ('half'); the new note is then kept, so the heading is
+  // in both until the reader decides.
+  if (result.kind !== 'extracted') {
     return undefined;
   }
-  if (replaced === 'half') {
-    // The source's editor holds the link while its file on disk still holds
-    // the heading. Deleting the new note would leave the heading nowhere but
-    // that file, and saving the editor would then lose it; so it is kept, and
-    // the heading is in both until the reader decides.
-    return undefined;
-  }
-
-  const document = await vscode.workspace.openTextDocument(noteUri);
+  const document = await vscode.workspace.openTextDocument(result.noteUri);
   await vscode.window.showTextDocument(document, { preview: false });
-  return noteUri;
+  return result.noteUri;
 }
 
 interface HeadingChoice extends vscode.QuickPickItem {
@@ -220,13 +207,6 @@ function getSuggestedNoteName(heading: string): string {
     .trim();
   return suggestion || 'extracted-note';
 }
-
-/**
- * What became of the source note: the link is in and saved; nothing changed
- * (the edit was refused, or rolled back); or the link is in its editor but
- * could not be saved or taken back, so the heading is still in its file.
- */
-export type ReplaceOutcome = 'replaced' | 'unchanged' | 'half';
 
 /** What went wrong while taking the heading out of its note. */
 export function describeExtractFailure(
