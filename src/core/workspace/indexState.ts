@@ -10,6 +10,7 @@ import {
   Task,
   WorkspaceIndex,
 } from '../types';
+import { AssociationSink, collectAssociationEvidence, EvidenceSource } from './associationEvidence';
 
 /**
  * The workspace index as a fold over each note's own contribution.
@@ -208,43 +209,73 @@ export function computeContribution(
 function computeAssociationParts(
   file: ParsedFile,
 ): Pick<FileContribution, 'pairs' | 'tagUnits' | 'unitCount'> {
-  const pairs = new Map<string, Map<string, PairPart>>();
-  const units = new Set<string>();
-  const tagUnits = new Map<string, number>();
-  /** Each part's units while they are counted, kept off the part itself. */
-  const partUnits = new Map<PairPart, Set<string>>();
-  const sections = new Map(file.sections.map((section) => [section.id, section]));
-  let sequence = 0;
+  const sink = new NoteEvidence();
+  collectAssociationEvidence(
+    file.sections,
+    file.tasks,
+    sink,
+    new Map(file.sections.map((section) => [section.id, section])),
+  );
+  return sink.finish();
+}
 
-  const register = (unitId: string, tags: readonly TagReference[]): void => {
-    if (units.has(unitId)) {
+/**
+ * One note's association evidence as the walk finds it: each pair's part,
+ * where in the note's walk it was first seen, and the units each tag and
+ * each pair appear in.
+ */
+class NoteEvidence implements AssociationSink {
+  private readonly pairs = new Map<string, Map<string, PairPart>>();
+  private readonly units = new Set<string>();
+  private readonly tagUnits = new Map<string, number>();
+  /** Each part's units while they are counted, kept off the part itself. */
+  private readonly partUnits = new Map<PairPart, Set<string>>();
+  /** How many pieces of evidence came before, so a part knows where it was first seen. */
+  private sequence = 0;
+
+  /** Counts a unit once, and each tag in it once, however often it is told. */
+  public register(unitId: string, tags: readonly TagReference[]): void {
+    if (this.units.has(unitId)) {
       return;
     }
-    units.add(unitId);
+    this.units.add(unitId);
     const seen = new Set<string>();
     for (const tag of tags) {
       if (!seen.has(tag.key)) {
         seen.add(tag.key);
-        tagUnits.set(tag.key, (tagUnits.get(tag.key) ?? 0) + 1);
+        this.tagUnits.set(tag.key, (this.tagUnits.get(tag.key) ?? 0) + 1);
       }
     }
-  };
-  const evidence = (
-    tag: TagReference,
-    associatedTag: TagReference,
-    source: { sectionId?: string; taskId?: string; unitId: string },
-    weight: number,
-    isCoOccurrence: boolean,
-  ): void => {
-    if (tag.key === associatedTag.key) {
-      return;
+  }
+
+  /** Adds the evidence to the pair's part: the heading phase's, or the tasks'. */
+  public evidence(tag: TagReference, associatedTag: TagReference, source: EvidenceSource): void {
+    const part = this.partOf(tag.key, associatedTag.key);
+    if (source.taskId === undefined) {
+      this.addSectionEvidence(part, associatedTag, source);
+    } else {
+      this.addTaskEvidence(part, associatedTag, source.taskId);
     }
-    let byAssociated = pairs.get(tag.key);
+    this.partUnits.get(part)?.add(source.unitId);
+    this.sequence += 1;
+  }
+
+  /** The note's evidence, with each part's unit count filled in. */
+  public finish(): Pick<FileContribution, 'pairs' | 'tagUnits' | 'unitCount'> {
+    this.partUnits.forEach((unitIds, part) => {
+      part.units = unitIds.size;
+    });
+    return { pairs: this.pairs, tagUnits: this.tagUnits, unitCount: this.units.size };
+  }
+
+  /** The part for a tag and the tag it is associated with, made empty the first time. */
+  private partOf(tagKey: string, associatedKey: string): PairPart {
+    let byAssociated = this.pairs.get(tagKey);
     if (!byAssociated) {
       byAssociated = new Map();
-      pairs.set(tag.key, byAssociated);
+      this.pairs.set(tagKey, byAssociated);
     }
-    let part = byAssociated.get(associatedTag.key);
+    let part = byAssociated.get(associatedKey);
     if (!part) {
       part = {
         sectionWeights: [],
@@ -259,92 +290,40 @@ function computeAssociationParts(
         taskReference: undefined,
         units: 0,
       };
-      byAssociated.set(associatedTag.key, part);
-      partUnits.set(part, new Set());
+      byAssociated.set(associatedKey, part);
+      this.partUnits.set(part, new Set());
     }
-    if (source.taskId === undefined) {
-      if (part.sectionFirst < 0) {
-        part.sectionFirst = sequence;
-        part.sectionReference = { ...associatedTag };
-      }
-      part.sectionWeights.push(weight);
-      if (isCoOccurrence) {
-        part.sectionCoOccurrences += 1;
-      } else {
-        part.headingRelationships += 1;
-      }
-      if (source.sectionId && !part.sectionIds.includes(source.sectionId)) {
-        part.sectionIds.push(source.sectionId);
-      }
+    return part;
+  }
+
+  /** Evidence from a section: a tag group on one of its lines, or its heading under an ancestor's. */
+  private addSectionEvidence(part: PairPart, associatedTag: TagReference, source: EvidenceSource): void {
+    if (part.sectionFirst < 0) {
+      part.sectionFirst = this.sequence;
+      part.sectionReference = { ...associatedTag };
+    }
+    part.sectionWeights.push(source.weight);
+    if (source.isCoOccurrence) {
+      part.sectionCoOccurrences += 1;
     } else {
-      if (part.taskFirst < 0) {
-        part.taskFirst = sequence;
-        part.taskReference = { ...associatedTag };
-      }
-      part.taskCoOccurrences += 1;
-      if (!part.taskIds.includes(source.taskId)) {
-        part.taskIds.push(source.taskId);
-      }
+      part.headingRelationships += 1;
     }
-    partUnits.get(part)?.add(source.unitId);
-    sequence += 1;
-  };
-  const group = (
-    tags: readonly TagReference[],
-    source: { sectionId?: string; taskId?: string; unitId: string },
-  ): void => {
-    const uniqueTags = [...new Map(tags.map((tag) => [tag.key, tag])).values()];
-    uniqueTags.forEach((tag, index) => {
-      uniqueTags.slice(index + 1).forEach((associatedTag) => {
-        evidence(tag, associatedTag, source, 1, true);
-        evidence(associatedTag, tag, source, 1, true);
-      });
-    });
-  };
+    if (source.sectionId && !part.sectionIds.includes(source.sectionId)) {
+      part.sectionIds.push(source.sectionId);
+    }
+  }
 
-  file.sections.forEach((section) => {
-    (section.associationTagGroups ?? []).forEach((tags, index) => {
-      const unitId = `section:${section.id}:group:${index}`;
-      register(unitId, tags);
-      group(tags, { sectionId: section.id, unitId });
-    });
-    const sourceTags = section.headingTags ?? [];
-    if (sourceTags.length === 0) {
-      return;
+  /** Evidence from a tag group on a task's line. */
+  private addTaskEvidence(part: PairPart, associatedTag: TagReference, taskId: string): void {
+    if (part.taskFirst < 0) {
+      part.taskFirst = this.sequence;
+      part.taskReference = { ...associatedTag };
     }
-    let parentSectionId = section.parentSectionId;
-    let depth = 1;
-    const visited = new Set<string>();
-    while (parentSectionId && !visited.has(parentSectionId)) {
-      visited.add(parentSectionId);
-      const parent = sections.get(parentSectionId);
-      if (!parent) {
-        break;
-      }
-      (parent.headingTags ?? []).forEach((parentTag) => {
-        sourceTags.forEach((childTag) => {
-          const unitId = `heading:${section.id}:${parent.id}`;
-          register(unitId, [...sourceTags, ...(parent.headingTags ?? [])]);
-          evidence(childTag, parentTag, { sectionId: section.id, unitId }, 0.5 / depth, false);
-          evidence(parentTag, childTag, { sectionId: section.id, unitId }, 0.5 / depth, false);
-        });
-      });
-      parentSectionId = parent.parentSectionId;
-      depth += 1;
+    part.taskCoOccurrences += 1;
+    if (!part.taskIds.includes(taskId)) {
+      part.taskIds.push(taskId);
     }
-  });
-  file.tasks.forEach((task) => {
-    (task.associationTagGroups ?? []).forEach((tags, index) => {
-      const unitId = `task:${task.id}:group:${index}`;
-      register(unitId, tags);
-      group(tags, { taskId: task.id, unitId });
-    });
-  });
-
-  partUnits.forEach((unitIds, part) => {
-    part.units = unitIds.size;
-  });
-  return { pairs, tagUnits, unitCount: units.size };
+  }
 }
 
 /**
@@ -920,14 +899,7 @@ export class IndexState {
 
   /** A tag's count and hub notes, once all its mentions are in. */
   private finishTag(tag: TagInfo, tasks: ReadonlyMap<string, Task>): void {
-    // A task inside a tagged section is already represented by that section;
-    // count it separately only when its tag would otherwise have no entry.
-    const taggedSections = new Set(tag.sectionIds);
-    const standaloneTasks = tag.taskIds.filter((taskId) => {
-      const task = tasks.get(taskId);
-      return !task?.sectionId || !taggedSections.has(task.sectionId);
-    });
-    tag.count = taggedSections.size + standaloneTasks.length + tag.filePaths.length;
+    tag.count = countEntries(tag, tasks);
     const hubFiles = this.hubFilesByTag.get(tag.key);
     if (hubFiles) {
       // The first note by path is the tag's hub; any others are shown as conflicts.
@@ -943,13 +915,31 @@ export class IndexState {
   }
 }
 
+/** An entity's count, once all its mentions are in. */
 function finishEntity(entity: Entity, tasks: ReadonlyMap<string, Task>): void {
-  const entitySections = new Set(entity.sectionIds);
-  const standaloneTasks = entity.taskIds.filter((taskId) => {
+  entity.count = countEntries(entity, tasks);
+}
+
+/**
+ * How many entries a tag or an entity has: each of its sections, each of
+ * its files, and each of its tasks that is not inside one of its sections.
+ * A task inside a tagged section is already represented by that section;
+ * it counts separately only when its tag would otherwise have no entry.
+ */
+function countEntries(
+  record: {
+    readonly sectionIds: readonly string[];
+    readonly taskIds: readonly string[];
+    readonly filePaths: readonly string[];
+  },
+  tasks: ReadonlyMap<string, Task>,
+): number {
+  const taggedSections = new Set(record.sectionIds);
+  const standaloneTasks = record.taskIds.filter((taskId) => {
     const task = tasks.get(taskId);
-    return !task?.sectionId || !entitySections.has(task.sectionId);
+    return !task?.sectionId || !taggedSections.has(task.sectionId);
   });
-  entity.count = entitySections.size + standaloneTasks.length + entity.filePaths.length;
+  return taggedSections.size + standaloneTasks.length + record.filePaths.length;
 }
 
 /** Adds one mention of a tag to its record, and to its entity's. */
@@ -1091,12 +1081,7 @@ export function buildIndexDirectly(files: Map<string, ParsedFile>): WorkspaceInd
   });
 
   tags.forEach((tag) => {
-    const taggedSections = new Set(tag.sectionIds);
-    const standaloneTasks = tag.taskIds.filter((taskId) => {
-      const task = tasks.get(taskId);
-      return !task?.sectionId || !taggedSections.has(task.sectionId);
-    });
-    tag.count = taggedSections.size + standaloneTasks.length + tag.filePaths.length;
+    tag.count = countEntries(tag, tasks);
   });
   hubFilePaths.forEach((filePaths, tagKey) => {
     const tag = tags.get(tagKey);
@@ -1117,6 +1102,7 @@ export function buildIndexDirectly(files: Map<string, ParsedFile>): WorkspaceInd
   };
 }
 
+/** What the direct build keeps of one tag's relation to another while it walks. */
 interface DirectAssociation {
   associatedTag: TagReference;
   sectionIds: string[];
@@ -1135,25 +1121,32 @@ function buildAssociationsDirectly(
   sections: Map<string, Section>,
   tasks: Map<string, Task>,
 ): Map<string, TagAssociation[]> {
-  const associations = new Map<string, DirectAssociation>();
-  const sourceUnits = new Map<string, TagReference[]>();
-  const register = (unitId: string, tags: TagReference[]): void => {
-    if (!sourceUnits.has(unitId)) {
-      sourceUnits.set(unitId, [...new Map(tags.map((tag) => [tag.key, tag])).values()]);
+  const sink = new WorkspaceEvidence();
+  collectAssociationEvidence(sections.values(), tasks.values(), sink, sections);
+  return sink.finish();
+}
+
+/**
+ * The whole workspace's association evidence as the direct build keeps it:
+ * one relation per ordered pair of tags, in the order each pair was first
+ * seen, and each unit's tags.
+ */
+class WorkspaceEvidence implements AssociationSink {
+  /** Tag and associated tag, joined by a NUL, to what is known of them. */
+  private readonly associations = new Map<string, DirectAssociation>();
+  private readonly sourceUnits = new Map<string, TagReference[]>();
+
+  /** Keeps a unit's tags, each once, the first time it is told. */
+  public register(unitId: string, tags: readonly TagReference[]): void {
+    if (!this.sourceUnits.has(unitId)) {
+      this.sourceUnits.set(unitId, [...new Map(tags.map((tag) => [tag.key, tag])).values()]);
     }
-  };
-  const evidence = (
-    tag: TagReference,
-    associatedTag: TagReference,
-    source: { sectionId?: string; taskId?: string; unitId: string },
-    weight: number,
-    isCoOccurrence: boolean,
-  ): void => {
-    if (tag.key === associatedTag.key) {
-      return;
-    }
+  }
+
+  /** Adds the evidence to the pair's relation, made the first time the pair is seen. */
+  public evidence(tag: TagReference, associatedTag: TagReference, source: EvidenceSource): void {
     const key = `${tag.key}\u0000${associatedTag.key}`;
-    const relationship = associations.get(key) ?? {
+    const relationship = this.associations.get(key) ?? {
       associatedTag: { ...associatedTag },
       sectionIds: [],
       taskIds: [],
@@ -1169,106 +1162,82 @@ function buildAssociationsDirectly(
       relationship.taskIds.push(source.taskId);
     }
     relationship.sourceUnitIds.add(source.unitId);
-    relationship.weight += weight;
-    if (isCoOccurrence) {
+    relationship.weight += source.weight;
+    if (source.isCoOccurrence) {
       relationship.coOccurrenceCount += 1;
     } else {
       relationship.headingRelationshipCount += 1;
     }
-    associations.set(key, relationship);
-  };
-  const group = (
-    tags: TagReference[],
-    source: { sectionId?: string; taskId?: string; unitId: string },
-  ): void => {
-    const uniqueTags = [...new Map(tags.map((tag) => [tag.key, tag])).values()];
-    uniqueTags.forEach((tag, index) => {
-      uniqueTags.slice(index + 1).forEach((associatedTag) => {
-        evidence(tag, associatedTag, source, 1, true);
-        evidence(associatedTag, tag, source, 1, true);
-      });
-    });
-  };
+    this.associations.set(key, relationship);
+  }
 
-  sections.forEach((section) => {
-    (section.associationTagGroups ?? []).forEach((tags, index) => {
-      const unitId = `section:${section.id}:group:${index}`;
-      register(unitId, tags);
-      group(tags, { sectionId: section.id, unitId });
-    });
-    const sourceTags = section.headingTags ?? [];
-    if (sourceTags.length === 0) {
-      return;
-    }
-    let parentSectionId = section.parentSectionId;
-    let depth = 1;
-    const visited = new Set<string>();
-    while (parentSectionId && !visited.has(parentSectionId)) {
-      visited.add(parentSectionId);
-      const parent = sections.get(parentSectionId);
-      if (!parent) {
-        break;
-      }
-      (parent.headingTags ?? []).forEach((parentTag) => {
-        sourceTags.forEach((childTag) => {
-          const unitId = `heading:${section.id}:${parent.id}`;
-          register(unitId, [...sourceTags, ...(parent.headingTags ?? [])]);
-          evidence(childTag, parentTag, { sectionId: section.id, unitId }, 0.5 / depth, false);
-          evidence(parentTag, childTag, { sectionId: section.id, unitId }, 0.5 / depth, false);
-        });
+  /**
+   * Each tag's associations, ranked as the direct build always ranked them,
+   * and the tags in the order their best-ranked association comes.
+   */
+  public finish(): Map<string, TagAssociation[]> {
+    const tagUnits = new Map<string, number>();
+    this.sourceUnits.forEach((tags) =>
+      tags.forEach((tag) => tagUnits.set(tag.key, (tagUnits.get(tag.key) ?? 0) + 1)),
+    );
+    const tagAssociations = new Map<string, TagAssociation[]>();
+    [...this.associations.entries()]
+      .map(([key, relationship]) => this.finishAssociation(key, relationship, tagUnits))
+      .sort(compareDirect)
+      .forEach(({ tagKey, association }) => {
+        const list = tagAssociations.get(tagKey);
+        if (list) {
+          list.push(association);
+        } else {
+          tagAssociations.set(tagKey, [association]);
+        }
       });
-      parentSectionId = parent.parentSectionId;
-      depth += 1;
-    }
-  });
-  tasks.forEach((task) => {
-    (task.associationTagGroups ?? []).forEach((tags, index) => {
-      const unitId = `task:${task.id}:group:${index}`;
-      register(unitId, tags);
-      group(tags, { taskId: task.id, unitId });
-    });
-  });
+    return tagAssociations;
+  }
 
-  const tagUnits = new Map<string, number>();
-  sourceUnits.forEach((tags) =>
-    tags.forEach((tag) => tagUnits.set(tag.key, (tagUnits.get(tag.key) ?? 0) + 1)),
-  );
-  const tagAssociations = new Map<string, TagAssociation[]>();
-  [...associations.entries()]
-    .map(([key, relationship]) => {
-      const tagKey = key.split('\u0000')[0];
-      const tagSourceUnitCount = tagUnits.get(tagKey) ?? 0;
-      const associatedTagSourceUnitCount = tagUnits.get(relationship.associatedTag.key) ?? 0;
-      const { sourceUnitIds, ...rest } = relationship;
-      const association: TagAssociation = {
-        ...rest,
-        count: sourceUnitIds.size,
-        normalizedWeight: getNormalizedAssociationWeight(
-          relationship.weight,
-          sourceUnitIds.size,
-          tagSourceUnitCount,
-          associatedTagSourceUnitCount,
-        ),
+  /** One relation as a finished association, with its counts and its normalized weight. */
+  private finishAssociation(
+    key: string,
+    relationship: DirectAssociation,
+    tagUnits: ReadonlyMap<string, number>,
+  ): { tagKey: string; association: TagAssociation } {
+    const tagKey = key.split('\u0000')[0];
+    const tagSourceUnitCount = tagUnits.get(tagKey) ?? 0;
+    const associatedTagSourceUnitCount = tagUnits.get(relationship.associatedTag.key) ?? 0;
+    const { sourceUnitIds, ...rest } = relationship;
+    const association: TagAssociation = {
+      ...rest,
+      count: sourceUnitIds.size,
+      normalizedWeight: getNormalizedAssociationWeight(
+        relationship.weight,
+        sourceUnitIds.size,
         tagSourceUnitCount,
         associatedTagSourceUnitCount,
-        totalSourceUnitCount: sourceUnits.size,
-      };
-      return { tagKey, association };
-    })
-    .sort(
-      (left, right) =>
-        right.association.coOccurrenceCount - left.association.coOccurrenceCount ||
-        right.association.weight - left.association.weight ||
-        left.association.associatedTag.label.localeCompare(right.association.associatedTag.label) ||
-        left.association.associatedTag.key.localeCompare(right.association.associatedTag.key),
-    )
-    .forEach(({ tagKey, association }) => {
-      const list = tagAssociations.get(tagKey);
-      if (list) {
-        list.push(association);
-      } else {
-        tagAssociations.set(tagKey, [association]);
-      }
-    });
-  return tagAssociations;
+      ),
+      tagSourceUnitCount,
+      associatedTagSourceUnitCount,
+      totalSourceUnitCount: this.sourceUnits.size,
+    };
+    return { tagKey, association };
+  }
+}
+
+/**
+ * The direct build's ranking: most co-occurrences, then most weight, then
+ * by name. Two that tie on all of those keep the order their pairs were
+ * first seen in, since the sort is stable. This is compareRanked without
+ * its last keys, which place a tie by where its pair was first seen in the
+ * fold; the direct build has no such place, and reusing it would reorder
+ * the ties.
+ */
+function compareDirect(
+  left: { association: TagAssociation },
+  right: { association: TagAssociation },
+): number {
+  return (
+    right.association.coOccurrenceCount - left.association.coOccurrenceCount ||
+    right.association.weight - left.association.weight ||
+    left.association.associatedTag.label.localeCompare(right.association.associatedTag.label) ||
+    left.association.associatedTag.key.localeCompare(right.association.associatedTag.key)
+  );
 }

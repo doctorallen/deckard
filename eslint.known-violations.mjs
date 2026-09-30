@@ -28,7 +28,6 @@ export default {
       "prune"
     ],
     "src/core/workspace/indexState.ts": [
-      "(arrow function)",
       "forget",
       "remember"
     ],
@@ -343,7 +342,6 @@ export default {
     "src/core/storage/searchStoreWorkerClient.ts": 2,
     "src/core/workspace/backlinks.ts": 3,
     "src/core/workspace/indexState.ts": 9,
-    "src/core/workspace/indexer.ts": 3,
     "src/core/workspace/parked.ts": 5,
     "src/core/workspace/scanner.ts": 3,
     "src/extension.ts": 1,
@@ -490,12 +488,7 @@ export default {
       "prune"
     ],
     "src/core/workspace/indexState.ts": [
-      "buildAssociationsDirectly",
-      "computeAssociationParts",
       "rank"
-    ],
-    "src/core/workspace/indexer.ts": [
-      "refresh"
     ],
     "src/core/workspace/parked.ts": [
       "computeParked"
@@ -759,7 +752,6 @@ export default {
     "src/core/markdown/parser.ts": 1,
     "src/core/query/queryEdit.ts": 1,
     "src/core/workspace/indexState.ts": 4,
-    "src/core/workspace/indexer.ts": 1,
     "src/core/workspace/parked.ts": 1,
     "src/test/webviewPage.ts": 1,
     "src/ui/commands/capture.ts": 2,
