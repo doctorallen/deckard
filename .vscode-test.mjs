@@ -1,7 +1,15 @@
+import { createRequire } from 'node:module';
+
 import { defineConfig } from '@vscode/test-cli';
 
+const require = createRequire(import.meta.url);
+const { listHostSuites } = require('./test/harness/importGraph.js');
+
 export default defineConfig({
-	files: 'out/test/**/*.test.js',
+	// Every suite that reaches `vscode`. The ones that never do run under
+	// plain mocha in `npm run test:unit`, which `pretest` runs first; the
+	// import graph decides which is which.
+	files: listHostSuites(),
 	launchArgs: ['--disable-extensions'],
 	mocha: {
 		// The suite itself runs in about four seconds, but a test that waits on

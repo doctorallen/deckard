@@ -1,7 +1,7 @@
 // The source tree's import graph, as dependency-cruiser reads it with the
 // project's own configuration (.dependency-cruiser.cjs).
 //
-// test:unit asks it which suites can run without VS Code, and
+// test:unit and .vscode-test.mjs ask it which suites run without VS Code, and
 // scripts/import-graph-report.js prints the baseline in
 // docs/architecture/inventories/import-graph.md from it, so the suites that
 // qualify and the numbers the page quotes come from one reading of the tree.
@@ -80,4 +80,22 @@ function listUnitSuites(graph = readImportGraph()) {
     .sort();
 }
 
-module.exports = { VSCODE, readImportGraph, modulesReaching, listUnitSuites };
+/**
+ * The mocha suites that need the extension host: every suite
+ * {@link listUnitSuites} leaves out.
+ *
+ * @param {Map<string, string[]>} [graph] From {@link readImportGraph}; read
+ *   now when not given.
+ * @returns {string[]} Compiled paths under `out/test`, relative to the
+ *   repository, in name order.
+ */
+function listHostSuites(graph = readImportGraph()) {
+  const unit = new Set(listUnitSuites(graph));
+  return [...graph.keys()]
+    .filter((source) => /^src\/test\/[^/]+\.test\.ts$/.test(source))
+    .map((source) => source.replace(/^src\//, 'out/').replace(/\.ts$/, '.js'))
+    .filter((file) => !unit.has(file))
+    .sort();
+}
+
+module.exports = { VSCODE, readImportGraph, modulesReaching, listUnitSuites, listHostSuites };
