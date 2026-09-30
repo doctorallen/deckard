@@ -1,4 +1,13 @@
 import { QueryViewState } from './query/queryTypes';
+import type {
+  EntityKind,
+  FrontmatterProperty,
+  TagReference,
+  Task,
+  UnreadableNote,
+} from '../domain/model';
+
+export type * from '../domain/model';
 
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
 export type TaskSortMode = 'rank' | 'created' | 'updated';
@@ -27,8 +36,6 @@ export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
 export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 
-/** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
-export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 
 /**
  * The Dashboard's tabs: Home, and Tags. Searches open search pages, and tasks
@@ -105,203 +112,19 @@ export type RenderMode = 'markdown' | 'html';
 /** How much of each result a search page shows: none, three lines, or all. */
 export type SearchPreview = 'none' | 'lines' | 'full';
 
-export type BuiltInEntityKind =
-  | 'person'
-  | 'project'
-  | 'topic'
-  | 'organization'
-  | 'meeting';
 
-/**
- * Entity kinds include built-in types and workspace-defined namespaces.
- *
- * The open string branch lets a namespaced tag such as `#management/item`
- * become an entity without requiring a configuration entry first.
- */
-export type EntityKind = BuiltInEntityKind | (string & {});
 
-export interface TagReference {
-  key: string;
-  label: string;
-}
 
-export interface Entity {
-  key: string;
-  label: string;
-  kind: EntityKind;
-  name: string;
-  sectionIds: string[];
-  taskIds: string[];
-  filePaths: string[];
-  count: number;
-  isFavorite: boolean;
-  updatedAt?: number;
-}
 
-export interface SourceLocation {
-  filePath: string;
-  line: number;
-}
 
-export interface Section {
-  id: string;
-  filePath: string;
-  heading: string;
-  headingLevel: number;
-  isInline?: boolean;
-  /** Tags written on this heading, excluding inherited front-matter tags. */
-  headingTags?: TagReference[];
-  /** Explicit tag groups written on individual source lines. */
-  associationTagGroups?: TagReference[][];
-  /** Structural heading parent, including untagged intermediate headings. */
-  parentSectionId?: string;
-  tags: string[];
-  tagLabels: Record<string, string>;
-  links: string[];
-  /** The section and everything nested inside it, which is what Extract moves. */
-  rawContent: string;
-  /**
-   * The section's own text: its heading and the lines under it, stopping at
-   * the next heading of any level. A parent's own body does not contain its
-   * children's, so a line belongs to the text of exactly one entry.
-   */
-  bodyContent: string;
-  startLine: number;
-  /** The last line of the section and everything nested inside it. */
-  endLine: number;
-  /** The last line of the section's own body, before any nested heading. */
-  bodyEndLine: number;
-  /**
-   * Tags written on the section's own body lines, each with the line that
-   * carries it.
-   *
-   * The tag stays where its author wrote it. A heading matches a search for
-   * one of these because it contains the line, not because the tag was moved
-   * onto the heading — so `tags` remains what was written on the heading
-   * itself, and a match can say which line answered it.
-   */
-  bodyTags?: SectionBodyTag[];
-  createdAt?: number;
-  updatedAt?: number;
-}
 
-export interface SectionBodyTag extends TagReference {
-  /** One-based line the tag is written on. */
-  line: number;
-}
 
-export interface Task {
-  id: string;
-  filePath: string;
-  sectionId?: string;
-  title: string;
-  completed: boolean;
-  tags: string[];
-  tagLabels: Record<string, string>;
-  /** Explicit tags written on this task line, excluding inherited tags. */
-  associationTagGroups?: TagReference[][];
-  dueAt?: number;
-  dueText?: string;
-  /** ⏳ scheduled date: the day the author plans to work on the task. */
-  scheduledAt?: number;
-  /** 🛫 start date: the task is not actionable before this day. */
-  startAt?: number;
-  /** ✅ date the task was completed. */
-  doneAt?: number;
-  priority?: TaskPriority;
-  /** 🔁 repeat rule as written, such as "every week". */
-  recurrence?: string;
-  /**
-   * 👤 the person the task is for, as their tag is written. Anyone else named
-   * on the line is mentioned rather than asked.
-   */
-  assignee?: string;
-  /** 🆔 name other tasks use in ⛔ to depend on this one. */
-  dependencyId?: string;
-  /** ⛔ names of the tasks that must be done first. */
-  dependsOn?: string[];
-  lineNumber: number;
-  checkboxColumn: number;
-  checkboxValue: ' ' | 'x' | 'X';
-  sourceLineText: string;
-  createdAt?: number;
-  updatedAt?: number;
-  /** The task this one is a step of: the checkbox it is indented under. */
-  parentTaskId?: string;
-  /** This task's own steps, the checkboxes indented directly under it. */
-  steps?: TaskSteps;
-}
 
-/** How far along a task's direct steps are. */
-export interface TaskSteps {
-  /** The steps' task ids, in the order they are written. */
-  ids: string[];
-  total: number;
-  done: number;
-  /** The first open step's title, as the index holds it. */
-  next?: string;
-}
 
-export interface ParsedFile {
-  filePath: string;
-  content: string;
-  sections: Section[];
-  tasks: Task[];
-  frontmatterTags: TagReference[];
-  links: string[];
-  /** Other names `[[links]]` can use for the note, from `aliases:` front matter. */
-  aliases?: string[];
-  /**
-   * The `^block-id` markers the note carries, each with the one-based line it
-   * marks, so a `[[Note#^id]]` link can be opened at the line it names.
-   */
-  blockIds?: Record<string, number>;
-  /** Present when the note's `describes:` front matter names tags. */
-  hub?: NoteHub;
-  /**
-   * When the note was created and last updated. A date the note states about
-   * itself, in front matter or as a daily note's day, comes before its file's.
-   */
-  createdAt?: number;
-  updatedAt?: number;
-  /**
-   * The file's own created and modified times, which tell whether the file
-   * changed since it was last read.
-   */
-  fileTimes?: { createdAt?: number; updatedAt?: number };
-}
 
-/**
- * A note that describes tags, so it can lead their overviews.
- */
-export interface NoteHub {
-  describes: TagReference[];
-  /** The rest of the note's front matter, in source order. */
-  properties: FrontmatterProperty[];
-}
 
-export interface FrontmatterProperty {
-  name: string;
-  values: FrontmatterValue[];
-}
 
-export interface FrontmatterValue {
-  text: string;
-  /** Set when the value names a tag, such as `owner: "@dana"`. */
-  tag?: TagReference;
-}
 
-export interface TagInfo {
-  key: string;
-  label: string;
-  sectionIds: string[];
-  taskIds: string[];
-  filePaths: string[];
-  count: number;
-  isFavorite: boolean;
-  /** Notes whose `describes:` names this tag, by path; the first is its hub. */
-  hubFilePaths?: string[];
-}
 
 /** The tag a search page is about, as the page draws it. */
 export interface SearchPageTag {
@@ -321,58 +144,8 @@ export interface SearchPageEntity {
   count: number;
 }
 
-export interface TagAssociation {
-  associatedTag: TagReference;
-  sectionIds: string[];
-  taskIds: string[];
-  count: number;
-  /** Total evidence score: co-occurrence is 1; heading proximity decays by depth. */
-  weight: number;
-  /** Prevalence- and support-normalized relevance used for Related Notes. */
-  normalizedWeight: number;
-  /** Distinct atomic source units containing the source tag. */
-  tagSourceUnitCount: number;
-  /** Distinct atomic source units containing the associated tag. */
-  associatedTagSourceUnitCount: number;
-  /** Total atomic source units observed while building this relationship. */
-  totalSourceUnitCount: number;
-  coOccurrenceCount: number;
-  headingRelationshipCount: number;
-}
 
-export interface WorkspaceIndex {
-  files: Map<string, ParsedFile>;
-  sections: Map<string, Section>;
-  tasks: Map<string, Task>;
-  tags: Map<string, TagInfo>;
-  entities: Map<string, Entity>;
-  /** Tag key -> weighted co-occurrence and heading-proximity associations. */
-  tagAssociations?: ReadonlyMap<string, TagAssociation[]>;
-  /** What `deckard.parked` parks, set by the indexer; absent means nothing. */
-  parked?: ParkedState;
-  updatedAt: number;
-}
 
-/**
- * What is parked in one index, worked out once per snapshot.
- *
- * A note, heading, or task is parked when it is in a parked folder, or when a
- * search for a parked tag would find it.
- */
-export interface ParkedState {
-  /** Notes parked whole: by their folder, or by a tag in their front matter. */
-  files: Set<string>;
-  sections: Set<string>;
-  tasks: Set<string>;
-  /** Tags every use of which is parked. */
-  tags: Set<string>;
-  /** Notes parked by a front-matter tag and not by their folder. */
-  taggedFiles: Set<string>;
-  /** How many notes their folder parks. */
-  byFolder: number;
-  /** How many notes a front-matter tag parks and their folder does not. */
-  byTag: number;
-}
 
 export interface PersistedPreferences {
   version: 1;
@@ -788,11 +561,6 @@ export interface TagOverviewCard {
   long?: boolean;
 }
 
-export interface HeadingTagSpan extends TagReference {
-  lineNumber: number;
-  startColumn: number;
-  endColumn: number;
-}
 
 export interface RankedNote {
   /** Parked: listed only beside a parked note, after the rest. */
@@ -891,11 +659,6 @@ export interface StatsNoteItem {
   open: OpenSourceMessage;
 }
 
-/** A note Deckard could not read: it is in the workspace, but not in the index. */
-export interface UnreadableNote {
-  filePath: string;
-  reason: string;
-}
 
 /** An unreadable note as Stats lists it: the note, why, and what opens it. */
 export interface StatsUnreadableItem extends UnreadableNote {
