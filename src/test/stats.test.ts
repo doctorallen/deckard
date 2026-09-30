@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { parseQuery } from '../core/query/queryParser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
 import { getStatsHtml } from '../ui/webview/statsHtml';

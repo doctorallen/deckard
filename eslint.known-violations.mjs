@@ -114,6 +114,9 @@ export default {
     "src/ui/state/editorLensState.ts": [
       "findDailyNoteActions"
     ],
+    "src/ui/state/entryScope.ts": [
+      "(arrow function)"
+    ],
     "src/ui/state/notesGraphState.ts": [
       "addEdge"
     ],
@@ -144,7 +147,6 @@ export default {
       "(function)"
     ],
     "src/ui/webview/sidebarNotes.ts": [
-      "(arrow function)",
       "(function)"
     ],
     "src/ui/webview/taskBoard.ts": [
@@ -434,7 +436,7 @@ export default {
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
     "src/ui/state/relatedNotesRanking.ts": 2,
-    "src/ui/state/resultTable.ts": 3,
+    "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
     "src/ui/state/searchFacets.ts": 4,
     "src/ui/state/searchHistory.ts": 2,
@@ -460,7 +462,7 @@ export default {
     "src/ui/webview/relatedNotesDebug.ts": 3,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
-    "src/ui/webview/sidebarNotes.ts": 10,
+    "src/ui/webview/sidebarNotes.ts": 5,
     "src/ui/webview/stats.ts": 4,
     "src/ui/webview/taskBoard.ts": 5,
     "src/ui/webview/themes.ts": 1,
@@ -598,6 +600,9 @@ export default {
     "src/ui/state/dashboardWidgets.ts": [
       "createWidget"
     ],
+    "src/ui/state/entryScope.ts": [
+      "createEntryScope"
+    ],
     "src/ui/state/noteLinks.ts": [
       "collectNoteLinks"
     ],
@@ -669,7 +674,6 @@ export default {
     ],
     "src/ui/webview/sidebarNotes.ts": [
       "(function)",
-      "createEntryScope",
       "createSnapshot",
       "handleValidMessage"
     ],
@@ -719,14 +723,13 @@ export default {
     "src/core/query/queryFormat.ts": 1,
     "src/core/storage/preferences.ts": 2,
     "src/core/workspace/indexState.ts": 2,
-    "src/core/workspace/publishing.ts": 1,
+    "src/core/workspace/periodicNotes.ts": 1,
     "src/core/workspace/scanner.ts": 1,
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/naming.test.ts": 1,
     "src/test/tag-grouping.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 1,
     "src/ui/commands/bulkEdit.ts": 2,
-    "src/ui/commands/dailyNote.ts": 1,
     "src/ui/commands/editorReferences.ts": 1,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/parking.ts": 4,
@@ -748,6 +751,7 @@ export default {
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/messages.ts": 1,
+    "src/ui/webview/panelPriority.ts": 1,
     "src/ui/webview/sidebarNotes.ts": 1,
     "src/ui/webview/stats.ts": 2
   },
@@ -802,13 +806,14 @@ export default {
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/state/dashboardState.ts": 1,
+    "src/ui/state/entryScope.ts": 1,
     "src/ui/state/notesGraphState.ts": 3,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/searchFacets.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/activeHome.ts": 1,
-    "src/ui/webview/sidebarNotes.ts": 4,
+    "src/ui/webview/sidebarNotes.ts": 3,
     "src/ui/webview/taskBoard.ts": 1,
     "test/e2e/webviewRuntime.js": 1
   }

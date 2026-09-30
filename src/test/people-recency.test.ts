@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import {
   isPersonTag,

@@ -14,7 +14,8 @@ import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { panelPriority } from './panelPriority';
 
 /**
  * Provides an overview of indexed content and recorded local views. Each

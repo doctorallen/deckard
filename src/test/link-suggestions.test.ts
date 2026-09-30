@@ -10,7 +10,7 @@ import {
 import { describeDay, parseDatePhrase } from '../core/markdown/dates';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createWikiLink } from '../ui/commands/insertLink';
 
 suite('Wiki link suggestions', () => {

@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { IndexState, NoteChange } from '../core/workspace/indexState';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { buildLegacyWorkspaceIndex } from './fixtures/legacyWorkspaceIndex';

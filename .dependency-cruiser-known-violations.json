@@ -15,34 +15,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/ui/commands/editorReferences.ts",
-    "to": "src/ui/webview/sidebarNotes.ts",
-    "unresolvedTo": "../webview/sidebarNotes",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "commands-not-to-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/core/storage/preferences.ts",
-    "to": "src/ui/state/resultTable.ts",
-    "unresolvedTo": "../../ui/state/resultTable",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-not-to-ui"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/core/types.ts",
     "to": "src/ui/protocol/index.ts",
     "unresolvedTo": "../ui/protocol",
@@ -237,65 +209,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/ui/state/calendarState.ts",
-    "to": "src/ui/commands/dailyNote.ts",
-    "unresolvedTo": "../commands/dailyNote",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/ui/state/dashboardState.ts",
     "to": "src/ui/webview/rendering.ts",
     "unresolvedTo": "../webview/rendering",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/dashboardWidgets.ts",
-    "to": "src/ui/commands/dailyNote.ts",
-    "unresolvedTo": "../commands/dailyNote",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/editorLensState.ts",
-    "to": "src/ui/commands/dailyNote.ts",
-    "unresolvedTo": "../commands/dailyNote",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/editorLensState.ts",
-    "to": "src/ui/commands/rollover.ts",
-    "unresolvedTo": "../commands/rollover",
     "dependencyTypes": [
       "local",
       "import"

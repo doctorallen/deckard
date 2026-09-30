@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { viewPriority } from './panelPriority';
 import { CalendarDayDetail, CalendarMessage, WorkspaceIndex } from '../../core/types';
 import { ActiveCalendar, CalendarDaySource } from './activeCalendar';
 import { settingTarget, writeSetting } from '../commands/settings';

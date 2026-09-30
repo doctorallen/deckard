@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { RankedNote } from '../core/types';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
-import { createEntryScope } from '../ui/webview/sidebarNotes';
+import { createEntryScope } from '../ui/state/entryScope';
 import { parseMarkdown } from '../core/markdown/parser';
 import {
   createEvaluationWorkspace,

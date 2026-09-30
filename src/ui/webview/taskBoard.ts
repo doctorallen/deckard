@@ -32,7 +32,8 @@ import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { panelPriority } from './panelPriority';
 
 /**
  * Shows tasks as a Kanban board or as a list, narrowed by the search box

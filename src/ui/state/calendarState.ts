@@ -11,7 +11,7 @@ import {
   getPeriodicNote,
   isPeriodicNoteName,
   listDailyNotes,
-} from '../commands/dailyNote';
+} from '../../core/workspace/periodicNotes';
 
 /** How many tasks and headings a day's tooltip names. */
 const TOOLTIP_ITEMS = 5;

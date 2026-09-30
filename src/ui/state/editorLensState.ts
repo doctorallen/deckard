@@ -10,8 +10,8 @@ import {
   parseWikiTarget,
   resolveWikiTarget,
 } from '../../core/workspace/backlinks';
-import { findAdjacentDailyNote, listDailyNotes } from '../commands/dailyNote';
-import { planRollover } from '../commands/rollover';
+import { findAdjacentDailyNote, listDailyNotes } from '../../core/workspace/periodicNotes';
+import { planRollover } from '../../core/workspace/rolloverPlan';
 import { findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
 
 /**

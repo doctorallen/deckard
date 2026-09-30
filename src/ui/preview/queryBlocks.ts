@@ -1,4 +1,4 @@
-import MarkdownIt = require('markdown-it');
+import type MarkdownIt from 'markdown-it';
 import * as vscode from 'vscode';
 
 import { measure } from '../../core/timing';

@@ -7,6 +7,7 @@ import {
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
+import { escapeHtml } from '../../shared/html';
 
 export function getRelatedNotesDebugHtml(
   webview: Pick<vscode.Webview, 'cspSource'>,
@@ -99,10 +100,3 @@ function getTagContextLabel(
       return 'Child item';
   }
 }
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character] ?? character);
-}
-

@@ -4,7 +4,7 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { evaluateQuery, setQueryIdentity } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { layoutTaskBoard, resolveTaskMove } from '../ui/state/taskBoardState';
 
 const notes = {

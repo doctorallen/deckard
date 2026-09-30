@@ -16,7 +16,7 @@ import {
   TagTitleDisplayMode,
   WorkspaceIndex,
 } from '../../core/types';
-import { formatLocalDate, listDailyNotes } from '../commands/dailyNote';
+import { formatLocalDate, listDailyNotes } from '../../core/workspace/periodicNotes';
 import { createAgenda, selectAgendaTasks } from './agendaState';
 import {
   createDashboardSavedFilters,

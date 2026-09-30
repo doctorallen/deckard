@@ -7,7 +7,7 @@ import { parseQuery } from '../core/query/queryParser';
 import { QueryConditionNode } from '../core/query/queryTypes';
 import { WorkspaceIndex } from '../core/types';
 import { findMissingLinkTargets, getBacklinkIndex } from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 
 function condition(text: string): QueryConditionNode {
   const parsed = parseQuery(text);

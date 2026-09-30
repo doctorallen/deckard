@@ -20,7 +20,8 @@ import { readWeekStart } from '../commands/datePrompt';
 import { CalendarOptions, CalendarSnapshot, clampToMonth, createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
-import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { viewPriority } from './panelPriority';
 
 interface CalendarIndexSource {
   readonly ready: Promise<void>;

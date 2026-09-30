@@ -17,7 +17,7 @@ import {
   getTagSuggestions,
 } from '../ui/commands/capture';
 import { buildDestinationItems } from '../ui/commands/destinationPicker';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 
 /** The content once an insertion is made, as the editor would make it. */
 function applyInsertion(content: string, insertion: CaptureInsertion): string {

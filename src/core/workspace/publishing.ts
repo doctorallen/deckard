@@ -51,27 +51,6 @@ export function onIndexUpdateInTurn(
     : source.onDidUpdate(listener);
 }
 
-/** A webview panel's priority: in front, visible, or hidden (or not open). */
-export function panelPriority(
-  panel: Pick<vscode.WebviewPanel, 'active' | 'visible'> | undefined,
-): number {
-  if (!panel) {
-    return VIEW_PRIORITY.hidden;
-  }
-  return panel.active
-    ? VIEW_PRIORITY.active
-    : panel.visible
-      ? VIEW_PRIORITY.visible
-      : VIEW_PRIORITY.hidden;
-}
-
-/** A side view's priority: visible or hidden (or not open). */
-export function viewPriority(
-  view: Pick<vscode.WebviewView, 'visible'> | undefined,
-): number {
-  return view?.visible ? VIEW_PRIORITY.visible : VIEW_PRIORITY.hidden;
-}
-
 /**
  * Resolves once the index has something to show: the notes as the cache
  * last saw them on a warm start, or the first scan. A surface that only

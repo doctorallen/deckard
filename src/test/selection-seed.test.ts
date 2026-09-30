@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { captureSeed, shortSelection, withSourceLink } from '../ui/commands/selectionSeed';
 
 function editorOn(lines: string[], start: [number, number], end: [number, number], path = '/ws/notes/2026-09-22.md') {

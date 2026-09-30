@@ -1,11 +1,7 @@
 import * as vscode from 'vscode';
 
 import { legacyIdOf } from '../markdown/parser';
-import {
-  isTaskColumnId,
-  TableSort,
-  TaskColumnId,
-} from '../../ui/state/resultTable';
+import { isTaskColumnId } from '../taskColumns';
 import {
   DashboardColumnCount,
   DashboardMode,
@@ -25,8 +21,10 @@ import {
   SearchPreview,
   TagOverviewLayout,
   TagOverviewSortMode,
+  TableSort,
   TagSortMode,
   TaskBoardGroupBy,
+  TaskColumnId,
   TaskLayout,
   TaskSortMode,
 } from '../types';

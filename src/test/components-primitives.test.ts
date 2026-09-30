@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCss, getZenCss } from '../ui/webview/components';

@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { DeckardMcpServer, getClaudeCodeSetup } from '../ui/commands/mcpServer';
 
 suite('MCP server', () => {

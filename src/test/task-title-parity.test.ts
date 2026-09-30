@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { PersistedPreferences } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { parseQueryBlockInfo } from '../ui/state/queryBlockState';
 import {
   createDashboardSnapshot,

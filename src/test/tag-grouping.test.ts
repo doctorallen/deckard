@@ -4,7 +4,7 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { evaluateQuery, readTaskTagKeys } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { Task, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import {
   formatNamespaceValue,
   listTaskNamespaces,

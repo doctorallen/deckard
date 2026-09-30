@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import {
   createDeckardStatsSnapshot,
   createDashboardSnapshot,
@@ -20,7 +20,7 @@ import {
   rankRelatedNotes,
   sortRelatedNotes,
 } from '../ui/state/relatedNotesRanking';
-import { createEntryScope } from '../ui/webview/sidebarNotes';
+import { createEntryScope } from '../ui/state/entryScope';
 import * as rendering from '../ui/webview/rendering';
 import {
   ParsedFile,

@@ -17,7 +17,6 @@ import {
   SidebarGraphContext,
   SidebarNotesSnapshot,
   SidebarMessage,
-  TagReference,
   TagTitleDisplayMode,
 } from '../../core/types';
 import { normalizeTagTitleDisplayMode } from '../state/dashboardState';
@@ -36,11 +35,20 @@ import { ActiveCalendar } from './activeCalendar';
 import { ActiveHome } from './activeHome';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
+import {
+  createEntryScope,
+  EntryTagContext,
+  findTaggedEntry,
+} from '../state/entryScope';
 import { parseCalendarMessage, parseSidebarMessage } from './messages';
 import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
 import { applyWorkspaceWrite } from '../commands/workspaceWrites';
-import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { viewPriority } from './panelPriority';
+
+export { createEntryScope, findTaggedEntry } from '../state/entryScope';
+export type { EntryScope, EntryTagContext, EntryTagSource } from '../state/entryScope';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -996,31 +1004,6 @@ interface EntryContext {
   source: 'cursor' | 'manual';
 }
 
-export function findTaggedEntry(file: ParsedFile, sourceLine: number) {
-  const task = file.tasks.find(
-    (candidate) =>
-      candidate.lineNumber === sourceLine &&
-      (candidate.associationTagGroups?.length ?? 0) > 0,
-  );
-  if (task) {
-    return task;
-  }
-  return file.sections
-    .filter(
-      (section) =>
-        section.startLine <= sourceLine &&
-        section.endLine >= sourceLine &&
-        ((section.headingTags?.length ?? 0) > 0 ||
-          (section.isInline &&
-            (section.associationTagGroups?.length ?? 0) > 0)),
-    )
-    .sort(
-      (left, right) =>
-        left.endLine - left.startLine - (right.endLine - right.startLine) ||
-        right.startLine - left.startLine,
-    )[0];
-}
-
 function getEntryStartLine(
   entry: NonNullable<ReturnType<typeof findTaggedEntry>>,
 ): number {
@@ -1073,209 +1056,8 @@ export function findMatchingEntryLine(
   return pick(sameTitle(liveFile), sameTitle(savedFile));
 }
 
-export function createEntryScope(
-  file: ParsedFile,
-  sourceLine: number,
-): EntryScope | undefined {
-  const entry = findTaggedEntry(file, sourceLine);
-  if (!entry) {
-    return undefined;
-  }
-
-  const tagLabels = new Map<string, string>();
-  const tagWeights = new Map<string, number>();
-  const tagSources = new Map<string, EntryTagSource>();
-  const addTag = (
-    key: string,
-    label: string,
-    weight: number,
-    source: string,
-    context: EntryTagContext,
-  ): void => {
-    const currentWeight = tagWeights.get(key);
-    if (currentWeight === undefined || weight > currentWeight) {
-      tagLabels.set(key, label);
-      tagWeights.set(key, weight);
-      tagSources.set(key, { context, source });
-    }
-  };
-  const explicitEntryTags =
-    entry.associationTagGroups?.flat() ??
-    ('headingTags' in entry ? (entry.headingTags ?? []) : []);
-  explicitEntryTags.forEach((tag) =>
-    addTag(
-      tag.key,
-      tag.label,
-      1,
-      'Written on the selected entry',
-      'selected',
-    ),
-  );
-
-  const sections = new Map(file.sections.map((section) => [section.id, section]));
-  let parentSectionId =
-    'heading' in entry ? entry.parentSectionId : entry.sectionId;
-  let depth = 1;
-  while (parentSectionId) {
-    const parent = sections.get(parentSectionId);
-    if (!parent) {
-      break;
-    }
-    parent.headingTags?.forEach((tag) =>
-      addTag(
-        tag.key,
-        tag.label,
-        0.5 / depth,
-        `Parent ancestry: ${depth === 1 ? 'one level up' : `${depth} levels up`} (0.5 / ${depth})`,
-        'parent',
-      ),
-    );
-    parentSectionId = parent.parentSectionId;
-    depth += 1;
-  }
-
-  if ('heading' in entry) {
-    const childrenByParent = new Map<string, Section[]>();
-    const childItemsByParent = new Map<string, Section[]>();
-    file.sections.forEach((section) => {
-      if (!section.parentSectionId) {
-        return;
-      }
-      if (section.isInline) {
-        const childItems = childItemsByParent.get(section.parentSectionId) ?? [];
-        childItems.push(section);
-        childItemsByParent.set(section.parentSectionId, childItems);
-        return;
-      }
-      const children = childrenByParent.get(section.parentSectionId) ?? [];
-      children.push(section);
-      childrenByParent.set(section.parentSectionId, children);
-    });
-    const childTasksByParent = new Map<string, typeof file.tasks>();
-    file.tasks.forEach((task) => {
-      if (!task.sectionId) {
-        return;
-      }
-      const childTasks = childTasksByParent.get(task.sectionId) ?? [];
-      childTasks.push(task);
-      childTasksByParent.set(task.sectionId, childTasks);
-    });
-    const visitedChildren = new Set<string>();
-    const visitedChildItems = new Set<string>();
-    const addChildItemTags = (
-      tags: TagReference[],
-      itemDepth: number,
-    ): void => {
-      const distance =
-        itemDepth === 1
-          ? 'one level down'
-          : `${itemDepth} levels down`;
-      tags.forEach((tag) =>
-        addTag(
-          tag.key,
-          tag.label,
-          0.5 / itemDepth,
-          `Child item: ${distance} (0.5 / ${itemDepth})`,
-          'childItem',
-        ),
-      );
-    };
-    const addChildItemContext = (
-      parentId: string,
-      itemDepth: number,
-    ): void => {
-      (childItemsByParent.get(parentId) ?? []).forEach((child) => {
-        if (visitedChildItems.has(child.id)) {
-          return;
-        }
-        visitedChildItems.add(child.id);
-        addChildItemTags((child.associationTagGroups ?? []).flat(), itemDepth);
-      });
-      (childTasksByParent.get(parentId) ?? []).forEach((child) => {
-        if (visitedChildItems.has(child.id)) {
-          return;
-        }
-        visitedChildItems.add(child.id);
-        addChildItemTags((child.associationTagGroups ?? []).flat(), itemDepth);
-      });
-    };
-    const addChildContext = (parentId: string, childDepth: number): void => {
-      addChildItemContext(parentId, childDepth + 1);
-      (childrenByParent.get(parentId) ?? []).forEach((child) => {
-        if (visitedChildren.has(child.id)) {
-          return;
-        }
-        visitedChildren.add(child.id);
-        (child.headingTags ?? []).forEach((tag) =>
-          addTag(
-            tag.key,
-            tag.label,
-            0.5 / childDepth,
-            `Child heading: ${childDepth === 1 ? 'one level down' : `${childDepth} levels down`} (0.5 / ${childDepth})`,
-            'child',
-          ),
-        );
-        addChildContext(child.id, childDepth + 1);
-      });
-    };
-    addChildContext(entry.id, 1);
-
-    const section = {
-      ...entry,
-      tags: [...tagLabels.keys()],
-      tagLabels: Object.fromEntries(tagLabels),
-    };
-    return {
-      file: {
-        ...file,
-        content: entry.rawContent,
-        sections: [section],
-        tasks: file.tasks.filter((task) => task.sectionId === entry.id),
-        frontmatterTags: [],
-        links: entry.links,
-      },
-      tagWeights,
-      tagSources,
-    };
-  }
-  const task = {
-    ...entry,
-    tags: [...tagLabels.keys()],
-    tagLabels: Object.fromEntries(tagLabels),
-  };
-  return {
-    file: {
-      ...file,
-      content: entry.sourceLineText,
-      sections: [],
-      tasks: [task],
-      frontmatterTags: [],
-      links: [],
-    },
-    tagWeights,
-    tagSources,
-  };
-}
-
 function getEntryTitle(file: ParsedFile): string | undefined {
   return file.sections[0]?.heading ?? file.tasks[0]?.title;
-}
-
-export interface EntryScope {
-  file: ParsedFile;
-  tagWeights: ReadonlyMap<string, number>;
-  tagSources: ReadonlyMap<string, EntryTagSource>;
-}
-
-export type EntryTagContext =
-  | 'selected'
-  | 'parent'
-  | 'child'
-  | 'childItem';
-
-export interface EntryTagSource {
-  context: EntryTagContext;
-  source: string;
 }
 
 export interface EntryRelatedNotesDiagnostic {

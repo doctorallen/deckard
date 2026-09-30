@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createLexicalModel, createMoreLikeThisModel, getLexicalWeight } from '../ui/state/wordSimilarity';
 
 /** What the wording two entries share counts for, and what it does not. */

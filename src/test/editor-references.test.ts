@@ -10,7 +10,7 @@ import {
   buildBacklinkIndex,
   findWikiLinkAt,
 } from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { EditorReferences } from '../ui/commands/editorReferences';
 import {
   countSharedTagEntries,

@@ -5,10 +5,9 @@ import { setTimingLog, TimingLog } from '../core/timing';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import {
   onIndexUpdateInTurn,
-  panelPriority,
   VIEW_PRIORITY,
-  viewPriority,
 } from '../core/workspace/publishing';
+import { panelPriority, viewPriority } from '../ui/webview/panelPriority';
 import { WorkspaceScanner } from '../core/workspace/scanner';
 
 /** An indexer over an empty folder whose view turns a test steps through. */
