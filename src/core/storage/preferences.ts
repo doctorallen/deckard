@@ -1,11 +1,10 @@
 import type { Disposable, Event } from '../../ports/events';
 import type { KeyValueStore } from '../../ports/keyValueStore';
 
-import {
+import type {
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
-  DashboardViewState,
   DashboardWidgetConfig,
   PersistedPreferences,
   PinnedNote,
@@ -14,39 +13,30 @@ import {
   SavedFilter,
   SearchPageSize,
   SearchPreview,
+  TableSort,
   TagOverviewLayout,
   TagOverviewSortMode,
-  TableSort,
   TagSortMode,
   TaskBoardGroupBy,
   TaskColumnId,
   TaskLayout,
   TaskSortMode,
-} from '../types';
-import {
-  areTagKeyListsEqual,
-  bumped,
-  carryLegacyIds,
-  cloneSavedFilter,
-  cloneWidgets,
-  DEFAULT_DASHBOARD_WIDGETS,
-  FIND_CHOICE_LIMIT,
-  findChoiceFilePath,
-  normalizeDashboardViewState,
-  normalizeDashboardWidgets,
-  normalizeFindInput,
-  normalizePreferences,
-  normalizeSavedFilterTagKeys,
-  normalizeTableColumns,
-  normalizeTableSort,
-  PINNED_NOTE_LIMIT,
-  pinKey,
-  RECENT_HEADING_LIMIT,
-  RECENT_QUERY_LIMIT,
-  toggled,
-  upsertById,
-} from './preferencesSchema';
+} from '../../domain/model/preferences';
+import { DisplayService } from './preferencesDisplay';
+import { FavoritesService } from './preferencesFavorites';
+import { HomeWidgetsService } from './preferencesHomeWidgets';
+import { PinsService } from './preferencesPins';
 import { PreferencesRepository } from './preferencesRepository';
+import { SavedSearchesService } from './preferencesSavedSearches';
+import {
+  carryLegacyIds,
+  findChoiceFilePath,
+  normalizePreferences,
+  pinKey,
+} from './preferencesSchema';
+import { TagRenames } from './preferencesTagRenames';
+import { TaskLayoutService } from './preferencesTaskLayout';
+import { UsageService } from './preferencesUsage';
 
 export {
   carryLegacyIds,
@@ -84,6 +74,23 @@ export interface StalePreferences {
 export class PreferencesStore implements Disposable {
   private readonly repository: PreferencesRepository;
 
+  /** The favorite tags and entities, and the custom order of each. */
+  public readonly favorites: FavoritesService;
+  /** What was opened and chosen, and when. */
+  public readonly usage: UsageService;
+  /** The task rank order, the task sort, and the Task Board's layout. */
+  public readonly taskLayout: TaskLayoutService;
+  /** Home's widgets and the Dashboard's view state. */
+  public readonly homeWidgets: HomeWidgetsService;
+  /** The notes pinned to Home. */
+  public readonly pins: PinsService;
+  /** Saved searches and recent searches. */
+  public readonly savedSearches: SavedSearchesService;
+  /** Sort modes, column counts, and the other presentation choices. */
+  public readonly display: DisplayService;
+  /** The cascade that moves what a renamed tag held to its new key. */
+  public readonly tagRenames: TagRenames;
+
   /** Fires after each change is kept, with a copy of the whole blob. */
   public readonly onDidChange: Event<PersistedPreferences>;
 
@@ -100,9 +107,18 @@ export class PreferencesStore implements Disposable {
    * machine-wide blob alone, as it always did.
    */
   public constructor(state: KeyValueStore, workspaceState?: KeyValueStore) {
-    this.repository = new PreferencesRepository(state, workspaceState);
-    this.onDidChange = this.repository.onDidChange;
-    this.onDidRecordVisit = this.repository.onDidRecordVisit;
+    const repository = new PreferencesRepository(state, workspaceState);
+    this.repository = repository;
+    this.favorites = new FavoritesService(repository);
+    this.usage = new UsageService(repository);
+    this.taskLayout = new TaskLayoutService(repository);
+    this.homeWidgets = new HomeWidgetsService(repository);
+    this.pins = new PinsService(repository);
+    this.savedSearches = new SavedSearchesService(repository);
+    this.display = new DisplayService(repository);
+    this.tagRenames = new TagRenames(repository);
+    this.onDidChange = repository.onDidChange;
+    this.onDidRecordVisit = repository.onDidRecordVisit;
   }
 
   /**
@@ -126,592 +142,247 @@ export class PreferencesStore implements Disposable {
     return this.repository.snapshot();
   }
 
-  /**
-   * Toggles favorites without coupling tag presentation to note content.
-   */
-  public async toggleFavorite(tagKey: string): Promise<void> {
-    await this.update({ favoriteTags: toggled(this.preferences.favoriteTags, tagKey) });
+  /** See {@link FavoritesService.toggleFavorite}. */
+  public toggleFavorite(tagKey: string): Promise<void> {
+    return this.favorites.toggleFavorite(tagKey);
   }
 
-  public async toggleFavoriteEntity(entityKey: string): Promise<void> {
-    await this.update({ favoriteEntities: toggled(this.preferences.favoriteEntities, entityKey) });
+  /** See {@link FavoritesService.toggleFavoriteEntity}. */
+  public toggleFavoriteEntity(entityKey: string): Promise<void> {
+    return this.favorites.toggleFavoriteEntity(entityKey);
   }
 
-  /**
-   * Selects the tag ordering policy used by dashboard snapshots.
-   */
-  public async setTagSortMode(tagSortMode: TagSortMode): Promise<void> {
-    await this.update({ tagSortMode });
+  /** See {@link DisplayService.setTagSortMode}. */
+  public setTagSortMode(tagSortMode: TagSortMode): Promise<void> {
+    return this.display.setTagSortMode(tagSortMode);
   }
 
-  public async setEntitySortMode(entitySortMode: TagSortMode): Promise<void> {
-    await this.update({ entitySortMode });
+  /** See {@link DisplayService.setEntitySortMode}. */
+  public setEntitySortMode(entitySortMode: TagSortMode): Promise<void> {
+    return this.display.setEntitySortMode(entitySortMode);
   }
 
-  /**
-   * Stores custom tag order as a de-duplicated sequence of canonical keys.
-   */
-  public async setTagAccessOrder(tagAccessOrder: string[]): Promise<void> {
-    await this.update({ tagAccessOrder: [...new Set(tagAccessOrder)] });
+  /** See {@link FavoritesService.setTagAccessOrder}. */
+  public setTagAccessOrder(tagAccessOrder: string[]): Promise<void> {
+    return this.favorites.setTagAccessOrder(tagAccessOrder);
   }
 
-  public async setEntityAccessOrder(
-    entityAccessOrder: string[],
-  ): Promise<void> {
-    await this.update({ entityAccessOrder: [...new Set(entityAccessOrder)] });
+  /** See {@link FavoritesService.setEntityAccessOrder}. */
+  public setEntityAccessOrder(entityAccessOrder: string[]): Promise<void> {
+    return this.favorites.setEntityAccessOrder(entityAccessOrder);
   }
 
-  /**
-   * Applies a drag reorder and favorite membership atomically.
-   *
-   * One persistence event keeps the dashboard from rendering an intermediate
-   * order with stale favorite grouping.
-   */
-  public async setTagAccessOrderAndFavorites(
+  /** See {@link FavoritesService.setTagAccessOrderAndFavorites}. */
+  public setTagAccessOrderAndFavorites(
     tagAccessOrder: string[],
     favoriteTags: string[],
   ): Promise<void> {
-    await this.update({
-      tagAccessOrder: [...new Set(tagAccessOrder)],
-      favoriteTags: [...new Set(favoriteTags)],
-    });
+    return this.favorites.setTagAccessOrderAndFavorites(tagAccessOrder, favoriteTags);
   }
 
-  /**
-   * Increments usage counts so access sorting reflects actual navigation, and
-   * notes the time so recently opened tags rank first in search.
-   */
-  public async recordTagAccess(tagKey: string, now = Date.now()): Promise<void> {
-    const tagAccessCounts = bumped(this.preferences.tagAccessCounts, tagKey);
-    const tagAccessTimes = {
-      ...this.preferences.tagAccessTimes,
-      [tagKey]: now,
-    };
-    await this.update({ tagAccessCounts, tagAccessTimes });
+  /** See {@link UsageService.recordTagAccess}. */
+  public recordTagAccess(tagKey: string, now?: number): Promise<void> {
+    return this.usage.recordTagAccess(tagKey, now);
   }
 
-  /**
-   * Keeps a search at the front of the recent list, without duplicates.
-   */
-  /**
-   * Remembers the result chosen for what was typed, so Find can offer it
-   * first the next time the start of it is typed.
-   */
-  public async recordFindChoice(input: string, key: string, now = Date.now()): Promise<void> {
-    const typed = normalizeFindInput(input);
-    if (!typed) {
-      return;
-    }
-    const choices = this.preferences.findChoices ?? [];
-    const existing = choices.find((choice) => choice.input === typed && choice.key === key);
-    const next = [
-      { input: typed, key, count: (existing?.count ?? 0) + 1, at: now },
-      ...choices.filter((choice) => choice !== existing),
-    ];
-    await this.update({ findChoices: next.slice(0, FIND_CHOICE_LIMIT) }, true);
+  /** See {@link UsageService.recordFindChoice}. */
+  public recordFindChoice(input: string, key: string, now?: number): Promise<void> {
+    return this.usage.recordFindChoice(input, key, now);
   }
 
-  /** Remembers a heading Capture or Move to… went under, newest first. */
-  public async recordRecentHeading(pin: PinnedNote): Promise<void> {
-    const key = pinKey(pin);
-    const recentHeadings = [
-      pin,
-      ...(this.preferences.recentHeadings ?? []).filter((each) => pinKey(each) !== key),
-    ].slice(0, RECENT_HEADING_LIMIT);
-    await this.update({ recentHeadings }, true);
+  /** See {@link UsageService.recordRecentHeading}. */
+  public recordRecentHeading(pin: PinnedNote): Promise<void> {
+    return this.usage.recordRecentHeading(pin);
   }
 
-  /** Takes one search off the recent list. */
-  public async removeRecentQuery(query: string): Promise<void> {
-    const recentQueries = (this.preferences.recentQueries ?? []).filter(
-      (existing) => existing !== query.trim(),
-    );
-    if (recentQueries.length !== (this.preferences.recentQueries ?? []).length) {
-      await this.update({ recentQueries });
-    }
+  /** See {@link SavedSearchesService.removeRecentQuery}. */
+  public removeRecentQuery(query: string): Promise<void> {
+    return this.savedSearches.removeRecentQuery(query);
   }
 
-  public async recordRecentQuery(query: string): Promise<void> {
-    const normalized = query.trim();
-    if (!normalized) {
-      return;
-    }
-    const recentQueries = [
-      normalized,
-      ...(this.preferences.recentQueries ?? []).filter(
-        (existing) => existing !== normalized,
-      ),
-    ].slice(0, RECENT_QUERY_LIMIT);
-    if (
-      JSON.stringify(recentQueries) !==
-      JSON.stringify(this.preferences.recentQueries)
-    ) {
-      await this.update({ recentQueries });
-    }
+  /** See {@link SavedSearchesService.recordRecentQuery}. */
+  public recordRecentQuery(query: string): Promise<void> {
+    return this.savedSearches.recordRecentQuery(query);
   }
 
-  public async recordEntityAccess(entityKey: string): Promise<void> {
-    const entityAccessCounts = bumped(this.preferences.entityAccessCounts, entityKey);
-    await this.update({ entityAccessCounts });
+  /** See {@link UsageService.recordEntityAccess}. */
+  public recordEntityAccess(entityKey: string): Promise<void> {
+    return this.usage.recordEntityAccess(entityKey);
   }
 
-  /**
-   * Stores custom task order independently of date-based task sorting.
-   */
-  /**
-   * Keeps a task's place in the rank order when Deckard's own edit rewrites
-   * its line. A task's id comes from the text after its checkbox, so stamping
-   * a done date on it, or taking one off again, makes it a new task to
-   * anything keyed by id, and it would fall to the end of a ranked list.
-   */
-  public async replaceTaskInOrder(
-    previousId: string,
-    nextId: string,
-  ): Promise<void> {
-    const index = this.preferences.taskOrder.indexOf(previousId);
-    if (index < 0 || previousId === nextId) {
-      return;
-    }
-    const taskOrder = [...this.preferences.taskOrder];
-    taskOrder[index] = nextId;
-    await this.update({ taskOrder: [...new Set(taskOrder)] });
+  /** See {@link TaskLayoutService.replaceTaskInOrder}. */
+  public replaceTaskInOrder(previousId: string, nextId: string): Promise<void> {
+    return this.taskLayout.replaceTaskInOrder(previousId, nextId);
   }
 
-  public async setTaskOrder(taskOrder: string[]): Promise<void> {
-    await this.update({ taskOrder: [...new Set(taskOrder)] });
+  /** See {@link TaskLayoutService.setTaskOrder}. */
+  public setTaskOrder(taskOrder: string[]): Promise<void> {
+    return this.taskLayout.setTaskOrder(taskOrder);
   }
 
-  /**
-   * Selects rank, creation-date, or update-date task ordering.
-   */
-  public async setTaskSortMode(taskSortMode: TaskSortMode): Promise<void> {
-    await this.update({ taskSortMode });
+  /** See {@link TaskLayoutService.setTaskSortMode}. */
+  public setTaskSortMode(taskSortMode: TaskSortMode): Promise<void> {
+    return this.taskLayout.setTaskSortMode(taskSortMode);
   }
 
-  /**
-   * Persists the independent task and tag grid widths for every Dashboard.
-   */
-  public async setDashboardColumns(
+  /** See {@link DisplayService.setDashboardColumns}. */
+  public setDashboardColumns(
     section: 'tasks' | 'notes' | 'tags',
     columns: DashboardColumnCount,
   ): Promise<void> {
-    await this.update(
-      section === 'tasks'
-        ? { dashboardTaskColumns: columns }
-        : section === 'notes'
-          ? { dashboardNoteColumns: columns }
-          : { dashboardTagColumns: columns },
-    );
+    return this.display.setDashboardColumns(section, columns);
   }
 
-  /**
-   * Shows the Task Board's tasks as a list or as columns.
-   */
-  public async setTaskBoardLayout(taskBoardLayout: TaskLayout): Promise<void> {
-    await this.update({ taskBoardLayout });
+  /** See {@link TaskLayoutService.setTaskBoardLayout}. */
+  public setTaskBoardLayout(taskBoardLayout: TaskLayout): Promise<void> {
+    return this.taskLayout.setTaskBoardLayout(taskBoardLayout);
   }
 
-  public async setTaskBoardGroup(
+  /** See {@link TaskLayoutService.setTaskBoardGroup}. */
+  public setTaskBoardGroup(
     taskBoardGroup: TaskBoardGroupBy,
     namespace?: string,
   ): Promise<void> {
-    await this.update(
-      taskBoardGroup === 'tag' && namespace
-        ? { taskBoardGroup, taskBoardGroupNamespace: namespace.toLowerCase() }
-        : { taskBoardGroup },
-    );
+    return this.taskLayout.setTaskBoardGroup(taskBoardGroup, namespace);
   }
 
-  /** Chooses the table layout's columns; the title is always among them. */
-  public async setTaskTableColumns(columns: TaskColumnId[]): Promise<void> {
-    await this.update({ taskTableColumns: normalizeTableColumns(columns) });
+  /** See {@link TaskLayoutService.setTaskTableColumns}. */
+  public setTaskTableColumns(columns: TaskColumnId[]): Promise<void> {
+    return this.taskLayout.setTaskTableColumns(columns);
   }
 
-  /** Sorts the table layout by a column, or by nothing: the rank order. */
-  public async setTaskTableSort(sort: TableSort | undefined): Promise<void> {
-    await this.update({ taskTableSort: normalizeTableSort(sort) });
+  /** See {@link TaskLayoutService.setTaskTableSort}. */
+  public setTaskTableSort(sort: TableSort | undefined): Promise<void> {
+    return this.taskLayout.setTaskTableSort(sort);
   }
 
-  /**
-   * Replaces Home's widgets. Widgets the store cannot use are dropped, as
-   * they are when read back.
-   */
-  public async setDashboardWidgets(
+  /** See {@link HomeWidgetsService.setDashboardWidgets}. */
+  public setDashboardWidgets(
     dashboardWidgets: readonly DashboardWidgetConfig[],
   ): Promise<void> {
-    await this.update({
-      dashboardWidgets: normalizeDashboardWidgets(dashboardWidgets),
-    });
+    return this.homeWidgets.setDashboardWidgets(dashboardWidgets);
   }
 
-  /**
-   * Adds a Home widget listing what a saved search finds, unless Home
-   * already has one for it. Says which, or that there is no such search.
-   */
-  public async addSavedSearchWidget(filterId: string): Promise<'added' | 'present' | 'missing'> {
-    if (!this.preferences.savedFilters.some((filter) => filter.id === filterId)) {
-      return 'missing';
-    }
-    const widgets = this.preferences.dashboardWidgets;
-    if (widgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === filterId)) {
-      return 'present';
-    }
-    await this.setDashboardWidgets([
-      ...widgets,
-      {
-        id: `savedQuery-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-        kind: 'savedQuery',
-        width: 'half',
-        count: 5,
-        filterId,
-      },
-    ]);
-    return 'added';
+  /** See {@link HomeWidgetsService.addSavedSearchWidget}. */
+  public addSavedSearchWidget(filterId: string): Promise<'added' | 'present' | 'missing'> {
+    return this.homeWidgets.addSavedSearchWidget(filterId);
   }
 
-  public async resetDashboardWidgets(): Promise<void> {
-    await this.update({ dashboardWidgets: cloneWidgets(DEFAULT_DASHBOARD_WIDGETS) });
+  /** See {@link HomeWidgetsService.resetDashboardWidgets}. */
+  public resetDashboardWidgets(): Promise<void> {
+    return this.homeWidgets.resetDashboardWidgets();
   }
 
-  /** Pins a note to Home, after the notes pinned before it. */
-  public async pinNote(pin: PinnedNote): Promise<void> {
-    const pinnedNotes = this.preferences.pinnedNotes ?? [];
-    if (
-      pinnedNotes.some((candidate) => pinKey(candidate) === pinKey(pin)) ||
-      pinnedNotes.length >= PINNED_NOTE_LIMIT
-    ) {
-      return;
-    }
-    await this.update({ pinnedNotes: [...pinnedNotes, pin] });
+  /** See {@link PinsService.pinNote}. */
+  public pinNote(pin: PinnedNote): Promise<void> {
+    return this.pins.pinNote(pin);
   }
 
-  /** Unpins the pin a row names, by the key `pinKey` writes for it. */
-  public async unpinNote(key: string): Promise<void> {
-    await this.update({
-      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
-        (candidate) => pinKey(candidate) !== key,
-      ),
-    });
+  /** See {@link PinsService.unpinNote}. */
+  public unpinNote(key: string): Promise<void> {
+    return this.pins.unpinNote(key);
   }
 
-  /** Whether something is already pinned, by its key. */
+  /** See {@link PinsService.isPinned}. */
   public isPinned(key: string): boolean {
-    return (this.preferences.pinnedNotes ?? []).some(
-      (candidate) => pinKey(candidate) === key,
-    );
+    return this.pins.isPinned(key);
   }
 
-  public async setDashboardMode(mode: DashboardMode): Promise<void> {
-    await this.updateDashboardViewState({ mode });
+  /** See {@link HomeWidgetsService.setDashboardMode}. */
+  public setDashboardMode(mode: DashboardMode): Promise<void> {
+    return this.homeWidgets.setDashboardMode(mode);
   }
 
-  public async setDashboardSearch(
-    field: DashboardSearchField,
-    query: string,
-  ): Promise<void> {
-    const fieldMap: Record<DashboardSearchField, keyof DashboardViewState> = {
-      tags: 'tagSearchQuery',
-    };
-    await this.updateDashboardViewState({ [fieldMap[field]]: query });
+  /** See {@link HomeWidgetsService.setDashboardSearch}. */
+  public setDashboardSearch(field: DashboardSearchField, query: string): Promise<void> {
+    return this.homeWidgets.setDashboardSearch(field, query);
   }
 
-  private async updateDashboardViewState(
-    changes: Partial<DashboardViewState>,
-  ): Promise<void> {
-    await this.update({
-      dashboardViewState: normalizeDashboardViewState({
-        ...this.preferences.dashboardViewState,
-        ...changes,
-      }),
-    });
+  /** See {@link DisplayService.setRenderMode}. */
+  public setRenderMode(renderMode: RenderMode): Promise<void> {
+    return this.display.setRenderMode(renderMode);
   }
 
-  /**
-   * Persists whether tag overview bodies should show source or rendered output.
-   */
-  public async setRenderMode(renderMode: RenderMode): Promise<void> {
-    await this.update({ renderMode, renderModeChosen: true });
+  /** See {@link DisplayService.setTagOverviewSortMode}. */
+  public setTagOverviewSortMode(tagOverviewSortMode: TagOverviewSortMode): Promise<void> {
+    return this.display.setTagOverviewSortMode(tagOverviewSortMode);
   }
 
-  /**
-   * Selects the ordering policy for entries in a tag overview.
-   */
-  public async setTagOverviewSortMode(
-    tagOverviewSortMode: TagOverviewSortMode,
-  ): Promise<void> {
-    await this.update({ tagOverviewSortMode });
+  /** See {@link DisplayService.setSearchPageSize}. */
+  public setSearchPageSize(searchPageSize: SearchPageSize): Promise<void> {
+    return this.display.setSearchPageSize(searchPageSize);
   }
 
-  /**
-   * Selects how many results a search page shows at a time, which is kept so
-   * the next page opens the way the last one was left.
-   */
-  public async setSearchPageSize(
-    searchPageSize: SearchPageSize,
-  ): Promise<void> {
-    await this.update({ searchPageSize });
+  /** See {@link DisplayService.setSearchPreview}. */
+  public setSearchPreview(searchPreview: SearchPreview): Promise<void> {
+    return this.display.setSearchPreview(searchPreview);
   }
 
-  /** Selects how much of each result a search page shows. */
-  public async setSearchPreview(searchPreview: SearchPreview): Promise<void> {
-    await this.update({ searchPreview });
+  /** See {@link DisplayService.setTagOverviewLayout}. */
+  public setTagOverviewLayout(tagOverviewLayout: TagOverviewLayout): Promise<void> {
+    return this.display.setTagOverviewLayout(tagOverviewLayout);
   }
 
-  /**
-   * Selects whether overview entries use tabs or a split layout.
-   */
-  public async setTagOverviewLayout(
-    tagOverviewLayout: TagOverviewLayout,
-  ): Promise<void> {
-    await this.update({ tagOverviewLayout });
+  /** See {@link DisplayService.setRelatedNotesSortMode}. */
+  public setRelatedNotesSortMode(relatedNotesSortMode: RelatedNotesSortMode): Promise<void> {
+    return this.display.setRelatedNotesSortMode(relatedNotesSortMode);
   }
 
-  /**
-   * Selects the ordering policy for entries in Related Notes.
-   */
-  public async setRelatedNotesSortMode(
-    relatedNotesSortMode: RelatedNotesSortMode,
-  ): Promise<void> {
-    await this.update({ relatedNotesSortMode });
+  /** See {@link DisplayService.setHideDailyNotes}. */
+  public setHideDailyNotes(hide: boolean): Promise<void> {
+    return this.display.setHideDailyNotes(hide);
   }
 
-  /**
-   * Leaves daily, weekly, and monthly notes out of Related Notes and Linked
-   * from, or lets them back in.
-   */
-  public async setHideDailyNotes(hide: boolean): Promise<void> {
-    await this.update({ hideDailyNotes: hide ? true : undefined });
+  /** See {@link DisplayService.setRelatedNotesPreviewLines}. */
+  public setRelatedNotesPreviewLines(lines: 0 | 1 | 2): Promise<void> {
+    return this.display.setRelatedNotesPreviewLines(lines);
   }
 
-  /** How many lines of each Related Notes result's excerpt to show: 0, 1, or 2. */
-  public async setRelatedNotesPreviewLines(lines: 0 | 1 | 2): Promise<void> {
-    await this.update({ relatedNotesPreviewLines: lines === 1 ? undefined : lines });
-  }
-
-  /**
-   * Increments section usage counts for the overview's access sort.
-   */
-  public async recordSectionAccess(
+  /** See {@link UsageService.recordSectionAccess}. */
+  public recordSectionAccess(
     sectionId: string,
-    now = Date.now(),
-    options: { quiet?: boolean } = {},
+    now?: number,
+    options?: { quiet?: boolean },
   ): Promise<void> {
-    const sectionAccessCounts = bumped(this.preferences.sectionAccessCounts, sectionId);
-    const sectionAccessTimes = {
-      ...this.preferences.sectionAccessTimes,
-      [sectionId]: now,
-    };
-    await this.update({ sectionAccessCounts, sectionAccessTimes }, options.quiet === true);
+    return this.usage.recordSectionAccess(sectionId, now, options);
   }
 
-  /**
-   * Moves view counts and times from ids that are gone to the new id of the
-   * same heading, summing counts and keeping the later time, in one quiet
-   * write. A heading's id changes when a line above it does.
-   */
-  public async carrySectionAccess(moved: ReadonlyMap<string, string>): Promise<void> {
-    const counts = { ...this.preferences.sectionAccessCounts };
-    const times = { ...(this.preferences.sectionAccessTimes ?? {}) };
-    let changed = false;
-    moved.forEach((to, from) => {
-      if (from === to || (counts[from] === undefined && times[from] === undefined)) {
-        return;
-      }
-      if (counts[from] !== undefined) {
-        counts[to] = (counts[to] ?? 0) + counts[from];
-        delete counts[from];
-      }
-      if (times[from] !== undefined) {
-        times[to] = Math.max(times[to] ?? 0, times[from]);
-        delete times[from];
-      }
-      changed = true;
-    });
-    if (changed) {
-      await this.update({ sectionAccessCounts: counts, sectionAccessTimes: times }, true);
-    }
+  /** See {@link UsageService.carrySectionAccess}. */
+  public carrySectionAccess(moved: ReadonlyMap<string, string>): Promise<void> {
+    return this.usage.carrySectionAccess(moved);
   }
 
-  /**
-   * Saves a named multi-tag filter, replacing the existing filter for its
-   * canonical tag set so the same overview never creates a duplicate.
-   */
-  public async saveSavedFilter(
-    name: string,
-    tagKeys: string[],
-  ): Promise<SavedFilter | undefined> {
-    const normalizedName = name.trim();
-    const normalizedTagKeys = normalizeSavedFilterTagKeys(tagKeys);
-    if (!normalizedName || normalizedTagKeys.length < 2) {
-      return undefined;
-    }
-
-    const existing = this.preferences.savedFilters.find((filter) =>
-      areTagKeyListsEqual(filter.tagKeys, normalizedTagKeys),
-    );
-    const savedFilter: SavedFilter = {
-      id: existing?.id ?? createSavedFilterId(),
-      name: normalizedName,
-      tagKeys: normalizedTagKeys,
-    };
-    await this.update({ savedFilters: upsertById(this.preferences.savedFilters, savedFilter) });
-    return cloneSavedFilter(savedFilter);
+  /** See {@link SavedSearchesService.saveSavedFilter}. */
+  public saveSavedFilter(name: string, tagKeys: string[]): Promise<SavedFilter | undefined> {
+    return this.savedSearches.saveSavedFilter(name, tagKeys);
   }
 
-  /**
-   * Moves everything held under a renamed or merged tag to its new key, so
-   * favorites, ranking, Dashboard selections, and saved views follow the tag.
-   */
-  public async replaceTagKey(
-    sourceKey: string,
-    targetKey: string,
-  ): Promise<void> {
-    if (!sourceKey || !targetKey || sourceKey === targetKey) {
-      return;
-    }
-    const replaceKeys = (keys: readonly string[]): string[] => [
-      ...new Set(keys.map((key) => (key === sourceKey ? targetKey : key))),
-    ];
-    const moveCount = (
-      counts: Record<string, number>,
-    ): Record<string, number> => {
-      const { [sourceKey]: moved, ...rest } = counts;
-      return moved === undefined
-        ? rest
-        : { ...rest, [targetKey]: (rest[targetKey] ?? 0) + moved };
-    };
-    const { [sourceKey]: movedTime, ...tagAccessTimes } =
-      this.preferences.tagAccessTimes ?? {};
-    // A tag renamed to a new name is no newer than it was; merged into a tag
-    // that exists, it takes that tag's time.
-    const firstSeen = this.preferences.tagFirstSeen;
-    const movedFirstSeen = firstSeen?.[sourceKey];
-
-    await this.update({
-      favoriteTags: replaceKeys(this.preferences.favoriteTags),
-      favoriteEntities: replaceKeys(this.preferences.favoriteEntities),
-      tagAccessOrder: replaceKeys(this.preferences.tagAccessOrder),
-      entityAccessOrder: replaceKeys(this.preferences.entityAccessOrder),
-      tagAccessCounts: moveCount(this.preferences.tagAccessCounts),
-      entityAccessCounts: moveCount(this.preferences.entityAccessCounts),
-      tagAccessTimes:
-        movedTime === undefined
-          ? tagAccessTimes
-          : {
-              ...tagAccessTimes,
-              [targetKey]: Math.max(movedTime, tagAccessTimes[targetKey] ?? 0),
-            },
-      ...(firstSeen && movedFirstSeen !== undefined
-        ? {
-            tagFirstSeen: {
-              ...firstSeen,
-              [targetKey]: firstSeen[targetKey] ?? movedFirstSeen,
-            },
-          }
-        : {}),
-      dashboardWidgets: this.preferences.dashboardWidgets.map((widget) =>
-        widget.query
-          ? { ...widget, query: replaceTagInQuery(widget.query, sourceKey, targetKey) }
-          : widget,
-      ),
-      // A tag-set view needs two tags; a query view keeps its own text.
-      savedFilters: this.preferences.savedFilters.flatMap((filter) => {
-        if (filter.query || !filter.tagKeys.includes(sourceKey)) {
-          return [filter];
-        }
-        const tagKeys = normalizeSavedFilterTagKeys(
-          replaceKeys(filter.tagKeys),
-        );
-        return tagKeys.length >= 2 ? [{ ...filter, tagKeys }] : [];
-      }),
-    });
+  /** See {@link TagRenames.replaceTagKey}. */
+  public replaceTagKey(sourceKey: string, targetKey: string): Promise<void> {
+    return this.tagRenames.replaceTagKey(sourceKey, targetKey);
   }
 
-  /**
-   * Saves a named advanced query, replacing the existing filter that already
-   * stores the same query text.
-   */
-  public async saveSavedQueryFilter(
+  /** See {@link SavedSearchesService.saveSavedQueryFilter}. */
+  public saveSavedQueryFilter(
     name: string,
     query: string,
     page?: 'taskBoard',
   ): Promise<SavedFilter | undefined> {
-    const normalizedName = name.trim();
-    const normalizedQuery = query.trim();
-    if (!normalizedName || !normalizedQuery) {
-      return undefined;
-    }
-
-    // The same search saved on the Task Board is a different view, since it
-    // reopens there.
-    const existing = this.preferences.savedFilters.find(
-      (filter) =>
-        filter.query?.trim() === normalizedQuery && filter.page === page,
-    );
-    const savedFilter: SavedFilter = {
-      id: existing?.id ?? createSavedFilterId(),
-      name: normalizedName,
-      tagKeys: [],
-      query: normalizedQuery,
-      ...(page ? { page } : {}),
-    };
-    await this.update({ savedFilters: upsertById(this.preferences.savedFilters, savedFilter) });
-    return cloneSavedFilter(savedFilter);
+    return this.savedSearches.saveSavedQueryFilter(name, query, page);
   }
 
-  /**
-   * Updates one saved filter when its stable ID still identifies a valid entry.
-   */
-  public async updateSavedFilter(
+  /** See {@link SavedSearchesService.updateSavedFilter}. */
+  public updateSavedFilter(
     id: string,
     name: string,
     tagKeys: string[],
   ): Promise<SavedFilter | undefined> {
-    const normalizedName = name.trim();
-    const normalizedTagKeys = normalizeSavedFilterTagKeys(tagKeys);
-    if (!id || !normalizedName || normalizedTagKeys.length < 2) {
-      return undefined;
-    }
-    const existing = this.preferences.savedFilters.find(
-      (filter) => filter.id === id,
-    );
-    if (!existing) {
-      return undefined;
-    }
-
-    const matchingFilter = this.preferences.savedFilters.find(
-      (filter) =>
-        filter.id !== id &&
-        areTagKeyListsEqual(filter.tagKeys, normalizedTagKeys),
-    );
-    const savedFilter: SavedFilter = {
-      id,
-      name: normalizedName,
-      tagKeys: normalizedTagKeys,
-    };
-    await this.update({
-      savedFilters: this.preferences.savedFilters
-        .filter((filter) => filter.id !== matchingFilter?.id)
-        .map((filter) => (filter.id === id ? savedFilter : filter)),
-    });
-    return cloneSavedFilter(savedFilter);
+    return this.savedSearches.updateSavedFilter(id, name, tagKeys);
   }
 
-  /**
-   * Removes a saved filter by its opaque stable ID.
-   */
-  public async removeSavedFilter(id: string): Promise<void> {
-    if (!id) {
-      return;
-    }
-    await this.update({
-      savedFilters: this.preferences.savedFilters.filter(
-        (filter) => filter.id !== id,
-      ),
-      dashboardWidgets: this.preferences.dashboardWidgets.filter(
-        (widget) => widget.kind !== 'savedQuery' || widget.filterId !== id,
-      ),
-    });
+  /** See {@link SavedSearchesService.removeSavedFilter}. */
+  public removeSavedFilter(id: string): Promise<void> {
+    return this.savedSearches.removeSavedFilter(id);
   }
 
   /**
@@ -909,6 +580,7 @@ export class PreferencesStore implements Disposable {
     );
   }
 
+
   /**
    * Releases the event sources owned by this store.
    */
@@ -937,24 +609,4 @@ export class PreferencesStore implements Disposable {
   public async importPreferences(value: PersistedPreferences): Promise<void> {
     await this.update(normalizePreferences(value));
   }
-}
-
-/**
- * A search with one tag renamed where it stands as a whole tag, leaving the
- * rest of what was written alone.
- */
-function replaceTagInQuery(
-  query: string,
-  sourceKey: string,
-  targetKey: string,
-): string {
-  const escaped = sourceKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return query.replace(
-    new RegExp(`(^|[\\s(=:-])${escaped}(?=$|[\\s)])`, 'gi'),
-    (_match, prefix: string) => `${prefix}${targetKey}`,
-  );
-}
-
-function createSavedFilterId(): string {
-  return `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
