@@ -393,7 +393,6 @@ export default {
     "src/ui/state/dashboardState.ts": 6,
     "src/ui/state/editorLensState.ts": 4,
     "src/ui/state/entryExcerpt.ts": 1,
-    "src/ui/state/frecency.ts": 1,
     "src/ui/state/noteLinks.ts": 2,
     "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/outlineState.ts": 1,
