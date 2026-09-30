@@ -19,6 +19,7 @@ import {
   getTaskColumn,
   TaskColumnId,
 } from '../state/resultTable';
+import { escapeHtml } from '../../shared/html';
 
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
 
@@ -336,13 +337,4 @@ function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }

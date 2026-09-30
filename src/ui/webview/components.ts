@@ -21,6 +21,7 @@ import {
 } from './themes';
 import { isZenModeEnabled } from './zenMode';
 import { ENABLED } from './selectors';
+import { escapeHtml } from '../../shared/html';
 export { ENABLED };
 
 /**
@@ -426,13 +427,11 @@ export function iconButtonHtml(options: {
   key?: string;
   className?: string;
 }): string {
-  const escape = (value: string): string =>
-    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   return `<button type="button" class="icon-button${options.className ? ` ${options.className}` : ''}"`
-    + (options.id ? ` id="${escape(options.id)}"` : '')
-    + (options.action ? ` data-action="${escape(options.action)}"` : '')
-    + ` aria-label="${escape(options.label)}" data-tip="${escape(options.tip ?? options.label)}"`
-    + (options.key ? ` data-tip-key="${escape(options.key)}"` : '')
+    + (options.id ? ` id="${escapeHtml(options.id)}"` : '')
+    + (options.action ? ` data-action="${escapeHtml(options.action)}"` : '')
+    + ` aria-label="${escapeHtml(options.label)}" data-tip="${escapeHtml(options.tip ?? options.label)}"`
+    + (options.key ? ` data-tip-key="${escapeHtml(options.key)}"` : '')
     + `>${options.icon}</button>`;
 }
 

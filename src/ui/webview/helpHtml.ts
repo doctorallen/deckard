@@ -10,6 +10,7 @@ import {
 import { getFavoriteHeartAssetUris } from './icons';
 import { ENABLED } from './selectors';
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
+import { escapeHtml } from '../../shared/html';
 
 /**
  * What the Help page reads from the extension's own manifest.
@@ -278,14 +279,6 @@ function renderReadMore(section: string): string {
     return '';
   }
   return `<p class="read-more"><a href="#" data-guide-page="${target.page}"${target.anchor ? ` data-guide-anchor="${target.anchor}"` : ''}>Read more: ${escapeHtml(GUIDE_PAGES[target.page])} →</a></p>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /**

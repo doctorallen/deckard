@@ -14,6 +14,7 @@ import {
   resolveWikiTarget,
 } from '../../core/workspace/backlinks';
 import { createPreviewSourceHref } from './queryBlockHtml';
+import { escapeHtml } from '../../shared/html';
 
 /**
  * Draws `![[Note]]`, `![[Note#Heading]]`, and `![[Note#^id]]` in VS Code's
@@ -281,12 +282,4 @@ function renderHeader(title: string, href?: string): string {
       : `<span class="deckard-embed-title">${label}</span>`,
     '</div>',
   ].join('');
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
