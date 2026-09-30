@@ -35,6 +35,7 @@ import {
   readAddTaskInput,
   readChangeTaskInput,
 } from './assistantWrites';
+import { readQueryContext } from './queryContext';
 
 /** Where the server answers, on 127.0.0.1. */
 export const MCP_PATH = '/mcp';
@@ -280,7 +281,7 @@ export class DeckardMcpServer implements vscode.Disposable {
         if (name === QUERY_TOOL_NAME) {
           const input = readQueryToolInput(args);
           return input
-            ? { text: measure('MCP query', () => answerQuery(index, input)) }
+            ? { text: measure('MCP query', () => answerQuery(index, input, readQueryContext())) }
             : {
                 text: 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.',
                 isError: true,

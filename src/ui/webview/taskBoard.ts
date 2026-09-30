@@ -19,6 +19,7 @@ import {
   updateTaskBoardSetting,
 } from '../commands/taskBoardActions';
 import { askForDueDate, setTasksDue } from '../commands/agendaActions';
+import { readQueryContext } from '../commands/queryContext';
 import { openTask, quoteTaskTitle, toggleTask } from '../commands/taskActions';
 import { settingTarget, writeSetting } from '../commands/settings';
 import {
@@ -290,7 +291,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         this.preferences.value,
         { query: this.query, invalidQuery: this.invalidQuery },
         {
-          ...readTaskBoardOptions(),
+          ...readTaskBoardOptions(readQueryContext()),
           shownColumns: this.shownColumns,
         },
         tagTitleDisplayMode,
@@ -445,7 +446,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
           index,
           { ...this.preferences.value, taskBoardLayout: 'list' },
           { query: this.query, invalidQuery: this.invalidQuery },
-          { ...readTaskBoardOptions(), doneLimit: Number.MAX_SAFE_INTEGER },
+          { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
           'inline',
         );
         const rows = taskRows((board.tasks ?? []).map((item) => item.task), index);

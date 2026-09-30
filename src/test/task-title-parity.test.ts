@@ -18,6 +18,7 @@ import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 /**
  * A contract, held across every surface at once: a task's title is Markdown
@@ -48,7 +49,7 @@ suite('Task title parity', () => {
     );
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r };
   const NOW = Date.parse('2026-09-21T12:00:00Z');
-  const options = { now: NOW, statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
+  const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
 
   /** What a surface must show: the rendering, and none of the source. */
   const expectRendered = (html: string, where: string): void => {
@@ -94,8 +95,8 @@ suite('Task title parity', () => {
     const built = index();
     const prefs = preferences();
     const snapshot = {
-      ...createDashboardSnapshot(built, prefs),
-      widgets: createDashboardWidgets(built, prefs, { now: NOW, upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+      ...createDashboardSnapshot(built, prefs, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
+      widgets: createDashboardWidgets(built, prefs, { queryContext: createQueryContext(NOW), upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
     };
     const page = open(getDashboardHtml(webview, vscode.Uri.file('/deckard')), snapshot);
     const titles = titlesOn(page, '.task-title');
@@ -104,7 +105,7 @@ suite('Task title parity', () => {
   });
 
   test('a search page, in its tasks pane', () => {
-    const page = open(getSearchPageHtml(webview), createSearchPageSnapshot(index(), preferences(), '#project/atlas'));
+    const page = open(getSearchPageHtml(webview), createSearchPageSnapshot(index(), preferences(), '#project/atlas', { queryContext: createQueryContext(Date.now()) }));
     const titles = titlesOn(page, '.task-title');
     assert.strictEqual(titles.length, 1);
     expectRendered(titles[0], 'search page');
@@ -112,7 +113,7 @@ suite('Task title parity', () => {
 
   test('a query block, as a list and as a table', () => {
     for (const info of ['deckard', 'deckard view=table columns=due']) {
-      const html = renderQueryBlockHtml('tag = #project/atlas', parseQueryBlockInfo(info)!, index(), undefined, NOW);
+      const html = renderQueryBlockHtml('tag = #project/atlas', parseQueryBlockInfo(info)!, index(), { queryContext: createQueryContext(NOW) });
       expectRendered(html, `query block "${info}"`);
     }
   });

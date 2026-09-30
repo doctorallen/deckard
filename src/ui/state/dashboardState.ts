@@ -54,9 +54,9 @@ import {
 import {
   countTagMatches,
   evaluateQuery,
-  getQueryWeekStart,
   QueryResults,
 } from '../../core/query/queryEvaluator';
+import { QueryContext } from '../../core/query/queryContext';
 import {
   collectQueryTagKeys,
   getQueryTagIntersection,
@@ -102,17 +102,18 @@ import { findTagLookalikes, findTagMergeCandidates } from './tagHygiene';
 export { getFileName };
 
 /**
- * Projects one consistent dashboard model from the index and UI-only state.
+ * Projects one consistent dashboard model from the index and UI-only state,
+ * its task counts taken in `options.queryContext`.
  */
 export function createDashboardSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  selectedTag?: string,
+  selectedTag: string | undefined,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  options: { agendaQuery?: string; now?: number } = {},
+  options: { agendaQuery?: string; queryContext: QueryContext },
 ): DashboardSnapshot {
   return {
-    taskGlance: createTaskGlance(index, options.agendaQuery ?? '', options.now ?? Date.now()),
+    taskGlance: createTaskGlance(index, options.agendaQuery ?? '', options.queryContext),
     // The page reads a tag's name, count, and heart; the entry lists each
     // one carried ran to megabytes in a large workspace and were never read.
     tags: sortTags(index.tags.values(), preferences).map((tag) => ({
@@ -146,15 +147,15 @@ export function createDashboardSnapshot(
  * Home's tiles, counted as the Tasks view and the status bar count: Overdue
  * and Today are its groups, and Open every open task the agenda's search
  * lists. Each search is scoped by that search too, so the tile's number and
- * the page it opens say the same thing.
+ * the page it opens say the same thing. Today is the context's.
  */
 export function createTaskGlance(
   index: WorkspaceIndex,
   agendaQuery: string,
-  now: number,
+  context: QueryContext,
 ): TaskGlance {
-  const selected = selectAgendaTasks(index, agendaQuery);
-  const groups = createAgenda(index, now, { tasks: selected.tasks, upcomingDays: 1 });
+  const selected = selectAgendaTasks(index, agendaQuery, context);
+  const groups = createAgenda(index, context, { tasks: selected.tasks, upcomingDays: 1 });
   const count = (id: string): number =>
     groups.find((group) => group.id === id)?.entries.length ?? 0;
   const scope = normalizeAgendaQuery(agendaQuery);
@@ -265,7 +266,8 @@ export interface SearchPageOptions {
   /** Which page of each list to carry, 1-based and clamped. */
   notePage?: number;
   taskPage?: number;
-  now?: number;
+  /** The settings and moment the search is evaluated, and its dates worded, in. */
+  queryContext: QueryContext;
 }
 
 /**
@@ -288,7 +290,7 @@ export function createSearchPageSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   queryText: string,
-  options: SearchPageOptions = {},
+  options: SearchPageOptions,
 ): SearchPageSnapshot {
   const text = queryText.trim();
   const page = evaluateSearchPage(index, text, options);
@@ -389,7 +391,7 @@ export function createSearchPageSnapshot(
   // satisfies the rest of the search, so the correction is run before it is
   // offered. A second dead end would help nobody.
   const suggestion =
-    corrected !== undefined && findsSomething(index, corrected, sectionKey)
+    corrected !== undefined && findsSomething(index, corrected, sectionKey, options.queryContext)
       ? corrected
       : undefined;
 
@@ -420,7 +422,7 @@ export function createSearchPageSnapshot(
             lookalikes: findTagLookalikes(index, focusTag.key),
             hubLinkCount: viaHub.size,
             ...(page.hubTitle ? { hubTitle: page.hubTitle } : {}),
-            ...describeTagMentions(index, focusTag),
+            ...describeTagMentions(index, focusTag, options.queryContext),
           },
         }
       : {}),
@@ -434,9 +436,10 @@ export function createSearchPageSnapshot(
         facets: parsed.node
           ? buildSearchFacets(index, results, text, {
               related,
-              now: options.now,
+              now: options.queryContext.now,
             })
           : [],
+        queryContext: options.queryContext,
       },
     ),
     ...(suggestion ? { suggestion } : {}),
@@ -451,7 +454,7 @@ export function createSearchPageSnapshot(
     notePaging,
     tasks: takePage(tasks, taskPaging).map((task) =>
       markParked(
-        markVia(createDashboardTask(task, index.sections), task.id),
+        markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
         isParkedTask(index, task.id),
       ),
     ),
@@ -493,6 +496,7 @@ export function tagMentionWord(tagKey: string): string | undefined {
 function describeTagMentions(
   index: WorkspaceIndex,
   tag: TagInfo,
+  context: QueryContext,
 ): { mention?: { word: string; count: number; query: string } } {
   const word = tagMentionWord(tag.key);
   if (!word) {
@@ -503,7 +507,7 @@ function describeTagMentions(
     `-${tag.key}`,
     ...(tag.hubFilePaths ?? []).map((filePath) => `NOT path = ${quoteValue(filePath)}`),
   ].join(' ');
-  const found = evaluateQuery(index, parseQuery(query).node);
+  const found = evaluateQuery(index, parseQuery(query).node, context);
   const count = found.sections.length + found.tasks.length + found.files.length;
   return count > 0 ? { mention: { word, count, query } } : {};
 }
@@ -535,7 +539,7 @@ export interface SearchPageResults {
 export function evaluateSearchPage(
   index: WorkspaceIndex,
   queryText: string,
-  options: Pick<SearchPageOptions, 'previewWords' | 'includeHubLinks'> = {},
+  options: Pick<SearchPageOptions, 'previewWords' | 'includeHubLinks' | 'queryContext'>,
 ): SearchPageResults {
   const text = queryText.trim();
   const parsed = parseQuery(text);
@@ -554,7 +558,7 @@ export function evaluateSearchPage(
   const hubFile = hubPaths.length ? index.files.get(hubPaths[0]) : undefined;
 
   const results: QueryResults = drafted.node
-    ? evaluateQuery(index, drafted.node)
+    ? evaluateQuery(index, drafted.node, options.queryContext)
     : {
         sections: [...index.sections.values()],
         tasks: [...index.tasks.values()],
@@ -571,6 +575,7 @@ export function evaluateSearchPage(
   const linking = evaluateQuery(
     index,
     parseQuery(preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
+    options.queryContext,
   );
   const sectionIds = new Set(results.sections.map((section) => section.id));
   const taskIds = new Set(results.tasks.map((task) => task.id));
@@ -1605,15 +1610,16 @@ export function getHeadingPath(
 
 /**
  * Adds rendered task text and source context without changing the domain task.
+ * An open task's due date is worded against the context's today and policy.
  */
 export function createDashboardTask(
   task: Task,
   sections: Map<string, Section>,
-  now: number = Date.now(),
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): DashboardTask {
   const due =
     !task.completed && task.dueAt !== undefined
-      ? describeDueDate(task.dueAt, now, task.dueText)
+      ? describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText)
       : undefined;
   return {
     task,
@@ -1781,12 +1787,13 @@ function findsSomething(
   index: WorkspaceIndex,
   text: string,
   sectionKey: (section: Section) => NoteKey,
+  context: QueryContext,
 ): boolean {
   const parsed = parseQuery(text);
   if (!parsed.node) {
     return false;
   }
-  const results = evaluateQuery(index, parsed.node);
+  const results = evaluateQuery(index, parsed.node, context);
   if (results.tasks.length > 0) {
     return true;
   }
@@ -1963,15 +1970,16 @@ function getFrontmatterBody(content: string): string {
 
 
 /**
- * Builds everything the query bar and its builder need from one parse.
+ * Builds everything the query bar and its builder need from one parse. The
+ * date completions say what each value means in `extras.queryContext`.
  */
 export function createQueryViewState(
   index: WorkspaceIndex,
   parsed: ParsedQuery,
   matchCounts: { notes: number; tasks: number },
   isAdvanced: boolean,
-  recentQueries: readonly string[] = [],
-  extras: { facets?: QueryFacet[]; pending?: string } = {},
+  recentQueries: readonly string[],
+  extras: { facets?: QueryFacet[]; pending?: string; queryContext: QueryContext },
 ): QueryViewState {
   const pending = extras.pending?.trim();
   return {
@@ -1985,7 +1993,7 @@ export function createQueryViewState(
     diagnostics: pending ? parseQuery(pending).diagnostics : parsed.diagnostics,
     builder: toBuilderTree(parsed.node),
     tags: resolveQueryTags(index, parsed),
-    suggestions: createQuerySuggestions(index, recentQueries),
+    suggestions: createQuerySuggestions(index, recentQueries, extras.queryContext),
     matchCounts,
   };
 }
@@ -2033,13 +2041,16 @@ export function describeTagMatches(
  *
  * Values are grouped by field rather than pre-joined to one, so the query bar
  * can complete a value once it knows which field the caret is in, and a
- * builder row can complete its own value field with the same list.
+ * builder row can complete its own value field with the same list. A date
+ * value says the days it means on the context's today, in weeks from its
+ * week start.
  */
 export function createQuerySuggestions(
   index: WorkspaceIndex,
-  recentQueries: readonly string[] = [],
-  now: number = Date.now(),
+  recentQueries: readonly string[],
+  context: Pick<QueryContext, 'now' | 'weekStart'>,
 ): QuerySuggestions {
+  const { now, weekStart } = context;
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
     label: field,
@@ -2075,7 +2086,6 @@ export function createQuerySuggestions(
 
   // A week or a month says the days it covers, and a weekday the day it
   // is, so a value is chosen by what it means today.
-  const weekStart = getQueryWeekStart();
   const span = (value: string): string => {
     const range = resolveDatePeriod(value, now, weekStart);
     if (!range) {

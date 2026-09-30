@@ -17,10 +17,9 @@ import {
 import {
   evaluateQuery,
   resolveDateRange,
-  setQueryWeekStart,
 } from '../core/query/queryEvaluator';
 import { formatIsoDate, startOfDay } from '../core/markdown/taskMetadata';
-import { startOfWeek } from '../core/markdown/dates';
+import { startOfWeek, Weekday } from '../core/markdown/dates';
 import {
   ParsedFile,
   PersistedPreferences,
@@ -32,6 +31,7 @@ import {
 import {
   createSearchPageSnapshot,
 } from '../ui/state/dashboardState';
+import { createQueryContext } from '../core/query/queryContext';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
@@ -268,6 +268,7 @@ suite('Deckard query language', () => {
     const results = evaluateQuery(
       index,
       parseQuery('(tag:#project/atlas AND tag:@ren) OR tag:#risk/vendor').node,
+      createQueryContext(Date.now()),
     );
     assert.deepStrictEqual(
       results.sections.map((section) => section.id).sort(),
@@ -277,7 +278,7 @@ suite('Deckard query language', () => {
 
   test('matches text inside a section body', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('text ~ elevator').node);
+    const results = evaluateQuery(index, parseQuery('text ~ elevator').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(
       results.sections.map((section) => section.id),
       ['vendor'],
@@ -289,6 +290,7 @@ suite('Deckard query language', () => {
     const results = evaluateQuery(
       index,
       parseQuery('tag:#risk/vendor AND text ~ "elevator"').node,
+      createQueryContext(Date.now()),
     );
     assert.strictEqual(results.sections.length, 1);
   });
@@ -298,6 +300,7 @@ suite('Deckard query language', () => {
     const ids = evaluateQuery(
       index,
       parseQuery('tag:#project/atlas AND NOT tag:@ren').node,
+      createQueryContext(Date.now()),
     ).sections.map((section) => section.id);
     assert.ok(ids.includes('atlas-solo'));
     assert.ok(
@@ -308,7 +311,7 @@ suite('Deckard query language', () => {
 
   test('inherits a tag from a parent heading', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('tag:#project/atlas').node);
+    const results = evaluateQuery(index, parseQuery('tag:#project/atlas').node, createQueryContext(Date.now()));
     assert.ok(
       results.sections.some((section) => section.id === 'atlas-child'),
       'a nested section should answer for its parent heading tag',
@@ -317,7 +320,7 @@ suite('Deckard query language', () => {
 
   test('matches a namespace with a wildcard', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('tag:#risk/*').node);
+    const results = evaluateQuery(index, parseQuery('tag:#risk/*').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(
       results.sections.map((section) => section.id),
       ['vendor'],
@@ -326,7 +329,7 @@ suite('Deckard query language', () => {
 
   test('matches an entity namespace by kind', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('kind:person').node);
+    const results = evaluateQuery(index, parseQuery('kind:person').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(
       results.sections.map((section) => section.id),
       ['atlas-ren'],
@@ -335,7 +338,7 @@ suite('Deckard query language', () => {
 
   test('answers a task state only from tasks', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('task:open').node);
+    const results = evaluateQuery(index, parseQuery('task:open').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(
       results.tasks.map((task) => task.id),
       ['task-open'],
@@ -345,7 +348,7 @@ suite('Deckard query language', () => {
 
   test('matches a file name glob', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('file:2026-09-*.md').node);
+    const results = evaluateQuery(index, parseQuery('file:2026-09-*.md').node, createQueryContext(Date.now()));
     assert.ok(results.sections.length > 0);
     assert.ok(
       results.sections.every((section) =>
@@ -356,7 +359,7 @@ suite('Deckard query language', () => {
 
   test('matches a front-matter-only note as a file result', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('tag:#topic/intro').node);
+    const results = evaluateQuery(index, parseQuery('tag:#topic/intro').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(
       results.files.map((file) => file.filePath),
       ['notes/intro.md'],
@@ -368,6 +371,7 @@ suite('Deckard query language', () => {
     const ids = evaluateQuery(
       index,
       parseQuery('tag:#project/atlas AND text != Sequencing').node,
+      createQueryContext(Date.now()),
     ).sections.map((section) => section.id);
     assert.ok(!ids.includes('atlas-solo'));
     assert.ok(ids.includes('atlas-ren'));
@@ -378,6 +382,7 @@ suite('Deckard query language', () => {
     const results = evaluateQuery(
       index,
       parseQuery('tag:#project/atlas AND path !~ 2026-09-08').node,
+      createQueryContext(Date.now()),
     );
     assert.ok(
       results.sections.every(
@@ -389,7 +394,7 @@ suite('Deckard query language', () => {
 
   test('returns nothing for a query that failed to parse', () => {
     const index = createIndex();
-    const results = evaluateQuery(index, parseQuery('(tag:#a').node);
+    const results = evaluateQuery(index, parseQuery('(tag:#a').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(results, { sections: [], tasks: [], files: [] });
   });
 });
@@ -401,7 +406,7 @@ suite('Deckard search page state', () => {
       index,
       createPreferences(),
       'tag = #risk/vendor OR tag = #project/atlas',
-      { originQuery: '#project/atlas' },
+      { queryContext: createQueryContext(Date.now()), originQuery: '#project/atlas' },
     );
 
     assert.strictEqual(snapshot.tag, undefined);
@@ -412,7 +417,7 @@ suite('Deckard search page state', () => {
   test('a search of one tag is that tag\'s page, however it is written', () => {
     const index = createIndex();
     for (const text of ['#project/atlas', 'tag = #project/atlas', 'tag:#project/atlas']) {
-      const snapshot = createSearchPageSnapshot(index, createPreferences(), text);
+      const snapshot = createSearchPageSnapshot(index, createPreferences(), text, { queryContext: createQueryContext(Date.now()) });
       assert.strictEqual(snapshot.tag?.key, '#project/atlas', text);
       assert.strictEqual(snapshot.query.text, text, 'the box keeps what was typed');
     }
@@ -420,6 +425,7 @@ suite('Deckard search page state', () => {
       index,
       createPreferences(),
       '#project/atlas is:open',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.strictEqual(narrowed.tag, undefined, 'anything more is a search');
   });
@@ -485,7 +491,7 @@ suite('Deckard search page state', () => {
     index.tasks.set('soon', createTask({ id: 'soon', dueAt: now + 2 * day }));
     index.tasks.set('later', createTask({ id: 'later', dueAt: now + 20 * day }));
     const taskIds = (text: string) =>
-      evaluateQuery(index, parseQuery(text).node).tasks.map((task) => task.id);
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now())).tasks.map((task) => task.id);
 
     assert.deepStrictEqual(taskIds('is:open'), ['task-open', 'late', 'soon', 'later']);
     assert.deepStrictEqual(taskIds('is:done'), ['task-done']);
@@ -496,8 +502,8 @@ suite('Deckard search page state', () => {
 
     // no:due answers for tasks only, as due = none does, rather than
     // listing every note that has no due date.
-    assert.deepStrictEqual(evaluateQuery(index, parseQuery('no:due').node).sections, []);
-    const notes = evaluateQuery(index, parseQuery('is:note').node);
+    assert.deepStrictEqual(evaluateQuery(index, parseQuery('no:due').node, createQueryContext(Date.now())).sections, []);
+    const notes = evaluateQuery(index, parseQuery('is:note').node, createQueryContext(Date.now()));
     assert.strictEqual(notes.tasks.length, 0);
     assert.strictEqual(notes.sections.length, 5);
   });
@@ -529,25 +535,19 @@ suite('Deckard search page state', () => {
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {
     // Friday 2026-09-25, noon.
     const now = new Date(2026, 8, 25, 12).getTime();
-    const span = (value: string, direction: 'past' | 'future') => {
-      const range = resolveDateRange(value, now, direction);
+    const span = (value: string, direction: 'past' | 'future', weekStart: Weekday = 0) => {
+      const range = resolveDateRange(value, now, direction, weekStart);
       return range && `${formatIsoDate(range.start)}..${formatIsoDate(range.end)}`;
     };
-    try {
-      assert.strictEqual(span('this-week', 'future'), '2026-09-20..2026-09-27');
-      setQueryWeekStart(1);
-      assert.strictEqual(span('this-week', 'future'), '2026-09-21..2026-09-28');
-      setQueryWeekStart(0);
-      assert.strictEqual(span('last-month', 'past'), '2026-08-01..2026-09-01');
-      assert.strictEqual(span('next-week', 'future'), '2026-09-27..2026-10-04');
-      assert.strictEqual(span('friday', 'past'), '2026-09-18..2026-09-19');
-      assert.strictEqual(span('friday', 'future'), '2026-10-02..2026-10-03');
-      assert.strictEqual(span('"last friday"'.replace(/"/g, ''), 'past'), '2026-09-18..2026-09-19');
-      assert.strictEqual(span('end-of-month', 'future'), '2026-09-30..2026-10-01');
-      assert.strictEqual(span('10/3', 'future'), undefined);
-    } finally {
-      setQueryWeekStart(0);
-    }
+    assert.strictEqual(span('this-week', 'future'), '2026-09-20..2026-09-27');
+    assert.strictEqual(span('this-week', 'future', 1), '2026-09-21..2026-09-28');
+    assert.strictEqual(span('last-month', 'past'), '2026-08-01..2026-09-01');
+    assert.strictEqual(span('next-week', 'future'), '2026-09-27..2026-10-04');
+    assert.strictEqual(span('friday', 'past'), '2026-09-18..2026-09-19');
+    assert.strictEqual(span('friday', 'future'), '2026-10-02..2026-10-03');
+    assert.strictEqual(span('"last friday"'.replace(/"/g, ''), 'past'), '2026-09-18..2026-09-19');
+    assert.strictEqual(span('end-of-month', 'future'), '2026-09-30..2026-10-01');
+    assert.strictEqual(span('10/3', 'future'), undefined);
   });
 
   test('matches a whole week, and before the next one starts', () => {
@@ -559,7 +559,7 @@ suite('Deckard search page state', () => {
     index.tasks.set('next', createTask({ id: 'next', dueAt: weekStart + 7 * day + 60 * 60 * 1000 }));
     index.tasks.set('before', createTask({ id: 'before', dueAt: startOfDay(weekStart - day) }));
     const taskIds = (text: string) =>
-      evaluateQuery(index, parseQuery(text).node).tasks.map((task) => task.id);
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now())).tasks.map((task) => task.id);
     assert.deepStrictEqual(taskIds('due = this-week'), ['first', 'last']);
     assert.deepStrictEqual(taskIds('due < next-week'), ['first', 'last', 'before']);
     assert.deepStrictEqual(taskIds('due >= next-week'), ['next']);
@@ -580,7 +580,7 @@ suite('Deckard search page state', () => {
   test('matches in: against whole folders', () => {
     const index = createIndex();
     const sectionCount = (text: string) =>
-      evaluateQuery(index, parseQuery(text).node).sections.length;
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now())).sections.length;
 
     assert.strictEqual(sectionCount('in:notes'), 5);
     // A folder is matched whole, so a name that only starts the same way

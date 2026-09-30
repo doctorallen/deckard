@@ -106,7 +106,14 @@ suite('What links to a note', () => {
     assert.strictEqual(hidden.linkedFromCount, 1);
 
     const ranked = (hidePeriodicNotes: boolean) =>
-      createSidebarSnapshot(index, atlas.filePath, atlas, true, 'tags', {}, 'inline', undefined, undefined, { hidePeriodicNotes })
+      createSidebarSnapshot(index, atlas.filePath, atlas, {
+        now: Date.now(),
+        enableKeywordLinks: true,
+        relatedNotesSortMode: 'tags',
+        sectionAccessCounts: {},
+        tagTitleDisplayMode: 'inline',
+        rankingOptions: { hidePeriodicNotes,
+      } })
         .notes.map((note) => note.filePath)
         .sort();
     assert.deepStrictEqual(ranked(false), ['notes/2026-09-24.md', 'notes/Budget.md', 'notes/week-2026-09-20-2026-09-26.md']);

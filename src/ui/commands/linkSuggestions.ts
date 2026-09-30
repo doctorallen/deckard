@@ -130,26 +130,29 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     if (headingContext) {
       return this.completeHeadings(index, headingContext, document, range);
     }
+    // One moment for the whole list: the day a date names and how lately
+    // each note was opened are read against it.
+    const now = Date.now();
     return [
-      ...this.completeDates(context.query, range),
-      ...this.completeNotes(index, context.query, range),
+      ...this.completeDates(context.query, range, now),
+      ...this.completeNotes(index, context.query, range, now),
     ];
   }
 
   /**
    * Every note by its title and aliases, ranked as Find ranks them: the
    * words typed against the title, then how often and how lately the note
-   * was opened. With nothing typed yet, the notes opened most lately come
-   * first rather than whatever sorts first by name.
+   * was opened, as of `now`. With nothing typed yet, the notes opened most
+   * lately come first rather than whatever sorts first by name.
    */
   private completeNotes(
     index: WorkspaceIndex,
     typed: string,
     range: vscode.Range,
+    now: number,
   ): vscode.CompletionItem[] {
     const query = typed.toLowerCase();
     const words = typed.trim().split(/\s+/).filter(Boolean);
-    const now = Date.now();
     const opened = this.openedScores(index, now);
     return [...index.files.values()]
       .flatMap((file) => [
@@ -222,21 +225,22 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
   }
 
   /**
-   * A day named in words, as a link to that day's note: `[[tomorrow` offers
-   * `[[2026-09-26]]`, with the day it resolved to beside it.
+   * A day named in words, read on the day `now` falls on, as a link to that
+   * day's note: `[[tomorrow` offers `[[2026-09-26]]`, with the day it
+   * resolved to beside it.
    */
-  private completeDates(typed: string, range: vscode.Range): vscode.CompletionItem[] {
+  private completeDates(typed: string, range: vscode.Range, now: number): vscode.CompletionItem[] {
     const words = typed.trim();
     // A written ISO date is already the note's name, which the notes offer.
     if (!words || /^\d{4}-\d{2}-\d{2}$/.test(words)) {
       return [];
     }
-    const date = parseDatePhrase(words, Date.now(), readDateOptions())?.date;
+    const date = parseDatePhrase(words, now, readDateOptions())?.date;
     if (!date) {
       return [];
     }
     const item = new vscode.CompletionItem(date, vscode.CompletionItemKind.Value);
-    item.detail = `${describeDay(date)}, that day's note`;
+    item.detail = `${describeDay(date, now)}, that day's note`;
     item.insertText = `${date}]]`;
     item.filterText = typed;
     item.sortText = '!';

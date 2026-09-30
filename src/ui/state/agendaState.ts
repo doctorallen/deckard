@@ -11,7 +11,8 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
-import { needsNewDate, readLineStatus } from '../../core/taskPolicy';
+import { QueryContext } from '../../core/query/queryContext';
+import { needsNewDate, readLineStatus, TaskPolicy } from '../../core/taskPolicy';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -150,11 +151,12 @@ export function normalizeAgendaQuery(query: string): string {
 /**
  * The tasks `deckard.agenda.query` chooses: every task for an empty query,
  * and every task, with the reason, for one that does not parse — a broken
- * setting should not empty the view.
+ * setting should not empty the view. The query is evaluated in `context`.
  */
 export function selectAgendaTasks(
   index: WorkspaceIndex,
   query: string,
+  context: QueryContext,
 ): { tasks: Task[]; error?: string } {
   // A list of things to do leaves parked tasks out, unless its own search
   // asks about them.
@@ -169,7 +171,7 @@ export function selectAgendaTasks(
       error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
     };
   }
-  const tasks = evaluateQuery(index, parsed.node).tasks;
+  const tasks = evaluateQuery(index, parsed.node, context).tasks;
   return { tasks: mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index) };
 }
 
@@ -202,10 +204,20 @@ interface Placement {
   reason: string;
 }
 
-/** Builds the Agenda for `now`. Empty groups are left out. */
+/** The days a task is placed against: today, tomorrow, and where Later begins. */
+interface AgendaDays {
+  today: number;
+  tomorrow: number;
+  horizon: number;
+}
+
+/**
+ * Builds the Agenda for the context's `now`, with its task policy saying
+ * when an overdue task needs a new date. Empty groups are left out.
+ */
 export function createAgenda(
   index: WorkspaceIndex,
-  now: number,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: AgendaOptions,
 ): AgendaGroup[] {
   const {
@@ -231,7 +243,7 @@ export function createAgenda(
       const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
       return leftRank - rightRank || fallback(left, right);
     };
-  const today = startOfDay(now);
+  const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
   const horizon = addDays(today, Math.max(1, upcomingDays) + 1);
   const openDependencyIds = new Set(
@@ -247,7 +259,7 @@ export function createAgenda(
     if (task.completed) {
       continue;
     }
-    const placement = placeTask(task, today, tomorrow, horizon);
+    const placement = placeTask(task, { today, tomorrow, horizon }, context.taskPolicy);
     if (placement) {
       groups
         .get(placement.group)
@@ -496,12 +508,16 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+/**
+ * The group one open task belongs in on `days.today`, the date that put it
+ * there, and the words that say why.
+ */
 function placeTask(
   task: Task,
-  today: number,
-  tomorrow: number,
-  horizon: number,
+  days: AgendaDays,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
 ): Placement {
+  const { today, tomorrow, horizon } = days;
   const { dueAt, scheduledAt, startAt } = task;
   if (
     dueAt === undefined &&
@@ -512,7 +528,7 @@ function placeTask(
     // its note instead.
     return { group: 'nodate', at: NO_DATE, reason: '' };
   }
-  if (dueAt !== undefined && needsNewDate(dueAt, today)) {
+  if (dueAt !== undefined && needsNewDate(dueAt, today, taskPolicy)) {
     return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt)}` };
   }
   if (dueAt !== undefined && dueAt < today) {

@@ -320,18 +320,16 @@ export class SidebarNotesView
         context: entryScope.tagSources.get(key)?.context ?? 'selected',
         source: entryScope.tagSources.get(key)?.source ?? 'selected entry',
       })),
-      snapshot: createSidebarSnapshot(
-        index,
-        filePath,
-        entryScope.file,
-        this.areKeywordLinksEnabled(),
-        'tags',
-        this.preferences.value.sectionAccessCounts,
-        this.getTagTitleDisplayMode(),
-        getEntryTitle(entryScope.file),
-        entryScope.tagWeights,
-        this.getRelatedNotesRankingOptions(),
-      ),
+      snapshot: createSidebarSnapshot(index, filePath, entryScope.file, {
+        now: Date.now(),
+        enableKeywordLinks: this.areKeywordLinksEnabled(),
+        relatedNotesSortMode: 'tags',
+        sectionAccessCounts: this.preferences.value.sectionAccessCounts,
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        activeEntryTitle: getEntryTitle(entryScope.file),
+        activeTagWeights: entryScope.tagWeights,
+        rankingOptions: this.getRelatedNotesRankingOptions(),
+      }),
     };
   }
 
@@ -494,18 +492,16 @@ export class SidebarNotesView
       this.entryContext?.filePath === selectedFilePath
         ? createEntryScope(selectedFile, this.entryContext.sourceLine)
         : undefined;
-    const snapshot = createSidebarSnapshot(
-      index,
-      selectedFilePath,
-      activeEntry?.file ?? selectedFile,
-      this.areKeywordLinksEnabled(),
-      this.preferences.value.relatedNotesSortMode,
-      this.preferences.value.sectionAccessCounts,
-      this.getTagTitleDisplayMode(),
-      activeEntry ? getEntryTitle(activeEntry.file) : undefined,
-      activeEntry?.tagWeights,
-      this.getRelatedNotesRankingOptions(),
-    );
+    const snapshot = createSidebarSnapshot(index, selectedFilePath, activeEntry?.file ?? selectedFile, {
+      now: Date.now(),
+      enableKeywordLinks: this.areKeywordLinksEnabled(),
+      relatedNotesSortMode: this.preferences.value.relatedNotesSortMode,
+      sectionAccessCounts: this.preferences.value.sectionAccessCounts,
+      tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+      activeEntryTitle: activeEntry ? getEntryTitle(activeEntry.file) : undefined,
+      activeTagWeights: activeEntry?.tagWeights,
+      rankingOptions: this.getRelatedNotesRankingOptions(),
+    });
     // What links here is about the whole note, whichever entry is selected.
     const indexedFile = selectedFilePath ? index.files.get(selectedFilePath) : undefined;
     const hideDailyNotes = this.preferences.value.hideDailyNotes === true;

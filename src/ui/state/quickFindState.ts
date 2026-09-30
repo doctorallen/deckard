@@ -8,6 +8,7 @@ import { stripTags } from '../../core/markdown/parser';
 import { getFileName } from '../../core/paths';
 import { getPlainTextTerms } from '../../core/query/queryEdit';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
+import { QueryContext } from '../../core/query/queryContext';
 import {
   collectQueryTagKeys,
   visitConditions,
@@ -97,7 +98,11 @@ export interface QuickFindResults {
 export type QuickFindTextSearch = (text: string) => EntrySearchResult;
 
 export interface QuickFindOptions {
-  now?: number;
+  /**
+   * The settings and moment Find answers in: what its searches find, and how
+   * recently a remembered choice was made.
+   */
+  queryContext: QueryContext;
   noteLimit?: number;
   taskLimit?: number;
   /** Whole conditions to offer for the word being typed, such as `is:open`. */
@@ -125,9 +130,9 @@ export function buildQuickFindResults(
   preferences: PersistedPreferences,
   input: string,
   searchText: QuickFindTextSearch,
-  options: QuickFindOptions = {},
+  options: QuickFindOptions,
 ): QuickFindResults {
-  const now = options.now ?? Date.now();
+  const { now } = options.queryContext;
   if (!input.trim()) {
     return buildEmptyResults(index, preferences, now);
   }
@@ -182,7 +187,7 @@ export function buildQuickFindResults(
   }
 
   const learned = learnedBonuses(index, preferences, input, now);
-  const ranked = rankEntries(index, preferences, parsed.node, searchText, now, learned);
+  const ranked = rankEntries(index, preferences, parsed.node, searchText, options.queryContext, learned);
   results.message ??= ranked.partial
     ? 'No entry has every word, so these have some of them.'
     : undefined;
@@ -231,14 +236,15 @@ function parkedItem(item: QuickFindItem, parked: boolean): QuickFindItem {
  * A search of plain words asks the full-text index, which is fast and ranks
  * by relevance; a search with any other condition is answered by the query
  * evaluator, so it means exactly what it means everywhere else, and its words
- * only order the results.
+ * only order the results. The evaluation, and the frecency of each entry,
+ * are the context's.
  */
 function rankEntries(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   node: QueryNode,
   searchText: QuickFindTextSearch,
-  now: number,
+  context: QueryContext,
   learned: ReadonlyMap<string, number> = new Map(),
 ): {
   notes: RankedEntry[];
@@ -288,7 +294,7 @@ function rankEntries(
           scoreTitle(plainTerms, getFileName(file.filePath)) > 0),
     );
   } else {
-    const results = evaluateQuery(index, node);
+    const results = evaluateQuery(index, node, context);
     sections = results.sections;
     tasks = results.tasks;
     files = results.files;
@@ -305,7 +311,7 @@ function rankEntries(
           base +
             titleScore +
             (found?.score ?? 0) +
-            frecencyBonus(preferences, section.id, now),
+            frecencyBonus(preferences, section.id, context.now),
           learned.get(section.id),
           titleScore,
         ),

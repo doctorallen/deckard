@@ -8,6 +8,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 /**
  * What the Task Board page does with a board, driven as VS Code drives it.
@@ -24,7 +25,7 @@ suite('Task Board page', () => {
 
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
   const NOW = Date.parse('2026-09-21T12:00:00Z');
-  const options = { now: NOW, statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
+  const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
 
   const open = (): { page: WebviewPage; taskId: string } => {
     const index = buildWorkspaceIndex(

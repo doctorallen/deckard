@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 
 import { listOverdueTasks } from './agendaTree';
 
+import { QueryContext } from '../../core/query/queryContext';
 import { escapeMarkdown } from '../../core/text';
 import { WorkspaceIndex } from '../../core/types';
+import { readQueryContext } from '../commands/queryContext';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
 /**
@@ -24,14 +26,18 @@ export interface DueTaskCounts {
   doneToday?: number;
 }
 
+/**
+ * What is overdue, due today, waiting for a new date, and done today, among
+ * the tasks `query` lists, on the context's today.
+ */
 export function countDueTasks(
   index: WorkspaceIndex,
-  now: number,
+  context: QueryContext,
   /** `deckard.agenda.query`, so the count is of what the Tasks view lists. */
   query = '',
 ): DueTaskCounts {
-  const groups = createAgenda(index, now, {
-    tasks: selectAgendaTasks(index, query).tasks,
+  const groups = createAgenda(index, context, {
+    tasks: selectAgendaTasks(index, query, context).tasks,
     upcomingDays: 1,
     doneToday: true,
   });
@@ -254,18 +260,15 @@ export class TaskStatusBar implements vscode.Disposable {
       this.item.hide();
       return;
     }
-    const counts = countDueTasks(
-      this.indexer.getSnapshot(),
-      this.now().getTime(),
-      readAgendaQuery(),
-    );
+    const context = readQueryContext(this.now().getTime());
+    const counts = countDueTasks(this.indexer.getSnapshot(), context, readAgendaQuery());
     const text = describeDueTasks(counts);
     if (!text) {
       this.item.hide();
       return;
     }
     this.item.text = `$(checklist) ${text}`;
-    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts), counts);
+    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts), counts, context);
     // Overdue work is the one state worth coloring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
@@ -276,11 +279,15 @@ export class TaskStatusBar implements vscode.Disposable {
 
   /**
    * The sentence, then the first few overdue tasks by name, so a glance
-   * says which ones rather than how many.
+   * says which ones rather than how many, as they were at the count's moment.
    */
-  private createTooltip(sentence: string, counts: DueTaskCounts): vscode.MarkdownString {
+  private createTooltip(
+    sentence: string,
+    counts: DueTaskCounts,
+    context: QueryContext,
+  ): vscode.MarkdownString {
     const tooltip = new vscode.MarkdownString(`Deckard: ${sentence}`, true);
-    const overdue = listOverdueTasks(this.indexer.getSnapshot(), this.now().getTime());
+    const overdue = listOverdueTasks(this.indexer.getSnapshot(), context);
     if (overdue.length > 0) {
       tooltip.appendMarkdown(
         '\n\n' +
@@ -306,7 +313,7 @@ export class TaskStatusBar implements vscode.Disposable {
   private async remind(): Promise<void> {
     const counts = countDueTasks(
       this.indexer.getSnapshot(),
-      this.now().getTime(),
+      readQueryContext(this.now().getTime()),
       readAgendaQuery(),
     );
     this.refresh();

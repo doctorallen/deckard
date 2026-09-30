@@ -9,23 +9,6 @@ import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
  * disagree about what a date is and neither has to import the other.
  */
 
-/** The day a week starts on for `this-week` and its like; Sunday until set. */
-let queryWeekStart: Weekday = 0;
-
-/**
- * Sets the day a search's weeks start on, from `deckard.calendar.weekStart`,
- * as `setQueryIdentity` sets who "me" is: the evaluator runs in many places
- * and none of them reads settings.
- */
-export function setQueryWeekStart(day: Weekday): void {
-  queryWeekStart = day;
-}
-
-/** The day a search's weeks start on, as `setQueryWeekStart` last set it. */
-export function getQueryWeekStart(): Weekday {
-  return queryWeekStart;
-}
-
 /**
  * Whether a relative window such as `7d` looks back from today, as `created`
  * and `updated` do, or ahead, as a due date does.
@@ -41,12 +24,14 @@ export interface DateRange {
 }
 
 /**
- * Turns a date value into the half-open interval it names.
+ * Turns a date value into the half-open interval it names, read on the day
+ * `now` falls on, with weeks starting on `weekStart`.
  */
 export function resolveDateRange(
   value: string,
-  now: number = Date.now(),
-  direction: DateDirection = 'past',
+  now: number,
+  direction: DateDirection,
+  weekStart: Weekday,
 ): DateRange | undefined {
   const normalized = value.trim().toLowerCase();
 
@@ -101,7 +86,7 @@ export function resolveDateRange(
   }
 
   // A whole week or month: `this-week`, `last-month`, `2026-08`.
-  const period = resolveDatePeriod(normalized, now, queryWeekStart);
+  const period = resolveDatePeriod(normalized, now, weekStart);
   if (period) {
     return { ...period, isWindow: false };
   }
@@ -111,7 +96,7 @@ export function resolveDateRange(
   // note or task already has, and ahead for the ones a task is due.
   const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
     direction,
-    weekStart: queryWeekStart,
+    weekStart,
   });
   if (phrase?.date) {
     const [year, month, day] = phrase.date.split('-').map(Number);

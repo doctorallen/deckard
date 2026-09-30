@@ -1,11 +1,8 @@
 import { captureNextAction } from './ui/commands/taskBoardActions';
-import { setTaskPolicy } from './core/taskPolicy';
-import { readWeekStart } from './ui/commands/datePrompt';
+import { readQueryContext } from './ui/commands/queryContext';
 import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
 
-import { setQueryIdentity,
-  setQueryWeekStart } from './core/query/queryEvaluator';
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
@@ -221,53 +218,6 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   log.info(
     `Deckard ${String(context.extension.packageJSON.version)} activated.`,
-  );
-  // Who `is:mine` means. The evaluator is given it once rather than reading
-  // settings from six call sites.
-  const readIdentity = (): void => {
-    setQueryIdentity(
-      vscode.workspace.getConfiguration('deckard').get<string>('me', ''),
-    );
-  };
-  readIdentity();
-  // The day a search's this-week starts on, set the same way.
-  setQueryWeekStart(readWeekStart());
-  // When an overdue task needs a new date, and where a task's status is
-  // written, for every view that lists tasks.
-  const readTaskPolicy = (): void => {
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    const days = configuration.get<number>('tasks.needsNewDateAfterDays', 30);
-    const onHold = configuration.get<unknown>('tasks.onHoldStatuses', ['waiting', 'someday']);
-    setTaskPolicy({
-      needsNewDateAfterDays: Number.isFinite(days) ? Math.max(0, Math.round(days)) : 30,
-      statusNamespace:
-        configuration.get<string>('board.statusNamespace', 'status').trim() || 'status',
-      onHoldStatuses: Array.isArray(onHold)
-        ? onHold.filter((status): status is string => typeof status === 'string')
-            .map((status) => status.trim().toLowerCase())
-            .filter(Boolean)
-        : ['waiting', 'someday'],
-    });
-  };
-  readTaskPolicy();
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('deckard.me')) {
-        readIdentity();
-      }
-      if (event.affectsConfiguration('deckard.calendar.weekStart')) {
-        setQueryWeekStart(readWeekStart());
-      }
-      if (
-        event.affectsConfiguration('deckard.tasks') ||
-        event.affectsConfiguration('deckard.board.statusNamespace')
-      ) {
-        readTaskPolicy();
-      }
-    }),
-    { dispose: () => setTaskPolicy() },
-    { dispose: () => setQueryIdentity(undefined) },
-    { dispose: () => setQueryWeekStart(0) },
   );
   // The index reads the workspace through ports; this is VS Code's.
   const vscodeWorkspace = createVscodeWorkspace();
@@ -682,7 +632,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // reschedule choices and again after the write.
   const rescheduleContext = (): RescheduleContext => ({
     load: (date) =>
-      countLoad(selectAgendaTasks(indexer.getSnapshot(), getAgendaQuery()).tasks, date),
+      countLoad(selectAgendaTasks(indexer.getSnapshot(), getAgendaQuery(), readQueryContext()).tasks, date),
     refresh: async () => {
       try {
         await indexer.refresh();
@@ -691,7 +641,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       }
     },
     todayCount: () =>
-      countDueTasks(indexer.getSnapshot(), Date.now(), getAgendaQuery()).today,
+      countDueTasks(indexer.getSnapshot(), readQueryContext(), getAgendaQuery()).today,
   });
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
@@ -728,7 +678,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     }),
     vscode.commands.registerCommand('deckard.rescheduleOverdue', async () => {
       await indexer.ready;
-      const overdue = listOverdueTasks(indexer.getSnapshot());
+      const overdue = listOverdueTasks(indexer.getSnapshot(), readQueryContext());
       if (overdue.length === 0) {
         void vscode.window.showInformationMessage('Nothing is overdue.');
         return;

@@ -2,6 +2,7 @@ import { stripTags } from '../../core/markdown/parser';
 import { getFileName } from '../../core/paths';
 import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
+import { QueryContext } from '../../core/query/queryContext';
 import { parseQuery } from '../../core/query/queryParser';
 import { pluralize } from '../../core/text';
 import {
@@ -296,13 +297,22 @@ export function isQueryBlockLine(
 }
 
 /**
- * Runs a block's query against the index and orders what it matched.
+ * What a block is read in besides its own options: the settings and moment
+ * its query is evaluated in, and the namespace its task rows read a status in.
  */
+export interface QueryBlockReading {
+  queryContext: QueryContext;
+  /** The namespace of the status tags, from `deckard.board.statusNamespace`; `status` unless given. */
+  statusNamespace?: string;
+}
+
 /**
  * Results by index, then by day and block. The lenses above a block are asked
  * for after every edit, and the preview renders as the note is typed, so a
- * block's query runs once per index instead. The day is part of the key
- * because `today` and `7d` move at midnight.
+ * block's query runs once per index instead. The day, the one the context's
+ * `now` falls on, is part of the key because `today` and `7d` move at
+ * midnight; the rest of the context is not, so a block keeps the answer it
+ * gave first for as long as the index and the day last.
  */
 const snapshotCache = new WeakMap<
   WorkspaceIndex,
@@ -314,7 +324,7 @@ export function getQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,
   options: QueryBlockOptions,
-  statusNamespace = 'status',
+  reading: QueryBlockReading,
 ): QueryBlockSnapshot {
   let snapshots = snapshotCache.get(index);
   if (!snapshots) {
@@ -322,26 +332,30 @@ export function getQueryBlockSnapshot(
     snapshotCache.set(index, snapshots);
   }
   const key = JSON.stringify([
-    new Date().toDateString(),
+    new Date(reading.queryContext.now).toDateString(),
     queryText,
     options,
-    statusNamespace,
+    reading.statusNamespace ?? 'status',
   ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
-    snapshot = createQueryBlockSnapshot(index, queryText, options, statusNamespace);
+    snapshot = createQueryBlockSnapshot(index, queryText, options, reading);
     snapshots.set(key, snapshot);
   }
   return snapshot;
 }
 
+/**
+ * Runs a block's query against the index, in the reading's context, and
+ * orders what it matched.
+ */
 export function createQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,
   options: QueryBlockOptions,
-  /** The namespace of the status tags, from `deckard.board.statusNamespace`. */
-  statusNamespace = 'status',
+  reading: QueryBlockReading,
 ): QueryBlockSnapshot {
+  const statusNamespace = reading.statusNamespace ?? 'status';
   const query = queryText.trim();
   const optionMessages = options.warnings.map(
     (text): QueryBlockMessage => ({ severity: 'warning', text }),
@@ -383,7 +397,7 @@ export function createQueryBlockSnapshot(
     return { ...empty, messages, hasError: true };
   }
 
-  const results = evaluateQuery(index, parsed.node);
+  const results = evaluateQuery(index, parsed.node, reading.queryContext);
   const notes = [
     ...results.sections.map((section) => createSectionItem(section, index)),
     ...results.files.map(createFileItem),

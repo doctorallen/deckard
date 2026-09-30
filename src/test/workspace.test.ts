@@ -24,6 +24,7 @@ import {
   joinUri,
 } from './fakeWorkspace';
 import { normalizeIndex } from './normalizeIndex';
+import { createQueryContext } from '../core/query/queryContext';
 
 const defaultPreferences = {
   searchPageSize: 30 as const,
@@ -644,6 +645,7 @@ suite('Workspace scanner and index', () => {
       index,
       defaultPreferences,
       '#work',
+      { queryContext: createQueryContext(Date.now()) },
     );
 
     assert.strictEqual(snapshot.sections.length, 1);
@@ -678,6 +680,7 @@ suite('Workspace scanner and index', () => {
       index,
       defaultPreferences,
       '#project/neon-relay',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');

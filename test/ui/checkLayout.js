@@ -38,6 +38,8 @@ const { createCalendar } = modules.calendarState;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
 const { PreferencesStore } = modules.preferences;
+// Every snapshot is built at NOW, so no surface reads the wall clock.
+const { createQueryContext } = require(path.join(compiled, 'core', 'query', 'queryContext.js'));
 
 const chrome = findChrome();
 if (!chrome) {
@@ -147,7 +149,7 @@ function createSurfaces(zen) {
         boardIndex,
         preferences.value,
         { query: '' },
-        { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
         'inline',
       ),
       scrollers: ['.board-cards'],
@@ -164,7 +166,7 @@ function createSurfaces(zen) {
         boardIndex,
         { ...preferences.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
         { query: '' },
-        { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
         'inline',
       ),
       scrollers: ['html', '.board-cards'],
@@ -176,7 +178,7 @@ function createSurfaces(zen) {
       // run to two digits, and rows whose words are longer than the panel.
       page: 'calendar',
       viewport: [240, 700],
-      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
       }),
       scrollers: ['html'],
@@ -188,7 +190,7 @@ function createSurfaces(zen) {
       name: 'calendarNoWeekends',
       page: 'calendar',
       viewport: [240, 700],
-      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         showWeekends: false,
         selectedDate: '2026-09-24',
@@ -206,7 +208,7 @@ function createSurfaces(zen) {
         activeTags: [],
         notes: [],
         tagTitleDisplayMode: 'inline',
-        calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+        calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
           dayPanel: true,
           showRepeats: true,
           selectedDate: '2026-09-24',
@@ -222,7 +224,7 @@ function createSurfaces(zen) {
       // chips cut short, +N more, and repeats every weekday.
       page: 'calendarPage',
       viewport: [1400, 900],
-      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         layout: 'page',
         showRepeats: true,
@@ -237,7 +239,7 @@ function createSurfaces(zen) {
       name: 'calendarPageNarrow',
       page: 'calendarPage',
       viewport: [800, 900],
-      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
+      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         layout: 'page',
         showRepeats: true,
@@ -251,15 +253,13 @@ function createSurfaces(zen) {
       // floor is 220px.
       page: 'sidebarNotes',
       viewport: [240, 700],
-      snapshot: () => createSidebarSnapshot(
-        index,
-        'notes/atlas.md',
-        files.get('notes/atlas.md'),
-        true,
-        'tags',
-        {},
-        'inline',
-      ),
+      snapshot: () => createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
+        now: NOW,
+        enableKeywordLinks: true,
+        relatedNotesSortMode: 'tags',
+        sectionAccessCounts: {},
+        tagTitleDisplayMode: 'inline',
+      }),
       scrollers: ['html'],
       clippers: [],
       hovered: ['.note'],
@@ -279,7 +279,13 @@ function createSurfaces(zen) {
         ].join('\n'));
         untaggedFiles.set('notes/untagged.md', untagged);
         return {
-          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, true, 'tags', {}, 'inline'),
+          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, {
+            now: NOW,
+            enableKeywordLinks: true,
+            relatedNotesSortMode: 'tags',
+            sectionAccessCounts: {},
+            tagTitleDisplayMode: 'inline',
+          }),
           previewLines: 1,
         };
       },
@@ -312,7 +318,9 @@ function createSurfaces(zen) {
     {
       page: 'searchPage',
       viewport: [900, 900],
-      snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas'),
+      snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas', {
+        queryContext: createQueryContext(NOW),
+      }),
       scrollers: ['html'],
       clippers: [],
       hovered: ['.card'],

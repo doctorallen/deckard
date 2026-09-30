@@ -34,6 +34,7 @@ import { editResults } from '../commands/bulkEditPrompts';
 import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
 import { formatQueryBlock } from '../state/queryBlockState';
 import { setPinned } from '../commands/pinNote';
+import { readQueryContext } from '../commands/queryContext';
 import { createHubNote } from '../commands/hubNote';
 import { openResultAt, ResultOpening } from '../commands/navigation';
 import { mergeIndexedTag, renameIndexedTag } from '../commands/renameTag';
@@ -511,11 +512,13 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private createSnapshot(): SearchPageSnapshot {
     const index = this.indexer.getSnapshot();
     const preferences = this.preferences.value;
+    const queryContext = readQueryContext();
     const snapshot = createSearchPageSnapshot(
       index,
       preferences,
       this.queryText,
       {
+        queryContext,
         originQuery: this.originQuery,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         notePage: this.notePage,
@@ -555,6 +558,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
               {
                 facets: snapshot.query.facets,
                 pending: this.invalidQueryText,
+                queryContext,
               },
             ),
           }
@@ -896,6 +900,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     // The same list the page shows: on a tag's page, what links its hub too.
     const { results } = evaluateSearchPage(index, this.queryText, {
       includeHubLinks: this.includesHubLinks(),
+      queryContext: readQueryContext(),
     });
     return {
       // The search is the filter: is:open, is:done, and the rest say which

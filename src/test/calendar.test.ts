@@ -3,13 +3,13 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { setTaskPolicy } from '../core/taskPolicy';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { parseCalendarMessage } from '../ui/webview/messages';
 import { openWebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 suite('Calendar', () => {
   const note = (filePath: string, content: string) =>
@@ -23,7 +23,7 @@ suite('Calendar', () => {
     note('notes/2026-09.md', '# 2026-09'),
   ];
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-  const calendar = createCalendar(index, '2026-09', new Date(2026, 8, 13, 10));
+  const calendar = createCalendar(index, '2026-09', createQueryContext(new Date(2026, 8, 13, 10).getTime()));
   const days = new Map(
     calendar.weeks.flatMap((week) => week.days).map((day) => [day.date, day]),
   );
@@ -70,8 +70,7 @@ suite('Calendar', () => {
         ),
       ),
       '2026-09',
-      new Date(2026, 8, 13, 10),
-      1,
+      createQueryContext(new Date(2026, 8, 13, 10).getTime(), { weekStart: 1 }),
     );
     assert.deepStrictEqual(monday.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
     assert.ok(
@@ -95,15 +94,10 @@ suite('Calendar', () => {
 
   test('marks the days past needsNewDateAfterDays, and leaves them out at 0', () => {
     assert.strictEqual(calendar.needsNewDateBefore, '2026-08-14', 'thirty days before 2026-09-13');
-    setTaskPolicy({ needsNewDateAfterDays: 0 });
-    try {
-      assert.strictEqual(
-        createCalendar(index, '2026-09', new Date(2026, 8, 13, 10)).needsNewDateBefore,
-        undefined,
-      );
-    } finally {
-      setTaskPolicy();
-    }
+    const off = createQueryContext(new Date(2026, 8, 13, 10).getTime(), {
+      taskPolicy: { needsNewDateAfterDays: 0 },
+    });
+    assert.strictEqual(createCalendar(index, '2026-09', off).needsNewDateBefore, undefined);
   });
 
   test("marks each day's daily note and open tasks, and today", () => {
@@ -123,7 +117,7 @@ suite('Calendar', () => {
     assert.strictEqual(shiftMonth('2026-12', 1), '2027-01');
     assert.strictEqual(shiftMonth('2026-01', -1), '2025-12');
     assert.strictEqual(
-      createCalendar(index, '2027-02', new Date(2026, 8, 13)).weeks.length,
+      createCalendar(index, '2027-02', createQueryContext(new Date(2026, 8, 13).getTime())).weeks.length,
       5,
       'February 2027 starts on a Monday, so its first row opens the day before',
     );
@@ -167,7 +161,7 @@ suite('Calendar', () => {
     );
     const page = openWebviewPage(
       getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
-      createCalendar(old, '2026-08', new Date(2026, 8, 13, 10)),
+      createCalendar(old, '2026-08', createQueryContext(new Date(2026, 8, 13, 10).getTime())),
     );
     try {
       const day = (date: string) =>
@@ -202,7 +196,7 @@ suite('Calendar', () => {
 
       key(day('2026-09-14'), 'PageDown');
       assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' });
-      page.send(createCalendar(index, '2026-10', new Date(2026, 8, 13, 10)));
+      page.send(createCalendar(index, '2026-10', createQueryContext(new Date(2026, 8, 13, 10).getTime())));
       assert.strictEqual(
         (page.document.activeElement as HTMLElement).dataset.date,
         '2026-10-14',
@@ -218,7 +212,7 @@ suite('Calendar', () => {
       ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],
     ]));
     const now = new Date(2026, 8, 13, 10);
-    const shown = createCalendar(repeating, '2026-09', now, 0, { showRepeats: true, dayPanel: true, selectedDate: '2026-09-22' });
+    const shown = createCalendar(repeating, '2026-09', createQueryContext(now.getTime()), { showRepeats: true, dayPanel: true, selectedDate: '2026-09-22' });
     const day = (date: string) => shown.weeks.flatMap((week) => week.days).find((entry) => entry.date === date);
     assert.strictEqual(day('2026-09-15')?.dueCount, 1, 'its own date is due');
     assert.strictEqual(day('2026-09-15')?.repeatCount, undefined, 'and not a repeat as well');
@@ -233,7 +227,7 @@ suite('Calendar', () => {
     assert.deepStrictEqual(shown.selected?.repeats?.map((item) => item.task.title), ['Water the plants']);
     assert.deepStrictEqual(shown.selected?.due, [], 'a repeat is not due');
 
-    const off = createCalendar(repeating, '2026-09', now, 0, { dayPanel: true, selectedDate: '2026-09-22' });
+    const off = createCalendar(repeating, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, selectedDate: '2026-09-22' });
     assert.strictEqual(off.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-09-22')?.repeatCount, undefined);
     assert.strictEqual(off.selected?.repeats, undefined, 'the setting off draws none');
 
@@ -254,9 +248,9 @@ suite('Calendar', () => {
 
   test('leaves the weekends out when they are hidden, in the sidebar and on the page', () => {
     const now = new Date(2026, 8, 13, 10);
-    const hidden = createCalendar(index, '2026-09', now, 0, { showWeekends: false });
+    const hidden = createCalendar(index, '2026-09', createQueryContext(now.getTime()), { showWeekends: false });
     assert.strictEqual(hidden.hideWeekends, true);
-    assert.strictEqual(createCalendar(index, '2026-09', now).hideWeekends, undefined, 'drawn unless turned off');
+    assert.strictEqual(createCalendar(index, '2026-09', createQueryContext(now.getTime())).hideWeekends, undefined, 'drawn unless turned off');
     const sidebar = openWebviewPage(getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never), hidden);
     try {
       assert.deepStrictEqual(sidebar.findAll('.weekday').map((cell) => cell.textContent).filter(Boolean), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -269,7 +263,7 @@ suite('Calendar', () => {
     }
     const page = openWebviewPage(
       getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never, { page: true }),
-      createCalendar(index, '2026-09', now, 0, { showWeekends: false, dayPanel: true, layout: 'page' }),
+      createCalendar(index, '2026-09', createQueryContext(now.getTime()), { showWeekends: false, dayPanel: true, layout: 'page' }),
     );
     try {
       assert.strictEqual(page.findAll('.day-cell[data-drop-date="2026-09-12"]').length, 0);

@@ -12,6 +12,7 @@ import { evaluateQuery } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { createTaskGlance } from '../ui/state/dashboardState';
 import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
+import { createQueryContext } from '../core/query/queryContext';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -28,7 +29,7 @@ suite('Agenda', () => {
         createTask({ id: 'ranked', dueAt: at(9, 1) }),
         createTask({ id: 'three-days', dueAt: at(9, 10) }),
       ]),
-      now,
+      createQueryContext(now),
       { upcomingDays: 7, taskOrder: ['ranked'] },
     );
     assert.deepStrictEqual(
@@ -47,22 +48,22 @@ suite('Agenda', () => {
       createTask({ id: 'upcoming', dueAt: at(9, 18) }),
       createTask({ id: 'done', dueAt: at(9, 13), completed: true }),
     ]);
-    const today = createAgenda(index, now, { upcomingDays: 7 })
+    const today = createAgenda(index, createQueryContext(now), { upcomingDays: 7 })
       .find((group) => group.id === 'today')
       ?.entries.map((entry) => entry.task.id)
       .sort();
     const realNow = Date.now;
     Date.now = () => now;
     try {
-      const matched = evaluateQuery(index, parseQuery('is:today').node).tasks.map((task) => task.id).sort();
+      const matched = evaluateQuery(index, parseQuery('is:today').node, createQueryContext(Date.now())).tasks.map((task) => task.id).sort();
       assert.deepStrictEqual(matched, today);
-      const glance = createTaskGlance(index, '', now);
+      const glance = createTaskGlance(index, '', createQueryContext(now));
       assert.deepStrictEqual(
         [glance.overdue, glance.today, glance.open],
         [2, 2, 6],
       );
       assert.strictEqual(
-        createTaskGlance(index, '#project/atlas', now).todayQuery,
+        createTaskGlance(index, '#project/atlas', createQueryContext(now)).todayQuery,
         '(#project/atlas) AND is:today',
         'scoped by the agenda search, so the tile and its page agree',
       );
@@ -78,7 +79,7 @@ suite('Agenda', () => {
       createTask({ id: 'thursday', dueAt: at(9, 17) }),
       createTask({ id: 'starts', startAt: at(9, 17), lineNumber: 3 }),
     ]);
-    const byDay = createAgenda(index, now, { upcomingDays: 7, upcomingByDay: true });
+    const byDay = createAgenda(index, createQueryContext(now), { upcomingDays: 7, upcomingByDay: true });
     assert.deepStrictEqual(
       byDay.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.id)]),
       [
@@ -87,7 +88,7 @@ suite('Agenda', () => {
       ],
     );
     assert.deepStrictEqual(
-      createAgenda(index, now, { upcomingDays: 7 }).map((group) => group.id),
+      createAgenda(index, createQueryContext(now), { upcomingDays: 7 }).map((group) => group.id),
       ['upcoming'],
       'one Upcoming unless asked',
     );
@@ -104,15 +105,15 @@ suite('Agenda', () => {
     ]);
     const ids = (groups: ReturnType<typeof createAgenda>) =>
       groups.map((group) => [group.id, group.entries.map((entry) => entry.task.id)]);
-    assert.deepStrictEqual(ids(createAgenda(index, now, { upcomingDays: 7, doneToday: true })), [
+    assert.deepStrictEqual(ids(createAgenda(index, createQueryContext(now), { upcomingDays: 7, doneToday: true })), [
       ['today', ['open']],
       ['donetoday', ['done-later-line', 'done-today']],
     ]);
     assert.deepStrictEqual(
-      ids(createAgenda(index, now, { upcomingDays: 7, doneToday: true, groupBy: 'priority' })).pop(),
+      ids(createAgenda(index, createQueryContext(now), { upcomingDays: 7, doneToday: true, groupBy: 'priority' })).pop(),
       ['donetoday', ['done-later-line', 'done-today']],
     );
-    assert.deepStrictEqual(ids(createAgenda(index, now, { upcomingDays: 7 })), [['today', ['open']]]);
+    assert.deepStrictEqual(ids(createAgenda(index, createQueryContext(now), { upcomingDays: 7 })), [['today', ['open']]]);
     assert.strictEqual(groupColumnId('donetoday', 'due'), 'done', 'a task dropped there is completed');
   });
 
@@ -165,7 +166,7 @@ suite('Agenda', () => {
         createTask({ id: 'done', dueAt: at(9, 10), completed: true }),
         createTask({ id: 'undated' }),
       ]),
-      now,
+      createQueryContext(now),
       { upcomingDays: 7 },
     );
 
@@ -198,7 +199,7 @@ suite('Agenda', () => {
         createTask({ id: 'first', dependencyId: 'a1' }),
         createTask({ id: 'second', dueAt: at(9, 13), dependsOn: ['a1'] }),
       ]),
-      now,
+      createQueryContext(now),
       { upcomingDays: 7 },
     );
     assert.deepStrictEqual(groups[0].entries[0].details, [
@@ -221,7 +222,7 @@ suite('Agenda', () => {
       createTask({ id: 'undated' }),
     ]);
     const grouped = (groupBy: 'priority' | 'status' | 'assignee') =>
-      createAgenda(index, now, { upcomingDays: 7, groupBy }).map((group) => [
+      createAgenda(index, createQueryContext(now), { upcomingDays: 7, groupBy }).map((group) => [
         group.label,
         group.entries.map((entry) => entry.task.id),
       ]);
@@ -252,12 +253,12 @@ suite('Agenda', () => {
       createTask({ id: 'last-due', dueAt: at(9, 18) }),
     ]);
     assert.deepStrictEqual(
-      createAgenda(index, now, { upcomingDays: 7 })[0].entries.map((entry) => entry.task.id),
+      createAgenda(index, createQueryContext(now), { upcomingDays: 7 })[0].entries.map((entry) => entry.task.id),
       ['first-due', 'later', 'last-due'],
       'by date until a reader says otherwise',
     );
     assert.deepStrictEqual(
-      createAgenda(index, now, { upcomingDays: 7, taskOrder: ['last-due', 'later'] })[0]
+      createAgenda(index, createQueryContext(now), { upcomingDays: 7, taskOrder: ['last-due', 'later'] })[0]
         .entries.map((entry) => entry.task.id),
       ['last-due', 'later', 'first-due'],
       'the ranked ones lead, and the rest keep their own order',
@@ -287,7 +288,7 @@ suite('Agenda', () => {
     assert.deepStrictEqual(
       createAgenda(
         createIndex([createTask({ id: 'done', completed: true })]),
-        now,
+        createQueryContext(now),
         { upcomingDays: 7 },
       ),
       [],
@@ -308,8 +309,8 @@ suite('Agenda', () => {
       createTask({ id: 'nobodys' }),
     ]);
     const ids = (query: string) =>
-      createAgenda(index, now, {
-        tasks: selectAgendaTasks(index, query).tasks,
+      createAgenda(index, createQueryContext(now), {
+        tasks: selectAgendaTasks(index, query, createQueryContext(Date.now())).tasks,
         upcomingDays: 7,
       }).flatMap((group) => group.entries.map((entry) => entry.task.id));
     assert.deepStrictEqual(ids(''), ['mine', 'theirs', 'nobodys'], 'empty is everything');
@@ -319,7 +320,7 @@ suite('Agenda', () => {
       ['mine', 'theirs'],
       'the query is how the undated ones are left out',
     );
-    const broken = selectAgendaTasks(index, 'due >');
+    const broken = selectAgendaTasks(index, 'due >', createQueryContext(Date.now()));
     assert.strictEqual(broken.tasks.length, 3, 'a query that does not parse hides nothing');
     assert.ok(broken.error, 'and says why');
   });
@@ -334,7 +335,7 @@ suite('Agenda', () => {
         createTask({ id: 'too-far', dueAt: at(9, 30) }),
         createTask({ id: 'waiting', scheduledAt: at(9, 1), startAt: at(10, 15) }),
       ]),
-      now,
+      createQueryContext(now),
       { upcomingDays: 7 },
     );
 
@@ -369,7 +370,7 @@ suite('Agenda', () => {
       createTask({ id: 'undated', assignee: '@dana' }),
     ]);
     assert.deepStrictEqual(
-      createAgenda(index, now, { upcomingDays: 7, groupBy: 'assignee' }).map(
+      createAgenda(index, createQueryContext(now), { upcomingDays: 7, groupBy: 'assignee' }).map(
         (group) => [group.label, group.entries.map((entry) => entry.task.id)],
       ),
       [['@dana', ['due-today', 'undated']]],

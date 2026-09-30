@@ -15,6 +15,7 @@ import {
   REMINDER_DATE_KEY,
   TaskStatusBar,
 } from '../ui/views/taskStatusBar';
+import { createQueryContext } from '../core/query/queryContext';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -42,20 +43,20 @@ suite('Task status bar', () => {
   });
 
   test('counts what is overdue and what is due today', () => {
-    assert.deepStrictEqual(countDueTasks(index, now), {
+    assert.deepStrictEqual(countDueTasks(index, createQueryContext(now)), {
       overdue: 1,
       today: 1,
       needsNewDate: 0,
       doneToday: 0,
     });
-    assert.deepStrictEqual(countDueTasks(indexOf({}), now), {
+    assert.deepStrictEqual(countDueTasks(indexOf({}), createQueryContext(now)), {
       overdue: 0,
       today: 0,
       needsNewDate: 0,
       doneToday: 0,
     });
     assert.strictEqual(
-      countDueTasks(indexOf({ 'notes/Done.md': '- [x] Filed it ✅ 2026-09-19' }), now).doneToday,
+      countDueTasks(indexOf({ 'notes/Done.md': '- [x] Filed it ✅ 2026-09-19' }), createQueryContext(now)).doneToday,
       1,
       'what was finished today',
     );
@@ -69,13 +70,13 @@ suite('Task status bar', () => {
         '- [ ] Renew the lease 📅 2026-06-12',
       ].join('\n'),
     });
-    assert.deepStrictEqual(countDueTasks(old, now), { overdue: 1, today: 0, needsNewDate: 2, doneToday: 0 });
-    assert.strictEqual(describeDueTasks(countDueTasks(old, now)), '1 overdue');
+    assert.deepStrictEqual(countDueTasks(old, createQueryContext(now)), { overdue: 1, today: 0, needsNewDate: 2, doneToday: 0 });
+    assert.strictEqual(describeDueTasks(countDueTasks(old, createQueryContext(now))), '1 overdue');
     assert.strictEqual(describeNeedsNewDate(2), '2 tasks need a new date.');
     assert.strictEqual(describeNeedsNewDate(1), '1 task needs a new date.');
     assert.strictEqual(describeNeedsNewDate(0), undefined);
     const onlyOld = indexOf({ 'notes/Old.md': '- [ ] Renew the lease 📅 2026-06-12' });
-    assert.strictEqual(describeDueTasks(countDueTasks(onlyOld, now)), undefined, 'the bar stays hidden');
+    assert.strictEqual(describeDueTasks(countDueTasks(onlyOld, createQueryContext(now))), undefined, 'the bar stays hidden');
   });
 
   test('says it in the bar, and at length in the reminder', () => {

@@ -6,6 +6,7 @@ import {
   evaluateQuery,
 } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
+import { QueryContext } from '../../core/query/queryContext';
 import {
   DashboardTryNext,
   DashboardWidget,
@@ -45,7 +46,11 @@ const HUB_SUGGESTION_MINIMUM = 3;
 
 /** What Home's widgets need beyond the index and preferences. */
 export interface DashboardWidgetOptions {
-  now: number;
+  /**
+   * The settings and moment Home is drawn in: what its searches find, how
+   * its dates read, and how old its entries are.
+   */
+  queryContext: QueryContext;
   /** How far ahead the agenda widget looks, from `deckard.agenda.upcomingDays`. */
   upcomingDays: number;
   /** What the agenda widget lists, from `deckard.agenda.query`. */
@@ -144,6 +149,7 @@ function createWidget(
           { notes: 0, tasks: 0 },
           true,
           preferences.recentQueries ?? [],
+          { queryContext: options.queryContext },
         ),
       };
     case 'tasks': {
@@ -159,7 +165,7 @@ function createWidget(
       }
       // A list of things to do: parked tasks stay out unless it asks for them.
       const found = parsed.node
-        ? evaluateQuery(index, parsed.node).tasks
+        ? evaluateQuery(index, parsed.node, options.queryContext).tasks
         : [...index.tasks.values()];
       const tasks = sortTasks(
         mentionsParked(parsed.node) ? found : withoutParked(found, index),
@@ -170,12 +176,12 @@ function createWidget(
         ...widget,
         total: tasks.length,
         tasks: take(tasks)
-          .map((task) => createDashboardTask(task, index.sections)),
+          .map((task) => createDashboardTask(task, index.sections, options.queryContext)),
       };
     }
     case 'agenda': {
-      const groups = createAgenda(index, options.now, {
-        tasks: selectAgendaTasks(index, options.agendaQuery ?? '').tasks,
+      const groups = createAgenda(index, options.queryContext, {
+        tasks: selectAgendaTasks(index, options.agendaQuery ?? '', options.queryContext).tasks,
         upcomingDays: options.upcomingDays,
         doneToday: true,
       });
@@ -204,7 +210,7 @@ function createWidget(
           count: group.entries.length,
           tasks: group.entries
             .slice(0, count)
-            .map((entry) => createDashboardTask(entry.task, index.sections)),
+            .map((entry) => createDashboardTask(entry.task, index.sections, options.queryContext)),
         })),
       };
     }
@@ -229,7 +235,7 @@ function createWidget(
           score: frecencyScore(
             preferences.tagAccessCounts[tag.key] ?? 0,
             preferences.tagAccessTimes?.[tag.key],
-            options.now,
+            options.queryContext.now,
           ),
         }))
         .filter((entry) => (preferences.tagAccessCounts[entry.tag.key] ?? 0) > 0)
@@ -307,7 +313,7 @@ function createWidget(
       const query = getSavedFilterQuery(filter);
       const page = createSearchPageSnapshot(index, preferences, query, {
         tagTitleDisplayMode: options.tagTitleDisplayMode,
-        now: options.now,
+        queryContext: options.queryContext,
         // A widget takes its own few entries off the top of the whole
         // result, so its own count, not the reader's page size, is the page.
         pageSize: count,
@@ -333,7 +339,7 @@ function createWidget(
     }
     case 'todayNote':
     case 'quickAdd': {
-      const today = findTodayNote(index, options.now);
+      const today = findTodayNote(index, options.queryContext.now);
       if (config.kind === 'quickAdd') {
         return { ...widget, today: today.summary };
       }
@@ -342,12 +348,12 @@ function createWidget(
         today: today.summary,
         total: today.tasks.length,
         tasks: take(today.tasks)
-          .map((task) => createDashboardTask(task, index.sections)),
+          .map((task) => createDashboardTask(task, index.sections, options.queryContext)),
       };
     }
     case 'staleTasks': {
       // A task is as old as the note it is in, as the note dates itself.
-      const cutoff = options.now - (config.days ?? 30) * DAY;
+      const cutoff = options.queryContext.now - (config.days ?? 30) * DAY;
       const stale = withoutParked([...index.tasks.values()], index)
         .flatMap((task) => {
           const updatedAt =
@@ -366,7 +372,7 @@ function createWidget(
         ...widget,
         total: stale.length,
         tasks: take(stale)
-          .map(({ task }) => createDashboardTask(task, index.sections)),
+          .map(({ task }) => createDashboardTask(task, index.sections, options.queryContext)),
       };
     }
     case 'relatedNotes': {
@@ -388,7 +394,7 @@ function createWidget(
           settings.enableKeywordLinks,
           'separate',
           undefined,
-          settings.ranking,
+          { ...settings.ranking, now: options.queryContext.now },
         ),
         'tags',
         {},
@@ -434,7 +440,7 @@ function createWidget(
       };
     }
     case 'newTags': {
-      const cutoff = options.now - (config.days ?? 14) * DAY;
+      const cutoff = options.queryContext.now - (config.days ?? 14) * DAY;
       const firstSeen = preferences.tagFirstSeen ?? {};
       const tags = [...index.tags.values()]
         .flatMap((tag) => {
@@ -454,12 +460,12 @@ function createWidget(
         tags: take(tags).map(({ tag, seenAt }) => ({
           key: tag.key,
           label: tag.label,
-          detail: `${describeAge(options.now, seenAt)} · ${describeTagMatches(index, tag.key)}`,
+          detail: `${describeAge(options.queryContext.now, seenAt)} · ${describeTagMatches(index, tag.key)}`,
         })),
       };
     }
     case 'quietPeople': {
-      const quiet = listQuietTags(index, options.now, config.days ?? 90, {
+      const quiet = listQuietTags(index, options.queryContext.now, config.days ?? 90, {
         namespace: config.namespace,
         noOpenTasks: config.noOpenTasks,
       });
@@ -478,7 +484,7 @@ function createWidget(
         tags: take(quiet).map((person) => ({
           key: person.tag.key,
           label: person.tag.label,
-          detail: `${describeLastWritten(options.now, person.lastWrittenAt)} · ${
+          detail: `${describeLastWritten(options.queryContext.now, person.lastWrittenAt)} · ${
             person.openTasks === 0
               ? describeTagMatches(index, person.tag.key)
               : `${person.openTasks} open ${person.openTasks === 1 ? 'task' : 'tasks'}`

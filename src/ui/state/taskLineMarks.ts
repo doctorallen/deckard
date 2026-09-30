@@ -5,6 +5,7 @@ import {
   findTaskMetadataSpans,
   parseIsoDate,
 } from '../../core/markdown/taskMetadata';
+import { QueryContext } from '../../core/query/queryContext';
 
 /** A stretch of one line, zero-based. */
 export interface LineSpan {
@@ -48,11 +49,11 @@ function frontMatterLines(lines: readonly string[]): number {
  * overdue date, which is drawn in the overdue color; and an open task that
  * is overdue, due today, or waiting for a new date says so after its line.
  * A block id on any line steps back too. Code and front matter are left
- * alone.
+ * alone. Today and when a date needs replacing are the context's.
  */
 export function findTaskLineMarks(
   lines: readonly string[],
-  now: number,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: { dim: boolean; hints: boolean },
 ): TaskLineMarks {
   const marks: TaskLineMarks = { dim: [], overdue: [], hints: [] };
@@ -76,7 +77,7 @@ export function findTaskLineMarks(
     const spans = findTaskMetadataSpans(text.slice(offset));
     const due = spans.find((span) => span.field === 'due');
     const dueAt = open && due ? parseIsoDate(due.value) : undefined;
-    const described = dueAt === undefined ? undefined : describeDueDate(dueAt, now);
+    const described = dueAt === undefined ? undefined : describeDueDate(dueAt, context.now, context.taskPolicy);
     for (const span of spans) {
       const at = { line, start: offset + span.start, end: offset + span.end };
       if (span === due && described?.overdue) {

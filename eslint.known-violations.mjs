@@ -94,14 +94,10 @@ export default {
     ],
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
-      "renderGroup",
-      "renderQueryBlockHtml"
+      "renderGroup"
     ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
-    ],
-    "src/ui/state/calendarState.ts": [
-      "createCalendar"
     ],
     "src/ui/state/dashboardState.ts": [
       "createDashboardSnapshot",
@@ -126,7 +122,6 @@ export default {
       "rankEntries"
     ],
     "src/ui/state/relatedNotesRanking.ts": [
-      "createSidebarSnapshot",
       "findSimilarWording",
       "getLinkEvidence",
       "rankRelatedNotes",
@@ -350,7 +345,6 @@ export default {
     "src/core/markdown/taskDraft.ts": 1,
     "src/core/markdown/taskMetadata.ts": 4,
     "src/core/mcp/mcpProtocol.ts": 4,
-    "src/core/query/queryEvaluator.ts": 3,
     "src/core/query/queryLinks.ts": 2,
     "src/core/query/queryTypes.ts": 6,
     "src/core/storage/preferenceSnapshots.ts": 4,
@@ -359,7 +353,6 @@ export default {
     "src/core/storage/searchStore.ts": 6,
     "src/core/storage/searchStoreWorker.ts": 1,
     "src/core/storage/searchStoreWorkerClient.ts": 2,
-    "src/core/taskPolicy.ts": 1,
     "src/core/workspace/backlinks.ts": 3,
     "src/core/workspace/indexState.ts": 9,
     "src/core/workspace/indexer.ts": 3,
@@ -428,10 +421,10 @@ export default {
     "src/ui/state/noteLinks.ts": 2,
     "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/queryBlockState.ts": 4,
+    "src/ui/state/queryBlockState.ts": 3,
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
-    "src/ui/state/relatedNotesRanking.ts": 2,
+    "src/ui/state/relatedNotesRanking.ts": 1,
     "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
     "src/ui/state/searchFacets.ts": 4,
@@ -442,7 +435,7 @@ export default {
     "src/ui/state/wordSimilarity.ts": 4,
     "src/ui/views/agendaTree.ts": 6,
     "src/ui/views/outlineTree.ts": 3,
-    "src/ui/views/taskStatusBar.ts": 4,
+    "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/activeCalendar.ts": 5,
     "src/ui/webview/activeHome.ts": 6,

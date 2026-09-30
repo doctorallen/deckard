@@ -11,6 +11,7 @@ import {
   listQuietTags,
 } from '../ui/state/peopleRecency';
 import { normalizeDashboardWidgets } from '../core/storage/preferences';
+import { createQueryContext } from '../core/query/queryContext';
 
 /** Only what a widget reads; the rest of Home is not in play here. */
 const preferences: PersistedPreferences = {
@@ -173,7 +174,7 @@ suite('People recency', () => {
           { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 90 },
         ],
       },
-      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
     );
     assert.strictEqual(widget.total, 2);
     assert.deepStrictEqual(

@@ -21,13 +21,14 @@ import {
   parseTaskBoardMessage,
 } from '../ui/webview/messages';
 import { isAwaitingIndex } from '../ui/webview/taskBoard';
+import { createQueryContext } from '../core/query/queryContext';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
 
 /** Mid-morning on Sunday 2026-09-13. */
 const options: TaskBoardOptions = {
-  now: at(9, 13) + 9 * 60 * 60 * 1000,
+  queryContext: createQueryContext(at(9, 13) + 9 * 60 * 60 * 1000),
   statusNamespace: 'status',
   statuses: ['todo', 'doing'],
   format: 'emoji',

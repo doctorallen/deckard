@@ -12,6 +12,7 @@ import { buildQuickFindResults } from '../ui/state/quickFindState';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
   const store = new PreferencesStore({
@@ -38,7 +39,7 @@ function workspace() {
 suite('Searches keep parked notes, last', () => {
   test('a search page lists a parked note and task after the rest, and marks them', () => {
     const index = workspace();
-    const page = createSearchPageSnapshot(index, defaults(), 'vendor');
+    const page = createSearchPageSnapshot(index, defaults(), 'vendor', { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(
       page.sections.map((card) => [card.filePath, card.parked === true]),
       [
@@ -57,7 +58,7 @@ suite('Searches keep parked notes, last', () => {
 
   test('Refine offers Parked and Not parked when the results mix them', () => {
     const index = workspace();
-    const mixed = createSearchPageSnapshot(index, defaults(), 'vendor');
+    const mixed = createSearchPageSnapshot(index, defaults(), 'vendor', { queryContext: createQueryContext(Date.now()) });
     const facet = mixed.query.facets.find((candidate) => candidate.id === 'parked');
     assert.deepStrictEqual(
       facet?.values.map((value) => [value.label, value.clause, value.count]),
@@ -66,14 +67,14 @@ suite('Searches keep parked notes, last', () => {
         ['Not parked', '-is:parked', 2],
       ],
     );
-    const only = createSearchPageSnapshot(index, defaults(), '#vendor/new');
+    const only = createSearchPageSnapshot(index, defaults(), '#vendor/new', { queryContext: createQueryContext(Date.now()) });
     assert.ok(!only.query.facets.some((candidate) => candidate.id === 'parked'));
   });
 
   test('the Tags facet leaves out a tag only parked notes carry, unless asked', () => {
     const index = workspace();
     const tagsOf = (query: string): string[] =>
-      createSearchPageSnapshot(index, defaults(), query)
+      createSearchPageSnapshot(index, defaults(), query, { queryContext: createQueryContext(Date.now()) })
         .query.facets.find((candidate) => candidate.id === 'tags')
         ?.values.map((value) => value.clause) ?? [];
     assert.ok(!tagsOf('vendor').includes('#vendor/old'));
@@ -91,7 +92,11 @@ suite('Searches keep parked notes, last', () => {
         defaults(),
         'vendor',
         (text) => store.searchEntries(text, { limit: 200 }),
-        { conditions: createQuerySuggestions(index).conditions, formatCapture: (text) => formatCapture(text) },
+        {
+          queryContext: createQueryContext(Date.now()),
+          conditions: createQuerySuggestions(index, [], createQueryContext(Date.now())).conditions,
+          formatCapture: (text) => formatCapture(text, Date.now()),
+        },
       );
       assert.deepStrictEqual(
         results.notes.map((note) => [note.filePath, note.description]),
@@ -130,7 +135,7 @@ suite('Searches keep parked notes, last', () => {
   });
 
   test('a search page says Parked on a parked card and task, and nowhere else', () => {
-    const snapshot = createSearchPageSnapshot(workspace(), defaults(), 'vendor');
+    const snapshot = createSearchPageSnapshot(workspace(), defaults(), 'vendor', { queryContext: createQueryContext(Date.now()) });
     const page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }), snapshot);
     try {
       const cards = page.findAll('article.card');

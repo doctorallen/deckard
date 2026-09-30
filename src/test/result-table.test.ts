@@ -7,6 +7,7 @@ import {
   parseTaskColumns,
   TableTask,
 } from '../ui/state/resultTable';
+import { createQueryContext } from '../core/query/queryContext';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -45,7 +46,7 @@ suite('Result table', () => {
         line: 12,
       }),
       ['title', 'due', 'priority', 'assignee', 'status', 'tags', 'note', 'blockedBy', 'scheduled'],
-      now,
+      createQueryContext(now),
     );
     assert.deepStrictEqual(
       cells.map((cell) => cell.text),
@@ -54,7 +55,7 @@ suite('Result table', () => {
     );
     assert.strictEqual(cells[1].kind, 'overdue', 'a past due date on an open task');
     assert.strictEqual(cells[6].kind, 'muted', 'where it lives is quieter than what it is');
-    const done = createTaskCells(task({ title: 'Done', completed: true, dueAt: at(9, 10) }), ['due'], now)[0];
+    const done = createTaskCells(task({ title: 'Done', completed: true, dueAt: at(9, 10) }), ['due'], createQueryContext(now))[0];
     assert.strictEqual(done.kind, undefined, 'a finished task is not overdue');
     assert.strictEqual(done.text, '2026-09-10', 'and keeps its date as written');
   });

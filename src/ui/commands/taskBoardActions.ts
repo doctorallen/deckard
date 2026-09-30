@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { readCaptureText } from '../../core/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
 import { parseMarkdown } from '../../core/markdown/parser';
+import { QueryContext } from '../../core/query/queryContext';
 import { Task } from '../../core/types';
 import {
   isValidStatusName,
@@ -19,14 +20,16 @@ import {
 import { writeSetting } from './settings';
 import { captureToToday, formatCaptureLine } from './capture';
 import { appendTagToLine } from './bulkEdit';
+import { readQueryContext } from './queryContext';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 
 /**
  * Reads the task board settings. Every page that shows a board reads them
- * here, so the Task Board and the Dashboard lay out the same columns.
+ * here, so the Task Board and the Dashboard lay out the same columns. The
+ * board is built in `queryContext`, which its caller read as it began.
  */
-export function readTaskBoardOptions(): TaskBoardOptions {
+export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
   const namespace = configuration.get<string>(
     'board.statusNamespace',
@@ -37,7 +40,7 @@ export function readTaskBoardOptions(): TaskBoardOptions {
     DEFAULT_STATUSES,
   );
   return {
-    now: Date.now(),
+    queryContext,
     statusNamespace: /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace)
       ? namespace.toLowerCase()
       : 'status',
@@ -81,7 +84,7 @@ export async function moveTaskToColumn(
   columnId: string,
   context: TaskMoveContext = {},
 ): Promise<boolean> {
-  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(), context);
+  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(readQueryContext()), context);
   switch (move.kind) {
     case 'unchanged':
       return false;
@@ -114,14 +117,15 @@ export async function captureIntoColumn(columnId: string): Promise<boolean> {
     return false;
   }
   const configuration = vscode.workspace.getConfiguration('deckard');
+  const queryContext = readQueryContext();
   let line = readCaptureText(
     formatCaptureLine(text),
     readTaskMetadataFormat(configuration),
-    Date.now(),
+    queryContext.now,
     readDateOptions(),
   ).line;
   const [task] = parseMarkdown('capture.md', line).tasks;
-  const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions()) : undefined;
+  const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions(queryContext)) : undefined;
   if (move?.kind === 'refused') {
     void vscode.window.showInformationMessage(move.reason);
     return false;

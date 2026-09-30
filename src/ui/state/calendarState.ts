@@ -2,7 +2,7 @@ import { isParkedTask } from '../../core/workspace/parked';
 import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
 import { SHORT_WEEKDAY_NAMES } from '../../core/markdown/calendar';
-import { Weekday } from '../../core/markdown/dates';
+import { QueryContext } from '../../core/query/queryContext';
 import { projectRepeats, TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
 import { CalendarDayDetail, DashboardTask, Task, WorkspaceIndex } from '../../core/types';
 import { createDashboardTask } from './dashboardState';
@@ -130,14 +130,15 @@ function addDaysTo(date: string, days: number): string {
 
 /**
  * One day as the panel under the calendar shows it: its title, and its
- * daily note.
+ * daily note, read on the context's today and with its task policy.
  */
 export function createCalendarDay(
   index: WorkspaceIndex,
   date: string,
-  now: Date,
+  context: QueryContext,
   options: Pick<CalendarOptions, 'showRepeats'> = {},
 ): CalendarDayDetail {
+  const now = new Date(context.now);
   const [year, month, day] = date.split('-').map(Number);
   const at = new Date(year, month - 1, day);
   const today = formatLocalDate(now);
@@ -176,7 +177,7 @@ export function createCalendarDay(
     left.filePath.localeCompare(right.filePath) ||
     left.lineNumber - right.lineNumber;
   const rows = (tasks: Task[]): DashboardTask[] =>
-    tasks.sort(byImportance).map((task) => createDashboardTask(task, index.sections, now.getTime()));
+    tasks.sort(byImportance).map((task) => createDashboardTask(task, index.sections, context));
   // Notes whose own created date is the day, the periodic notes aside: a
   // daily note is the day itself, not something written on it.
   const dailyPaths = new Set(listDailyNotes(index).map((note) => note.filePath));
@@ -277,15 +278,17 @@ const monthTitle = new Intl.DateTimeFormat('en', {
  * kept for each week and for the month.
  *
  * A row is a week in its own right: the note it opens is named for the days
- * the row holds.
+ * the row holds. Today, the week start, and when an overdue task needs a new
+ * date are the context's.
  */
 export function createCalendar(
   index: WorkspaceIndex,
   month: string,
-  now: Date,
-  weekStart: Weekday = 0,
+  context: QueryContext,
   options: CalendarOptions = {},
 ): CalendarSnapshot {
+  const now = new Date(context.now);
+  const { weekStart } = context;
   const [year, monthNumber] = month.split('-').map(Number);
   const first = new Date(year, monthNumber - 1, 1);
   const last = new Date(year, monthNumber, 0);
@@ -379,7 +382,7 @@ export function createCalendar(
       )
     : new Map<string, Task[]>();
 
-  const staleBefore = needsNewDateBefore(now.getTime());
+  const staleBefore = needsNewDateBefore(context.now, context.taskPolicy);
   const staleDate = staleBefore !== undefined ? formatLocalDate(new Date(staleBefore)) : undefined;
   const byImportance = (left: Task, right: Task): number =>
     TASK_PRIORITY_RANKS[right.priority ?? 'none'] - TASK_PRIORITY_RANKS[left.priority ?? 'none'] ||
@@ -451,8 +454,8 @@ export function createCalendar(
     nextMonth: shiftMonth(month, 1),
     currentMonth: today.slice(0, 7),
     ...(notePath ? { notePath } : {}),
-    ...(needsNewDateBefore(now.getTime()) !== undefined
-      ? { needsNewDateBefore: formatLocalDate(new Date(needsNewDateBefore(now.getTime())!)) }
+    ...(staleBefore !== undefined
+      ? { needsNewDateBefore: formatLocalDate(new Date(staleBefore)) }
       : {}),
     weekdays: Array.from({ length: 7 }, (_, offset) => SHORT_WEEKDAY_NAMES[(weekStart + offset) % 7]),
     weeks,
@@ -464,7 +467,7 @@ export function createCalendar(
           return {
             dayPanel: true,
             selectedDate,
-            selected: createCalendarDay(index, selectedDate, now, options),
+            selected: createCalendarDay(index, selectedDate, context, options),
           };
         })()
       : {}),

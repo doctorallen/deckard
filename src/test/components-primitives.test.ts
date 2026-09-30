@@ -15,6 +15,7 @@ import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { renderablePages } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryContext } from '../core/query/queryContext';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,
@@ -49,7 +50,7 @@ suite('Component primitives', () => {
       index,
       { ...store.value, taskBoardLayout: 'board' },
       { query: '' },
-      { now: NOW, statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
+      { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
       'inline',
     );
     page = openWebviewPage(getTaskBoardHtml(webview), board);
@@ -61,7 +62,7 @@ suite('Component primitives', () => {
       ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #topic/replicants\nThe lift is stuck.\n- [ ] Chase it #project/atlas\n')],
     ]));
     store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const snapshot = createSearchPageSnapshot(index, store.value, query, {});
+    const snapshot = createSearchPageSnapshot(index, store.value, query, { queryContext: createQueryContext(Date.now()) });
     page = openWebviewPage(getSearchPageHtml(webview), { ...snapshot, ...extra });
     return page;
   };
@@ -218,7 +219,7 @@ suite('Component primitives', () => {
       assert.ok(search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), 'true');
       const index = buildWorkspaceIndex(new Map([['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas\nThe lift is stuck.\n')]]));
-      search.send(createSearchPageSnapshot(index, store!.value, '#project/atlas AND lift', {}));
+      search.send(createSearchPageSnapshot(index, store!.value, '#project/atlas AND lift', { queryContext: createQueryContext(Date.now()) }));
       await Promise.resolve();
       assert.ok(!search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), null);

@@ -23,6 +23,7 @@ import {
   tagMentionWord,
 } from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
+import { createQueryContext } from '../core/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -174,7 +175,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const facets = buildSearchFacets(index, results, query, { now });
     const values = (id: string) =>
       facets.find((facet) => facet.id === id)?.values.map((value) => [value.label, value.count]);
@@ -205,7 +206,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const updated = buildSearchFacets(index, results, query, { now })
       .find((facet) => facet.id === 'updated')
       ?.values.map((value) => [value.label, value.count]);
@@ -230,7 +231,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const created = buildSearchFacets(index, results, query, { now })
       .find((facet) => facet.id === 'created')
       ?.values.map((value) => [value.label, value.clause, value.count]);
@@ -263,7 +264,7 @@ suite('Refining a search', () => {
     );
     const index = buildWorkspaceIndex(files);
     const query = 'tag = #project/x OR text ~ zzz';
-    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node), query);
+    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now())), query, { now: Date.now() });
     const links = facets.find((facet) => facet.id === 'links');
     assert.deepStrictEqual(
       links?.values.map((value) => [value.label, value.count, value.clause]),
@@ -273,7 +274,7 @@ suite('Refining a search', () => {
       ],
     );
     const named = '#project/x [[Atlas]]';
-    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node), named)
+    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node, createQueryContext(Date.now())), named, { now: Date.now() })
       .find((facet) => facet.id === 'links');
     assert.deepStrictEqual(narrowed?.applied, ['[[Atlas]]']);
     assert.ok(!narrowed?.values.some((value) => value.label === 'Atlas'));
@@ -288,7 +289,7 @@ suite('Refining a search', () => {
         'notes/Two.md': '# Two\nSee [[Atlas]] and [[Budget]].\n',
       }).map(([path, content]) => [path, parseMarkdown(path, content)]),
     );
-    const links = createQuerySuggestions(buildWorkspaceIndex(files)).values.link ?? [];
+    const links = createQuerySuggestions(buildWorkspaceIndex(files), [], createQueryContext(Date.now())).values.link ?? [];
     assert.deepStrictEqual(links.slice(0, 3), [
       { value: 'Atlas', label: '[[Atlas]]', detail: 'alias of Atlas plan' },
       { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 2 notes' },
@@ -315,6 +316,7 @@ suite('Refining a search', () => {
       index,
       { sections: [...index.sections.values()], tasks: [...index.tasks.values()], files: [] },
       query,
+      { now: Date.now() },
     );
     const status = facets.find((facet) => facet.id === 'status');
     assert.deepStrictEqual(status?.values.map((value) => value.clause), ['is:done']);
@@ -330,7 +332,7 @@ suite('Refining a search', () => {
     const store = new PreferencesStore(new MemoryMemento());
 
     // Written with its field, a text condition is still a search of words.
-    const snapshot = createSearchPageSnapshot(index, store.value, 'text ~ "vault"');
+    const snapshot = createSearchPageSnapshot(index, store.value, 'text ~ "vault"', { queryContext: createQueryContext(Date.now()) });
 
     assert.deepStrictEqual(snapshot.sections.map((note) => note.heading).sort(), ['Other', 'Plan']);
     assert.strictEqual(snapshot.query.matchCounts.notes, 2);
@@ -351,7 +353,7 @@ suite('Refining a search', () => {
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const store = new PreferencesStore(new MemoryMemento());
 
-    const page = createSearchPageSnapshot(index, store.value, '#person/sable');
+    const page = createSearchPageSnapshot(index, store.value, '#person/sable', { queryContext: createQueryContext(Date.now()) });
     const related = page.query.facets.find((facet) => facet.id === 'related');
     assert.ok(related, 'the page offers the tags related to its own');
     assert.deepStrictEqual(
@@ -370,6 +372,7 @@ suite('Refining a search', () => {
       index,
       store.value,
       '#person/sable #team/harbor',
+      { queryContext: createQueryContext(Date.now()) },
     );
     const shared = narrowed.query.facets.find((facet) => facet.id === 'related');
     assert.deepStrictEqual(
@@ -378,7 +381,7 @@ suite('Refining a search', () => {
     );
 
     // A search that is more than tags is refined by the tags its results carry.
-    const worded = createSearchPageSnapshot(index, store.value, '#person/sable clinic');
+    const worded = createSearchPageSnapshot(index, store.value, '#person/sable clinic', { queryContext: createQueryContext(Date.now()) });
     assert.strictEqual(worded.query.facets.some((facet) => facet.id === 'related'), false);
     store.dispose();
   });
@@ -398,7 +401,7 @@ suite('Refining a search', () => {
           .map((word) => [word, 'elevator']),
       );
 
-    const missed = createSearchPageSnapshot(index, store.value, 'elevatr', {
+    const missed = createSearchPageSnapshot(index, store.value, 'elevatr', { queryContext: createQueryContext(Date.now()),
       suggestWords,
     });
     assert.strictEqual(missed.sections.length, 0);
@@ -409,7 +412,7 @@ suite('Refining a search', () => {
       index,
       store.value,
       '#project/atlas text ~ elevatr',
-      { suggestWords },
+      { queryContext: createQueryContext(Date.now()), suggestWords },
     );
     assert.strictEqual(narrowed.suggestion, '#project/atlas text ~ elevator');
 
@@ -434,13 +437,13 @@ suite('Refining a search', () => {
       index,
       store.value,
       '#risk/vendor text ~ elevatr',
-      { suggestWords },
+      { queryContext: createQueryContext(Date.now()), suggestWords },
     );
     assert.strictEqual(snapshot.sections.length, 0);
     assert.strictEqual(snapshot.suggestion, undefined);
 
     // A search that found something is never argued with.
-    const found = createSearchPageSnapshot(index, store.value, 'elevator', {
+    const found = createSearchPageSnapshot(index, store.value, 'elevator', { queryContext: createQueryContext(Date.now()),
       suggestWords,
     });
     assert.ok(found.sections.length > 0);
@@ -483,7 +486,7 @@ suite('Refining a search', () => {
 
     // A caller that asks not to be paged carries everything, as Home's
     // widgets need, and says so: one page holding the lot.
-    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       paged: false,
     });
     assert.strictEqual(whole.sections.length, 25);
@@ -496,7 +499,7 @@ suite('Refining a search', () => {
     });
 
     const paged = { ...store.value, searchPageSize: 10 as const };
-    const first = createSearchPageSnapshot(index, paged, '#project/atlas');
+    const first = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(first.notePaging, {
       page: 1,
       size: 10,
@@ -510,7 +513,7 @@ suite('Refining a search', () => {
     assert.strictEqual(first.query.matchCounts.tasks, 25);
     assert.deepStrictEqual(first.taskCounts, whole.taskCounts);
 
-    const second = createSearchPageSnapshot(index, paged, '#project/atlas', {
+    const second = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       notePage: 2,
       taskPage: 2,
     });
@@ -530,7 +533,7 @@ suite('Refining a search', () => {
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const store = new PreferencesStore(new MemoryMemento());
 
-    const drafted = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+    const drafted = createSearchPageSnapshot(index, store.value, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       previewWords: ['elevator'],
     });
     // The draft narrows the search it is typed into, not the whole workspace.
@@ -546,6 +549,7 @@ suite('Refining a search', () => {
       index,
       store.value,
       '#project/atlas elevator',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.deepStrictEqual(
       committed.sections.map((card) => card.heading),
@@ -573,20 +577,20 @@ suite('Refining a search', () => {
     // A note saved elsewhere can shorten a search while its last page is
     // open. The reader should land on the last page there is, not past it.
     const paged = { ...store.value, searchPageSize: 10 as const };
-    const past = createSearchPageSnapshot(index, paged, '#project/atlas', {
+    const past = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       notePage: 9,
     });
     assert.strictEqual(past.notePaging.page, 2);
     assert.strictEqual(past.sections.length, 5);
 
-    const before = createSearchPageSnapshot(index, paged, '#project/atlas', {
+    const before = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       notePage: 0,
     });
     assert.strictEqual(before.notePaging.page, 1);
 
     // A search that found nothing still has a page, so the page has a list
     // to be empty in.
-    const none = createSearchPageSnapshot(index, paged, '#project/nothing');
+    const none = createSearchPageSnapshot(index, paged, '#project/nothing', { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(none.notePaging, {
       page: 1,
       size: 10,
@@ -622,10 +626,10 @@ suite('Refining a search', () => {
       parseMarkdown('notes/other.md', '# Other\n- [ ] Ship it #project/atlas'),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const atlas = createQuerySuggestions(index).values.tag?.find(
+    const atlas = createQuerySuggestions(index, [], createQueryContext(Date.now())).values.tag?.find(
       (suggestion) => suggestion.value === '#project/atlas',
     );
-    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node);
+    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node, createQueryContext(Date.now()));
 
     // The nested Details section and its tasks inherit the heading's tag.
     assert.strictEqual(results.sections.length + results.files.length, 2);
@@ -636,7 +640,7 @@ suite('Refining a search', () => {
   test('a week, a month, or a weekday completes with the days it means', () => {
     const index = buildWorkspaceIndex(new Map());
     // Friday 2026-09-25, noon.
-    const values = createQuerySuggestions(index, [], new Date(2026, 8, 25, 12).getTime()).values;
+    const values = createQuerySuggestions(index, [], createQueryContext(new Date(2026, 8, 25, 12).getTime())).values;
     const detail = (field: 'due' | 'created', value: string) =>
       values[field]?.find((suggestion) => suggestion.value === value)?.detail;
     assert.strictEqual(detail('due', 'next-week'), 'Sep 27 to Oct 3');

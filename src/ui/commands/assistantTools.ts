@@ -19,6 +19,7 @@ import {
   readChangeTaskInput,
   WriteAnswer,
 } from './assistantWrites';
+import { readQueryContext } from './queryContext';
 
 interface IndexSource {
   readonly ready: Promise<void>;
@@ -65,7 +66,7 @@ export class AssistantTools implements vscode.Disposable {
         this.answer('Assistant query', () => {
           const input = readQueryToolInput(options.input);
           return input
-            ? answerQuery(this.indexer.getSnapshot(), input)
+            ? answerQuery(this.indexer.getSnapshot(), input, readQueryContext())
             : 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.';
         }),
     };

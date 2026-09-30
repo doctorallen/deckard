@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { KeyedDebouncer } from '../../core/debounce';
 import { measure } from '../../core/timing';
 import { findTaskLineMarks } from '../state/taskLineMarks';
+import { readQueryContext } from './queryContext';
 
 /** How long typing must pause before a changed note is redrawn. */
 const DELAY_MS = 150;
@@ -102,7 +103,7 @@ export class TaskLineDecorations implements vscode.Disposable {
       () =>
         findTaskLineMarks(
           document.getText().split(/\r?\n/),
-          this.now(),
+          readQueryContext(this.now()),
           readOptions(document.uri),
         ),
       () => `${document.lineCount} lines`,
