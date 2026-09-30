@@ -526,8 +526,11 @@ export class SidebarNotesView
       this.entryContext?.filePath === selectedFilePath
         ? createEntryScope(selectedFile, this.entryContext.sourceLine)
         : undefined;
+    // The moment this snapshot is built at, for the ranking's recency and
+    // for how lately each linking note changed.
+    const now = Date.now();
     const snapshot = createSidebarSnapshot(index, selectedFilePath, activeEntry?.file ?? selectedFile, {
-      now: Date.now(),
+      now,
       enableKeywordLinks: this.areKeywordLinksEnabled(),
       relatedNotesSortMode: this.preferences.value.relatedNotesSortMode,
       sectionAccessCounts: this.preferences.value.sectionAccessCounts,
@@ -545,7 +548,7 @@ export class SidebarNotesView
           ...snapshot,
           hideDailyNotes,
           previewLines,
-          links: collectNoteLinks(index, indexedFile, { hideDailyNotes }),
+          links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes }),
         }
       : { ...snapshot, hideDailyNotes, previewLines };
   }

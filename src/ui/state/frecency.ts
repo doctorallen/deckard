@@ -17,7 +17,8 @@ const DAY = 24 * 60 * 60 * 1000;
 export function frecencyScore(
   count: number,
   lastAccess: number | undefined,
-  now: number = Date.now(),
+  /** The moment the score is for, which the caller read once for all its scores. */
+  now: number,
   halfLifeDays = FRECENCY_HALF_LIFE_DAYS,
 ): number {
   if (count <= 0 && lastAccess === undefined) {

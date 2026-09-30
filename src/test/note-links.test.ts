@@ -73,7 +73,7 @@ suite('What links to a note', () => {
       'notes/Atlas.md': '# Atlas\n',
       'notes/Long.md': `# Long\nSee [[Atlas]].\n${body}\n## Next\nNot this.\n`,
     });
-    const entry = collectNoteLinks(index, index.files.get('notes/Atlas.md')!).linkedFromNotes[0].entries[0];
+    const entry = collectNoteLinks(index, index.files.get('notes/Atlas.md')!, { now: NOW }).linkedFromNotes[0].entries[0];
     const lines = entry.sectionText?.split('\n') ?? [];
     assert.strictEqual(lines.length, 15);
     assert.strictEqual(lines[0], 'See [[Atlas]].');
@@ -97,10 +97,10 @@ suite('What links to a note', () => {
       'notes/Budget.md': '# Budget #project/atlas\nSee [[Atlas]].\n',
     });
     const atlas = index.files.get('notes/Atlas.md')!;
-    const all = collectNoteLinks(index, atlas);
+    const all = collectNoteLinks(index, atlas, { now: NOW });
     assert.strictEqual(all.linkedFromNoteCount, 3);
     assert.strictEqual(all.hiddenDailyNoteCount, undefined);
-    const hidden = collectNoteLinks(index, atlas, { hideDailyNotes: true });
+    const hidden = collectNoteLinks(index, atlas, { now: NOW, hideDailyNotes: true });
     assert.deepStrictEqual(hidden.linkedFromNotes.map((group) => group.title), ['Budget']);
     assert.strictEqual(hidden.hiddenDailyNoteCount, 2);
     assert.strictEqual(hidden.linkedFromCount, 1);

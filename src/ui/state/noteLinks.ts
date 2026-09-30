@@ -32,7 +32,8 @@ const SECTION_LINES = 15;
 const SECTION_CHARACTERS = 1500;
 
 export interface NoteLinkOptions {
-  now?: number;
+  /** The moment the links are listed at, which says how lately each note changed. */
+  now: number;
   /** Leave out links from daily, weekly, and monthly notes, and count them. */
   hideDailyNotes?: boolean;
 }
@@ -40,9 +41,9 @@ export interface NoteLinkOptions {
 export function collectNoteLinks(
   index: WorkspaceIndex,
   file: ParsedFile,
-  options: NoteLinkOptions = {},
+  options: NoteLinkOptions,
 ): NoteLinks {
-  const now = options.now ?? Date.now();
+  const { now } = options;
   const everyLink = getBacklinkIndex(index).toNote(file.filePath);
   // A daily note links to everything written that day, so it can be left
   // out; the notes left out are counted, so the list can say so.
