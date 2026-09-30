@@ -450,6 +450,16 @@ function probeScript(surface) {
  * The page as the webview shows it, with the VS Code bridge replaced. probe
  * is the script that measures it, the layout probe unless another is given.
  */
+/**
+ * Every transition and animation at its end, and no caret. A page is
+ * measured and photographed once, at a moment Chrome picks, so anything
+ * still moving then is caught at a different point on each run: CI drew 17
+ * surfaces differently from one run to the next, the first card's focus
+ * ring half faded in or not yet there. What is checked is where a page
+ * settles, which is what a reader sees once it stops moving.
+ */
+const SETTLED = '*, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 0s !important; animation-delay: 0s !important; caret-color: transparent !important; }';
+
 function buildPage(html, surface, probe = probeScript(surface)) {
   const snapshot = surface.snapshot();
   // The page keeps its Content-Security-Policy, which Chrome enforces as VS
@@ -471,7 +481,7 @@ setTimeout(function () { ${probe} }, 50);
 </script>`;
   const inner = html
     // VS Code sets its tokens on the document; here a style block does.
-    .replace('<head>', `<head><style${nonced}>${vscodePaletteCss('dark')}</style>`)
+    .replace('<head>', `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}</style>`)
     .replace(/<script/, `${bridge}<script`)
     .replace(/<\/body>/, `${drive}</body>`);
   const [width, height] = surface.viewport;
