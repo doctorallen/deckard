@@ -759,7 +759,6 @@ export default {
     "src/core/markdown/parser.ts": 1,
     "src/core/query/queryEdit.ts": 1,
     "src/core/workspace/indexState.ts": 4,
-    "src/core/workspace/indexer.ts": 1,
     "src/core/workspace/parked.ts": 1,
     "src/test/webviewPage.ts": 1,
     "src/ui/commands/capture.ts": 2,

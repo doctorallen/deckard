@@ -19,6 +19,7 @@ import {
 import { measure, measureAsync, reportError } from '../timing';
 import { FileStamp, WorkspaceScanner, describeError } from './scanner';
 import type { OwnWrites } from './writeHistory';
+import { ChangeWatcher, QueuedChange } from './changeWatcher';
 import { IndexState, NoteChange } from './indexState';
 import { ViewUpdateOptions } from './publishing';
 import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
@@ -83,13 +84,10 @@ interface ViewSubscription {
 export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Disposable {
   private readonly updateEmitter = new Emitter<WorkspaceIndex>();
   private readonly disposables: Disposable[] = [];
-  private readonly watcherDisposables: Disposable[] = [];
   /** The notes and the index derived from them, updated a note at a time. */
   private state = IndexState.build([]);
   /** The parse settings the notes in the state were read under. */
   private parsedUnder: string | undefined;
-  private readonly pending = new Map<string, PendingUpdate<U>>();
-  private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private readyPromise: Promise<void> = Promise.resolve();
   private disposed = false;
   /** The derived index, kept until the notes next change. */
@@ -112,9 +110,9 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
   private readonly schedule: (run: () => void) => void;
   private readonly version: string;
   private readonly readCache: boolean;
-  private readonly events: WorkspaceEvents<U> | undefined;
   private readonly progress: Progress;
-  private readonly ownWrites: Pick<OwnWrites, 'take'> | undefined;
+  /** Hears changes to the workspace and queues or carries out what each requires. */
+  private readonly watcher: ChangeWatcher<U>;
   private readonly publishedPromise: Promise<void>;
   private resolvePublished: () => void = () => undefined;
   /** Whether the index shows the cache's notes, not yet checked against the files. */
@@ -128,9 +126,22 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     this.schedule = options.schedule ?? ((run) => void setImmediate(run));
     this.version = options.version ?? '';
     this.readCache = options.readCache ?? false;
-    this.events = options.events;
     this.progress = options.progress ?? PROGRESS_NOWHERE;
-    this.ownWrites = options.ownWrites;
+    this.watcher = new ChangeWatcher(
+      scanner,
+      {
+        forgetParkedRules: () => {
+          this.parkedRules = undefined;
+        },
+        republishParking: () => this.republishParking(),
+        rescan: () => {
+          this.readyPromise = this.refresh();
+        },
+        applyQueued: (changes) => this.applyQueued(changes),
+      },
+      options.events,
+      options.ownWrites,
+    );
     this.publishedPromise = new Promise<void>((resolve) => {
       this.resolvePublished = resolve;
     });
@@ -176,7 +187,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * are queued rather than lost.
    */
   public start(): Promise<void> {
-    this.registerWatchers();
+    this.watcher.start();
     this.readyPromise = this.startFromCache();
     return this.readyPromise;
   }
@@ -553,12 +564,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    */
   public dispose(): void {
     this.disposed = true;
-    if (this.flushHandle) {
-      clearTimeout(this.flushHandle);
-    }
-    this.watcherDisposables
-      .splice(0)
-      .forEach((disposable) => disposable.dispose());
+    this.watcher.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     this.views.clear();
     this.viewQueue = [];
@@ -566,143 +572,15 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
   }
 
   /**
-   * Connects configuration, workspace, editor, and filesystem changes to one
-   * queued update path so every source of change produces the same index shape.
+   * Republishes with parking worked out again from `deckard.parked`, reading
+   * no note. Before a first scan there is nothing to redraw.
    */
-  private registerWatchers(): void {
-    const events = this.events;
-    if (!events) {
+  private republishParking(): void {
+    if (!this.indexedOnce) {
       return;
     }
-    this.disposables.push(
-      events.onDidChangeConfiguration((event) => {
-        const notesFolderChanged = event.affectsConfiguration(
-          'deckard.notesFolder',
-        );
-        const inlineTagsChanged =
-          event.affectsConfiguration('deckard.parseInlineTags') ||
-          event.affectsConfiguration('deckard.noteBoundaries');
-        const entityNamespaceAliasesChanged = event.affectsConfiguration(
-          'deckard.entityNamespaceAliases',
-        );
-        const personMarkerChanged = event.affectsConfiguration(
-          'deckard.personMarker',
-        );
-        const templatesFolderChanged = event.affectsConfiguration(
-          'deckard.templatesFolder',
-        );
-        const excludeChanged =
-          event.affectsConfiguration('deckard.exclude') ||
-          event.affectsConfiguration('files.exclude') ||
-          event.affectsConfiguration('search.exclude');
-        if (
-          event.affectsConfiguration('deckard.parked') ||
-          event.affectsConfiguration('deckard.entityNamespaceAliases')
-        ) {
-          this.parkedRules = undefined;
-          if (event.affectsConfiguration('deckard.parked') && this.indexedOnce) {
-            this.snapshot = undefined;
-            this.emitUpdate();
-          }
-        }
-        if (
-          notesFolderChanged ||
-          inlineTagsChanged ||
-          entityNamespaceAliasesChanged ||
-          personMarkerChanged ||
-          templatesFolderChanged ||
-          excludeChanged
-        ) {
-          if (notesFolderChanged) {
-            this.replaceWatchers();
-          }
-          this.readyPromise = this.refresh();
-        }
-      }),
-    );
-    this.disposables.push(
-      events.onDidChangeWorkspaceFolders(() => {
-        this.replaceWatchers();
-        this.parkedRules = undefined;
-        this.readyPromise = this.refresh();
-      }),
-    );
-    this.disposables.push(
-      events.onDidSaveTextDocument((document) => {
-        if (this.scanner.isNotesFile(document.uri)) {
-          // A note Deckard just wrote is read back at once.
-          this.queueUpsert(
-            document.uri,
-            undefined,
-            this.ownWrites?.take(document.uri.toString()) ?? false,
-          );
-        }
-      }),
-    );
-    this.replaceWatchers();
-  }
-
-  /**
-   * Recreates globs when the configured notes boundary changes.
-   */
-  private replaceWatchers(): void {
-    this.watcherDisposables
-      .splice(0)
-      .forEach((disposable) => disposable.dispose());
-    const events = this.events;
-    if (!events) {
-      return;
-    }
-
-    for (const pattern of this.scanner.getPatterns()) {
-      const watcher = events.createFileSystemWatcher(pattern);
-      this.watcherDisposables.push(watcher);
-      // The glob can take in files that are not notes, such as templates.
-      const upsertNote = (uri: U) => {
-        if (this.scanner.isNotesFile(uri)) {
-          this.queueUpsert(uri);
-        }
-      };
-      this.watcherDisposables.push(watcher.onDidCreate(upsertNote));
-      this.watcherDisposables.push(watcher.onDidChange(upsertNote));
-      this.watcherDisposables.push(
-        watcher.onDidDelete((uri) => this.queueDelete(uri)),
-      );
-    }
-  }
-
-  /**
-   * Replaces pending work for a URI because only its newest content matters.
-   */
-  private queueUpsert(uri: U, content?: string, now = false): void {
-    this.pending.set(uri.toString(), { uri, content, deleted: false });
-    this.scheduleFlush(now);
-  }
-
-  /**
-   * Coalesces deletion with other URI changes before rebuilding the index.
-   */
-  private queueDelete(uri: U): void {
-    this.pending.set(uri.toString(), { uri, deleted: true });
-    this.scheduleFlush();
-  }
-
-  /**
-   * Debounces bursts from typing and filesystem watchers into one refresh event.
-   */
-  private scheduleFlush(now = false): void {
-    if (this.flushHandle) {
-      if (!now) {
-        return;
-      }
-      // A write of Deckard's own does not wait out another's debounce.
-      clearTimeout(this.flushHandle);
-    }
-
-    this.flushHandle = setTimeout(() => {
-      this.flushHandle = undefined;
-      void this.flushPending();
-    }, now ? 0 : 200);
+    this.snapshot = undefined;
+    this.emitUpdate();
   }
 
   /**
@@ -711,9 +589,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * Saved-file reads refresh timestamps; in-memory parses reuse prior metadata
    * because unsaved editor content cannot provide a trustworthy file stat.
    */
-  private async flushPending(): Promise<void> {
-    const updates = [...this.pending.values()];
-    this.pending.clear();
+  private async applyQueued(updates: ReadonlyArray<QueuedChange<U>>): Promise<void> {
     const changes = await measureAsync(
       'Read changed notes',
       () => this.readUpdates(updates),
@@ -729,7 +605,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
   }
 
   /** Reads what changed, in the order it was queued, as changes to apply. */
-  private async readUpdates(updates: Array<PendingUpdate<U>>): Promise<NoteChange[]> {
+  private async readUpdates(updates: ReadonlyArray<QueuedChange<U>>): Promise<NoteChange[]> {
     const changes: NoteChange[] = [];
     for (const update of updates) {
       const filePath = this.scanner.getFilePath(update.uri);
@@ -851,10 +727,4 @@ function reuseUnchanged(
     Buffer.byteLength(file.content, 'utf8') === stamp.size
     ? file
     : undefined;
-}
-
-interface PendingUpdate<U extends ResourceUri> {
-  uri: U;
-  content?: string;
-  deleted: boolean;
 }

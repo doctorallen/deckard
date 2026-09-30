@@ -250,7 +250,8 @@ async function save(indexer, file) {
       resolve();
     });
   });
-  indexer.queueUpsert(vscode.Uri.file(file), undefined, true);
+  // The change queue is the watcher's, which the indexer holds privately.
+  indexer.watcher.queueUpsert(vscode.Uri.file(file), undefined, true);
   await published;
   return performance.now() - started;
 }

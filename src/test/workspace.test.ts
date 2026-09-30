@@ -131,10 +131,12 @@ suite('Workspace scanner and index', () => {
       debug: (line) => lines.push(line),
       info: (line) => lines.push(line),
     });
-    const controller = indexer as unknown as {
-      queueUpsert(uri: ResourceUri, content?: string, now?: boolean): void;
-      queueDelete(uri: ResourceUri): void;
-    };
+    const controller = (indexer as unknown as {
+      watcher: {
+        queueUpsert(uri: ResourceUri, content?: string, now?: boolean): void;
+        queueDelete(uri: ResourceUri): void;
+      };
+    }).watcher;
     const published = () =>
       new Promise<void>((resolve) => {
         const subscription = indexer.onDidUpdate(() => {
