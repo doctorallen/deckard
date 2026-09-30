@@ -43,7 +43,9 @@ function modulesReaching(graph, target) {
   const importers = new Map();
   for (const [source, targets] of graph) {
     for (const imported of targets) {
-      if (!importers.has(imported)) importers.set(imported, []);
+      if (!importers.has(imported)) {
+        importers.set(imported, []);
+      }
       importers.get(imported).push(source);
     }
   }
@@ -51,7 +53,9 @@ function modulesReaching(graph, target) {
   const queue = [target];
   while (queue.length) {
     for (const importer of importers.get(queue.shift()) ?? []) {
-      if (reached.has(importer)) continue;
+      if (reached.has(importer)) {
+        continue;
+      }
       reached.add(importer);
       queue.push(importer);
     }

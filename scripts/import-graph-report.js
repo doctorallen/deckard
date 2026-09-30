@@ -27,7 +27,9 @@ const importsVscode = (source) => graph.get(source).includes(VSCODE);
  */
 function folderOf(source) {
   const match = /^src\/(core|ui)\/([^/]+)\//.exec(source);
-  if (match) return `src/${match[1]}/${match[2]}`;
+  if (match) {
+    return `src/${match[1]}/${match[2]}`;
+  }
   return source.startsWith('src/test/') ? 'src/test' : source;
 }
 
@@ -51,11 +53,15 @@ function shortestChain(from, target) {
     const current = queue.shift();
     if (current === target) {
       const chain = [];
-      for (let at = current; at !== undefined; at = previous.get(at)) chain.unshift(at);
+      for (let at = current; at !== undefined; at = previous.get(at)) {
+        chain.unshift(at);
+      }
       return chain;
     }
     for (const next of graph.get(current) ?? []) {
-      if (previous.has(next)) continue;
+      if (previous.has(next)) {
+        continue;
+      }
       previous.set(next, current);
       queue.push(next);
     }
@@ -79,7 +85,9 @@ function findCycles(modules) {
     stack.push(module);
     onStack.add(module);
     for (const next of graph.get(module) ?? []) {
-      if (!within.has(next)) continue;
+      if (!within.has(next)) {
+        continue;
+      }
       if (!indexOf.has(next)) {
         visit(next);
         lowLink.set(module, Math.min(lowLink.get(module), lowLink.get(next)));
@@ -87,7 +95,9 @@ function findCycles(modules) {
         lowLink.set(module, Math.min(lowLink.get(module), indexOf.get(next)));
       }
     }
-    if (lowLink.get(module) !== indexOf.get(module)) return;
+    if (lowLink.get(module) !== indexOf.get(module)) {
+      return;
+    }
     const group = [];
     let member;
     do {
@@ -95,7 +105,9 @@ function findCycles(modules) {
       onStack.delete(member);
       group.push(member);
     } while (member !== module);
-    if (group.length > 1) cycles.push(group.sort());
+    if (group.length > 1) {
+      cycles.push(group.sort());
+    }
   };
   modules.forEach((module) => indexOf.has(module) || visit(module));
   return cycles;
@@ -128,10 +140,16 @@ out.push(table(
 const edges = new Map();
 for (const source of shipped) {
   for (const target of graph.get(source)) {
-    if (!target.startsWith('src/')) continue;
+    if (!target.startsWith('src/')) {
+      continue;
+    }
     const key = `${folderOf(source)} -> ${folderOf(target)}`;
-    if (folderOf(source) === folderOf(target)) continue;
-    if (!edges.has(key)) edges.set(key, { imports: 0, targets: new Set() });
+    if (folderOf(source) === folderOf(target)) {
+      continue;
+    }
+    if (!edges.has(key)) {
+      edges.set(key, { imports: 0, targets: new Set() });
+    }
     edges.get(key).imports += 1;
     edges.get(key).targets.add(target);
   }
@@ -163,7 +181,9 @@ const closure = new Set([worker]);
 const pending = [worker];
 while (pending.length) {
   for (const next of graph.get(pending.shift()) ?? []) {
-    if (closure.has(next) || !next.startsWith('src/')) continue;
+    if (closure.has(next) || !next.startsWith('src/')) {
+      continue;
+    }
     closure.add(next);
     pending.push(next);
   }
@@ -189,7 +209,9 @@ const gateways = new Map();
 for (const test of blocked.filter((candidate) => !importsVscode(candidate))) {
   const chain = shortestChain(test, VSCODE);
   const gateway = chain[chain.length - 2];
-  if (!gateways.has(gateway)) gateways.set(gateway, []);
+  if (!gateways.has(gateway)) {
+    gateways.set(gateway, []);
+  }
   gateways.get(gateway).push(path.basename(test, '.test.ts'));
 }
 out.push('\nFor the suites that reach `vscode` only through what they test, the module on the shortest path that imports `vscode` itself:\n');

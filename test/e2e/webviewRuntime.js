@@ -423,7 +423,6 @@ function mountWebview(html, panel) {
 
   install();
   try {
-    // eslint-disable-next-line no-new-func
     new Function(script)();
   } finally {
     restore();

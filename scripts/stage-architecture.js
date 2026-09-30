@@ -24,7 +24,9 @@ const STAGED_ELSEWHERE = [
 function listPages(folder, prefix = '') {
   return readdirSync(folder).flatMap((name) => {
     const full = path.join(folder, name);
-    if (statSync(full).isDirectory()) return listPages(full, `${prefix}${name}/`);
+    if (statSync(full).isDirectory()) {
+      return listPages(full, `${prefix}${name}/`);
+    }
     return name.endsWith('.md') ? [`${prefix}${name}`] : [];
   });
 }
@@ -40,11 +42,15 @@ function listPages(folder, prefix = '') {
  *   stays within the section; otherwise its place on the site or on GitHub.
  */
 function relink(page, href, blob) {
-  if (/^([a-z]+:|#|\/)/i.test(href)) return href;
+  if (/^([a-z]+:|#|\/)/i.test(href)) {
+    return href;
+  }
   const [target, anchor] = href.split('#');
   const inRepository = path.posix.normalize(path.posix.join('docs/architecture', path.posix.dirname(page), target));
   const suffix = anchor === undefined ? '' : `#${anchor}`;
-  if (inRepository.startsWith('docs/architecture/')) return href;
+  if (inRepository.startsWith('docs/architecture/')) {
+    return href;
+  }
   const staged = STAGED_ELSEWHERE.find(({ from }) => inRepository.startsWith(from));
   if (staged) {
     const onSite = staged.to + inRepository.slice(staged.from.length);
