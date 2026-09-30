@@ -12,7 +12,8 @@ import { createVscodeProgress } from './platform/vscodeProgress';
 import { createVscodeWorkspace } from './platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
-import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
+import { capture, CaptureDrafts, captureToToday, createCaptureNotes } from './ui/commands/capture';
+import { CaptureService } from './services/captureService';
 import { createHubNote } from './ui/commands/hubNote';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
 import {
@@ -89,12 +90,14 @@ import {
   rescheduleTasks,
   setTasksDue,
 } from './ui/commands/agendaActions';
-import { createPinForLine } from './ui/state/pinnedNotes';
-import { pinKey } from './core/storage/preferences';
+import { PinService } from './services/pinService';
 import {
   LinkMaintenance,
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
+import { vscodeLiveNotes } from './ui/commands/linkMaintenancePorts';
+import { LinkNoteService, LinkService } from './services/linkService';
+import { findUnlinkedMentions } from './ui/state/editorLensState';
 import { WikiLinkCompletionProvider } from './ui/providers/linkSuggestions';
 import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
@@ -304,17 +307,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     themePreview,
   });
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
+  // Which entry a line of a note pins, and whether it is pinned, for the
+  // hover and Find's rows alike.
+  const pins = new PinService({ index: indexer, store: preferences });
   // The hover on an entry offers to pin it, so it has to know which entries
-  // are pinned; preferences answer, and a change redraws the hovers.
+  // are pinned; PinService answers, and a change redraws the hovers.
   const readPinned = (): void => {
-    tagDecorations.setPinnedReader((filePath, line) => {
-      const pin = createPinForLine(
-        indexer.getSnapshot(),
-        indexer.getFilePath(vscode.Uri.file(filePath)),
-        line,
-      );
-      return pin !== undefined && preferences.isPinned(pinKey(pin));
-    });
+    tagDecorations.setPinnedReader((filePath, line) =>
+      pins.isLinePinned(indexer.getFilePath(vscode.Uri.file(filePath)), line),
+    );
   };
   readPinned();
   context.subscriptions.push(preferences.onDidChange(() => readPinned()));
@@ -413,7 +414,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     indexer.isNotesFile(uri),
   ).register();
   const linkHealth = new LinkHealth(indexer);
-  const linkMaintenance = new LinkMaintenance(indexer);
+  // Which links a rename carries and which mentions become links, and the
+  // notes links name, each decided once for every command that asks.
+  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions });
+  const linkNotes = new LinkNoteService(vscodeWorkspace);
+  const linkMaintenance = new LinkMaintenance(indexer, links);
   const calendar = new CalendarView(indexer, taskWrites, themePreview);
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
@@ -457,17 +462,19 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     writes: taskWrites,
     themePreview,
   });
-  const quickFind = new QuickFind(
+  const quickFind = new QuickFind({
     indexer,
     preferences,
-    {
+    actions: {
       openTag: (tagKey) => searchPanels.show(tagKey),
       openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
       showSearch: (query) => searchPanels.showQuery(query),
       moveTask: (task) => moveTasks(indexer, preferences, taskWrites, [task]),
     },
-    taskWrites,
-  );
+    writes: taskWrites,
+    pins,
+    linkNotes,
+  });
   const sidebarNotes = new SidebarNotesView({
     indexer,
     preferences,
@@ -518,6 +525,18 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
   // What was typed into Capture and not yet written, for this workspace.
   const captureDrafts = new CaptureDrafts(context.workspaceState);
+  // Where a capture goes once it is typed, and when its draft is let go.
+  const captureContext = {
+    indexer,
+    drafts: captureDrafts,
+    preferences,
+    captures: new CaptureService({
+      index: indexer,
+      notes: createCaptureNotes(indexer),
+      drafts: captureDrafts,
+      recentHeadings: preferences,
+    }),
+  };
   activeServices = {
     indexer,
     preferences,
@@ -1058,7 +1077,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       toggleTaskDoneCommand({ paths: indexer, keepRank: taskWrites.keepRank }),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
-      capture(indexer, 'today', captureDrafts, preferences),
+      capture(captureContext, 'today'),
     ),
     // The hover on a tagged entry passes the line it was shown on, so it
     // pins that entry rather than wherever the cursor happens to be.
@@ -1090,7 +1109,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         ),
     ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
-      capture(indexer, 'heading', captureDrafts, preferences),
+      capture(captureContext, 'heading'),
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer, templates),
@@ -1149,7 +1168,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       CREATE_LINKED_NOTE_COMMAND,
       (documentUri: unknown, name: unknown) =>
         typeof documentUri === 'string' && typeof name === 'string'
-          ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name)
+          ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name, linkNotes)
           : undefined,
     ),
     vscode.commands.registerCommand(
@@ -1158,20 +1177,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         typeof documentUri === 'string' &&
         Array.isArray(names) &&
         names.every((name) => typeof name === 'string')
-          ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names)
+          ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names, { notes: linkNotes })
           : undefined,
     ),
     vscode.commands.registerCommand(
       LINK_MENTIONS_COMMAND,
       (documentUri: unknown) =>
         typeof documentUri === 'string'
-          ? linkMentions(indexer, history, vscode.Uri.parse(documentUri))
+          ? linkMentions(indexer, history, vscode.Uri.parse(documentUri), links)
           : undefined,
     ),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.extractHeading', () =>
-      extractHeadingCommand(indexer),
+      extractHeadingCommand(indexer, linkNotes),
     ),
     vscode.commands.registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, preferences, taskWrites),
@@ -1231,7 +1250,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         ),
     ),
     vscode.commands.registerCommand('deckard.renameHeading', () =>
-      renameHeadingCommand(indexer, history),
+      renameHeadingCommand(indexer, history, links),
     ),
     vscode.commands.registerCommand('deckard.undoLastChange', () =>
       history.undoLast(() => indexer.refresh()),

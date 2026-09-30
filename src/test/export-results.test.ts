@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { Section, Task } from '../core/types';
-import { csv, formatNotes, formatTasks, markdownTable, noteRows, taskRows } from '../ui/commands/exportResults';
+import { Section, Task } from '../domain/model';
+import { csv, formatNotes, formatTasks, markdownTable, noteRows, taskRows } from '../domain/export/exportFormats';
 import { findQueryBlocks, formatQueryBlock } from '../ui/state/queryBlockState';
 
 suite('Exporting results', () => {

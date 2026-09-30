@@ -42,17 +42,11 @@ export default {
     "src/ui/commands/assistantWrites.ts": [
       "changeTaskLine"
     ],
-    "src/ui/commands/capture.ts": [
-      "askForCapture"
-    ],
     "src/ui/commands/extractHeading.ts": [
       "extractHeadingNote"
     ],
     "src/ui/commands/hubNote.ts": [
       "applyHubTemplate"
-    ],
-    "src/ui/commands/linkMaintenance.ts": [
-      "planHeadingRenameRewrites"
     ],
     "src/ui/commands/navigation.ts": [
       "openSourceAt"
@@ -129,9 +123,7 @@ export default {
     "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/query/queryEvaluator.ts": 3,
     "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/exportResults.ts": 2,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
-    "src/ui/commands/quickFind.ts": 2,
     "src/ui/commands/quickFindActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
@@ -179,9 +171,6 @@ export default {
     "src/ui/commands/bulkEdit.ts": [
       "describeBulkEditResult"
     ],
-    "src/ui/commands/capture.ts": [
-      "capture"
-    ],
     "src/ui/commands/checkSetup.ts": [
       "buildSetupReport"
     ],
@@ -190,7 +179,6 @@ export default {
     ],
     "src/ui/commands/quickFind.ts": [
       "accept",
-      "runAction",
       "toPickItems",
       "triggerItemButton"
     ],
@@ -321,23 +309,17 @@ export default {
     "src/ui/commands/assistantTools.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/capture.ts": 3,
     "src/ui/commands/checkSetup.ts": 4,
     "src/ui/commands/chooseTheme.ts": 2,
     "src/ui/commands/destinationPicker.ts": 2,
-    "src/ui/commands/exportResults.ts": 6,
-    "src/ui/commands/extractHeading.ts": 3,
     "src/ui/commands/firstIndex.ts": 2,
     "src/ui/commands/linkEntity.ts": 1,
-    "src/ui/commands/linkHealth.ts": 2,
-    "src/ui/commands/linkMaintenance.ts": 2,
     "src/ui/commands/mcpServer.ts": 4,
     "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/noteVisits.ts": 5,
     "src/ui/commands/notify.ts": 2,
     "src/ui/commands/pinNote.ts": 2,
     "src/ui/commands/preferenceBackups.ts": 5,
-    "src/ui/commands/quickFind.ts": 4,
     "src/ui/commands/quickFindActions.ts": 4,
     "src/ui/commands/sampleWorkspace.ts": 2,
     "src/ui/commands/selectionSeed.ts": 2,
@@ -446,24 +428,16 @@ export default {
     "src/ui/commands/bulkEdit.ts": [
       "applyBulkEdit"
     ],
-    "src/ui/commands/capture.ts": [
-      "askForCapture",
-      "capture"
-    ],
     "src/ui/commands/checkSetup.ts": [
       "buildSetupReport"
     ],
     "src/ui/commands/extractHeading.ts": [
       "replaceSectionWithLink"
     ],
-    "src/ui/commands/linkMaintenance.ts": [
-      "renameHeadingCommand"
-    ],
     "src/ui/commands/moveTo.ts": [
       "moveBlocks"
     ],
     "src/ui/commands/quickFind.ts": [
-      "runAction",
       "toPickItems"
     ],
     "src/ui/commands/quickFindActions.ts": [
@@ -608,7 +582,6 @@ export default {
     "src/ui/commands/assistantWrites.ts": 1,
     "src/ui/commands/bulkEdit.ts": 2,
     "src/ui/commands/moveTo.ts": 2,
-    "src/ui/commands/quickFind.ts": 4,
     "src/ui/preview/queryBlockHtml.ts": 2,
     "src/ui/providers/editorReferences.ts": 1,
     "src/ui/providers/tagSuggestions.ts": 1,
@@ -662,14 +635,11 @@ export default {
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
-    "src/ui/commands/capture.ts": 2,
     "src/ui/commands/chooseTheme.ts": 1,
     "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/linkMaintenance.ts": 1,
     "src/ui/commands/mcpServer.ts": 1,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/noteVisits.ts": 1,
-    "src/ui/commands/quickFind.ts": 3,
     "src/ui/commands/savedSearchHome.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/commands/tidyPreferences.ts": 1,
