@@ -41,11 +41,7 @@ import { noteActionsCommand } from './ui/commands/noteActions';
 import { TaskLineDecorations } from './ui/commands/taskLineDecorations';
 import { RepeatRuleHealth } from './ui/commands/repeatRuleHealth';
 import { WordCountStatusBar } from './ui/views/wordCountStatusBar';
-import {
-  focusSectionCommand,
-  trackSectionFocus,
-  unfoldAllSectionsCommand,
-} from './ui/commands/focusSection';
+import { SectionFocus } from './ui/commands/focusSection';
 import {
   excludeFolderCommand,
   ExcludedFoldersContext,
@@ -727,6 +723,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   void syncOutlineFollowCursorContext();
   void syncZenModeContext();
+  // Which note a section is focused in, which leaving it clears.
+  const sectionFocus = new SectionFocus();
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'deckard.outline.revealSection',
@@ -764,12 +762,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       if (outlineNode) {
         await outline.revealSection(outlineNode);
       }
-      await focusSectionCommand(outlineNode?.line);
+      await sectionFocus.focus(outlineNode?.line);
     }),
     vscode.commands.registerCommand('deckard.unfoldAllSections', () =>
-      unfoldAllSectionsCommand(),
+      sectionFocus.unfoldAll(),
     ),
-    trackSectionFocus(),
+    sectionFocus,
     vscode.commands.registerCommand('deckard.outline.filterByTag', async (node?: unknown) => {
       const outlineNode = asOutlineNode(node);
       if (outlineNode) {
