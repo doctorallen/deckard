@@ -43,6 +43,22 @@ const PIXEL_THRESHOLD = 0.1;
  * still forgives a stray edge.
  */
 const FAIL_ABOVE = 0.0001;
+/**
+ * Surfaces that still come to rest differently from one drawing to the
+ * next, and the share of the page each may differ by instead.
+ *
+ * Synthwave's Task Board, by status and by tag, sometimes settles with the
+ * top of the next card showing at the foot of a column and sometimes
+ * without it: 198 to 517 pixels, about 0.04% of the page, on dev as on
+ * every branch, with transitions and the caret already settled. Until the
+ * column's scroll settles the same way every time, these two may differ by
+ * a tenth of a percent, which still fails any change to how the board looks
+ * that is larger than a strip of one card.
+ */
+const UNSETTLED = new Map([
+  ['synthwave-taskBoard', 0.001],
+  ['synthwave-taskBoardByTag', 0.001],
+]);
 
 const BASELINES = path.join(__dirname, 'visual-baseline', process.platform);
 const updating = process.argv.includes('--update');
@@ -118,7 +134,7 @@ try {
         const differing = pixelmatch(expected.data, drawn.data, diff.data, drawn.width, drawn.height, { threshold: PIXEL_THRESHOLD });
         const share = differing / (drawn.width * drawn.height);
         compared += 1;
-        if (share > FAIL_ABOVE) {
+        if (share > (UNSETTLED.get(name) ?? FAIL_ABOVE)) {
           failed += 1;
           const diffFile = path.join(dir, `${name}.diff.png`);
           writeFileSync(diffFile, PNG.sync.write(diff));
