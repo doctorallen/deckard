@@ -208,65 +208,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/ui/state/calendarState.ts",
-    "to": "src/ui/commands/dailyNote.ts",
-    "unresolvedTo": "../commands/dailyNote",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/ui/state/dashboardState.ts",
     "to": "src/ui/webview/rendering.ts",
     "unresolvedTo": "../webview/rendering",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/dashboardWidgets.ts",
-    "to": "src/ui/commands/dailyNote.ts",
-    "unresolvedTo": "../commands/dailyNote",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/editorLensState.ts",
-    "to": "src/ui/commands/dailyNote.ts",
-    "unresolvedTo": "../commands/dailyNote",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/editorLensState.ts",
-    "to": "src/ui/commands/rollover.ts",
-    "unresolvedTo": "../commands/rollover",
     "dependencyTypes": [
       "local",
       "import"
