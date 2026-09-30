@@ -315,6 +315,8 @@ export class StatsPanel implements vscode.Disposable {
           this.indexer.getSnapshot(),
           this.preferences.value,
           this.indexer.getUnreadable(),
+          // The moment the page is drawn at, which its trends end on.
+          Date.now(),
         ),
       ),
     });

@@ -862,13 +862,15 @@ function slimEntity(entity: Entity): SearchPageEntity {
 }
 
 /**
- * Summarizes the current index and recorded local navigation for the Stats page.
+ * Summarizes the current index and recorded local navigation for the Stats
+ * page, with the notes that could not be read, its trends ending at `now`,
+ * the moment the page asked at.
  */
 export function createDeckardStatsSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  unreadable: readonly UnreadableNote[] = [],
-  now = Date.now(),
+  unreadable: readonly UnreadableNote[],
+  now: number,
 ): DeckardStatsSnapshot {
   // Every pair, once: Stats lists the clearest, and a tag used once is
   // offered its lookalike from the same list.
@@ -947,16 +949,16 @@ const TREND_POINTS = 13;
 
 /**
  * How the Notes, Tasks, and Open tasks totals stood at the end of each of
- * the last twelve rolling weeks, ending now, rebuilt from today's notes: an
- * entry counts from its note's date, a task is open from then until its ✅
- * date, or its note's last change when it has none. Deleted notes are gone
- * from past weeks too, and an entry added to an old note counts from that
- * note's date. One pass over the entries; each adds where it starts, and a
- * done task takes itself away where it ends.
+ * the last twelve rolling weeks, ending at `now`, rebuilt from today's
+ * notes: an entry counts from its note's date, a task is open from then
+ * until its ✅ date, or its note's last change when it has none. Deleted
+ * notes are gone from past weeks too, and an entry added to an old note
+ * counts from that note's date. One pass over the entries; each adds where
+ * it starts, and a done task takes itself away where it ends.
  */
 export function createStatsTrends(
   index: WorkspaceIndex,
-  now = Date.now(),
+  now: number,
 ): DeckardStatsSnapshot['trends'] {
   const last = TREND_POINTS - 1;
   /** The first point at which something dated `at` exists; undated, always. */
