@@ -1,5 +1,7 @@
 import { performance } from 'perf_hooks';
 
+import type { Log } from '../ports/log';
+
 /**
  * Measures Deckard's work and reports it to a log, so a slow machine can be
  * diagnosed from an installed extension rather than only from a debugger.
@@ -13,15 +15,8 @@ import { performance } from 'perf_hooks';
 /** VS Code's log levels, numbered as `vscode.LogLevel` numbers them. */
 const LogLevel = { off: 0, trace: 1, debug: 2, info: 3 } as const;
 
-/** Where lines go. VS Code's `LogOutputChannel` is one. */
-export interface TimingLog {
-  readonly logLevel: number;
-  trace(message: string): void;
-  debug(message: string): void;
-  info(message: string): void;
-  /** Optional on a test's log; VS Code's channel has it. */
-  error?(message: string): void;
-}
+/** Where lines go: the Log port, which VS Code's `LogOutputChannel` satisfies. */
+export type TimingLog = Log;
 
 /** A measurement at least this long is reported even at the default level. */
 export const SLOW_OPERATION_MS = 100;
