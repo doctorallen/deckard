@@ -1,4 +1,4 @@
-import { getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
+import { DEFAULT_TASK_POLICY, getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
 import { DAY_MS, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../paths';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
@@ -19,7 +19,8 @@ import {
   resolveLinkQuery,
   UnitLink,
 } from './queryLinks';
-import { DateDirection, resolveDateRange } from './queryDates';
+import { QueryContext } from './queryContext';
+import { DateDirection, getQueryWeekStart, resolveDateRange } from './queryDates';
 import { QueryConditionNode, QueryNode } from './queryTypes';
 import { escapeRegExp, isWildcard, normalizeFolder } from './queryValues';
 
@@ -52,16 +53,26 @@ interface TagMembership {
   files: Map<string, Set<string>>;
 }
 
+/**
+ * The sections, tasks, and notes of an index a parsed search finds, or none
+ * for a search that did not parse.
+ *
+ * Everything the answer depends on besides the index and the search comes in
+ * `query`, and its `now` is the one moment every date condition is compared
+ * against, so `is:today` and `due = today` agree however long the pass takes.
+ */
 export function evaluateQuery(
   index: WorkspaceIndex,
   node: QueryNode | undefined,
+  query: QueryContext = currentQueryContext(),
 ): QueryResults {
   if (!node) {
     return { sections: [], tasks: [], files: [] };
   }
 
   const membership = buildTagMembership(index);
-  const context = createEvaluationContext(index, node);
+  const context = createEvaluationContext(index, node, query);
+  const statusNamespace = query.taskPolicy.statusNamespace;
   const links = context.links;
   const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
     links ? { ...unit, links: links.byUnit.get(key) } : unit;
@@ -75,7 +86,7 @@ export function evaluateQuery(
   const tasks = [...index.tasks.values()].filter((task) =>
     matchesNode(
       node,
-      withLinks(createTaskUnit(index, membership, task), `task:${task.id}`),
+      withLinks(createTaskUnit(index, membership, task, statusNamespace), `task:${task.id}`),
       context,
     ),
   );
@@ -99,11 +110,13 @@ export function evaluateQuery(
 }
 
 /**
- * What one evaluation reads besides the unit itself: the workspace's links,
- * only when the search asks about them, and each link value read once.
+ * What one evaluation reads besides the unit itself: the settings and moment
+ * it is asked at, the workspace's links, only when the search asks about
+ * them, and each link value read once.
  */
 interface EvaluationContext {
   index: WorkspaceIndex;
+  query: QueryContext;
   links?: LinkState;
   linkQueries: Map<string, LinkQuery>;
 }
@@ -111,9 +124,11 @@ interface EvaluationContext {
 function createEvaluationContext(
   index: WorkspaceIndex,
   node: QueryNode,
+  query: QueryContext,
 ): EvaluationContext {
   return {
     index,
+    query,
     ...(hasField(node, 'link') ? { links: getQueryLinkState(index) } : {}),
     linkQueries: new Map(),
   };
@@ -176,7 +191,7 @@ export function countTagMatches(
     add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
   );
   index.tasks.forEach((task) =>
-    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
+    add(createTaskUnit(index, membership, task, COUNTED_STATUS_NAMESPACE).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
@@ -251,7 +266,7 @@ export function countTagPairMatches(
     add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
   );
   index.tasks.forEach((task) =>
-    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
+    add(createTaskUnit(index, membership, task, COUNTED_STATUS_NAMESPACE).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
@@ -262,6 +277,13 @@ export function countTagPairMatches(
   tagPairMatchCounts.set(index, pairs);
   return pairs;
 }
+
+/**
+ * The namespace a count reads a task's status in. A count reads only a
+ * unit's tags, never its status, so the count of an index is the same
+ * whatever the setting says, and one cache per index serves every reader.
+ */
+const COUNTED_STATUS_NAMESPACE = DEFAULT_TASK_POLICY.statusNamespace;
 
 /**
  * The most tags an entry may carry before its pairs are skipped. A note that
@@ -324,6 +346,19 @@ export function setQueryIdentity(person: string | undefined): void {
 
 export function getQueryIdentity(): string | undefined {
   return queryIdentity;
+}
+
+/**
+ * Transitional: the context the setters above describe, at this moment, for
+ * the callers not yet handed a QueryContext of their own.
+ */
+export function currentQueryContext(): QueryContext {
+  return {
+    ...(queryIdentity === undefined ? {} : { identity: queryIdentity }),
+    weekStart: getQueryWeekStart(),
+    taskPolicy: getTaskPolicy(),
+    now: Date.now(),
+  };
 }
 
 /**
@@ -505,10 +540,12 @@ export function readTaskTagKeys(index: WorkspaceIndex, task: Task): Set<string> 
   return tagKeys;
 }
 
+/** A task as a condition tests it, its status read in `statusNamespace`. */
 function createTaskUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
   task: Task,
+  statusNamespace: string,
 ): QueryUnit {
   const tagKeys = readTaskTagKeys(index, task);
   membership.tasks.get(task.id)?.forEach((tagKey) => tagKeys.add(tagKey));
@@ -529,7 +566,7 @@ function createTaskUnit(
     dependencyId: task.dependencyId,
     dependsOn: task.dependsOn,
     assignee: task.assignee,
-    status: readLineStatus(task),
+    status: readLineStatus(task, statusNamespace),
     parked: index.parked?.tasks.has(task.id) ?? false,
     step: task.parentTaskId !== undefined,
     stepCount: task.steps?.total ?? 0,
@@ -598,7 +635,7 @@ function matchesCondition(
         const notes = condition.value === 'daily' ? periodic.daily : periodic.periodic;
         return applyNegation(condition, notes.has(unit.filePath));
       }
-      return applyNegation(condition, matchesIs(condition.value, unit));
+      return applyNegation(condition, matchesIs(condition.value, unit, context.query));
     case 'has':
       return matchesHas(condition, unit);
     case 'in':
@@ -610,17 +647,14 @@ function matchesCondition(
     case 'path':
       return matchesPathValue(condition, unit.filePath);
     case 'created':
-      return matchesDate(condition, unit.createdAt, 'past');
+      return matchesDate(condition, unit.createdAt, 'past', context.query);
     case 'updated':
-      return matchesDate(condition, unit.updatedAt, 'past');
+      return matchesDate(condition, unit.updatedAt, 'past', context.query);
     case 'due':
-      return matchesTaskDate(condition, unit, unit.dueAt, 'future');
     case 'scheduled':
-      return matchesTaskDate(condition, unit, unit.scheduledAt, 'future');
     case 'start':
-      return matchesTaskDate(condition, unit, unit.startAt, 'future');
     case 'done':
-      return matchesTaskDate(condition, unit, unit.doneAt, 'past');
+      return matchesTaskDate(condition, unit, condition.field, context.query);
     case 'priority':
       return matchesPriority(condition, unit);
     case 'assignee':
@@ -701,13 +735,15 @@ function matchesTaskState(value: string, unit: QueryUnit): boolean {
  * `due` means open and due within the next seven days, overdue included.
  * `blocked` and `blocking` read the ⛔ and 🆔 dependency edges between open
  * tasks; `has:dependsOn` and `has:id` read the markers themselves, whether or
- * not the task at the other end is still open.
+ * not the task at the other end is still open. Today, the person who is me,
+ * and what is on hold are the context's.
  */
 function matchesIs(
   value: string,
   unit: QueryUnit,
-  now: number = Date.now(),
+  context: QueryContext,
 ): boolean {
+  const { now, identity } = context;
   if (value === 'note') {
     return unit.kind !== 'task';
   }
@@ -735,7 +771,7 @@ function matchesIs(
         unit.dueAt < startOfDay(now) + 7 * DAY_MS
       );
     case 'needs-date':
-      return open && needsNewDate(unit.dueAt, now);
+      return open && needsNewDate(unit.dueAt, now, context.taskPolicy);
     case 'today': {
       // Exactly the Tasks view's Today: due today, or scheduled for today or
       // earlier and started, and not overdue.
@@ -759,7 +795,7 @@ function matchesIs(
         open &&
         (unit.status === 'waiting' ||
           (unit.assignee !== undefined &&
-            !(queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee))))
+            !(identity !== undefined && matchesPerson(identity, unit.assignee))))
       );
     case 'available':
       // What can be started now: nothing it waits for is open, it has
@@ -769,7 +805,7 @@ function matchesIs(
         unit.parked !== true &&
         unit.blocked !== true &&
         (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY_MS) &&
-        !getTaskPolicy().onHoldStatuses.includes(unit.status ?? '')
+        !context.taskPolicy.onHoldStatuses.includes(unit.status ?? '')
       );
     case 'blocked':
       return unit.blocked === true;
@@ -780,7 +816,7 @@ function matchesIs(
       // carries no 👤 is mine, and what names me is mine once I have a name.
       return (
         unit.assignee === undefined ||
-        (queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee))
+        (identity !== undefined && matchesPerson(identity, unit.assignee))
       );
     case 'assigned':
       return unit.assignee !== undefined;
@@ -897,21 +933,23 @@ function matchesPathValue(
 
 /**
  * Task dates answer only for tasks, so `due != today` never lists notes.
- * `none` asks whether the date is written at all.
+ * `none` asks whether the date is written at all. A done date looks back
+ * from today, as `created` does; the others look ahead.
  */
 function matchesTaskDate(
   condition: QueryConditionNode,
   unit: QueryUnit,
-  timestamp: number | undefined,
-  direction: DateDirection,
+  field: 'due' | 'scheduled' | 'start' | 'done',
+  context: QueryContext,
 ): boolean {
   if (unit.kind !== 'task') {
     return false;
   }
+  const timestamp = getTaskDate(unit, field);
   if (condition.value === 'none') {
     return applyNegation(condition, timestamp === undefined);
   }
-  return matchesDate(condition, timestamp, direction);
+  return matchesDate(condition, timestamp, field === 'done' ? 'past' : 'future', context);
 }
 
 /**
@@ -953,18 +991,19 @@ function matchesPriority(
  * A plain `created = 2026-09-13` means "on that day", so a bare date does not
  * require an exact millisecond match no author could reproduce. A window is
  * compared by its far end: `updated > 7d` means more recently than seven days
- * ago, and `due < 7d` means sooner than seven days from now.
+ * ago, and `due < 7d` means sooner than seven days from now. Today and the
+ * week's first day are the context's.
  */
 function matchesDate(
   condition: QueryConditionNode,
   timestamp: number | undefined,
   direction: DateDirection,
-  now: number = Date.now(),
+  context: QueryContext,
 ): boolean {
   if (timestamp === undefined) {
     return false;
   }
-  const range = resolveDateRange(condition.value, now, direction);
+  const range = resolveDateRange(condition.value, context.now, direction, context.weekStart);
   if (!range) {
     return false;
   }

@@ -912,10 +912,11 @@ function listAlternatives(values: readonly string[]): string {
  * Accepts absolute dates, relative windows such as `30d`, and named days.
  */
 export function isDateValue(value: string): boolean {
-  // Whether a value reads does not depend on the day, so any fixed day will do.
+  // Whether a value reads does not depend on the day, or on the day a week
+  // starts, so any fixed day and Sunday will do.
   return (
-    resolveDateRange(value, DATE_CHECK_DAY, 'past') !== undefined &&
-    resolveDateRange(value, DATE_CHECK_DAY, 'future') !== undefined
+    resolveDateRange(value, DATE_CHECK_DAY, 'past', 0) !== undefined &&
+    resolveDateRange(value, DATE_CHECK_DAY, 'future', 0) !== undefined
   );
 }
 

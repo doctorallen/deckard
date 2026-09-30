@@ -41,12 +41,14 @@ export interface DateRange {
 }
 
 /**
- * Turns a date value into the half-open interval it names.
+ * Turns a date value into the half-open interval it names, read on the day
+ * `now` falls on, with weeks starting on `weekStart`.
  */
 export function resolveDateRange(
   value: string,
-  now: number = Date.now(),
+  now: number,
   direction: DateDirection = 'past',
+  weekStart: Weekday = queryWeekStart,
 ): DateRange | undefined {
   const normalized = value.trim().toLowerCase();
 
@@ -101,7 +103,7 @@ export function resolveDateRange(
   }
 
   // A whole week or month: `this-week`, `last-month`, `2026-08`.
-  const period = resolveDatePeriod(normalized, now, queryWeekStart);
+  const period = resolveDatePeriod(normalized, now, weekStart);
   if (period) {
     return { ...period, isWindow: false };
   }
@@ -111,7 +113,7 @@ export function resolveDateRange(
   // note or task already has, and ahead for the ones a task is due.
   const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
     direction,
-    weekStart: queryWeekStart,
+    weekStart,
   });
   if (phrase?.date) {
     const [year, month, day] = phrase.date.split('-').map(Number);
