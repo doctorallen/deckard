@@ -13,10 +13,7 @@ import { WorkspaceIndexer } from './core/workspace/indexer';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
 import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
-import {
-  createDailyNote,
-  openAdjacentDailyNote,
-} from './ui/commands/dailyNote';
+import { openAdjacentDailyNote } from './ui/commands/dailyNote';
 import {
   createDailyNoteWithRollover,
   rollTasksForward,

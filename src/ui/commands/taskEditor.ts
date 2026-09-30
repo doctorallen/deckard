@@ -19,7 +19,6 @@ import {
   parseRecurrence,
   suggestRecurrence,
   TaskDateField,
-  TaskMetadataFormat,
   writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';

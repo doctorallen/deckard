@@ -9,16 +9,11 @@ import {
   zenBodyAttribute,
 } from './components';
 import {
-  calendarPlusIcon,
   chevronRightIcon,
-  dashboardIcon,
-  helpIcon,
   ICON_PATHS,
   linkIcon,
-  notesGraphIcon,
   openInNewIcon,
   strokeIcon,
-  taskBoardIcon,
 } from './icons';
 import { getCalendarDayCss, getCalendarDayScript } from './calendarDay';
 import { ENABLED } from './selectors';
@@ -28,18 +23,16 @@ import { ENABLED } from './selectors';
  *
  * Keeping the view state-driven lets the host choose between active-note and
  * active-tag contexts while this document remains a simple navigation surface.
+ *
+ * The page no longer shows the extension's version. The parameter stays until
+ * the view takes an options object (19-refactor.md, Phase 5), so its callers
+ * and the harnesses that pin them do not change before then.
  */
 export function getSidebarNotesHtml(
   webview: Pick<vscode.Webview, 'cspSource'>,
-  extensionVersion: string,
+  _extensionVersion: string,
 ): string {
   const nonce = createNonce();
-  const escapedExtensionVersion = extensionVersion
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
   const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
   return `<!DOCTYPE html>

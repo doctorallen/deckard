@@ -786,7 +786,6 @@ export class SidebarNotesView
     if (message.type !== 'openSource') {
       return;
     }
-    const active = this.getActiveFile();
     const snapshot = this.createSnapshot();
     // A line that links here, or names this note, opens where it is.
     const link = [

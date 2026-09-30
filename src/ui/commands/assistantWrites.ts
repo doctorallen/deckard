@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import {
-  formatTaskDraft,
   parseTaskDraft,
   TaskDraft,
 } from '../../core/markdown/taskDraft';

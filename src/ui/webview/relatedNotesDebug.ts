@@ -1,10 +1,7 @@
 import * as vscode from 'vscode';
 import { reportFailure } from '../commands/notify';
 
-import {
-  EntryRelatedNotesDiagnostic,
-  SidebarNotesView,
-} from './sidebarNotes';
+import { SidebarNotesView } from './sidebarNotes';
 import { getRelatedNotesDebugHtml } from './relatedNotesDebugHtml';
 
 /**

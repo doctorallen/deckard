@@ -448,14 +448,6 @@ function findNegationStart(text: string, conditionStart: number): number | undef
   return match ? match.index + match[1].length : undefined;
 }
 
-function joinTerms(nodes: QueryNode[]): string {
-  if (nodes.length === 0) {
-    return '';
-  }
-  return formatQuery(
-    nodes.length === 1 ? nodes[0] : { type: 'and', children: nodes },
-  );
-}
 
 /**
  * Removes the spaces and dangling ANDs a cut leaves behind.

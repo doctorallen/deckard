@@ -104,43 +104,6 @@ function pickWorkspacePreferences(
   }
   return picked as Partial<PersistedPreferences>;
 }
-const defaultPreferences: PersistedPreferences = {
-  version: 1,
-  favoriteTags: [],
-  favoriteEntities: [],
-  tagSortMode: 'alphabetical',
-  entitySortMode: 'alphabetical',
-  tagAccessOrder: [],
-  tagAccessCounts: {},
-  entityAccessOrder: [],
-  entityAccessCounts: {},
-  taskOrder: [],
-  taskSortMode: 'rank',
-  dashboardTaskColumns: 1,
-  dashboardNoteColumns: 1,
-  dashboardTagColumns: 2,
-  dashboardViewState: {
-    mode: 'home',
-    tagSearchQuery: '',
-  },
-  renderMode: 'html',
-  tagOverviewSortMode: 'alphabetical',
-  tagOverviewLayout: 'tabs',
-  searchPageSize: DEFAULT_SEARCH_PAGE_SIZE,
-  searchPreview: 'lines',
-  relatedNotesSortMode: 'tags',
-  sectionAccessCounts: {},
-  savedFilters: [],
-  taskBoardLayout: 'board',
-  taskBoardGroup: 'status',
-  taskTableColumns: undefined,
-  taskTableSort: undefined,
-  tagAccessTimes: {},
-  sectionAccessTimes: {},
-  recentQueries: [],
-  // Filled with DEFAULT_DASHBOARD_WIDGETS when preferences are read.
-  dashboardWidgets: [],
-};
 /** Whether a stored value is one of the page sizes a search page offers. */
 function isSearchPageSize(value: unknown): value is SearchPageSize {
   return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value);
