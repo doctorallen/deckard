@@ -42,7 +42,7 @@ test('a burst of edits redraws tags once, after typing pauses', async () => {
     '# Plan #project/atlas\nText with #risk/vendor.',
   );
   vscode.window.visibleTextEditors = [editor];
-  const decorations = new EditorTagDecorations();
+  const decorations = new EditorTagDecorations().register();
   try {
     const firstDraw = draws.length;
     assert.ok(firstDraw > 0, 'a visible note is drawn when the provider starts');
@@ -64,7 +64,7 @@ test('a burst of edits redraws tags once, after typing pauses', async () => {
 test('edits to a file that is not Markdown redraw nothing', async () => {
   const { editor, draws } = createEditor('/notes/plan.txt', '#project/atlas');
   vscode.window.visibleTextEditors = [editor];
-  const decorations = new EditorTagDecorations();
+  const decorations = new EditorTagDecorations().register();
   try {
     const firstDraw = draws.length;
     type(editor.document);

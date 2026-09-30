@@ -98,7 +98,7 @@ import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
   EditorTagDecorations,
   isMarkdownDocument,
-} from './ui/commands/tagDecorations';
+} from './ui/providers/tagDecorations';
 import { TagCompletionProvider } from './ui/providers/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/providers/taskMetadataSuggestions';
 import { EditorLenses } from './ui/providers/editorLenses';
@@ -269,7 +269,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     writes: taskWrites,
     themePreview,
   });
-  const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri));
+  const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
   // The hover on an entry offers to pin it, so it has to know which entries
   // are pinned; preferences answer, and a change redraws the hovers.
   const readPinned = (): void => {

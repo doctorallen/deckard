@@ -70,9 +70,6 @@ export default {
     "src/ui/commands/sampleWorkspace.ts": [
       "installSample"
     ],
-    "src/ui/commands/tagDecorations.ts": [
-      "createEntryRelatedNotesHoverMessage"
-    ],
     "src/ui/commands/taskActions.ts": [
       "readCompletionFamily"
     ],
@@ -92,6 +89,9 @@ export default {
     ],
     "src/ui/providers/linkSuggestions.ts": [
       "completeBlockIds"
+    ],
+    "src/ui/providers/tagDecorations.ts": [
+      "createEntryRelatedNotesHoverMessage"
     ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
@@ -372,7 +372,6 @@ export default {
     "src/ui/commands/repeatRuleHealth.ts": 2,
     "src/ui/commands/sampleWorkspace.ts": 2,
     "src/ui/commands/selectionSeed.ts": 2,
-    "src/ui/commands/tagDecorations.ts": 4,
     "src/ui/commands/taskEditor.ts": 5,
     "src/ui/commands/taskLineDecorations.ts": 2,
     "src/ui/commands/taskSteps.ts": 3,
