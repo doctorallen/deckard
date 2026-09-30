@@ -23,7 +23,7 @@ import {
   LinkPreview,
   TagSummary,
 } from '../state/referenceState';
-import { createEntryScope } from '../webview/sidebarNotes';
+import { createEntryScope } from '../state/entryScope';
 import { resolveSourceUri } from './navigation';
 
 interface ReferenceIndexSource {

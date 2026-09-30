@@ -20,7 +20,7 @@ import {
   rankRelatedNotes,
   sortRelatedNotes,
 } from '../ui/state/relatedNotesRanking';
-import { createEntryScope } from '../ui/webview/sidebarNotes';
+import { createEntryScope } from '../ui/state/entryScope';
 import * as rendering from '../ui/webview/rendering';
 import {
   ParsedFile,

@@ -15,20 +15,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/ui/commands/editorReferences.ts",
-    "to": "src/ui/webview/sidebarNotes.ts",
-    "unresolvedTo": "../webview/sidebarNotes",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "commands-not-to-webview"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/core/storage/preferences.ts",
     "to": "vscode",
     "unresolvedTo": "vscode",
