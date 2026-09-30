@@ -725,7 +725,6 @@ export default {
     "src/core/storage/preferences.ts": 2,
     "src/core/workspace/indexState.ts": 2,
     "src/core/workspace/periodicNotes.ts": 1,
-    "src/core/workspace/publishing.ts": 1,
     "src/core/workspace/scanner.ts": 1,
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/naming.test.ts": 1,
@@ -753,6 +752,7 @@ export default {
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/messages.ts": 1,
+    "src/ui/webview/panelPriority.ts": 1,
     "src/ui/webview/sidebarNotes.ts": 1,
     "src/ui/webview/stats.ts": 2
   },

@@ -43,7 +43,8 @@ import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { panelPriority } from './panelPriority';
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is

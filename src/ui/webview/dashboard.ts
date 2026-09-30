@@ -38,7 +38,8 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { panelPriority } from './panelPriority';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {

@@ -44,7 +44,8 @@ import { parseCalendarMessage, parseSidebarMessage } from './messages';
 import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
 import { applyWorkspaceWrite } from '../commands/workspaceWrites';
-import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { viewPriority } from './panelPriority';
 
 export { createEntryScope, findTaggedEntry } from '../state/entryScope';
 export type { EntryScope, EntryTagContext, EntryTagSource } from '../state/entryScope';

@@ -30,7 +30,8 @@ import {
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { parseNotesGraphMessage } from './messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
-import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
+import { panelPriority } from './panelPriority';
 
 /** What the Notes Graph can be opened showing. */
 export interface NotesGraphShowOptions {
