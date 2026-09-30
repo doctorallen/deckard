@@ -26,7 +26,7 @@ A service owns one capability. It is a class with three properties:
 | `TaskService` | Every task edit: update a line, toggle, steps, move, and the board's capture into a column. A `TaskRankKeeper` collaborator carries a task's rank |
 | `AgendaService` | The agenda's writes, `listOverdueTasks`, and the reschedule context |
 | `LinkService` | Link maintenance, link health, mentions, and extracting a heading. In [`src/services/linkService.ts`](../../src/services/linkService.ts): `LinkService` plans the rewrites a note rename or a heading rename carries along (`planNoteRenames`, `planHeadingRename`) and the links a note's mentions become (`planMentionLinks`), each checked against the notes as they stand now; `LinkNoteService` makes the note a link names (`createNoteNamed`, `createMissingNotes`) and takes a heading out into one (`extractHeading`), whose swap of the section for its link still bypasses the write history. The pure rewrite and problem rules are in `src/domain/links` |
-| `CaptureService` | Capture into a note |
+| `CaptureService` | Capture into a note. In [`src/services/captureService.ts`](../../src/services/captureService.ts): `captureToToday(noteUri, line)` and `captureUnderHeading(line, section)` return `added`, `refused`, and, under a heading, `missing-note` or `missing-heading`; the draft is let go, and the heading remembered, only once the line is in. `CaptureDrafts` keeps the words until then. The line itself is written by the pure `writeCapture` in `src/domain/capture`, from the options `readCaptureOptions` reads once, and the box's state is the `CaptureBox` beside the command |
 | `SavedSearchService` | Saved searches |
 | `PinService` | Pinned notes |
 | `ExportService` | Exporting results, as `services.export.fromSearch(query)` |

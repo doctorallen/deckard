@@ -42,9 +42,6 @@ export default {
     "src/ui/commands/assistantWrites.ts": [
       "changeTaskLine"
     ],
-    "src/ui/commands/capture.ts": [
-      "askForCapture"
-    ],
     "src/ui/commands/extractHeading.ts": [
       "extractHeadingNote"
     ],
@@ -190,9 +187,6 @@ export default {
     ],
     "src/ui/commands/bulkEdit.ts": [
       "describeBulkEditResult"
-    ],
-    "src/ui/commands/capture.ts": [
-      "capture"
     ],
     "src/ui/commands/checkSetup.ts": [
       "buildSetupReport"
@@ -345,7 +339,6 @@ export default {
     "src/ui/commands/assistantTools.ts": 3,
     "src/ui/commands/assistantWrites.ts": 5,
     "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/capture.ts": 3,
     "src/ui/commands/checkSetup.ts": 4,
     "src/ui/commands/chooseTheme.ts": 2,
     "src/ui/commands/destinationPicker.ts": 2,
@@ -488,10 +481,6 @@ export default {
     ],
     "src/ui/commands/bulkEdit.ts": [
       "applyBulkEdit"
-    ],
-    "src/ui/commands/capture.ts": [
-      "askForCapture",
-      "capture"
     ],
     "src/ui/commands/checkSetup.ts": [
       "buildSetupReport"
@@ -731,7 +720,6 @@ export default {
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
-    "src/ui/commands/capture.ts": 2,
     "src/ui/commands/chooseTheme.ts": 1,
     "src/ui/commands/focusSection.ts": 1,
     "src/ui/commands/mcpServer.ts": 1,

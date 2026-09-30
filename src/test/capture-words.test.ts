@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { readCaptureText } from '../domain/markdown/captureWords';
-import { formatNoteLine } from '../ui/commands/capture';
+import { formatNoteLine } from '../domain/capture/captureLines';
 
 suite('Capture reads its last words', () => {
   // Friday 2026-09-25, noon.

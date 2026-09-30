@@ -12,7 +12,8 @@ import { createVscodeProgress } from './platform/vscodeProgress';
 import { createVscodeWorkspace } from './platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
-import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
+import { capture, CaptureDrafts, captureToToday, createCaptureNotes } from './ui/commands/capture';
+import { CaptureService } from './services/captureService';
 import { createHubNote } from './ui/commands/hubNote';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
 import {
@@ -491,6 +492,18 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
   // What was typed into Capture and not yet written, for this workspace.
   const captureDrafts = new CaptureDrafts(context.workspaceState);
+  // Where a capture goes once it is typed, and when its draft is let go.
+  const captureContext = {
+    indexer,
+    drafts: captureDrafts,
+    preferences,
+    captures: new CaptureService({
+      index: indexer,
+      notes: createCaptureNotes(indexer),
+      drafts: captureDrafts,
+      recentHeadings: preferences,
+    }),
+  };
   activeServices = {
     indexer,
     preferences,
@@ -1031,7 +1044,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       toggleTaskDoneCommand({ paths: indexer, keepRank: taskWrites.keepRank }),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
-      capture(indexer, 'today', captureDrafts, preferences),
+      capture(captureContext, 'today'),
     ),
     // The hover on a tagged entry passes the line it was shown on, so it
     // pins that entry rather than wherever the cursor happens to be.
@@ -1063,7 +1076,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         ),
     ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
-      capture(indexer, 'heading', captureDrafts, preferences),
+      capture(captureContext, 'heading'),
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer),
