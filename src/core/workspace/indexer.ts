@@ -1,5 +1,4 @@
 import type { Disposable, Event } from '../../ports/events';
-import type { Progress } from '../../ports/progress';
 import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
 import type { WorkspaceEvents } from '../../ports/workspaceEvents';
 import {
@@ -17,7 +16,7 @@ import {
 import { WorkspaceScanner } from './scanner';
 import type { OwnWrites } from './writeHistory';
 import { ChangeWatcher } from './changeWatcher';
-import { IndexService, RefreshOptions } from './indexService';
+import { IndexService, IndexServiceOptions, RefreshOptions } from './indexService';
 import { ViewUpdateOptions } from './publishing';
 import { ViewPublisher } from './viewPublisher';
 import { ParkedRules } from './parked';
@@ -25,18 +24,7 @@ import { ParkedRules } from './parked';
 export { buildWorkspaceIndex } from './indexState';
 
 /** What the indexer can be given beyond its scanner and cache. */
-export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> {
-  /**
-   * Deckard's version. The parsed notes in the cache are kept only for the
-   * version that parsed them, since a new version may parse differently.
-   */
-  version?: string;
-  /**
-   * Whether a start shows the notes the cache kept before reading any. Off
-   * in the Development and Test extension modes, where the parser can
-   * change without the version changing.
-   */
-  readCache?: boolean;
+export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> extends IndexServiceOptions {
   /**
    * Runs a view's redraw in a later host turn. `setImmediate` by default; a
    * test passes its own to step through the turns.
@@ -49,11 +37,6 @@ export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> {
    */
   events?: WorkspaceEvents<U>;
   /**
-   * Where a scan shows its progress: the window's status bar, in the
-   * extension. Without it, a test's, a scan reports nowhere.
-   */
-  progress?: Progress;
-  /**
    * The notes Deckard has just saved itself, which a save reads back at
    * once rather than after the debounce: the write history's, in the
    * extension. Without it, a test's, every save is debounced.
@@ -62,10 +45,23 @@ export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> {
 }
 
 /**
- * Owns the live note cache and turns scanner output into lookup maps for the UI.
+ * The index as every caller outside `src/core/workspace` has known it: one
+ * object for the notes, their index, the scan, the change queue, and the
+ * views. It now only puts together the pieces that do the work and hands
+ * each call to one of them:
  *
- * Files are cached separately from the derived index so rapid editor and file
- * watcher events can be coalesced before one consistent snapshot is published.
+ * - {@link IndexService}: the lifecycle, the warm start and the cache
+ *   fingerprint, scans, the fold, the full-text cache, and the notes that
+ *   could not be read;
+ * - {@link ChangeWatcher}: the workspace's events, what each requires, and
+ *   the debounced change queue;
+ * - {@link ViewPublisher}: the plain listeners, and the views redrawn one
+ *   host turn at a time;
+ * - the {@link WorkspaceScanner}: paths, URIs, and parsing.
+ *
+ * It keeps the surface it had so that no caller changed with the split.
+ * Phase 4 of the refactor moves each caller to the piece it uses and
+ * deletes this class.
  */
 export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Disposable {
   /** Publishes each new index to the plain listeners, then to the views in turns. */
