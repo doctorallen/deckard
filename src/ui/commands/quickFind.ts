@@ -69,11 +69,12 @@ const SHORT_WEEKDAY = /^(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)$/i;
 /**
  * The daily note row for what is typed, when the whole of it is a day, such
  * as `friday` or `oct 3`, and could be a note's name. A short weekday alone,
- * such as `sat`, is left to the search.
+ * such as `sat`, is left to the search. `now` is the moment the keystroke's
+ * results are read at, which the day is found from and described against.
  */
 export function findDailyNoteRow(
   value: string,
-  now: number = Date.now(),
+  now: number,
   options: Parameters<typeof parseDatePhrase>[2] = {},
 ): DailyNoteRow | undefined {
   const text = value.trim();
