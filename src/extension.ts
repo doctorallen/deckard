@@ -8,6 +8,7 @@ import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './shared/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { WorkspaceScanner } from './core/workspace/scanner';
+import { createVscodeEditApplier, createVscodeHistoryWriter } from './platform/vscodeEditApplier';
 import { createVscodeProgress } from './platform/vscodeProgress';
 import { createVscodeWorkspace } from './platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
@@ -26,14 +27,17 @@ import {
 import {
   openTask,
   quoteTaskTitle,
+  TaskRankKeeper,
   TaskWrites,
 } from './ui/commands/taskActions';
+import { TaskService } from './services/taskService';
+import { resolveSourceUri } from './ui/commands/navigation';
 import {
   editTaskCommand,
   TaskEditorActions,
   TaskLineContext,
 } from './ui/commands/taskEditor';
-import { breakIntoStepsCommand } from './ui/commands/taskSteps';
+import { breakIntoStepsCommand, readTaskArgument } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
@@ -90,7 +94,7 @@ import {
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
-import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
+import { WorkspaceWriteHistory, WriteHandle } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
 import { carrySectionIds } from './ui/state/frecency';
@@ -248,14 +252,24 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
   context.subscriptions.push(snapshots);
   // What an edit to a task writes through, for every view that edits one.
+  // A task's id comes from its own text, so an edit Deckard writes makes it
+  // a new task to anything keyed by id. This keeps its place in a ranked
+  // list across the edit, and across an Undo of it.
+  const keepRank: TaskRankKeeper = (previousId, nextId) => {
+    void preferences.replaceTaskInOrder(previousId, nextId);
+  };
   const taskWrites: TaskWrites = {
     history,
-    // A task's id comes from its own text, so an edit Deckard writes makes it
-    // a new task to anything keyed by id. This keeps its place in a ranked
-    // list across the edit, and across an Undo of it.
-    keepRank: (previousId, nextId) => {
-      void preferences.replaceTaskInOrder(previousId, nextId);
-    },
+    keepRank,
+    tasks: new TaskService<vscode.Uri, WriteHandle>({
+      notes: createVscodeEditApplier(),
+      history: createVscodeHistoryWriter(history),
+      ownWrites: history.ownWrites,
+      keepRank,
+      resolveUri: (filePath) => resolveSourceUri(filePath),
+      configuration: vscodeWorkspace,
+      clock: { now: () => Date.now() },
+    }),
   };
   // The theme Choose Theme… shows on the open pages before one is kept.
   // Every page draws with it, and redraws when it changes.
@@ -729,7 +743,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       async (node?: AgendaNode) => {
         const [task] = agenda.tasksFor(node);
         if (task) {
-          await breakIntoStepsCommand(indexer, history, task);
+          await breakIntoStepsCommand(indexer, taskWrites, task);
         }
       },
     ),
@@ -1017,11 +1031,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
     ),
-    vscode.commands.registerCommand('deckard.breakIntoSteps', () =>
-      breakIntoStepsCommand(indexer, history),
+    // The Task Board runs this with the task it was asked about; an editor
+    // menu passes its note, which is not a task.
+    vscode.commands.registerCommand('deckard.breakIntoSteps', (task?: unknown) =>
+      breakIntoStepsCommand(indexer, taskWrites, readTaskArgument(task)),
     ),
     vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
-      toggleTaskDoneCommand({ paths: indexer, keepRank: taskWrites.keepRank }),
+      toggleTaskDoneCommand({ paths: indexer, tasks: taskWrites.tasks }),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
       capture(indexer, 'today', captureDrafts, preferences),

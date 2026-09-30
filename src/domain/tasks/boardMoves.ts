@@ -1,7 +1,7 @@
 import { escapeRegExp } from '../../shared/text';
 import { SHORT_WEEKDAY_NAMES } from '../markdown/calendar';
 import { findCodeAndLinkRanges, isInRanges } from '../markdown/inlineRanges';
-import { readPerson } from '../markdown/parser';
+import { parseMarkdown, readPerson } from '../markdown/parser';
 import {
   addDays,
   appendToTaskText,
@@ -348,4 +348,27 @@ export function formatStatusLabel(status: string): string {
 /** A move that makes no edit, and the sentence that says why. */
 export function refuseMove(reason: string): TaskMove {
   return { kind: 'refused', reason };
+}
+
+/** What capturing a task into a column writes: its line, or why it cannot. */
+export type ColumnCapture =
+  | { kind: 'capture'; line: string }
+  | { kind: 'refused'; reason: string };
+
+/**
+ * A captured line as it lands in a board column: the edit the column stands
+ * for made to the line, so the task arrives already in the column it was
+ * added from. A line that reads as no task, or a column that names no edit
+ * for it, is captured as it is; a refusal says why nothing is captured.
+ */
+export function resolveColumnCapture(
+  line: string,
+  resolveMove: (task: Task) => TaskMove,
+): ColumnCapture {
+  const [task] = parseMarkdown('capture.md', line).tasks;
+  const move = task ? resolveMove(task) : undefined;
+  if (move?.kind === 'refused') {
+    return { kind: 'refused', reason: move.reason };
+  }
+  return { kind: 'capture', line: move?.kind === 'edit' ? move.edit(line) : line };
 }

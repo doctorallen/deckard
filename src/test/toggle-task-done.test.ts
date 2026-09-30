@@ -8,6 +8,7 @@ import {
   toggleTaskDoneCommand,
   toggleTaskLines,
 } from '../ui/commands/toggleTaskDone';
+import { createTaskWrites } from './taskWrites';
 
 /** Friday 2026-09-25, mid-morning. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();
@@ -104,7 +105,7 @@ suite('Toggle Task Done', () => {
       const result = await toggleTaskDoneCommand(
         {
           paths: { getFilePath: () => 'plan.md' },
-          keepRank: (from, to) => carried.push([from, to]),
+          tasks: createTaskWrites(undefined, (from, to) => carried.push([from, to])).tasks,
         },
         now,
       );
@@ -136,7 +137,7 @@ suite('Toggle Task Done', () => {
       return Promise.resolve(undefined);
     };
     try {
-      assert.strictEqual(await toggleTaskDoneCommand(undefined, now), undefined);
+      assert.strictEqual(await toggleTaskDoneCommand({ paths: { getFilePath: () => 'plan.md' }, tasks: createTaskWrites().tasks }, now), undefined);
       assert.deepStrictEqual(said, ['Put the cursor on a task to mark it done.']);
       assert.strictEqual(document.getText(), 'Nothing to do\n');
     } finally {

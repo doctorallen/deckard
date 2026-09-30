@@ -7,6 +7,7 @@ import {
   getDueBand,
   readTaskStatus,
   refuseMove,
+  resolveColumnCapture,
   resolveTaskMove,
   setTaskNamespaceTags,
   setTaskStatusTag,
@@ -143,5 +144,22 @@ suite('Task rules', () => {
     assert.strictEqual(getDueBand(at(10, 2), context), 'week');
     assert.strictEqual(getDueBand(at(10, 3), context), 'later');
     assert.strictEqual(getDueBand(at(8, 1), context), 'needsdate');
+  });
+
+  test('captures into a column with the column’s edit made, or says why not', () => {
+    const intoDoing = (task: Task) => resolveTaskMove(task, 'status:doing', options, noTags);
+    assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', intoDoing), {
+      kind: 'capture',
+      line: '- [ ] Call Ren #status/doing',
+    });
+    assert.deepStrictEqual(resolveColumnCapture('Just words', intoDoing), { kind: 'capture', line: 'Just words' });
+    assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', (task) => resolveTaskMove(task, 'due:later', options, noTags)), {
+      kind: 'refused',
+      reason: 'Drop a task on Today, Tomorrow, or No due date to change its due date.',
+    });
+    assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', (task) => resolveTaskMove(task, 'done', options, noTags)), {
+      kind: 'capture',
+      line: '- [ ] Call Ren',
+    });
   });
 });

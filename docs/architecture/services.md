@@ -23,7 +23,7 @@ A service owns one capability. It is a class with three properties:
 | `TagService` | Renaming, merging, and tag hygiene, including the rewrite that `rewriteTag` does today |
 | `ParkingService` | Which notes can be parked or unparked, and why the others cannot |
 | `RolloverService` | Carrying unfinished tasks forward, as `applyRollover` does today |
-| `TaskService` | Every task edit: update a line, toggle, steps, move, and the board's capture into a column. A `TaskRankKeeper` collaborator carries a task's rank |
+| `TaskService` | Every edit to a task line, in [`src/services/taskService.ts`](../../src/services/taskService.ts): `updateLine` and `toggle` return `updated`, `unchanged`, `missing`, `stale`, `rejected`, `unsaved`, or `failed`; `revertLine` is the one Undo that bypasses the write history; `openIndexedTask`, `addSteps`, `completeSteps`, and `toggleLines` (Toggle Task Done). It writes through the `EditApplier` and `HistoryWriter` ports of [`src/ports/editApplier.ts`](../../src/ports/editApplier.ts), and its `TaskRankKeeper` carries a task's rank. It reaches every command and page on the `TaskWrites` the extension makes once |
 | `AgendaService` | The agenda's writes, `listOverdueTasks`, and the reschedule context |
 | `LinkService` | Link maintenance, link health, mentions, and extracting a heading |
 | `CaptureService` | Capture into a note |

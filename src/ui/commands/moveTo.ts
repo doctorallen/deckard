@@ -25,7 +25,8 @@ import { chooseTargetFolder, ensureDailyNote, getPeriodicNote } from './dailyNot
 import { readWeekStart } from './datePrompt';
 import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
-import { carryMovedTaskRank, TaskWrites } from './taskActions';
+import { TaskWrites } from './taskActions';
+import { rankMoveTo } from '../../domain/tasks/taskRank';
 import { createWikiLink } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
@@ -264,11 +265,11 @@ async function moveBlocks(
     for (const source of sources) {
       const first = dedentBlock(source.block.lines)[0];
       if (source.task) {
-        carryMovedTaskRank(writes.keepRank, source.task.id, {
+        writes.tasks.keep(rankMoveTo(source.task.id, {
           filePath: targetPath,
           lineNumber: line + 1,
           lineText: first,
-        });
+        }));
       }
       line += source.block.lines.length;
     }

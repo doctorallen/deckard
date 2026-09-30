@@ -12,8 +12,8 @@ import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { createTaskGlance } from '../ui/state/dashboardState';
 import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
-import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createTaskWrites } from './taskWrites';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -133,7 +133,7 @@ suite('Agenda', () => {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      createTaskWrites(),
     );
     try {
       updates.fire(index);

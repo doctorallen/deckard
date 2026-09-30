@@ -15,8 +15,8 @@ import { createAgenda } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
 import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider, groupColumnId } from '../ui/views/agendaTree';
-import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createTaskWrites } from './taskWrites';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),
@@ -178,7 +178,7 @@ suite('Grouping tasks by a tag namespace', () => {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      createTaskWrites(),
     );
     try {
       updates.fire(index);

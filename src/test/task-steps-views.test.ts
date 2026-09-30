@@ -10,10 +10,10 @@ import { createAgenda } from '../ui/state/agendaState';
 import { createDashboardTask, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
-import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createTaskWrites } from './taskWrites';
 
 const NOTE = [
   '# Offsite',
@@ -129,7 +129,7 @@ suite('Steps in the views', () => {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      createTaskWrites(),
     );
     try {
       updates.fire(index);

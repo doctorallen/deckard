@@ -76,9 +76,6 @@ export default {
     "src/ui/commands/tagDecorations.ts": [
       "createEntryRelatedNotesHoverMessage"
     ],
-    "src/ui/commands/taskActions.ts": [
-      "readCompletionFamily"
-    ],
     "src/ui/commands/taskEditor.ts": [
       "setDraftDate",
       "writeEditedTask"
@@ -440,7 +437,6 @@ export default {
     "src/domain/query/queryParser.ts": 2,
     "src/test/naming.test.ts": 1,
     "src/ui/commands/parking.ts": 1,
-    "src/ui/commands/taskActions.ts": 1,
     "test/ui/checkContrast.js": 2,
     "test/ui/checkLayout.js": 17,
     "test/ui/checkRenderedContrast.js": 5,
@@ -717,7 +713,6 @@ export default {
     "src/ui/commands/settings.ts": 1,
     "src/ui/commands/taskBoardActions.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/commands/toggleTaskDone.ts": 2,
     "src/ui/preview/queryBlockHtml.ts": 1,
     "src/ui/state/assistantTools.ts": 2,
     "src/ui/state/calendarState.ts": 2,

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { parseMarkdown } from '../../domain/markdown/parser';
+import { resolveColumnCapture } from '../../domain/tasks/boardMoves';
 import { QueryContext } from '../../domain/query/queryContext';
 import { Task } from '../../core/types';
 import {
@@ -121,22 +121,20 @@ export async function captureIntoColumn(columnId: string): Promise<boolean> {
   }
   const configuration = vscode.workspace.getConfiguration('deckard');
   const queryContext = readQueryContext();
-  let line = readCaptureText(
+  const line = readCaptureText(
     formatCaptureLine(text),
     readTaskMetadataFormat(configuration),
     queryContext.now,
     readDateOptions(),
   ).line;
-  const [task] = parseMarkdown('capture.md', line).tasks;
-  const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions(queryContext)) : undefined;
-  if (move?.kind === 'refused') {
-    void vscode.window.showInformationMessage(move.reason);
+  const captured = resolveColumnCapture(line, (task) =>
+    resolveTaskMove(task, columnId, readTaskBoardOptions(queryContext)),
+  );
+  if (captured.kind === 'refused') {
+    void vscode.window.showInformationMessage(captured.reason);
     return false;
   }
-  if (move?.kind === 'edit') {
-    line = move.edit(line);
-  }
-  return captureToToday(text, line);
+  return captureToToday(text, captured.line);
 }
 
 /** `deckard.board.limits`, keeping only whole numbers of one or more. */

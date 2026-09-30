@@ -7,9 +7,9 @@ import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { PreferencesStore } from '../core/storage/preferences';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
-import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { DashboardNavigation, DashboardPanel } from '../ui/webview/dashboard';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { createTaskWrites } from './taskWrites';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,
@@ -102,7 +102,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      writes: createTaskWrites(),
       themePreview: new ThemePreview(),
     });
 
@@ -142,7 +142,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      writes: createTaskWrites(),
       themePreview: new ThemePreview(),
     });
 
@@ -186,7 +186,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      writes: createTaskWrites(),
       themePreview: new ThemePreview(),
     });
 
@@ -240,7 +240,7 @@ suite('Dashboard navigation', () => {
       preferences,
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation: createNavigation(),
-      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      writes: createTaskWrites(),
       themePreview: new ThemePreview(),
     });
 
