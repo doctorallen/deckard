@@ -30,20 +30,6 @@
   {
     "type": "dependency",
     "from": "src/core/storage/preferences.ts",
-    "to": "src/ui/state/resultTable.ts",
-    "unresolvedTo": "../../ui/state/resultTable",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-not-to-ui"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/core/storage/preferences.ts",
     "to": "vscode",
     "unresolvedTo": "vscode",
     "dependencyTypes": [

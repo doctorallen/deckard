@@ -435,7 +435,7 @@ export default {
     "src/ui/state/quickFindState.ts": 5,
     "src/ui/state/referenceState.ts": 5,
     "src/ui/state/relatedNotesRanking.ts": 2,
-    "src/ui/state/resultTable.ts": 3,
+    "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,
     "src/ui/state/searchFacets.ts": 4,
     "src/ui/state/searchHistory.ts": 2,
