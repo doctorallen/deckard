@@ -2,8 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { ParsedFile, WorkspaceIndex } from '../core/types';
+import { ParsedFile } from '../core/types';
 import { resolveSampleTokens, sampleFileName } from '../ui/commands/sampleWorkspace';
+
+// Kept here for the suites that import it with the corpus; it lives on its
+// own so a suite that needs only it does not reach the sample workspace.
+export { normalizeIndex } from './normalizeIndex';
 
 /**
  * Notes for the index equivalence tests: the sample workspace, the repo's own
@@ -161,33 +165,6 @@ export function randomNotes(seed: number, count: number): Array<[string, string]
     `notes/n${index}.md`,
     randomNote(random, index, count),
   ]);
-}
-
-/**
- * An index as plain data: every map as its entries in order, associations
- * read in full, and the build time left out. Order is compared, not sorted
- * away.
- */
-export function normalizeIndex(index: WorkspaceIndex): unknown {
-  const associations = index.tagAssociations
-    ? [...index.tagAssociations.entries()].map(([key, list]) => [
-        key,
-        list.map((association) => {
-          // The direct pass left its working set of units on each one.
-          const copy: Record<string, unknown> = { ...association };
-          delete copy.sourceUnitIds;
-          return copy;
-        }),
-      ])
-    : [];
-  return {
-    files: [...index.files.entries()],
-    sections: [...index.sections.entries()],
-    tasks: [...index.tasks.entries()],
-    tags: [...index.tags.entries()],
-    entities: [...index.entities.entries()],
-    tagAssociations: associations,
-  };
 }
 
 export function toFileMap(files: readonly ParsedFile[]): Map<string, ParsedFile> {

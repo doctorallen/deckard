@@ -141,7 +141,7 @@ export class QuickFind implements vscode.Disposable {
   private editor: vscode.TextEditor | undefined;
 
   public constructor(
-    private readonly indexer: WorkspaceIndexer,
+    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
     private readonly preferences: PreferencesStore,
     private readonly actions: QuickFindActions,
   ) {}

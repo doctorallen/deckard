@@ -68,7 +68,7 @@ export function applyHubTemplate(
  * already has the name is never overwritten.
  */
 export async function createHubNote(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   tagKey: string,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
@@ -126,7 +126,7 @@ function getDescribesValue(tag: TagReference): string {
  * `project.md` for `#project/atlas`, when the templates folder has one.
  */
 async function readHubTemplate(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   workspaceFolder: vscode.WorkspaceFolder,
   tag: TagReference,
 ): Promise<string | undefined> {

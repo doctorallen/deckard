@@ -90,7 +90,7 @@ export async function listTemplates(
  * does not index is said so once the note is made.
  */
 export async function newNoteFromTemplate(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   targetFolder?: vscode.Uri,
 ): Promise<vscode.Uri | undefined> {
   const title = 'Deckard: New Note from Template';

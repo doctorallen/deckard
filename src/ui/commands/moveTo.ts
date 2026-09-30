@@ -60,7 +60,7 @@ const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
 
 /** Move to… from the editor: the line, item, or selection under the cursor. */
 export async function moveToCommand(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
 ): Promise<void> {
   await indexer.ready;
@@ -95,7 +95,7 @@ export async function moveToCommand(
  * written; they land together, in the order given.
  */
 export async function moveTasks(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
   tasks: readonly Task[],
 ): Promise<void> {
@@ -139,7 +139,7 @@ interface ResolvedTarget {
 }
 
 async function moveBlocks(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
   sources: readonly MoveSource[],
 ): Promise<void> {
@@ -286,7 +286,7 @@ async function moveBlocks(
 }
 
 async function resolveTarget(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   destination: Destination,
   sources: readonly MoveSource[],
 ): Promise<ResolvedTarget | undefined> {
@@ -370,7 +370,7 @@ export function suggestNoteName(line: string): string {
 }
 
 async function newNoteUri(
-  indexer: WorkspaceIndexer,
+  indexer: WorkspaceIndexer<vscode.Uri>,
   from: vscode.Uri,
   name: string,
 ): Promise<vscode.Uri | undefined> {

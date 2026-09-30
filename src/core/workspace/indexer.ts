@@ -1,5 +1,8 @@
-import * as vscode from 'vscode';
-
+import type { Disposable } from '../../ports/events';
+import type { Progress } from '../../ports/progress';
+import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
+import type { WorkspaceEvents } from '../../ports/workspaceEvents';
+import { Emitter } from '../emitter';
 import {
   ParsedFile,
   Section,
@@ -23,7 +26,7 @@ import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
 export { buildWorkspaceIndex } from './indexState';
 
 /** What the indexer can be given beyond its scanner and cache. */
-export interface WorkspaceIndexerOptions {
+export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> {
   /**
    * Deckard's version. The parsed notes in the cache are kept only for the
    * version that parsed them, since a new version may parse differently.
@@ -40,7 +43,23 @@ export interface WorkspaceIndexerOptions {
    * test passes its own to step through the turns.
    */
   schedule?: (run: () => void) => void;
+  /**
+   * Where changes to the workspace come from once the indexer starts:
+   * settings, folders, saves, and file watchers. Without it, a test's, the
+   * index changes only when it is refreshed.
+   */
+  events?: WorkspaceEvents<U>;
+  /**
+   * Where a scan shows its progress: the window's status bar, in the
+   * extension. Without it, a test's, a scan reports nowhere.
+   */
+  progress?: Progress;
 }
+
+/** Progress for a scan with nowhere to show it: the task runs as it is. */
+const PROGRESS_NOWHERE: Progress = {
+  withProgress: (_title, task) => task({ report: () => undefined }),
+};
 
 /** A view waiting for its turn to redraw from the index. */
 interface ViewSubscription {
@@ -55,15 +74,15 @@ interface ViewSubscription {
  * Files are cached separately from the derived index so rapid editor and file
  * watcher events can be coalesced before one consistent snapshot is published.
  */
-export class WorkspaceIndexer implements vscode.Disposable {
-  private readonly updateEmitter = new vscode.EventEmitter<WorkspaceIndex>();
-  private readonly disposables: vscode.Disposable[] = [];
-  private readonly watcherDisposables: vscode.Disposable[] = [];
+export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Disposable {
+  private readonly updateEmitter = new Emitter<WorkspaceIndex>();
+  private readonly disposables: Disposable[] = [];
+  private readonly watcherDisposables: Disposable[] = [];
   /** The notes and the index derived from them, updated a note at a time. */
   private state = IndexState.build([]);
   /** The parse settings the notes in the state were read under. */
   private parsedUnder: string | undefined;
-  private readonly pending = new Map<string, PendingUpdate>();
+  private readonly pending = new Map<string, PendingUpdate<U>>();
   private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private readyPromise: Promise<void> = Promise.resolve();
   private disposed = false;
@@ -73,7 +92,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private readonly unreadable = new Map<string, string>();
   /** How far the scan under way has got, or nothing between scans. */
   private scanState: { completed: number; total: number } | undefined;
-  private readonly progressEmitter = new vscode.EventEmitter<void>();
+  private readonly progressEmitter = new Emitter<void>();
   /**
    * Fires as a scan moves on, at most every few percent, so a view that says
    * it is waiting can say how far along it is.
@@ -87,19 +106,23 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private readonly schedule: (run: () => void) => void;
   private readonly version: string;
   private readonly readCache: boolean;
+  private readonly events: WorkspaceEvents<U> | undefined;
+  private readonly progress: Progress;
   private readonly publishedPromise: Promise<void>;
   private resolvePublished: () => void = () => undefined;
   /** Whether the index shows the cache's notes, not yet checked against the files. */
   private staleFromCache = false;
 
   public constructor(
-    private readonly scanner: WorkspaceScanner<vscode.Uri>,
+    private readonly scanner: WorkspaceScanner<U>,
     private readonly searchStore?: SearchStore,
-    options: WorkspaceIndexerOptions = {},
+    options: WorkspaceIndexerOptions<U> = {},
   ) {
     this.schedule = options.schedule ?? ((run) => void setImmediate(run));
     this.version = options.version ?? '';
     this.readCache = options.readCache ?? false;
+    this.events = options.events;
+    this.progress = options.progress ?? PROGRESS_NOWHERE;
     this.publishedPromise = new Promise<void>((resolve) => {
       this.resolvePublished = resolve;
     });
@@ -129,7 +152,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   public onDidUpdateView(
     listener: () => void,
     options: ViewUpdateOptions,
-  ): vscode.Disposable {
+  ): Disposable {
     const subscription: ViewSubscription = { listener, options, disposed: false };
     this.views.add(subscription);
     return {
@@ -285,7 +308,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   /** The file an index path names, when a workspace folder holds it. */
-  public getUri(filePath: string): vscode.Uri | undefined {
+  public getUri(filePath: string): U | undefined {
     return this.scanner.getUri(filePath);
   }
 
@@ -332,7 +355,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Keeps path formatting owned by the scanner so all callers use one key shape.
    */
-  public getFilePath(uri: vscode.Uri): string {
+  public getFilePath(uri: U): string {
     return this.scanner.getFilePath(uri);
   }
 
@@ -340,7 +363,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
    * Parses editor content through the scanner's workspace-specific settings.
    */
   public parse(
-    uri: vscode.Uri,
+    uri: U,
     content: string,
     metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   ): ParsedFile {
@@ -350,19 +373,19 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Delegates notes-folder containment to the scanner's path boundary checks.
    */
-  public isNotesFile(uri: vscode.Uri): boolean {
+  public isNotesFile(uri: U): boolean {
     return this.scanner.isNotesFile(uri);
   }
 
   public getNotesFolderUri(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.Uri {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): U {
     return this.scanner.getNotesFolderUri(workspaceFolder);
   }
 
   public getTemplatesFolderUri(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.Uri | undefined {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): U | undefined {
     return this.scanner.getTemplatesFolderUri(workspaceFolder);
   }
 
@@ -386,12 +409,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
         ? this.state.files
         : undefined;
 
-    await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Window,
-        title: checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
-        cancellable: false,
-      },
+    await this.progress.withProgress(
+      checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
       async (progress) => {
         const parsedFiles = await measureAsync(
           'Scan workspace',
@@ -543,8 +562,12 @@ export class WorkspaceIndexer implements vscode.Disposable {
    * queued update path so every source of change produces the same index shape.
    */
   private registerWatchers(): void {
+    const events = this.events;
+    if (!events) {
+      return;
+    }
     this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((event) => {
+      events.onDidChangeConfiguration((event) => {
         const notesFolderChanged = event.affectsConfiguration(
           'deckard.notesFolder',
         );
@@ -590,14 +613,14 @@ export class WorkspaceIndexer implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      events.onDidChangeWorkspaceFolders(() => {
         this.replaceWatchers();
         this.parkedRules = undefined;
         this.readyPromise = this.refresh();
       }),
     );
     this.disposables.push(
-      vscode.workspace.onDidSaveTextDocument((document) => {
+      events.onDidSaveTextDocument((document) => {
         if (this.scanner.isNotesFile(document.uri)) {
           // A note Deckard just wrote is read back at once.
           this.queueUpsert(document.uri, undefined, takeOwnWrite(document.uri.toString()));
@@ -614,14 +637,16 @@ export class WorkspaceIndexer implements vscode.Disposable {
     this.watcherDisposables
       .splice(0)
       .forEach((disposable) => disposable.dispose());
+    const events = this.events;
+    if (!events) {
+      return;
+    }
 
     for (const pattern of this.scanner.getPatterns()) {
-      const watcher = vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(pattern.folder, pattern.pattern),
-      );
+      const watcher = events.createFileSystemWatcher(pattern);
       this.watcherDisposables.push(watcher);
       // The glob can take in files that are not notes, such as templates.
-      const upsertNote = (uri: vscode.Uri) => {
+      const upsertNote = (uri: U) => {
         if (this.scanner.isNotesFile(uri)) {
           this.queueUpsert(uri);
         }
@@ -637,7 +662,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Replaces pending work for a URI because only its newest content matters.
    */
-  private queueUpsert(uri: vscode.Uri, content?: string, now = false): void {
+  private queueUpsert(uri: U, content?: string, now = false): void {
     this.pending.set(uri.toString(), { uri, content, deleted: false });
     this.scheduleFlush(now);
   }
@@ -645,7 +670,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Coalesces deletion with other URI changes before rebuilding the index.
    */
-  private queueDelete(uri: vscode.Uri): void {
+  private queueDelete(uri: U): void {
     this.pending.set(uri.toString(), { uri, deleted: true });
     this.scheduleFlush();
   }
@@ -700,7 +725,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   /** Reads what changed, in the order it was queued, as changes to apply. */
-  private async readUpdates(updates: PendingUpdate[]): Promise<NoteChange[]> {
+  private async readUpdates(updates: Array<PendingUpdate<U>>): Promise<NoteChange[]> {
     const changes: NoteChange[] = [];
     for (const update of updates) {
       const filePath = this.scanner.getFilePath(update.uri);
@@ -813,8 +838,8 @@ function reuseUnchanged(
     : undefined;
 }
 
-interface PendingUpdate {
-  uri: vscode.Uri;
+interface PendingUpdate<U extends ResourceUri> {
+  uri: U;
   content?: string;
   deleted: boolean;
 }

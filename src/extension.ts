@@ -11,7 +11,9 @@ import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { WorkspaceScanner } from './core/workspace/scanner';
+import { createVscodeProgress } from './platform/vscodeProgress';
 import { createVscodeWorkspace } from './platform/vscodeWorkspace';
+import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
 import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
@@ -278,6 +280,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       // A developer's parser edits do not change the version, so only an
       // installed Deckard starts from the notes the cache kept.
       readCache: context.extensionMode === vscode.ExtensionMode.Production,
+      events: createVscodeWorkspaceEvents(),
+      progress: createVscodeProgress(),
     },
   );
   // Favorites, pins and view counts name what is in a workspace, so they are
