@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import { GUIDE_PAGES, isGuidePage, renderGuidePage } from './guide';
 import { getHelpHtml, HelpManifest, isRunnableFromHelp } from './helpHtml';
@@ -16,6 +18,8 @@ export class HelpPanel implements vscode.Disposable {
 
   public constructor(
     private readonly extensionUri: vscode.Uri,
+    /** The theme Choose Theme… is previewing, which the page draws in. */
+    private readonly themePreview: ThemePreview,
     /**
      * What the extension contributes, so the commands and settings tables
      * describe this version rather than a copy written beside them.
@@ -48,6 +52,7 @@ export class HelpPanel implements vscode.Disposable {
       releases: this.releases,
       ...(newSince ? { newSince } : {}),
       ...(anchor ? { anchor } : {}),
+      theme: getDeckardTheme(this.themePreview),
     });
   }
 
@@ -96,7 +101,7 @@ export class HelpPanel implements vscode.Disposable {
         if (this.panel) {
           this.panel.webview.html = this.html(this.panel.webview);
         }
-      }),
+      }, this.themePreview),
       panel.webview.onDidReceiveMessage((message: unknown) => this.handle(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;

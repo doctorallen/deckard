@@ -3,6 +3,8 @@ import { reportFailure } from '../commands/notify';
 
 import { SidebarNotesView } from './sidebarNotes';
 import { getRelatedNotesDebugHtml } from './relatedNotesDebugHtml';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 /**
  * Displays the full evidence calculation for one Markdown entry.
@@ -13,6 +15,8 @@ export class RelatedNotesDebugPanel implements vscode.Disposable {
   public constructor(
     private readonly sidebarNotes: SidebarNotesView,
     private readonly extensionUri: vscode.Uri,
+    /** The theme Choose Theme… is previewing, which the page draws in. */
+    private readonly themePreview: ThemePreview,
   ) {}
 
   public async show(
@@ -51,6 +55,7 @@ export class RelatedNotesDebugPanel implements vscode.Disposable {
     this.panel.webview.html = getRelatedNotesDebugHtml(
       this.panel.webview,
       diagnostic,
+      getDeckardTheme(this.themePreview),
     );
     this.panel.reveal(vscode.ViewColumn.Active);
   }

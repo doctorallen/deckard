@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 
 import { listedParkedTags } from '../../core/workspace/parked';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../core/timing';
@@ -66,6 +68,8 @@ export interface SidebarNotesViewOptions {
   activeHome?: ActiveHome;
   /** The history its links, tags, and renames are written to. */
   history: WorkspaceWriteHistory;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
 }
 
 /**
@@ -100,6 +104,8 @@ export class SidebarNotesView
   private readonly activeHome: ActiveHome | undefined;
   /** The history its links, tags, and renames are written to. */
   private readonly history: WorkspaceWriteHistory;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
 
   public constructor(options: SidebarNotesViewOptions) {
     this.indexer = options.indexer;
@@ -110,6 +116,7 @@ export class SidebarNotesView
     this.activeCalendar = options.activeCalendar;
     this.activeHome = options.activeHome;
     this.history = options.history;
+    this.themePreview = options.themePreview;
     const { indexer, activeSearch, activeCalendar, activeHome } = options;
     if (activeHome) {
       this.disposables.push(activeHome.onDidChange(() => this.refresh()));
@@ -162,7 +169,7 @@ export class SidebarNotesView
       onDidChangePageChrome(() => {
         this.renderHtml();
         this.refresh();
-      }),
+      }, this.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.enableKeywordLinks') ||
@@ -374,6 +381,7 @@ export class SidebarNotesView
       this.view.webview.html = getSidebarNotesHtml(
         this.view.webview,
         this.extensionVersion,
+        getDeckardTheme(this.themePreview),
       );
     }
   }

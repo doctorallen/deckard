@@ -11,6 +11,7 @@ import {
   loadingHtml,
   zenBodyAttribute,
 } from './components';
+import type { DeckardTheme } from './themes';
 
 /**
  * Draws the sidebar calendar: a month of weeks from Sunday to Saturday.
@@ -25,8 +26,11 @@ export function getCalendarHtml(
      * tasks, with the day panel beside it. The sidebar's is the default.
      */
     page?: boolean;
+    /** The theme its host read, preview and all; the configured one without. */
+    theme?: DeckardTheme;
   } = {},
 ): string {
+  const { theme } = options;
   const nonce = createNonce();
   const csp = getContentSecurityPolicy(webview.cspSource, nonce);
 
@@ -85,7 +89,7 @@ body { min-width: 220px; }
 .day-created-folder { flex: none; max-width: 45%; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
 ${getCalendarDayCss()}
 ${options.page ? getCalendarPageCss() : ''}
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>
@@ -104,7 +108,7 @@ ${loadingHtml('Loading calendar…')}
   // The day chosen with the panel on, marked at once and sent to the host
   // after a pause, so a held arrow key does not flood it.
   let selectTimer;
-${getComponentScript()}
+${getComponentScript(theme)}
 ${getCalendarDayScript()}
   const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   /** The calendar page, rather than the sidebar's. */

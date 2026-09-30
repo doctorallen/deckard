@@ -441,7 +441,6 @@ export default {
     "src/ui/webview/sidebarNotes.ts": 5,
     "src/ui/webview/stats.ts": 4,
     "src/ui/webview/taskBoard.ts": 5,
-    "src/ui/webview/themes.ts": 1,
     "test/e2e/vscodeStub.js": 17
   },
   "max-depth": {

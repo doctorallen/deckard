@@ -14,11 +14,12 @@
 import * as vscode from 'vscode';
 import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
 import {
+  DeckardTheme,
   deckardThemeNames,
   getDeckardTheme,
   getDeckardThemeCss,
-  onDidChangeThemePreview,
 } from './themes';
+import type { ThemePreview } from './themePreview';
 import { isZenModeEnabled } from './zenMode';
 import { ENABLED } from './selectors';
 import { escapeHtml } from '../../shared/html';
@@ -1007,10 +1008,11 @@ body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --sp
 /**
  * What every page puts after its own rules: the theme, then zen. Kept in one
  * place so "zen comes after the theme" is a fact in the code rather than a
- * convention nine files have to remember.
+ * convention nine files have to remember. `theme` is the one the page's host
+ * read, preview and all; without it, the configured theme.
  */
-export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getCardTagCss()}\n${getZenCss()}`;
+export function getPageTailCss(theme: DeckardTheme = getDeckardTheme()): string {
+  return `${getDeckardThemeCss(theme)}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getCardTagCss()}\n${getZenCss()}`;
 }
 
 /** Where a tag is written text rather than a control: the card views. */
@@ -1188,16 +1190,20 @@ export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boole
 
 /**
  * Calls back when a page has to be drawn again in another look: the theme or
- * zen setting changed, or Choose Theme… is previewing a theme. A page that
- * redraws on this needs no configuration listener of its own for it.
+ * zen setting changed, or Choose Theme… is previewing a theme on
+ * `themePreview`. A page that redraws on this needs no configuration
+ * listener of its own for it.
  */
-export function onDidChangePageChrome(listener: () => void): vscode.Disposable {
+export function onDidChangePageChrome(
+  listener: () => void,
+  themePreview: Pick<ThemePreview, 'onDidChange'>,
+): vscode.Disposable {
   const configuration = vscode.workspace.onDidChangeConfiguration((event) => {
     if (affectsPageChrome(event)) {
       listener();
     }
   });
-  const preview = onDidChangeThemePreview(listener);
+  const preview = themePreview.onDidChange(listener);
   return { dispose: () => { configuration.dispose(); preview.dispose(); } };
 }
 
@@ -1453,8 +1459,11 @@ export function getUndoScript(): string {
  *
  * Note for editors: this string is interpolated into a template literal, so a
  * backslash meant for the output has to be written doubled here.
+ *
+ * `theme` is the one the gear names, as the page's host read it, preview and
+ * all; without it, the configured theme.
  */
-export function getComponentScript(): string {
+export function getComponentScript(theme: DeckardTheme = getDeckardTheme()): string {
   return `
   /**
    * Say one short thing to a screen reader.
@@ -2895,7 +2904,7 @@ ${getUndoScript()}
    * and a new theme redraws the page.
    */
   function renderThemeOption() {
-    const name = ${JSON.stringify(deckardThemeNames[getDeckardTheme()])};
+    const name = ${JSON.stringify(deckardThemeNames[theme])};
     return {
       label: 'Theme',
       html: '<button type="button" class="theme-choice" data-action="choose-theme" aria-label="Theme: ' + escapeHtml(name) + '. Choose another">' + escapeHtml(name) + '…</button>',

@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import { listedParkedTags } from '../../core/workspace/parked';
 import { describeMissingTag, reportFailure } from '../commands/notify';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
@@ -55,6 +57,8 @@ export interface SearchPanelsOptions {
   activeSearch: ActiveSearch;
   /** What a page's checkboxes, tag renames and merges, and bulk edits write through. */
   writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
 }
 
 /**
@@ -75,6 +79,8 @@ export class SearchPanels implements vscode.Disposable {
   private readonly activeSearch: ActiveSearch;
   /** What a page's checkboxes, tag renames and merges, and bulk edits write through. */
   private readonly writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
 
   public constructor(options: SearchPanelsOptions) {
     this.indexer = options.indexer;
@@ -82,6 +88,7 @@ export class SearchPanels implements vscode.Disposable {
     this.extensionUri = options.extensionUri;
     this.activeSearch = options.activeSearch;
     this.writes = options.writes;
+    this.themePreview = options.themePreview;
     const { indexer, preferences, activeSearch } = options;
     // A page about a tag that is gone closes at once; each page still open
     // redraws in a turn of its own.
@@ -96,7 +103,7 @@ export class SearchPanels implements vscode.Disposable {
       onDidChangePageChrome(() => {
         this.panels.forEach((panel) => panel.renderHtml());
         this.refresh();
-      }),
+      }, this.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
@@ -264,6 +271,7 @@ export class SearchPanels implements vscode.Disposable {
         onDispose: () => this.panels.delete(panel),
         openTag: (tagKey) => this.show(tagKey),
         writes: this.writes,
+        themePreview: this.themePreview,
       },
     );
     this.panels.add(panel);
@@ -339,6 +347,8 @@ interface SearchPanelHost {
   openTag(tagKey: string): Promise<void>;
   /** What the page's checkboxes, tag renames and merges, and bulk edits write through. */
   readonly writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  readonly themePreview: ThemePreview;
 }
 
 /**
@@ -526,7 +536,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
 
   public renderHtml(): void {
     if (this.panel) {
-      this.panel.webview.html = getSearchPageHtml(this.panel.webview);
+      this.panel.webview.html = getSearchPageHtml(
+        this.panel.webview,
+        getDeckardTheme(this.host.themePreview),
+      );
     }
   }
 

@@ -58,6 +58,7 @@ const MODULES = {
   statsHtml: 'ui/webview/statsHtml.js',
   taskBoardHtml: 'ui/webview/taskBoardHtml.js',
   themes: 'ui/webview/themes.js',
+  themePreview: 'ui/webview/themePreview.js',
   // src/test: the page catalog the mocha suites share
   pageCatalog: 'test/pages.js',
 };

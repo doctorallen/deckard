@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { moveTasks } from '../commands/moveTo';
 import { breakIntoStepsCommand } from '../commands/taskSteps';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
 import { parseQuery } from '../../core/query/queryParser';
@@ -57,6 +59,8 @@ export interface TaskBoardPanelOptions {
   activeSearch: ActiveSearch;
   /** What a card's checkbox, drop, date, move, or steps write through. */
   writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
 }
 
 /**
@@ -96,6 +100,8 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private readonly activeSearch: ActiveSearch;
   /** What a card's checkbox, drop, date, move, or steps write through. */
   private readonly writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
 
   public constructor(options: TaskBoardPanelOptions) {
     this.indexer = options.indexer;
@@ -104,6 +110,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     this.openTag = options.openTag;
     this.activeSearch = options.activeSearch;
     this.writes = options.writes;
+    this.themePreview = options.themePreview;
     const { indexer, preferences, activeSearch } = options;
     this.disposables.push(
       onIndexUpdateInTurn(
@@ -136,7 +143,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     );
     this.disposables.push(
       // The page reloads and asks for state again when it is ready.
-      onDidChangePageChrome(() => this.renderHtml()),
+      onDidChangePageChrome(() => this.renderHtml(), this.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.board') ||
@@ -268,7 +275,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
 
   private renderHtml(): void {
     if (this.panel) {
-      this.panel.webview.html = getTaskBoardHtml(this.panel.webview);
+      this.panel.webview.html = getTaskBoardHtml(this.panel.webview, getDeckardTheme(this.themePreview));
     }
   }
 

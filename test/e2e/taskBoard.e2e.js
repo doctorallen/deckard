@@ -12,6 +12,7 @@ const { PreferencesStore } = modules.preferences;
 const { ActiveSearch } = modules.activeSearch;
 const { DashboardPanel } = modules.dashboard;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
   const task = (id, title, lineNumber, tags, completed = false) => ({
@@ -75,6 +76,7 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
     openTag: async () => undefined,
     activeSearch,
     writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
   });
   await board.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -361,6 +363,7 @@ test('saves its search as a view that reopens on the Task Board', async () => {
       openTaskBoard: (query) => opened.push(`board ${query}`),
     },
     writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
   });
   await dashboard.openSavedFilter(saved.id);
   dashboard.dispose();

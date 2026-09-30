@@ -17,6 +17,7 @@ import {
 } from './icons';
 import { getCalendarDayCss, getCalendarDayScript } from './calendarDay';
 import { ENABLED } from './selectors';
+import type { DeckardTheme } from './themes';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -31,6 +32,8 @@ import { ENABLED } from './selectors';
 export function getSidebarNotesHtml(
   webview: Pick<vscode.Webview, 'cspSource'>,
   _extensionVersion: string,
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme,
 ): string {
   const nonce = createNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
@@ -191,7 +194,7 @@ ${getCalendarDayCss()}
 .home-widget-choice { display: grid; gap: 2px; width: 100%; min-width: 0; padding: var(--space-2); text-align: left; }
 .home-widget-choice-label { font-weight: 650; }
 .home-widget-choice-detail { color: var(--muted); font-size: var(--text-xs); white-space: normal; text-transform: none; letter-spacing: normal; }
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>
@@ -200,7 +203,7 @@ ${loadingHtml('Loading related notes…', 'data-sidebar')}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
-${getComponentScript()}
+${getComponentScript(theme)}
 ${getCalendarDayScript()}
   console.log('[Deckard Related Notes] Webview script started.');
   let state;

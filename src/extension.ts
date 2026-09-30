@@ -151,7 +151,8 @@ import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
 import { selectAgendaTasks } from './ui/state/agendaState';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
 import { isWhatsNewShown, WhatsNew } from './ui/commands/whatsNew';
-import { chooseTheme } from './ui/commands/chooseTheme';
+import { chooseTheme, createChooseThemeDeps } from './ui/commands/chooseTheme';
+import { ThemePreview } from './ui/webview/themePreview';
 import { TryNextLedger } from './ui/commands/tryNext';
 import { openSettingAction, settingLabel } from './ui/commands/notify';
 import { settingTarget, writeSetting } from './ui/commands/settings';
@@ -256,6 +257,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       void preferences.replaceTaskInOrder(previousId, nextId);
     },
   };
+  // The theme Choose Theme… shows on the open pages before one is kept.
+  // Every page draws with it, and redraws when it changes.
+  const themePreview = new ThemePreview();
   const activeSearch = new ActiveSearch();
   const searchPanels = new SearchPanels({
     indexer,
@@ -263,6 +267,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     extensionUri: context.extensionUri,
     activeSearch,
     writes: taskWrites,
+    themePreview,
   });
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri));
   // The hover on an entry offers to pin it, so it has to know which entries
@@ -375,11 +380,17 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
-  const calendar = new CalendarView(indexer, taskWrites);
+  const calendar = new CalendarView(indexer, taskWrites, themePreview);
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
   context.subscriptions.push(activeCalendar, activeHome);
-  const calendarPage = new CalendarPanel(indexer, context.extensionUri, taskWrites, activeCalendar);
+  const calendarPage = new CalendarPanel({
+    indexer,
+    extensionUri: context.extensionUri,
+    writes: taskWrites,
+    themePreview,
+    activeCalendar,
+  });
   context.subscriptions.push(calendarPage);
   const taskBoard = new TaskBoardPanel({
     indexer,
@@ -388,6 +399,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     openTag: (tagKey) => searchPanels.show(tagKey),
     activeSearch,
     writes: taskWrites,
+    themePreview,
   });
   const dashboard = new DashboardPanel({
     indexer,
@@ -409,6 +421,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     whatsNew,
     tryNext,
     writes: taskWrites,
+    themePreview,
   });
   const quickFind = new QuickFind(
     indexer,
@@ -430,18 +443,21 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeCalendar,
     activeHome,
     history,
+    themePreview,
   });
   dashboard.activeHome = activeHome;
-  const stats = new StatsPanel(
+  const stats = new StatsPanel({
     indexer,
     preferences,
-    context.extensionUri,
-    async (tagKey) => {
+    extensionUri: context.extensionUri,
+    onOpenTag: async (tagKey) => {
       await searchPanels.show(tagKey);
     },
-  );
+    themePreview,
+  });
   const help = new HelpPanel(
     context.extensionUri,
+    themePreview,
     context.extension.packageJSON.contributes,
     whatsNew,
   );
@@ -455,10 +471,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         sidebarNotes.clearGraphConnections();
       }
     },
+    themePreview,
   );
   const relatedNotesDebug = new RelatedNotesDebugPanel(
     sidebarNotes,
     context.extensionUri,
+    themePreview,
   );
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
@@ -896,7 +914,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       help.show(typeof anchor === 'string' && /^[\w-]+$/.test(anchor) ? anchor : undefined),
     ),
     vscode.commands.registerCommand('deckard.chooseTheme', () =>
-      chooseTheme(context.extension.packageJSON.contributes),
+      chooseTheme(context.extension.packageJSON.contributes, createChooseThemeDeps(themePreview)),
     ),
     vscode.commands.registerCommand('deckard.openWalkthrough', () =>
       vscode.commands.executeCommand(

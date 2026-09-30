@@ -9,6 +9,8 @@ import { TryNextSuggestion } from '../state/tryNext';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../commands/tryNext';
 import { WhatsNew } from '../commands/whatsNew';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -74,6 +76,8 @@ export interface DashboardPanelOptions {
   tryNext?: Pick<TryNextLedger, 'retired' | 'snoozed' | 'retire' | 'snooze' | 'onDidChange'>;
   /** What checking a task off, or renaming a tag, writes through. */
   writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
 }
 
 /**
@@ -112,6 +116,8 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
   private readonly tryNext: Pick<TryNextLedger, 'retired' | 'snoozed' | 'retire' | 'snooze' | 'onDidChange'> | undefined;
   /** What checking a task off, or renaming a tag, writes through. */
   private readonly writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
 
   public constructor(options: DashboardPanelOptions) {
     this.indexer = options.indexer;
@@ -121,6 +127,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     this.whatsNew = options.whatsNew;
     this.tryNext = options.tryNext;
     this.writes = options.writes;
+    this.themePreview = options.themePreview;
     const { indexer, preferences, whatsNew, tryNext } = options;
     const initialPreferences = preferences.value;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
@@ -170,7 +177,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       onDidChangePageChrome(() => {
         this.renderHtml();
         this.refresh();
-      }),
+      }, this.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         const titleDisplayChanged = event.affectsConfiguration(
           'deckard.tagTitleDisplayMode',
@@ -395,6 +402,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       this.panel.webview.html = getDashboardHtml(
         this.panel.webview,
         this.extensionUri,
+        getDeckardTheme(this.themePreview),
       );
     }
   }

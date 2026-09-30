@@ -12,6 +12,7 @@ const { SidebarNotesView } = modules.sidebarNotes;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
   const note = (filePath, content) =>
@@ -62,6 +63,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
     extensionUri: { fsPath: '/ext' },
     activeSearch,
     writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    themePreview: new ThemePreview(),
   });
 
   await open(panels);
@@ -81,6 +83,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
     onOpenTag: (tagKey) => panels.show(tagKey),
     extensionVersion: '0.0.0-test',
     history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
   });
   sidebarView.resolveWebviewView(sidebarHost);
   const sidebarPage = mountWebview(sidebarHost.webview.html, sidebarHost);

@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import { measure } from '../../core/timing';
 import { CalendarMessage, WorkspaceIndex } from '../../core/types';
@@ -50,6 +52,8 @@ export class CalendarView
     private readonly indexer: CalendarIndexSource,
     /** What checking a task off, or dropping it on a day, writes through. */
     writes: TaskWrites,
+    /** The theme Choose Theme… is previewing, which the calendar draws in. */
+    private readonly themePreview: ThemePreview,
   ) {
     this.controller = new CalendarController(indexer, writes, {
       dayPanel: readDayPanel,
@@ -68,7 +72,7 @@ export class CalendarView
         }
       }),
       // The page reloads and asks for its state again when it is ready.
-      onDidChangePageChrome(() => this.renderHtml()),
+      onDidChangePageChrome(() => this.renderHtml(), themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
@@ -117,7 +121,9 @@ export class CalendarView
 
   private renderHtml(): void {
     if (this.view) {
-      this.view.webview.html = getCalendarHtml(this.view.webview);
+      this.view.webview.html = getCalendarHtml(this.view.webview, {
+        theme: getDeckardTheme(this.themePreview),
+      });
     }
   }
 

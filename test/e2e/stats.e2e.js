@@ -9,6 +9,7 @@ const { mountWebview, createGlobalState } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { StatsPanel } = modules.stats;
 const { PreferencesStore } = modules.preferences;
+const { ThemePreview } = modules.themePreview;
 
 // The stub has no editor, so record what the host tries to open instead.
 const opened = [];
@@ -67,8 +68,15 @@ async function openStats(files = []) {
   await preferences.recordEntityAccess('#project/relay');
   await preferences.recordSectionAccess(section.id);
   const openedTags = [];
-  const stats = new StatsPanel(indexer, preferences, { fsPath: '/ext' }, (tagKey) => {
-    openedTags.push(tagKey);
+  const themePreview = new ThemePreview();
+  const stats = new StatsPanel({
+    indexer,
+    preferences,
+    extensionUri: { fsPath: '/ext' },
+    onOpenTag: (tagKey) => {
+      openedTags.push(tagKey);
+    },
+    themePreview,
   });
   await stats.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -76,10 +84,19 @@ async function openStats(files = []) {
   panel._toWebview.forEach((message) => panel._deliver(message));
   // Tags, canonical tags, then note entries, in page order.
   const rows = () => view.findAll('.stat-row');
-  return { view, panel, updates, index, preferences, openedTags, rows };
+  return { view, panel, updates, index, preferences, openedTags, rows, themePreview };
 }
 
 // ---------------------------------------------------------------------------
+
+test('a theme Choose Theme… previews redraws the page in it, and stopping puts the setting back', async () => {
+  const { panel, themePreview } = await openStats();
+  assert.ok(panel.webview.html.includes('const name = "Corpo";'), 'the configured theme at first');
+  themePreview.show('cooper');
+  assert.ok(panel.webview.html.includes('const name = "Cooper";'), 'the previewed theme');
+  themePreview.show(undefined);
+  assert.ok(panel.webview.html.includes('const name = "Corpo";'), 'the configured theme again');
+});
 
 test('each most-viewed list renders an openable row', async () => {
   const { rows } = await openStats();

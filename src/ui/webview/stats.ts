@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
+import { getDeckardTheme } from './themes';
+import { ThemePreview } from './themePreview';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { WorkspaceIndex } from '../../core/types';
@@ -17,6 +19,16 @@ import { followIndexing } from './indexingProgress';
 import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
 import { panelPriority } from './panelPriority';
 
+/** What the Stats page is built from. */
+export interface StatsPanelOptions {
+  indexer: WorkspaceIndexer<vscode.Uri>;
+  preferences: PreferencesStore;
+  extensionUri: vscode.Uri;
+  onOpenTag: (tagKey: string) => void | Promise<void>;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
+}
+
 /**
  * Provides an overview of indexed content and recorded local views. Each
  * most-viewed row opens the tag overview or note entry it counts.
@@ -28,12 +40,20 @@ export class StatsPanel implements vscode.Disposable {
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
 
-  public constructor(
-    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
-    private readonly preferences: PreferencesStore,
-    private readonly extensionUri: vscode.Uri,
-    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
-  ) {
+  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly preferences: PreferencesStore;
+  private readonly extensionUri: vscode.Uri;
+  private readonly onOpenTag: (tagKey: string) => void | Promise<void>;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  private readonly themePreview: ThemePreview;
+
+  public constructor(options: StatsPanelOptions) {
+    this.indexer = options.indexer;
+    this.preferences = options.preferences;
+    this.extensionUri = options.extensionUri;
+    this.onOpenTag = options.onOpenTag;
+    this.themePreview = options.themePreview;
+    const { indexer, preferences } = options;
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -46,7 +66,7 @@ export class StatsPanel implements vscode.Disposable {
       onDidChangePageChrome(() => {
         this.renderHtml();
         this.refresh();
-      }),
+      }, this.themePreview),
     );
   }
 
@@ -273,7 +293,7 @@ export class StatsPanel implements vscode.Disposable {
 
   private renderHtml(): void {
     if (this.panel) {
-      this.panel.webview.html = getStatsHtml(this.panel.webview);
+      this.panel.webview.html = getStatsHtml(this.panel.webview, getDeckardTheme(this.themePreview));
     }
   }
 

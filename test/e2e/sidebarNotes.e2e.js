@@ -12,6 +12,7 @@ const { PreferencesStore } = modules.preferences;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 /** `count` notes, each a heading tagged #project/atlas. */
 function createIndex(count, { dated = false } = {}) {
@@ -52,6 +53,7 @@ async function openSidebar(noteCount, options) {
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
     history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
   });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
@@ -108,6 +110,7 @@ async function openForEditor() {
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
     history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
   });
   const host = vscode._test.createWebviewView();
   sidebarView.resolveWebviewView(host);
@@ -259,6 +262,7 @@ async function openLinked() {
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
     history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
   });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
@@ -342,6 +346,7 @@ test('a note with no tags lists entries worded like it, through the real host', 
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
     history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
   });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
@@ -378,6 +383,7 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
     history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
   });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;

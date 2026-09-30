@@ -19,6 +19,7 @@ import {
   zenBodyAttribute,
 } from './components';
 import { ENABLED } from './selectors';
+import type { DeckardTheme } from './themes';
 
 /**
  * Builds a search page: the search box, the tag or entity a one-tag search is
@@ -29,6 +30,8 @@ import { ENABLED } from './selectors';
  */
 export function getSearchPageHtml(
   webview: Pick<vscode.Webview, 'cspSource'>,
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme,
 ): string {
   const nonce = createNonce();
   const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
@@ -139,7 +142,7 @@ header { position: relative; }
    nothing; focus on the card shows it, so Tab reaches it next. */
 .card .card-more.card-more { visibility: hidden; opacity: 0; transition: opacity 120ms ease, visibility 0s linear 120ms; }
 .card:hover .card-more.card-more, .card:focus-within .card-more.card-more { visibility: visible; opacity: 1; transition: opacity 120ms ease; }
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>
@@ -148,7 +151,7 @@ ${loadingHtml('Loading search…')}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
-${getComponentScript()}
+${getComponentScript(theme)}
 ${getQueryEditorScript()}
   let state;
   let activeTab = 'notes';

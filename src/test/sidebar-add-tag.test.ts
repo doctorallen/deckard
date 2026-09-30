@@ -11,6 +11,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { ThemePreview } from '../ui/webview/themePreview';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -65,6 +66,7 @@ suite('Adding a suggested tag', () => {
       onOpenTag: () => undefined,
       extensionVersion: 'test',
       history,
+      themePreview: new ThemePreview(),
     });
     const send = (message: unknown) =>
       (view as unknown as { handleMessage(value: unknown): Promise<void> }).handleMessage(message);

@@ -9,6 +9,7 @@ import { PreferencesStore } from '../core/storage/preferences';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { DashboardNavigation, DashboardPanel } from '../ui/webview/dashboard';
+import { ThemePreview } from '../ui/webview/themePreview';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,
@@ -102,6 +103,7 @@ suite('Dashboard navigation', () => {
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
       writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      themePreview: new ThemePreview(),
     });
 
     try {
@@ -141,6 +143,7 @@ suite('Dashboard navigation', () => {
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
       writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      themePreview: new ThemePreview(),
     });
 
     try {
@@ -184,6 +187,7 @@ suite('Dashboard navigation', () => {
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
       writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      themePreview: new ThemePreview(),
     });
 
     try {
@@ -237,6 +241,7 @@ suite('Dashboard navigation', () => {
       extensionUri: vscode.Uri.file(process.cwd()),
       navigation: createNavigation(),
       writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      themePreview: new ThemePreview(),
     });
 
     try {

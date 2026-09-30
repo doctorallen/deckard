@@ -21,6 +21,7 @@ import {
   strokeIcon,
 } from './icons';
 import { ENABLED } from './selectors';
+import type { DeckardTheme } from './themes';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -31,6 +32,8 @@ import { ENABLED } from './selectors';
 export function getDashboardHtml(
   webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
   extensionUri: vscode.Uri,
+  /** The theme its host read, preview and all; the configured one without. */
+  theme?: DeckardTheme,
 ): string {
   const nonce = createNonce();
   const favoriteHeartUris = getFavoriteHeartAssetUris(webview, extensionUri);
@@ -253,7 +256,7 @@ h2 { margin: 0 0 4px; }
 @media (max-width: 700px) {
   .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
 }
-${getPageTailCss()}
+${getPageTailCss(theme)}
 </style>
 </head>
 <body${zenBodyAttribute()}>
@@ -262,7 +265,7 @@ ${loadingHtml('Loading index…')}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
-${getComponentScript()}
+${getComponentScript(theme)}
 ${getQueryEditorScript()}
   let state;
   /** Tag searches wait for typing to settle before telling the host. */
