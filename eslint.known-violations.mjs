@@ -185,13 +185,6 @@ export default {
       "createCondition",
       "tokenize"
     ],
-    "src/core/storage/preferences.ts": [
-      "(arrow function)",
-      "normalizeDashboardWidgets",
-      "normalizePinnedNotes",
-      "normalizePreferences",
-      "prune"
-    ],
     "src/extension.ts": [
       "deactivate"
     ],
@@ -335,7 +328,6 @@ export default {
     "src/core/query/queryLinks.ts": 2,
     "src/core/query/queryTypes.ts": 6,
     "src/core/storage/preferenceSnapshots.ts": 4,
-    "src/core/storage/preferences.ts": 11,
     "src/core/storage/searchDatabase.ts": 6,
     "src/core/storage/searchStore.ts": 6,
     "src/core/storage/searchStoreWorker.ts": 1,
@@ -481,11 +473,6 @@ export default {
       "createCondition",
       "parseWordCondition",
       "tokenize"
-    ],
-    "src/core/storage/preferences.ts": [
-      "normalizeDashboardWidgets",
-      "normalizePreferences",
-      "prune"
     ],
     "src/core/workspace/indexState.ts": [
       "rank"
@@ -684,7 +671,6 @@ export default {
     "src/core/markdown/taskMetadata.ts": 2,
     "src/core/query/queryDates.ts": 2,
     "src/core/query/queryFormat.ts": 1,
-    "src/core/storage/preferences.ts": 2,
     "src/core/workspace/indexState.ts": 2,
     "src/core/workspace/periodicNotes.ts": 1,
     "src/core/workspace/scanner.ts": 1,

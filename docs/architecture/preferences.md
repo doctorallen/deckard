@@ -1,12 +1,29 @@
 # Preferences
 
-**Status: current and target.** The first part of this page describes preferences as they work at v1.23.1. The last part describes what [the refactor plan](../implementation/19-refactor.md) changes; each phase rewrites this page to describe what then exists.
+**Status: current and target.** The first part of this page describes preferences as they work after Phase 3 of [the refactor plan](../implementation/19-refactor.md). The last part describes what the plan still changes; each phase rewrites this page to describe what then exists.
 
 Preferences are what Deckard remembers that is not in the notes: favorites, pins, saved searches, view counts, task order, Home widgets, and layout choices. Deckard never writes this state into a Markdown file. It lives in VS Code's `Memento` storage.
 
-## Where it lives today
+## Where it lives
 
-[`src/core/storage/preferences.ts`](../../src/core/storage/preferences.ts) holds `PreferencesStore`, 1,834 lines. It does persistence, normalization, migrations, every setter, the tag-rename cascade, and pruning. [`preferenceSnapshots.ts`](../../src/core/storage/preferenceSnapshots.ts) keeps rolling copies, and [`src/ui/commands/preferenceBackups.ts`](../../src/ui/commands/preferenceBackups.ts) exports and imports them.
+Phase 3 split the one 1,834-line `PreferencesStore` into a repository, a pure schema, and a service per capability, all in [`src/core/storage`](../../src/core/storage):
+
+| File | What it holds |
+| --- | --- |
+| `preferencesSchema.ts` | The format, and nothing that reads storage or the clock: `normalizePreferences` and every normalizer, the defaults and limits, the Home widget kinds and their option rules, the migrations that run on read and `carryLegacyIds`, `pinKey` and the Find helpers, the workspace's 18 keys and the split that picks and omits them, and the helpers `oneOf`, `upsertById`, `toggled`, `bumped`, and `filterNumericRecord` |
+| `preferencesRepository.ts` | `PreferencesRepository`: the two `KeyValueStore`s, the read at construction, the seed from the machine-wide store and the handover flag, the write queue, and the change and visit events |
+| `preferencesFavorites.ts` | `FavoritesService`: favorite tags and entities, and the custom order of each |
+| `preferencesUsage.ts` | `UsageService`: tag, entity, and section access, carried view counts, Find choices, recent headings |
+| `preferencesTaskLayout.ts` | `TaskLayoutService`: the rank order, the task sort, and the Task Board's layout, grouping, and table |
+| `preferencesHomeWidgets.ts` | `HomeWidgetsService`: Home's widgets and the Dashboard's view state |
+| `preferencesPins.ts` | `PinsService`: the notes pinned to Home |
+| `preferencesSavedSearches.ts` | `SavedSearchesService`: saved searches and recent searches |
+| `preferencesDisplay.ts` | `DisplayService`: sort modes, column counts, render mode, page sizes, and the Related Notes options |
+| `preferencesTagRenames.ts` | `TagRenames`: the cascade that moves what a renamed tag held to its new key |
+| `preferencesMaintenance.ts` | `PreferencesMaintenance`: pruning against the index, the stale-choice check, and restoring a blob |
+| `preferences.ts` | `PreferencesStore`, now a facade: every method keeps its name and signature and forwards to its service, and the services are properties of it |
+
+Each service is a small class over the repository. It reads the blob as it stands and makes each change with one `update`, as the store's method did. [`preferenceSnapshots.ts`](../../src/core/storage/preferenceSnapshots.ts) keeps rolling copies, and [`src/ui/commands/preferenceBackups.ts`](../../src/ui/commands/preferenceBackups.ts) exports and imports them.
 
 ## Two stores, one blob
 
@@ -19,15 +36,17 @@ The store reads and writes one `PersistedPreferences` blob, at `version: 1`, spl
 
 Until 1.19 everything was machine-wide and pruned against whichever window last built an index. Opening any folder with a README deleted the favorites and pins of the notes workspace, because that folder's index did not contain them. The split fixed that. With no folder open, the store uses the machine-wide blob alone.
 
-Every write goes through one promise queue, so two changes land in the order they were made. A change fires `onDidChange`, which every page that follows preferences hears. A visit is recorded quietly and fires only `onDidRecordVisit`, because a visit on every note switch would otherwise redraw every page.
+`PreferencesRepository` does the reading and writing. Every write goes through one promise queue, so two changes land in the order they were made. A change fires `onDidChange`, which every page that follows preferences hears. A visit is recorded quietly and fires only `onDidRecordVisit`, because a visit on every note switch would otherwise redraw every page.
 
 ## The schema
 
-The schema is the function `normalizePreferences`. Every read and every update passes through it. It rebuilds a valid blob from anything: a stale sort mode falls back to its default, and duplicate ids and bad counts are dropped. So old or hand-edited state cannot reach a view in a shape it does not expect. An imported file goes through the same function.
+The schema is the function `normalizePreferences` in `preferencesSchema.ts`. Every read and every update passes through it. It rebuilds a valid blob from anything, section by section and always in the same key order: a stale sort mode falls back to its default, and duplicate ids and bad counts are dropped. So old or hand-edited state cannot reach a view in a shape it does not expect. An imported file goes through the same function.
+
+Each enum field is read with `oneOf(value, allowed, fallback)`. Two are conditional: Source is kept only with `renderModeChosen`, and a tag grouping only with a namespace. View counts, access times, and first-seen times are one `filterNumericRecord` with three predicates: whole numbers from zero, positive times, and times from zero, where 0 means known before times were kept. Home's widgets are read one at a time: the shared rules take the id, width, count, page, and look-back days, and a table of per-kind rules takes the options only one kind has, such as a tasks widget's search or a saved-search widget's filter, which it cannot do without.
 
 ## Migrations
 
-Three migrations are written into the store today:
+Three migrations are written into the code:
 
 | Migration | Since | How it runs |
 | --- | --- | --- |
@@ -35,11 +54,13 @@ Three migrations are written into the store today:
 | Widened ids | 1.23 | Before pruning, `carryLegacyIds` renames task and section ids from before 1.23 to the entry's id now, so task order and view counts survive |
 | Rendered by default | 1.22 | Source mode is kept only when `renderModeChosen` says the reader chose it since Rendered became the default. Everyone else is switched to Rendered once |
 
-The first runs once, at the first start in a workspace. The second runs with each prune, and the third inside `normalizePreferences`. The blob's `version` has stayed 1 throughout.
+The first runs once, at the first start in a workspace, in `PreferencesRepository`. The second runs with each prune, in `PreferencesMaintenance`, and the third inside `normalizePreferences`. Reading also drops the removed Dashboard tabs, drops retired keys, gives Home its default widgets when a blob has none, and reads a pin written as a path as a pin on the whole note. The blob's `version` has stayed 1 throughout.
+
+`src/test/preferences-roundtrip.test.ts` pins the format byte for byte. A made-up blob with every field set to something other than its default must read back as itself and write back the same JSON to both stores. Each legacy shape a migration reads is loaded the same way. A walk over every mutator records which store each write reaches, in what order, a digest of its bytes, and which event follows. Its expectations were taken before the split.
 
 ## Pruning
 
-Pruning is a garbage collection of what Deckard derived. After each index update, a housekeeping view calls `prune` with the tags, tasks, sections, entities, and files that exist. It removes counts, orders, and times for entries that no longer exist, and it updates when each tag was first seen. Before that, `carrySectionAccess` moves a heading's view count to its new id when a line above it changed.
+Pruning is a garbage collection of what Deckard derived. After each index update, a housekeeping view calls `PreferencesMaintenance.prune(index)` with the index snapshot, and the prune after start does the same. It reads the keys of the snapshot's tags, tasks, sections, entities, and files. `pruneKeys` takes the key lists by name for a caller without an index, and the facade's old six-parameter `prune` forwards to it. It removes counts, orders, and times for entries that no longer exist, and it updates when each tag was first seen. Before that, `carrySectionAccess` moves a heading's view count to its new id when a line above it changed.
 
 Three rules keep pruning from destroying data:
 
@@ -53,19 +74,13 @@ Deckard once had a bug that emptied favorites, pins, and view counts, and the da
 
 ## What the plan changes
 
-The blob on disk and its migrations stay byte-compatible. Phase 3 moves the code that reads and writes it, and nothing else.
+The blob on disk and its migrations stay byte-compatible. Phase 3 moved the code that reads and writes it, and nothing else.
 
 | Phase | Change |
 | --- | --- |
-| 1 | `preferences.ts` stops importing `isTaskColumnId` from `ui/state/resultTable`, a `core` to `ui` import. |
-| 2 | The store sits on a `KeyValueStore` port instead of `vscode.Memento`, and its `EventEmitter` leaves core. Its tests then run under `test:unit`. |
-| 3 | `PreferencesStore` splits into a repository, a pure schema, and services. |
+| 1 | `preferences.ts` stopped importing `isTaskColumnId` from `ui/state/resultTable`, a `core` to `ui` import. |
+| 2 | The store sits on a `KeyValueStore` port instead of `vscode.Memento`, and its `EventEmitter` left core. Its tests run under `test:unit`. |
+| 3 | Done: `PreferencesStore` split into a repository, a pure schema, services, and `PreferencesMaintenance.prune(index)`, with the store kept as a facade. |
+| 4 | Callers move from the facade to the services they use, and `PreferencesStore` is deleted. |
 
-The Phase 3 split:
-
-- **`PreferencesRepository`** owns persistence: the two mementos, the write queue, and the handover between them.
-- **`preferencesSchema`** is pure. Two helpers, `oneOf` and `upsertById`, replace the hand-written ladders and twins.
-- **Services** take the capabilities out of the store: favorites, usage tracking, task order and board layout, Home widgets, pins, saved searches, the tag-rename cascade, and display settings. See [services.md](services.md).
-- **`PreferencesMaintenance.prune(index)`** takes the index itself rather than five key lists.
-
-A facade keeps the old `PreferencesStore` surface working for one phase. The schema tests gate the split, with a round-trip test over a captured real blob and the index-equivalence suite. The formats and their pinning tests are listed in [inventories/persisted-formats.md](inventories/persisted-formats.md).
+The facade keeps the old surface working for one phase, so no caller changed in Phase 3. The round-trip test, `preferences.test.ts`, `preferences-prune.test.ts`, and `preferences-invariants.test.ts` gate the split; `preferences-schema.test.ts` covers the schema's helpers and `preferences-maintenance.test.ts` the prune by snapshot. The formats and their pinning tests are listed in [inventories/persisted-formats.md](inventories/persisted-formats.md).

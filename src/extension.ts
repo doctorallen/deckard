@@ -595,13 +595,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         if (moved.size > 0) {
           await preferences.carrySectionAccess(moved);
         }
-        await preferences.prune(
-          index.tags.keys(),
-          index.tasks.keys(),
-          index.sections.keys(),
-          index.entities.keys(),
-          index.files.keys(),
-        );
+        await preferences.maintenance.prune(index);
       })();
     }
   };
@@ -1268,14 +1262,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   taskStatusBar.refresh();
 
   void indexer.start().then(async () => {
-    const index = indexer.getSnapshot();
-    await preferences.prune(
-      index.tags.keys(),
-      index.tasks.keys(),
-      index.sections.keys(),
-      index.entities.keys(),
-      index.files.keys(),
-    );
+    await preferences.maintenance.prune(indexer.getSnapshot());
   });
 
   return {
