@@ -1,5 +1,7 @@
 import { JSDOM } from 'jsdom';
 
+import { loadPage } from '../../test/harness/loadPage';
+
 /**
  * Runs a Deckard webview the way VS Code runs it, so a page can be tested by
  * what it does rather than by what its source says.
@@ -80,6 +82,8 @@ function clone<T>(value: T): T {
 /**
  * Loads a page's HTML with a stand-in for the API VS Code gives a webview.
  *
+ * The page goes through the shared page loader first, so a page that loads
+ * its script or style sheet by URI runs here as it would in VS Code.
  * `state` is sent as soon as the page is loaded, which is what the host does
  * once the page says it is ready.
  */
@@ -92,7 +96,7 @@ export function openWebviewPage(
   const canvasCalls: CanvasCall[] = [];
   let frames: FrameRequestCallback[] = [];
   let kept: unknown;
-  const dom = new JSDOM(html, {
+  const dom = new JSDOM(loadPage(html), {
     runScripts: 'dangerously',
     pretendToBeVisual: true,
     beforeParse(window) {
