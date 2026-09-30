@@ -203,10 +203,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
   const log = vscode.window.createOutputChannel('Deckard', { log: true });
-  setTimingLog(log);
   context.subscriptions.push(
     log,
-    { dispose: () => setTimingLog(undefined) },
+    // Measurements go to this log until the extension deactivates.
+    setTimingLog(log),
     vscode.commands.registerCommand('deckard.showLog', () => log.show()),
   );
   log.info(
