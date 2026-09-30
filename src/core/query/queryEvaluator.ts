@@ -20,6 +20,7 @@ import {
 } from './queryLinks';
 import { DateDirection, resolveDateRange } from './queryDates';
 import { QueryConditionNode, QueryNode } from './queryTypes';
+import { escapeRegExp, isWildcard, normalizeFolder } from './queryValues';
 
 export type { DateDirection } from './queryDates';
 export { getQueryWeekStart, resolveDateRange, setQueryWeekStart } from './queryDates';
@@ -662,7 +663,7 @@ function applyNegation(
  * Deckard accepts and supporting `*` for namespace queries.
  */
 function matchesTag(value: string, unit: QueryUnit): boolean {
-  if (value.includes('*') || value.includes('?')) {
+  if (isWildcard(value)) {
     const pattern = createGlob(value, true);
     return [...unit.tagKeys].some((tagKey) => pattern.test(tagKey));
   }
@@ -679,8 +680,7 @@ function matchesText(condition: QueryConditionNode, unit: QueryUnit): boolean {
       `(^|[^\\p{L}\\p{N}_])${escapeRegExp(needle)}([^\\p{L}\\p{N}_]|$)`,
       'u',
     );
-    const matched = pattern.test(unit.text);
-    return condition.operator === 'neq' ? !matched : matched;
+    return applyNegation(condition, pattern.test(unit.text));
   }
   return applyNegation(condition, unit.text.includes(needle));
 }
@@ -801,8 +801,7 @@ function matchesHas(condition: QueryConditionNode, unit: QueryUnit): boolean {
   if (unit.kind !== 'task') {
     return false;
   }
-  const present = isTaskFieldPresent(unit, condition.value);
-  return condition.operator === 'neq' ? !present : present;
+  return applyNegation(condition, isTaskFieldPresent(unit, condition.value));
 }
 
 function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
@@ -840,12 +839,12 @@ function getTaskDate(unit: QueryUnit, field: string): number | undefined {
  * with `*` or `?` is matched against each folder above the file.
  */
 export function isInFolder(folder: string, filePath: string): boolean {
-  const wanted = folder.replace(/^\.\//, '').replace(/\/+$/, '').toLowerCase();
+  const wanted = normalizeFolder(folder).toLowerCase();
   const candidate = filePath.toLowerCase();
   if (!wanted) {
     return false;
   }
-  if (wanted.includes('*') || wanted.includes('?')) {
+  if (isWildcard(wanted)) {
     const pattern = createGlob(wanted, true);
     const parts = candidate.split('/').slice(0, -1);
     return parts.some((_, index) =>
@@ -909,9 +908,7 @@ function matchesTaskDate(
     return false;
   }
   if (condition.value === 'none') {
-    return condition.operator === 'neq'
-      ? timestamp !== undefined
-      : timestamp === undefined;
+    return applyNegation(condition, timestamp === undefined);
   }
   return matchesDate(condition, timestamp, direction);
 }
@@ -1019,10 +1016,6 @@ export function createGlob(value: string, anchored: boolean): RegExp {
     })
     .join('');
   return new RegExp(anchored ? `^${body}$` : body, 'i');
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function getFileName(filePath: string): string {

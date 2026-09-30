@@ -350,7 +350,6 @@ export default {
     "src/core/markdown/taskMetadata.ts": 4,
     "src/core/mcp/mcpProtocol.ts": 4,
     "src/core/query/queryEvaluator.ts": 3,
-    "src/core/query/queryFormat.ts": 1,
     "src/core/query/queryLinks.ts": 2,
     "src/core/query/queryTypes.ts": 12,
     "src/core/storage/preferenceSnapshots.ts": 5,

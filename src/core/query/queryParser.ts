@@ -1,5 +1,6 @@
 import { resolveDateRange } from './queryDates';
 import { readLinkValue } from './queryLinks';
+import { normalizeFolder } from './queryValues';
 import {
   ParsedQuery,
   QueryConditionNode,
@@ -755,7 +756,7 @@ class Parser {
     }
 
     if (field === 'in') {
-      const folder = value.replace(/^\.\//, '').replace(/\/+$/, '');
+      const folder = normalizeFolder(value);
       if (!folder) {
         this.diagnostics.push({
           message: 'in: needs a folder, such as in:notes/projects.',
