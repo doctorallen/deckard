@@ -64,7 +64,7 @@ suite('Grouping tasks by a tag namespace', () => {
     index.tasks.forEach((task) => {
       const held = readTaskTagKeys(index, task);
       keys.forEach((key) => {
-        const found = evaluateQuery(index, parseQuery(`tag = ${key}`).node).tasks.some(
+        const found = evaluateQuery(index, parseQuery(`tag = ${key}`).node, createQueryContext(Date.now())).tasks.some(
           (candidate) => candidate.id === task.id,
         );
         assert.strictEqual(held.has(key), found, `${task.title} / ${key}`);

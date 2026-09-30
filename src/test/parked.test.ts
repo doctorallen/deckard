@@ -129,7 +129,7 @@ suite('Parked notes', () => {
       'b.md': '# B\n## Old #parked/2025\n- [ ] Two\nA line #parked here.\n### Deeper\n- [ ] Three\n## New\n- [ ] Four\n',
       'c.md': '# C\n- [ ] Five #parked\n',
     });
-    const found = evaluateQuery(index, parseQuery('tag = #parked OR tag = #parked/*').node);
+    const found = evaluateQuery(index, parseQuery('tag = #parked OR tag = #parked/*').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(
       found.sections.map((section) => section.id).sort(),
       [...index.parked!.sections].sort(),
@@ -145,19 +145,19 @@ suite('Parked notes', () => {
       },
       { folders: ['archive'] },
     );
-    const parked = evaluateQuery(index, parseQuery('is:parked').node);
+    const parked = evaluateQuery(index, parseQuery('is:parked').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(parked.sections.map((section) => bare(section.heading)), ['Archived']);
     assert.deepStrictEqual(parked.tasks.map((task) => bare(task.title)).sort(), ['Idea', 'Old']);
-    const rest = evaluateQuery(index, parseQuery('is:task -is:parked').node);
+    const rest = evaluateQuery(index, parseQuery('is:task -is:parked').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(rest.tasks.map((task) => bare(task.title)), ['New']);
-    const available = evaluateQuery(index, parseQuery('is:available').node);
+    const available = evaluateQuery(index, parseQuery('is:available').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(available.tasks.map((task) => bare(task.title)), ['New']);
   });
 
   test('is:parked matches nothing in an index nothing parks', () => {
     const index = indexWithParking({ 'a.md': '# A\n- [ ] One\n' });
     delete index.parked;
-    assert.strictEqual(evaluateQuery(index, parseQuery('is:parked').node).tasks.length, 0);
+    assert.strictEqual(evaluateQuery(index, parseQuery('is:parked').node, createQueryContext(Date.now())).tasks.length, 0);
   });
 
   test('the is: diagnostic lists parked', () => {

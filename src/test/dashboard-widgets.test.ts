@@ -333,7 +333,7 @@ suite('Dashboard Home widgets', () => {
     // the number that search then shows, or the row argues with itself.
     for (const pair of pairs.tagPairs ?? []) {
       const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
-      const results = evaluateQuery(index, parseQuery(query).node);
+      const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
       assert.strictEqual(
         results.sections.length + results.files.length + results.tasks.length,
         pair.count,

@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery, setQueryIdentity } from '../core/query/queryEvaluator';
+import { evaluateQuery } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
@@ -35,16 +35,17 @@ function indexOf(source: Record<string, string> = notes): WorkspaceIndex {
 
 const index = indexOf();
 
-/** The titles a query finds, so a result reads as the note wrote it. */
-function found(query: string): string[] {
-  return evaluateQuery(index, parseQuery(query).node).tasks.map(
+/**
+ * The titles a query finds, so a result reads as the note wrote it, with
+ * `identity` as the person `deckard.me` names.
+ */
+function found(query: string, identity?: string): string[] {
+  return evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now(), { identity })).tasks.map(
     (task) => task.title,
   );
 }
 
 suite('Task assignees', () => {
-  teardown(() => setQueryIdentity(undefined));
-
   test('the 👤 field owns the task, and a name in the words does not', () => {
     const tasks = [...index.tasks.values()].sort(
       (left, right) => left.lineNumber - right.lineNumber,
@@ -121,16 +122,14 @@ suite('Task assignees', () => {
       ['Book the room', 'Write up what @dana said'],
       'with no name yet, only what nobody was asked to do',
     );
-    setQueryIdentity('@dana');
     assert.deepStrictEqual(
-      found('is:mine AND is:open'),
+      found('is:mine AND is:open', '@dana'),
       ['Chase the contractor @ren-kade', 'Book the room', 'Write up what @dana said'],
       'mine by name, and mine by default; a mention alone is neither',
     );
-    setQueryIdentity('#person/ren-kade');
-    assert.deepStrictEqual(found('is:mine AND is:assigned'), ['Send the proposal']);
+    assert.deepStrictEqual(found('is:mine AND is:assigned', '#person/ren-kade'), ['Send the proposal']);
     assert.deepStrictEqual(
-      found('is:mine AND assignee = none'),
+      found('is:mine AND assignee = none', '#person/ren-kade'),
       ['Book the room', 'Write up what @dana said'],
       'assignee = none is the default kind alone',
     );
@@ -150,7 +149,7 @@ suite('Task assignees', () => {
   });
 
   test('only tasks answer an assignee condition', () => {
-    const results = evaluateQuery(index, parseQuery('assignee = @dana').node);
+    const results = evaluateQuery(index, parseQuery('assignee = @dana').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(results.sections, []);
     assert.deepStrictEqual(results.files, []);
   });

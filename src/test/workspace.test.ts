@@ -591,7 +591,11 @@ suite('Workspace scanner and index', () => {
     const scanner = new WorkspaceScanner(access);
     const parsed = scanner.parse(noteUri, 'Inline note #work');
     const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
-    const snapshot = createSearchPageSnapshot(index, defaultPreferences, '#work', { queryContext: createQueryContext(Date.now()) }
+    const snapshot = createSearchPageSnapshot(
+      index,
+      defaultPreferences,
+      '#work',
+      { queryContext: createQueryContext(Date.now()) },
     );
 
     assert.strictEqual(snapshot.sections.length, 1);
@@ -622,7 +626,11 @@ suite('Workspace scanner and index', () => {
     ]);
     assert.strictEqual(index.tags.get('#project/neon-relay')?.count, 1);
     assert.strictEqual(index.entities.get('#project/neon-relay')?.count, 1);
-    const snapshot = createSearchPageSnapshot(index, defaultPreferences, '#project/neon-relay', { queryContext: createQueryContext(Date.now()) }
+    const snapshot = createSearchPageSnapshot(
+      index,
+      defaultPreferences,
+      '#project/neon-relay',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');

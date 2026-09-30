@@ -6,6 +6,7 @@ import { WorkspaceIndex } from '../core/types';
 import { evaluateQuery } from '../core/query/queryEvaluator';
 import { parseQuery } from '../core/query/queryParser';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { createQueryContext } from '../core/query/queryContext';
 
 /**
  * Where one note ends and the next begins.
@@ -37,7 +38,7 @@ suite('Note boundaries', () => {
   };
 
   const found = (index: WorkspaceIndex, query: string): string[] => {
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     return results.sections.map((section) => section.heading).sort();
   };
 

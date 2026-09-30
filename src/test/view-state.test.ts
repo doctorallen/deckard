@@ -756,7 +756,15 @@ suite('Dashboard state', () => {
       strong,
     ]);
 
-    const notes = rankRelatedNotes(index, active.filePath, active, [{ key: '#source', label: '#source' }], false, undefined, undefined, { now: Date.now() }
+    const notes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+      undefined,
+      undefined,
+      { now: Date.now() },
     );
     const weakNote = notes.find((note) => note.filePath === weak.filePath);
     const strongNote = notes.find((note) => note.filePath === strong.filePath);
@@ -804,7 +812,15 @@ suite('Dashboard state', () => {
         commonAssociation.associatedTagSourceUnitCount,
     );
 
-    const defaultNotes = rankRelatedNotes(index, active.filePath, active, [{ key: '#source', label: '#source' }], false, undefined, undefined, { now: Date.now() }
+    const defaultNotes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+      undefined,
+      undefined,
+      { now: Date.now() },
     );
     const minimumSupportNotes = rankRelatedNotes(
       index,
@@ -890,7 +906,15 @@ suite('Dashboard state', () => {
     const active = createFile('notes/current.md', '# Current #work');
     const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');
     const index = createFileIndex([active, daily]);
-    const disabled = rankRelatedNotes(index, active.filePath, active, [{ key: '#work', label: '#work' }], false, undefined, undefined, { now: Date.now() }
+    const disabled = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#work', label: '#work' }],
+      false,
+      undefined,
+      undefined,
+      { now: Date.now() },
     );
     const enabled = rankRelatedNotes(
       index,
@@ -918,15 +942,23 @@ suite('Dashboard state', () => {
       '# Ancestor #management/performance',
     );
     const index = createFileIndex([active, direct, ancestor]);
-    const notes = rankRelatedNotes(index, active.filePath, active, [
+    const notes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [
         { key: '#project-name', label: '#project-name' },
         { key: '#follow-up', label: '#follow-up' },
         { key: '#management/performance', label: '#management/performance' },
-      ], false, 'inline', new Map([
+      ],
+      false,
+      'inline',
+      new Map([
         ['#project-name', 1],
         ['#follow-up', 1],
         ['#management/performance', 0.5],
-      ]), { now: Date.now() }
+      ]),
+      { now: Date.now() },
     );
 
     assert.deepStrictEqual(
@@ -1789,7 +1821,11 @@ suite('Dashboard state', () => {
     assert.strictEqual(filtered.hub, undefined);
     assert.strictEqual(filtered.tag, undefined, 'the header is for one tag only');
 
-    const worded = createSearchPageSnapshot(index, defaultPreferences, '#project/atlas ledger', { queryContext: createQueryContext(Date.now()) }
+    const worded = createSearchPageSnapshot(
+      index,
+      defaultPreferences,
+      '#project/atlas ledger',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.strictEqual(worded.hub, undefined);
     assert.strictEqual(worded.tag, undefined);

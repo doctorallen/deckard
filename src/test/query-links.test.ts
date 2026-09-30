@@ -8,6 +8,7 @@ import { QueryConditionNode } from '../core/query/queryTypes';
 import { WorkspaceIndex } from '../core/types';
 import { findMissingLinkTargets, getBacklinkIndex } from '../core/workspace/backlinks';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
+import { createQueryContext } from '../core/query/queryContext';
 
 function condition(text: string): QueryConditionNode {
   const parsed = parseQuery(text);
@@ -39,7 +40,7 @@ function createIndex(): WorkspaceIndex {
 function found(index: WorkspaceIndex, query: string): string[] {
   const parsed = parseQuery(query);
   assert.deepStrictEqual(parsed.diagnostics, [], query);
-  const results = evaluateQuery(index, parsed.node);
+  const results = evaluateQuery(index, parsed.node, createQueryContext(Date.now()));
   return [
     ...results.sections.map((section) => `${section.filePath}:${section.heading}`),
     ...results.tasks.map((task) => `task ${task.filePath}:${task.lineNumber}`),
@@ -137,7 +138,7 @@ suite('Searching by link', () => {
       const expected = new Set(
         backlinks.toNote(file.filePath).map((link) => `${link.sourcePath}:${link.line + 1}`),
       );
-      const results = evaluateQuery(index, parseQuery(`link = [[${title}]]`).node);
+      const results = evaluateQuery(index, parseQuery(`link = [[${title}]]`).node, createQueryContext(Date.now()));
       const covered = new Set<string>();
       expected.forEach((line) => {
         const [path, number] = [line.slice(0, line.lastIndexOf(':')), Number(line.slice(line.lastIndexOf(':') + 1))];
@@ -174,7 +175,7 @@ suite('Searching daily notes', () => {
   }
 
   const paths = (index: WorkspaceIndex, query: string): string[] => {
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     return [
       ...new Set([
         ...results.sections.map((section) => section.filePath),
@@ -187,7 +188,7 @@ suite('Searching daily notes', () => {
     const index = createDays();
     assert.deepStrictEqual(paths(index, 'is:daily'), ['notes/2026-09-25.md', 'notes/Journal.md']);
     assert.deepStrictEqual(paths(index, 'is:journal'), paths(index, 'is:daily'));
-    const tasks = evaluateQuery(index, parseQuery('is:daily is:open').node).tasks;
+    const tasks = evaluateQuery(index, parseQuery('is:daily is:open').node, createQueryContext(Date.now())).tasks;
     assert.deepStrictEqual(tasks.map((task) => task.title), ['Call Ren']);
     assert.ok(!paths(index, '-is:daily').includes('notes/2026-09-25.md'));
   });

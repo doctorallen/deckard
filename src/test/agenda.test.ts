@@ -55,7 +55,7 @@ suite('Agenda', () => {
     const realNow = Date.now;
     Date.now = () => now;
     try {
-      const matched = evaluateQuery(index, parseQuery('is:today').node).tasks.map((task) => task.id).sort();
+      const matched = evaluateQuery(index, parseQuery('is:today').node, createQueryContext(Date.now())).tasks.map((task) => task.id).sort();
       assert.deepStrictEqual(matched, today);
       const glance = createTaskGlance(index, '', createQueryContext(now));
       assert.deepStrictEqual(

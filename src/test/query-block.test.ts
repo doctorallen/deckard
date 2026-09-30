@@ -166,7 +166,11 @@ suite('Deckard query blocks', () => {
   });
 
   test('lists notes with heading context and tasks open first by due date', () => {
-    const snapshot = createQueryBlockSnapshot(createIndex(), 'tag = #project/atlas', { warnings: [] }, { queryContext: createQueryContext(Date.now()) }
+    const snapshot = createQueryBlockSnapshot(
+      createIndex(),
+      'tag = #project/atlas',
+      { warnings: [] },
+      { queryContext: createQueryContext(Date.now()) },
     );
 
     assert.deepStrictEqual(
@@ -187,7 +191,11 @@ suite('Deckard query blocks', () => {
   });
 
   test('sorts by date and limits each list while keeping the totals', () => {
-    const snapshot = createQueryBlockSnapshot(createIndex(), 'tag = #project/atlas', { sort: 'updated', limit: 1, warnings: [] }, { queryContext: createQueryContext(Date.now()) }
+    const snapshot = createQueryBlockSnapshot(
+      createIndex(),
+      'tag = #project/atlas',
+      { sort: 'updated', limit: 1, warnings: [] },
+      { queryContext: createQueryContext(Date.now()) },
     );
 
     assert.deepStrictEqual(snapshot.notes.map((note) => note.id), ['child']);
@@ -198,7 +206,11 @@ suite('Deckard query blocks', () => {
   });
 
   test('reports a query that cannot run', () => {
-    const invalid = createQueryBlockSnapshot(createIndex(), '(tag = #project/atlas', { warnings: [] }, { queryContext: createQueryContext(Date.now()) }
+    const invalid = createQueryBlockSnapshot(
+      createIndex(),
+      '(tag = #project/atlas',
+      { warnings: [] },
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.strictEqual(invalid.hasError, true);
     assert.strictEqual(invalid.messages[0]?.severity, 'error');
@@ -316,7 +328,11 @@ suite('Deckard query blocks', () => {
     );
     index.tags.get('#risk/vendor')?.sectionIds.push('daily-check-in');
 
-    const html = renderQueryBlockHtml('tag = #risk/vendor', { warnings: [] }, index, { queryContext: createQueryContext(Date.now()) }
+    const html = renderQueryBlockHtml(
+      'tag = #risk/vendor',
+      { warnings: [] },
+      index,
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.ok(html.includes('<div class="deckard-query-group-title">Notes</div>'));
     // A daily note's date heading already names its file.

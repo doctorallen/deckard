@@ -175,7 +175,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const facets = buildSearchFacets(index, results, query, { now });
     const values = (id: string) =>
       facets.find((facet) => facet.id === id)?.values.map((value) => [value.label, value.count]);
@@ -206,7 +206,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const updated = buildSearchFacets(index, results, query, { now })
       .find((facet) => facet.id === 'updated')
       ?.values.map((value) => [value.label, value.count]);
@@ -231,7 +231,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const created = buildSearchFacets(index, results, query, { now })
       .find((facet) => facet.id === 'created')
       ?.values.map((value) => [value.label, value.clause, value.count]);
@@ -264,7 +264,7 @@ suite('Refining a search', () => {
     );
     const index = buildWorkspaceIndex(files);
     const query = 'tag = #project/x OR text ~ zzz';
-    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node), query, { now: Date.now() });
+    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now())), query, { now: Date.now() });
     const links = facets.find((facet) => facet.id === 'links');
     assert.deepStrictEqual(
       links?.values.map((value) => [value.label, value.count, value.clause]),
@@ -274,7 +274,7 @@ suite('Refining a search', () => {
       ],
     );
     const named = '#project/x [[Atlas]]';
-    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node), named, { now: Date.now() })
+    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node, createQueryContext(Date.now())), named, { now: Date.now() })
       .find((facet) => facet.id === 'links');
     assert.deepStrictEqual(narrowed?.applied, ['[[Atlas]]']);
     assert.ok(!narrowed?.values.some((value) => value.label === 'Atlas'));
@@ -312,7 +312,11 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = 'is:open';
-    const facets = buildSearchFacets(index, { sections: [...index.sections.values()], tasks: [...index.tasks.values()], files: [] }, query, { now: Date.now() }
+    const facets = buildSearchFacets(
+      index,
+      { sections: [...index.sections.values()], tasks: [...index.tasks.values()], files: [] },
+      query,
+      { now: Date.now() },
     );
     const status = facets.find((facet) => facet.id === 'status');
     assert.deepStrictEqual(status?.values.map((value) => value.clause), ['is:done']);
@@ -364,7 +368,11 @@ suite('Refining a search', () => {
     assert.match(related.values[0].detail ?? '', /^In 2 of 3 results\. Written together/);
     assert.strictEqual(page.query.facets.some((facet) => facet.id === 'tags'), false);
 
-    const narrowed = createSearchPageSnapshot(index, store.value, '#person/sable #team/harbor', { queryContext: createQueryContext(Date.now()) }
+    const narrowed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#person/sable #team/harbor',
+      { queryContext: createQueryContext(Date.now()) },
     );
     const shared = narrowed.query.facets.find((facet) => facet.id === 'related');
     assert.deepStrictEqual(
@@ -537,7 +545,11 @@ suite('Refining a search', () => {
 
     // Pressing Enter writes the words into the search. What it then finds is
     // what the draft was already showing.
-    const committed = createSearchPageSnapshot(index, store.value, '#project/atlas elevator', { queryContext: createQueryContext(Date.now()) }
+    const committed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#project/atlas elevator',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.deepStrictEqual(
       committed.sections.map((card) => card.heading),
@@ -617,7 +629,7 @@ suite('Refining a search', () => {
     const atlas = createQuerySuggestions(index, [], createQueryContext(Date.now())).values.tag?.find(
       (suggestion) => suggestion.value === '#project/atlas',
     );
-    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node);
+    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node, createQueryContext(Date.now()));
 
     // The nested Details section and its tasks inherit the heading's tag.
     assert.strictEqual(results.sections.length + results.files.length, 2);
