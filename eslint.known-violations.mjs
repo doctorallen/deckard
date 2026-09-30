@@ -147,7 +147,6 @@ export default {
     "src/ui/commands/taskEditor.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/state/quickFindState.ts": 1,
-    "src/ui/state/tagHygiene.ts": 1,
     "src/ui/webview/calendarPage.ts": 1
   },
   complexity: {

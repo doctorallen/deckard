@@ -2,6 +2,7 @@
  * The Stats page's protocol: the workspace's totals and trends, the lists
  * that need attention, and the messages the page sends.
  */
+import type { TagMergeCandidate } from '../../domain/model/tags';
 import type { UnreadableNote } from '../../domain/model/workspaceIndex';
 import type {
   MergeTagsMessage,
@@ -10,6 +11,8 @@ import type {
   OpenTagMessage,
 } from './shared';
 
+export type { TagMergeCandidate, TagMergeReason } from '../../domain/model/tags';
+
 /** A tag, entity, or entry the Stats page lists by how often it was opened. */
 export interface StatsAccessItem {
   label: string;
@@ -17,33 +20,6 @@ export interface StatsAccessItem {
   count: number;
   /** The message that opens the item: its tag overview or its source line. */
   open: OpenTagMessage | OpenSourceMessage;
-}
-
-/**
- * Why two tags look like two spellings of one idea, most confusable first:
- * the same name written with a different marker or under a different
- * namespace, punctuated differently, pluralized, or simply mistyped.
- */
-export type TagMergeReason =
-  | 'marker'
-  | 'namespace'
-  | 'separator'
-  | 'plural'
-  | 'spelling';
-
-/** Two tags that look alike, and what merging them would spend and keep. */
-export interface TagMergeCandidate {
-  /** The tag with fewer entries, which a merge spends. */
-  sourceKey: string;
-  sourceLabel: string;
-  sourceCount: number;
-  /** The tag a merge keeps. */
-  targetKey: string;
-  targetLabel: string;
-  targetCount: number;
-  reason: TagMergeReason;
-  /** Why the pair was picked, as the row reads it. */
-  detail: string;
 }
 
 /** A note the Stats page lists by name, which opens at its first line. */
