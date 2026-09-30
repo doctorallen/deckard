@@ -2,7 +2,6 @@ import type { Disposable, Event } from '../../ports/events';
 import type { Progress } from '../../ports/progress';
 import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
 import type { WorkspaceEvents } from '../../ports/workspaceEvents';
-import { Emitter } from '../emitter';
 import {
   ParsedFile,
   Section,
@@ -13,17 +12,15 @@ import {
 import {
   EntrySearchOptions,
   EntrySearchResult,
-  ScanCounts,
   SearchStore,
 } from '../storage/searchStore';
-import { measure, measureAsync, reportError } from '../timing';
-import { FileStamp, WorkspaceScanner, describeError } from './scanner';
+import { WorkspaceScanner } from './scanner';
 import type { OwnWrites } from './writeHistory';
-import { ChangeWatcher, QueuedChange } from './changeWatcher';
-import { IndexState, NoteChange } from './indexState';
+import { ChangeWatcher } from './changeWatcher';
+import { IndexService, RefreshOptions } from './indexService';
 import { ViewUpdateOptions } from './publishing';
 import { ViewPublisher } from './viewPublisher';
-import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
+import { ParkedRules } from './parked';
 
 export { buildWorkspaceIndex } from './indexState';
 
@@ -64,11 +61,6 @@ export interface WorkspaceIndexerOptions<U extends ResourceUri = ResourceUri> {
   ownWrites?: Pick<OwnWrites, 'take'>;
 }
 
-/** Progress for a scan with nowhere to show it: the task runs as it is. */
-const PROGRESS_NOWHERE: Progress = {
-  withProgress: (_title, task) => task({ report: () => undefined }),
-};
-
 /**
  * Owns the live note cache and turns scanner output into lookup maps for the UI.
  *
@@ -76,76 +68,42 @@ const PROGRESS_NOWHERE: Progress = {
  * watcher events can be coalesced before one consistent snapshot is published.
  */
 export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Disposable {
-  private readonly disposables: Disposable[] = [];
-  /** The notes and the index derived from them, updated a note at a time. */
-  private state = IndexState.build([]);
-  /** The parse settings the notes in the state were read under. */
-  private parsedUnder: string | undefined;
-  private readyPromise: Promise<void> = Promise.resolve();
-  private disposed = false;
-  /** The derived index, kept until the notes next change. */
-  private snapshot: WorkspaceIndex | undefined;
-  /** Notes in the workspace that are not in the index, and why. */
-  private readonly unreadable = new Map<string, string>();
-  /** How far the scan under way has got, or nothing between scans. */
-  private scanState: { completed: number; total: number } | undefined;
-  private readonly progressEmitter = new Emitter<void>();
+  /** Publishes each new index to the plain listeners, then to the views in turns. */
+  private readonly publisher: ViewPublisher;
+  /** The notes, the index, the scans, and the cache. */
+  private readonly service: IndexService<U>;
+  /** Hears changes to the workspace and queues or carries out what each requires. */
+  private readonly watcher: ChangeWatcher<U>;
   /**
    * Fires as a scan moves on, at most every few percent, so a view that says
    * it is waiting can say how far along it is.
    */
-  public readonly onDidProgress = this.progressEmitter.event;
-  /** Publishes each new index to the plain listeners, then to the views in turns. */
-  private readonly publisher: ViewPublisher;
-  private readonly version: string;
-  private readonly readCache: boolean;
-  private readonly progress: Progress;
-  /** Hears changes to the workspace and queues or carries out what each requires. */
-  private readonly watcher: ChangeWatcher<U>;
-  /** Whether the index shows the cache's notes, not yet checked against the files. */
-  private staleFromCache = false;
+  public readonly onDidProgress: Event<void>;
+  /** Fires with each new index, before any view redraws from it. */
+  public readonly onDidUpdate: Event<WorkspaceIndex>;
 
+  /** `searchStore` is the full-text cache, absent in a test that needs none. */
   public constructor(
     private readonly scanner: WorkspaceScanner<U>,
-    private readonly searchStore?: SearchStore,
+    searchStore?: SearchStore,
     options: WorkspaceIndexerOptions<U> = {},
   ) {
     this.publisher = new ViewPublisher(options.schedule);
+    this.service = new IndexService(scanner, searchStore, this.publisher, options);
+    this.watcher = new ChangeWatcher(scanner, this.service, options.events, options.ownWrites);
+    this.onDidProgress = this.service.onDidProgress;
     this.onDidUpdate = this.publisher.onDidUpdate;
-    this.version = options.version ?? '';
-    this.readCache = options.readCache ?? false;
-    this.progress = options.progress ?? PROGRESS_NOWHERE;
-    this.watcher = new ChangeWatcher(
-      scanner,
-      {
-        forgetParkedRules: () => {
-          this.parkedRules = undefined;
-        },
-        republishParking: () => this.republishParking(),
-        rescan: () => {
-          this.readyPromise = this.refresh();
-        },
-        applyQueued: (changes) => this.applyQueued(changes),
-      },
-      options.events,
-      options.ownWrites,
-    );
-    this.disposables.push(this.progressEmitter);
   }
 
   /** Whether a first scan has finished, so the index holds the workspace. */
   public get hasIndexed(): boolean {
-    return this.indexedOnce;
+    return this.service.hasIndexed;
   }
-
-  private indexedOnce = false;
 
   /** How far the scan under way has got: "412 of 3,760 notes", or nothing. */
   public get scanProgress(): { completed: number; total: number } | undefined {
-    return this.scanState;
+    return this.service.scanProgress;
   }
-
-  public readonly onDidUpdate: Event<WorkspaceIndex>;
 
   /**
    * Redraws a view from the index after each update, in a host turn of its
@@ -166,8 +124,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    */
   public start(): Promise<void> {
     this.watcher.start();
-    this.readyPromise = this.startFromCache();
-    return this.readyPromise;
+    return this.service.start();
   }
 
   /**
@@ -185,53 +142,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * checked against the files. It is replaced within about a second.
    */
   public get isStale(): boolean {
-    return this.staleFromCache;
-  }
-
-  /**
-   * A warm start: the notes as they were when VS Code last closed, shown at
-   * once, then checked against the files, rereading only the notes whose
-   * saved time, created time, or size changed. A cold start is a full scan.
-   */
-  private async startFromCache(): Promise<void> {
-    const store = this.searchStore;
-    const fingerprint = this.scanner.getParseFingerprint();
-    if (store && this.readCache) {
-      const cached: ParsedFile[] = [];
-      const found = await measureAsync(
-        'Load notes from cache',
-        () =>
-          store.readParsedNotes(this.cacheFingerprint(fingerprint), (page) =>
-            page.forEach((file) => {
-              // A note excluded, or a folder removed, while VS Code was
-              // closed is no longer a note.
-              const uri = this.scanner.getUri(file.filePath);
-              if (uri && this.scanner.isNotesFile(uri)) {
-                cached.push(file);
-              }
-            }),
-          ),
-        () => `${cached.length} notes`,
-      );
-      if (found && cached.length > 0 && !this.disposed) {
-        this.publishState('Build index', () => {
-          this.state = IndexState.build(cached);
-        }, describeBuild);
-        this.parsedUnder = fingerprint;
-        this.staleFromCache = true;
-        this.cachedScan = store.readLastScan();
-        this.indexedOnce = true;
-        this.emitUpdate();
-        try {
-          await this.refresh({ reuse: 'cache' });
-        } finally {
-          this.staleFromCache = false;
-          this.cachedScan = undefined;
-        }
-        return;
-      }
-    }
-    await this.refresh();
+    return this.service.isStale;
   }
 
   /**
@@ -240,80 +151,32 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * read the same.
    */
   public getUnreadable(): UnreadableNote[] {
-    return [...this.unreadable]
-      .map(([filePath, reason]) => ({ filePath, reason }))
-      .sort((a, b) => a.filePath.localeCompare(b.filePath));
+    return this.service.getUnreadable();
   }
 
   /** What the last full scan found, kept out, and read. */
   public getLastScan(): { found: number; templates: number; excluded: number; read: number } {
-    // Until the check at a warm start finishes, the last session's counts.
-    return { ...(this.cachedScan ?? this.scanner.lastScan) };
+    return this.service.getLastScan();
   }
-
-  private cachedScan: ScanCounts | undefined;
 
   /**
    * Exposes the initial scan as a barrier for commands that need complete data.
    */
   public get ready(): Promise<void> {
-    return this.readyPromise;
+    return this.service.ready;
   }
 
   /**
    * Returns the derived index, built once per change to the notes and shared
    * by every caller until the next one, so callers treat it as read-only.
-   *
-   * Building it walks every note, and editor features ask for it on every
-   * keystroke and cursor move, so rebuilding per call was the main cost of
-   * typing in a large workspace.
    */
   public getSnapshot(): WorkspaceIndex {
-    return this.snapshot ?? this.publishState('Build index', () => undefined, describeBuild);
+    return this.service.getSnapshot();
   }
-
-  /**
-   * Derives the index from the state once `mutate` has changed it, marks
-   * parking on it, and keeps it as the snapshot every caller shares, timed
-   * under `label`. Every path that changes the state derives through here,
-   * so none can forget parking.
-   */
-  private publishState(
-    label: 'Build index' | 'Update index',
-    mutate: () => void,
-    describe: (index: WorkspaceIndex) => string,
-  ): WorkspaceIndex {
-    this.snapshot = measure(
-      label,
-      () => {
-        mutate();
-        return this.withParking(this.state.snapshot());
-      },
-      describe,
-    );
-    return this.snapshot;
-  }
-
-  /**
-   * Marks what `deckard.parked` parks on a newly derived index. Parking is a
-   * setting, not part of a note, so it is worked out after the notes' own
-   * parts are folded, and a change to it redraws without reading any note.
-   */
-  private withParking(index: WorkspaceIndex): WorkspaceIndex {
-    // A stand-in scanner in a test may not read settings at all.
-    index.parked = computeParked(index, this.getParkedRules());
-    return index;
-  }
-
-  private parkedRules: ParkedRules | undefined;
 
   /** What `deckard.parked` parks now, as the index reads it. */
   public getParkedRules(): ParkedRules {
-    this.parkedRules ??=
-      typeof this.scanner.getParkedRules === 'function'
-        ? this.scanner.getParkedRules()
-        : NO_PARKED_RULES;
-    return this.parkedRules;
+    return this.service.getParkedRules();
   }
 
   /** The file an index path names, when a workspace folder holds it. */
@@ -344,12 +207,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     query: string,
     options?: EntrySearchOptions,
   ): EntrySearchResult {
-    return (
-      this.searchStore?.searchEntries(query, options) ?? {
-        matches: [],
-        partial: false,
-      }
-    );
+    return this.service.searchEntries(query, options);
   }
 
   /**
@@ -358,7 +216,7 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * the same way the full-text cache does.
    */
   public suggestWords(terms: readonly string[]): ReadonlyMap<string, string> {
-    return this.searchStore?.suggestWords(terms) ?? new Map();
+    return this.service.suggestWords(terms);
   }
 
   /**
@@ -386,12 +244,14 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
     return this.scanner.isNotesFile(uri);
   }
 
+  /** The folder `deckard.notesFolder` names in a workspace folder, or the folder itself. */
   public getNotesFolderUri(
     workspaceFolder: WorkspaceFolder<U>,
   ): U {
     return this.scanner.getNotesFolderUri(workspaceFolder);
   }
 
+  /** The folder `deckard.templatesFolder` names in a workspace folder, if it names one. */
   public getTemplatesFolderUri(
     workspaceFolder: WorkspaceFolder<U>,
   ): U | undefined {
@@ -406,243 +266,16 @@ export class WorkspaceIndexer<U extends ResourceUri = ResourceUri> implements Di
    * a rescan after an exclude or folder change costs a stat per note.
    * `reuse: 'none'` rereads and reparses every note: Reindex Workspace.
    */
-  public async refresh(options: { reuse?: 'session' | 'cache' | 'none' } = {}): Promise<void> {
-    if (this.disposed) {
-      return;
-    }
-    const checking = options.reuse === 'cache';
-    this.parkedRules = undefined;
-    const fingerprint = this.scanner.getParseFingerprint();
-    const reusable =
-      options.reuse !== 'none' && this.parsedUnder === fingerprint
-        ? this.state.files
-        : undefined;
-
-    await this.progress.withProgress(
-      checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
-      async (progress) => {
-        const parsedFiles = await measureAsync(
-          'Scan workspace',
-          () =>
-            this.scanner.scan(
-              (completed, total): void => {
-              const step = Math.max(1, Math.floor(total / 50));
-              if (completed === total || completed % step === 0) {
-                this.scanState = { completed, total };
-                this.progressEmitter.fire();
-              }
-              progress.report({
-                message:
-                  total > 0
-                    ? `${completed}/${total} Markdown files`
-                    : 'No Markdown files',
-                increment: total > 0 ? 100 / total : 0,
-              });
-              },
-              reusable && ((filePath, stamp) => reuseUnchanged(reusable.get(filePath), stamp)),
-              // Each note is encoded for the cache as it is read, rather
-              // than all of them in one turn when the cache is written.
-              this.searchStore && ((file) => this.searchStore?.prepare(file)),
-            ),
-          (files) => `${files.length} notes`,
-        );
-        this.scanState = undefined;
-        if (this.disposed) {
-          return;
-        }
-
-        let changed = true;
-        if (checking) {
-          // The cache's notes are on screen already: only what differs from
-          // them is applied, and nothing is published if nothing does.
-          const changes = measure(
-            'Check notes for changes',
-            () => this.diffAgainstScan(parsedFiles),
-            (found) =>
-              `${parsedFiles.length} notes, ${found.filter((change) => change.file).length} changed, ${found.filter((change) => !change.file).length} gone`,
-          );
-          changed = changes.length > 0;
-          if (changed) {
-            this.publishState('Update index', () => this.state.apply(changes), describeUpdate(changes));
-          }
-        } else {
-          const previous = this.state;
-          this.publishState('Build index', () => {
-            this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
-          }, describeBuild);
-        }
-        this.parsedUnder = fingerprint;
-        this.unreadable.clear();
-        this.scanner.failures.forEach((failure) =>
-          this.unreadable.set(failure.filePath, failure.reason),
-        );
-        measure(
-          'Rebuild search index',
-          () =>
-            {
-              this.searchStore?.replace(this.state.files.values(), this.cacheFingerprint(fingerprint));
-              this.searchStore?.writeLastScan(this.scanner.lastScan);
-            },
-          () => `${this.state.files.size} notes`,
-        );
-        // What the store handed to its worker is still being written. The
-        // log says when it lands, because until then a search finds a note
-        // by its title and tags but not yet by the words inside it.
-        this.reportSearchIndexWritten();
-        this.indexedOnce = true;
-        this.staleFromCache = false;
-        this.cachedScan = undefined;
-        if (changed) {
-          this.emitUpdate();
-        }
-      },
-    );
-  }
-
-  /** What a scan found that the index does not hold as it is, in scan order. */
-  private diffAgainstScan(parsedFiles: readonly ParsedFile[]): NoteChange[] {
-    const changes: NoteChange[] = [];
-    const scanned = new Set<string>();
-    parsedFiles.forEach((file) => {
-      scanned.add(file.filePath);
-      if (this.state.files.get(file.filePath) !== file) {
-        changes.push({ filePath: file.filePath, file });
-      }
-    });
-    this.state.files.forEach((_, filePath) => {
-      if (!scanned.has(filePath)) {
-        changes.push({ filePath });
-      }
-    });
-    return changes;
-  }
-
-  /**
-   * What the notes in the cache were parsed under: the parse settings, this
-   * version of Deckard, and the time zone, since the parser reads a
-   * written date as a local one. Any change rebuilds the cache.
-   */
-  private cacheFingerprint(parseFingerprint = this.scanner.getParseFingerprint()): string {
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
-    return [parseFingerprint, this.version, timeZone].join('\u0002');
-  }
-
-  /** Times the part of a rebuild that finished after the host moved on. */
-  private reportSearchIndexWritten(): void {
-    const store = this.searchStore;
-    if (store) {
-      void measureAsync('Write search index off the extension host', () =>
-        store.whenIdle(),
-      );
-    }
+  public refresh(options: RefreshOptions = {}): Promise<void> {
+    return this.service.refresh(options);
   }
 
   /**
    * Stops timers, watchers, and events so late callbacks cannot repopulate state.
    */
   public dispose(): void {
-    this.disposed = true;
     this.watcher.dispose();
-    this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     this.publisher.dispose();
-    this.searchStore?.dispose();
+    this.service.dispose();
   }
-
-  /**
-   * Republishes with parking worked out again from `deckard.parked`, reading
-   * no note. Before a first scan there is nothing to redraw.
-   */
-  private republishParking(): void {
-    if (!this.indexedOnce) {
-      return;
-    }
-    this.snapshot = undefined;
-    this.emitUpdate();
-  }
-
-  /**
-   * Applies all queued changes together so observers never see half a batch.
-   *
-   * Saved-file reads refresh timestamps; in-memory parses reuse prior metadata
-   * because unsaved editor content cannot provide a trustworthy file stat.
-   */
-  private async applyQueued(updates: ReadonlyArray<QueuedChange<U>>): Promise<void> {
-    const changes = await measureAsync(
-      'Read changed notes',
-      () => this.readUpdates(updates),
-      () => `${updates.length} ${updates.length === 1 ? 'note' : 'notes'}`,
-    );
-    if (this.disposed) {
-      return;
-    }
-    // Only the changed notes' parts of the index are worked out again; the
-    // rest is reused from the index before.
-    this.publishState('Update index', () => this.state.apply(changes), describeUpdate(changes));
-    this.emitUpdate();
-  }
-
-  /** Reads what changed, in the order it was queued, as changes to apply. */
-  private async readUpdates(updates: ReadonlyArray<QueuedChange<U>>): Promise<NoteChange[]> {
-    const changes: NoteChange[] = [];
-    for (const update of updates) {
-      const filePath = this.scanner.getFilePath(update.uri);
-      if (update.deleted) {
-        changes.push({ filePath });
-        this.unreadable.delete(filePath);
-        this.searchStore?.remove(filePath);
-        continue;
-      }
-
-      try {
-        const previous = this.state.files.get(filePath);
-        const parsedFile =
-          update.content === undefined
-            ? await this.scanner.read(update.uri)
-            : this.scanner.parse(update.uri, update.content, previous?.fileTimes);
-        changes.push({ filePath, file: parsedFile });
-        this.unreadable.delete(filePath);
-        this.searchStore?.upsert(parsedFile);
-      } catch (error) {
-        reportError(`Could not update ${filePath}`, error);
-        this.unreadable.set(filePath, describeError(error));
-      }
-    }
-    return changes;
-  }
-
-  /**
-   * Publishes a newly derived snapshot after the cache is internally
-   * consistent: the plain listeners now, each view in a turn of its own, as
-   * `ViewPublisher` orders them.
-   */
-  private emitUpdate(): void {
-    this.publisher.publish(() => this.getSnapshot());
-  }
-}
-
-/** What the log says of a full build: "3 notes, 12 entries". */
-function describeBuild(index: WorkspaceIndex): string {
-  return `${index.files.size} notes, ${index.sections.size} entries`;
-}
-
-/** What the log says of an update: "1 note changed, 3 notes". */
-function describeUpdate(changes: readonly NoteChange[]): (index: WorkspaceIndex) => string {
-  return (index) =>
-    `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`;
-}
-
-/**
- * The note as already parsed, when the file is still as it was then: same
- * saved time, created time, and size.
- */
-function reuseUnchanged(
-  file: ParsedFile | undefined,
-  stamp: FileStamp,
-): ParsedFile | undefined {
-  return file &&
-    file.fileTimes?.updatedAt === stamp.mtime &&
-    file.fileTimes.createdAt === stamp.ctime &&
-    Buffer.byteLength(file.content, 'utf8') === stamp.size
-    ? file
-    : undefined;
 }

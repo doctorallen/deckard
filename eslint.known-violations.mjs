@@ -343,7 +343,6 @@ export default {
     "src/core/storage/searchStoreWorkerClient.ts": 2,
     "src/core/workspace/backlinks.ts": 3,
     "src/core/workspace/indexState.ts": 9,
-    "src/core/workspace/indexer.ts": 3,
     "src/core/workspace/parked.ts": 5,
     "src/core/workspace/scanner.ts": 3,
     "src/extension.ts": 1,
@@ -493,9 +492,6 @@ export default {
       "buildAssociationsDirectly",
       "computeAssociationParts",
       "rank"
-    ],
-    "src/core/workspace/indexer.ts": [
-      "refresh"
     ],
     "src/core/workspace/parked.ts": [
       "computeParked"
