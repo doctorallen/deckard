@@ -53,7 +53,7 @@ async function openPage() {
   const page = new CalendarPanel({
     indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     extensionUri: { fsPath: '/ext' },
-    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
   await page.show();
@@ -172,7 +172,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   const page = new CalendarPanel({
     indexer,
     extensionUri: { fsPath: '/ext' },
-    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
     activeCalendar,
   });

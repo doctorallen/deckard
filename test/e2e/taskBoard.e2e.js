@@ -11,7 +11,6 @@ const { TaskBoardPanel } = modules.taskBoard;
 const { PreferencesStore } = modules.preferences;
 const { ActiveSearch } = modules.activeSearch;
 const { DashboardPanel } = modules.dashboard;
-const { WorkspaceWriteHistory } = modules.workspaceWrites;
 const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
@@ -75,7 +74,7 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
     extensionUri: { fsPath: '/ext' },
     openTag: async () => undefined,
     activeSearch,
-    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
   await board.show();
@@ -362,7 +361,7 @@ test('saves its search as a view that reopens on the Task Board', async () => {
       openSearch: (query) => opened.push(`search ${query}`),
       openTaskBoard: (query) => opened.push(`board ${query}`),
     },
-    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
   await dashboard.openSavedFilter(saved.id);

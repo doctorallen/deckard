@@ -62,7 +62,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
     preferences,
     extensionUri: { fsPath: '/ext' },
     activeSearch,
-    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
 
