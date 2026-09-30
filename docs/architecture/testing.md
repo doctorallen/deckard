@@ -34,7 +34,7 @@ The Node harnesses share three modules in `test/harness/`, so a page or a file c
 
 `src/test/pages.ts` is the page catalog: every webview page and how to render it. The mocha suites that walk the pages and `test/ui/pages.js` both take their pages from it. `openWebviewPage(html, state)` in `src/test/webviewPage.ts` runs a page in jsdom for a mocha suite, and `test/e2e/support.js` mounts one for an e2e suite. Both pass messages as JSON, as VS Code does.
 
-Visual baselines are kept per platform in `test/ui/visual-baseline/<platform>/`, because the operating system rasterizes fonts, and macOS and Linux differ in every glyph's edge. Chrome takes each screenshot at a moment it picks, so the harness ends every transition and animation at once and hides the caret: a page is compared where it settles, and an unchanged page draws identically run after run. When a change in looks is meant, record it with `npm run test:visual -- --update` and commit the new baselines.
+Visual baselines are kept per platform in `test/ui/visual-baseline/<platform>/`, because the operating system rasterizes fonts, and macOS and Linux differ in every glyph's edge. Chrome takes each screenshot at a moment it picks, so the harness ends every transition and animation at once and hides the caret: a page is compared where it settles, and an unchanged page draws identically run after run. The one exception is Synthwave's Task Board, by status and by tag, whose columns still come to rest a strip of a card apart now and then; `checkVisual.js` names those two surfaces and lets them differ by 0.1% of the page rather than 0.01% until that is fixed. When a change in looks is meant, record it with `npm run test:visual -- --update` and commit the new baselines.
 
 ## When to run what
 
