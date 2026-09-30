@@ -10,6 +10,7 @@ import { createAgenda } from '../ui/state/agendaState';
 import { createDashboardTask, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
 import { createQueryContext } from '../core/query/queryContext';
@@ -123,10 +124,13 @@ suite('Steps in the views', () => {
   test('a task with steps opens to them in the Tasks view, each a task of its own', async () => {
     const index = createIndex();
     const updates = new vscode.EventEmitter<WorkspaceIndex>();
-    const provider = new AgendaTreeProvider({
-      onDidUpdate: updates.event,
-      getTask: (taskId) => index.tasks.get(taskId),
-    });
+    const provider = new AgendaTreeProvider(
+      {
+        onDidUpdate: updates.event,
+        getTask: (taskId) => index.tasks.get(taskId),
+      },
+      { history: new WorkspaceWriteHistory() },
+    );
     try {
       updates.fire(index);
       const groups = await provider.getChildren();

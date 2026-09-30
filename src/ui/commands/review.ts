@@ -25,7 +25,7 @@ import { Weekday } from '../../core/markdown/dates';
 import { readWeekStart } from './datePrompt';
 import { readQueryContext } from './queryContext';
 import { revealLine } from './navigation';
-import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
+import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
 /**
  * Writes a week's or a month's review into its periodic note.
@@ -81,12 +81,22 @@ export function getReviewRange(
 }
 
 /**
+ * What a review is written with besides the index: the history that keeps it
+ * as the write Undo takes back, and the preferences that say when each tag
+ * was first seen, when there are any.
+ */
+export interface ReviewWrites {
+  history: WorkspaceWriteHistory;
+  preferences?: Pick<PreferencesStore, 'value'>;
+}
+
+/**
  * Writes the review of a period into its note, creating the note when it is
  * not there yet, and replacing the review already in it.
  */
 export async function writeReview(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
-  preferences: Pick<PreferencesStore, 'value'> | undefined,
+  writes: ReviewWrites,
   period: Exclude<NotePeriod, 'day'>,
   day: Date = new Date(),
   options: {
@@ -105,7 +115,7 @@ export async function writeReview(
   const weekStart = readWeekStart();
   const range = options.range ?? getReviewRange(period, day, weekStart);
   const summary = summarizeReview(indexer.getSnapshot(), range, {
-    tagFirstSeen: preferences?.value.tagFirstSeen,
+    tagFirstSeen: writes.preferences?.value.tagFirstSeen,
     // The period after this one, which the review looks ahead at.
     next: getReviewRange(period, new Date(range.end), weekStart),
     nextLabel: period === 'week' ? 'next week' : 'next month',
@@ -130,7 +140,7 @@ export async function writeReview(
     ),
     updated,
   );
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await writes.history.write(edit, {
     label: `the review of ${range.title}`,
     // One note, written by asking for it; the reader is watching it happen.
     preview: 'never',
@@ -144,9 +154,10 @@ export async function writeReview(
     // The watcher picks the note up; the review itself is written.
   }
   if (!options.silent) {
-    void offerReview(
+    offerReview(
       `Wrote the review of ${range.title}: ${summary.completed.length} done, ${summary.slipped.length} still open, ${summary.comingUp.length} coming up.`,
       noteUri,
+      written.handle,
       indexer,
     );
   }
@@ -156,42 +167,41 @@ export async function writeReview(
 /**
  * Says the review is written, and offers the two things a reader wants next:
  * to read it, and to take it back.
+ *
+ * Its Undo takes back whatever Deckard wrote last, without asking whether
+ * that is still the review, as it always has.
  */
-async function offerReview(
+function offerReview(
   message: string,
   noteUri: vscode.Uri,
+  written: WriteHandle,
   indexer: Pick<WorkspaceIndexer, 'refresh'>,
-): Promise<void> {
-  const choice = await vscode.window.showInformationMessage(
+): void {
+  written.offerUndo(
     message,
-    'Open',
-    'Undo',
+    {
+      guard: 'none',
+      refresh: () => indexer.refresh(),
+      done: 'Took the review back out of the note.',
+    },
+    {
+      label: 'Open',
+      run: async () => {
+        const document = await vscode.workspace.openTextDocument(noteUri);
+        const editor = await vscode.window.showTextDocument(document, {
+          preview: false,
+        });
+        // Open it where the review is, which is what the message was about.
+        const line = document
+          .getText()
+          .split(/\r?\n/)
+          .findIndex((text) => text.includes(REVIEW_START));
+        if (line >= 0) {
+          revealLine(editor, line + 1);
+        }
+      },
+    },
   );
-  if (choice === 'Open') {
-    const document = await vscode.workspace.openTextDocument(noteUri);
-    const editor = await vscode.window.showTextDocument(document, {
-      preview: false,
-    });
-    // Open it where the review is, which is what the message was about.
-    const line = document
-      .getText()
-      .split(/\r?\n/)
-      .findIndex((text) => text.includes(REVIEW_START));
-    if (line >= 0) {
-      revealLine(editor, line + 1);
-    }
-    return;
-  }
-  if (choice !== 'Undo') {
-    return;
-  }
-  const undone = await workspaceWrites.undo();
-  try {
-    await indexer.refresh();
-  } catch {
-    // The watcher picks the note up; the note itself is back.
-  }
-  reportUndo(undone, 'Took the review back out of the note.');
 }
 
 /**
@@ -200,7 +210,7 @@ async function offerReview(
  */
 export async function writeReviewCommand(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
-  preferences?: Pick<PreferencesStore, 'value'>,
+  writes: ReviewWrites,
 ): Promise<string | undefined> {
   const open = findOpenPeriod();
   const period =
@@ -222,7 +232,7 @@ export async function writeReviewCommand(
   const noteUri = vscode.window.activeTextEditor?.document.uri;
   if (open?.start && open.end && noteUri) {
     const last = new Date(open.end.getFullYear(), open.end.getMonth(), open.end.getDate() - 1);
-    return writeReview(indexer, preferences, period, open.day, {
+    return writeReview(indexer, writes, period, open.day, {
       range: {
         name: open.name ?? fileNameOf(noteUri),
         title: `${formatIsoDate(open.start.getTime())} to ${formatIsoDate(last.getTime())}`,
@@ -232,7 +242,7 @@ export async function writeReviewCommand(
       noteUri,
     });
   }
-  return writeReview(indexer, preferences, period, open?.day ?? new Date());
+  return writeReview(indexer, writes, period, open?.day ?? new Date());
 }
 
 /**
@@ -240,7 +250,7 @@ export async function writeReviewCommand(
  */
 export async function openPeriodicNoteWithReview(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
-  preferences: Pick<PreferencesStore, 'value'> | undefined,
+  writes: ReviewWrites,
   period: Exclude<NotePeriod, 'day'>,
 ): Promise<vscode.Uri | undefined> {
   const folder = await chooseTargetFolder();
@@ -250,7 +260,7 @@ export async function openPeriodicNoteWithReview(
   const isNew = !(await findExistingPeriodicNote(folder, period, new Date()));
   const noteUri = await ensurePeriodicNote(folder, period, new Date());
   if (isNew && isReviewOnCreateEnabled(folder.uri)) {
-    await writeReview(indexer, preferences, period, new Date(), {
+    await writeReview(indexer, writes, period, new Date(), {
       silent: true,
     });
   }

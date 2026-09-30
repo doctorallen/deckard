@@ -17,7 +17,7 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveSourceUri } from './navigation';
 import { describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { quoteTitle, readIndexedTaskLine } from './taskActions';
-import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Break into Steps…: a list that grows one step per Enter, shown with the
@@ -426,6 +426,7 @@ export function describeSuggestFailure(model: string, error: unknown): string {
  * change: said with an Undo, and taken back by Undo Last Change too.
  */
 export async function addTaskSteps(
+  history: WorkspaceWriteHistory,
   target: StepTarget,
   steps: readonly string[],
 ): Promise<boolean> {
@@ -454,28 +455,17 @@ export async function addTaskSteps(
     const edit = new vscode.WorkspaceEdit();
     edit.insert(uri, document.lineAt(plan.afterLine).range.end, eol + written.join(eol));
     const quoted = quoteTitle(target.title);
-    const result = await applyWorkspaceWrite(edit, {
+    const result = await history.write(edit, {
       label: `writing ${countSteps(steps.length)} under ${quoted}`,
     });
     if (!result.applied) {
       void reportFailure(describeRejectedEdit(noteName(uri)));
       return false;
     }
-    const mine = workspaceWrites.lastWrite;
-    void vscode.window
-      .showInformationMessage(`Wrote ${countSteps(steps.length)} under ${quoted}.`, 'Undo')
-      .then(async (choice) => {
-        if (choice !== 'Undo') {
-          return;
-        }
-        if (workspaceWrites.lastWrite !== mine) {
-          void vscode.window.showInformationMessage(
-            'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
-          );
-          return;
-        }
-        reportUndo(await workspaceWrites.undo(), `Took the ${countSteps(steps.length)} back out.`);
-      });
+    result.handle.offerUndo(`Wrote ${countSteps(steps.length)} under ${quoted}.`, {
+      guard: 'latest',
+      done: `Took the ${countSteps(steps.length)} back out.`,
+    });
     return true;
   } catch (error) {
     void reportFailure({
@@ -525,6 +515,7 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
  */
 export async function breakIntoStepsCommand(
   indexer: WorkspaceIndexer,
+  history: WorkspaceWriteHistory,
   task?: Task,
   suggester: StepSuggester | undefined = createLanguageModelSuggester(),
 ): Promise<boolean> {
@@ -559,5 +550,5 @@ export async function breakIntoStepsCommand(
   if (!steps || steps.length === 0) {
     return false;
   }
-  return addTaskSteps(target, steps);
+  return addTaskSteps(history, target, steps);
 }

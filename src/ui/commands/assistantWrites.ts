@@ -16,7 +16,7 @@ import { ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 import { completeDraft, writeEditedTask } from './taskEditor';
 import { readTaskMetadataFormat } from './taskActions';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * What an assistant may write, and how.
@@ -171,7 +171,11 @@ export interface WriteAnswer {
   isError?: boolean;
 }
 
-export async function addTask(indexer: WriteIndexSource, input: AddTaskInput): Promise<WriteAnswer> {
+export async function addTask(
+  indexer: WriteIndexSource,
+  history: WorkspaceWriteHistory,
+  input: AddTaskInput,
+): Promise<WriteAnswer> {
   await indexer.ready;
   const index = indexer.getSnapshot();
   let uri: vscode.Uri | undefined;
@@ -195,7 +199,7 @@ export async function addTask(indexer: WriteIndexSource, input: AddTaskInput): P
   const insertion = getCaptureInsertion(document.getText(), line);
   const edit = new vscode.WorkspaceEdit();
   edit.insert(uri, new vscode.Position(insertion.line, insertion.character), insertion.text);
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: 'Assistant: add a task',
     description: `Add "${shorten(input.text)}" to ${vscode.workspace.asRelativePath(uri)}`,
     preview: 'always',
@@ -208,7 +212,12 @@ export async function addTask(indexer: WriteIndexSource, input: AddTaskInput): P
   };
 }
 
-export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInput, now = Date.now()): Promise<WriteAnswer> {
+export async function changeTask(
+  indexer: WriteIndexSource,
+  history: WorkspaceWriteHistory,
+  input: ChangeTaskInput,
+  now = Date.now(),
+): Promise<WriteAnswer> {
   await indexer.ready;
   const index = indexer.getSnapshot();
   const task = [...index.tasks.values()].find(
@@ -242,7 +251,7 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
   }
   const edit = new vscode.WorkspaceEdit();
   edit.replace(uri, current.range, replacement);
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: 'Assistant: change a task',
     description: `${describeChange(changes)} — "${shorten(task.title)}" in ${task.filePath}`,
     preview: 'always',

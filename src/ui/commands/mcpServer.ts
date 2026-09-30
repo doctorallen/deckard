@@ -36,6 +36,7 @@ import {
   readChangeTaskInput,
 } from './assistantWrites';
 import { readQueryContext } from './queryContext';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /** Where the server answers, on 127.0.0.1. */
 export const MCP_PATH = '/mcp';
@@ -51,6 +52,22 @@ interface IndexSource {
 interface SecretStore {
   get(key: string): Thenable<string | undefined>;
   store(key: string, value: string): Thenable<void>;
+}
+
+/** What the server is built from. */
+export interface McpServerOptions {
+  indexer: IndexSource;
+  /**
+   * The history the add-task and change-task tools write to, so Undo Last
+   * Change takes back what a client wrote, as it does for VS Code's tools.
+   */
+  history: WorkspaceWriteHistory;
+  /** Where its token is kept. */
+  secrets: SecretStore;
+  /** The tools it lists, from the manifest. */
+  tools: readonly McpTool[];
+  /** Deckard's version, which the server reports. */
+  version: string;
 }
 
 /** The command that adds the server to Claude Code, token included. */
@@ -72,12 +89,18 @@ export class DeckardMcpServer implements vscode.Disposable {
   private token: string | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
-  public constructor(
-    private readonly indexer: IndexSource,
-    private readonly secrets: SecretStore,
-    private readonly tools: readonly McpTool[],
-    private readonly version: string,
-  ) {
+  private readonly indexer: IndexSource;
+  private readonly history: WorkspaceWriteHistory;
+  private readonly secrets: SecretStore;
+  private readonly tools: readonly McpTool[];
+  private readonly version: string;
+
+  public constructor(options: McpServerOptions) {
+    this.indexer = options.indexer;
+    this.history = options.history;
+    this.secrets = options.secrets;
+    this.tools = options.tools;
+    this.version = options.version;
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.mcpServer')) {
@@ -299,13 +322,13 @@ export class DeckardMcpServer implements vscode.Disposable {
         if (name === ADD_TASK_TOOL_NAME) {
           const input = readAddTaskInput(args);
           return input
-            ? measureAsync('MCP add task', () => addTask(this.indexer, input))
+            ? measureAsync('MCP add task', () => addTask(this.indexer, this.history, input))
             : { text: 'Send the task\'s words as "text", and optionally a workspace-relative "note".', isError: true };
         }
         if (name === CHANGE_TASK_TOOL_NAME) {
           const input = readChangeTaskInput(args);
           return input
-            ? measureAsync('MCP change task', () => changeTask(this.indexer, input))
+            ? measureAsync('MCP change task', () => changeTask(this.indexer, this.history, input))
             : { text: 'Send "note" and "line" as deckard_query reports them, and at least one change.', isError: true };
         }
         return { text: `Unknown tool: ${name}`, isError: true };

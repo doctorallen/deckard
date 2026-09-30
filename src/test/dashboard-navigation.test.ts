@@ -7,6 +7,7 @@ import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../core/workspace/indexState';
 import { PreferencesStore } from '../core/storage/preferences';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { DashboardNavigation, DashboardPanel } from '../ui/webview/dashboard';
 
 const defaultPreferences: PersistedPreferences = {
@@ -95,12 +96,13 @@ suite('Dashboard navigation', () => {
       value: defaultPreferences,
     } as unknown as PreferencesStore;
     const navigation = createNavigation();
-    const dashboard = new DashboardPanel(
-      index,
+    const dashboard = new DashboardPanel({
+      indexer: index,
       preferences,
-      vscode.Uri.file(process.cwd()),
+      extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-    );
+      writes: { history: new WorkspaceWriteHistory() },
+    });
 
     try {
       await (dashboard as unknown as Controller).handleValidMessage({
@@ -133,12 +135,13 @@ suite('Dashboard navigation', () => {
       },
     } as unknown as PreferencesStore;
     const navigation = createNavigation();
-    const dashboard = new DashboardPanel(
-      index,
+    const dashboard = new DashboardPanel({
+      indexer: index,
       preferences,
-      vscode.Uri.file(process.cwd()),
+      extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-    );
+      writes: { history: new WorkspaceWriteHistory() },
+    });
 
     try {
       await (dashboard as unknown as Controller).handleValidMessage({
@@ -175,12 +178,13 @@ suite('Dashboard navigation', () => {
       },
     } as unknown as PreferencesStore;
     const navigation = createNavigation();
-    const dashboard = new DashboardPanel(
-      createIndexer(),
+    const dashboard = new DashboardPanel({
+      indexer: createIndexer(),
       preferences,
-      vscode.Uri.file(process.cwd()),
+      extensionUri: vscode.Uri.file(process.cwd()),
       navigation,
-    );
+      writes: { history: new WorkspaceWriteHistory() },
+    });
 
     try {
       const controller = dashboard as unknown as Controller;
@@ -227,12 +231,13 @@ suite('Dashboard navigation', () => {
         columnUpdates.push({ section, columns });
       },
     } as unknown as PreferencesStore;
-    const dashboard = new DashboardPanel(
-      createIndexer(),
+    const dashboard = new DashboardPanel({
+      indexer: createIndexer(),
       preferences,
-      vscode.Uri.file(process.cwd()),
-      createNavigation(),
-    );
+      extensionUri: vscode.Uri.file(process.cwd()),
+      navigation: createNavigation(),
+      writes: { history: new WorkspaceWriteHistory() },
+    });
 
     try {
       await (dashboard as unknown as Controller).handleValidMessage({

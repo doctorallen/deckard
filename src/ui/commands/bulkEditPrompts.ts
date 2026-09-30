@@ -14,6 +14,7 @@ import {
   reportBulkEditResult,
 } from './bulkEdit';
 import { askForDate } from './datePrompt';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Asking what to do to a search's results, and to which of them.
@@ -87,6 +88,7 @@ function fileName(filePath: string): string {
  * undoable write.
  */
 export async function editResults(
+  history: WorkspaceWriteHistory,
   kind: 'notes' | 'tasks',
   results: { tasks: readonly Task[]; sections: readonly Section[] },
   uri?: vscode.Uri,
@@ -130,6 +132,7 @@ export async function editResults(
   }
 
   const result = await applyBulkEdit(
+    history,
     chosen.map((item) => item.entry),
     edit,
   );

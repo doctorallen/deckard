@@ -14,6 +14,7 @@ import { askForDate } from './datePrompt';
 import {
   quoteTaskTitle,
   readTaskMetadataFormat,
+  TaskWrites,
   updateTaskLine,
 } from './taskActions';
 
@@ -194,6 +195,7 @@ export function describeLoadAfter(
  * go through `setTasksDue`, whose bulk edit writes due dates alone.
  */
 export async function setTaskDateField(
+  writes: TaskWrites,
   task: Task,
   field: 'due' | 'scheduled',
   date: string | undefined,
@@ -202,6 +204,7 @@ export async function setTaskDateField(
     return false;
   }
   return updateTaskLine(
+    writes,
     task,
     (line, { uri }) =>
       setTaskDate(
@@ -228,6 +231,7 @@ export function describeDateChange(
 }
 
 export async function setTasksDue(
+  writes: TaskWrites,
   tasks: readonly Task[],
   date: string | undefined,
   context?: RescheduleContext,
@@ -239,6 +243,7 @@ export async function setTasksDue(
   if (open.length === 1) {
     const [task] = open;
     await updateTaskLine(
+      writes,
       task,
       (line, { uri }) =>
         setTaskDate(
@@ -254,6 +259,7 @@ export async function setTasksDue(
   }
   const edit = { kind: 'due' as const, date };
   const result = await applyBulkEdit(
+    writes.history,
     open.map((task) => ({ kind: 'task' as const, task })),
     edit,
   );
@@ -278,6 +284,7 @@ export async function setTasksDue(
  * as one write, and says where they went and how full today now is.
  */
 export async function setTasksDueEach(
+  writes: TaskWrites,
   choice: Extract<RescheduleChoice, { kind: 'each' }>,
   tasks: readonly Task[],
   context?: RescheduleContext,
@@ -288,6 +295,7 @@ export async function setTasksDueEach(
   }
   const edit = { kind: 'dueEach' as const, dates: choice.dates };
   const result = await applyBulkEdit(
+    writes.history,
     open.map((task) => ({ kind: 'task' as const, task })),
     edit,
   );
@@ -382,6 +390,7 @@ export async function pickReschedule(
 
 /** Reschedules tasks from the Tasks view or the palette, and says the load. */
 export async function rescheduleTasks(
+  writes: TaskWrites,
   subject: string,
   tasks: readonly Task[],
   context?: RescheduleContext,
@@ -391,8 +400,8 @@ export async function rescheduleTasks(
     return;
   }
   if (choice.kind === 'one') {
-    await setTasksDue(tasks, choice.date, context);
+    await setTasksDue(writes, tasks, choice.date, context);
     return;
   }
-  await setTasksDueEach(choice, tasks, context);
+  await setTasksDueEach(writes, choice, tasks, context);
 }

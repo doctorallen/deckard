@@ -20,7 +20,7 @@ import {
 } from '../commands/taskBoardActions';
 import { askForDueDate, setTasksDue } from '../commands/agendaActions';
 import { readQueryContext } from '../commands/queryContext';
-import { openTask, quoteTaskTitle, toggleTask } from '../commands/taskActions';
+import { openTask, quoteTaskTitle, TaskWrites, toggleTask } from '../commands/taskActions';
 import { settingTarget, writeSetting } from '../commands/settings';
 import {
   mergeOrder,
@@ -47,6 +47,17 @@ import { panelPriority } from './panelPriority';
  */
 /** What the Task Board searches for until it is told otherwise. */
 export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
+
+/** What the Task board is built from. */
+export interface TaskBoardPanelOptions {
+  indexer: WorkspaceIndexer<vscode.Uri>;
+  preferences: PreferencesStore;
+  extensionUri: vscode.Uri;
+  openTag: (tagKey: string) => Promise<void>;
+  activeSearch: ActiveSearch;
+  /** What a card's checkbox, drop, date, move, or steps write through. */
+  writes: TaskWrites;
+}
 
 /**
  * Whether a redraw would show the index a write started from: the write has
@@ -78,13 +89,22 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private refineWasInSidebar = false;
   private lastSnapshot: TaskBoardSnapshot | undefined;
 
-  public constructor(
-    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
-    private readonly preferences: PreferencesStore,
-    private readonly extensionUri: vscode.Uri,
-    private readonly openTag: (tagKey: string) => Promise<void>,
-    private readonly activeSearch: ActiveSearch,
-  ) {
+  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly preferences: PreferencesStore;
+  private readonly extensionUri: vscode.Uri;
+  private readonly openTag: (tagKey: string) => Promise<void>;
+  private readonly activeSearch: ActiveSearch;
+  /** What a card's checkbox, drop, date, move, or steps write through. */
+  private readonly writes: TaskWrites;
+
+  public constructor(options: TaskBoardPanelOptions) {
+    this.indexer = options.indexer;
+    this.preferences = options.preferences;
+    this.extensionUri = options.extensionUri;
+    this.openTag = options.openTag;
+    this.activeSearch = options.activeSearch;
+    this.writes = options.writes;
+    const { indexer, preferences, activeSearch } = options;
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -541,7 +561,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'toggleTask': {
         const task = index.tasks.get(message.taskId);
         this.writeIndexAt = index.updatedAt;
-        if (!task || !(await toggleTask(task, message.completed))) {
+        if (!task || !(await toggleTask(this.writes, task, message.completed))) {
           this.writeIndexAt = undefined;
           this.refresh();
         }
@@ -550,7 +570,10 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'moveTask': {
         const task = index.tasks.get(message.taskId);
         this.writeIndexAt = index.updatedAt;
-        if (!task || !(await moveTaskToColumn(task, message.column, { index, from: message.from }))) {
+        if (
+          !task ||
+          !(await moveTaskToColumn(this.writes, task, message.column, { index, from: message.from }))
+        ) {
           this.writeIndexAt = undefined;
           // The card moved at once on the page; say it did not, then put it back.
           void this.panel?.webview.postMessage({ type: 'moveRefused', taskId: message.taskId });
@@ -565,14 +588,14 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         }
         const date = await askForDueDate(quoteTaskTitle(task));
         if (date !== null) {
-          await setTasksDue([task], date);
+          await setTasksDue(this.writes, [task], date);
         }
         return;
       }
       case 'moveTaskTo': {
         const task = index.tasks.get(message.taskId);
         if (task) {
-          await moveTasks(this.indexer, this.preferences, [task]);
+          await moveTasks(this.indexer, this.preferences, this.writes, [task]);
         }
         return;
       }
@@ -586,7 +609,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'breakIntoSteps': {
         const task = index.tasks.get(message.taskId);
         if (task) {
-          await breakIntoStepsCommand(this.indexer, task);
+          await breakIntoStepsCommand(this.indexer, this.writes.history, task);
         }
         return;
       }

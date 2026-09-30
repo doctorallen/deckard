@@ -6,6 +6,7 @@ import { CalendarDayDetail, CalendarMessage, WorkspaceIndex } from '../../core/t
 import { ActiveCalendar, CalendarDaySource } from './activeCalendar';
 import { settingTarget, writeSetting } from '../commands/settings';
 import { CalendarController, readShowRepeats, readShowWeekends } from './calendar';
+import { TaskWrites } from '../commands/taskActions';
 import { getCalendarHtml } from './calendarHtml';
 import { onDidChangePageChrome } from './components';
 import { parseCalendarPageMessage } from './messages';
@@ -37,19 +38,20 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
   public constructor(
     private readonly indexer: CalendarPageIndexSource,
     private readonly extensionUri: vscode.Uri,
+    /** What checking a task off, or dropping it on a day, writes through. */
+    writes: TaskWrites,
     /** Where the page says it is in front, so Related Notes can show its day. */
     private readonly activeCalendar?: ActiveCalendar,
   ) {
     // The page always shows the chosen day: it has the room.
-    this.controller = new CalendarController(
-      indexer,
-      () => true,
-      () => this.refresh(),
-      (taskId) => {
+    this.controller = new CalendarController(indexer, writes, {
+      dayPanel: () => true,
+      refresh: () => this.refresh(),
+      refused: (taskId) => {
         void this.panel?.webview.postMessage({ type: 'moveRefused', taskId });
         this.refresh();
       },
-    );
+    });
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,

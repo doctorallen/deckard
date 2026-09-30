@@ -15,7 +15,7 @@ import {
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findHeadingAtLine } from './extractHeading';
 import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Keeps `[[links]]` pointing where they pointed before a note or a heading was
@@ -351,6 +351,7 @@ export class LinkMaintenance implements vscode.Disposable {
  */
 export async function renameHeadingCommand(
   indexer: IndexSource & { refresh(): Promise<void> },
+  history: WorkspaceWriteHistory,
 ): Promise<string | undefined> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
@@ -457,7 +458,7 @@ export async function renameHeadingCommand(
       ),
     );
 
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: `the rename of the heading "${heading}"`,
     description: `Rename the heading to "${next.trim()}"`,
   });

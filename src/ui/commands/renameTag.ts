@@ -20,7 +20,17 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
 import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
-import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
+
+/**
+ * What a rename or merge writes through besides the notes: the history that
+ * keeps it as the write Undo takes back, and the preferences whose
+ * favorites, ranking, and saved views follow the tag, when there are any.
+ */
+export interface TagWrites {
+  history: WorkspaceWriteHistory;
+  preferences?: PreferencesStore;
+}
 
 export interface RenameTagOptions {
   entityNamespaceAliases?: EntityNamespaceAliases;
@@ -64,8 +74,8 @@ export interface TagMergeSummary {
  */
 export async function renameIndexedTag(
   indexer: WorkspaceIndexer,
-  requestedTagKey?: string,
-  preferences?: PreferencesStore,
+  requestedTagKey: string | undefined,
+  writes: TagWrites,
 ): Promise<TagReference | undefined> {
   try {
     await indexer.ready;
@@ -84,7 +94,7 @@ export async function renameIndexedTag(
       return undefined;
     }
 
-    return await rewriteTag(indexer, index, sourceTag, replacement, preferences);
+    return await rewriteTag(indexer, index, sourceTag, replacement, writes);
   } catch (error) {
     void reportFailure({
       outcome: 'Deckard could not rename the tag, so nothing was written.',
@@ -102,8 +112,8 @@ export async function renameIndexedTag(
  */
 export async function mergeIndexedTag(
   indexer: WorkspaceIndexer,
-  requestedTagKey?: string,
-  preferences?: PreferencesStore,
+  requestedTagKey: string | undefined,
+  writes: TagWrites,
   requestedTargetKey?: string,
 ): Promise<TagReference | undefined> {
   try {
@@ -130,7 +140,7 @@ export async function mergeIndexedTag(
       index,
       sourceTag,
       { key: targetTag.key, label: targetTag.label },
-      preferences,
+      writes,
     );
   } catch (error) {
     void reportFailure({
@@ -325,7 +335,7 @@ async function rewriteTag(
   index: WorkspaceIndex,
   sourceTag: TagInfo,
   replacement: TagReference,
-  preferences?: PreferencesStore,
+  { history, preferences }: TagWrites,
 ): Promise<TagReference | undefined> {
   const targetKey = resolveIndexedTagKey(index.tags, replacement.key);
   if (replacement.key === sourceTag.key || targetKey === sourceTag.key) {
@@ -373,7 +383,7 @@ async function rewriteTag(
 
   // The write is shown first when it reaches more than one note, and kept
   // afterwards, so `Deckard: Undo Last Change` can take the whole of it back.
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: `the ${verb} of ${sourceTag.label} ${joiner} ${replacement.label}`,
     description: `${verb === 'merge' ? 'Merge' : 'Rename'} ${sourceTag.label} ${joiner} ${replacement.label}`,
     restore: async () => {
@@ -398,8 +408,6 @@ async function rewriteTag(
     return undefined;
   }
 
-  const mine = workspaceWrites.lastWrite;
-
   // Favorites, ranking, and saved views follow the tag. This runs before the
   // refresh so nothing prunes them while they still name the old key.
   await preferences?.replaceTagKey(sourceTag.key, targetKey ?? replacement.key);
@@ -416,28 +424,18 @@ async function rewriteTag(
   }
   // Undo is offered where it was done: a Try next merge, or one from a
   // tag's menu, is not something a reader thinks to find in the palette.
-  void vscode.window
-    .showInformationMessage(
-      `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${pluralize(
-        written.notes.length,
-        'note',
-        'notes',
-      )}.`,
-      'Undo',
-    )
-    .then(async (choice) => {
-      if (choice !== 'Undo') {
-        return;
-      }
-      if (workspaceWrites.lastWrite !== mine) {
-        void vscode.window.showInformationMessage(
-          'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
-        );
-        return;
-      }
-      const result = await workspaceWrites.undo();
-      reportUndo(result, `Put back ${sourceTag.label} in ${pluralize(result?.restored ?? 0, 'note', 'notes')}.`);
-    });
+  written.handle.offerUndo(
+    `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${pluralize(
+      written.notes.length,
+      'note',
+      'notes',
+    )}.`,
+    {
+      guard: 'latest',
+      done: (result) =>
+        `Put back ${sourceTag.label} in ${pluralize(result?.restored ?? 0, 'note', 'notes')}.`,
+    },
+  );
   return replacement;
 }
 

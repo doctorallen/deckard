@@ -38,7 +38,7 @@ import { readQueryContext } from '../commands/queryContext';
 import { createHubNote } from '../commands/hubNote';
 import { openResultAt, ResultOpening } from '../commands/navigation';
 import { mergeIndexedTag, renameIndexedTag } from '../commands/renameTag';
-import { toggleTask } from '../commands/taskActions';
+import { TaskWrites, toggleTask } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
@@ -46,6 +46,16 @@ import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
 import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
 import { panelPriority } from './panelPriority';
+
+/** What the search pages are built from. */
+export interface SearchPanelsOptions {
+  indexer: WorkspaceIndexer<vscode.Uri>;
+  preferences: PreferencesStore;
+  extensionUri: vscode.Uri;
+  activeSearch: ActiveSearch;
+  /** What a page's checkboxes, tag renames and merges, and bulk edits write through. */
+  writes: TaskWrites;
+}
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is
@@ -59,12 +69,20 @@ export class SearchPanels implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly panels = new Set<SearchPanel>();
 
-  public constructor(
-    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
-    private readonly preferences: PreferencesStore,
-    private readonly extensionUri: vscode.Uri,
-    private readonly activeSearch: ActiveSearch,
-  ) {
+  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly preferences: PreferencesStore;
+  private readonly extensionUri: vscode.Uri;
+  private readonly activeSearch: ActiveSearch;
+  /** What a page's checkboxes, tag renames and merges, and bulk edits write through. */
+  private readonly writes: TaskWrites;
+
+  public constructor(options: SearchPanelsOptions) {
+    this.indexer = options.indexer;
+    this.preferences = options.preferences;
+    this.extensionUri = options.extensionUri;
+    this.activeSearch = options.activeSearch;
+    this.writes = options.writes;
+    const { indexer, preferences, activeSearch } = options;
     // A page about a tag that is gone closes at once; each page still open
     // redraws in a turn of its own.
     this.disposables.push(indexer.onDidUpdate(() => this.closeMissingTagPages()));
@@ -245,6 +263,7 @@ export class SearchPanels implements vscode.Disposable {
       {
         onDispose: () => this.panels.delete(panel),
         openTag: (tagKey) => this.show(tagKey),
+        writes: this.writes,
       },
     );
     this.panels.add(panel);
@@ -318,6 +337,8 @@ function readSerializedSearch(
 interface SearchPanelHost {
   onDispose(): void;
   openTag(tagKey: string): Promise<void>;
+  /** What the page's checkboxes, tag renames and merges, and bulk edits write through. */
+  readonly writes: TaskWrites;
 }
 
 /**
@@ -770,7 +791,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         const kept = await mergeIndexedTag(
           this.indexer,
           message.sourceKey,
-          this.preferences,
+          { history: this.host.writes.history, preferences: this.preferences },
           message.targetKey,
         );
         if (kept && pageTag && pageTag !== kept.key) {
@@ -814,11 +835,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         return;
       }
       case 'renameTag': {
-        const replacement = await renameIndexedTag(
-          this.indexer,
-          message.tagKey,
-          this.preferences,
-        );
+        const replacement = await renameIndexedTag(this.indexer, message.tagKey, {
+          history: this.host.writes.history,
+          preferences: this.preferences,
+        });
         if (replacement) {
           await this.host.openTag(replacement.key);
         }
@@ -829,7 +849,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
           (candidate) => candidate.task.id === message.taskId,
         )?.task;
         if (task) {
-          await toggleTask(task, message.completed);
+          await toggleTask(this.host.writes, task, message.completed);
         }
         return;
       }
@@ -845,7 +865,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         );
         return;
       case 'editResults':
-        await editResults(message.kind, this.currentResults());
+        await editResults(this.host.writes.history, message.kind, this.currentResults());
         return;
       case 'exportResults': {
         const results = this.currentResults();

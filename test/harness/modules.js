@@ -35,6 +35,7 @@ const MODULES = {
   // ui/commands
   dailyNote: 'ui/commands/dailyNote.js',
   tagDecorations: 'ui/commands/tagDecorations.js',
+  workspaceWrites: 'ui/commands/workspaceWrites.js',
   // ui/webview: page hosts
   activeCalendar: 'ui/webview/activeCalendar.js',
   activeSearch: 'ui/webview/activeSearch.js',

@@ -21,7 +21,7 @@ import {
   getPeriodicNoteUri,
 } from './dailyNote';
 import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
+import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
 export { planRollover } from '../../core/workspace/rolloverPlan';
 export type { RolloverMode, RolloverPlan } from '../../core/workspace/rolloverPlan';
@@ -72,6 +72,12 @@ export interface RolloverResult {
   notes: number;
 }
 
+/** What a rollover did, with the handle its Undo works through. */
+export interface RolloverWrite extends RolloverResult {
+  /** The rollover's write; absent when nothing was carried, so nothing written. */
+  handle?: WriteHandle;
+}
+
 /**
  * Writes the plan's tasks into today's note, and takes them out of the note
  * they came from when moving.
@@ -85,9 +91,14 @@ export async function applyRollover(
   plan: RolloverPlan,
   todayUri: vscode.Uri,
   mode: Exclude<RolloverMode, 'off'> | 'copy',
-  /** Today's note's name, which a migrated line links to. */
-  todayName?: string,
-): Promise<RolloverResult | undefined> {
+  options: {
+    /** The history the rollover is written to, as one write. */
+    history: WorkspaceWriteHistory;
+    /** Today's note's name, which a migrated line links to. */
+    todayName?: string;
+  },
+): Promise<RolloverWrite | undefined> {
+  const { history, todayName } = options;
   if (mode === 'copy') {
     mode = 'migrate';
   }
@@ -237,7 +248,7 @@ export async function applyRollover(
     });
   }
 
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: `carrying ${pluralize(carried.length, 'task', 'tasks')} forward`,
     // A rollover is one gesture over a few notes; showing it every morning
     // would be in the way. Undo is what takes it back.
@@ -249,6 +260,7 @@ export async function applyRollover(
         skipped,
         fromDates: plan.fromDates,
         notes: drawnFrom.size,
+        handle: written.handle,
       }
     : undefined;
 }
@@ -259,6 +271,7 @@ export async function applyRollover(
  */
 export async function rollTasksForward(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  history: WorkspaceWriteHistory,
   options: { mode?: Exclude<RolloverMode, 'off'>; silent?: boolean } = {},
 ): Promise<RolloverResult | undefined> {
   const folder = await chooseTargetFolder();
@@ -284,12 +297,10 @@ export async function rollTasksForward(
   }
 
   const todayUri = await ensureDailyNote(folder);
-  const result = await applyRollover(
-    plan,
-    todayUri,
-    mode,
-    todayUri.path.split('/').pop()?.replace(/\.md$/i, ''),
-  );
+  const result = await applyRollover(plan, todayUri, mode, {
+    history,
+    todayName: todayUri.path.split('/').pop()?.replace(/\.md$/i, ''),
+  });
   if (!result) {
     return undefined;
   }
@@ -304,7 +315,7 @@ export async function rollTasksForward(
     void offerRollover(
       describeRollover(result, mode),
       todayUri,
-      result.carried > 0,
+      result.handle,
       indexer,
     );
   }
@@ -313,40 +324,36 @@ export async function rollTasksForward(
 
 /**
  * Says what a rollover did, and offers what a reader wants next: today's
- * note, which may have just been created, and the way back.
+ * note, which may have just been created, and the way back. `written` is
+ * the rollover's handle when it carried anything, and nothing otherwise.
+ *
+ * Its Undo takes back whatever Deckard wrote last, without asking whether
+ * that is still the rollover, as it always has.
  */
 async function offerRollover(
   message: string,
   todayUri: vscode.Uri,
-  wrote: boolean,
+  written: WriteHandle | undefined,
   indexer: Pick<WorkspaceIndexer, 'refresh'>,
 ): Promise<void> {
-  if (!wrote) {
+  if (!written) {
     void vscode.window.showInformationMessage(message);
     return;
   }
-  const choice = await vscode.window.showInformationMessage(
+  written.offerUndo(
     message,
-    'Open',
-    'Undo',
-  );
-  if (choice === 'Open') {
-    const document = await vscode.workspace.openTextDocument(todayUri);
-    await vscode.window.showTextDocument(document, { preview: false });
-    return;
-  }
-  if (choice !== 'Undo') {
-    return;
-  }
-  const undone = await workspaceWrites.undo();
-  try {
-    await indexer.refresh();
-  } catch {
-    // The watcher picks the notes up; the notes themselves are back.
-  }
-  reportUndo(
-    undone,
-    `Put ${pluralize(undone?.restored ?? 0, 'note')} back.`,
+    {
+      guard: 'none',
+      refresh: () => indexer.refresh(),
+      done: (undone) => `Put ${pluralize(undone?.restored ?? 0, 'note')} back.`,
+    },
+    {
+      label: 'Open',
+      run: async () => {
+        const document = await vscode.workspace.openTextDocument(todayUri);
+        await vscode.window.showTextDocument(document, { preview: false });
+      },
+    },
   );
 }
 
@@ -451,6 +458,7 @@ export function getRolloverLookbackDays(uri?: vscode.Uri): number {
  */
 export async function createDailyNoteWithRollover(
   indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  history: WorkspaceWriteHistory,
   workspaceFolder?: vscode.WorkspaceFolder,
 ): Promise<vscode.Uri | undefined> {
   const folder = workspaceFolder ?? (await chooseWorkspaceFolder());
@@ -466,7 +474,7 @@ export async function createDailyNoteWithRollover(
   const isNew = !(await fileExists(getPeriodicNoteUri(folder, 'day', new Date())));
   const opened = await createDailyNote(folder);
   if (opened && isNew) {
-    await rollTasksForward(indexer, { mode, silent: true });
+    await rollTasksForward(indexer, history, { mode, silent: true });
   }
   return opened;
 }

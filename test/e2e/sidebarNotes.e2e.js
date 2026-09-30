@@ -11,6 +11,7 @@ const { ActiveSearch } = modules.activeSearch;
 const { PreferencesStore } = modules.preferences;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
 
 /** `count` notes, each a heading tagged #project/atlas. */
 function createIndex(count, { dated = false } = {}) {
@@ -44,13 +45,14 @@ async function openSidebar(noteCount, options) {
     selection: { active: { line: 0 } },
   };
   const preferences = new PreferencesStore(createGlobalState());
-  const sidebarView = new SidebarNotesView(
+  const sidebarView = new SidebarNotesView({
     indexer,
     preferences,
-    new ActiveSearch(),
-    () => undefined,
-    '0.0.0-test',
-  );
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+  });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;
@@ -99,13 +101,14 @@ async function openForEditor() {
     selection: { active: { line: 0 } },
   };
   vscode.window.activeTextEditor = editor;
-  const sidebarView = new SidebarNotesView(
+  const sidebarView = new SidebarNotesView({
     indexer,
-    new PreferencesStore(createGlobalState()),
-    new ActiveSearch(),
-    () => undefined,
-    '0.0.0-test',
-  );
+    preferences: new PreferencesStore(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+  });
   const host = vscode._test.createWebviewView();
   sidebarView.resolveWebviewView(host);
   await settle();
@@ -249,7 +252,14 @@ async function openLinked() {
     document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' },
     selection: { active: { line: 0 } },
   };
-  const sidebarView = new SidebarNotesView(indexer, new PreferencesStore(createGlobalState()), new ActiveSearch(), () => undefined, '0.0.0-test');
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    preferences: new PreferencesStore(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+  });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
   sidebarView.resolveWebviewView(host);
@@ -325,7 +335,14 @@ test('a note with no tags lists entries worded like it, through the real host', 
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/today.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
-  const sidebarView = new SidebarNotesView(indexer, new PreferencesStore(createGlobalState()), new ActiveSearch(), () => undefined, '0.0.0-test');
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    preferences: new PreferencesStore(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+  });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
   sidebarView.resolveWebviewView(host);
@@ -354,7 +371,14 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
   const preferences = new PreferencesStore(createGlobalState());
-  const sidebarView = new SidebarNotesView(indexer, preferences, new ActiveSearch(), () => undefined, '0.0.0-test');
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    preferences,
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+  });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
   sidebarView.resolveWebviewView(host);

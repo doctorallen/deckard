@@ -24,8 +24,7 @@ import {
   reportFailure,
   reportStale,
 } from './notify';
-import { noteOwnWrite } from '../../core/workspace/ownWrites';
-import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Carries a task's place in the rank order from the line it was to the line
@@ -82,6 +81,16 @@ export function carryMovedTaskRank(
   }
 }
 
+/**
+ * What an edit to a task reaches beyond its own line: the write history,
+ * which marks the note's save as Deckard's own so the index reads it back at
+ * once, and keeps Complete Steps as the write Undo takes back. Created once,
+ * where the extension starts, and handed to whatever edits a task.
+ */
+export interface TaskWrites {
+  readonly history: WorkspaceWriteHistory;
+}
+
 /** What an edit to a task line may need to know about its document. */
 export interface TaskLineContext {
   uri: vscode.Uri;
@@ -101,6 +110,7 @@ export interface TaskLineContext {
  * its checkbox to a task-board move, goes through here.
  */
 export async function updateTaskLine(
+  writes: TaskWrites,
   task: Task,
   transform: (line: string, context: TaskLineContext) => string,
   /**
@@ -155,7 +165,7 @@ export async function updateTaskLine(
       vscode.workspace.textDocuments.find(
         (openDocument) => openDocument.uri.toString() === uri.toString(),
       ) ?? (await vscode.workspace.openTextDocument(uri));
-    noteOwnWrite(updatedDocument.uri.toString());
+    writes.history.ownWrites.note(updatedDocument.uri.toString());
     if (!(await updatedDocument.save())) {
       void reportFailure(describeUnsavedTaskEdit(uri));
       return false;
@@ -327,6 +337,7 @@ async function revertTaskLine(
  * Tasks puts it.
  */
 export async function toggleTask(
+  writes: TaskWrites,
   task: Task,
   completed: boolean,
 ): Promise<boolean> {
@@ -339,9 +350,10 @@ export async function toggleTask(
   let family: CompletionFamily | undefined;
   const description = (): string | CompletionMessage =>
     completed
-      ? describeStepsCompletion(task, describeCompletion(task.title, startedNext, unreadRule), family)
+      ? describeStepsCompletion(writes, task, describeCompletion(task.title, startedNext, unreadRule), family)
       : `Reopened ${quoteTaskTitle(task)}.`;
   return updateTaskLine(
+    writes,
     task,
     (line, { uri, eol, lines, lineIndex }) => {
       const now = Date.now();
@@ -430,6 +442,7 @@ function readTaskWords(line: string): string {
  * Neither is done for the reader.
  */
 export function describeStepsCompletion(
+  writes: TaskWrites,
   task: Pick<Task, 'title'>,
   said: CompletionMessage,
   family: CompletionFamily | undefined,
@@ -446,7 +459,7 @@ export function describeStepsCompletion(
       text: plain
         ? `Completed ${quoteTitle(task.title)}, the last open step of ${parent}.`
         : `${said.text} It was the last open step of ${parent}.`,
-      action: { label: 'Complete Task', run: () => completeTaskAtLine(family.uri, family.filePath, line) },
+      action: { label: 'Complete Task', run: () => completeTaskAtLine(writes, family.uri, family.filePath, line) },
     };
   }
   if (family.openSteps > 0) {
@@ -456,7 +469,7 @@ export function describeStepsCompletion(
       text: `${said.text} ${count} of its steps ${count === 1 ? 'is' : 'are'} still open.`,
       action: {
         label: 'Complete Steps',
-        run: () => completeOpenSteps(family.uri, family.writtenLine, task.title),
+        run: () => completeOpenSteps(writes, family.uri, family.writtenLine, task.title),
       },
     };
   }
@@ -464,7 +477,12 @@ export function describeStepsCompletion(
 }
 
 /** Completes the task written on a line, through the usual completion. */
-async function completeTaskAtLine(uri: vscode.Uri, filePath: string, line: number): Promise<void> {
+async function completeTaskAtLine(
+  writes: TaskWrites,
+  uri: vscode.Uri,
+  filePath: string,
+  line: number,
+): Promise<void> {
   const document = await vscode.workspace.openTextDocument(uri);
   const task = parseMarkdown(filePath, document.getText()).tasks.find(
     (candidate) => candidate.lineNumber === line + 1,
@@ -473,7 +491,7 @@ async function completeTaskAtLine(uri: vscode.Uri, filePath: string, line: numbe
     void reportStale([uri]);
     return;
   }
-  await toggleTask(task, true);
+  await toggleTask(writes, task, true);
 }
 
 /**
@@ -481,6 +499,7 @@ async function completeTaskAtLine(uri: vscode.Uri, filePath: string, line: numbe
  * that Undo takes back.
  */
 async function completeOpenSteps(
+  writes: TaskWrites,
   uri: vscode.Uri,
   taskLine: number,
   title: string,
@@ -507,28 +526,17 @@ async function completeOpenSteps(
     );
   });
   const steps = `${open.length} ${open.length === 1 ? 'step' : 'steps'}`;
-  const result = await applyWorkspaceWrite(edit, {
+  const result = await writes.history.write(edit, {
     label: `completing ${steps} of ${quoteTitle(title)}`,
   });
   if (!result.applied) {
     void reportFailure(describeRejectedEdit(noteName(uri)));
     return;
   }
-  const mine = workspaceWrites.lastWrite;
-  void vscode.window
-    .showInformationMessage(`Completed ${steps} of ${quoteTitle(title)}.`, 'Undo')
-    .then(async (choice) => {
-      if (choice !== 'Undo') {
-        return;
-      }
-      if (workspaceWrites.lastWrite !== mine) {
-        void vscode.window.showInformationMessage(
-          'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
-        );
-        return;
-      }
-      reportUndo(await workspaceWrites.undo(), `Reopened the ${steps}.`);
-    });
+  result.handle.offerUndo(`Completed ${steps} of ${quoteTitle(title)}.`, {
+    guard: 'latest',
+    done: `Reopened the ${steps}.`,
+  });
 }
 
 /** What one completion says, and whether it is worth a warning. */

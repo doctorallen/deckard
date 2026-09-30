@@ -27,6 +27,7 @@ import {
   openTask,
   quoteTaskTitle,
   setTaskRankKeeper,
+  TaskWrites,
 } from './ui/commands/taskActions';
 import {
   editTaskCommand,
@@ -94,10 +95,7 @@ import {
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
-import {
-  undoLastWorkspaceWrite,
-  workspaceWrites,
-} from './ui/commands/workspaceWrites';
+import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
 import { carrySectionIds } from './ui/state/frecency';
@@ -219,6 +217,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   log.info(
     `Deckard ${String(context.extension.packageJSON.version)} activated.`,
   );
+  // What Deckard has written to the notes in this window: the write Undo
+  // takes back, and the notes it has just saved, which the index reads back
+  // at once. Every command that writes is handed this one.
+  const history = new WorkspaceWriteHistory();
   // The index reads the workspace through ports; this is VS Code's.
   const vscodeWorkspace = createVscodeWorkspace();
   const scanner = new WorkspaceScanner(vscodeWorkspace);
@@ -232,6 +234,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       readCache: context.extensionMode === vscode.ExtensionMode.Production,
       events: createVscodeWorkspaceEvents(),
       progress: createVscodeProgress(),
+      ownWrites: history.ownWrites,
     },
   );
   // Favorites, pins and view counts name what is in a workspace, so they are
@@ -255,13 +258,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     void preferences.replaceTaskInOrder(previousId, nextId);
   });
   context.subscriptions.push({ dispose: () => setTaskRankKeeper(undefined) });
+  // What an edit to a task writes through, for every view that edits one.
+  const taskWrites: TaskWrites = { history };
   const activeSearch = new ActiveSearch();
-  const searchPanels = new SearchPanels(
+  const searchPanels = new SearchPanels({
     indexer,
     preferences,
-    context.extensionUri,
+    extensionUri: context.extensionUri,
     activeSearch,
-  );
+    writes: taskWrites,
+  });
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri));
   // The hover on an entry offers to pin it, so it has to know which entries
   // are pinned; preferences answer, and a change redraws the hovers.
@@ -345,25 +351,26 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   void vscode.commands.executeCommand(
     'setContext',
     'deckard.canUndo',
-    workspaceWrites.lastWrite !== undefined,
+    history.lastWrite !== undefined,
   );
   context.subscriptions.push(
     activePinContext,
-    workspaceWrites.onDidChange((canUndo) =>
+    history.onDidChange((canUndo) =>
       vscode.commands.executeCommand('setContext', 'deckard.canUndo', canUndo),
     ),
   );
   const editorReferences = new EditorReferences(indexer);
   const editorLenses = new EditorLenses(indexer);
-  const assistantTools = new AssistantTools(indexer);
-  const mcpServer = new DeckardMcpServer(
+  const assistantTools = new AssistantTools(indexer, history);
+  const mcpServer = new DeckardMcpServer({
     indexer,
-    context.secrets,
-    readManifestTools(
+    history,
+    secrets: context.secrets,
+    tools: readManifestTools(
       context.extension.packageJSON.contributes?.languageModelTools,
     ),
-    context.extension.packageJSON.version,
-  );
+    version: context.extension.packageJSON.version,
+  });
   void mcpServer.restart();
   // Notes are offered in the order Find ranks them, opened ones first.
   const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences);
@@ -372,29 +379,30 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
-  const calendar = new CalendarView(indexer);
+  const calendar = new CalendarView(indexer, taskWrites);
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
   context.subscriptions.push(activeCalendar, activeHome);
-  const calendarPage = new CalendarPanel(indexer, context.extensionUri, activeCalendar);
+  const calendarPage = new CalendarPanel(indexer, context.extensionUri, taskWrites, activeCalendar);
   context.subscriptions.push(calendarPage);
-  const taskBoard = new TaskBoardPanel(
+  const taskBoard = new TaskBoardPanel({
     indexer,
     preferences,
-    context.extensionUri,
-    (tagKey) => searchPanels.show(tagKey),
+    extensionUri: context.extensionUri,
+    openTag: (tagKey) => searchPanels.show(tagKey),
     activeSearch,
-  );
-  const dashboard = new DashboardPanel(
+    writes: taskWrites,
+  });
+  const dashboard = new DashboardPanel({
     indexer,
     preferences,
-    context.extensionUri,
-    {
+    extensionUri: context.extensionUri,
+    navigation: {
       openTag: (tagKey) => searchPanels.show(tagKey),
       openSearch: (query) => searchPanels.showQuery(query),
       openTaskBoard: (query) => taskBoard.show(query),
       openDailyNote: async () => {
-        await createDailyNoteWithRollover(indexer);
+        await createDailyNoteWithRollover(indexer, history);
       },
       quickAdd: (text) => captureToToday(text),
       createHubNote: async (tagKey) => {
@@ -404,22 +412,29 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     },
     whatsNew,
     tryNext,
-  );
-  const quickFind = new QuickFind(indexer, preferences, {
-    openTag: (tagKey) => searchPanels.show(tagKey),
-    openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
-    showSearch: (query) => searchPanels.showQuery(query),
-    moveTask: (task) => moveTasks(indexer, preferences, [task]),
+    writes: taskWrites,
   });
-  const sidebarNotes = new SidebarNotesView(
+  const quickFind = new QuickFind(
+    indexer,
+    preferences,
+    {
+      openTag: (tagKey) => searchPanels.show(tagKey),
+      openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
+      showSearch: (query) => searchPanels.showQuery(query),
+      moveTask: (task) => moveTasks(indexer, preferences, taskWrites, [task]),
+    },
+    taskWrites,
+  );
+  const sidebarNotes = new SidebarNotesView({
     indexer,
     preferences,
     activeSearch,
-    (tagKey) => searchPanels.show(tagKey),
-    context.extension.packageJSON.version,
+    onOpenTag: (tagKey) => searchPanels.show(tagKey),
+    extensionVersion: context.extension.packageJSON.version,
     activeCalendar,
     activeHome,
-  );
+    history,
+  });
   dashboard.activeHome = activeHome;
   const stats = new StatsPanel(
     indexer,
@@ -451,7 +466,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
-  const agenda = new AgendaTreeProvider(indexer, preferences);
+  const agenda = new AgendaTreeProvider(indexer, taskWrites, preferences);
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
   // What was typed into Capture and not yet written, for this workspace.
   const captureDrafts = new CaptureDrafts(context.workspaceState);
@@ -624,7 +639,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`;
       const chosen = await date(subject);
       if (chosen !== null) {
-        await setTasksDue(tasks, chosen, rescheduleContext());
+        await setTasksDue(taskWrites, tasks, chosen, rescheduleContext());
       }
     };
   const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice));
@@ -653,7 +668,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
         const tasks = agenda.tasksFor(node, selected);
         if (tasks.length > 0) {
-          await moveTasks(indexer, preferences, tasks);
+          await moveTasks(indexer, preferences, taskWrites, tasks);
         }
       },
     ),
@@ -665,6 +680,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           return;
         }
         await rescheduleTasks(
+          taskWrites,
           tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`,
           tasks,
           rescheduleContext(),
@@ -684,6 +700,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         return;
       }
       await rescheduleTasks(
+        taskWrites,
         overdue.length === 1 ? quoteTaskTitle(overdue[0]) : `${overdue.length} overdue tasks`,
         overdue,
         rescheduleContext(),
@@ -703,7 +720,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       async (node?: AgendaNode) => {
         const [task] = agenda.tasksFor(node);
         if (task) {
-          await breakIntoStepsCommand(indexer, task);
+          await breakIntoStepsCommand(indexer, history, task);
         }
       },
     ),
@@ -738,7 +755,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           'Choose a tag to rename',
         );
         if (tagKey) {
-          await renameIndexedTag(indexer, tagKey, preferences);
+          await renameIndexedTag(indexer, tagKey, { history, preferences });
         }
       },
     ),
@@ -957,13 +974,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
-      createDailyNoteWithRollover(indexer),
+      createDailyNoteWithRollover(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.openDailyNoteForDate', () =>
-      openDailyNoteForDate(indexer),
+      openDailyNoteForDate(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.rollTasksForward', () =>
-      rollTasksForward(indexer),
+      rollTasksForward(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),
@@ -972,13 +989,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openAdjacentDailyNote(indexer, 'next'),
     ),
     vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
-      openPeriodicNoteWithReview(indexer, preferences, 'week'),
+      openPeriodicNoteWithReview(indexer, { history, preferences }, 'week'),
     ),
     vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
-      openPeriodicNoteWithReview(indexer, preferences, 'month'),
+      openPeriodicNoteWithReview(indexer, { history, preferences }, 'month'),
     ),
     vscode.commands.registerCommand('deckard.writeReview', async () => {
-      await writeReviewCommand(indexer, preferences);
+      await writeReviewCommand(indexer, { history, preferences });
       await tryNext.retire('weeklyReview');
     }),
     // One editor, two names: which one the palette offers is decided by
@@ -990,7 +1007,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       editTaskCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.breakIntoSteps', () =>
-      breakIntoStepsCommand(indexer),
+      breakIntoStepsCommand(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
       toggleTaskDoneCommand(indexer),
@@ -1045,10 +1062,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     new ExcludedFoldersContext(),
     vscode.commands.registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
-      parkNotes(indexer, uri, uris),
+      parkNotes(indexer, history, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.unparkNote', (uri?: unknown, uris?: unknown) =>
-      unparkNotes(indexer, uri, uris),
+      unparkNotes(indexer, history, uri, uris),
     ),
     vscode.commands.registerCommand('deckard.parkFolder', (uri?: unknown, uris?: unknown) =>
       parkFolders(indexer, uri, uris),
@@ -1103,7 +1120,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       LINK_MENTIONS_COMMAND,
       (documentUri: unknown) =>
         typeof documentUri === 'string'
-          ? linkMentions(indexer, vscode.Uri.parse(documentUri))
+          ? linkMentions(indexer, history, vscode.Uri.parse(documentUri))
           : undefined,
     ),
   );
@@ -1112,7 +1129,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       extractHeadingCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.moveTo', () =>
-      moveToCommand(indexer, preferences),
+      moveToCommand(indexer, preferences, taskWrites),
     ),
     vscode.languages.registerCodeActionsProvider(
       { pattern: '**/*.md' },
@@ -1165,14 +1182,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         renameIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
-          preferences,
+          { history, preferences },
         ),
     ),
     vscode.commands.registerCommand('deckard.renameHeading', () =>
-      renameHeadingCommand(indexer),
+      renameHeadingCommand(indexer, history),
     ),
     vscode.commands.registerCommand('deckard.undoLastChange', () =>
-      undoLastWorkspaceWrite(() => indexer.refresh()),
+      history.undoLast(() => indexer.refresh()),
     ),
     vscode.commands.registerCommand(
       'deckard.mergeTag',
@@ -1180,7 +1197,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         mergeIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
-          preferences,
+          { history, preferences },
           getCommandTagArgument(requestedTargetKey),
         ),
     ),

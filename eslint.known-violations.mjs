@@ -132,19 +132,10 @@ export default {
       "createTaskBoard",
       "layoutTaskBoard"
     ],
-    "src/ui/webview/dashboard.ts": [
-      "(function)"
-    ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],
     "src/ui/webview/searchPage.ts": [
-      "(function)"
-    ],
-    "src/ui/webview/sidebarNotes.ts": [
-      "(function)"
-    ],
-    "src/ui/webview/taskBoard.ts": [
       "(function)"
     ]
   },
@@ -408,7 +399,7 @@ export default {
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/commands/tryNext.ts": 5,
     "src/ui/commands/whatsNew.ts": 4,
-    "src/ui/commands/workspaceWrites.ts": 5,
+    "src/ui/commands/workspaceWrites.ts": 2,
     "src/ui/preview/noteEmbeds.ts": 1,
     "src/ui/preview/queryBlocks.ts": 3,
     "src/ui/state/agendaState.ts": 3,
