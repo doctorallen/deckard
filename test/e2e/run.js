@@ -25,6 +25,7 @@ const suites = [
   'editorDecorations.e2e.js',
   'calendar.e2e.js',
   'calendarPage.e2e.js',
+  'navigation.e2e.js',
 ];
 
 const compiled = path.join(__dirname, '..', '..', 'out');

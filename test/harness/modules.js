@@ -20,6 +20,7 @@ const MODULES = {
   // core
   changelog: 'core/changelog.js',
   parser: 'domain/markdown/parser.js',
+  indexState: 'domain/index/indexState.js',
   queryContext: 'domain/query/queryContext.js',
   preferences: 'core/storage/preferences.js',
   searchStore: 'core/storage/searchStore.js',
@@ -48,6 +49,7 @@ const MODULES = {
   calendar: 'ui/webview/calendar.js',
   calendarPage: 'ui/webview/calendarPage.js',
   dashboard: 'ui/webview/dashboard.js',
+  notesGraph: 'ui/webview/notesGraph.js',
   searchPage: 'ui/webview/searchPage.js',
   sidebarNotes: 'ui/webview/sidebarNotes.js',
   stats: 'ui/webview/stats.js',

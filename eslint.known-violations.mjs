@@ -173,7 +173,6 @@ export default {
       "parseNotesGraphMessage",
       "parseSearchPageMessage",
       "parseSidebarMessage",
-      "parseStatsMessage",
       "parseTaskBoardMessage"
     ],
     "src/ui/webview/searchPage.ts": [
@@ -184,9 +183,6 @@ export default {
       "createSnapshot",
       "handleMessage",
       "handleValidMessage"
-    ],
-    "src/ui/webview/stats.ts": [
-      "handleMessage"
     ],
     "src/ui/webview/taskBoard.ts": [
       "handleMessage"
@@ -297,7 +293,6 @@ export default {
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
     "src/ui/webview/sidebarNotes.ts": 5,
-    "src/ui/webview/stats.ts": 4,
     "src/ui/webview/taskBoard.ts": 5,
     "test/e2e/vscodeStub.js": 17
   },
@@ -517,9 +512,7 @@ export default {
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/messages.ts": 1,
-    "src/ui/webview/panelPriority.ts": 1,
-    "src/ui/webview/sidebarNotes.ts": 1,
-    "src/ui/webview/stats.ts": 2
+    "src/ui/webview/sidebarNotes.ts": 1
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,

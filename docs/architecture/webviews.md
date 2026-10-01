@@ -22,17 +22,74 @@ The research read the official guide and samples and the webview source of GitLe
 
 ## The host side
 
-`WebviewHost<TSnapshot, TMessage>` owns the lifecycle that each panel writes for itself today, in 60 to 110 lines. That covers create, restore, the serializer registration, the stale-when-hidden refresh, following the index, theme and settings subscriptions, writing through the index, and disposal.
+*As built in Phase 6 step 2.1.* Host code lives in `src/ui/webview/host/`, and each page's controller and narrowing table in `src/ui/webview/pages/<page>/`. Stats runs on it. The other hosts move onto it in steps 2.2 to 2.9, by the recipe in the next section, and each still writes its own lifecycle until then.
 
-Each page supplies a `PageController`:
+| Piece | File | What it does |
+| --- | --- | --- |
+| `WebviewHost<TSnapshot, TPageToHost>` | `webviewHost.ts` | Owns one webview's session. It sets the HTML when a panel or view is attached, and again on a theme or zen change. It narrows each message with the page's table and hands it to its handler. It sends `{ type: 'state', data }` after each index update, in the page's turn, and whenever the controller asks. It marks a hidden page stale and sends it one snapshot when it is shown. It sends `indexing` until the first scan ends, and it disposes of everything. |
+| `PanelAdapter` | `panelAdapter.ts` | Keeps a page in at most one editor panel: `show()`, `open()`, `restore(panel, state)`, and `dispose()` |
+| `ViewAdapter` | `viewAdapter.ts` | Shows a page in a side-bar view: `resolveWebviewView(view)` |
+| `PanelSurface`, `ViewSurface` | `surface.ts` | What the host needs of a panel or a view: its webview, visibility, events, redraw priority, and how to close it |
+| `PageController` | `pageController.ts` | What a page supplies: its `name`, `options`, `html()`, `buildSnapshot()`, `narrow()`, `handlers`, and optional hooks |
+| `narrowWith`, the shared narrowers | `narrowing.ts` | Turns a page's table into its narrowing function. Holds the checks that two or more pages make identically today. |
+| The shared handlers | `sharedHandlers.ts` | Factories for the handlers that two or more pages run identically today: `chooseTheme`, `setZenMode`, `openHelp(section?)`, `ready`, `renameTag`, `parkTag` (both types), `toggleTask`, `openSource`, and `openTag` |
+| `ActiveSource<T>` | `activeSource.ts` | Which page of a kind is in front, and whether the sidebar shows its part. It is the one shape of `ActiveSearch`, `ActiveCalendar`, and `ActiveHome`. |
+| `panelPriority`, `viewPriority` | `panelPriority.ts` | A panel's or view's redraw priority. The old path re-exports them until 2.10. |
 
-| Member | What it supplies |
+`NavigationService` (`src/services/navigationService.ts`) says what `openSource` and `openTag` may open. Each page's rule today is a named policy: `entries` (Home), `graphNodes` (the Notes Graph), `tasks` (the Task Board), and `notes` (Stats) for a line; and `lenient` (Stats, Home, a search page, Related Notes) and `exact` (the Task Board, the Notes Graph) for a tag. `test/e2e/navigation.e2e.js` pins all six against the hosts.
+
+A message handler is an adapter under the rules in [services.md](services.md). A message several pages send gets one shared handler only where those pages act on it identically today. Where pages differ, as Stats and a search page do on `mergeTags`, each page keeps its own handler, so moving a host changes nothing a reader sees. The same goes for narrowers: one used by a single page lives in that page's table.
+
+`src/test/fakeWebview.ts` holds a `FakeWebview`, with only `postMessage` and `onDidReceiveMessage`, and a `FakeSurface` around it. A host-controller test attaches a `WebviewHost` to a `FakeSurface`, sends messages with `await surface.webview.send(...)`, and reads what the host posted in `surface.webview.posted`.
+
+## Moving a host onto WebviewHost
+
+This is the recipe Stats followed in 2.1, for steps 2.2 to 2.9. Each of those moves one host, on its own branch, while the others move theirs. A move changes nothing a page receives and nothing any message does. The pages still serve today's template HTML, so `npm run test:dom` stays identical.
+
+### What a page owns
+
+| File | Contents |
 | --- | --- |
-| `buildSnapshot()` | Everything the page draws, as data |
-| A handler map keyed by message type | One adapter per message, under the rules in [services.md](services.md) |
-| Panel options | What the page needs from its webview |
+| `src/ui/protocol/<page>.ts` | `<Page>PageToHost` and `<Page>HostToPage` maps, keyed by message type. The old union becomes `MessageOf<<Page>PageToHost>` under its old name, so its importers do not change. |
+| `src/ui/webview/pages/<page>/messages.ts` | The page's narrowing table (`<PAGE>_MESSAGES: NarrowingTable<<Page>PageToHost>`) and `narrow<Page>Message = narrowWith(<PAGE>_MESSAGES)`. Checks only this page makes live here. |
+| `src/ui/webview/pages/<page>/<page>Controller.ts` | The controller class, and any helpers that moved with it, such as `pickStatsTag` |
+| `src/ui/webview/<page>.ts` | The host class under its old name, with its old constructor options and public methods, now a thin class around a `PanelAdapter` or `ViewAdapter` and a `WebviewHost` |
+| `src/test/<page>-messages.test.ts` | The page's parser tests, moved from wherever they were, rewritten against `narrow<Page>Message` with the same accepted and refused payloads. The file imports nothing that reaches `vscode`, so it runs under `test:unit`. |
+| `src/test/<page>-host.test.ts` | Host-controller tests through `FakeSurface`. Effects that go through VS Code (`commands.executeCommand`, `window.showQuickPick`, `workspace.openTextDocument`, `window.showTextDocument`) are recorded by swapping the function for the test and putting it back in `finally`, as `stats-host.test.ts` does. |
 
-Messages that many pages share, such as theme, zen, `openSource`, and `openTag`, are handled once in `sharedHandlers`. `openSource` and `openTag` go through `NavigationService.resolveSourceLocation`, so the four rules for what may open become one. The three `Active*` registries become one `ActiveSource<T>`. Host code lives in `src/ui/webview/host/`, and each page's controller and snapshot builder in `src/ui/webview/pages/<page>/`.
+### Steps
+
+1. **Read the host and its parser to the line.** For each message, write down its parser case (including every `Object.keys(value).length` check and every field it copies or passes through), what the handler reads, the index snapshot it reads, and each effect in order. For the session, write down the panel's view type, title, icon, and creation options, and what `attachPanel` sets and listens to, in order. Note what the chrome subscription does, what `refresh()` does when hidden and when visible, what runs after the post, and what `show`, `restore`, and `dispose` do.
+2. **Protocol maps.** In `protocol/<page>.ts`, declare the two maps and define the old union as `MessageOf<...>`. The shapes come from `protocol/messaging.ts`, which needs no change: `MessageMap`, `MessageOf`, `StateMessage`, `IndexingMessage`, and `Correlated` (the request id a request and its answer share, such as `moveTask` and `moveRefused`).
+3. **Narrowing table.** Use a shared narrower only where it accepts and returns exactly what the old case did: `narrowSetZenMode`, `narrowOpenSource` (it rebuilds the message with `beside` and `pin` only when true, which `openResultAt` and `openSourceAt` treat as the same as a passed-through message), `narrowOpenTag`, `narrowRenameTag`, `narrowParkTag`, `narrowToggleTask`, `narrowPinNote` (today's `parsePinMessage`), `narrowOpenSearch`, `narrowExportResults`, `onlyType(type)` (any extra fields), and `exactlyType(type)` (no extra fields). Write anything else in the page's own table. A case that used to pass the whole record through with `as unknown as` returns the record rebuilt from the fields its handler reads.
+4. **Controller.** Set its `name` to the name the host gave `onIndexUpdateInTurn` and `measure`. Set its `options` (`retainContextWhenHidden` and `enableFindWidget` as created today) and `html(webview, theme)` (the page's `get*Html`). Set `buildSnapshot()` to what `refresh()` posted as `data`. Set `subscribe(page)` to every other listener that called `refresh()`. Then write one handler per map key. Take a shared handler wherever the old branch matches it, and use the `NavigationService` policy this page has today for `openSource` and `openTag`. Keep each comment that says why, next to its handler.
+5. **Host class.** Build the controller and a `WebviewHost` with `{ indexer, themePreview }`, and wrap them in a `PanelAdapter` (view type, title, extension URI, icon path) or a `ViewAdapter`. Forward the public methods. Construct `new NavigationService()` there; it holds no state. `composition/services.ts`, `test/harness/modules.js`, and the e2e suites should need no change.
+6. **Delete the parser** from `messages.ts`, with any constant or helper only it used. Move its tests (step 3's file), including any in other suites, such as Stats' merge test in `tag-hygiene.test.ts`.
+7. **Check.** Run `npm run check-types && npm run lint`, then `npm run lint:baseline`. Its diff must only remove lines. Then run the page's unit, host, and e2e suites, `node test/e2e/run.js navigation.e2e.js`, and `npm run test:dom`. Run the full set before handing the branch back.
+
+### What each host needs beyond Stats
+
+Each host does some things Stats does not. These are the options and hooks for them, read from the hosts at 2.1. Read your host again anyway; where it differs from this table, the host wins.
+
+| Host | Adapter and options | Navigation | Hooks and notes |
+| --- | --- | --- | --- |
+| Help (`help.ts`) | `PanelAdapter`; no `indexer`; `scripts: 'merge'`; `onChromeChange: 'reload'`; retain, find widget | none | `show(anchor)` loads the releases and calls `open()` when there is no panel, posts `reveal` when there is one, then reveals it; it sends no snapshot. Only the first HTML takes the anchor, so the controller holds it for that render. `restore` loads the releases before attaching; `options.restore` may return a promise, which is awaited. `buildSnapshot` returns undefined. |
+| Calendar view (`calendar.ts`) | `ViewAdapter`; `followIndexing: false`; `onChromeChange: 'reload'` | none | `ready` is the shared `ready()`; `CalendarController` stays as it is. |
+| Calendar page (`calendarPage.ts`) | `PanelAdapter` with `priority: viewPriority`, icon `resources/views/calendar.svg`; `followIndexing: false`; `onChromeChange: 'reload'`; retain, no find widget | none | `show(month, date)`: an open page is revealed and refreshed at once; a new one is made with `open()`, not revealed, and refreshed once the index has notes. `onDidAttach` and `onDidChangeViewState` set or release the `ActiveCalendar`; `onDidDetach` clears the day and releases; `dispose` releases first. `onDidSendSnapshot` calls `notifyChanged`. `openHelp('periodic')`. |
+| Task Board (`taskBoard.ts`) | `PanelAdapter`; `options.restore` reads the saved `{ query }`; `onChromeChange: 'reload'` (the page asks with `ready`); retain, no find widget | `tasks`, `exact` | `show(query)` applies the query, then `show()`. The activity hooks are as on the Calendar page, and `onDidDetach` also clears `lastSnapshot`. `buildSnapshot` keeps `lastSnapshot` and `refineWasInSidebar`, and `onDidSendSnapshot` calls `notifyChanged`. `toggleTask` and `moveTask` keep their own handlers (they mark `writeIndexAt`). |
+| Search page (`searchPage.ts`) | One `WebviewHost` per `SearchPanel`, attached to a `PanelSurface` directly, since there are many; `onChromeChange: 'none'`, since `SearchPanels` redraws every page's HTML and then refreshes them all, closing a missing tag's page | `lenient` for tags; its `openSource` reads the page's snapshot, so it stays its own | Before the first scan, `buildSnapshot` returns undefined, which sends nothing and leaves a stale page stale. `onDidMarkStale` clears `lastSnapshot` and calls `notifyChanged`. `onDidSendSnapshot` calls `notifyChanged`. The title is set before the post, and the posted data is not the kept snapshot. `onDidDetach` disposes of the `SearchPanel`. |
+| Related Notes (`sidebarNotes.ts`) | `ViewSurface` attached directly, since its resolve refreshes at once and again once the index is published; `followIndexing: false`; `refreshWhenShown: 'never'` | `lenient` | `onDidChangeViewState` sets the sidebar visible on `ActiveSearch` and `ActiveCalendar` and then refreshes, always. Its refresh logs, and debounces cursor moves. Its three hand parses (`homeAddWidget`, `homeResetWidgets`, `calendarDay`) join its table. Its `openSource` reads a fresh snapshot, so it stays its own. The sub-plan asks for a `NavigationService` policy for the five handlers that re-rank to check a click; that policy must accept exactly what a fresh `createSnapshot()` does, and it is added in the branch's first commit. |
+| Home (`dashboard.ts`) | `PanelAdapter`; retain, find widget | `entries`, `lenient` | `isOutOfDate` is "the day has turned". The activity hooks set and release `ActiveHome`, but `dispose` does not release it. `openSource`'s handler is the shared one; `pinNote` and `unpinNote` are Home's own. |
+| Notes Graph (`notesGraph.ts`) | `PanelAdapter`, icon `resources/notes-graph.svg`; `followIndexing: false`; retain, no find widget | `graphNodes`, `exact` (opened by `deckard.showTagOverview`) | `onIndexUpdate` keeps its "nothing it draws changed" check. `onDidChangeViewState` publishes or clears the graph context. `onDidDetach` clears the selection and the context. `show(options)` posts `applyFilters` after `show()`. |
+| Related Notes debug (`relatedNotesDebug.ts`) | `PanelAdapter`; no `indexer`; `scripts: 'off'`; `onChromeChange: 'none'`; retain, find widget | none | It has no messages: an empty table and an empty handler map, and `buildSnapshot` returns undefined. `show()` keeps the diagnostic for `html()`, then calls `open()` for a new panel, which draws it, or `renderHtml()` for an open one, sets the title, and reveals the panel. |
+
+### What not to touch
+
+- **Another page's files**, and `messages.ts` beyond your own parser's region. The hot spots (`composition/services.ts`, `test/harness/modules.js`, `messages.ts`, and `messages-rendering.test.ts`) are merged by hand, so keep your edits to them small and in one place.
+- **`src/ui/webview/host/` and `src/services/navigationService.ts`.** If your host needs something the base does not have, add it in a separate first commit on your branch. Make it an option or a hook that changes nothing for a page that does not set it, with a test in `webview-host.test.ts`, and say so when you hand the branch back. Do not change what an existing option or policy does.
+- **The policies.** No page changes which lines or tags it accepts, even where the rules look like they should agree. Unifying them is a behavior change for a later step.
+- **The template HTML and the page scripts.** Step 2 changes no DOM, so `test/ui/dom-baseline/` is never re-recorded here.
+- **The pinning suite.** `navigation.e2e.js` must pass unchanged, on every branch.
 
 ## The protocol
 
