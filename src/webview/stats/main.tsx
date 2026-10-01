@@ -57,7 +57,8 @@ function keptChoices(): Choices {
 let scrolled = false;
 const store = startPage<StatsState>({
   initial: { snapshot: readEmbeddedState<DeckardStatsSnapshot>(), ...keptChoices() },
-  ready: (state) => state.snapshot !== undefined,
+  // A state message with no snapshot draws nothing, as the template's render did.
+  ready: (state) => Boolean(state.snapshot),
   view: (state) => <StatsPage state={state as DrawnStats} />,
   afterDraw: () => {
     settlePairFocus();
