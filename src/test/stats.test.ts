@@ -67,6 +67,35 @@ suite('Stats: notes that could not be read', () => {
     }
   });
 
+  test('its shell loads the bundle last with the page\'s nonce, names its theme, and carries a snapshot only when given one', () => {
+    const html = renderPage('stats');
+    const nonce = /'nonce-([^']+)'/.exec(html)?.[1];
+    assert.ok(nonce, 'the policy names a nonce');
+    assert.match(html, new RegExp(`<script nonce="${nonce}" src="vscode-webview://deckard/dist/webview/stats\\.js"></script>\\s*</body>`));
+    assert.match(html, /<meta name="deckard-theme" content="[A-Za-z]+">/);
+    assert.ok(!html.includes('id="state"'), 'no snapshot, no block');
+    assert.match(html, /<main id="app" aria-busy="true"><div class="loading" role="status"><span>Loading statistics…<\/span><\/div><\/main>/);
+    const withState = renderPage('stats', { state: { note: 'a < b </script>' } });
+    assert.ok(withState.includes('<main id="app"></main>'), 'a page with its snapshot has no loading line');
+    assert.ok(withState.includes('<script type="application/json" id="state">{"note":"a \\u003c b \\u003c/script>"}</script><script nonce='), 'the block comes before the bundle, every < escaped');
+  });
+
+  test('the page draws the snapshot its shell carries as it draws a posted one, and no note can close the block', () => {
+    const reason = '</script><script>window.escaped = true;</script><!-- EACCES';
+    const snapshot = { ...createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/<b>bad</b>.md', reason }], Date.now()), updatedAt: 0 };
+    const embedded = openWebviewPage(renderPage('stats', { state: snapshot }));
+    const posted = openWebviewPage(renderPage('stats'), snapshot);
+    try {
+      assert.strictEqual(embedded.find('#app').innerHTML, posted.find('#app').innerHTML);
+      assert.strictEqual(embedded.text('.unreadable .detail:not(p)'), reason, 'the reason is text');
+      assert.strictEqual((embedded.window as unknown as { escaped?: boolean }).escaped, undefined, 'nothing in the snapshot ran');
+      assert.strictEqual(embedded.findAll('script[type="application/json"]').length, 1);
+    } finally {
+      embedded.dispose();
+      posted.dispose();
+    }
+  });
+
   test('the page says nothing when every note was read', () => {
     const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {

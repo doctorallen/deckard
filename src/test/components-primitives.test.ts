@@ -3,11 +3,11 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { createDeckardStatsSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { ENABLED } from '../ui/webview/components';
 import { deckardThemes } from '../ui/webview/themes';
-import { renderablePages, renderPage } from './pages';
+import { PAGES, renderablePages, renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { readGoldens } from '../../test/harness/domGoldens';
@@ -187,6 +187,31 @@ suite('Component primitives', () => {
         assert.strictEqual(loading?.localName, 'div', `${name}: the loading line is a div`);
         assert.strictEqual(loading?.getAttribute('class'), 'loading', `${name}: the loading line's class`);
         assert.strictEqual(loading?.getAttribute('role'), 'status', `${name}: the loading line is a status`);
+        page.dispose();
+        page = undefined;
+      }
+    });
+
+    test('a page whose shell carries its snapshot draws it at once, with no loading line and nothing busy', async () => {
+      // Every page that reads inert JSON, drawn from its shell alone: no
+      // state is posted.
+      const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '# A #project/atlas\n- [ ] Call\n')]]));
+      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      const snapshots: Partial<Record<string, unknown>> = {
+        stats: createDeckardStatsSnapshot(index, store.reader.value, [], Date.now()),
+      };
+      const embedding = PAGES.filter((entry) => entry.readsInertState);
+      assert.ok(embedding.length >= 1, 'at least Stats reads its first snapshot from its shell');
+      for (const entry of embedding) {
+        assert.ok(snapshots[entry.id], `${entry.title}: a snapshot to embed`);
+        page = openWebviewPage(renderPage(entry.id, { state: snapshots[entry.id] }));
+        await Promise.resolve();
+        const app = page.find('#app');
+        assert.strictEqual(app.localName, 'main', `${entry.title}: #app is the page's main`);
+        assert.strictEqual(app.getAttribute('aria-busy'), null, `${entry.title} is not busy`);
+        assert.strictEqual(page.findAll('#app .loading').length, 0, `${entry.title}: no loading line`);
+        assert.ok(app.firstElementChild, `${entry.title} drew its snapshot`);
+        assert.strictEqual(page.posted.length, 0, `${entry.title} asked for nothing`);
         page.dispose();
         page = undefined;
       }

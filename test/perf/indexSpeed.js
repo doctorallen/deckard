@@ -50,7 +50,7 @@ const { parseMarkdown } = load('parser');
 const { buildWorkspaceIndex, createWorkspaceIndex, WorkspaceIndexer } = load('indexer');
 const { WorkspaceScanner } = load('scanner');
 const { SearchStore } = load('searchStore');
-const { setTimingLog } = load('timing');
+const { measure, setTimingLog } = load('timing');
 const graphState = load('notesGraphState');
 const codec = load('parsedFileCodec');
 
@@ -108,6 +108,11 @@ async function bench(size) {
     row('Notes Graph message, lighter edges', '—');
     row('Notes Graph message, tasks hidden', '—');
   }
+
+  // The Stats page's snapshot, timed by the line its host writes, which
+  // decides whether the page's HTML carries it (docs/implementation/
+  // 20-webviews.md, Q3: under 50 ms, it is embedded).
+  row('Stats snapshot (median of 5)', ms(timeStatsSnapshot(index, now)));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -286,6 +291,34 @@ async function save(session, file) {
   session.saveNote(vscode.Uri.file(file));
   await published;
   return performance.now() - started;
+}
+
+/**
+ * The median of five builds of the Stats page's snapshot over `index`, each
+ * read from the `Stats` line `measure` writes, as the page's host times it.
+ * An older checkout without the state builder prints a dash.
+ */
+function timeStatsSnapshot(index, now) {
+  const { createDeckardStatsSnapshot } = load('dashboardState');
+  const { createPreferences } = load('preferenceServices');
+  if (!createDeckardStatsSnapshot || !createPreferences || !measure) {
+    return NaN;
+  }
+  const values = new Map();
+  const preferences = createPreferences({
+    get: (key, fallback) => (values.has(key) ? values.get(key) : fallback),
+    keys: () => [...values.keys()],
+    update: async (key, value) => void values.set(key, value),
+  }).reader.value;
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Stats', () => createDeckardStatsSnapshot(index, preferences, [], now));
+    return readTiming(log.lines, ['Stats']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
 }
 
 /** The seeded workspace: N notes, 600 tags, nested tagged headings, links, tasks. */
