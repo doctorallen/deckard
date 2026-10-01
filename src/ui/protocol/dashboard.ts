@@ -12,6 +12,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind, TagReference } from '../../domain/model/tags';
+import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
@@ -344,42 +345,90 @@ export interface RecordRecentQueryMessage {
   query: string;
 }
 
+/**
+ * What the Dashboard sends its host, by type. A message several types share,
+ * such as Park Tag and Unpark Tag, is listed once under each, narrowed to
+ * that type. The host checks each tag, line, and saved search a message
+ * names against the index and preferences as they are now, since the page
+ * may hold a snapshot from before they changed.
+ */
+export interface DashboardPageToHost {
+  setZenMode: SetZenModeMessage;
+  chooseTheme: ChooseThemeMessage;
+  openSource: OpenSourceMessage;
+  toggleTask: ToggleTaskMessage;
+  toggleFavorite: ToggleFavoriteMessage;
+  toggleFavoriteEntity: ToggleFavoriteEntityMessage;
+  setTagSort: SetTagSortMessage;
+  setEntitySort: SetEntitySortMessage;
+  setDashboardMode: SetDashboardModeMessage;
+  setDashboardSearch: SetDashboardSearchMessage;
+  setDashboardColumns: SetDashboardColumnsMessage;
+  reorderTags: ReorderTagsMessage;
+  reorderEntities: ReorderEntitiesMessage;
+  openTag: OpenTagMessage;
+  renameTag: RenameTagMessage;
+  parkTag: ParkTagMessage & { type: 'parkTag' };
+  unparkTag: ParkTagMessage & { type: 'unparkTag' };
+  openSavedFilter: OpenSavedFilterMessage;
+  addSavedSearchWidget: AddSavedSearchWidgetMessage;
+  removeSavedFilter: RemoveSavedFilterMessage;
+  recordRecentQuery: RecordRecentQueryMessage;
+  setDashboardWidgets: SetDashboardWidgetsMessage;
+  resetDashboardWidgets: ResetDashboardWidgetsMessage;
+  widgetChoices: DashboardWidgetChoicesMessage;
+  openWhatsNew: WhatsNewMessage & { type: 'openWhatsNew' };
+  dismissWhatsNew: WhatsNewMessage & { type: 'dismissWhatsNew' };
+  runTryNext: TryNextMessage & { type: 'runTryNext' };
+  snoozeTryNext: TryNextMessage & { type: 'snoozeTryNext' };
+  retireTryNext: TryNextMessage & { type: 'retireTryNext' };
+  openSearch: OpenSearchMessage;
+  openTaskBoard: OpenTaskBoardMessage;
+  openView: OpenDeckardViewMessage;
+  openDailyNote: OpenDailyNoteMessage;
+  quickAdd: QuickAddMessage;
+  createTagHub: CreateTagHubMessage;
+  addNextAction: AddNextActionMessage;
+  openNote: OpenNoteMessage;
+  pinNote: PinNoteMessage & { type: 'pinNote' };
+  unpinNote: PinNoteMessage & { type: 'unpinNote' };
+}
+
 /** Messages from the Dashboard. */
-export type DashboardMessage =
-  | SetZenModeMessage
-  | ChooseThemeMessage
-  | OpenSourceMessage
-  | ToggleTaskMessage
-  | ToggleFavoriteMessage
-  | ToggleFavoriteEntityMessage
-  | SetTagSortMessage
-  | SetEntitySortMessage
-  | SetDashboardModeMessage
-  | SetDashboardSearchMessage
-  | SetDashboardColumnsMessage
-  | ReorderTagsMessage
-  | ReorderEntitiesMessage
-  | OpenTagMessage
-  | RenameTagMessage
-  | ParkTagMessage
-  | OpenSavedFilterMessage
-  | AddSavedSearchWidgetMessage
-  | RemoveSavedFilterMessage
-  | RecordRecentQueryMessage
-  | SetDashboardWidgetsMessage
-  | ResetDashboardWidgetsMessage
-  | DashboardWidgetChoicesMessage
-  | OpenSearchMessage
-  | OpenTaskBoardMessage
-  | OpenDeckardViewMessage
-  | OpenDailyNoteMessage
-  | QuickAddMessage
-  | CreateTagHubMessage
-  | AddNextActionMessage
-  | PinNoteMessage
-  | OpenNoteMessage
-  | WhatsNewMessage
-  | TryNextMessage;
+export type DashboardMessage = MessageOf<DashboardPageToHost>;
+
+/**
+ * What the Dashboard is sent to draw: its snapshot, and the tags the
+ * workspace parks, which the page leaves out of its lists.
+ */
+export interface DashboardPageState extends DashboardSnapshot {
+  parkedTags: string[];
+}
+
+/** A widget chosen in Related Notes, which Home adds while customizing. */
+export interface AddWidgetMessage {
+  type: 'addWidget';
+  /** The widget's kind, as + Add widget names it. */
+  value: string;
+}
+
+/**
+ * The answer to a quick add: the text the page sent, untrimmed, so the page
+ * can keep it as a draft when the task was not added.
+ */
+export interface QuickAddResultMessage {
+  type: 'quickAddResult';
+  text: string;
+  added: boolean;
+}
+
+/** What the host sends the Dashboard, by type. */
+export interface DashboardHostToPage {
+  state: StateMessage<DashboardPageState>;
+  indexing: IndexingMessage;
+  addWidget: AddWidgetMessage;
+  quickAddResult: QuickAddResultMessage;
+}
 
 /** Home's tiles: what is overdue, due today, and open, each a search. */
 export interface TaskGlance {
