@@ -10,25 +10,44 @@ import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import { pageExtensionUri, pageWebview } from './pageWebview';
 
 /**
- * What a page is rendered against: the stand-in webview, the extension's
- * folder, and what Help reads from the manifest and the changelog.
- *
- * The mocha suites and the Node harnesses (test/ui/pages.js) each pass their
- * own, since each already renders against its own stand-in and a change to
- * it would change what the page links to.
+ * What a page is rendered with besides the stand-in webview: what Help reads
+ * from the manifest and the changelog, and the entry the Related Notes debug
+ * page diagnoses.
  */
-export interface PageContext {
+export interface PageOptions {
+  help?: { manifest?: HelpManifest; options?: HelpOptions };
+  diagnostic?: EntryRelatedNotesDiagnostic;
+}
+
+/**
+ * What a page is rendered against: the stand-in webview of `pageWebview.ts`,
+ * the repository as the extension's folder, and the page's own options.
+ */
+export interface PageContext extends PageOptions {
   webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>;
   extensionUri: vscode.Uri;
-  help?: { manifest?: HelpManifest; options?: HelpOptions };
 }
+
+/** The name of every page in the catalog. */
+export type PageId =
+  | 'dashboard'
+  | 'searchPage'
+  | 'sidebarNotes'
+  | 'notesGraph'
+  | 'help'
+  | 'stats'
+  | 'taskBoard'
+  | 'calendar'
+  | 'calendarPage'
+  | 'relatedNotesDebug';
 
 /** One Deckard webview page, and how to render it. */
 export interface CatalogPage {
   /** A stable name, used by the Node harnesses and the visual baselines. */
-  id: string;
+  id: PageId;
   /** The page's name in a test's failure message. */
   title: string;
   render(context: PageContext): string;
@@ -68,17 +87,31 @@ export const PAGES: readonly CatalogPage[] = [
   {
     id: 'relatedNotesDebug',
     title: 'Related Notes debug',
-    render: (context) => getRelatedNotesDebugHtml(context.webview, EMPTY_DIAGNOSTIC),
+    render: (context) => getRelatedNotesDebugHtml(context.webview, context.diagnostic ?? EMPTY_DIAGNOSTIC),
   },
 ];
 
 /**
- * The pages a suite walks, as `[title, render]` pairs bound to one context.
- * @param context What each page renders against.
- * @param ids The pages to include, in catalog order; every page when omitted.
+ * Renders one page as its host would, against the one stand-in webview, so a
+ * builder's signature changes in this file alone.
+ * @param id The catalog name of the page to render.
+ * @param options What the page renders with besides the webview.
  */
-export function renderablePages(context: PageContext, ids?: readonly string[]): Array<[string, () => string]> {
+export function renderPage(id: PageId, options: PageOptions = {}): string {
+  const page = PAGES.find((entry) => entry.id === id);
+  if (!page) {
+    throw new Error(`The page catalog has no page ${id}.`);
+  }
+  return page.render({ webview: pageWebview, extensionUri: pageExtensionUri(), ...options });
+}
+
+/**
+ * The pages a suite walks, as `[title, render]` pairs.
+ * @param ids The pages to include, in catalog order; every page when omitted.
+ * @param options What each page renders with besides the webview.
+ */
+export function renderablePages(ids?: readonly PageId[], options: PageOptions = {}): Array<[string, () => string]> {
   return PAGES
     .filter((page) => !ids || ids.includes(page.id))
-    .map((page) => [page.title, () => page.render(context)]);
+    .map((page) => [page.title, () => renderPage(page.id, options)]);
 }

@@ -1,14 +1,12 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
-import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { parseCalendarMessage } from '../ui/webview/messages';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 suite('Calendar', () => {
@@ -160,7 +158,7 @@ suite('Calendar', () => {
       ),
     );
     const page = openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      renderPage('calendar'),
       createCalendar(old, '2026-08', createQueryContext(new Date(2026, 8, 13, 10).getTime())),
     );
     try {
@@ -176,7 +174,7 @@ suite('Calendar', () => {
 
   test('keeps keyboard focus on its day through a redraw, and after a month step', () => {
     const page = openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      renderPage('calendar'),
       calendar,
     );
     try {
@@ -231,7 +229,7 @@ suite('Calendar', () => {
     assert.strictEqual(off.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-09-22')?.repeatCount, undefined);
     assert.strictEqual(off.selected?.repeats, undefined, 'the setting off draws none');
 
-    const page = openWebviewPage(getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never), shown);
+    const page = openWebviewPage(renderPage('calendar'), shown);
     try {
       const cell = page.find('.calendar-grid .day[data-date="2026-09-22"]');
       assert.strictEqual(cell.querySelector('.repeat-count')?.textContent, '↻');
@@ -251,7 +249,7 @@ suite('Calendar', () => {
     const hidden = createCalendar(index, '2026-09', createQueryContext(now.getTime()), { showWeekends: false });
     assert.strictEqual(hidden.hideWeekends, true);
     assert.strictEqual(createCalendar(index, '2026-09', createQueryContext(now.getTime())).hideWeekends, undefined, 'drawn unless turned off');
-    const sidebar = openWebviewPage(getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never), hidden);
+    const sidebar = openWebviewPage(renderPage('calendar'), hidden);
     try {
       assert.deepStrictEqual(sidebar.findAll('.weekday').map((cell) => cell.textContent).filter(Boolean), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
       assert.ok(sidebar.find('.calendar-grid').classList.contains('no-weekends'));
@@ -262,7 +260,7 @@ suite('Calendar', () => {
       sidebar.dispose();
     }
     const page = openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never, { page: true }),
+      renderPage('calendarPage'),
       createCalendar(index, '2026-09', createQueryContext(now.getTime()), { showWeekends: false, dayPanel: true, layout: 'page' }),
     );
     try {

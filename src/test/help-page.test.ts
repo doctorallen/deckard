@@ -6,8 +6,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { HelpPanel } from '../ui/webview/help';
-import { getHelpHtml, HelpManifest } from '../ui/webview/helpHtml';
+import { HelpManifest } from '../ui/webview/helpHtml';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { ThemePreview } from '../ui/webview/themePreview';
 
 suite('Help page', () => {
@@ -17,13 +18,12 @@ suite('Help page', () => {
       fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8'),
     ) as { contributes: HelpManifest }
   ).contributes;
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (uri: vscode.Uri) => uri };
   const helpHtml = (platform: NodeJS.Platform = 'darwin') =>
-    getHelpHtml(webview, extensionUri, manifest, { platform });
+    renderPage('help', { help: { manifest, options: { platform } } });
 
   test('names only commands Deckard contributes', () => {
     const titles = new Set(manifest.commands?.map((command) => command.title));
-    const named = [...getHelpHtml(webview, extensionUri).matchAll(/<code>Deckard: ([^<]+)<\/code>/g)].map(
+    const named = [...renderPage('help').matchAll(/<code>Deckard: ([^<]+)<\/code>/g)].map(
       (match) => match[1],
     );
     assert.ok(named.length > 20, 'Help names the commands it describes');
@@ -68,7 +68,7 @@ suite('Help page', () => {
       ),
     ];
     const page = openWebviewPage(
-      getHelpHtml(webview, extensionUri, manifest, { releases, newSince: '1.25.0', anchor: 'whats-new' }),
+      renderPage('help', { help: { manifest, options: { releases, newSince: '1.25.0', anchor: 'whats-new' } } }),
     );
     try {
       assert.deepStrictEqual(
@@ -86,7 +86,7 @@ suite('Help page', () => {
       page.dispose();
     }
     assert.match(
-      getHelpHtml(webview, extensionUri, manifest, { releases: [] }),
+      renderPage('help', { help: { manifest, options: { releases: [] } } }),
       /This version's changes are listed in the changelog\./,
     );
   });
@@ -110,10 +110,7 @@ suite('Help page', () => {
 
   test('its rail marks the section being read', () => {
     const page = openWebviewPage(
-      getHelpHtml(
-        { cspSource: 'vscode-webview://deckard', asWebviewUri: (uri: vscode.Uri) => uri },
-        extensionUri,
-      ),
+      renderPage('help'),
     );
     try {
       assert.strictEqual(page.findAll('nav a[aria-current="location"]').length, 1);

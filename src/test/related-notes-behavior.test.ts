@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 
 import { RankedNote, SidebarNotesSnapshot } from '../core/types';
-import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 /**
  * What the Related Notes sidebar does with the results it is given.
@@ -20,7 +20,7 @@ suite('Related Notes behavior', () => {
 
   const open = (snapshot: Partial<SidebarNotesSnapshot>): WebviewPage => {
     page = openWebviewPage(
-      getSidebarNotesHtml({ cspSource: 'vscode-webview://deckard' }, '1.0.0'),
+      renderPage('sidebarNotes'),
       {
         activeFileName: 'today.md',
         activeTags: [],

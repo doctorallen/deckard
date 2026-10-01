@@ -8,8 +8,8 @@ import { DashboardSnapshot, PersistedPreferences } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /**
@@ -88,13 +88,7 @@ suite('Dashboard behavior', () => {
         : {}),
     };
     page = openWebviewPage(
-      getDashboardHtml(
-        {
-          cspSource: 'vscode-webview://deckard',
-          asWebviewUri: (resource) => resource,
-        },
-        vscode.Uri.file('/deckard'),
-      ),
+      renderPage('dashboard'),
       snapshot,
     );
     return { page, snapshot };

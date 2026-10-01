@@ -10,10 +10,9 @@ import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
 import { collectNoteLinks } from '../ui/state/noteLinks';
 import { createNotesGraphSnapshot, graphInputsChanged } from '../ui/state/notesGraphState';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { getStatsHtml } from '../ui/webview/statsHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
   const store = createPreferences({
@@ -79,7 +78,7 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
   });
 
   test('the graph has a Show parked switch, off until chosen', () => {
-    const page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }));
+    const page = openWebviewPage(renderPage('notesGraph'));
     try {
       const toggle = page.find('#show-parked') as HTMLInputElement;
       assert.strictEqual(toggle.type, 'checkbox');
@@ -119,7 +118,7 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
     const stats = createDeckardStatsSnapshot(index, defaults(), [], Date.now());
     assert.ok(!stats.orphanNotes.some((note) => note.detail === 'archive/Old plan.md'));
     assert.deepStrictEqual(stats.parked, { notes: 1, openTasks: 1 });
-    const page = openWebviewPage(getStatsHtml({ cspSource: 'vscode-webview://deckard' } as never), stats);
+    const page = openWebviewPage(renderPage('stats'), stats);
     try {
       assert.strictEqual(page.text('.parked-line'), 'Parked: 1 note, 1 open task');
       page.click('.parked-line button');

@@ -1,14 +1,12 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import * as fs from 'fs';
 import * as path from 'path';
 
 import { GUIDE_IMAGE_BASE, GUIDE_PAGES, guideSlug, HELP_READ_MORE, renderGuidePage, resolveGuideLink } from '../ui/webview/guide';
-import { getHelpHtml } from '../ui/webview/helpHtml';
 import { parseHelpMessage } from '../ui/webview/messages';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 const guideFolder = path.resolve(__dirname, '..', '..', 'docs', 'guide');
 const read = (page: string): string => fs.readFileSync(path.join(guideFolder, `${page}.md`), 'utf8');
@@ -91,8 +89,7 @@ suite('The guide', () => {
   });
 
   test('Read more asks for its page, which shows in place of Help, and Back returns', () => {
-    const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (uri: vscode.Uri) => uri };
-    const page = openWebviewPage(getHelpHtml(webview, vscode.Uri.file('/tmp/deckard-extension')));
+    const page = openWebviewPage(renderPage('help'));
     try {
       const sections = page.findAll('article section[id]').map((section) => section.id);
       const withoutReadMore = sections.filter(

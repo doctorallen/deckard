@@ -11,10 +11,9 @@ import {
 } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { getProvenanceCss, getZenCss } from '../ui/webview/components';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
@@ -86,11 +85,6 @@ suite('Zen mode', () => {
     'notes/two.md': '# Two #project/atlas\nMore prose.',
   };
 
-  const webview = {
-    cspSource: 'vscode-webview://deckard',
-    asWebviewUri: (resource: vscode.Uri) => resource,
-  };
-
   const index = () =>
     buildWorkspaceIndex(
       new Map(
@@ -115,7 +109,7 @@ suite('Zen mode', () => {
       }),
     };
     const page = openWebviewPage(
-      getDashboardHtml(webview, vscode.Uri.file('/deckard')),
+      renderPage('dashboard'),
       snapshot,
     );
     pages.push(page);
@@ -125,7 +119,7 @@ suite('Zen mode', () => {
   const searchPage = () => {
     store = createPreferences(new MemoryMemento());
     const page = openWebviewPage(
-      getSearchPageHtml(webview),
+      renderPage('searchPage'),
       createSearchPageSnapshot(index(), store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }),
     );
     pages.push(page);
@@ -156,9 +150,9 @@ suite('Zen mode', () => {
   });
 
   test('marks the body only when it is on, and always ships its sheet', async () => {
-    const off = getDashboardHtml(webview, vscode.Uri.file('/deckard'));
+    const off = renderPage('dashboard');
     await setZen(true);
-    const on = getDashboardHtml(webview, vscode.Uri.file('/deckard'));
+    const on = renderPage('dashboard');
 
     assert.ok(!off.includes('<body class="zen">'), 'off marks the body');
     assert.ok(on.includes('<body class="zen">'), 'on does not mark the body');

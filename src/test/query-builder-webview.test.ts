@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 /**
  * Drives the overview webview's own script in jsdom.
@@ -621,7 +621,7 @@ function datasetSelector(dataset: Record<string, string>): string {
  * what the page does on its own and what it posts.
  */
 function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedView {
-  const page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }));
+  const page = openWebviewPage(renderPage('searchPage'));
   const { window, document } = page;
   const app = page.find('#app');
   let shown: { query: { text: string } } | undefined;

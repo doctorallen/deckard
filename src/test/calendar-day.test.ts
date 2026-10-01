@@ -1,16 +1,14 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
 import { parseCalendarMessage } from '../ui/webview/messages';
 import { describeDateChange } from '../ui/commands/agendaActions';
-import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 export function indexOf(notes: Record<string, string>): WorkspaceIndex {
@@ -42,7 +40,7 @@ const SCHEDULED = [
 
 function openCalendar(index: WorkspaceIndex): WebviewPage {
   return openWebviewPage(
-    getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+    renderPage('calendar'),
     createCalendar(index, '2026-09', createQueryContext(NOW.getTime())),
   );
 }
@@ -140,7 +138,7 @@ suite('The calendar day panel', () => {
 
   const open = (dayPanel: boolean, selectedDate?: string): WebviewPage =>
     openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      renderPage('calendar'),
       createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel, selectedDate }),
     );
   const day = (page: WebviewPage, date: string) =>
@@ -281,7 +279,7 @@ suite('The calendar day panel lists the day tasks', () => {
 
   const open = (selectedDate: string): WebviewPage =>
     openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      renderPage('calendar'),
       createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true, selectedDate }),
     );
 
@@ -366,7 +364,7 @@ suite('The calendar day panel lists the notes created that day', () => {
 
   test('a row opens its note, and Search all searches the day', () => {
     const page = openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      renderPage('calendar'),
       createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true }),
     );
     try {

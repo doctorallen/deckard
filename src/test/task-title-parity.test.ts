@@ -1,7 +1,5 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { PersistedPreferences } from '../core/types';
@@ -14,10 +12,8 @@ import {
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
-import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /**
@@ -47,7 +43,6 @@ suite('Task title parity', () => {
         ['notes/atlas.md', parseMarkdown('notes/atlas.md', `# Atlas #project/atlas\n- [ ] ${TITLE} 📅 2026-09-21 #project/atlas\n`)],
       ]),
     );
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r };
   const NOW = Date.parse('2026-09-21T12:00:00Z');
   const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
 
@@ -76,7 +71,7 @@ suite('Task title parity', () => {
   test('the Task Board, as a board, a list, and a table', () => {
     for (const layout of ['board', 'list', 'table'] as const) {
       const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: layout, taskTableColumns: ['title'] }), search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
-      const page = open(getTaskBoardHtml(webview as unknown as vscode.Webview), board);
+      const page = open(renderPage('taskBoard'), board);
       const selector = layout === 'table' ? '.result-table .result-title' : '.task-title';
       const titles = titlesOn(page, selector);
       assert.strictEqual(titles.length, 1, `${layout}: one task, one title`);
@@ -86,7 +81,7 @@ suite('Task title parity', () => {
 
   test('a date in a board card stays one word', () => {
     const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: 'board' }), search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
-    const page = open(getTaskBoardHtml(webview as unknown as vscode.Webview), board);
+    const page = open(renderPage('taskBoard'), board);
     const dates = page.findAll('.board-details .board-date');
     assert.deepStrictEqual(dates.map((date) => date.textContent), ['2026-09-21']);
   });
@@ -98,14 +93,14 @@ suite('Task title parity', () => {
       ...createDashboardSnapshot({ index: built, preferences: prefs, queryContext: createQueryContext(Date.now()) }),
       widgets: createDashboardWidgets(built, prefs, { queryContext: createQueryContext(NOW), upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
     };
-    const page = open(getDashboardHtml(webview, vscode.Uri.file('/deckard')), snapshot);
+    const page = open(renderPage('dashboard'), snapshot);
     const titles = titlesOn(page, '.task-title');
     assert.ok(titles.length >= 1, 'Home draws the task at least once');
     titles.forEach((title, at) => expectRendered(title, `Home task ${at}`));
   });
 
   test('a search page, in its tasks pane', () => {
-    const page = open(getSearchPageHtml(webview), createSearchPageSnapshot(index(), preferences(), '#project/atlas', { queryContext: createQueryContext(Date.now()) }));
+    const page = open(renderPage('searchPage'), createSearchPageSnapshot(index(), preferences(), '#project/atlas', { queryContext: createQueryContext(Date.now()) }));
     const titles = titlesOn(page, '.task-title');
     assert.strictEqual(titles.length, 1);
     expectRendered(titles[0], 'search page');

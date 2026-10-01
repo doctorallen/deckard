@@ -6,16 +6,11 @@ import {
   parseSearchPageMessage,
   parseSidebarMessage,
 } from '../ui/webview/messages';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getHelpHtml } from '../ui/webview/helpHtml';
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { renderMarkdown } from '../ui/webview/rendering';
-import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
 import { getHighContrastCss, getPageTailCss } from '../ui/webview/components';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 function assertWebviewScriptParses(html: string): void {
   const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
@@ -34,9 +29,7 @@ function extension(): vscode.Extension<unknown> {
 
 suite('Webview contracts', () => {
   test('renders tag-clustered graph relationships', () => {
-    const html = getNotesGraphHtml({
-      cspSource: 'vscode-webview://deckard',
-    });
+    const html = renderPage('notesGraph');
 
     assertWebviewScriptParses(html);
     // The graph's controls are driven in the Notes Graph behavior suite.
@@ -110,9 +103,8 @@ suite('Webview contracts', () => {
   });
 
   test('distinguishes selected, parent, and child tag context in diagnostics', () => {
-    const html = getRelatedNotesDebugHtml(
-      { cspSource: 'test-csp' },
-      {
+    const html = renderPage('relatedNotesDebug', {
+      diagnostic: {
         filePath: 'notes/current.md',
         sourceLine: 2,
         title: 'Selected',
@@ -149,7 +141,7 @@ suite('Webview contracts', () => {
           state: 'noMatches',
         },
       },
-    );
+    });
 
     assert.strictEqual(html.includes('>Context</th>'), true);
     assert.strictEqual(html.includes('Selected entry'), true);
@@ -543,13 +535,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders accessible Home and Tags dashboard modes with focused controls', () => {
-    const html = getDashboardHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-    );
+    const html = renderPage('dashboard');
 
     assert.strictEqual(html.includes('img-src vscode-webview://deckard;'), true);
     assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
@@ -1055,13 +1041,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {
-    const html = getDashboardHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-    );
+    const html = renderPage('dashboard');
 
     // The shared shell centers main without a frame; the Dashboard widens it.
     assert.strictEqual(
@@ -1085,9 +1065,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders search page tabs and side-by-side layouts', () => {
-    const html = getSearchPageHtml({
-      cspSource: 'vscode-webview://deckard',
-    });
+    const html = renderPage('searchPage');
 
     assertWebviewScriptParses(html);
     assert.strictEqual(
@@ -1171,10 +1149,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders formatted related-note relevance explanations', () => {
-    const html = getSidebarNotesHtml(
-      { cspSource: 'vscode-webview://deckard' },
-      '1.0.0',
-    );
+    const html = renderPage('sidebarNotes');
 
     assertWebviewScriptParses(html);
                                         // Writing a link to a result is held to what the sidebar does; see the
@@ -1241,14 +1216,7 @@ suite('Webview contracts', () => {
     // holds the page to it rather than to a copy of its words: a command or
     // a setting added later is in the guide the moment it is contributed.
     const manifest = extension().packageJSON.contributes;
-    const html = getHelpHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-      manifest,
-    );
+    const html = renderPage('help', { help: { manifest: manifest } });
 
     const commands: { command: string; title: string }[] =
       manifest?.commands ?? [];
@@ -1307,11 +1275,7 @@ suite('Webview contracts', () => {
 
   test('the Help rail marks the section being read', () => {
     const page = openWebviewPage(
-      getHelpHtml(
-        { cspSource: 'vscode-webview://deckard', asWebviewUri: (resource) => resource },
-        vscode.Uri.file('/deckard'),
-        extension().packageJSON.contributes,
-      ),
+      renderPage('help', { help: { manifest: extension().packageJSON.contributes } }),
       undefined,
     );
     try {
@@ -1325,14 +1289,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Help page as a reference, tables and all', () => {
-    const html = getHelpHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-      extension().packageJSON.contributes,
-    );
+    const html = renderPage('help', { help: { manifest: extension().packageJSON.contributes } });
 
     assert.ok(html.includes('<caption>Fields</caption>'), 'the query fields');
     assert.ok(

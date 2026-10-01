@@ -9,9 +9,9 @@ import { formatCapture } from '../ui/commands/capture';
 import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { createQuerySuggestions, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { buildQuickFindResults } from '../ui/state/quickFindState';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
@@ -134,7 +134,7 @@ suite('Searches keep parked notes, last', () => {
 
   test('a search page says Parked on a parked card and task, and nowhere else', () => {
     const snapshot = createSearchPageSnapshot(workspace(), defaults(), 'vendor', { queryContext: createQueryContext(Date.now()) });
-    const page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }), snapshot);
+    const page = openWebviewPage(renderPage('searchPage'), snapshot);
     try {
       const cards = page.findAll('article.card');
       assert.deepStrictEqual(

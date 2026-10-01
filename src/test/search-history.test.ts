@@ -2,8 +2,8 @@ import * as assert from 'assert';
 
 import { SearchHistory, SearchHistoryEntry } from '../ui/state/searchHistory';
 import { parseSearchPageMessage } from '../ui/webview/messages';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 const at = (query: string, notePage = 1, taskPage = 1): SearchHistoryEntry => ({
   query,
@@ -70,7 +70,7 @@ suite('Search history', () => {
   });
 
   test('the mouse\'s back and forward buttons ask the host to step', () => {
-    page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }));
+    page = openWebviewPage(renderPage('searchPage'));
     const press = (button: number): boolean =>
       page!.document.body.dispatchEvent(
         new page!.window.MouseEvent('mouseup', { bubbles: true, cancelable: true, button }),

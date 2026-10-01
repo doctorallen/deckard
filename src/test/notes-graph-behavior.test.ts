@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
 import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 type GraphNode = { id: string; kind: string; title: string; tagKeys: string[]; degree: number; filePath?: string; line?: number; links?: Record<string, number> };
 type GraphEdge = { source: string; target: string; weight: number; types: string[] };
@@ -73,7 +73,7 @@ suite('Notes Graph behavior', () => {
 
   const open = (): WebviewPage => {
     page = openWebviewPage(
-      getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }),
+      renderPage('notesGraph'),
     );
     return page;
   };
@@ -265,7 +265,7 @@ suite('Notes Graph behavior', () => {
 
   suite('edge kinds', () => {
     const openCanvas = (): WebviewPage => {
-      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
       return page;
     };
     const check = (page: WebviewPage, id: string, checked: boolean) => {
@@ -341,7 +341,7 @@ suite('Notes Graph behavior', () => {
 
   suite('node size and tooltip', () => {
     const openCanvas = (): WebviewPage => {
-      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
       return page;
     };
     const tag = (key: string, links: Record<string, number>, degree: number): GraphNode => ({ id: `tag:${key}`, kind: 'tag', title: key, tagKeys: [], degree, links });
@@ -413,7 +413,7 @@ suite('Notes Graph behavior', () => {
 
   suite('groups', () => {
     const openCanvas = (): WebviewPage => {
-      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
       return page;
     };
     /** Notes in groups, each note carrying the group's tag and #common, linked in a ring. */
@@ -495,7 +495,7 @@ suite('Notes Graph behavior', () => {
 
   suite('files as nodes', () => {
     const openCanvas = (): WebviewPage => {
-      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
       return page;
     };
     /** A note with two headings, joined, and another note the second links to. */
