@@ -20,6 +20,7 @@ const MODULES = {
   // core
   changelog: 'core/changelog.js',
   parser: 'domain/markdown/parser.js',
+  queryContext: 'domain/query/queryContext.js',
   preferences: 'core/storage/preferences.js',
   searchStore: 'core/storage/searchStore.js',
   parsedFileCodec: 'core/storage/parsedFileCodec.js',

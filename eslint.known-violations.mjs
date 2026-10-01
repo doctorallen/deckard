@@ -470,8 +470,10 @@ export default {
       "bench"
     ],
     "test/ui/checkLayout.js": [
-      "createSurfaces",
       "probeScript"
+    ],
+    "test/ui/surfaces.js": [
+      "createSurfaces"
     ]
   },
   "max-params": {
@@ -521,7 +523,8 @@ export default {
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 2
+    "test/ui/checkLayout.js": 1,
+    "test/ui/surfaces.js": 1
   },
   "unicorn/no-negated-condition": {
     "src/domain/markdown/parser.ts": 2,

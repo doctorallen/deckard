@@ -2327,6 +2327,7 @@
     "test:layout": "npm run compile-tests && node test/ui/checkLayout.js && node test/ui/checkRenderedContrast.js",
     "test:contrast": "npm run compile-tests && node test/ui/checkContrast.js",
     "test:visual": "npm run compile-tests && node test/ui/checkVisual.js",
+    "test:dom": "npm run compile-tests && node test/ui/checkDom.js",
     "bench:index": "npm run compile-tests && node test/perf/indexSpeed.js 1000 5000"
   },
   "devDependencies": {
