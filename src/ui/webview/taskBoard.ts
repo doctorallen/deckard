@@ -616,7 +616,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'breakIntoSteps': {
         const task = index.tasks.get(message.taskId);
         if (task) {
-          await breakIntoStepsCommand(this.indexer, this.writes.history, task);
+          await breakIntoStepsCommand(this.indexer, this.writes, task);
         }
         return;
       }

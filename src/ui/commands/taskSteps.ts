@@ -15,7 +15,6 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { countSteps } from '../../domain/tasks/taskLines';
 import { describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { quoteTitle, TaskWrites } from './taskActions';
-import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Break into Steps…: a list that grows one step per Enter, shown with the
@@ -499,20 +498,13 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
 /**
  * Deckard: Break into Steps… — for a task from the Tasks view or the board,
  * or the task on the cursor's line.
- *
- * The Task Board hands over only its write history, not the task service
- * the history belongs to, so its call runs the registered command, which
- * has the service, with the same task.
  */
 export async function breakIntoStepsCommand(
   indexer: WorkspaceIndexer,
-  writes: TaskWrites | WorkspaceWriteHistory,
+  writes: TaskWrites,
   task?: Task,
   suggester: StepSuggester | undefined = createLanguageModelSuggester(),
 ): Promise<boolean> {
-  if (writes instanceof WorkspaceWriteHistory) {
-    return (await vscode.commands.executeCommand<boolean>(BREAK_INTO_STEPS, task)) ?? false;
-  }
   const read = task ? await readIndexedTask(writes, task) : readCursorTask(indexer);
   if (!read) {
     if (!task) {
@@ -527,9 +519,6 @@ export async function breakIntoStepsCommand(
   }
   return addTaskSteps(writes, target, steps);
 }
-
-/** The command Break into Steps… is registered as. */
-const BREAK_INTO_STEPS = 'deckard.breakIntoSteps';
 
 /**
  * A task the index knows, with its note's lines, once its line is proved to
