@@ -1,49 +1,36 @@
 import * as vscode from 'vscode';
 
-import type { Services } from '../../../composition/services';
+import type { PageCommands, Services } from '../../../composition/services';
 import { setOutlineFollowCursor } from '../../views/outlineTree';
-import { settingTarget, writeSetting } from '../settings';
 import { registerCommand } from '../runCommand';
+import { settingTarget, writeSetting } from '../settings';
+import { listToggleCommands, SETTING_TOGGLES, ToggleCommand } from './settingToggles';
 
 /**
- * The paired commands that turn one setting on and off: the Calendar's day
- * panel, weekends, and repeats, the Outline following the cursor, and zen.
+ * The paired commands that turn one setting on and off, one registration
+ * per row of SETTING_TOGGLES: the Calendar's day panel, weekends, and
+ * repeats, the Outline following the cursor, and zen.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
-  const { setZenMode } = services.pageCommands;
   context.subscriptions.push(
-    // The day panel is a setting, turned on and off from the Calendar's own
-    // menu, and written where it is already set.
-    registerCommand('deckard.calendar.openDayPanel', () =>
-      writeSetting('calendar.dayPanel', true, settingTarget('calendar.dayPanel')),
-    ),
-    registerCommand('deckard.calendar.closeDayPanel', () =>
-      writeSetting('calendar.dayPanel', false, settingTarget('calendar.dayPanel')),
-    ),
-    // Weekends, and repeats, the same way.
-    registerCommand('deckard.calendar.hideWeekends', () =>
-      writeSetting('calendar.showWeekends', false, settingTarget('calendar.showWeekends')),
-    ),
-    registerCommand('deckard.calendar.includeWeekends', () =>
-      writeSetting('calendar.showWeekends', true, settingTarget('calendar.showWeekends')),
-    ),
-    registerCommand('deckard.calendar.showRepeats', () =>
-      writeSetting('calendar.showRepeats', true, settingTarget('calendar.showRepeats')),
-    ),
-    registerCommand('deckard.calendar.hideRepeats', () =>
-      writeSetting('calendar.showRepeats', false, settingTarget('calendar.showRepeats')),
-    ),
-    registerCommand('deckard.outline.enableFollowCursor', () =>
-      setOutlineFollowCursor(true),
-    ),
-    registerCommand('deckard.outline.disableFollowCursor', () =>
-      setOutlineFollowCursor(false),
-    ),
-    registerCommand('deckard.enableZenMode', () =>
-      setZenMode(true),
-    ),
-    registerCommand('deckard.disableZenMode', () =>
-      setZenMode(false),
+    ...listToggleCommands(SETTING_TOGGLES).map((command) =>
+      registerCommand(command.id, () => writeToggle(command, services.pageCommands)),
     ),
   );
+}
+
+/**
+ * Writes one toggle's value where its target says. The `user` and
+ * `folder-where-set` targets are the Outline's and zen's own setters, which
+ * also set the context key the palette reads; each serves its one setting.
+ */
+function writeToggle(command: ToggleCommand, pageCommands: PageCommands): Promise<unknown> {
+  switch (command.target) {
+    case 'where-set':
+      return writeSetting(command.setting, command.value, settingTarget(command.setting));
+    case 'user':
+      return setOutlineFollowCursor(command.value);
+    case 'folder-where-set':
+      return pageCommands.setZenMode(command.value);
+  }
 }
