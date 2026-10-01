@@ -7,6 +7,7 @@
 const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
+const { loadPage } = require('../harness/loadPage.js');
 const modules = require('../harness/modules.js');
 const { DashboardPanel } = modules.dashboard;
 const { createPreferences } = modules.preferenceServices;
@@ -737,7 +738,8 @@ test('the gear turns zen on through the host, and the page carries the marker', 
   const { view, panel } = await openDashboard();
   try {
     // Off to begin with: the sheet ships either way, the marker does not.
-    assert.ok(panel.webview.html.includes('body.zen {'), 'the zen sheet ships');
+    // The sheet is in tail.css, which every page links; the loader inlines it.
+    assert.ok(loadPage(panel.webview.html).includes('body.zen {'), 'the zen sheet ships');
     assert.ok(!panel.webview.html.includes('<body class="zen">'), 'zen starts off');
 
     view.click(view.find('[data-action="set-zen-mode"][data-value="on"]'));
