@@ -18,9 +18,8 @@ import {
 import {
   parseDashboardMessage,
   parseSidebarMessage,
-  parseTaskBoardMessage,
 } from '../ui/webview/messages';
-import { isAwaitingIndex } from '../ui/webview/taskBoard';
+import { isAwaitingIndex } from '../ui/webview/pages/taskBoard/taskBoardController';
 import { createQueryContext } from '../domain/query/queryContext';
 
 const at = (month: number, day: number): number =>
@@ -381,70 +380,6 @@ suite('Task board', () => {
     const plain = table?.rows.find((entry) => entry.taskId === 'call');
     assert.strictEqual(plain?.cells[0].html, plain?.cells[0].text);
     assert.doesNotMatch(plain?.cells[0].html ?? '', /</, 'no markup to insert');
-  });
-
-  test('accepts the table messages, and refuses a column it does not have', () => {
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'table' }),
-      { type: 'setTaskLayout', layout: 'table' },
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTableSort', column: 'due' }),
-      { type: 'setTableSort', column: 'due' },
-    );
-    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setTableSort' }), { type: 'setTableSort' });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'color' }), undefined);
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTableColumns', columns: ['title', 'due'] }),
-      { type: 'setTableColumns', columns: ['title', 'due'] },
-    );
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableColumns', columns: ['due', 7] }), undefined);
-  });
-
-  test('accepts the Task Board’s layout, list, and settings messages', () => {
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'list' }),
-      { type: 'setTaskLayout', layout: 'list' },
-    );
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'grid' }), undefined);
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'setTaskFilter', filter: 'completed' }),
-      undefined,
-      'the board searches instead of filtering, so it sends no filter',
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTaskSort', mode: 'created' }),
-      { type: 'setTaskSort', mode: 'created' },
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'reorderTasks', taskIds: ['b', 'a'] }),
-      { type: 'reorderTasks', taskIds: ['b', 'a'] },
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['todo', 'in-review'] }),
-      { type: 'setBoardStatuses', statuses: ['todo', 'in-review'] },
-    );
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['to do'] }),
-      undefined,
-      'a status that cannot be a tag is refused',
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: 'stage' }),
-      { type: 'setBoardStatusNamespace', namespace: 'stage' },
-    );
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: '1stage' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: 'status:doing' }),
-      { type: 'moveTask', taskId: 'a', column: 'status:doing' },
-    );
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: '' }),
-      undefined,
-    );
   });
 
   test('no longer takes task messages on the Dashboard', () => {

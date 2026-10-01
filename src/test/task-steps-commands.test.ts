@@ -17,7 +17,6 @@ import {
   StepList,
 } from '../ui/commands/taskSteps';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
-import { parseTaskBoardMessage } from '../ui/webview/messages';
 import { createTaskWrites } from './taskWrites';
 
 type Shown = unknown[][];
@@ -327,16 +326,5 @@ suite('Completing steps', () => {
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
-  });
-});
-
-suite('Break into Steps from the board', () => {
-  test('the board asks for steps with the task id alone', () => {
-    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'breakIntoSteps', taskId: 'task-1' }), {
-      type: 'breakIntoSteps',
-      taskId: 'task-1',
-    });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'breakIntoSteps' }), undefined);
-    assert.strictEqual(parseTaskBoardMessage({ type: 'breakIntoSteps', taskId: 'x', extra: 1 }), undefined);
   });
 });

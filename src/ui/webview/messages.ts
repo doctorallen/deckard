@@ -1,4 +1,3 @@
-import { isTaskColumnId } from '../state/resultTable';
 import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { isObject } from '../../shared/guards';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
@@ -15,11 +14,8 @@ import {
   TagOverviewSortMode,
   RelatedNotesSortMode,
   TagSortMode,
-  TaskSortMode,
   DashboardMode,
   DashboardSearchField,
-  TaskBoardGroupBy,
-  TaskBoardMessage,
   CalendarMessage,
   CalendarPageMessage,
 } from '../../core/types';
@@ -581,156 +577,6 @@ export function parseSidebarMessage(
 }
 
 /**
- * Validates the task board's messages. A column id is only a string here;
- * the host decides what, if anything, a move to it may write.
- */
-export function parseTaskBoardMessage(
-  value: unknown,
-): TaskBoardMessage | undefined {
-  if (!isObject(value) || typeof value.type !== 'string') {
-    return undefined;
-  }
-
-  switch (value.type) {
-    case 'exportResults':
-      return value.kind === 'notes' || value.kind === 'tasks'
-        ? { type: 'exportResults', kind: value.kind }
-        : undefined;
-    case 'setZenMode':
-      return typeof value.enabled === 'boolean'
-        ? { type: 'setZenMode', enabled: value.enabled }
-        : undefined;
-    case 'chooseTheme':
-      return { type: 'chooseTheme' };
-    case 'ready':
-      return { type: 'ready' };
-    case 'saveBoardSearch':
-      return Object.keys(value).length === 1
-        ? { type: 'saveBoardSearch' }
-        : undefined;
-    case 'useSearchForAgenda':
-      return Object.keys(value).length === 1
-        ? { type: 'useSearchForAgenda' }
-        : undefined;
-    case 'openSource':
-      return isSourceMessage(value)
-        ? (value as unknown as TaskBoardMessage)
-        : undefined;
-    case 'openTag':
-      return isOpenTagMessage(value)
-        ? { type: 'openTag', tagKey: value.tagKey as string }
-        : undefined;
-    case 'toggleTask':
-      return typeof value.taskId === 'string' &&
-        typeof value.completed === 'boolean'
-        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
-        : undefined;
-    case 'moveTask':
-      return typeof value.taskId === 'string' &&
-        typeof value.column === 'string' &&
-        value.column.length > 0 &&
-        (value.from === undefined || (typeof value.from === 'string' && value.from.length > 0))
-        ? {
-            type: 'moveTask',
-            taskId: value.taskId,
-            column: value.column,
-            ...(typeof value.from === 'string' ? { from: value.from } : {}),
-          }
-        : undefined;
-    case 'pickTaskDate':
-    case 'moveTaskTo':
-    case 'editTask':
-    case 'breakIntoSteps':
-      return typeof value.taskId === 'string' && Object.keys(value).length === 2
-        ? { type: value.type, taskId: value.taskId }
-        : undefined;
-    case 'addTaskToColumn':
-      return typeof value.column === 'string' &&
-        value.column.length > 0 &&
-        Object.keys(value).length === 2
-        ? { type: 'addTaskToColumn', column: value.column }
-        : undefined;
-    case 'setBoardGroup':
-      if (value.groupBy === 'tag') {
-        return typeof value.namespace === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value.namespace)
-          ? { type: 'setBoardGroup', groupBy: 'tag', namespace: value.namespace.toLowerCase() }
-          : undefined;
-      }
-      return isTaskBoardGroupBy(value.groupBy)
-        ? { type: 'setBoardGroup', groupBy: value.groupBy }
-        : undefined;
-    case 'showColumnRest':
-      return typeof value.columnId === 'string' && value.columnId.length > 0
-        ? { type: 'showColumnRest', columnId: value.columnId }
-        : undefined;
-    case 'openHelp':
-      return Object.keys(value).length === 1
-        ? { type: 'openHelp' }
-        : undefined;
-    case 'setBoardQuery':
-      return typeof value.query === 'string' &&
-        value.query.length <= MAX_QUERY_LENGTH
-        ? { type: 'setBoardQuery', query: value.query }
-        : undefined;
-    case 'setTaskLayout':
-      return value.layout === 'list' || value.layout === 'board' || value.layout === 'table'
-        ? { type: 'setTaskLayout', layout: value.layout }
-        : undefined;
-    case 'setTableSort':
-      return value.column === undefined
-        ? { type: 'setTableSort' }
-        : isTaskColumnId(value.column)
-          ? { type: 'setTableSort', column: value.column }
-          : undefined;
-    case 'setTableColumns':
-      return Array.isArray(value.columns) && value.columns.every(isTaskColumnId)
-        ? { type: 'setTableColumns', columns: [...value.columns] }
-        : undefined;
-    case 'setTaskSort':
-      return isTaskSortMode(value.mode)
-        ? { type: 'setTaskSort', mode: value.mode }
-        : undefined;
-    case 'reorderTasks':
-      return isStringArray(value.taskIds)
-        ? { type: 'reorderTasks', taskIds: [...value.taskIds] }
-        : undefined;
-    case 'setBoardStatuses':
-      return Array.isArray(value.statuses) &&
-        value.statuses.length <= MAX_BOARD_STATUSES &&
-        value.statuses.every(
-          (status) => typeof status === 'string' && BOARD_NAME.test(status),
-        )
-        ? { type: 'setBoardStatuses', statuses: [...value.statuses] }
-        : undefined;
-    case 'setBoardStatusNamespace':
-      return typeof value.namespace === 'string' &&
-        BOARD_NAMESPACE.test(value.namespace)
-        ? { type: 'setBoardStatusNamespace', namespace: value.namespace }
-        : undefined;
-    default:
-      return undefined;
-  }
-}
-
-/** The patterns `deckard.board.statuses` and `statusNamespace` allow. */
-const BOARD_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-const BOARD_NAMESPACE = /^[A-Za-z][A-Za-z0-9_-]*$/;
-const MAX_BOARD_STATUSES = 50;
-
-/**
- * Keeps the task board's grouping to the three it can lay out.
- */
-export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
-  return (
-    value === 'status' ||
-    value === 'priority' ||
-    value === 'due' ||
-    value === 'assignee' ||
-    value === 'tag'
-  );
-}
-
-/**
  * Checks source locations before they are used to open an editor line.
  */
 /** What the Help page may ask of its host. */
@@ -914,13 +760,6 @@ function isDashboardSearchField(
   value: unknown,
 ): value is DashboardSearchField {
   return value === 'tags';
-}
-
-/**
- * Keeps task sorting constrained to modes implemented by the state layer.
- */
-function isTaskSortMode(value: unknown): value is TaskSortMode {
-  return value === 'rank' || value === 'created' || value === 'updated';
 }
 
 /**
