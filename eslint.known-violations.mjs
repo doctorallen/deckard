@@ -288,7 +288,6 @@ export default {
     "src/ui/webview/helpHtml.ts": 1,
     "src/ui/webview/icons.ts": 1,
     "src/ui/webview/notesGraph.ts": 6,
-    "src/ui/webview/relatedNotesDebug.ts": 3,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
     "src/ui/webview/sidebarNotes.ts": 5,
