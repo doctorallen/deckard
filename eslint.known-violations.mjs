@@ -164,12 +164,8 @@ export default {
     "src/ui/webview/calendar.ts": [
       "handle"
     ],
-    "src/ui/webview/dashboard.ts": [
-      "handleValidMessage"
-    ],
     "src/ui/webview/messages.ts": [
       "parseCalendarMessage",
-      "parseDashboardMessage",
       "parseNotesGraphMessage",
       "parseSearchPageMessage",
       "parseSidebarMessage",
@@ -279,11 +275,9 @@ export default {
     "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/activeCalendar.ts": 5,
-    "src/ui/webview/activeHome.ts": 6,
     "src/ui/webview/activeSearch.ts": 3,
     "src/ui/webview/calendar.ts": 4,
     "src/ui/webview/calendarPage.ts": 5,
-    "src/ui/webview/dashboard.ts": 2,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/help.ts": 3,
     "src/ui/webview/helpHtml.ts": 1,
@@ -417,9 +411,6 @@ export default {
       "getTaskBoardCss",
       "getTipScript"
     ],
-    "src/ui/webview/dashboard.ts": [
-      "handleValidMessage"
-    ],
     "src/ui/webview/dashboardHtml.ts": [
       "getDashboardHtml"
     ],
@@ -427,7 +418,6 @@ export default {
       "buildHelpHtml"
     ],
     "src/ui/webview/messages.ts": [
-      "parseDashboardMessage",
       "parseSearchPageMessage",
       "parseSidebarMessage",
       "parseTaskBoardMessage"
@@ -478,9 +468,6 @@ export default {
     "test/e2e/taskBoard.e2e.js": [
       "(arrow function)"
     ]
-  },
-  "no-case-declarations": {
-    "src/ui/webview/dashboard.ts": 3
   },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
@@ -561,7 +548,6 @@ export default {
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1,
-    "src/ui/webview/activeHome.ts": 1,
     "src/ui/webview/sidebarNotes.ts": 3,
     "src/ui/webview/taskBoard.ts": 1
   }
