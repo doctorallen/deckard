@@ -5,6 +5,7 @@ import { pickOutlineTag } from '../../views/outlineTree';
 import { asOutlineNode, getCommandTagArgument } from '../commandArguments';
 import { excludeFolderCommand, includeFolderCommand } from '../excludeFolders';
 import { parkFolders, parkNotes, parkTag, unparkFolders, unparkNotes, unparkTag } from '../parking';
+import { registerCommand } from '../runCommand';
 
 /**
  * Leaving notes out: excluding a folder from the index and taking it back,
@@ -14,25 +15,25 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { indexer } = services;
   const parkingCommands = services.writes.parking;
   context.subscriptions.push(
-    vscode.commands.registerCommand('deckard.excludeFromIndex', (folder?: unknown) =>
+    registerCommand('deckard.excludeFromIndex', (folder?: unknown) =>
       excludeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
     ),
-    vscode.commands.registerCommand('deckard.includeInIndex', (folder?: unknown) =>
+    registerCommand('deckard.includeInIndex', (folder?: unknown) =>
       includeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
     ),
-    vscode.commands.registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
+    registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
       parkNotes(parkingCommands, uri, uris),
     ),
-    vscode.commands.registerCommand('deckard.unparkNote', (uri?: unknown, uris?: unknown) =>
+    registerCommand('deckard.unparkNote', (uri?: unknown, uris?: unknown) =>
       unparkNotes(parkingCommands, uri, uris),
     ),
-    vscode.commands.registerCommand('deckard.parkFolder', (uri?: unknown, uris?: unknown) =>
+    registerCommand('deckard.parkFolder', (uri?: unknown, uris?: unknown) =>
       parkFolders(parkingCommands, uri, uris),
     ),
-    vscode.commands.registerCommand('deckard.unparkFolder', (uri?: unknown, uris?: unknown) =>
+    registerCommand('deckard.unparkFolder', (uri?: unknown, uris?: unknown) =>
       unparkFolders(parkingCommands, uri, uris),
     ),
-    vscode.commands.registerCommand('deckard.parkTag', async (tag?: unknown) => {
+    registerCommand('deckard.parkTag', async (tag?: unknown) => {
       const outlineNode = asOutlineNode(tag);
       const key = outlineNode
         ? await pickOutlineTag(outlineNode, 'Choose a tag to park')
@@ -42,7 +43,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       }
       await parkTag(parkingCommands, key);
     }),
-    vscode.commands.registerCommand('deckard.unparkTag', async (tag?: unknown) => {
+    registerCommand('deckard.unparkTag', async (tag?: unknown) => {
       const outlineNode = asOutlineNode(tag);
       const key = outlineNode
         ? await pickOutlineTag(outlineNode, 'Choose a tag to unpark')

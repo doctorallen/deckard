@@ -7,6 +7,7 @@ import { noteActionsCommand } from '../noteActions';
 import { setNotePinnedCommand } from '../pinNote';
 import { openPeriodicNoteWithReview, writeReviewCommand } from '../review';
 import { createDailyNoteWithRollover, rollTasksForward } from '../rollover';
+import { registerCommand } from '../runCommand';
 
 /**
  * Notes and daily notes: Note Actions, today's and other days' notes,
@@ -18,37 +19,37 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { rollover, reviews } = services.writes;
   const pins = services.preferences.pins;
   context.subscriptions.push(
-    vscode.commands.registerCommand('deckard.noteActions', () =>
+    registerCommand('deckard.noteActions', () =>
       noteActionsCommand({ index: indexer, preferences: pins }),
     ),
-    vscode.commands.registerCommand('deckard.createDailyNote', () =>
+    registerCommand('deckard.createDailyNote', () =>
       createDailyNoteWithRollover(indexer, history, undefined, rollover),
     ),
-    vscode.commands.registerCommand('deckard.openDailyNoteForDate', () =>
+    registerCommand('deckard.openDailyNoteForDate', () =>
       openDailyNoteForDate(indexer, history),
     ),
-    vscode.commands.registerCommand('deckard.rollTasksForward', () =>
+    registerCommand('deckard.rollTasksForward', () =>
       rollTasksForward(indexer, rollover),
     ),
-    vscode.commands.registerCommand('deckard.previousDailyNote', () =>
+    registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),
     ),
-    vscode.commands.registerCommand('deckard.nextDailyNote', () =>
+    registerCommand('deckard.nextDailyNote', () =>
       openAdjacentDailyNote(indexer, 'next'),
     ),
-    vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
+    registerCommand('deckard.openWeeklyNote', () =>
       openPeriodicNoteWithReview(indexer, reviews, 'week'),
     ),
-    vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
+    registerCommand('deckard.openMonthlyNote', () =>
       openPeriodicNoteWithReview(indexer, reviews, 'month'),
     ),
-    vscode.commands.registerCommand('deckard.writeReview', async () => {
+    registerCommand('deckard.writeReview', async () => {
       await writeReviewCommand(indexer, reviews);
       await tryNext.retire('weeklyReview');
     }),
     // The hover on a tagged entry passes the line it was shown on, so it
     // pins that entry rather than wherever the cursor happens to be.
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.pinNote',
       async (documentUri?: unknown, line?: unknown) => {
         const pinned = await setNotePinnedCommand(
@@ -64,7 +65,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         return pinned;
       },
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.unpinNote',
       (documentUri?: unknown, line?: unknown) =>
         setNotePinnedCommand(
@@ -75,7 +76,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
           typeof line === 'number' ? line : undefined,
         ),
     ),
-    vscode.commands.registerCommand('deckard.undoLastChange', () =>
+    registerCommand('deckard.undoLastChange', () =>
       history.undoLast(() => indexer.refresh()),
     ),
   );

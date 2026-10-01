@@ -4,6 +4,7 @@ import type { Services } from '../../../composition/services';
 import type { IndexReader } from '../../../core/workspace/indexReader';
 import { getCommandTagArgument } from '../commandArguments';
 import { insertQueryBlock } from '../insertQueryBlock';
+import { registerCommand } from '../runCommand';
 
 /** The search pages, which these commands open. */
 type SearchPages = Services['pages']['search'];
@@ -16,34 +17,34 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { indexer, quickFind } = services;
   const searchPanels = services.pages.search;
   context.subscriptions.push(
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.showTagOverview',
       (tagKey?: unknown) => showTagOverview(searchPanels, indexer, tagKey),
     ),
-    vscode.commands.registerCommand('deckard.search', (query?: unknown) =>
+    registerCommand('deckard.search', (query?: unknown) =>
       searchPanels.showQuery(getCommandTagArgument(query) ?? ''),
     ),
-    vscode.commands.registerCommand('deckard.insertQueryBlock', () =>
+    registerCommand('deckard.insertQueryBlock', () =>
       insertQueryBlock(services.preferences.repository),
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.searchWorkspace',
       (initialQuery?: unknown) =>
         quickFind.show(getCommandTagArgument(initialQuery)),
     ),
-    vscode.commands.registerCommand('deckard.quickFind.complete', () =>
+    registerCommand('deckard.quickFind.complete', () =>
       quickFind.complete(),
     ),
-    vscode.commands.registerCommand('deckard.quickFind.openBeside', () =>
+    registerCommand('deckard.quickFind.openBeside', () =>
       quickFind.openBeside(),
     ),
-    vscode.commands.registerCommand('deckard.quickFind.insertLink', () =>
+    registerCommand('deckard.quickFind.insertLink', () =>
       quickFind.insertLinkFromActive(),
     ),
-    vscode.commands.registerCommand('deckard.quickFind.actions', () =>
+    registerCommand('deckard.quickFind.actions', () =>
       quickFind.showActions(),
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.searchNotes',
       (requestedQuery?: unknown) =>
         showQuerySearch(searchPanels, indexer, requestedQuery),

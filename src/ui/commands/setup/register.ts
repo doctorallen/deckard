@@ -7,6 +7,7 @@ import { chooseTheme, createChooseThemeDeps } from '../chooseTheme';
 import { exportPreferences, importPreferences, restorePreferences } from '../preferenceBackups';
 import { createSampleWorkspace } from '../sampleWorkspace';
 import { tidyPreferences } from '../tidyPreferences';
+import { registerCommand } from '../runCommand';
 
 /**
  * Preferences and setup: Show Log, tidying and backing up the preferences,
@@ -17,36 +18,36 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { log, indexer, scanner, themePreview } = services;
   const { repository: preferences, maintenance, snapshots } = services.preferences;
   context.subscriptions.push(
-    vscode.commands.registerCommand('deckard.showLog', () => log.show()),
-    vscode.commands.registerCommand('deckard.tidyPreferences', () =>
+    registerCommand('deckard.showLog', () => log.show()),
+    registerCommand('deckard.tidyPreferences', () =>
       tidyPreferences(indexer, maintenance),
     ),
-    vscode.commands.registerCommand('deckard.exportPreferences', () =>
+    registerCommand('deckard.exportPreferences', () =>
       exportPreferences({ reader: preferences, maintenance }),
     ),
-    vscode.commands.registerCommand('deckard.importPreferences', () =>
+    registerCommand('deckard.importPreferences', () =>
       importPreferences({ reader: preferences, maintenance }),
     ),
-    vscode.commands.registerCommand('deckard.restorePreferences', () =>
+    registerCommand('deckard.restorePreferences', () =>
       restorePreferences({ reader: preferences, maintenance }, snapshots),
     ),
-    vscode.commands.registerCommand('deckard.checkSetup', () =>
+    registerCommand('deckard.checkSetup', () =>
       checkSetup(indexer, scanner),
     ),
-    vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
+    registerCommand('deckard.createSampleWorkspace', () =>
       createSampleWorkspace(context),
     ),
-    vscode.commands.registerCommand('deckard.chooseTheme', () =>
+    registerCommand('deckard.chooseTheme', () =>
       chooseTheme(context.extension.packageJSON.contributes, createChooseThemeDeps(themePreview)),
     ),
-    vscode.commands.registerCommand('deckard.openWalkthrough', () =>
+    registerCommand('deckard.openWalkthrough', () =>
       vscode.commands.executeCommand(
         'workbench.action.openWalkthrough',
         `${context.extension.id}#deckard.gettingStarted`,
         false,
       ),
     ),
-    vscode.commands.registerCommand('deckard.reindexWorkspace', () => reindexWorkspace(indexer)),
+    registerCommand('deckard.reindexWorkspace', () => reindexWorkspace(indexer)),
   );
 }
 

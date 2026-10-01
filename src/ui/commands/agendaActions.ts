@@ -29,6 +29,7 @@ import {
   TaskWrites,
   updateTaskLine,
 } from './taskActions';
+import { registerCommand } from './runCommand';
 
 /**
  * Dating tasks from where they are listed.
@@ -526,11 +527,11 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
   // A named day is read on the day the menu item is chosen.
   const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice, Date.now()));
   return [
-    vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
-    vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
-    vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
-    vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
-    vscode.commands.registerCommand(
+    registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
+    registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
+    registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
+    registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
+    registerCommand(
       'deckard.agenda.moveTo',
       async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
         const tasks = view.tasksFor(node, selected);
@@ -539,7 +540,7 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
         }
       },
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.agenda.reschedule',
       async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
         const tasks = view.tasksFor(node, selected);
@@ -549,12 +550,12 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
         await rescheduleTasks(writes, agenda.describeSubject(tasks), tasks, agenda.rescheduleContext());
       },
     ),
-    vscode.commands.registerCommand('deckard.agenda.showMore', (groupId?: unknown) => {
+    registerCommand('deckard.agenda.showMore', (groupId?: unknown) => {
       if (typeof groupId === 'string') {
         view.showMore(groupId);
       }
     }),
-    vscode.commands.registerCommand('deckard.rescheduleOverdue', () => rescheduleOverdueCommand(agenda, writes)),
+    registerCommand('deckard.rescheduleOverdue', () => rescheduleOverdueCommand(agenda, writes)),
     ...registerTaskMenus(services),
   ];
 }
@@ -562,7 +563,7 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
 /** Edit Task and Break into Steps, on a task in the Tasks view. */
 function registerTaskMenus({ view, writes, indexer }: AgendaCommandServices): vscode.Disposable[] {
   return [
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.agenda.editTask',
       async (node?: AgendaNode) => {
         const [task] = view.tasksFor(node);
@@ -571,7 +572,7 @@ function registerTaskMenus({ view, writes, indexer }: AgendaCommandServices): vs
         }
       },
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.agenda.breakIntoSteps',
       async (node?: AgendaNode) => {
         const [task] = view.tasksFor(node);

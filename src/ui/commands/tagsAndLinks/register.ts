@@ -14,6 +14,7 @@ import { renameHeadingCommand } from '../linkMaintenance';
 import { moveInlineTagsToFrontmatter } from '../moveTagsToFrontmatter';
 import { mergeIndexedTag, renameIndexedTag } from '../renameTag';
 import { LINK_MENTIONS_COMMAND, linkMentions } from '../unlinkedMentions';
+import { registerCommand } from '../runCommand';
 
 /**
  * Tags and links: the notes a link names, linking mentions, extracting and
@@ -25,14 +26,14 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { service: links, notes: linkNotes } = services.links;
   const tagWrites = services.writes.tags;
   context.subscriptions.push(
-    vscode.commands.registerCommand(
+    registerCommand(
       CREATE_LINKED_NOTE_COMMAND,
       (documentUri: unknown, name: unknown) =>
         typeof documentUri === 'string' && typeof name === 'string'
           ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name, linkNotes)
           : undefined,
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       CREATE_MISSING_NOTES_COMMAND,
       (documentUri: unknown, names: unknown) =>
         typeof documentUri === 'string' &&
@@ -41,23 +42,23 @@ export function register(context: vscode.ExtensionContext, services: Services): 
           ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names, { notes: linkNotes })
           : undefined,
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       LINK_MENTIONS_COMMAND,
       (documentUri: unknown) =>
         typeof documentUri === 'string'
           ? linkMentions(indexer, history, vscode.Uri.parse(documentUri), links)
           : undefined,
     ),
-    vscode.commands.registerCommand('deckard.extractHeading', () =>
+    registerCommand('deckard.extractHeading', () =>
       extractHeadingCommand(indexer, linkNotes),
     ),
-    vscode.commands.registerCommand('deckard.linkCurrentHeading', () =>
+    registerCommand('deckard.linkCurrentHeading', () =>
       linkCurrentHeading(indexer),
     ),
-    vscode.commands.registerCommand('deckard.moveTagsToFrontmatter', () =>
+    registerCommand('deckard.moveTagsToFrontmatter', () =>
       moveInlineTagsToFrontmatter(),
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.renameTag',
       (requestedTagKey?: unknown) =>
         renameIndexedTag(
@@ -66,10 +67,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
           tagWrites,
         ),
     ),
-    vscode.commands.registerCommand('deckard.renameHeading', () =>
+    registerCommand('deckard.renameHeading', () =>
       renameHeadingCommand(indexer, history, links),
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.mergeTag',
       (requestedTagKey?: unknown, requestedTargetKey?: unknown) =>
         mergeIndexedTag(

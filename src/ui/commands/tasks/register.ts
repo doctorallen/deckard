@@ -7,6 +7,7 @@ import { settingTarget, writeSetting } from '../settings';
 import { editTaskCommand } from '../taskEditor';
 import { breakIntoStepsCommand, readTaskArgument } from '../taskSteps';
 import { toggleTaskDoneCommand } from '../toggleTaskDone';
+import { registerCommand } from '../runCommand';
 
 /**
  * Tasks and the Tasks view: the view's menus, its grouping and search, Edit
@@ -24,36 +25,36 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       indexer,
       preferences: services.preferences.move,
     }),
-    vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
+    registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(agenda, indexer.getSnapshot()),
     ),
     // The board is the search editor: the view's search opens there to be
     // tried and changed, and its Tasks view button keeps it.
-    vscode.commands.registerCommand('deckard.agenda.editQuery', () =>
+    registerCommand('deckard.agenda.editQuery', () =>
       taskBoard.show(getAgendaQuery()),
     ),
-    vscode.commands.registerCommand('deckard.clearAgendaQuery', async () => {
+    registerCommand('deckard.clearAgendaQuery', async () => {
       if (await writeSetting('agenda.query', undefined, settingTarget('agenda.query'))) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
       }
     }),
     // One editor, two names: which one the palette offers is decided by
     // whether the cursor is on a task.
-    vscode.commands.registerCommand('deckard.editTask', () =>
+    registerCommand('deckard.editTask', () =>
       editTaskCommand(indexer),
     ),
-    vscode.commands.registerCommand('deckard.addTask', () =>
+    registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
     ),
     // The Task Board runs this with the task it was asked about; an editor
     // menu passes its note, which is not a task.
-    vscode.commands.registerCommand('deckard.breakIntoSteps', (task?: unknown) =>
+    registerCommand('deckard.breakIntoSteps', (task?: unknown) =>
       breakIntoStepsCommand(indexer, writes, readTaskArgument(task)),
     ),
-    vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
+    registerCommand('deckard.toggleTaskDone', () =>
       toggleTaskDoneCommand({ paths: indexer, tasks: writes.tasks }),
     ),
-    vscode.commands.registerCommand('deckard.moveTo', () =>
+    registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, services.preferences.move, writes),
     ),
   );

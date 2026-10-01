@@ -4,6 +4,7 @@ import type { Services } from '../../../composition/services';
 import { OutlineTreeProvider, pickOutlineTag } from '../../views/outlineTree';
 import { asOutlineNode } from '../commandArguments';
 import { renameIndexedTag } from '../renameTag';
+import { registerCommand } from '../runCommand';
 
 /**
  * The Outline and its sections: revealing a heading, a heading's tags, Focus
@@ -14,14 +15,14 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { outline } = services.views;
   const searchPanels = services.pages.search;
   context.subscriptions.push(
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.outline.revealSection',
       (node?: unknown) => {
         const outlineNode = asOutlineNode(node);
         return outlineNode ? outline.revealSection(outlineNode) : undefined;
       },
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.outline.openTagOverview',
       async (node?: unknown) => {
         const tagKey = await pickOutlineTag(
@@ -33,7 +34,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         }
       },
     ),
-    vscode.commands.registerCommand(
+    registerCommand(
       'deckard.outline.renameTag',
       async (node?: unknown) => {
         const tagKey = await pickOutlineTag(
@@ -45,20 +46,20 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         }
       },
     ),
-    vscode.commands.registerCommand('deckard.focusSection', async (node?: unknown) => {
+    registerCommand('deckard.focusSection', async (node?: unknown) => {
       const outlineNode = asOutlineNode(node);
       if (outlineNode) {
         await outline.revealSection(outlineNode);
       }
       await sectionFocus.focus(outlineNode?.line);
     }),
-    vscode.commands.registerCommand('deckard.unfoldAllSections', () =>
+    registerCommand('deckard.unfoldAllSections', () =>
       sectionFocus.unfoldAll(),
     ),
-    vscode.commands.registerCommand('deckard.outline.filterByTag', (node?: unknown) =>
+    registerCommand('deckard.outline.filterByTag', (node?: unknown) =>
       filterOutlineByTag(outline, node),
     ),
-    vscode.commands.registerCommand('deckard.outline.clearTagFilter', () =>
+    registerCommand('deckard.outline.clearTagFilter', () =>
       outline.setTagFilter(undefined),
     ),
   );
