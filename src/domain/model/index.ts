@@ -4,6 +4,7 @@
  * the disk, or a page.
  */
 export type * from './graph';
+export type * from './inline';
 export type * from './notes';
 export type * from './query';
 export type * from './relatedNotes';
