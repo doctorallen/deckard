@@ -7,7 +7,7 @@ import {
 } from '../../domain/index/backlinks';
 import { findAdjacentDailyNote, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { planRollover } from '../../domain/notes/rolloverPlan';
-import { createSourceParser, findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
+import { createSourceParser, findEmbedLines, resolveEmbed } from '../../domain/notes/embeds';
 
 export { findUnlinkedMentions } from '../../domain/search/mentions';
 export type { UnlinkedMention } from '../../domain/search/mentions';

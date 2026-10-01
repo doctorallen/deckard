@@ -1,20 +1,22 @@
 import type MarkdownIt from 'markdown-it';
 
+import { WorkspaceIndex } from '../../core/types';
+import { parseWikiTarget } from '../../domain/index/backlinks';
 import {
-  BLOCK_ID_PATTERN,
-  findFencedLines,
-  parseMarkdown,
-} from '../../domain/markdown/parser';
-import { ParsedFile, WorkspaceIndex } from '../../core/types';
-import {
-  createNoteTitleMap,
-  findLinkedSection,
-  noteTitle,
-  parseWikiTarget,
-  resolveWikiTarget,
-} from '../../domain/index/backlinks';
-import { createPreviewSourceHref } from './queryBlockHtml';
+  ATTACHMENT,
+  createSourceParser,
+  EMBED_LINE,
+  resolveEmbed,
+} from '../../domain/notes/embeds';
 import { escapeHtml } from '../../shared/html';
+
+export {
+  createSourceParser,
+  findEmbedLines,
+  resolveEmbed,
+  withoutFrontmatter,
+} from '../../domain/notes/embeds';
+export type { ResolvedEmbed, SourceParser } from '../../domain/notes/embeds';
 
 /**
  * Draws `![[Note]]`, `![[Note#Heading]]`, and `![[Note#^id]]` in VS Code's
@@ -29,28 +31,6 @@ import { escapeHtml } from '../../shared/html';
 /** How deep an embed inside an embed is drawn before it becomes a link. */
 const MAX_DEPTH = 3;
 
-/** Names that are not notes, which Deckard does not embed. */
-const ATTACHMENT = /\.(?:png|jpe?g|gif|svg|webp|bmp|pdf|mp4|mp3|wav|mov|webm)$/i;
-
-const EMBED_LINE = /^ {0,3}!\[\[([^\]]+)\]\][ \t]*$/;
-
-/**
- * The embeds in a note's source, the lines the preview would draw as one:
- * alone on their line, outside code fences, and naming a note rather than an
- * attachment.
- */
-export function findEmbedLines(
-  content: string,
-): { line: number; target: string }[] {
-  const lines = content.split(/\r?\n/);
-  const fenced = findFencedLines(lines);
-  return lines.flatMap((text, line) => {
-    const match = fenced.has(line) ? null : EMBED_LINE.exec(text);
-    return match && !ATTACHMENT.test(parseWikiTarget(match[1]).note)
-      ? [{ line, target: match[1] }]
-      : [];
-  });
-}
 
 export interface NoteEmbedSource {
   /** Undefined until the first workspace scan finishes. */
@@ -147,140 +127,6 @@ export function addNoteEmbedRenderer(
     ].join('');
   };
   return md;
-}
-
-type ResolvedEmbed =
-  | { kind: 'note'; title: string; content: string; href?: string }
-  | { kind: 'missing'; reason: string; href?: string };
-
-/**
- * What an embed draws: a whole note, one of its sections, or one marked
- * line. An embed with no note name reads the note it is written in, which is
- * the source the preview is rendering.
- */
-export function resolveEmbed(
-  target: string,
-  documentSource: string,
-  index: WorkspaceIndex | undefined,
-  /** How the note written in is read: a caller that resolves many embeds passes one parser for all. */
-  parseSource: SourceParser = createSourceParser(),
-): ResolvedEmbed {
-  const { note, heading, block } = parseWikiTarget(target);
-  if (!note && !heading && !block) {
-    return { kind: 'missing', reason: 'This embed names nothing.' };
-  }
-
-  if (!note) {
-    // The note embedding itself: its source is what the preview is drawing,
-    // so it is read from there rather than from the index, which may be one
-    // save behind.
-    const file = parseSource(documentSource);
-    return readFrom(file, heading, block, '', target);
-  }
-
-  if (!index) {
-    return { kind: 'missing', reason: 'Deckard is indexing the workspace…' };
-  }
-  const titles = createNoteTitleMap(index);
-  const filePath = resolveWikiTarget(titles, note, '');
-  const file = filePath ? index.files.get(filePath) : undefined;
-  if (!file || !filePath) {
-    const names = titles.get(note.trim().toLocaleLowerCase())?.length ?? 0;
-    return {
-      kind: 'missing',
-      reason:
-        names > 1
-          ? `"${note}" names ${names} notes, so this embed reads none.`
-          : `No note is named "${note}" yet.`,
-    };
-  }
-  return readFrom(file, heading, block, filePath, target);
-}
-
-/** One note, section, or marked line of a parsed note. */
-function readFrom(
-  file: ParsedFile,
-  heading: string | undefined,
-  block: string | undefined,
-  filePath: string,
-  target: string,
-): ResolvedEmbed {
-  const title = filePath ? noteTitle(filePath) : '';
-  const href = (line: number): string | undefined =>
-    filePath ? createPreviewSourceHref(filePath, line) : undefined;
-
-  if (block) {
-    const line = file.blockIds?.[block];
-    const text =
-      line === undefined ? undefined : file.content.split(/\r?\n/)[line - 1];
-    if (text === undefined || line === undefined) {
-      return {
-        kind: 'missing',
-        reason: `Nothing in ${title || 'this note'} is marked ^${block}.`,
-      };
-    }
-    const source = href(line);
-    return {
-      kind: 'note',
-      title: `${title}#^${block}`.replace(/^#/, ''),
-      content: text.replace(BLOCK_ID_PATTERN, '').trim(),
-      ...(source ? { href: source } : {}),
-    };
-  }
-
-  if (heading) {
-    const section = findLinkedSection(file, heading);
-    return section
-      ? {
-          kind: 'note',
-          title: `${title ? `${title} › ` : ''}${section.heading.trim()}`,
-          // The section and everything nested under it, which is what a
-          // reader following the link would have found there.
-          content: section.rawContent,
-          ...(href(section.startLine) ? { href: href(section.startLine) } : {}),
-        }
-      : {
-          kind: 'missing',
-          reason: `${title || 'This note'} has no heading "${heading}".`,
-        };
-  }
-
-  return {
-    kind: 'note',
-    title: title || target,
-    content: withoutFrontmatter(file.content),
-    ...(href(1) ? { href: href(1) } : {}),
-  };
-}
-
-/** The body of a note, without the front matter a reader does not need. */
-export function withoutFrontmatter(content: string): string {
-  const lines = content.split(/\r?\n/);
-  if (lines[0]?.trim() !== '---') {
-    return content;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end < 0 ? content : lines.slice(end + 1).join('\n').replace(/^\n+/, '');
-}
-
-/** Reads the note an embed is written in, as `resolveEmbed` needs it. */
-export type SourceParser = (content: string) => ParsedFile;
-
-/**
- * A parser that keeps the last note it read, so a note holding several
- * embeds of itself is parsed once for all of them, and the preview, which
- * redraws from the top each time, parses it again only once it changes.
- * Each preview engine has its own, so two previews of different notes do
- * not take turns replacing one cache.
- */
-export function createSourceParser(): SourceParser {
-  let last: { content: string; file: ParsedFile } | undefined;
-  return (content) => {
-    if (last?.content !== content) {
-      last = { content, file: parseMarkdown('', content) };
-    }
-    return last.file;
-  };
 }
 
 function renderHeader(title: string, href?: string): string {

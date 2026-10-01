@@ -61,9 +61,6 @@ export default {
     "src/ui/commands/tryNext.ts": [
       "suggestTryNext"
     ],
-    "src/ui/preview/noteEmbeds.ts": [
-      "readFrom"
-    ],
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
       "renderGroup"
@@ -175,9 +172,6 @@ export default {
     ],
     "src/ui/commands/taskEditor.ts": [
       "readField"
-    ],
-    "src/ui/preview/noteEmbeds.ts": [
-      "readFrom"
     ],
     "src/ui/preview/queryBlockHtml.ts": [
       "renderTask"
