@@ -11,18 +11,24 @@
  */
 import * as vscode from 'vscode';
 
+import type { PreferenceServices } from '../../../core/storage/preferences';
 import type { IndexControl, IndexReader } from '../../../core/workspace/indexReader';
+import type { WorkspaceIndex } from '../../../domain/model';
 import type { Task } from '../../../domain/model/tasks';
+import type { NavigationService, SourcePolicy, TagPolicy } from '../../../services/navigationService';
 import type { MessageHandler } from './pageController';
 import type {
   ChooseThemeMessage,
   OpenHelpMessage,
+  OpenSourceMessage,
+  OpenTagMessage,
   ParkTagMessage,
   RenameTagMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
   ToggleTaskMessage,
 } from '../../protocol/shared';
+import { openResultAt } from '../../commands/navigation';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { TaskWrites, toggleTask as writeTaskToggle } from '../../commands/taskActions';
 import { setZenMode as writeZenMode } from '../zenMode';
@@ -93,6 +99,52 @@ export function toggleTask(toggle: {
     const task = toggle.findTask(message.taskId);
     if (task) {
       await writeTaskToggle(toggle.writes, task, message.completed);
+    }
+  };
+}
+
+/** What an open from a page is checked against, and by which rule. */
+interface NavigationRule<TPolicy> {
+  indexer: { getSnapshot(): WorkspaceIndex };
+  navigation: NavigationService;
+  policy: TPolicy;
+}
+
+/**
+ * A row's line, opened as a result opens: previewed, kept, or beside the
+ * page, as the click asked. The line opens only when the page's policy
+ * accepts it in the index as it is now, and an entry's visit is counted
+ * after it opens, under the policies that count one.
+ */
+export function openSource(open: NavigationRule<SourcePolicy> & {
+  /** Where a visit is counted; a policy that counts none needs none. */
+  usage?: Pick<PreferenceServices['usage'], 'recordSectionAccess'>;
+}): MessageHandler<OpenSourceMessage> {
+  return async (message) => {
+    const index = open.indexer.getSnapshot();
+    const location = open.navigation.resolveSourceLocation(index, message.filePath, message.line, open.policy);
+    if (location.kind === 'unknown') {
+      return;
+    }
+    await openResultAt(location.filePath, location.line, message);
+    if (location.visit) {
+      await open.usage?.recordSectionAccess(location.visit);
+    }
+  };
+}
+
+/**
+ * A tag's page, for a tag the index still has, found by the page's policy.
+ * The page may hold a snapshot from before the tag was renamed.
+ */
+export function openTag(open: NavigationRule<TagPolicy> & {
+  /** Opens a tag's page, by its key in the index. */
+  openTag: (tagKey: string) => unknown;
+}): MessageHandler<OpenTagMessage> {
+  return async (message) => {
+    const tag = open.navigation.resolveTag(open.indexer.getSnapshot(), message.tagKey, open.policy);
+    if (tag.kind === 'open') {
+      await open.openTag(tag.tagKey);
     }
   };
 }
