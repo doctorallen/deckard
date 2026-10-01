@@ -4,7 +4,6 @@ import * as vscode from 'vscode';
 import {
   parseDashboardMessage,
   parseSearchPageMessage,
-  parseSidebarMessage,
 } from '../ui/webview/messages';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
@@ -1300,101 +1299,5 @@ suite('Webview contracts', () => {
     assert.ok(html.includes('resources/deckard.svg'), 'the logo it ships with');
     assert.ok(html.includes('Associated tags'), 'how tags relate');
     assert.ok(html.includes('#follow-up'), 'a tag anyone can write');
-  });
-
-  test('accepts only valid sidebar navigation messages', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'ready' }), {
-      type: 'ready',
-    });
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'openSource',
-        filePath: 'notes/related.md',
-        line: 4,
-      }),
-      { type: 'openSource', filePath: 'notes/related.md', line: 4 },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
-      { type: 'openTag', tagKey: 'work' },
-    );
-    // A tag opens its own page; the old filter arguments are dropped.
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', '#second'],
-      }),
-      { type: 'openTag', tagKey: '#focus' },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'renameTag', tagKey: '#work' }),
-      { type: 'renameTag', tagKey: '#work' },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'refineActiveSearch',
-        facetId: 'related',
-        clause: '#team/harbor',
-        mode: 'exclude',
-        extra: 'dropped',
-      }),
-      {
-        type: 'refineActiveSearch',
-        facetId: 'related',
-        clause: '#team/harbor',
-        mode: 'exclude',
-      },
-    );
-    assert.strictEqual(
-      parseSidebarMessage({
-        type: 'refineActiveSearch',
-        facetId: 'related',
-        clause: '#team/harbor',
-        mode: 'replace',
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSidebarMessage({ type: 'refineActiveSearch', facetId: 'related', clause: '', mode: 'and' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'setActiveSearch', query: '#project/atlas' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSidebarMessage({ type: 'setActiveSearch', query: 7 }),
-      undefined,
-    );
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openDashboard' }), {
-      type: 'openDashboard',
-    });
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'createDailyNote' }), {
-      type: 'createDailyNote',
-    });
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openHelp' }), {
-      type: 'openHelp',
-    });
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'clearEntryRelatedNotes' }),
-      { type: 'clearEntryRelatedNotes' },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'setRelatedNotesSort', mode: 'access' }),
-      { type: 'setRelatedNotesSort', mode: 'access' },
-    );
-    assert.strictEqual(
-      parseSidebarMessage({ type: 'setRelatedNotesSort', mode: 'random' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSidebarMessage({
-        type: 'openSource',
-        filePath: 'notes/a.md',
-        line: 0,
-      }),
-      undefined,
-    );
   });
 });

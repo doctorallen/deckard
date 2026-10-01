@@ -6,7 +6,8 @@
 import type { RelatedNotesSortMode } from '../../domain/model/preferences';
 import type { RankedNote, SuggestedTag } from '../../domain/model/relatedNotes';
 import type { TagReference } from '../../domain/model/tags';
-import type { CalendarDayDetail } from './calendar';
+import type { CalendarDayDetail, CalendarMessage } from './calendar';
+import type { MessageOf, StateMessage } from './messaging';
 import type { SidebarGraphContext } from './notesGraph';
 import type {
   OpenHelpMessage,
@@ -232,27 +233,69 @@ export interface ClearEntryRelatedNotesMessage {
   type: 'clearEntryRelatedNotes';
 }
 
+/** Home's Customize: add a widget Home offers, by its value. */
+export interface HomeAddWidgetMessage {
+  type: 'homeAddWidget';
+  value: string;
+}
+
+/** Home's Customize: put Home's widgets back as they were at first. */
+export interface HomeResetWidgetsMessage {
+  type: 'homeResetWidgets';
+}
+
+/**
+ * What the sidebar's copy of the calendar page's day panel asks, passed on
+ * for the calendar page to do as its own panel would.
+ */
+export interface CalendarDayMessage {
+  type: 'calendarDay';
+  message: CalendarMessage;
+}
+
+/**
+ * What the sidebar is sent as its state: its snapshot, and the tags its tag
+ * menu offers to unpark.
+ */
+export type SidebarNotesPageState = SidebarNotesSnapshot & { parkedTags: string[] };
+
+/**
+ * What the Related Notes sidebar sends its host, by type. The host checks
+ * each row a click names against what the sidebar would list now.
+ */
+export interface SidebarNotesPageToHost {
+  ready: SidebarReadyMessage;
+  clearEntryRelatedNotes: ClearEntryRelatedNotesMessage;
+  openSource: OpenSourceMessage;
+  activateNotesGraphNode: ActivateNotesGraphNodeMessage;
+  hoverNotesGraphNode: HoverNotesGraphNodeMessage;
+  openTag: OpenTagMessage;
+  linkMention: LinkMentionMessage;
+  linkAllMentions: LinkAllMentionsMessage;
+  openLinksSearch: OpenLinksSearchMessage;
+  addSuggestedTag: AddSuggestedTagMessage;
+  setRelatedNotesPreviewLines: SetRelatedNotesPreviewLinesMessage;
+  setHideDailyNotes: SetHideDailyNotesMessage;
+  insertLink: InsertLinkMessage;
+  renameTag: RenameTagMessage;
+  parkTag: ParkTagMessage & { type: 'parkTag' };
+  unparkTag: ParkTagMessage & { type: 'unparkTag' };
+  refineActiveSearch: RefineActiveSearchMessage;
+  setRelatedNotesSort: SetRelatedNotesSortMessage;
+  openDashboard: OpenDashboardMessage;
+  openNotesGraph: OpenNotesGraphMessage;
+  openTaskBoard: OpenTaskBoardMessage;
+  createDailyNote: CreateDailyNoteMessage;
+  openHelp: OpenHelpMessage;
+  homeAddWidget: HomeAddWidgetMessage;
+  homeResetWidgets: HomeResetWidgetsMessage;
+  calendarDay: CalendarDayMessage;
+}
+
+/** What the host sends the Related Notes sidebar, by type. */
+export interface SidebarNotesHostToPage {
+  state: StateMessage<SidebarNotesPageState>;
+}
+
 /** Messages from the Related Notes sidebar. */
-export type SidebarMessage =
-  | LinkMentionMessage
-  | OpenLinksSearchMessage
-  | SetHideDailyNotesMessage
-  | SetRelatedNotesPreviewLinesMessage
-  | AddSuggestedTagMessage
-  | LinkAllMentionsMessage
-  | SidebarReadyMessage
-  | OpenSourceMessage
-  | OpenTagMessage
-  | RenameTagMessage
-  | ParkTagMessage
-  | OpenDashboardMessage
-  | OpenNotesGraphMessage
-  | OpenTaskBoardMessage
-  | ActivateNotesGraphNodeMessage
-  | HoverNotesGraphNodeMessage
-  | CreateDailyNoteMessage
-  | OpenHelpMessage
-  | SetRelatedNotesSortMessage
-  | ClearEntryRelatedNotesMessage
-  | InsertLinkMessage
-  | RefineActiveSearchMessage;
+export type SidebarMessage = MessageOf<SidebarNotesPageToHost>;

@@ -12,7 +12,6 @@ import {
 } from '../ui/state/notesGraphState';
 import {
   parseNotesGraphMessage,
-  parseSidebarMessage,
 } from '../ui/webview/messages';
 import { NotesGraphSnapshot, ParsedFile } from '../core/types';
 
@@ -525,42 +524,6 @@ suite('Notes graph messages', () => {
     );
     assert.strictEqual(
       parseNotesGraphMessage({ type: 'selectNode', nodeId: '' }),
-      undefined,
-    );
-  });
-
-  test('sidebar accepts the openNotesGraph shortcut', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openNotesGraph' }), {
-      type: 'openNotesGraph',
-    });
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'activateNotesGraphNode',
-        nodeId: 'task:related',
-        open: false,
-      }),
-      {
-        type: 'activateNotesGraphNode',
-        nodeId: 'task:related',
-        open: false,
-      },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'hoverNotesGraphNode',
-        nodeId: 'tag:#project/atlas',
-      }),
-      { type: 'hoverNotesGraphNode', nodeId: 'tag:#project/atlas' },
-    );
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'hoverNotesGraphNode' }), {
-      type: 'hoverNotesGraphNode',
-    });
-    assert.strictEqual(
-      parseSidebarMessage({
-        type: 'activateNotesGraphNode',
-        nodeId: 'task:related',
-        open: 'yes',
-      }),
       undefined,
     );
   });

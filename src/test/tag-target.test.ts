@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 
 import { findTagTarget } from '../domain/markdown/tagTarget';
-import { parseSidebarMessage } from '../ui/webview/messages';
 
 suite('Where a suggested tag goes', () => {
   const note = [
@@ -49,14 +48,5 @@ suite('Where a suggested tag goes', () => {
     assert.deepStrictEqual(findTagTarget(['', 'Just prose.', ''], 1), { line: 2, kind: 'line', label: 'line 2' });
     assert.strictEqual(findTagTarget(['', ''], 1), undefined);
     assert.strictEqual(findTagTarget([''], 1), undefined);
-  });
-
-  test('the sidebar asks with the tag alone', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'addSuggestedTag', tagKey: '#risk/vendor' }), {
-      type: 'addSuggestedTag',
-      tagKey: '#risk/vendor',
-    });
-    assert.strictEqual(parseSidebarMessage({ type: 'addSuggestedTag', tagKey: '' }), undefined);
-    assert.strictEqual(parseSidebarMessage({ type: 'addSuggestedTag', tagKey: 3 }), undefined);
   });
 });

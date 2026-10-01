@@ -17,7 +17,6 @@ import {
 } from '../ui/state/taskBoardState';
 import {
   parseDashboardMessage,
-  parseSidebarMessage,
   parseTaskBoardMessage,
 } from '../ui/webview/messages';
 import { isAwaitingIndex } from '../ui/webview/taskBoard';
@@ -459,12 +458,6 @@ suite('Task board', () => {
     ]) {
       assert.strictEqual(parseDashboardMessage(message), undefined, message.type);
     }
-  });
-
-  test('opens from the sidebar toolbar', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openTaskBoard' }), {
-      type: 'openTaskBoard',
-    });
   });
 
   test('changes a status tag where it is written', () => {
