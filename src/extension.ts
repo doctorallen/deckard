@@ -3,7 +3,16 @@ import { readQueryContext } from './ui/commands/queryContext';
 import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from './core/storage/preferences';
+import { DisplayService } from './core/storage/preferencesDisplay';
+import { FavoritesService } from './core/storage/preferencesFavorites';
+import { HomeWidgetsService } from './core/storage/preferencesHomeWidgets';
+import { PreferencesMaintenance } from './core/storage/preferencesMaintenance';
+import { PinsService } from './core/storage/preferencesPins';
+import { PreferencesRepository } from './core/storage/preferencesRepository';
+import { SavedSearchesService } from './core/storage/preferencesSavedSearches';
+import { TagRenames } from './core/storage/preferencesTagRenames';
+import { TaskLayoutService } from './core/storage/preferencesTaskLayout';
+import { UsageService } from './core/storage/preferencesUsage';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './shared/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
@@ -245,13 +254,27 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // Favorites, pins and view counts name what is in a workspace, so they are
   // kept with it. A window with no folder open has no workspace to own them
   // and nothing to index, so it reads the machine-wide store alone.
-  const preferences = new PreferencesStore(
+  const preferences = new PreferencesRepository(
     context.globalState,
     vscode.workspace.workspaceFolders?.length
       ? context.workspaceState
       : undefined,
   );
+  // One service per capability, each writing through the one repository;
+  // every caller is handed the ones it uses.
+  const favorites = new FavoritesService(preferences);
+  const usage = new UsageService(preferences);
+  const taskLayout = new TaskLayoutService(preferences);
+  const homeWidgets = new HomeWidgetsService(preferences);
+  const preferencePins = new PinsService(preferences);
+  const savedSearches = new SavedSearchesService(preferences);
+  const display = new DisplayService(preferences);
+  const tagRenames = new TagRenames(preferences);
+  const maintenance = new PreferencesMaintenance(preferences);
   void preferences.initialize();
+  // What Move to… ranks destinations by and records a heading in, wherever
+  // it is run from.
+  const movePreferences = { reader: preferences, usage };
   // A copy of what this workspace remembers, a moment after each change,
   // so one bad write is something a reader can take back.
   const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
@@ -261,7 +284,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // a new task to anything keyed by id. This keeps its place in a ranked
   // list across the edit, and across an Undo of it.
   const keepRank: TaskRankKeeper = (previousId, nextId) => {
-    void preferences.replaceTaskInOrder(previousId, nextId);
+    void taskLayout.replaceTaskInOrder(previousId, nextId);
   };
   const taskWrites: TaskWrites = {
     history,
@@ -290,8 +313,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // rename one; the service decides what a rename does.
   const tagWrites: TagWrites = {
     history,
-    preferences,
-    tags: new TagService({ index: indexer, preferences: preferences.tagRenames }),
+    preferences: { tagRenames },
+    tags: new TagService({ index: indexer, preferences: tagRenames }),
   };
   // What the parking commands read, and the service that decides what they
   // may park and writes it.
@@ -319,7 +342,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const activeSearch = new ActiveSearch();
   const searchPanels = new SearchPanels({
     indexer,
-    preferences,
+    preferences: { reader: preferences, usage, savedSearches, display, pins: preferencePins, homeWidgets, tagRenames },
     extensionUri: context.extensionUri,
     activeSearch,
     writes: taskWrites,
@@ -328,7 +351,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
   // Which entry a line of a note pins, and whether it is pinned, for the
   // hover and Find's rows alike.
-  const pins = new PinService({ index: indexer, store: preferences.pins });
+  const pins = new PinService({ index: indexer, store: preferencePins });
   // The hover on an entry offers to pin it, so it has to know which entries
   // are pinned; PinService answers, and a change redraws the hovers.
   const readPinned = (): void => {
@@ -391,7 +414,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(indexer.onDidUpdate(syncWalkthroughContext));
   // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
   // Change only while there is a change to take back.
-  const activePinContext = new ActivePinContext(indexer, preferences);
+  const activePinContext = new ActivePinContext(indexer, { reader: preferences, pins: preferencePins });
   // The title bar offers Deckard's button on a note, and the arrows between
   // days on a daily note.
   context.subscriptions.push(
@@ -452,7 +475,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(calendarPage);
   const taskBoard = new TaskBoardPanel({
     indexer,
-    preferences,
+    preferences: { reader: preferences, taskLayout, savedSearches, homeWidgets, usage },
     extensionUri: context.extensionUri,
     openTag: (tagKey) => searchPanels.show(tagKey),
     activeSearch,
@@ -461,7 +484,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   const dashboard = new DashboardPanel({
     indexer,
-    preferences,
+    preferences: {
+      reader: preferences,
+      favorites,
+      usage,
+      homeWidgets,
+      pins: preferencePins,
+      savedSearches,
+      display,
+      tagRenames,
+    },
     extensionUri: context.extensionUri,
     navigation: {
       openTag: (tagKey) => searchPanels.show(tagKey),
@@ -483,12 +515,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   const quickFind = new QuickFind({
     indexer,
-    preferences,
+    preferences: { reader: preferences, favorites, usage, savedSearches, pins: preferencePins },
     actions: {
       openTag: (tagKey) => searchPanels.show(tagKey),
       openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
       showSearch: (query) => searchPanels.showQuery(query),
-      moveTask: (task) => moveTasks(indexer, preferences, taskWrites, [task]),
+      moveTask: (task) => moveTasks(indexer, movePreferences, taskWrites, [task]),
     },
     writes: taskWrites,
     pins,
@@ -496,7 +528,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   const sidebarNotes = new SidebarNotesView({
     indexer,
-    preferences,
+    preferences: { reader: preferences, display, usage, tagRenames },
     activeSearch,
     onOpenTag: (tagKey) => searchPanels.show(tagKey),
     extensionVersion: context.extension.packageJSON.version,
@@ -508,7 +540,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
     indexer,
-    preferences,
+    preferences: { reader: preferences, usage },
     extensionUri: context.extensionUri,
     onOpenTag: async (tagKey) => {
       await searchPanels.show(tagKey);
@@ -559,7 +591,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const agenda = new AgendaTreeProvider(
     indexer,
     { agenda: agendaService, writes: taskWrites, contextKeys: new AgendaContextKeys() },
-    preferences,
+    { reader: preferences, taskLayout },
   );
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
   // What was typed into Capture and not yet written, for this workspace.
@@ -573,7 +605,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       index: indexer,
       notes: createCaptureNotes(indexer),
       drafts: captureDrafts,
-      recentHeadings: preferences.usage,
+      recentHeadings: usage,
     }),
   };
   activeServices = {
@@ -685,9 +717,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       previousIndex = index;
       void (async () => {
         if (moved.size > 0) {
-          await preferences.carrySectionAccess(moved);
+          await usage.carrySectionAccess(moved);
         }
-        await preferences.maintenance.prune(index);
+        await maintenance.prune(index);
       })();
     }
   };
@@ -696,7 +728,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       name: 'tidy of derived counts',
       priority: () => VIEW_PRIORITY.housekeeping,
     }),
-    new NoteVisits(indexer, preferences),
+    new NoteVisits(indexer, { reader: preferences, usage }),
   );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -726,7 +758,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
   context.subscriptions.push(
-    ...registerAgendaCommands({ view: agenda, agenda: agendaService, writes: taskWrites, indexer, preferences }),
+    ...registerAgendaCommands({ view: agenda, agenda: agendaService, writes: taskWrites, indexer, preferences: movePreferences }),
   );
   void syncOutlineFollowCursorContext();
   void syncZenModeContext();
@@ -848,16 +880,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       setZenMode(false),
     ),
     vscode.commands.registerCommand('deckard.tidyPreferences', () =>
-      tidyPreferences(indexer, preferences),
+      tidyPreferences(indexer, maintenance),
     ),
     vscode.commands.registerCommand('deckard.exportPreferences', () =>
-      exportPreferences(preferences),
+      exportPreferences({ reader: preferences, maintenance }),
     ),
     vscode.commands.registerCommand('deckard.importPreferences', () =>
-      importPreferences(preferences),
+      importPreferences({ reader: preferences, maintenance }),
     ),
     vscode.commands.registerCommand('deckard.restorePreferences', () =>
-      restorePreferences(preferences, snapshots),
+      restorePreferences({ reader: preferences, maintenance }, snapshots),
     ),
     vscode.commands.registerCommand('deckard.checkSetup', () =>
       checkSetup(indexer, scanner),
@@ -928,7 +960,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       await notesGraph.showAround(indexer.getFilePath(uri));
     }),
     vscode.commands.registerCommand('deckard.noteActions', () =>
-      noteActionsCommand({ index: indexer, preferences }),
+      noteActionsCommand({ index: indexer, preferences: preferencePins }),
     ),
     vscode.commands.registerCommand('deckard.showCalendar', () => calendarPage.show()),
     // From the sidebar, the page opens on the month and the day it shows.
@@ -1029,7 +1061,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       async (documentUri?: unknown, line?: unknown) => {
         const pinned = await setNotePinnedCommand(
           indexer,
-          preferences,
+          preferencePins,
           true,
           typeof documentUri === 'string' ? documentUri : undefined,
           typeof line === 'number' ? line : undefined,
@@ -1045,7 +1077,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       (documentUri?: unknown, line?: unknown) =>
         setNotePinnedCommand(
           indexer,
-          preferences,
+          preferencePins,
           false,
           typeof documentUri === 'string' ? documentUri : undefined,
           typeof line === 'number' ? line : undefined,
@@ -1136,7 +1168,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       extractHeadingCommand(indexer, linkNotes),
     ),
     vscode.commands.registerCommand('deckard.moveTo', () =>
-      moveToCommand(indexer, preferences, taskWrites),
+      moveToCommand(indexer, movePreferences, taskWrites),
     ),
     vscode.languages.registerCodeActionsProvider(
       { pattern: '**/*.md' },
@@ -1258,7 +1290,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   taskStatusBar.refresh();
 
   void indexer.start().then(async () => {
-    await preferences.maintenance.prune(indexer.getSnapshot());
+    await maintenance.prune(indexer.getSnapshot());
   });
 
   return {
@@ -1306,7 +1338,7 @@ export function deactivate(): void {
  */
 interface ExtensionServices {
   indexer: WorkspaceIndexer;
-  preferences: PreferencesStore;
+  preferences: PreferencesRepository;
   activeSearch: ActiveSearch;
   searchPanels: SearchPanels;
   sidebarNotes: SidebarNotesView;

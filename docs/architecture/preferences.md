@@ -1,6 +1,6 @@
 # Preferences
 
-**Status: current and target.** The first part of this page describes preferences as they work after Phase 3 of [the refactor plan](../implementation/19-refactor.md). The last part describes what the plan still changes; each phase rewrites this page to describe what then exists.
+**Status: current and target.** The first part of this page describes preferences as they work after Phase 4 of [the refactor plan](../implementation/19-refactor.md). The last part describes what the plan still changes; each phase rewrites this page to describe what then exists.
 
 Preferences are what Deckard remembers that is not in the notes: favorites, pins, saved searches, view counts, task order, Home widgets, and layout choices. Deckard never writes this state into a Markdown file. It lives in VS Code's `Memento` storage.
 
@@ -11,7 +11,7 @@ Phase 3 split the one 1,834-line `PreferencesStore` into a repository, a pure sc
 | File | What it holds |
 | --- | --- |
 | `preferencesSchema.ts` | The format, and nothing that reads storage or the clock: `normalizePreferences` and every normalizer, the defaults and limits, the Home widget kinds and their option rules, the migrations that run on read and `carryLegacyIds`, `pinKey` and the Find helpers, the workspace's 18 keys and the split that picks and omits them, and the helpers `oneOf`, `upsertById`, `toggled`, `bumped`, and `filterNumericRecord` |
-| `preferencesRepository.ts` | `PreferencesRepository`: the two `KeyValueStore`s, the read at construction, the seed from the machine-wide store and the handover flag, the write queue, and the change and visit events |
+| `preferencesRepository.ts` | `PreferencesRepository`: the two `KeyValueStore`s, the read at construction, the seed from the machine-wide store and the handover flag, the write queue, and the change and visit events. `PreferencesReader` is its read-only surface: `value`, `onDidChange`, and `onDidRecordVisit` |
 | `preferencesFavorites.ts` | `FavoritesService`: favorite tags and entities, and the custom order of each |
 | `preferencesUsage.ts` | `UsageService`: tag, entity, and section access, carried view counts, Find choices, recent headings |
 | `preferencesTaskLayout.ts` | `TaskLayoutService`: the rank order, the task sort, and the Task Board's layout, grouping, and table |
@@ -21,9 +21,35 @@ Phase 3 split the one 1,834-line `PreferencesStore` into a repository, a pure sc
 | `preferencesDisplay.ts` | `DisplayService`: sort modes, column counts, render mode, page sizes, and the Related Notes options |
 | `preferencesTagRenames.ts` | `TagRenames`: the cascade that moves what a renamed tag held to its new key |
 | `preferencesMaintenance.ts` | `PreferencesMaintenance`: pruning against the index, the stale-choice check, and restoring a blob |
-| `preferences.ts` | `PreferencesStore`, now a facade: every method keeps its name and signature and forwards to its service, and the services are properties of it |
+| `preferences.ts` | `PreferenceServices`, the set a caller picks its services from, and the schema's helpers and the maintenance types, re-exported where callers have always imported them |
 
-Each service is a small class over the repository. It reads the blob as it stands and makes each change with one `update`, as the store's method did. [`preferenceSnapshots.ts`](../../src/core/storage/preferenceSnapshots.ts) keeps rolling copies, and [`src/ui/commands/preferenceBackups.ts`](../../src/ui/commands/preferenceBackups.ts) exports and imports them.
+Each service is a small class over the repository. It reads the blob as it stands and makes each change with one `update`, as the store's method did. `PreferencesStore`, the facade that held them all through Phase 3, was deleted in Phase 4. [`preferenceSnapshots.ts`](../../src/core/storage/preferenceSnapshots.ts) keeps rolling copies, and [`src/ui/commands/preferenceBackups.ts`](../../src/ui/commands/preferenceBackups.ts) exports and imports them.
+
+## Who receives what
+
+`activate()` in [`src/extension.ts`](../../src/extension.ts) makes the repository and each service once, in the order the facade did, and calls `initialize()` at once, so the seed and the handover land when they always did. Each caller is handed only what it uses, typed as `Pick<PreferenceServices, ...>` or as a narrow interface over one service:
+
+| Caller | Receives |
+| --- | --- |
+| Home (`DashboardPanel`) | `reader`, `favorites`, `usage`, `homeWidgets`, `pins`, `savedSearches`, `display`, `tagRenames` |
+| The search pages (`SearchPanels`, `SearchPanel`) | `reader`, `usage`, `savedSearches`, `display`, `pins`, `homeWidgets`, `tagRenames` |
+| Related Notes (`SidebarNotesView`) | `reader`, `display`, `usage`, `tagRenames` |
+| Stats | `reader`, `usage` |
+| The Task Board | `reader`, `taskLayout`, `savedSearches`, `homeWidgets`, `usage` |
+| Find (`QuickFind`) | `reader`, `favorites`, `usage`, `savedSearches`, `pins`; its row actions `favorites` and `savedSearches` |
+| Move to…, from the editor, Find, the Task Board, and the Tasks view | `reader` and `usage` |
+| The Tasks view (`AgendaTreeProvider`) | `reader` and `taskLayout` |
+| Note visits | `reader` and `usage` |
+| The pinned-entry context key | `reader` and `pins` |
+| Pin and Unpin, Note Actions, and `PinService` | `PinsService` |
+| A tag rename or merge, and `TagService` | `TagRenames` |
+| `CaptureService` | `UsageService`, for the recent headings |
+| Tidy | `PreferencesMaintenance` |
+| Export, Import, and Restore | `reader` and `maintenance` |
+| The destination picker, Capture, Insert Query Block, the reviews, `[[` completion, and the rolling copies | the reader's `value`, and the copies `onDidChange` |
+| The prune after each index update and after start | `UsageService.carrySectionAccess` and `PreferencesMaintenance.prune` |
+
+`PreferenceServices.reader` is the repository itself, typed as `PreferencesReader`, so a reader cannot write. The suites and harnesses build the same set with `createPreferences` in `src/test/preferenceServices.ts`.
 
 ## Two stores, one blob
 
@@ -60,7 +86,7 @@ The first runs once, at the first start in a workspace, in `PreferencesRepositor
 
 ## Pruning
 
-Pruning is a garbage collection of what Deckard derived. After each index update, a housekeeping view calls `PreferencesMaintenance.prune(index)` with the index snapshot, and the prune after start does the same. It reads the keys of the snapshot's tags, tasks, sections, entities, and files. `pruneKeys` takes the key lists by name for a caller without an index, and the facade's old six-parameter `prune` forwards to it. It removes counts, orders, and times for entries that no longer exist, and it updates when each tag was first seen. Before that, `carrySectionAccess` moves a heading's view count to its new id when a line above it changed.
+Pruning is a garbage collection of what Deckard derived. After each index update, a housekeeping view calls `PreferencesMaintenance.prune(index)` with the index snapshot, and the prune after start does the same. It reads the keys of the snapshot's tags, tasks, sections, entities, and files. `pruneKeys` takes the key lists by name for a caller without an index. It removes counts, orders, and times for entries that no longer exist, and it updates when each tag was first seen. Before that, `carrySectionAccess` moves a heading's view count to its new id when a line above it changed.
 
 Three rules keep pruning from destroying data:
 
@@ -74,13 +100,13 @@ Deckard once had a bug that emptied favorites, pins, and view counts, and the da
 
 ## What the plan changes
 
-The blob on disk and its migrations stay byte-compatible. Phase 3 moved the code that reads and writes it, and nothing else.
+The blob on disk and its migrations stay byte-compatible. Phase 3 moved the code that reads and writes it, and Phase 4 its callers, and nothing else.
 
 | Phase | Change |
 | --- | --- |
 | 1 | `preferences.ts` stopped importing `isTaskColumnId` from `ui/state/resultTable`, a `core` to `ui` import. |
 | 2 | The store sits on a `KeyValueStore` port instead of `vscode.Memento`, and its `EventEmitter` left core. Its tests run under `test:unit`. |
 | 3 | Done: `PreferencesStore` split into a repository, a pure schema, services, and `PreferencesMaintenance.prune(index)`, with the store kept as a facade. |
-| 4 | Callers move from the facade to the services they use, and `PreferencesStore` is deleted. |
+| 4 | Done: callers take the services they use, and `PreferencesStore` is deleted. |
 
-The facade keeps the old surface working for one phase, so no caller changed in Phase 3. The round-trip test, `preferences.test.ts`, `preferences-prune.test.ts`, and `preferences-invariants.test.ts` gate the split; `preferences-schema.test.ts` covers the schema's helpers and `preferences-maintenance.test.ts` the prune by snapshot. The formats and their pinning tests are listed in [inventories/persisted-formats.md](inventories/persisted-formats.md).
+The facade kept the old surface working for one phase, so no caller changed in Phase 3; Phase 4 ported the round-trip test to drive the repository and services with the same inputs and the same expected values. The round-trip test, `preferences.test.ts`, `preferences-prune.test.ts`, and `preferences-invariants.test.ts` gate the split; `preferences-schema.test.ts` covers the schema's helpers and `preferences-maintenance.test.ts` the prune by snapshot. The formats and their pinning tests are listed in [inventories/persisted-formats.md](inventories/persisted-formats.md).
