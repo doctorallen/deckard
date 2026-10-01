@@ -5,7 +5,7 @@ import { onDidChangePageChrome } from './components';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
@@ -55,10 +55,16 @@ export type { EntryScope, EntryTagContext, EntryTagSource } from '../state/entry
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
 
+/**
+ * The preference services Related Notes reads and writes: the blob it
+ * ranks by, its display choices, visits, and the keys a renamed tag carries.
+ */
+export type SidebarNotesPreferences = Pick<PreferenceServices, 'reader' | 'display' | 'usage' | 'tagRenames'>;
+
 /** What Related Notes is built from. */
 export interface SidebarNotesViewOptions {
   indexer: WorkspaceIndexer;
-  preferences: PreferencesStore;
+  preferences: SidebarNotesPreferences;
   activeSearch: ActiveSearch;
   onOpenTag: (tagKey: string) => void | Promise<void>;
   extensionVersion: string;
@@ -94,7 +100,7 @@ export class SidebarNotesView
   private indexed = false;
 
   private readonly indexer: WorkspaceIndexer;
-  private readonly preferences: PreferencesStore;
+  private readonly preferences: SidebarNotesPreferences;
   private readonly activeSearch: ActiveSearch;
   private readonly onOpenTag: (tagKey: string) => void | Promise<void>;
   private readonly extensionVersion: string;
@@ -357,7 +363,7 @@ export class SidebarNotesView
         now: Date.now(),
         enableKeywordLinks: this.areKeywordLinksEnabled(),
         relatedNotesSortMode: 'tags',
-        sectionAccessCounts: this.preferences.value.sectionAccessCounts,
+        sectionAccessCounts: this.preferences.reader.value.sectionAccessCounts,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         activeEntryTitle: getEntryTitle(entryScope.file),
         activeTagWeights: entryScope.tagWeights,
@@ -532,8 +538,8 @@ export class SidebarNotesView
     const snapshot = createSidebarSnapshot(index, selectedFilePath, activeEntry?.file ?? selectedFile, {
       now,
       enableKeywordLinks: this.areKeywordLinksEnabled(),
-      relatedNotesSortMode: this.preferences.value.relatedNotesSortMode,
-      sectionAccessCounts: this.preferences.value.sectionAccessCounts,
+      relatedNotesSortMode: this.preferences.reader.value.relatedNotesSortMode,
+      sectionAccessCounts: this.preferences.reader.value.sectionAccessCounts,
       tagTitleDisplayMode: this.getTagTitleDisplayMode(),
       activeEntryTitle: activeEntry ? getEntryTitle(activeEntry.file) : undefined,
       activeTagWeights: activeEntry?.tagWeights,
@@ -541,8 +547,8 @@ export class SidebarNotesView
     });
     // What links here is about the whole note, whichever entry is selected.
     const indexedFile = selectedFilePath ? index.files.get(selectedFilePath) : undefined;
-    const hideDailyNotes = this.preferences.value.hideDailyNotes === true;
-    const previewLines = this.preferences.value.relatedNotesPreviewLines ?? 1;
+    const hideDailyNotes = this.preferences.reader.value.hideDailyNotes === true;
+    const previewLines = this.preferences.reader.value.relatedNotesPreviewLines ?? 1;
     return indexedFile
       ? {
           ...snapshot,
@@ -642,7 +648,7 @@ export class SidebarNotesView
         'relatedNotesRecencyHalfLifeDays',
         0,
       ),
-      hidePeriodicNotes: this.preferences.value.hideDailyNotes === true,
+      hidePeriodicNotes: this.preferences.reader.value.hideDailyNotes === true,
       // The board's status is how a task moves, not what a note is about.
       excludedTagNamespaces: [
         vscode.workspace.getConfiguration('deckard').get<string>('board.statusNamespace', 'status').trim() || 'status',
@@ -737,7 +743,7 @@ export class SidebarNotesView
       return;
     }
     if (message.type === 'setRelatedNotesSort') {
-      await this.preferences.setRelatedNotesSortMode(message.mode);
+      await this.preferences.display.setRelatedNotesSortMode(message.mode);
       // The view does not follow every preference write, so it redraws here:
       // the list in its new order, and the select saying so.
       this.refresh();
@@ -785,7 +791,7 @@ export class SidebarNotesView
     }
 
     if (message.type === 'setHideDailyNotes') {
-      await this.preferences.setHideDailyNotes(message.hide);
+      await this.preferences.display.setHideDailyNotes(message.hide);
       this.refresh();
       return;
     }
@@ -796,7 +802,7 @@ export class SidebarNotesView
     }
 
     if (message.type === 'setRelatedNotesPreviewLines') {
-      await this.preferences.setRelatedNotesPreviewLines(message.lines);
+      await this.preferences.display.setRelatedNotesPreviewLines(message.lines);
       this.refresh();
       return;
     }
@@ -808,7 +814,7 @@ export class SidebarNotesView
       if (file) {
         await vscode.commands.executeCommand(
           'deckard.search',
-          createLinksSearchQuery(file, this.preferences.value.hideDailyNotes === true),
+          createLinksSearchQuery(file, this.preferences.reader.value.hideDailyNotes === true),
         );
       }
       return;
@@ -846,7 +852,7 @@ export class SidebarNotesView
     );
     if (note) {
       if (note.sectionId) {
-        await this.preferences.recordSectionAccess(note.sectionId);
+        await this.preferences.usage.recordSectionAccess(note.sectionId);
       }
       // A result used to replace the note it was ranked from, with no way
       // back but Ctrl+Tab. Cmd/Ctrl-click opens it alongside instead.

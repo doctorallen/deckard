@@ -3,7 +3,7 @@ import { onDidChangePageChrome } from './components';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { WorkspaceIndex } from '../../core/types';
 import { measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -22,7 +22,8 @@ import { panelPriority } from './panelPriority';
 /** What the Stats page is built from. */
 export interface StatsPanelOptions {
   indexer: WorkspaceIndexer<vscode.Uri>;
-  preferences: PreferencesStore;
+  /** The blob Stats counts from, and the visits it records. */
+  preferences: Pick<PreferenceServices, 'reader' | 'usage'>;
   extensionUri: vscode.Uri;
   onOpenTag: (tagKey: string) => void | Promise<void>;
   /** The theme Choose Theme… is previewing, which the page draws in. */
@@ -41,7 +42,7 @@ export class StatsPanel implements vscode.Disposable {
   private isStale = false;
 
   private readonly indexer: WorkspaceIndexer<vscode.Uri>;
-  private readonly preferences: PreferencesStore;
+  private readonly preferences: Pick<PreferenceServices, 'reader' | 'usage'>;
   private readonly extensionUri: vscode.Uri;
   private readonly onOpenTag: (tagKey: string) => void | Promise<void>;
   /** The theme Choose Theme… is previewing, which the page draws in. */
@@ -61,7 +62,7 @@ export class StatsPanel implements vscode.Disposable {
         () => this.refresh(),
       ),
     );
-    this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(preferences.reader.onDidChange(() => this.refresh()));
     this.disposables.push(
       onDidChangePageChrome(() => {
         this.renderHtml();
@@ -223,7 +224,7 @@ export class StatsPanel implements vscode.Disposable {
     );
     if (section) {
       await openResultAt(section.filePath, section.startLine, message);
-      await this.preferences.recordSectionAccess(section.id);
+      await this.preferences.usage.recordSectionAccess(section.id);
       return;
     }
     // A note listed whole, such as one nothing links to, opens without
@@ -313,7 +314,7 @@ export class StatsPanel implements vscode.Disposable {
       data: measure('Stats', () =>
         createDeckardStatsSnapshot(
           this.indexer.getSnapshot(),
-          this.preferences.value,
+          this.preferences.reader.value,
           this.indexer.getUnreadable(),
           // The moment the page is drawn at, which its trends end on.
           Date.now(),
