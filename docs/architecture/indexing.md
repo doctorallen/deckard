@@ -22,7 +22,7 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 | [`src/core/storage/searchStoreWorker.ts`](../../src/core/storage/searchStoreWorker.ts) | The worker thread that writes large batches |
 | [`src/core/workspace/publishing.ts`](../../src/core/workspace/publishing.ts) | View priorities and the in-turn publishing helpers |
 | [`src/ports/`](../../src/ports/) | The interfaces the index reads VS Code through: `uri.ts`, `workspace.ts`, `fileSystem.ts`, `configuration.ts`, `workspaceEvents.ts`, `progress.ts`, and `events.ts` |
-| [`src/platform/`](../../src/platform/) | Their VS Code implementations: `vscodeWorkspace.ts`, `vscodeWorkspaceEvents.ts`, and `vscodeProgress.ts`, which `extension.ts` builds and passes in |
+| [`src/platform/`](../../src/platform/) | Their VS Code implementations: `vscodeWorkspace.ts`, `vscodeWorkspaceEvents.ts`, and `vscodeProgress.ts`, which `createServices` in [`src/composition/services.ts`](../../src/composition/services.ts) builds and passes in |
 
 None of the modules in `src/core` imports `vscode`. The scanner reads folders, files, and settings through one `WorkspaceFileAccess` made of the workspace, file-system, and configuration ports. The `ChangeWatcher` hears about changes through the `WorkspaceEvents` port, the `IndexService` shows a scan's progress through the `Progress` port, and the `ViewPublisher` announces updates with core's own `Emitter`. `SearchStore` takes the storage folder as a path, and `PreferenceSnapshots` writes through the file-system port. Each port call goes to the same VS Code API with the same arguments as before, so nothing a reader sees changed.
 
@@ -40,7 +40,7 @@ No caller holds the pieces. Each is typed by the roles it uses, from `indexReade
 | `IndexUpdates` | `onDidUpdate`, `onDidUpdateView`, `published` | `ViewPublisher` |
 | `IndexControl` | `start`, `refresh` | `createWorkspaceIndex`, whose `start` starts the watcher, then the service |
 
-`parse` is a reader's: it parses the text an editor holds as the index would, and changes nothing, so the lenses, the Outline, and capture take it without being able to rescan. Most commands take an `IndexReader`. One that rescans after it writes, such as a tag rename, a review, or a rollover, adds `IndexControl`. A view adds `IndexUpdates` to redraw, and `IndexScanStatus` to say how far a first scan has got. Find and the search pages add `IndexSearch`. `extension.ts` keeps the whole `IndexRoles` value, and disposing of it stops the watcher, then the publisher, then the service.
+`parse` is a reader's: it parses the text an editor holds as the index would, and changes nothing, so the lenses, the Outline, and capture take it without being able to rescan. Most commands take an `IndexReader`. One that rescans after it writes, such as a tag rename, a review, or a rollover, adds `IndexControl`. A view adds `IndexUpdates` to redraw, and `IndexScanStatus` to say how far a first scan has got. Find and the search pages add `IndexSearch`. `createServices` in [`src/composition/services.ts`](../../src/composition/services.ts) builds the whole `IndexRoles` value and hands it to its `DisposalOrder` first, and disposing of it stops the watcher, then the publisher, then the service.
 
 ## Scan and parse
 

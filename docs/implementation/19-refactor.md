@@ -222,6 +222,8 @@ export async function parkNotesCommand(services: Services, uris?: vscode.Uri[]):
 2. Call each feature's `register(context, services)`.
 3. Hand every disposable to `context.subscriptions`, which disposes of them all. `activeServices`, the `ExtensionServices` interface, and the hand-written `deactivate()` list go away.
 
+*As built in Phase 5:* two parts of this section were done differently. `activate()` stays synchronous and runs the features in a loop, each in its own `try`, rather than through `Promise.allSettled`, because every command and the exports must exist by the time `activate()` returns. `runCommand` logs an unexpected exception and throws it on rather than showing a generic message, so no command shows anything it did not show before. [services.md](../architecture/services.md) describes both.
+
 Two shapes from the audit become the rule everywhere: `insertLink.ts` (one pure builder, one thin adapter) for commands, and `taskSteps.ts`'s `StepList` (a class that models a QuickPick's state so the prompt is only wiring) for prompts with state, which replaces the seven mutable `let`s of `askForCapture`.
 
 The host-side shape follows what the surveyed extensions converge on, with one departure:

@@ -27,7 +27,7 @@ Each service is a small class over the repository. It reads the blob as it stand
 
 ## Who receives what
 
-`activate()` in [`src/extension.ts`](../../src/extension.ts) makes the repository and each service once, in the order the facade did, and calls `initialize()` at once, so the seed and the handover land when they always did. Each caller is handed only what it uses, typed as `Pick<PreferenceServices, ...>` or as a narrow interface over one service:
+`createServices` in [`src/composition/services.ts`](../../src/composition/services.ts) makes the repository and each service once, in the order the facade did, and calls `initialize()` at once, so the seed and the handover land when they always did. Each caller is handed only what it uses, typed as `Pick<PreferenceServices, ...>` or as a narrow interface over one service:
 
 | Caller | Receives |
 | --- | --- |
