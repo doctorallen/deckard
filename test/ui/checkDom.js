@@ -28,7 +28,7 @@ const { JSDOM } = require('jsdom');
 
 const { renderPagesForTheme } = require('./pages.js');
 const { buildPage, measure, probeScript } = require('./checkLayout.js');
-const { createSurfaces } = require('./surfaces.js');
+const { createSurfaces, surfaceHtml } = require('./surfaces.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { normalizeBody, withoutSpacing } = require('../harness/domSnapshot.js');
 
@@ -177,7 +177,7 @@ function checkZenState(zen, options) {
     options.seen.add(`${name}.html`);
     let drawn;
     try {
-      drawn = drawSurface(surface, rendered.get(surface.page), path.join(options.dir, `${name}.html`));
+      drawn = drawSurface(surface, surfaceHtml(surface, rendered, { theme: THEME, zen }), path.join(options.dir, `${name}.html`));
     } catch (error) {
       failed += 1;
       console.log(`  FAIL ${name}: ${error.message}`);

@@ -28,6 +28,7 @@ const pixelmatchModule = require('pixelmatch');
 const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
 
 const { renderPagesForTheme, themes } = require('./pages.js');
+const { surfaceHtml } = require('./surfaces.js');
 const { chrome, createSurfaces, buildPage } = require('./checkLayout.js');
 
 /** How different one pixel may be before it counts, 0 to 1. */
@@ -107,7 +108,7 @@ try {
         const name = `${label}-${surfaceName}`;
         seen.add(`${name}.png`);
         const file = path.join(dir, `${name}.html`);
-        writeFileSync(file, buildPage(rendered.get(surface.page), surface));
+        writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
         const shot = path.join(dir, `${name}.png`);
         const baseline = path.join(BASELINES, `${name}.png`);
         let drawn;

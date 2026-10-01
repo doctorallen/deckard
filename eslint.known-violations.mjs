@@ -203,7 +203,7 @@ export default {
     "test/ui/checkLayout.js": 5,
     "test/ui/checkRenderedContrast.js": 1,
     "test/ui/checkVisual.js": 4,
-    "test/ui/pages.js": 4,
+    "test/ui/pages.js": 3,
     "test/ui/verifyWebviews.js": 13
   },
   "jsdoc/escape-inline-tags": {

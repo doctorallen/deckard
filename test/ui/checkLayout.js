@@ -31,7 +31,7 @@ if (!existsSync(compiled)) {
 const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { captureScript } = require('../harness/domSnapshot.js');
-const { createSurfaces } = require('./surfaces.js');
+const { createSurfaces, surfaceHtml } = require('./surfaces.js');
 
 const chrome = findChrome();
 if (!chrome) {
@@ -202,8 +202,56 @@ function probeScript(surface, options = {}) {
  */
 const SETTLED = '*, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 0s !important; animation-delay: 0s !important; caret-color: transparent !important; }';
 
-function buildPage(html, surface, probe = probeScript(surface)) {
-  const snapshot = surface.snapshot();
+/**
+ * JSON that can sit inside a <script>: a `<` in it is written as an escape,
+ * so no `</script>` in a message's text ends the script early.
+ */
+function scriptJson(value) {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+/**
+ * What a surface does after its state arrives: the other messages its host
+ * would send, such as Help's guide page, then the reader's actions, each an
+ * event dispatched on the element its selector names. Empty for a surface
+ * that only draws its state, so those pages are built as they always were.
+ *
+ * @param {{ messages?: () => object[], drive?: Array<[string, string]> }} surface
+ *   `messages` makes the messages; `drive` is `[event, selector]` pairs.
+ * @returns {string} Script that runs them once the state has drawn.
+ */
+function interactionScript(surface) {
+  const messages = surface.messages ? surface.messages() : [];
+  const drive = surface.drive || [];
+  if (messages.length === 0 && drive.length === 0) {
+    return '';
+  }
+  const steps = [
+    ...messages.map((message) => `window.dispatchEvent(new MessageEvent('message', { data: ${scriptJson(message)} }));`),
+    ...drive.map(([event, selector]) => `document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent(${JSON.stringify(event)}, { bubbles: true, cancelable: true, view: window }));`),
+  ];
+  return `setTimeout(function () {\n${steps.join('\n')}\n}, 20);\n`;
+}
+
+/**
+ * The page with a script-src for the harness's own scripts when its policy
+ * has none. The Related Notes debug page runs no script, so its policy
+ * names none and every script falls to `default-src 'none'`; the bridge and
+ * the probe carry the page's nonce, and nothing of the page's own runs under
+ * the source added. A page whose policy names a script-src is unchanged.
+ */
+function allowHarnessScripts(html, nonce) {
+  return html.replace(/(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(")/, (whole, open, policy, close) => (
+    !nonce || /(^|;)\s*script-src\b/.test(policy) ? whole : `${open}${policy.replace(/;?\s*$/, '')}; script-src 'nonce-${nonce}';${close}`
+  ));
+}
+
+function buildPage(source, surface, probe = probeScript(surface)) {
+  const html = allowHarnessScripts(source, readPageNonce(source));
+  // Help draws without a state; every other page waits for one.
+  const state = surface.snapshot
+    ? `window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(surface.snapshot())} } }));\n`
+    : '';
   // The page keeps its Content-Security-Policy, which Chrome enforces as VS
   // Code does, so a page that needs something its policy blocks fails here
   // too. What the harness adds carries the page's nonce to be let through,
@@ -218,14 +266,16 @@ window.acquireVsCodeApi = function () {
 };
 </script>`;
   const drive = `<script${nonced}>
-window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(snapshot)} } }));
-setTimeout(function () { ${probe} }, 50);
+${state}${interactionScript(surface)}setTimeout(function () { ${probe} }, 50);
 </script>`;
+  // Replaced by functions, so a `$` in a page or a message is not read as a
+  // replacement pattern. A surface's own CSS, such as the Notes Graph's
+  // hidden canvas, comes after the settling rules.
   const inner = html
     // VS Code sets its tokens on the document; here a style block does.
-    .replace('<head>', `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}</style>`)
-    .replace(/<script/, `${bridge}<script`)
-    .replace(/<\/body>/, `${drive}</body>`);
+    .replace('<head>', () => `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}${surface.css || ''}</style>`)
+    .replace(/<script/, () => `${bridge}<script`)
+    .replace(/<\/body>/, () => `${drive}</body>`);
   const [width, height] = surface.viewport;
   return `<!DOCTYPE html><html><head><meta charset="utf-8">${policy}<style${nonced}>
 html, body { margin: 0; padding: 0; background: #888; }
@@ -318,7 +368,7 @@ try {
       const only = process.env.LAYOUT_ONLY;
       const surfaceName = surface.name || surface.page;
       if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
-      const html = rendered.get(surface.page);
+      const html = surfaceHtml(surface, rendered, { theme, zen });
       const file = path.join(dir, `${label}-${surfaceName}.html`);
       writeFileSync(file, buildPage(html, surface));
       const problems = [];

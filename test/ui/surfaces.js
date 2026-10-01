@@ -3,12 +3,23 @@
 // check measures on it. They live apart from checkLayout.js, which needs
 // Chrome to load, so the checks that read the recorded DOM can name the
 // surfaces without it.
+//
+// A surface may also name what happens after its state arrives: `messages`
+// its host would send next, such as Help's guide page, and `drive`, the
+// `[event, selector]` pairs a reader's actions dispatch, such as opening a
+// menu; `css` of its own, such as the Notes Graph's hidden canvas; and
+// `pageOptions` its page is rendered with, such as the entry the debug page
+// diagnoses.
+const path = require('node:path');
+const { readFileSync } = require('node:fs');
 // pages.js puts the vscode stand-in in place, which the modules below need.
-require('./pages.js');
+const { renderPage } = require('./pages.js');
 const modules = require('../harness/modules.js');
 const { createTaskBoard } = modules.taskBoardState;
 const { createSidebarSnapshot } = modules.relatedNotesRanking;
-const { createSearchPageSnapshot, createDeckardStatsSnapshot } = modules.dashboardState;
+const { createDashboardSnapshot, createSearchPageSnapshot, createDeckardStatsSnapshot } = modules.dashboardState;
+const { createDashboardWidgets } = modules.dashboardWidgets;
+const { createNotesGraphSnapshot, toWire } = modules.notesGraphState;
 const { createCalendar } = modules.calendarState;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
@@ -101,6 +112,178 @@ function createGlobalState() {
 const NOW = new Date(2026, 8, 21, 12).getTime();
 
 /**
+ * The Dashboard as the host sends it: Home with its widgets, or the Tags
+ * mode, at one moment.
+ *
+ * @param {object} index The workspace.
+ * @param {object} preferences The stored preferences.
+ * @param {'home' | 'browse'} mode Home, or the Tags mode.
+ * @returns {object} The state message's data.
+ */
+function createDashboardState(index, preferences, mode) {
+  const queryContext = createQueryContext(NOW);
+  const viewPreferences = { ...preferences, dashboardViewState: { ...preferences.dashboardViewState, mode } };
+  return {
+    ...createDashboardSnapshot({ index, preferences: viewPreferences, tagTitleDisplayMode: 'inline', agendaQuery: '', queryContext }),
+    homeArranged: false,
+    ...(mode === 'home'
+      ? { widgets: createDashboardWidgets(index, viewPreferences, { queryContext, upcomingDays: 7, agendaQuery: '', tagTitleDisplayMode: 'inline' }) }
+      : {}),
+    parkedTags: [],
+  };
+}
+
+/**
+ * The Dashboard's surfaces: Home, the Tags mode, Home being arranged, and
+ * Home's search with its builder open. The Dashboard had no surface before
+ * Phase 6, so a change to how it looks passed every check.
+ *
+ * @param {object} index The workspace.
+ * @param {object} preferences The stored preferences.
+ * @returns {object[]} One surface for each of the four states.
+ */
+function createDashboardSurfaces(index, preferences) {
+  // A driven surface hovers something only the action draws, so the layout
+  // check fails, with no row to hover, if the action stops reaching it.
+  const dashboard = (name, mode, { drive, hovered }) => ({
+    name,
+    page: 'dashboard',
+    viewport: [1400, 900],
+    snapshot: () => createDashboardState(index, preferences, mode),
+    ...(drive ? { drive } : {}),
+    scrollers: ['html'],
+    clippers: [],
+    hovered,
+  });
+  return [
+    dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }),
+    dashboard('dashboardTags', 'browse', { hovered: ['.tag-row', '.row'] }),
+    dashboard('dashboardArranging', 'home', {
+      drive: [['click', '[data-action="customize-home"]']],
+      hovered: ['.home-widget.is-editing'],
+    }),
+    dashboard('dashboardQueryBuilder', 'home', {
+      drive: [['click', '.home-widget [data-action="toggle-builder"]']],
+      hovered: ['.query-builder-group'],
+    }),
+  ];
+}
+
+/**
+ * The guide page the helpGuide surface shows: what Help's host sent for it
+ * before Phase 6, captured once from renderGuidePage (markdown-it), so Step 4
+ * can compare the page markdown.api.render draws with it.
+ */
+const GUIDE_FIXTURE = {
+  page: 'daily-notes',
+  title: 'Daily notes, reviews, and the calendar',
+  file: path.join(__dirname, 'fixtures', 'guide-daily-notes.html'),
+};
+
+/**
+ * The entry the Related Notes debug page diagnoses: the Atlas note, its tags
+ * in each context the page tells apart, and the notes ranked for it.
+ *
+ * @param {object} index The workspace.
+ * @param {Map<string, object>} files The parsed notes, by path.
+ * @returns {object} What the debug page's host would pass it for that entry.
+ */
+function createDiagnostic(index, files) {
+  return {
+    filePath: 'notes/atlas.md',
+    sourceLine: 1,
+    title: 'Atlas',
+    tags: [
+      { key: '#project/atlas', weight: 1, context: 'selected', source: 'Written on the selected entry' },
+      { key: '#topic/replicants', weight: 0.5, context: 'parent', source: 'Parent ancestry: one level up (0.5 / 1)' },
+      { key: '#meeting/standup', weight: 0.25, context: 'child', source: 'Child heading: 2 levels down (0.5 / 2)' },
+    ],
+    snapshot: createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
+      now: NOW,
+      enableKeywordLinks: true,
+      relatedNotesSortMode: 'tags',
+      sectionAccessCounts: {},
+      tagTitleDisplayMode: 'inline',
+    }),
+  };
+}
+
+/**
+ * Help, a guide page shown inside it, the Notes Graph's controls, and the
+ * Related Notes debug page: the pages that had no surface before Phase 6.
+ *
+ * @param {object} index The workspace.
+ * @param {Map<string, object>} files The parsed notes, by path.
+ * @returns {object[]} One surface for each of the four pages.
+ */
+function createReferenceSurfaces(index, files) {
+  const graph = toWire(createNotesGraphSnapshot(index), { notes: true, tasks: true });
+  return [
+    { page: 'help', viewport: [1100, 900], scrollers: ['html'], clippers: [], hovered: ['nav a'] },
+    {
+      name: 'helpGuide',
+      page: 'help',
+      viewport: [1100, 900],
+      messages: () => [{ type: 'guide', page: GUIDE_FIXTURE.page, title: GUIDE_FIXTURE.title, html: readFileSync(GUIDE_FIXTURE.file, 'utf8') }],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['#guide-view a'],
+    },
+    {
+      // The simulation settles differently from run to run, so the canvas
+      // is hidden and only the controls around it are compared; the canvas
+      // is held to its recorded calls instead. With the canvas hidden, the
+      // probe's report would show through where it was, so it goes too.
+      page: 'notesGraph',
+      viewport: [1100, 800],
+      snapshot: () => ({ ...graph, focus: { local: false, depth: 1, skipPeriodic: false, workspaceNodeCount: graph.nodes.length } }),
+      css: 'canvas { visibility: hidden !important; } #layout-probe { display: none !important; }',
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['button'],
+    },
+    {
+      // The debug page's tables are as wide as their evidence: with this
+      // entry's candidates the page scrolls sideways even at 1400px. It is a
+      // diagnostic for whoever tunes the ranking, and promises no width, so
+      // nothing is measured for overflow; it is here for its DOM and pixels.
+      page: 'relatedNotesDebug',
+      viewport: [1100, 900],
+      pageOptions: () => ({ diagnostic: createDiagnostic(index, files) }),
+      scrollers: [],
+      clippers: [],
+      hovered: ['tbody tr'],
+    },
+  ];
+}
+
+/**
+ * A menu open over a page, so a floating layer at the body's level is drawn
+ * and compared too: the tag menu on a search result, and a card's action
+ * menu on the board.
+ *
+ * @param {object[]} surfaces The surfaces already made, whose snapshots these reuse.
+ * @returns {object[]} The two pages with their menu open.
+ */
+function createMenuSurfaces(surfaces) {
+  const of = (name) => surfaces.find((surface) => (surface.name || surface.page) === name);
+  return [
+    {
+      ...of('searchPage'),
+      name: 'searchTagMenu',
+      drive: [['contextmenu', '.card [data-tag-key]']],
+      hovered: ['#tag-context-menu .menu-item'],
+    },
+    {
+      ...of('taskBoard'),
+      name: 'taskBoardCardMenu',
+      drive: [['click', '.board-card [data-action="board-menu"]']],
+      hovered: ['#action-menu .menu-item'],
+    },
+  ];
+}
+
+/**
  * The surfaces measured, each with the snapshot its page renders from and
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report.
@@ -110,7 +293,7 @@ function createSurfaces(zen) {
   // Only the board's surfaces carry steps, so no other page's pixels move.
   const boardIndex = createIndex(true).index;
   const preferences = createPreferences(createGlobalState());
-  return [
+  const surfaces = [
     {
       page: 'taskBoard',
       viewport: [1400, 900],
@@ -295,6 +478,27 @@ function createSurfaces(zen) {
       hovered: ['.card'],
     },
   ];
+  return [
+    ...surfaces,
+    ...createDashboardSurfaces(index, preferences.reader.value),
+    ...createReferenceSurfaces(index, files),
+    ...createMenuSurfaces(surfaces),
+  ];
 }
 
-module.exports = { createSurfaces, NOW };
+/**
+ * The page a surface draws, as its host renders it: the page every surface
+ * of it shares, or one rendered with the surface's own page options.
+ *
+ * @param {{ page: string, pageOptions?: () => object }} surface Which page it draws, and any options of its own.
+ * @param {Map<string, string>} rendered Every page in this theme and zen state, by name.
+ * @param {{ theme: string, zen: boolean }} chrome The theme and zen state the page is drawn in.
+ * @returns {string} The page's HTML.
+ */
+function surfaceHtml(surface, rendered, chrome) {
+  return surface.pageOptions
+    ? renderPage(surface.page, { ...chrome, pageOptions: surface.pageOptions() })
+    : rendered.get(surface.page);
+}
+
+module.exports = { createSurfaces, surfaceHtml, NOW };

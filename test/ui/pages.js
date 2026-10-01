@@ -83,14 +83,25 @@ function renderPagesForTheme(theme, options) {
   }
 }
 
-/** Renders one page by name, with zen on or off. */
-function renderPage(name, options) {
-  const entry = pages.find(([pageName]) => pageName === name);
-  if (!entry) throw new Error(`No such page: ${name}`);
-  return renderPagesForTheme(
-    (options && options.theme) || renderTheme,
-    options,
-  ).find(([pageName]) => pageName === name)[1];
+/**
+ * Renders one page by name, in a theme, with zen on or off, and with page
+ * options of its own, such as the entry the debug page diagnoses, over the
+ * ones every page renders with.
+ */
+function renderPage(name, options = {}) {
+  if (!pages.some(([pageName]) => pageName === name)) {
+    throw new Error(`No such page: ${name}`);
+  }
+  const previousTheme = renderTheme;
+  const previousZen = renderZen;
+  renderTheme = options.theme || renderTheme;
+  renderZen = Boolean(options.zen);
+  try {
+    return loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions }));
+  } finally {
+    renderTheme = previousTheme;
+    renderZen = previousZen;
+  }
 }
 
 /**
