@@ -389,9 +389,6 @@ export default {
       "parseWordCondition",
       "tokenize"
     ],
-    "src/extension.ts": [
-      "activate"
-    ],
     "src/test/fixtures/legacyWorkspaceIndex.ts": [
       "buildLegacyWorkspaceIndex"
     ],

@@ -74,14 +74,14 @@ import { AssistantTools } from '../ui/commands/assistantTools';
 import { QuickFind } from '../ui/commands/quickFind';
 import { DashboardPanel } from '../ui/webview/dashboard';
 import { HelpPanel } from '../ui/webview/help';
-import { NotesGraphPanel } from '../ui/webview/notesGraph';
+import { NotesGraphPanel, readNotesGraphOptions } from '../ui/webview/notesGraph';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
 import { StatsPanel } from '../ui/webview/stats';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
-import { syncZenModeContext } from '../ui/webview/zenMode';
+import { setZenMode, syncZenModeContext } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
@@ -148,6 +148,19 @@ export interface Pages {
   taskBoard: TaskBoardPanel;
 }
 
+/**
+ * Two functions that page modules export and commands call. A command may
+ * not import a page host's module (the commands-not-to-webview rule), so the
+ * composition root hands them over until Phase 6 gives them a home of their
+ * own.
+ */
+export interface PageCommands {
+  /** What Show Notes Graph keeps of the options it was run with. */
+  readNotesGraphOptions: typeof readNotesGraphOptions;
+  /** Turns zen on or off, where the setting is set. */
+  setZenMode: typeof setZenMode;
+}
+
 /** The sidebar views and the status bar that the commands reach. */
 export interface Views {
   sidebarNotes: SidebarNotesView;
@@ -182,6 +195,7 @@ export interface Services {
   /** The theme Choose Theme… shows on the open pages before one is kept. */
   themePreview: ThemePreview;
   pages: Pages;
+  pageCommands: PageCommands;
   views: Views;
   /** The Tasks view's decisions. */
   agenda: AgendaService<AgendaGroup>;
@@ -263,6 +277,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     links: { service: assistance.links, notes: assistance.linkNotes },
     themePreview: search.themePreview,
     pages,
+    pageCommands: { readNotesGraphOptions, setZenMode },
     views: {
       sidebarNotes: sidebar.sidebarNotes,
       calendar: calendar.calendar,
