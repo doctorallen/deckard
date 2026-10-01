@@ -3,11 +3,10 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { PreferencesStore } from '../core/storage/preferences';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
-import { DashboardNavigation, DashboardPanel } from '../ui/webview/dashboard';
+import { DashboardNavigation, DashboardPanel, DashboardPanelOptions } from '../ui/webview/dashboard';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { createTaskWrites } from './taskWrites';
 
@@ -79,7 +78,7 @@ function createIndexer(files: Parameters<typeof parseMarkdown>[] = []) {
     onDidUpdate: () => ({ dispose: () => undefined }),
     getSnapshot: () => workspaceIndex,
     ready: Promise.resolve(),
-  } as unknown as WorkspaceIndexer;
+  } as unknown as DashboardPanelOptions['indexer'];
 }
 
 type Controller = {

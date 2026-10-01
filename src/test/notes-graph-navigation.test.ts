@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { WorkspaceIndexer } from '../core/workspace/indexer';
+import type { IndexReader, IndexUpdates } from '../core/workspace/indexReader';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   NotesGraphMessage,
@@ -136,7 +136,7 @@ suite('Notes graph navigation', () => {
       getSnapshot: () => current,
       getFilePath: () => 'notes/not-active.md',
       isNotesFile: () => true,
-    } as unknown as WorkspaceIndexer;
+    } as unknown as IndexReader & IndexUpdates;
     const posted: Array<{ type: string }> = [];
     const graph = new NotesGraphPanel(indexer, vscode.Uri.file(process.cwd()), () => undefined, new ThemePreview());
     try {
@@ -286,11 +286,11 @@ suite('Notes graph navigation', () => {
 
 function createIndexer(
   snapshot: ReturnType<typeof buildWorkspaceIndex>,
-): WorkspaceIndexer {
+): IndexReader & IndexUpdates {
   return {
     onDidUpdate: () => ({ dispose: () => undefined }),
     getSnapshot: () => snapshot,
     getFilePath: () => 'notes/not-active.md',
     isNotesFile: () => true,
-  } as unknown as WorkspaceIndexer;
+  } as unknown as IndexReader & IndexUpdates;
 }

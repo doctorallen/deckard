@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { SearchStore } from '../core/storage/searchStore';
-import { WorkspaceIndexer } from '../core/workspace/indexer';
+import { createWorkspaceIndex } from '../core/workspace/indexer';
+import type { IndexReader, IndexRoles } from '../core/workspace/indexReader';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { WorkspaceScanner } from '../core/workspace/scanner';
 import { FileType } from '../ports/fileSystem';
@@ -42,7 +43,7 @@ function createWorkspace() {
 }
 
 interface Session {
-  indexer: WorkspaceIndexer;
+  indexer: IndexRoles;
   store: SearchStore;
   /** For each publish: whether it was stale, and how many reads came before it. */
   publishes: Array<{ stale: boolean; reads: number }>;
@@ -62,7 +63,9 @@ function openSession(
       (await findFiles(...args)).filter((uri) => !uri.path.endsWith(`/${options.excluded}`));
   }
   const store = new SearchStore(directory);
-  const indexer = new WorkspaceIndexer(scanner, store, {
+  const indexer = createWorkspaceIndex({
+    scanner,
+    searchStore: store,
     version: options.version ?? '1.0.0',
     readCache: options.readCache ?? true,
   });
@@ -74,7 +77,7 @@ function openSession(
 }
 
 /** The index as a fresh cold build of the same notes would be. */
-function assertFresh(indexer: WorkspaceIndexer): void {
+function assertFresh(indexer: IndexReader): void {
   const index = indexer.getSnapshot();
   assert.deepStrictEqual(
     normalizeIndex(index),
