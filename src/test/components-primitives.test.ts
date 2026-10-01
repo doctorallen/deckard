@@ -9,6 +9,7 @@ import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCss, getZenCss }
 import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
 import { renderablePages, renderPage } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { readGoldens } from '../../test/harness/domGoldens';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /**
@@ -166,9 +167,20 @@ suite('Component primitives', () => {
 
   suite('loading (9f)', () => {
     test('every page starts busy, with a loading line rather than an empty box', () => {
+      // Read from the loaded page, before any state, so it holds whether the
+      // loading line is in the markup or drawn by the page's script.
       for (const [name, render] of pages.filter(([name]) => !['Help', 'Notes Graph'].includes(name))) {
-        const html = render();
-        assert.match(html, /<main id="app"[^>]* aria-busy="true"><div class="loading" role="status">/, `${name} starts busy`);
+        page = openWebviewPage(render());
+        const app = page.find('#app');
+        assert.strictEqual(app.localName, 'main', `${name}: #app is the page's main`);
+        assert.strictEqual(app.getAttribute('aria-busy'), 'true', `${name} starts busy`);
+        const loading = app.firstChild as Element | null;
+        assert.strictEqual(loading?.nodeType, 1, `${name}: the loading line comes first, with nothing before it`);
+        assert.strictEqual(loading?.localName, 'div', `${name}: the loading line is a div`);
+        assert.strictEqual(loading?.getAttribute('class'), 'loading', `${name}: the loading line's class`);
+        assert.strictEqual(loading?.getAttribute('role'), 'status', `${name}: the loading line is a status`);
+        page.dispose();
+        page = undefined;
       }
     });
 
@@ -280,6 +292,10 @@ suite('Component primitives', () => {
     test('no control on any page carries a native title', () => {
       // A title never shows on keyboard focus; a control says it with
       // data-tip. Non-focusable spans and a select's options may keep one.
+      // The page text is read while a page's markup is template text, and
+      // every surface's drawn DOM always (the test:dom goldens), which is
+      // all a compiled page leaves to read; the lint rule on .tsx covers the
+      // states no surface draws.
       const control = /<(button|summary|input|select|textarea|a)\b[^<>]*\btitle=/;
       const focusable = /<[a-z]+\b(?=[^<>]*\btabindex=)[^<>]*\btitle=/;
       for (const [name, render] of pages) {
@@ -287,6 +303,24 @@ suite('Component primitives', () => {
         const found = html.match(control) ?? html.match(focusable);
         assert.strictEqual(found, null, `${name}: ${found?.[0].slice(0, 120)}`);
       }
+      // As the regular expressions read it: any attribute named title, or
+      // ending in -title, on a control or on anything with a tabindex.
+      const titled = (element: Element): boolean =>
+        [...element.attributes].some((attribute) => /(^|[^\w])title$/.test(attribute.name));
+      const tabbable = (element: Element): boolean =>
+        [...element.attributes].some((attribute) => /(^|[^\w])tabindex$/.test(attribute.name));
+      // Known, and left for after the refactor, since it changes nothing a
+      // reader sees: the Notes Graph's tag filter writes each checkbox a
+      // native title from its script, which no text check could read.
+      const known = (surface: string, element: Element): boolean =>
+        /^notesGraph(\+zen)?$/.test(surface) && element.localName === 'input' && Boolean(element.closest('#tag-list'));
+      const read = readGoldens((surface, body) => {
+        const found = [...body.querySelectorAll('*')].find((element) =>
+          titled(element) && !known(surface, element)
+          && (/^(button|summary|input|select|textarea|a)$/.test(element.localName) || tabbable(element)));
+        assert.strictEqual(found, undefined, `${surface} (as drawn): ${found?.outerHTML.slice(0, 120)}`);
+      });
+      assert.ok(read >= 22, `every surface's drawn DOM is read (${read})`);
     });
 
     test('the pointer waits 400 ms, and touch shows nothing', async () => {

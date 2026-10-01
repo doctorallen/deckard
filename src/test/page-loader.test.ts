@@ -31,19 +31,25 @@ suite('Page loader', () => {
       + `<body><script nonce="abc" src="vscode-webview://deckard/dist/webview/stats.js"></script></body></html>`;
     const loaded = loadPage(html, { root });
     assert.ok(loaded.includes('<style nonce="abc">body { color: red; }</style>'), loaded);
-    assert.ok(loaded.includes('<script nonce="abc">window.drawn = true;</script>'), loaded);
+    assert.ok(
+      loaded.includes('<script nonce="abc" data-inlined-from="vscode-webview://deckard/dist/webview/stats.js">window.drawn = true;</script>'),
+      loaded,
+    );
     assert.ok(!loaded.includes('src='), 'no script is left to fetch');
   });
 
   test('takes the nonce from the policy when the tag has none', () => {
     const html = `${CSP}<script src="dist/webview/stats.js"></script>`;
-    assert.strictEqual(loadPage(html, { root }), `${CSP}<script nonce="abc">window.drawn = true;</script>`);
+    assert.strictEqual(
+      loadPage(html, { root }),
+      `${CSP}<script nonce="abc" data-inlined-from="dist/webview/stats.js">window.drawn = true;</script>`,
+    );
     assert.strictEqual(readPageNonce(html), 'abc');
   });
 
   test('keeps the other attributes a script carries', () => {
     const html = `${CSP}<script type="module" src="dist/webview/stats.js"></script>`;
-    assert.ok(loadPage(html, { root }).includes('<script nonce="abc" type="module">'));
+    assert.ok(loadPage(html, { root }).includes('<script nonce="abc" type="module" data-inlined-from="dist/webview/stats.js">'));
   });
 
   test('resolves VS Code webview URIs and the stand-in harnesses use', () => {

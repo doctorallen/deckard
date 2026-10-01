@@ -199,7 +199,7 @@ export default {
     ]
   },
   curly: {
-    "test/ui/checkContrast.js": 54,
+    "test/ui/checkContrast.js": 52,
     "test/ui/checkLayout.js": 5,
     "test/ui/checkRenderedContrast.js": 1,
     "test/ui/checkVisual.js": 4,
