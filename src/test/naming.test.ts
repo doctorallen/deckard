@@ -30,10 +30,12 @@ const RETIRED: Array<[RegExp, string]> = [
 function hostSources(): Array<readonly [string, string]> {
   const src = path.join(root, 'src');
   const files = [path.join(src, 'extension.ts')];
-  // The folders whose strings reach the reader: the UI, the services whose
-  // results it words, and the domain, which writes the Related Notes
-  // reasons, facet labels, and tag-hygiene details the pages show.
-  const folders = ['ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state', 'ui/providers', 'services', 'domain'];
+  // The folders whose strings reach the reader: the composition root, which
+  // words the first index's hint and the unreadable-notes warning, the UI,
+  // the services whose results it words, and the domain, which writes the
+  // Related Notes reasons, facet labels, and tag-hygiene details the pages
+  // show.
+  const folders = ['composition', 'ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state', 'ui/providers', 'services', 'domain'];
   const visit = (dir: string): void => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, entry.name);

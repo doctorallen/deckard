@@ -141,7 +141,17 @@ module.exports = {
       name: 'only-the-composition-root-imports-platform',
       severity: 'error',
       comment: 'Everything above the ports receives its implementations; only extension.ts builds them.',
-      from: { path: '^src/', pathNot: ['^src/platform/', '^src/extension\\.ts$', '^src/test/'] },
+      from: {
+        path: '^src/',
+        pathNot: [
+          '^src/platform/',
+          '^src/extension\\.ts$',
+          // The composition root's other half: createServices builds the
+          // ports and services there, and extension.ts calls it.
+          '^src/composition/services\\.ts$',
+          '^src/test/',
+        ],
+      },
       to: { path: '^src/platform/' },
     },
     {

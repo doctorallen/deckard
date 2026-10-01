@@ -1,185 +1,48 @@
-import { captureNextAction } from './ui/commands/taskBoardActions';
-import { readQueryContext } from './ui/commands/queryContext';
-import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
 
-import { DisplayService } from './core/storage/preferencesDisplay';
-import { FavoritesService } from './core/storage/preferencesFavorites';
-import { HomeWidgetsService } from './core/storage/preferencesHomeWidgets';
-import { PreferencesMaintenance } from './core/storage/preferencesMaintenance';
-import { PinsService } from './core/storage/preferencesPins';
-import { PreferencesRepository } from './core/storage/preferencesRepository';
-import { SavedSearchesService } from './core/storage/preferencesSavedSearches';
-import { TagRenames } from './core/storage/preferencesTagRenames';
-import { TaskLayoutService } from './core/storage/preferencesTaskLayout';
-import { UsageService } from './core/storage/preferencesUsage';
-import { SearchStore } from './core/storage/searchStore';
-import { setTimingLog } from './shared/timing';
-import { createWorkspaceIndex } from './core/workspace/indexer';
-import type { IndexReader, IndexRoles } from './core/workspace/indexReader';
-import { WorkspaceScanner } from './core/workspace/scanner';
-import { createVscodeEditApplier, createVscodeHistoryWriter } from './platform/vscodeEditApplier';
-import { createVscodeProgress } from './platform/vscodeProgress';
-import { createVscodeWorkspace } from './platform/vscodeWorkspace';
-import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
-import { VIEW_PRIORITY } from './core/workspace/publishing';
-import { capture, CaptureDrafts, captureToToday, createCaptureNotes, getCaptureInsertion } from './ui/commands/capture';
-import { CaptureService } from './services/captureService';
-import { createHubNote } from './ui/commands/hubNote';
+import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
+import { capture } from './ui/commands/capture';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
-import {
-  createDailyNoteWithRollover,
-  createRolloverService,
-  rollTasksForward,
-} from './ui/commands/rollover';
-import {
-  createReviewService,
-  openPeriodicNoteWithReview,
-  ReviewWrites,
-  writeReviewCommand,
-} from './ui/commands/review';
-import {
-  TaskRankKeeper,
-  TaskWrites,
-} from './ui/commands/taskActions';
-import { MoveService } from './services/moveService';
-import { TaskService } from './services/taskService';
-import { resolveSourceUri } from './ui/commands/navigation';
-import {
-  editTaskCommand,
-  TaskEditorActions,
-  TaskLineContext,
-} from './ui/commands/taskEditor';
+import { createDailyNoteWithRollover, rollTasksForward } from './ui/commands/rollover';
+import { openPeriodicNoteWithReview, writeReviewCommand } from './ui/commands/review';
+import { editTaskCommand } from './ui/commands/taskEditor';
 import { breakIntoStepsCommand, readTaskArgument } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
-import { TemplateService } from './services/templateService';
-import { ExportService } from './services/exportService';
-import { evaluateSearchPage } from './ui/state/dashboardState';
-import { formatQueryBlock } from './ui/state/queryBlockState';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
-import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
-import { TaskLineDecorations } from './ui/providers/taskLineDecorations';
-import { RepeatRuleHealth } from './ui/providers/repeatRuleHealth';
-import { WordCountStatusBar } from './ui/views/wordCountStatusBar';
-import { SectionFocus } from './ui/commands/focusSection';
-import {
-  excludeFolderCommand,
-  ExcludedFoldersContext,
-  includeFolderCommand,
-} from './ui/commands/excludeFolders';
-import {
-  createParkingService,
-  ParkingCommands,
-  ParkingContext,
-  parkFolders,
-  parkNotes,
-  parkTag,
-  unparkFolders,
-  unparkNotes,
-  unparkTag,
-} from './ui/commands/parking';
+import { excludeFolderCommand, includeFolderCommand } from './ui/commands/excludeFolders';
+import { parkFolders, parkNotes, parkTag, unparkFolders, unparkNotes, unparkTag } from './ui/commands/parking';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
-import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
-import { EntityHeadingSuggestions } from './ui/providers/entitySuggestions';
+import { moveToCommand } from './ui/commands/moveTo';
 import {
   CREATE_LINKED_NOTE_COMMAND,
   CREATE_MISSING_NOTES_COMMAND,
   createLinkedNote,
   createMissingNotes,
-  LinkHealth,
 } from './ui/commands/linkHealth';
-import { CalendarView } from './ui/webview/calendar';
-import { CalendarPanel } from './ui/webview/calendarPage';
-import { ActiveCalendar } from './ui/webview/activeCalendar';
-import { ActiveHome } from './ui/webview/activeHome';
-import { readManifestTools } from './core/mcp/mcpProtocol';
-import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
-import { ActivePinContext, setNotePinnedCommand } from './ui/commands/pinNote';
-import {
-  AgendaContextKeys,
-  getAgendaQuery,
-  pickAgendaGrouping,
-  registerAgendaCommands,
-} from './ui/commands/agendaActions';
-import { PinService } from './services/pinService';
-import {
-  LinkMaintenance,
-  renameHeadingCommand,
-} from './ui/commands/linkMaintenance';
-import { vscodeLiveNotes } from './ui/commands/linkMaintenancePorts';
-import { LinkNoteService, LinkService } from './services/linkService';
-import { findUnlinkedMentions } from './ui/state/editorLensState';
-import { WikiLinkCompletionProvider } from './ui/providers/linkSuggestions';
-import { WorkspaceWriteHistory, WriteHandle } from './ui/commands/workspaceWrites';
+import { setNotePinnedCommand } from './ui/commands/pinNote';
+import { getAgendaQuery, pickAgendaGrouping, registerAgendaCommands } from './ui/commands/agendaActions';
+import { renameHeadingCommand } from './ui/commands/linkMaintenance';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
-import { NoteVisits } from './ui/commands/noteVisits';
-import { carrySectionIds } from './ui/state/frecency';
-import { mergeIndexedTag, renameIndexedTag, TagWrites } from './ui/commands/renameTag';
-import { TagService } from './services/tagService';
-import {
-  EditorTagDecorations,
-  isMarkdownDocument,
-} from './ui/providers/tagDecorations';
-import { TagCompletionProvider } from './ui/providers/tagSuggestions';
-import { TaskMetadataCompletionProvider } from './ui/providers/taskMetadataSuggestions';
-import { EditorLenses } from './ui/providers/editorLenses';
-import {
-  LINK_MENTIONS_COMMAND,
-  linkMentions,
-} from './ui/commands/unlinkedMentions';
-import { EditorReferences } from './ui/providers/editorReferences';
-import { AssistantTools } from './ui/commands/assistantTools';
-import { QuickFind } from './ui/commands/quickFind';
-import { DashboardPanel } from './ui/webview/dashboard';
-import { HelpPanel } from './ui/webview/help';
-import { NotesGraphPanel, readNotesGraphOptions } from './ui/webview/notesGraph';
-import { SidebarNotesView } from './ui/webview/sidebarNotes';
-import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
-import { StatsPanel } from './ui/webview/stats';
-import { TaskBoardPanel } from './ui/webview/taskBoard';
-import { ActiveSearch } from './ui/webview/activeSearch';
+import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
+import { isMarkdownDocument } from './ui/providers/tagDecorations';
+import { LINK_MENTIONS_COMMAND, linkMentions } from './ui/commands/unlinkedMentions';
+import { readNotesGraphOptions } from './ui/webview/notesGraph';
 import { SearchPanels } from './ui/webview/searchPage';
-import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
+import { setZenMode } from './ui/webview/zenMode';
 import { tidyPreferences } from './ui/commands/tidyPreferences';
 import { checkSetup } from './ui/commands/checkSetup';
-import {
-  createSampleWorkspace,
-  getSampleStorageUri,
-  SAMPLE_FOLDER_NAME,
-  showSampleReadmeOnce,
-} from './ui/commands/sampleWorkspace';
-import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from './ui/commands/firstIndex';
-import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
-import {
-  exportPreferences,
-  importPreferences,
-  restorePreferences,
-} from './ui/commands/preferenceBackups';
-import {
-  OutlineTreeProvider,
-  pickOutlineTag,
-  setOutlineFollowCursor,
-  syncOutlineFollowCursorContext,
-} from './ui/views/outlineTree';
+import { createSampleWorkspace } from './ui/commands/sampleWorkspace';
+import { exportPreferences, importPreferences, restorePreferences } from './ui/commands/preferenceBackups';
+import { pickOutlineTag, setOutlineFollowCursor } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
+import type { IndexReader } from './core/workspace/indexReader';
 import { QueryBlocks } from './ui/preview/queryBlocks';
-import { AgendaTreeProvider } from './ui/views/agendaTree';
-import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
-import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from './ui/state/agendaState';
-import { isNamespaceName } from './ui/state/tagGrouping';
-import { resolveTaskMove } from './ui/state/taskBoardState';
-import { AgendaService } from './services/agendaService';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
-import { isWhatsNewShown, WhatsNew } from './ui/commands/whatsNew';
 import { chooseTheme, createChooseThemeDeps } from './ui/commands/chooseTheme';
-import { ThemePreview } from './ui/webview/themePreview';
-import { TryNextLedger } from './ui/commands/tryNext';
-import { openSettingAction, settingLabel } from './ui/commands/notify';
 import { settingTarget, writeSetting } from './ui/commands/settings';
-
-let activeServices: ExtensionServices | undefined;
+import { createServices, startServices } from './composition/services';
 
 /**
  * What the extension exports. VS Code's Markdown preview calls
@@ -195,593 +58,30 @@ export interface DeckardExports {
  * Keeping services alive from one activation boundary lets panels, the sidebar,
  * decorations, and completion all observe the same index and preference store.
  */
-/** A first index this large is offered deckard.exclude, once. */
-const EXCLUDE_HINT_SHOWN = 'deckard.excludeHintShown';
-
 export function activate(context: vscode.ExtensionContext): DeckardExports {
-  // Read before anything below stores a value: whether Deckard has run here
-  // before, which tells an update from a new install, and whether it has run
-  // in this workspace, which decides the first index's summary.
-  const newWorkspace = context.workspaceState.keys().length === 0;
-  const ranBefore =
-    context.globalState.keys().length > 0 || context.workspaceState.keys().length > 0;
-  const whatsNew = new WhatsNew({
-    globalState: context.globalState,
-    version: String(context.extension.packageJSON.version),
-    existingUser: ranBefore,
-    readChangelog: async () =>
-      Buffer.from(
-        await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md')),
-      ).toString('utf8'),
-    isShown: isWhatsNewShown,
-  });
-  context.subscriptions.push(whatsNew);
-  // What Home's Try next has been told, kept with the workspace. A
-  // suggestion is retired for good once its command runs from anywhere.
-  const tryNext = new TryNextLedger(context.workspaceState);
-  context.subscriptions.push(tryNext);
-  void whatsNew.onActivate();
-  // A sample opened from Create a Sample Workspace shows its README once.
-  void showSampleReadmeOnce(context);
-  // One log for the whole extension. Its level, set from the Output panel,
-  // decides how much of Deckard's timing it keeps.
-  const log = vscode.window.createOutputChannel('Deckard', { log: true });
+  const services = createServices(context);
+  const { log, whatsNew, tryNext, history, scanner, indexer, themePreview, quickFind, mcpServer, sectionFocus } = services;
+  const { repository: preferences, pins: preferencePins, maintenance, snapshots, move: movePreferences } = services.preferences;
+  const {
+    tasks: taskWrites,
+    tags: tagWrites,
+    parking: parkingCommands,
+    rollover,
+    reviews: reviewWrites,
+    templates,
+    capture: captureContext,
+  } = services.writes;
+  const { service: links, notes: linkNotes } = services.links;
+  const { search: searchPanels, dashboard, stats, help, notesGraph, relatedNotesDebug, calendar: calendarPage, taskBoard } =
+    services.pages;
+  const { sidebarNotes, calendar, outline, agenda } = services.views;
+  const agendaService = services.agenda;
   context.subscriptions.push(
-    log,
-    // Measurements go to this log until the extension deactivates.
-    setTimingLog(log),
     vscode.commands.registerCommand('deckard.showLog', () => log.show()),
   );
-  log.info(
-    `Deckard ${String(context.extension.packageJSON.version)} activated.`,
-  );
-  // What Deckard has written to the notes in this window: the write Undo
-  // takes back, and the notes it has just saved, which the index reads back
-  // at once. Every command that writes is handed this one.
-  const history = new WorkspaceWriteHistory();
-  // The index reads the workspace through ports; this is VS Code's.
-  const vscodeWorkspace = createVscodeWorkspace();
-  const scanner = new WorkspaceScanner(vscodeWorkspace);
-  const indexer = createWorkspaceIndex({
-    scanner,
-    searchStore: new SearchStore(context.storageUri?.fsPath),
-    version: String(context.extension.packageJSON.version),
-    // A developer's parser edits do not change the version, so only an
-    // installed Deckard starts from the notes the cache kept.
-    readCache: context.extensionMode === vscode.ExtensionMode.Production,
-    events: createVscodeWorkspaceEvents(),
-    progress: createVscodeProgress(),
-    ownWrites: history.ownWrites,
-  });
-  // Favorites, pins and view counts name what is in a workspace, so they are
-  // kept with it. A window with no folder open has no workspace to own them
-  // and nothing to index, so it reads the machine-wide store alone.
-  const preferences = new PreferencesRepository(
-    context.globalState,
-    vscode.workspace.workspaceFolders?.length
-      ? context.workspaceState
-      : undefined,
-  );
-  // One service per capability, each writing through the one repository;
-  // every caller is handed the ones it uses.
-  const favorites = new FavoritesService(preferences);
-  const usage = new UsageService(preferences);
-  const taskLayout = new TaskLayoutService(preferences);
-  const homeWidgets = new HomeWidgetsService(preferences);
-  const preferencePins = new PinsService(preferences);
-  const savedSearches = new SavedSearchesService(preferences);
-  const display = new DisplayService(preferences);
-  const tagRenames = new TagRenames(preferences);
-  const maintenance = new PreferencesMaintenance(preferences);
-  void preferences.initialize();
-  // What Move to… ranks destinations by and records a heading in, wherever
-  // it is run from.
-  const movePreferences = { reader: preferences, usage };
-  // A copy of what this workspace remembers, a moment after each change,
-  // so one bad write is something a reader can take back.
-  const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
-  context.subscriptions.push(snapshots);
-  // What an edit to a task writes through, for every view that edits one.
-  // A task's id comes from its own text, so an edit Deckard writes makes it
-  // a new task to anything keyed by id. This keeps its place in a ranked
-  // list across the edit, and across an Undo of it.
-  const keepRank: TaskRankKeeper = (previousId, nextId) => {
-    void taskLayout.replaceTaskInOrder(previousId, nextId);
-  };
-  const taskWrites: TaskWrites = {
-    history,
-    keepRank,
-    tasks: new TaskService<vscode.Uri, WriteHandle>({
-      notes: createVscodeEditApplier(),
-      history: createVscodeHistoryWriter(history),
-      ownWrites: history.ownWrites,
-      keepRank,
-      resolveUri: (filePath) => resolveSourceUri(filePath),
-      configuration: vscodeWorkspace,
-      clock: { now: () => Date.now() },
-    }),
-    moves: new MoveService<vscode.Uri, WriteHandle>({
-      notes: createVscodeEditApplier(),
-      history: createVscodeHistoryWriter(history),
-      files: vscodeWorkspace,
-      configuration: vscodeWorkspace,
-      getFilePath: (uri) => indexer.getFilePath(uri),
-      keepRank,
-      resolveUri: (filePath) => resolveSourceUri(filePath),
-      placeInsertion: getCaptureInsertion,
-    }),
-  };
-  // What renaming or merging a tag writes through, for the commands that
-  // rename one; the service decides what a rename does.
-  const tagWrites: TagWrites = {
-    history,
-    preferences: { tagRenames },
-    tags: new TagService({ index: indexer, preferences: tagRenames }),
-  };
-  // What the parking commands read, and the service that decides what they
-  // may park and writes it.
-  const parkingCommands: ParkingCommands = {
-    indexer,
-    parking: createParkingService(indexer, history),
-  };
-  // What carries unfinished tasks into today's note, for every command
-  // and page that opens today's note or rolls tasks forward.
-  const rollover = createRolloverService(history, indexer);
-  // What writes a week's or a month's review into its note.
-  const reviewWrites: ReviewWrites = {
-    reviews: createReviewService(history, indexer),
-    preferences,
-  };
-  // What makes a note from a template, never over one already there.
-  const templates = new TemplateService<vscode.Uri>({
-    files: vscodeWorkspace,
-    index: indexer,
-    clock: { now: () => Date.now() },
-  });
-  // The theme Choose Theme… shows on the open pages before one is kept.
-  // Every page draws with it, and redraws when it changes.
-  const themePreview = new ThemePreview();
-  const activeSearch = new ActiveSearch();
-  // What a search page's and the Task Board's Export plan with. A page
-  // exports the results it found, and writes the live block itself, with
-  // its own sort and layout; a search is run as a search page runs one.
-  const exportService = new ExportService({
-    index: indexer,
-    search: (query) =>
-      evaluateSearchPage(indexer.getSnapshot(), query, {
-        includeHubLinks: vscode.workspace
-          .getConfiguration('deckard')
-          .get<boolean>('tagOverview.includeHubLinks', true),
-        queryContext: readQueryContext(),
-      }).results,
-    queryBlock: (query) => formatQueryBlock(query),
-  });
-  const searchPanels = new SearchPanels({
-    indexer,
-    preferences: { reader: preferences, usage, savedSearches, display, pins: preferencePins, homeWidgets, tagRenames },
-    extensionUri: context.extensionUri,
-    activeSearch,
-    writes: taskWrites,
-    themePreview,
-    exports: exportService,
-  });
-  const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
-  // Which entry a line of a note pins, and whether it is pinned, for the
-  // hover and Find's rows alike.
-  const pins = new PinService({ index: indexer, store: preferencePins });
-  // The hover on an entry offers to pin it, so it has to know which entries
-  // are pinned; PinService answers, and a change redraws the hovers.
-  const readPinned = (): void => {
-    tagDecorations.setPinnedReader((filePath, line) =>
-      pins.isLinePinned(indexer.getFilePath(vscode.Uri.file(filePath)), line),
-    );
-  };
-  readPinned();
-  context.subscriptions.push(preferences.onDidChange(() => readPinned()));
-  const tagSuggestions = new TagCompletionProvider(indexer).register();
-  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
-  const taskEditorActions = new TaskEditorActions();
-  const taskLineContext = new TaskLineContext();
-  // A workspace's first index says what it read, once; a very large one is
-  // worth one word about leaving folders out, said once, and only when
-  // nothing is left out yet.
-  void indexer.ready.then(async () => {
-    const notes = indexer.getSnapshot().files.size;
-    const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
-    const sample = vscode.Uri.joinPath(getSampleStorageUri(context.globalStorageUri), SAMPLE_FOLDER_NAME).toString();
-    const summarized = await summarizeFirstIndex(
-      context,
-      indexer.getSnapshot(),
-      {
-        newToDeckard: newWorkspace,
-        hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
-        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.toString() === sample),
-      },
-      { excludeHintShownKey: EXCLUDE_HINT_SHOWN, excludeIsEmpty: Object.keys(exclude ?? {}).length === 0 },
-    );
-    if (
-      summarized ||
-      notes < LARGE_WORKSPACE_NOTES ||
-      Object.keys(exclude ?? {}).length > 0 ||
-      context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)
-    ) {
-      return;
-    }
-    await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
-    const open = openSettingAction('exclude');
-    const choice = await vscode.window.showInformationMessage(
-      `Deckard read ${notes.toLocaleString('en-US')} files. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, the "${settingLabel('exclude')}" setting leaves them out and makes every scan faster.`,
-      open.title,
-    );
-    if (choice === open.title) {
-      await open.run();
-    }
-  });
-  // The walkthrough checks its first steps off when there is a note, and a
-  // tag, in the index, rather than when a button in it is pressed.
-  const syncWalkthroughContext = (index: {
-    files: Map<string, unknown>;
-    tags: Map<string, unknown>;
-    tasks: Map<string, unknown>;
-  }): void => {
-    void vscode.commands.executeCommand('setContext', 'deckard.hasNotes', index.files.size > 0);
-    void vscode.commands.executeCommand('setContext', 'deckard.hasTags', index.tags.size > 0);
-    void vscode.commands.executeCommand('setContext', 'deckard.hasTasks', index.tasks.size > 0);
-  };
-  context.subscriptions.push(indexer.onDidUpdate(syncWalkthroughContext));
-  // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
-  // Change only while there is a change to take back.
-  const activePinContext = new ActivePinContext(indexer, { reader: preferences, pins: preferencePins });
-  // The title bar offers Deckard's button on a note, and the arrows between
-  // days on a daily note.
-  context.subscriptions.push(
-    new ActiveNoteContext(indexer),
-    // A task's metadata steps back, and an overdue task says so on its line.
-    new TaskLineDecorations((uri) => indexer.isNotesFile(uri)).register(),
-    // A repeat rule Deckard cannot read is marked before the task is done.
-    new RepeatRuleHealth((uri) => indexer.isNotesFile(uri)).register(),
-    // The words in the note, or the selection, beside the task count.
-    new WordCountStatusBar((uri) => indexer.isNotesFile(uri)),
-  );
-  void vscode.commands.executeCommand(
-    'setContext',
-    'deckard.canUndo',
-    history.lastWrite !== undefined,
-  );
-  context.subscriptions.push(
-    activePinContext,
-    history.onDidChange((canUndo) =>
-      vscode.commands.executeCommand('setContext', 'deckard.canUndo', canUndo),
-    ),
-  );
-  const editorReferences = new EditorReferences(indexer).register();
-  const editorLenses = new EditorLenses(indexer).register();
-  const assistantTools = new AssistantTools(indexer, history);
-  const mcpServer = new DeckardMcpServer({
-    indexer,
-    history,
-    secrets: context.secrets,
-    tools: readManifestTools(
-      context.extension.packageJSON.contributes?.languageModelTools,
-    ),
-    version: context.extension.packageJSON.version,
-  });
-  void mcpServer.restart();
-  // Notes are offered in the order Find ranks them, opened ones first.
-  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences).register();
-  const entitySuggestions = new EntityHeadingSuggestions((uri) =>
-    indexer.isNotesFile(uri),
-  ).register();
-  const linkHealth = new LinkHealth(indexer);
-  // Which links a rename carries and which mentions become links, and the
-  // notes links name, each decided once for every command that asks.
-  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions });
-  const linkNotes = new LinkNoteService(vscodeWorkspace);
-  const linkMaintenance = new LinkMaintenance(indexer, links);
-  const calendar = new CalendarView(indexer, taskWrites, themePreview);
-  const activeCalendar = new ActiveCalendar();
-  const activeHome = new ActiveHome();
-  context.subscriptions.push(activeCalendar, activeHome);
-  const calendarPage = new CalendarPanel({
-    indexer,
-    extensionUri: context.extensionUri,
-    writes: taskWrites,
-    themePreview,
-    activeCalendar,
-  });
-  context.subscriptions.push(calendarPage);
-  const taskBoard = new TaskBoardPanel({
-    indexer,
-    preferences: { reader: preferences, taskLayout, savedSearches, homeWidgets, usage },
-    extensionUri: context.extensionUri,
-    openTag: (tagKey) => searchPanels.show(tagKey),
-    activeSearch,
-    writes: taskWrites,
-    themePreview,
-    exports: exportService,
-  });
-  const dashboard = new DashboardPanel({
-    indexer,
-    preferences: {
-      reader: preferences,
-      favorites,
-      usage,
-      homeWidgets,
-      pins: preferencePins,
-      savedSearches,
-      display,
-      tagRenames,
-    },
-    extensionUri: context.extensionUri,
-    navigation: {
-      openTag: (tagKey) => searchPanels.show(tagKey),
-      openSearch: (query) => searchPanels.showQuery(query),
-      openTaskBoard: (query) => taskBoard.show(query),
-      openDailyNote: async () => {
-        await createDailyNoteWithRollover(indexer, history, undefined, rollover);
-      },
-      quickAdd: (text) => captureToToday(text),
-      createHubNote: async (tagKey) => {
-        await createHubNote(indexer, tagKey);
-      },
-      addNextAction: (tagLabel) => captureNextAction(tagLabel),
-    },
-    whatsNew,
-    tryNext,
-    writes: taskWrites,
-    themePreview,
-  });
-  const quickFind = new QuickFind({
-    indexer,
-    preferences: { reader: preferences, favorites, usage, savedSearches, pins: preferencePins },
-    actions: {
-      openTag: (tagKey) => searchPanels.show(tagKey),
-      openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
-      showSearch: (query) => searchPanels.showQuery(query),
-      moveTask: (task) => moveTasks(indexer, movePreferences, taskWrites, [task]),
-    },
-    writes: taskWrites,
-    pins,
-    linkNotes,
-  });
-  const sidebarNotes = new SidebarNotesView({
-    indexer,
-    preferences: { reader: preferences, display, usage, tagRenames },
-    activeSearch,
-    onOpenTag: (tagKey) => searchPanels.show(tagKey),
-    extensionVersion: context.extension.packageJSON.version,
-    activeCalendar,
-    activeHome,
-    history,
-    themePreview,
-  });
-  dashboard.activeHome = activeHome;
-  const stats = new StatsPanel({
-    indexer,
-    preferences: { reader: preferences, usage },
-    extensionUri: context.extensionUri,
-    onOpenTag: async (tagKey) => {
-      await searchPanels.show(tagKey);
-    },
-    themePreview,
-  });
-  const help = new HelpPanel(
-    context.extensionUri,
-    themePreview,
-    context.extension.packageJSON.contributes,
-    whatsNew,
-  );
-  const notesGraph = new NotesGraphPanel(
-    indexer,
-    context.extensionUri,
-    async (graphContext, reveal) => {
-      if (graphContext) {
-        await sidebarNotes.showGraphConnections(graphContext, reveal);
-      } else {
-        sidebarNotes.clearGraphConnections();
-      }
-    },
-    themePreview,
-  );
-  const relatedNotesDebug = new RelatedNotesDebugPanel(
-    sidebarNotes,
-    context.extensionUri,
-    themePreview,
-  );
-  const outline = new OutlineTreeProvider(indexer);
-  const queryBlocks = new QueryBlocks(indexer);
-  // What the Tasks view lists, and what dropping or checking a task in it
-  // writes, over the index and the settings.
-  const agendaService = new AgendaService<AgendaGroup>({
-    configuration: vscodeWorkspace,
-    index: indexer,
-    readQueryContext: () => readQueryContext(),
-    model: {
-      select: selectAgendaTasks,
-      build: createAgenda,
-      countDue: countDueTasks,
-      listOverdue: selectOverdueTasks,
-      resolveMove: resolveTaskMove,
-      isNamespaceName,
-    },
-    writeSetting: (key, value) => writeSetting(key, value, vscode.ConfigurationTarget.Global),
-  });
-  const agenda = new AgendaTreeProvider(
-    indexer,
-    { agenda: agendaService, writes: taskWrites, contextKeys: new AgendaContextKeys() },
-    { reader: preferences, taskLayout },
-  );
-  const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
-  // What was typed into Capture and not yet written, for this workspace.
-  const captureDrafts = new CaptureDrafts(context.workspaceState);
-  // Where a capture goes once it is typed, and when its draft is let go.
-  const captureContext = {
-    indexer,
-    drafts: captureDrafts,
-    preferences,
-    captures: new CaptureService({
-      index: indexer,
-      notes: createCaptureNotes(indexer),
-      drafts: captureDrafts,
-      recentHeadings: usage,
-    }),
-  };
-  activeServices = {
-    indexer,
-    preferences,
-    activeSearch,
-    searchPanels,
-    sidebarNotes,
-    tagDecorations,
-    tagSuggestions,
-    linkSuggestions,
-    entitySuggestions,
-    dashboard,
-    stats,
-    help,
-    notesGraph,
-    relatedNotesDebug,
-    outline,
-    queryBlocks,
-    agenda,
-    taskStatusBar,
-    taskMetadataSuggestions,
-    taskEditorActions,
-    taskLineContext,
-    taskBoard,
-    editorReferences,
-    editorLenses,
-    linkHealth,
-    linkMaintenance,
-    calendar,
-    quickFind,
-  };
-
-  context.subscriptions.push(
-    indexer,
-    preferences,
-    activeSearch,
-    searchPanels,
-    sidebarNotes,
-    tagDecorations,
-    tagSuggestions,
-    linkSuggestions,
-    entitySuggestions,
-    dashboard,
-    stats,
-    help,
-    notesGraph,
-    relatedNotesDebug,
-    outline,
-    queryBlocks,
-    agenda,
-    taskStatusBar,
-    taskMetadataSuggestions,
-    taskEditorActions,
-    taskLineContext,
-    taskBoard,
-    editorReferences,
-    editorLenses,
-    linkHealth,
-    linkMaintenance,
-    calendar,
-    assistantTools,
-    mcpServer,
-    quickFind,
-  );
-  // A note that could not be read is missing from every search, which looks
-  // like a bad search rather than a missing note. Say so, once per note, the
-  // moment it happens - and no more than that, since an index updates on
-  // every save.
-  let unreadableSeen = 0;
-  context.subscriptions.push(
-    indexer.onDidUpdate(() => {
-      const unreadable = indexer.getUnreadable();
-      if (unreadable.length > unreadableSeen) {
-        const count = unreadable.length;
-        void vscode.window
-          .showWarningMessage(
-            // The reason is in the log already, where the scanner wrote it.
-            count === 1
-              ? `Deckard could not read ${unreadable[0].filePath}, so it is missing from search and Home.`
-              : `Deckard could not read ${count} files, so they are missing from search and Home.`,
-            'Open Stats',
-            'Open Log',
-          )
-          .then((choice) => {
-            if (choice === 'Open Stats') {
-              void vscode.commands.executeCommand('deckard.showStats');
-            } else if (choice === 'Open Log') {
-              void vscode.commands.executeCommand('deckard.showLog');
-            }
-          });
-      }
-      unreadableSeen = unreadable.length;
-    }),
-  );
-  // A heading's id changes when a line above it does; its view count follows
-  // it to the new id before anything is pruned.
-  let previousIndex = indexer.getSnapshot();
-  const tidy = (): void => {
-    const index = indexer.getSnapshot();
-    // The cache's notes at a warm start are not checked yet: a note gone
-    // from them may only be unread, so nothing is pruned for it. The prune
-    // after start runs once the check is done.
-    if (indexer.isStale || index === previousIndex) {
-      return;
-    }
-    {
-      const moved = carrySectionIds(previousIndex, index);
-      previousIndex = index;
-      void (async () => {
-        if (moved.size > 0) {
-          await usage.carrySectionAccess(moved);
-        }
-        await maintenance.prune(index);
-      })();
-    }
-  };
-  context.subscriptions.push(
-    indexer.onDidUpdateView(tidy, {
-      name: 'tidy of derived counts',
-      priority: () => VIEW_PRIORITY.housekeeping,
-    }),
-    new NoteVisits(indexer, { reader: preferences, usage }),
-  );
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      'deckard.relatedNotes',
-      sidebarNotes,
-      { webviewOptions: { retainContextWhenHidden: true } },
-    ),
-    vscode.window.registerWebviewViewProvider('deckard.calendar', calendar, {
-      webviewOptions: { retainContextWhenHidden: true },
-    }),
-  );
-  const outlineView = vscode.window.createTreeView('deckard.outline', {
-    treeDataProvider: outline,
-    showCollapseAll: true,
-  });
-  outline.attach(outlineView);
-  context.subscriptions.push(outlineView);
-  const agendaView = vscode.window.createTreeView('deckard.agenda', {
-    treeDataProvider: agenda,
-    manageCheckboxStateManually: true,
-    // Several tasks can be chosen and dated at once from the item menu.
-    canSelectMany: true,
-    // Dragging a task onto another ranks it there; onto a group, it joins
-    // that group through the same checked edit the board writes.
-    dragAndDropController: agenda,
-  });
-  agenda.attach(agendaView);
-  context.subscriptions.push(agendaView);
   context.subscriptions.push(
     ...registerAgendaCommands({ view: agenda, agenda: agendaService, writes: taskWrites, indexer, preferences: movePreferences }),
   );
-  void syncOutlineFollowCursorContext();
-  void syncZenModeContext();
-  // Which note a section is focused in, which leaving it clears.
-  const sectionFocus = new SectionFocus();
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'deckard.outline.revealSection',
@@ -824,7 +124,6 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.unfoldAllSections', () =>
       sectionFocus.unfoldAll(),
     ),
-    sectionFocus,
     vscode.commands.registerCommand('deckard.outline.filterByTag', async (node?: unknown) => {
       const outlineNode = asOutlineNode(node);
       if (outlineNode) {
@@ -915,33 +214,6 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
       createSampleWorkspace(context),
     ),
-  );
-  context.subscriptions.push(
-    vscode.window.registerWebviewPanelSerializer('deckard.dashboard', {
-      deserializeWebviewPanel: (webviewPanel) =>
-        dashboard.restore(webviewPanel),
-    }),
-    vscode.window.registerWebviewPanelSerializer('deckard.stats', {
-      deserializeWebviewPanel: (webviewPanel) => stats.restore(webviewPanel),
-    }),
-    vscode.window.registerWebviewPanelSerializer('deckard.help', {
-      deserializeWebviewPanel: (webviewPanel) => help.restore(webviewPanel),
-    }),
-    vscode.window.registerWebviewPanelSerializer('deckard.notesGraph', {
-      deserializeWebviewPanel: (webviewPanel) =>
-        notesGraph.restore(webviewPanel),
-    }),
-    vscode.window.registerWebviewPanelSerializer('deckard.calendarPage', {
-      deserializeWebviewPanel: (webviewPanel) => calendarPage.restore(webviewPanel),
-    }),
-    vscode.window.registerWebviewPanelSerializer('deckard.taskBoard', {
-      deserializeWebviewPanel: (webviewPanel, state) =>
-        taskBoard.restore(webviewPanel, state),
-    }),
-    vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
-      deserializeWebviewPanel: (webviewPanel, state) =>
-        searchPanels.restore(webviewPanel, state),
-    }),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.showDashboard', () =>
@@ -1117,7 +389,6 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.includeInIndex', (folder?: unknown) =>
       includeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
     ),
-    new ExcludedFoldersContext(),
     vscode.commands.registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
       parkNotes(parkingCommands, uri, uris),
     ),
@@ -1150,7 +421,6 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       }
       await unparkTag(parkingCommands, key);
     }),
-    new ParkingContext(indexer),
     vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
       mcpServer.copySetup(),
     ),
@@ -1187,11 +457,6 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, movePreferences, taskWrites),
-    ),
-    vscode.languages.registerCodeActionsProvider(
-      { pattern: '**/*.md' },
-      new MoveToActions(indexer),
-      { providedCodeActionKinds: [vscode.CodeActionKind.RefactorMove] },
     ),
   );
   context.subscriptions.push(
@@ -1296,93 +561,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
   );
 
-  if (
-    vscode.workspace
-      .getConfiguration('deckard')
-      .get<boolean>('dashboard.openOnStartup', false)
-  ) {
-    void dashboard.showOnStartup();
-  }
-
-  // The bar draws as soon as there is an index to count.
-  taskStatusBar.refresh();
-
-  void indexer.start().then(async () => {
-    await maintenance.prune(indexer.getSnapshot());
-  });
+  startServices(services);
 
   return {
-    extendMarkdownIt: (md) => queryBlocks.extendMarkdownIt(md),
+    extendMarkdownIt: (md) => services.queryBlocks.extendMarkdownIt(md),
   };
-}
-
-/**
- * Releases services explicitly so timers, watchers, panels, and event emitters
- * stop even when deactivation happens before the next workspace change.
- */
-export function deactivate(): void {
-  activeServices?.indexer.dispose();
-  activeServices?.preferences.dispose();
-  activeServices?.searchPanels.dispose();
-  activeServices?.activeSearch.dispose();
-  activeServices?.sidebarNotes.dispose();
-  activeServices?.tagDecorations.dispose();
-  activeServices?.tagSuggestions.dispose();
-  activeServices?.linkSuggestions.dispose();
-  activeServices?.entitySuggestions.dispose();
-  activeServices?.dashboard.dispose();
-  activeServices?.stats.dispose();
-  activeServices?.help.dispose();
-  activeServices?.relatedNotesDebug.dispose();
-  activeServices?.outline.dispose();
-  activeServices?.queryBlocks.dispose();
-  activeServices?.agenda.dispose();
-  activeServices?.taskStatusBar.dispose();
-  activeServices?.taskMetadataSuggestions.dispose();
-  activeServices?.taskEditorActions.dispose();
-  activeServices?.taskLineContext.dispose();
-  activeServices?.taskBoard.dispose();
-  activeServices?.editorReferences.dispose();
-  activeServices?.editorLenses.dispose();
-  activeServices?.linkHealth.dispose();
-  activeServices?.linkMaintenance.dispose();
-  activeServices?.calendar.dispose();
-  activeServices?.quickFind.dispose();
-  activeServices = undefined;
-}
-
-/**
- * Names the long-lived services that share the extension lifecycle.
- */
-interface ExtensionServices {
-  indexer: IndexRoles;
-  preferences: PreferencesRepository;
-  activeSearch: ActiveSearch;
-  searchPanels: SearchPanels;
-  sidebarNotes: SidebarNotesView;
-  tagDecorations: EditorTagDecorations;
-  tagSuggestions: TagCompletionProvider;
-  linkSuggestions: WikiLinkCompletionProvider;
-  entitySuggestions: EntityHeadingSuggestions;
-  dashboard: DashboardPanel;
-  stats: StatsPanel;
-  help: HelpPanel;
-  notesGraph: NotesGraphPanel;
-  relatedNotesDebug: RelatedNotesDebugPanel;
-  outline: OutlineTreeProvider;
-  queryBlocks: QueryBlocks;
-  agenda: AgendaTreeProvider;
-  taskStatusBar: TaskStatusBar;
-  taskMetadataSuggestions: TaskMetadataCompletionProvider;
-  taskEditorActions: TaskEditorActions;
-  taskLineContext: TaskLineContext;
-  taskBoard: TaskBoardPanel;
-  editorReferences: EditorReferences;
-  editorLenses: EditorLenses;
-  linkHealth: LinkHealth;
-  linkMaintenance: LinkMaintenance;
-  calendar: CalendarView;
-  quickFind: QuickFind;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {
@@ -1460,4 +643,3 @@ async function showTagOverview(
     await searchPanels.show(tagKey);
   }
 }
-

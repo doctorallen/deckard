@@ -156,9 +156,6 @@ export default {
       "createCondition",
       "tokenize"
     ],
-    "src/extension.ts": [
-      "deactivate"
-    ],
     "src/ui/commands/bulkEdit.ts": [
       "describeBulkEditResult"
     ],
@@ -276,7 +273,6 @@ export default {
     "src/domain/markdown/taskMetadata.ts": 4,
     "src/domain/query/queryLinks.ts": 2,
     "src/domain/query/queryTypes.ts": 6,
-    "src/extension.ts": 1,
     "src/test/calendar-day.test.ts": 1,
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/indexCorpus.ts": 3,
