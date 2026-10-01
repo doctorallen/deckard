@@ -64,7 +64,7 @@ Task metadata, front matter, block ids (`^id`), query blocks, and every other sy
 
 `preferences-invariants.test.ts` walks random operations over the store with in-memory mementos. It pins what operations keep and remove, and that one workspace never reaches another (`:228`). It does not pin a stored shape.
 
-**Gap:** no test loads a complete blob as 1.23.1 writes it. The legacy inputs are partial literals, and the handover tests build their "legacy" machine-wide store with today's `PreferencesStore` (`preferences-prune.test.ts:162`). A pinning test would hold a full blob literal captured from the release, for both `globalState` and `workspaceState`, and assert the normalized value and the exact value written back.
+**Pinned since Phase 3:** [`src/test/preferences-roundtrip.test.ts`](../../../src/test/preferences-roundtrip.test.ts) loads a complete blob, with every field set to a non-default value, split across `globalState` and `workspaceState`, and asserts what it normalizes to and the exact bytes written back to each store. It also loads each legacy shape the migrations read (the 1.19 handover, `renderMode` without `renderModeChosen`, the removed Dashboard tabs, retired keys, string pins and headings, one-hash ids from before 1.23, a missing `tagFirstSeen`) and walks every mutator, recording each write's store, key, order, and digest. The blob is made up rather than captured from a release, so a field 1.23.1 writes that the type does not declare would not be caught.
 
 ## 2. Handover flag
 
