@@ -4,7 +4,6 @@ import { createPreferences } from './preferenceServices';
 import { PersistedPreferences } from '../core/types';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import {
-  parseDashboardMessage,
   parseSearchPageMessage,
   parseSidebarMessage,
 } from '../ui/webview/messages';
@@ -115,7 +114,5 @@ suite('Park and Unpark from the pages', () => {
     assert.strictEqual(parseSearchPageMessage({ type: 'parkNote', filePath: '' }), undefined);
     assert.strictEqual(parseSearchPageMessage({ type: 'parkTag', tagKey: '#a', extra: 1 }), undefined);
     assert.deepStrictEqual(parseSidebarMessage({ type: 'unparkTag', tagKey: '#a' }), { type: 'unparkTag', tagKey: '#a' });
-    assert.deepStrictEqual(parseDashboardMessage({ type: 'parkTag', tagKey: '#a' }), { type: 'parkTag', tagKey: '#a' });
-    assert.strictEqual(parseDashboardMessage({ type: 'parkTag', tagKey: 3 }), undefined);
   });
 });

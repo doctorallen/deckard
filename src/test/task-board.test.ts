@@ -16,7 +16,6 @@ import {
   TaskBoardOptions,
 } from '../ui/state/taskBoardState';
 import {
-  parseDashboardMessage,
   parseSidebarMessage,
 } from '../ui/webview/messages';
 import { isAwaitingIndex } from '../ui/webview/pages/taskBoard/taskBoardController';
@@ -380,20 +379,6 @@ suite('Task board', () => {
     const plain = table?.rows.find((entry) => entry.taskId === 'call');
     assert.strictEqual(plain?.cells[0].html, plain?.cells[0].text);
     assert.doesNotMatch(plain?.cells[0].html ?? '', /</, 'no markup to insert');
-  });
-
-  test('no longer takes task messages on the Dashboard', () => {
-    for (const message of [
-      { type: 'setDashboardTaskLayout', layout: 'board' },
-      { type: 'setBoardGroup', groupBy: 'due' },
-      { type: 'moveTask', taskId: 'a', column: 'status:doing' },
-      { type: 'setTaskFilter', filter: 'all' },
-      { type: 'setTaskTags', tagKeys: ['work'] },
-      { type: 'reorderTasks', taskIds: ['a'] },
-      { type: 'setDashboardMode', mode: 'tasks' },
-    ]) {
-      assert.strictEqual(parseDashboardMessage(message), undefined, message.type);
-    }
   });
 
   test('opens from the sidebar toolbar', () => {
