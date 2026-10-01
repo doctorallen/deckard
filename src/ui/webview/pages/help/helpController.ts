@@ -48,6 +48,9 @@ export class HelpController implements PageController<never, HelpPageToHost> {
       // A theme or zen change draws Help again from the top; it has no
       // snapshot to send.
       onChromeChange: 'reload',
+      // Help is drawn whole in its HTML, so a restore or a show refreshes
+      // nothing and writes nothing to the log.
+      hasSnapshot: false,
       restore: () => this.loadReleases(),
     };
     this.handlers = {

@@ -9,6 +9,7 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { HelpController } from '../ui/webview/pages/help/helpController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 
 const extensionUri = vscode.Uri.file('/tmp/deckard-extension');
 
@@ -239,6 +240,27 @@ suite('Help host', () => {
       assert.strictEqual(made.length, 2);
       assert.strictEqual(anchorOf(made[1].htmls[0]), 'whats-new');
     });
+  });
+
+  test('refreshes nothing and writes nothing to the log, shown, hidden, or shown again', () => {
+    const controller = new HelpController({ extensionUri, manifest });
+    const host = new WebviewHost<never, HelpPageToHost>(controller, { themePreview: new ThemePreview() });
+    const surface = new FakeSurface();
+    try {
+      host.attach(surface);
+      const lines = captureTimingLog(() => {
+        host.refresh();
+        surface.setVisible(false);
+        host.refresh();
+        surface.setVisible(true);
+        surface.setVisible(false);
+        surface.setVisible(true);
+      });
+      assert.deepStrictEqual(lines, []);
+      assert.deepStrictEqual(surface.webview.posted, []);
+    } finally {
+      host.dispose();
+    }
   });
 
   test('its controller sends no snapshot and draws at a section only while asked', () => {

@@ -78,6 +78,13 @@ export interface PageOptions {
    */
   readonly refreshWhenShown?: 'if-stale' | 'never';
   /**
+   * Whether the page is ever sent a snapshot: true unless a page drawn
+   * whole in its HTML, such as Help, says false. A refresh of such a page
+   * does nothing at all: nothing is built, timed, or posted, and a hidden
+   * page is not marked stale.
+   */
+  readonly hasSnapshot?: boolean;
+  /**
    * How the host times each snapshot in the log. By default it times
    * `buildSnapshot` under the page's `name`. A page whose line has always
    * had another name, or timed the post too, says so; `false` leaves the

@@ -265,6 +265,33 @@ suite('WebviewHost', () => {
     assert.deepStrictEqual(turns, ['Test page', 'Test page', 'Test page', 'Test page']);
   });
 
+  test('leaves a page that is never sent a snapshot alone: nothing built, timed, or owed', () => {
+    const { controller } = createController({ hasSnapshot: false });
+    const built: string[] = [];
+    const host = new WebviewHost(
+      {
+        ...controller,
+        buildSnapshot: () => void built.push('built'),
+        onDidMarkStale: () => void built.push('stale'),
+      },
+      { themePreview: new ThemePreview() },
+    );
+    const surface = new FakeSurface();
+    try {
+      host.attach(surface);
+      const lines = captureTimingLog(() => {
+        host.refresh();
+        surface.setVisible(false);
+        host.refresh();
+        surface.setVisible(true);
+      });
+      assert.deepStrictEqual([...lines, ...built], []);
+      assert.deepStrictEqual(surface.webview.posted, []);
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('tells the page how far the first scan has got, unless the page says not to', () => {
     for (const followIndexing of [undefined, false]) {
       const { controller } = createController({ followIndexing });

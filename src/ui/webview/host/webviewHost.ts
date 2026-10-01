@@ -131,11 +131,12 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
   /**
    * Sends the page its snapshot. A hidden page keeps what it shows and is
    * sent the newest when it is shown again. While the controller has no
-   * snapshot, nothing is sent and a page that missed one still has.
+   * snapshot, nothing is sent and a page that missed one still has. A page
+   * that is never sent one is left alone.
    */
   public refresh(): void {
     const surface = this.current;
-    if (!surface) {
+    if (!surface || this.controller.options.hasSnapshot === false) {
       return;
     }
     if (!surface.visible) {

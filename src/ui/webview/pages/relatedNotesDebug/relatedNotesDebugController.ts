@@ -21,6 +21,8 @@ export class RelatedNotesDebugController implements PageController<never, Relate
     // The page is drawn afresh each time an entry is shown, and a theme
     // change leaves the evidence on screen as it was drawn.
     onChromeChange: 'none',
+    // It is drawn whole in its HTML, and never sent a snapshot.
+    hasSnapshot: false,
   };
   public readonly narrow = narrowRelatedNotesDebugMessage;
   public readonly handlers: MessageHandlers<RelatedNotesDebugPageToHost> = {};
