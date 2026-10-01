@@ -30,15 +30,24 @@ const RETIRED: Array<[RegExp, string]> = [
 function hostSources(): Array<readonly [string, string]> {
   const src = path.join(root, 'src');
   const files = [path.join(src, 'extension.ts')];
-  for (const folder of ['ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state']) {
-    const dir = path.join(src, folder);
-    if (!fs.existsSync(dir)) {
-      continue;
-    }
-    for (const name of fs.readdirSync(dir)) {
-      if (name.endsWith('.ts') && !/Html\.ts$/.test(name)) {
-        files.push(path.join(dir, name));
+  // The folders whose strings reach the reader: the UI, the services whose
+  // results it words, and the domain, which writes the Related Notes
+  // reasons, facet labels, and tag-hygiene details the pages show.
+  const folders = ['ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state', 'ui/providers', 'services', 'domain'];
+  const visit = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(file);
+      } else if (entry.name.endsWith('.ts') && !/Html\.ts$/.test(entry.name)) {
+        files.push(file);
       }
+    }
+  };
+  for (const folder of folders) {
+    const dir = path.join(src, folder);
+    if (fs.existsSync(dir)) {
+      visit(dir);
     }
   }
   return files.map((file) => [path.relative(root, file), fs.readFileSync(file, 'utf8')] as const);

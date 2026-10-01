@@ -34,7 +34,7 @@ const MODULES = {
   taskBoardState: 'ui/state/taskBoardState.js',
   // ui/commands
   dailyNote: 'ui/commands/dailyNote.js',
-  tagDecorations: 'ui/commands/tagDecorations.js',
+  tagDecorations: 'ui/providers/tagDecorations.js',
   workspaceWrites: 'ui/commands/workspaceWrites.js',
   // The task writes a harness hands to a page host, as the extension builds them.
   taskWrites: 'test/taskWrites.js',
