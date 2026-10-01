@@ -10,6 +10,7 @@ import type {
   NotesGraphNode,
   NotesGraphSnapshot,
 } from '../../domain/model/graph';
+import type { MessageOf, StateMessage } from './messaging';
 
 export type {
   NotesGraphConnection,
@@ -90,11 +91,53 @@ export interface NotesGraphSetFilterMessage {
   showTasks: boolean;
 }
 
+/**
+ * The node the host has selected, after each snapshot and when Related
+ * Notes picks one, which the page selects too if it draws it.
+ */
+export interface NotesGraphSelectedNodeMessage {
+  type: 'selectNode';
+  nodeId: string;
+}
+
+/**
+ * The node Related Notes is hovering, which the page highlights; without
+ * an id, the highlight ends.
+ */
+export interface NotesGraphHighlightNodeMessage {
+  type: 'highlightNode';
+  nodeId?: string;
+}
+
+/**
+ * A filter turned on for a reader who came to see it, such as Stats' Wiki
+ * links total turning on Only links I wrote.
+ */
+export interface NotesGraphApplyFiltersMessage {
+  type: 'applyFilters';
+  onlyWrittenLinks: true;
+}
+
+/**
+ * What the notes graph page sends its host, by type. The host checks each
+ * node, line, and tag against the index as it is now.
+ */
+export interface NotesGraphPageToHost {
+  openSource: NotesGraphOpenSourceMessage;
+  openTag: NotesGraphOpenTagMessage;
+  selectNode: NotesGraphSelectNodeMessage;
+  clearSelection: NotesGraphClearSelectionMessage;
+  setGraphScope: NotesGraphSetScopeMessage;
+  setGraphFilter: NotesGraphSetFilterMessage;
+}
+
+/** What the host sends the notes graph page, by type. */
+export interface NotesGraphHostToPage {
+  state: StateMessage<NotesGraphWireSnapshot>;
+  selectNode: NotesGraphSelectedNodeMessage;
+  highlightNode: NotesGraphHighlightNodeMessage;
+  applyFilters: NotesGraphApplyFiltersMessage;
+}
+
 /** Messages from the notes graph page. */
-export type NotesGraphMessage =
-  | NotesGraphOpenSourceMessage
-  | NotesGraphOpenTagMessage
-  | NotesGraphSelectNodeMessage
-  | NotesGraphClearSelectionMessage
-  | NotesGraphSetScopeMessage
-  | NotesGraphSetFilterMessage;
+export type NotesGraphMessage = MessageOf<NotesGraphPageToHost>;

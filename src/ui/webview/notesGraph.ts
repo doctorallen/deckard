@@ -31,7 +31,7 @@ import {
   toWire,
 } from '../state/notesGraphState';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { parseNotesGraphMessage } from './messages';
+import { narrowNotesGraphMessage } from './pages/notesGraph/messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
 import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
 import { panelPriority } from './panelPriority';
@@ -357,7 +357,7 @@ export class NotesGraphPanel implements vscode.Disposable {
   }
 
   private async handleMessage(value: unknown): Promise<void> {
-    const message = parseNotesGraphMessage(value);
+    const message = narrowNotesGraphMessage(value);
     if (message) {
       await this.handleValidMessage(message);
     }

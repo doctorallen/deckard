@@ -1,10 +1,8 @@
 import { isTaskColumnId } from '../state/resultTable';
-import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { isObject } from '../../shared/guards';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,
-  NotesGraphMessage,
   PinNoteMessage,
   RenderMode,
   SearchPageSize,
@@ -388,70 +386,6 @@ function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
     value.query.length <= MAX_QUERY_LENGTH &&
     (value.remember === undefined || typeof value.remember === 'boolean')
   );
-}
-
-/**
- * Validates the notes graph's navigation messages before dispatch.
- */
-export function parseNotesGraphMessage(
-  value: unknown,
-): NotesGraphMessage | undefined {
-  if (!isObject(value) || typeof value.type !== 'string') {
-    return undefined;
-  }
-
-  if (value.type === 'openSource') {
-    return isSourceMessage(value)
-      ? (value as unknown as NotesGraphMessage)
-      : undefined;
-  }
-  if (
-    value.type === 'selectNode' &&
-    typeof value.nodeId === 'string' &&
-    value.nodeId.length > 0
-  ) {
-    return { type: 'selectNode', nodeId: value.nodeId };
-  }
-  if (value.type === 'clearSelection') {
-    return { type: 'clearSelection' };
-  }
-  if (
-    value.type === 'setGraphScope' &&
-    typeof value.local === 'boolean' &&
-    typeof value.depth === 'number' &&
-    Number.isInteger(value.depth) &&
-    value.depth >= 1 &&
-    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH &&
-    (value.skipPeriodic === undefined || typeof value.skipPeriodic === 'boolean')
-  ) {
-    return {
-      type: 'setGraphScope',
-      local: value.local,
-      depth: value.depth,
-      ...(typeof value.skipPeriodic === 'boolean'
-        ? { skipPeriodic: value.skipPeriodic }
-        : {}),
-    };
-  }
-  if (
-    value.type === 'openTag' &&
-    typeof value.tagKey === 'string' &&
-    value.tagKey.length > 0
-  ) {
-    return { type: 'openTag', tagKey: value.tagKey };
-  }
-  if (
-    value.type === 'setGraphFilter' &&
-    typeof value.showNotes === 'boolean' &&
-    typeof value.showTasks === 'boolean'
-  ) {
-    return {
-      type: 'setGraphFilter',
-      showNotes: value.showNotes,
-      showTasks: value.showTasks,
-    };
-  }
-  return undefined;
 }
 
 /**

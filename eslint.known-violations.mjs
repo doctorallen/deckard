@@ -170,7 +170,6 @@ export default {
     "src/ui/webview/messages.ts": [
       "parseCalendarMessage",
       "parseDashboardMessage",
-      "parseNotesGraphMessage",
       "parseSearchPageMessage",
       "parseSidebarMessage",
       "parseTaskBoardMessage"
