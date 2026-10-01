@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { QuickFind } from '../ui/commands/quickFind';
@@ -24,7 +24,7 @@ suite('Find while indexing', () => {
       getSnapshot: () => buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas plan\nBody.')]])),
       searchEntries: () => ({ matches: [], partial: false }),
     };
-    const store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const opened: string[] = [];
     const find = new QuickFind({
       indexer: indexer as never,
@@ -58,7 +58,7 @@ suite('Find while indexing', () => {
       assert.ok(picker.items.every((item) => !item.indexing), 'the results take the line\'s place');
     } finally {
       find.dispose();
-      store.dispose();
+      store.repository.dispose();
       progress.dispose();
     }
   });

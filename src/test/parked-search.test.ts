@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { SearchStore } from '../core/storage/searchStore';
 import { PersistedPreferences } from '../core/types';
 import { formatCapture } from '../ui/commands/capture';
@@ -15,13 +15,13 @@ import { openWebviewPage } from './webviewPage';
 import { createQueryContext } from '../domain/query/queryContext';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 

@@ -8,7 +8,7 @@ const { mountWebview, createGlobalState } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { SidebarNotesView } = modules.sidebarNotes;
 const { ActiveSearch } = modules.activeSearch;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
@@ -45,7 +45,7 @@ async function openSidebar(noteCount, options) {
     document: { uri: vscode.Uri.file('notes/note-000.md'), languageId: 'markdown' },
     selection: { active: { line: 0 } },
   };
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   const sidebarView = new SidebarNotesView({
     indexer,
     preferences,
@@ -105,7 +105,7 @@ async function openForEditor() {
   vscode.window.activeTextEditor = editor;
   const sidebarView = new SidebarNotesView({
     indexer,
-    preferences: new PreferencesStore(createGlobalState()),
+    preferences: createPreferences(createGlobalState()),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
@@ -257,7 +257,7 @@ async function openLinked() {
   };
   const sidebarView = new SidebarNotesView({
     indexer,
-    preferences: new PreferencesStore(createGlobalState()),
+    preferences: createPreferences(createGlobalState()),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
@@ -341,7 +341,7 @@ test('a note with no tags lists entries worded like it, through the real host', 
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/today.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
   const sidebarView = new SidebarNotesView({
     indexer,
-    preferences: new PreferencesStore(createGlobalState()),
+    preferences: createPreferences(createGlobalState()),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',
@@ -375,7 +375,7 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   const sidebarView = new SidebarNotesView({
     indexer,
     preferences,
@@ -398,14 +398,14 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
     assert.strictEqual(view.findAll('.link-group').length, 2);
     view.click(choice('hide'));
     await settle();
-    assert.strictEqual(preferences.value.hideDailyNotes, true);
+    assert.strictEqual(preferences.reader.value.hideDailyNotes, true);
     assert.strictEqual(choice('hide').getAttribute('aria-pressed'), 'true');
     assert.deepStrictEqual(view.findAll('.link-group-open').map((button) => button.textContent), ['budget']);
     assert.deepStrictEqual(view.findAll('.note-list [data-file-path]').map((card) => card.getAttribute('data-file-path')), ['notes/budget.md']);
     assert.ok(view.find('.links-hiding').textContent.startsWith('Hiding 1 daily note.'));
     view.click(view.find('[data-action="show-daily-notes"]'));
     await settle();
-    assert.strictEqual(preferences.value.hideDailyNotes, undefined);
+    assert.strictEqual(preferences.reader.value.hideDailyNotes, undefined);
     assert.strictEqual(view.findAll('.link-group').length, 2);
   } finally {
     sidebarView.dispose();

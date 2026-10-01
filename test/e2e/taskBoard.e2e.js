@@ -8,7 +8,7 @@ const vscode = require('vscode');
 const { mountWebview } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { TaskBoardPanel } = modules.taskBoard;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 const { ActiveSearch } = modules.activeSearch;
 const { DashboardPanel } = modules.dashboard;
 const { ThemePreview } = modules.themePreview;
@@ -65,7 +65,7 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
   vscode._test.configurationUpdates.length = 0;
   const updates = new vscode.EventEmitter();
   const index = makeIndex();
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   await prepare(preferences);
   const activeSearch = new ActiveSearch();
   const board = new TaskBoardPanel({
@@ -122,7 +122,7 @@ test('searches tasks with the search box every search page uses', async () => {
   assert.strictEqual(view.find('[data-action="query-input"]').value, '', 'the search is a chip now');
   // The count names tasks alone, since the board finds nothing else.
   assert.strictEqual(view.find('.query-facets-count').textContent, '2 tasks');
-  assert.deepStrictEqual(preferences.value.recentQueries, ['is:open AND tag = #project/atlas']);
+  assert.deepStrictEqual(preferences.reader.value.recentQueries, ['is:open AND tag = #project/atlas']);
   assert.strictEqual(
     view.state.query,
     'is:open AND tag = #project/atlas',
@@ -224,7 +224,7 @@ test('a card\'s menu has a Note group with Move to…, which asks the host', asy
 
 test('a list row and a table row have the card\'s menu, which checks where the task is', async () => {
   const { view, panel } = await openBoard(async (store) => {
-    await store.setTaskBoardLayout('list');
+    await store.taskLayout.setTaskBoardLayout('list');
   });
   const row = view.find('.task-list .task-row[data-task-id="audit"]');
   assert.ok(row, 'the board opened as a list');
@@ -339,15 +339,15 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   view.click(save());
   await delay(10);
   vscode._test.setInputBoxResponse(undefined);
-  const [saved] = preferences.value.savedFilters;
+  const [saved] = preferences.reader.value.savedFilters;
   assert.deepStrictEqual(
     { name: saved.name, query: saved.query, page: saved.page },
     { name: 'Atlas board', query: '#project/atlas is:open', page: 'taskBoard' },
   );
   assert.ok(vscode._test.shown.info.includes('Saved the search "Atlas board".'));
   // Show Results on Home adds its widget and opens Home on Home.
-  assert.ok(preferences.value.dashboardWidgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === saved.id));
-  assert.strictEqual(preferences.value.dashboardViewState.mode, 'home');
+  assert.ok(preferences.reader.value.dashboardWidgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === saved.id));
+  assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'home');
   assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.showDashboard'));
 
   // The Dashboard reopens it on the board, not on a search page.
@@ -471,7 +471,7 @@ test('the gear switches between columns and a list, and stays open', async () =>
 
   view.click(view.find('[data-action="set-task-layout"][data-value="list"]'));
   await delay(10);
-  assert.strictEqual(preferences.value.taskBoardLayout, 'list');
+  assert.strictEqual(preferences.reader.value.taskBoardLayout, 'list');
   assert.strictEqual(view.find('.view-options').open, true, 'the menu stays open for another choice');
   view.find('.view-options').setAttribute('open', '');
   assert.strictEqual(view.find('.task-board'), null);
@@ -497,7 +497,7 @@ test('the gear switches between columns and a list, and stays open', async () =>
 
   view.change(view.find('[data-action="set-task-sort"]'), 'created');
   await delay(10);
-  assert.strictEqual(preferences.value.taskSortMode, 'created');
+  assert.strictEqual(preferences.reader.value.taskSortMode, 'created');
   assert.strictEqual(view.find('.task-list .task-row.is-draggable'), null, 'a date sort is not dragged');
 
   // A click outside the menu closes it.
@@ -515,7 +515,7 @@ test('the gear turns the board into a table, whose headers sort and whose column
   view.find('.view-options').setAttribute('open', '');
   view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
   await delay(10);
-  assert.strictEqual(preferences.value.taskBoardLayout, 'table');
+  assert.strictEqual(preferences.reader.value.taskBoardLayout, 'table');
   assert.ok(view.find('.result-table'), 'the tasks are a table now');
   assert.deepStrictEqual(
     view.findAll('.result-table .result-row').map((row) => row.dataset.taskId).sort(),
@@ -529,14 +529,14 @@ test('the gear turns the board into a table, whose headers sort and whose column
 
   view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
   await delay(10);
-  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'asc' });
+  assert.deepStrictEqual(preferences.reader.value.taskTableSort, { column: 'due', direction: 'asc' });
   view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
   await delay(10);
-  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'desc' }, 'the same header again turns it round');
+  assert.deepStrictEqual(preferences.reader.value.taskTableSort, { column: 'due', direction: 'desc' }, 'the same header again turns it round');
   assert.ok(view.find('th.is-sorted'), 'the sorted column is marked');
   view.click(view.findAll('[data-action="set-table-sort"]').find((button) => !button.dataset.value));
   await delay(10);
-  assert.strictEqual(preferences.value.taskTableSort, undefined, 'Rank order clears it');
+  assert.strictEqual(preferences.reader.value.taskTableSort, undefined, 'Rank order clears it');
 
   view.find('.view-options').setAttribute('open', '');
   const title = view.find('[data-action="toggle-table-column"][data-value="title"]');
@@ -546,7 +546,7 @@ test('the gear turns the board into a table, whose headers sort and whose column
   view.change(status);
   await delay(10);
   assert.deepStrictEqual(
-    preferences.value.taskTableColumns,
+    preferences.reader.value.taskTableColumns,
     ['title', 'due', 'priority', 'assignee', 'status', 'note'],
     'a column joins in the order the picker lists it',
   );

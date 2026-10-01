@@ -7,7 +7,7 @@ const { mountWebview, createGlobalState } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { SearchPanels } = modules.searchPage;
 const { ActiveSearch } = modules.activeSearch;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 const { SidebarNotesView } = modules.sidebarNotes;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
@@ -55,7 +55,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
   vscode._test.createdPanels.length = 0;
   vscode.window.activeTextEditor = undefined;
   const indexer = createIndexer(index);
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   const activeSearch = new ActiveSearch();
   const panels = new SearchPanels({
     indexer,

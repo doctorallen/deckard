@@ -5,9 +5,8 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { PreferencesStore } from '../core/storage/preferences';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
-import { DashboardNavigation, DashboardPanel } from '../ui/webview/dashboard';
+import { DashboardNavigation, DashboardPanel, DashboardPreferences } from '../ui/webview/dashboard';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { createTaskWrites } from './taskWrites';
 
@@ -92,10 +91,12 @@ suite('Dashboard navigation', () => {
       ['notes/metadata-only.md', '---\nprojects: [neon-relay]\n---\nA project note.'],
     ]);
     const preferences = {
-      onDidChange: () => ({ dispose: () => undefined }),
-      onDidRecordVisit: () => ({ dispose: () => undefined }),
-      value: defaultPreferences,
-    } as unknown as PreferencesStore;
+      reader: {
+        onDidChange: () => ({ dispose: () => undefined }),
+        onDidRecordVisit: () => ({ dispose: () => undefined }),
+        value: defaultPreferences,
+      },
+    } as unknown as DashboardPreferences;
     const navigation = createNavigation();
     const dashboard = new DashboardPanel({
       indexer: index,
@@ -122,20 +123,22 @@ suite('Dashboard navigation', () => {
       ['notes/filter.md', '# Atlas #project/atlas #follow-up #urgent'],
     ]);
     const preferences = {
-      onDidChange: () => ({ dispose: () => undefined }),
-      onDidRecordVisit: () => ({ dispose: () => undefined }),
-      value: {
-        ...defaultPreferences,
-        savedFilters: [
-          {
-            id: 'atlas-follow-up',
-            name: 'Atlas follow-up',
-            tagKeys: ['#follow-up', '#project/atlas', '#urgent', '#gone'],
-          },
-          { id: 'open-atlas', name: 'Open Atlas', tagKeys: [], query: '#project/atlas is:open' },
-        ],
+      reader: {
+        onDidChange: () => ({ dispose: () => undefined }),
+        onDidRecordVisit: () => ({ dispose: () => undefined }),
+        value: {
+          ...defaultPreferences,
+          savedFilters: [
+            {
+              id: 'atlas-follow-up',
+              name: 'Atlas follow-up',
+              tagKeys: ['#follow-up', '#project/atlas', '#urgent', '#gone'],
+            },
+            { id: 'open-atlas', name: 'Open Atlas', tagKeys: [], query: '#project/atlas is:open' },
+          ],
+        },
       },
-    } as unknown as PreferencesStore;
+    } as unknown as DashboardPreferences;
     const navigation = createNavigation();
     const dashboard = new DashboardPanel({
       indexer: index,
@@ -164,22 +167,28 @@ suite('Dashboard navigation', () => {
   test('sends Home\'s links to search pages, the Task Board, and back to itself', async () => {
     const calls: string[] = [];
     const preferences = {
-      onDidChange: () => ({ dispose: () => undefined }),
-      onDidRecordVisit: () => ({ dispose: () => undefined }),
-      value: {
-        ...defaultPreferences,
-        savedFilters: [{ id: 'kept', name: 'Kept', tagKeys: [], query: 'is:open' }],
+      reader: {
+        onDidChange: () => ({ dispose: () => undefined }),
+        onDidRecordVisit: () => ({ dispose: () => undefined }),
+        value: {
+          ...defaultPreferences,
+          savedFilters: [{ id: 'kept', name: 'Kept', tagKeys: [], query: 'is:open' }],
+        },
       },
-      recordRecentQuery: async (query: string) => {
-        calls.push(`recent ${query}`);
+      savedSearches: {
+        recordRecentQuery: async (query: string) => {
+          calls.push(`recent ${query}`);
+        },
       },
-      setDashboardWidgets: async (widgets: Array<{ id: string }>) => {
-        calls.push(`widgets ${widgets.map((widget) => widget.id).join(',')}`);
+      homeWidgets: {
+        setDashboardWidgets: async (widgets: Array<{ id: string }>) => {
+          calls.push(`widgets ${widgets.map((widget) => widget.id).join(',')}`);
+        },
+        resetDashboardWidgets: async () => {
+          calls.push('reset');
+        },
       },
-      resetDashboardWidgets: async () => {
-        calls.push('reset');
-      },
-    } as unknown as PreferencesStore;
+    } as unknown as DashboardPreferences;
     const navigation = createNavigation();
     const dashboard = new DashboardPanel({
       indexer: createIndexer(),
@@ -228,13 +237,17 @@ suite('Dashboard navigation', () => {
   test('persists the Tags tab\'s grid columns', async () => {
     const columnUpdates: Array<{ section: string; columns: number }> = [];
     const preferences = {
-      onDidChange: () => ({ dispose: () => undefined }),
-      onDidRecordVisit: () => ({ dispose: () => undefined }),
-      value: defaultPreferences,
-      setDashboardColumns: async (section: string, columns: number) => {
-        columnUpdates.push({ section, columns });
+      reader: {
+        onDidChange: () => ({ dispose: () => undefined }),
+        onDidRecordVisit: () => ({ dispose: () => undefined }),
+        value: defaultPreferences,
       },
-    } as unknown as PreferencesStore;
+      display: {
+        setDashboardColumns: async (section: string, columns: number) => {
+          columnUpdates.push({ section, columns });
+        },
+      },
+    } as unknown as DashboardPreferences;
     const dashboard = new DashboardPanel({
       indexer: createIndexer(),
       preferences,

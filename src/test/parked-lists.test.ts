@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { DashboardWidgetConfig, PersistedPreferences } from '../core/types';
 import { planRollover } from '../ui/commands/rollover';
 import { selectAgendaTasks } from '../ui/state/agendaState';
@@ -19,13 +19,13 @@ const now = new Date(2026, 8, 16, 12).getTime();
 const old = new Date(2026, 5, 1).getTime();
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 

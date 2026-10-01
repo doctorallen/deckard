@@ -15,7 +15,7 @@ const { formatLocalDate } = modules.dailyNote;
 const { ActiveCalendar } = modules.activeCalendar;
 const { ActiveSearch } = modules.activeSearch;
 const { SidebarNotesView } = modules.sidebarNotes;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
 const { ThemePreview } = modules.themePreview;
 
@@ -155,7 +155,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   const activeCalendar = new ActiveCalendar();
   const sidebar = new SidebarNotesView({
     indexer,
-    preferences: new PreferencesStore(globalState),
+    preferences: createPreferences(globalState),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
     extensionVersion: '0.0.0-test',

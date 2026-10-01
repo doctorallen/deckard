@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { DashboardSnapshot, PersistedPreferences } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
@@ -19,12 +19,12 @@ import { createQueryContext } from '../domain/query/queryContext';
  */
 suite('Dashboard behavior', () => {
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
@@ -73,8 +73,8 @@ suite('Dashboard behavior', () => {
         ]),
       ),
     );
-    store = new PreferencesStore(new MemoryMemento());
-    const preferences = { ...store.value, ...changes };
+    store = createPreferences(new MemoryMemento());
+    const preferences = { ...store.reader.value, ...changes };
     const snapshot: DashboardSnapshot = {
       ...createDashboardSnapshot(index, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
       ...(preferences.dashboardViewState.mode === 'home'
@@ -311,8 +311,8 @@ suite('Dashboard behavior', () => {
       notes[`notes/n${file}.md`] = Array.from({ length: 50 }, (_, tag) => `## E${tag} #t${file}-${tag} #shared`).join('\n');
     }
     const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
-    store = new PreferencesStore(new MemoryMemento());
-    const size = JSON.stringify(createDashboardSnapshot(index, store.value, undefined, undefined, { queryContext: createQueryContext(Date.now()) })).length;
+    store = createPreferences(new MemoryMemento());
+    const size = JSON.stringify(createDashboardSnapshot(index, store.reader.value, undefined, undefined, { queryContext: createQueryContext(Date.now()) })).length;
     assert.ok(index.tags.size >= 2000, `${index.tags.size} tags`);
     assert.ok(size < 300 * 1024, `${Math.round(size / 1024)} KB`);
   });

@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
@@ -61,7 +61,7 @@ suite('Adding a suggested tag', () => {
     const history = new WorkspaceWriteHistory();
     const view = new SidebarNotesView({
       indexer: indexer as never,
-      preferences: new PreferencesStore(new MemoryMemento() as never),
+      preferences: createPreferences(new MemoryMemento() as never),
       activeSearch: new ActiveSearch(),
       onOpenTag: () => undefined,
       extensionVersion: 'test',

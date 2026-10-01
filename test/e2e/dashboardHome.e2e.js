@@ -9,7 +9,7 @@ const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { DashboardPanel } = modules.dashboard;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
 const { ThemePreview } = modules.themePreview;
@@ -60,7 +60,7 @@ async function openDashboard(
     onDidUpdate: updates.event,
     ...indexerExtras,
   };
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   await prepare(preferences);
   const navigation = createNavigation();
   const dashboard = new DashboardPanel({
@@ -143,7 +143,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     const index = createIndex();
     const dashboard = new DashboardPanel({
       indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
-      preferences: new PreferencesStore(globalState),
+      preferences: createPreferences(globalState),
       extensionUri: { fsPath: '/ext' },
       navigation: createNavigation(),
       writes: modules.taskWrites.createTaskWrites(),
@@ -244,7 +244,7 @@ test('a hidden Dashboard skips updates and catches up when shown', async () => {
 
 test('only Home is sent its widgets', async () => {
   const { view, lastState } = await openDashboard(createIndex(), (preferences) =>
-    preferences.setDashboardMode('browse'),
+    preferences.homeWidgets.setDashboardMode('browse'),
   );
   assert.strictEqual(lastState().data.widgets, undefined, 'the Tags tab is sent no widgets');
   assert.ok(lastState().data.widgetConfig.length > 0, 'but it knows how Home is arranged');
@@ -269,7 +269,7 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
   view.keydown(bar, 'Enter');
   await delay(20);
   assert.deepStrictEqual(navigation.opened, ['search #project/atlas is:open']);
-  assert.deepStrictEqual(preferences.value.recentQueries, ['#project/atlas is:open']);
+  assert.deepStrictEqual(preferences.reader.value.recentQueries, ['#project/atlas is:open']);
   assert.strictEqual(
     view.find('.home-widget[data-widget-id="search"] [data-action="query-input"]').value,
     '',
@@ -284,22 +284,22 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
 
 test('a saved search offers to show its results on Home, once', async () => {
   const { view, preferences } = await openDashboard(createIndex(), async (store) => {
-    await store.saveSavedQueryFilter('Open work', 'is:open');
+    await store.savedSearches.saveSavedQueryFilter('Open work', 'is:open');
   });
-  const savedId = preferences.value.savedFilters[0].id;
+  const savedId = preferences.reader.value.savedFilters[0].id;
   const show = () => view.find(`[data-action="add-saved-search-widget"][data-saved-filter-id="${savedId}"]`);
   assert.ok(show(), 'its row offers Show results');
   assert.strictEqual(show().getAttribute('aria-label'), 'Show the results of Open work on Home');
   view.click(show());
   await delay(20);
-  const widgets = preferences.value.dashboardWidgets.filter((widget) => widget.kind === 'savedQuery');
+  const widgets = preferences.reader.value.dashboardWidgets.filter((widget) => widget.kind === 'savedQuery');
   assert.deepStrictEqual(widgets.map((widget) => [widget.filterId, widget.width, widget.count]), [[savedId, 'half', 5]]);
   assert.strictEqual(show(), null, 'and no longer offers it');
 });
 
 test('customizing Home removes, resizes, adds, reorders, and resets widgets', async () => {
   const { view, preferences, lastState } = await openDashboard(createIndex(), async (store) => {
-    await store.saveSavedQueryFilter('Open work', 'is:open');
+    await store.savedSearches.saveSavedQueryFilter('Open work', 'is:open');
   });
   const ids = () => view.findAll('.home-widget').map((widget) => widget.dataset.widgetId);
   const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
@@ -321,7 +321,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.click(widget('tasks').querySelector('[data-action="set-widget-width"][data-value="full"]'));
   await delay(20);
   assert.ok(widget('tasks').classList.contains('is-full'));
-  const tasksConfig = () => preferences.value.dashboardWidgets.find((entry) => entry.id === 'tasks');
+  const tasksConfig = () => preferences.reader.value.dashboardWidgets.find((entry) => entry.id === 'tasks');
   assert.strictEqual(tasksConfig().width, 'full');
 
   view.click(widget('tasks').querySelector('[data-action="set-widget-count"][data-value="10"]'));
@@ -333,7 +333,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   assert.ok(offered.includes('agenda'), 'a removed widget can be added again');
   assert.ok(!offered.includes('search'), 'a widget Home holds once is not offered twice');
   assert.ok(offered.includes('tasks'), 'a tasks widget can be added again');
-  const savedId = preferences.value.savedFilters[0].id;
+  const savedId = preferences.reader.value.savedFilters[0].id;
   assert.ok(offered.includes(`savedQuery:${savedId}`), 'each saved search is offered');
   view.change(add, `savedQuery:${savedId}`);
   await delay(20);
@@ -428,7 +428,7 @@ test('Gone quiet chooses its namespace, and a project with nothing open offers a
   ];
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const { view, preferences } = await openDashboard(index, async (store) => {
-    await store.setDashboardWidgets([
+    await store.homeWidgets.setDashboardWidgets([
       { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 30, namespace: 'project', noOpenTasks: true },
     ]);
   });
@@ -446,7 +446,7 @@ test('Gone quiet chooses its namespace, and a project with nothing open offers a
   assert.ok(view.find('.home-widget[data-widget-id="q"] [data-action="set-widget-no-open-tasks"]'));
   view.change(select, 'person');
   await delay(20);
-  assert.strictEqual(preferences.value.dashboardWidgets[0].namespace, undefined, 'person is the default');
+  assert.strictEqual(preferences.reader.value.dashboardWidgets[0].namespace, undefined, 'person is the default');
 });
 
 test('a tasks widget runs the search set in its options', async () => {
@@ -459,7 +459,7 @@ test('a tasks widget runs the search set in its options', async () => {
   view.submit(view.find('.home-widget[data-widget-id="tasks"] [data-form="widget-query"]'));
   await delay(20);
   assert.strictEqual(
-    preferences.value.dashboardWidgets.find((widget) => widget.id === 'tasks').query,
+    preferences.reader.value.dashboardWidgets.find((widget) => widget.id === 'tasks').query,
     'text ~ audit',
   );
   assert.deepStrictEqual(
@@ -558,8 +558,8 @@ test('a tag search kept from an earlier visit says so above the tags', async () 
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
   const { view } = await openDashboard(index, async (preferences) => {
-    await preferences.setDashboardSearch('tags', 'proj');
-    await preferences.setDashboardMode('browse');
+    await preferences.homeWidgets.setDashboardSearch('tags', 'proj');
+    await preferences.homeWidgets.setDashboardMode('browse');
   });
 
   const notice = view.find('#browse-panel .search-notice');
@@ -589,8 +589,8 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
   const { view } = await openDashboard(index, async (preferences) => {
-    await preferences.setDashboardMode('browse');
-    await preferences.setTagSortMode('custom');
+    await preferences.homeWidgets.setDashboardMode('browse');
+    await preferences.display.setTagSortMode('custom');
   });
   const row = (key) => view.find(`.tag-row[data-tag-key="${key}"]`);
   const sent = (type) => view.posted.filter((message) => message.type === type);
@@ -650,7 +650,7 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
     const { view, navigation, preferences } = await openDashboard(
       createNotesIndex(),
       async (store) => {
-        await store.setDashboardWidgets([
+        await store.homeWidgets.setDashboardWidgets([
           { id: 'today', kind: 'todayNote', width: 'half' },
           { id: 'add', kind: 'quickAdd', width: 'full' },
           { id: 'related', kind: 'relatedNotes', width: 'half' },
@@ -660,7 +660,7 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
           { id: 'stale', kind: 'staleTasks', width: 'half' },
         ]);
         // Pinning happens where the note is, so Home is opened with one.
-        await store.pinNote({ filePath: 'notes/current.md' });
+        await store.pins.pinNote({ filePath: 'notes/current.md' });
       },
       {
         isNotesFile: () => true,
@@ -718,14 +718,14 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
     assert.strictEqual(pin.dataset.filePath, 'notes/current.md');
     view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
     await delay(20);
-    assert.deepStrictEqual(preferences.value.pinnedNotes, []);
+    assert.deepStrictEqual(preferences.reader.value.pinnedNotes, []);
 
     // A look-back widget chooses its days in its options.
     view.click(view.find('[data-action="customize-home"]'));
     view.click(widget('stale').querySelector('[data-action="set-widget-days"][data-value="7"]'));
     await delay(20);
     assert.strictEqual(
-      preferences.value.dashboardWidgets.find((entry) => entry.id === 'stale').days,
+      preferences.reader.value.dashboardWidgets.find((entry) => entry.id === 'stale').days,
       7,
     );
   } finally {

@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { PersistedPreferences } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseQueryBlockInfo } from '../ui/state/queryBlockState';
@@ -33,10 +33,10 @@ import { createQueryContext } from '../domain/query/queryContext';
  */
 suite('Task title parity', () => {
   const pages: WebviewPage[] = [];
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
   teardown(() => {
     pages.splice(0).forEach((page) => page.dispose());
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
@@ -69,8 +69,8 @@ suite('Task title parity', () => {
   };
 
   const preferences = (changes: Partial<PersistedPreferences> = {}): PersistedPreferences => {
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    return { ...store.value, ...changes };
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    return { ...store.reader.value, ...changes };
   };
 
   test('the Task Board, as a board, a list, and a table', () => {

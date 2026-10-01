@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
@@ -34,21 +34,21 @@ suite('Component primitives', () => {
     [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n');
 
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
   const NOW = Date.parse('2026-09-21T12:00:00Z');
   const openBoard = (markdown = '# Atlas #project/atlas\n- [ ] Send the proposal #project/atlas 📅 2026-09-21\n'): WebviewPage => {
     const index = buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', markdown)]]));
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard(
       index,
-      { ...store.value, taskBoardLayout: 'board' },
+      { ...store.reader.value, taskBoardLayout: 'board' },
       { query: '' },
       { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
       'inline',
@@ -61,8 +61,8 @@ suite('Component primitives', () => {
     const index = buildWorkspaceIndex(new Map([
       ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #topic/replicants\nThe lift is stuck.\n- [ ] Chase it #project/atlas\n')],
     ]));
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const snapshot = createSearchPageSnapshot(index, store.value, query, { queryContext: createQueryContext(Date.now()) });
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, query, { queryContext: createQueryContext(Date.now()) });
     page = openWebviewPage(getSearchPageHtml(webview), { ...snapshot, ...extra });
     return page;
   };
@@ -219,7 +219,7 @@ suite('Component primitives', () => {
       assert.ok(search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), 'true');
       const index = buildWorkspaceIndex(new Map([['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas\nThe lift is stuck.\n')]]));
-      search.send(createSearchPageSnapshot(index, store!.value, '#project/atlas AND lift', { queryContext: createQueryContext(Date.now()) }));
+      search.send(createSearchPageSnapshot(index, store!.reader.value, '#project/atlas AND lift', { queryContext: createQueryContext(Date.now()) }));
       await Promise.resolve();
       assert.ok(!search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), null);

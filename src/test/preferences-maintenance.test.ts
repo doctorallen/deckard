@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import type { PruneIndex } from '../core/storage/preferencesMaintenance';
 
 class MemoryStore {
@@ -30,16 +30,16 @@ function indexOf(keys: { [K in keyof PruneIndex]?: string[] }): PruneIndex {
 }
 
 /** A store with a little of everything pruning looks at. */
-async function seeded(memory = new MemoryStore()): Promise<PreferencesStore> {
-  const store = new PreferencesStore(memory);
-  await store.recordTagAccess('#kept', 10);
-  await store.recordTagAccess('#gone', 20);
-  await store.recordEntityAccess('#person/ren');
-  await store.recordSectionAccess('section-a1-b2', 30);
-  await store.setTaskOrder(['task-c3-d4', 'task-gone-e5']);
-  await store.recordFindChoice('kept', 'note:["a.md","A",0]', 40);
-  await store.recordFindChoice('gone', 'note:["gone.md","G",0]', 50);
-  await store.toggleFavorite('#gone');
+async function seeded(memory = new MemoryStore()): Promise<TestPreferences> {
+  const store = createPreferences(memory);
+  await store.usage.recordTagAccess('#kept', 10);
+  await store.usage.recordTagAccess('#gone', 20);
+  await store.usage.recordEntityAccess('#person/ren');
+  await store.usage.recordSectionAccess('section-a1-b2', 30);
+  await store.taskLayout.setTaskOrder(['task-c3-d4', 'task-gone-e5']);
+  await store.usage.recordFindChoice('kept', 'note:["a.md","A",0]', 40);
+  await store.usage.recordFindChoice('gone', 'note:["gone.md","G",0]', 50);
+  await store.favorites.toggleFavorite('#gone');
   return store;
 }
 
@@ -49,32 +49,41 @@ suite('Preferences maintenance', () => {
     const byIndex = await seeded();
     const byKeys = await seeded();
     await byIndex.maintenance.prune(index, 60);
-    await byKeys.prune(index.tags.keys(), index.tasks.keys(), index.sections.keys(), index.entities.keys(), index.files.keys(), 60);
-    assert.deepStrictEqual(byIndex.value, byKeys.value);
-    assert.deepStrictEqual(byIndex.value.tagAccessCounts, { '#kept': 1 });
-    assert.deepStrictEqual(byIndex.value.taskOrder, ['task-c3-d4']);
-    assert.deepStrictEqual(byIndex.value.sectionAccessCounts, {});
-    assert.deepStrictEqual(byIndex.value.entityAccessCounts, {});
-    assert.deepStrictEqual(byIndex.value.findChoices?.map((choice) => choice.input), ['kept']);
-    assert.deepStrictEqual(byIndex.value.favoriteTags, ['#gone'], 'a favorite is a choice, not derived');
+    await byKeys.maintenance.pruneKeys(
+      {
+        tags: index.tags.keys(),
+        tasks: index.tasks.keys(),
+        sections: index.sections.keys(),
+        entities: index.entities.keys(),
+        files: index.files.keys(),
+      },
+      60,
+    );
+    assert.deepStrictEqual(byIndex.reader.value, byKeys.reader.value);
+    assert.deepStrictEqual(byIndex.reader.value.tagAccessCounts, { '#kept': 1 });
+    assert.deepStrictEqual(byIndex.reader.value.taskOrder, ['task-c3-d4']);
+    assert.deepStrictEqual(byIndex.reader.value.sectionAccessCounts, {});
+    assert.deepStrictEqual(byIndex.reader.value.entityAccessCounts, {});
+    assert.deepStrictEqual(byIndex.reader.value.findChoices?.map((choice) => choice.input), ['kept']);
+    assert.deepStrictEqual(byIndex.reader.value.favoriteTags, ['#gone'], 'a favorite is a choice, not derived');
   });
 
   test('an index holding nothing prunes nothing and writes nothing', async () => {
     const memory = new MemoryStore();
     const store = await seeded(memory);
     const writes = memory.writes;
-    const before = store.value;
+    const before = store.reader.value;
     await store.maintenance.prune(indexOf({}));
     assert.strictEqual(memory.writes, writes);
-    assert.deepStrictEqual(store.value, before);
+    assert.deepStrictEqual(store.reader.value, before);
   });
 
   test('keys left out of pruneKeys are not checked, and what is under them stays', async () => {
     const store = await seeded();
     await store.maintenance.pruneKeys({ tags: ['#kept'], tasks: [] }, 60);
-    assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-a1-b2': 1 });
-    assert.deepStrictEqual(store.value.entityAccessCounts, { '#person/ren': 1 });
-    assert.strictEqual(store.value.findChoices?.length, 2, 'a note choice stays when files are not checked');
-    assert.deepStrictEqual(store.value.taskOrder, []);
+    assert.deepStrictEqual(store.reader.value.sectionAccessCounts, { 'section-a1-b2': 1 });
+    assert.deepStrictEqual(store.reader.value.entityAccessCounts, { '#person/ren': 1 });
+    assert.strictEqual(store.reader.value.findChoices?.length, 2, 'a note choice stays when files are not checked');
+    assert.deepStrictEqual(store.reader.value.taskOrder, []);
   });
 });

@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createAgenda } from '../ui/state/agendaState';
@@ -42,13 +42,13 @@ const options: TaskBoardOptions = {
 };
 
 function preferencesWith(values: Partial<PersistedPreferences>): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 
