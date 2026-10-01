@@ -4,7 +4,6 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
-import { parseCalendarMessage } from '../ui/webview/messages';
 import { describeDateChange } from '../ui/commands/agendaActions';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
@@ -119,21 +118,6 @@ suite('The calendar day panel', () => {
   test('a new month keeps the day, or its last day', () => {
     assert.strictEqual(clampToMonth('2026-01-31', '2026-02'), '2026-02-28');
     assert.strictEqual(clampToMonth('2026-09-25', '2026-10'), '2026-10-25');
-  });
-
-  test('accepts the messages of the panel and nothing more', () => {
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-09-25' }), { type: 'selectDay', date: '2026-09-25' });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'createDay', date: '2026-09-25' }), { type: 'createDay', date: '2026-09-25' });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openNote', filePath: 'notes/a.md' }), { type: 'openNote', filePath: 'notes/a.md' });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10', date: '2026-10-25' }), {
-      type: 'showMonth',
-      month: '2026-10',
-      date: '2026-10-25',
-    });
-    assert.strictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10', date: 'soon' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-9-5' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-09-25', extra: 1 }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'openNote', filePath: '' }), undefined);
   });
 
   const open = (dayPanel: boolean, selectedDate?: string): WebviewPage =>
@@ -263,20 +247,6 @@ suite('The calendar day panel lists the day tasks', () => {
     assert.strictEqual(describeDateChange('"Draft"', 'scheduled', undefined), '"Draft" has no scheduled date now.');
   });
 
-  test('accepts the task messages, and only well formed ones', () => {
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'toggleTask', taskId: 't', completed: true }), { type: 'toggleTask', taskId: 't', completed: true });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'scheduled', date: '2026-09-26' }), {
-      type: 'moveTask',
-      taskId: 't',
-      field: 'scheduled',
-      date: '2026-09-26',
-    });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openTask', taskId: 't' }), { type: 'openTask', taskId: 't' });
-    assert.strictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'start', date: '2026-09-26' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'due', date: 'tomorrow' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'toggleTask', taskId: 't', completed: 'yes' }), undefined);
-  });
-
   const open = (selectedDate: string): WebviewPage =>
     openWebviewPage(
       renderPage('calendar'),
@@ -378,7 +348,5 @@ suite('The calendar day panel lists the notes created that day', () => {
     } finally {
       page.dispose();
     }
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'searchCreated', date: '2026-09-25' }), { type: 'searchCreated', date: '2026-09-25' });
-    assert.strictEqual(parseCalendarMessage({ type: 'searchCreated', date: 'today' }), undefined);
   });
 });

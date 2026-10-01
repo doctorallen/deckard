@@ -4,7 +4,16 @@ import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
 import { QueryContext } from '../../domain/query/queryContext';
 import { projectRepeats, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskMetadata';
-import { CalendarDayDetail, DashboardTask, Task, WorkspaceIndex } from '../../core/types';
+import {
+  CalendarDay,
+  CalendarDayDetail,
+  CalendarEntry,
+  CalendarSnapshot,
+  CalendarWeek,
+  DashboardTask,
+  Task,
+  WorkspaceIndex,
+} from '../../core/types';
 import { createDashboardTask } from './dashboardState';
 import {
   findPeriodicNoteNames,
@@ -17,99 +26,7 @@ import {
 /** How many tasks and headings a day's tooltip names. */
 const TOOLTIP_ITEMS = 5;
 
-/** One day in the calendar. */
-export interface CalendarDay {
-  /** YYYY-MM-DD. */
-  date: string;
-  /** The day of the month. */
-  day: number;
-  /** Whether the day is in the month shown, rather than a neighbor's. */
-  inMonth: boolean;
-  isToday: boolean;
-  /** The day's daily note, when it has one. */
-  notePath?: string;
-  /** Open tasks due that day. */
-  dueCount: number;
-  /** The first few of them by name, and the daily note's headings, for its tooltip. */
-  dueTitles?: string[];
-  headings?: string[];
-  /**
-   * Open tasks scheduled (⏳) that day. A task due and scheduled on the same
-   * day is counted once, as due.
-   */
-  scheduledCount: number;
-  scheduledTitles?: string[];
-  /**
-   * Repeating tasks whose rule lands on the day after their current date,
-   * with `deckard.calendar.showRepeats`: projected, not due.
-   */
-  repeatCount?: number;
-  repeatTitles?: string[];
-  /** The calendar page's day: every task on it, by name, most important first. */
-  entries?: CalendarEntry[];
-}
-
-/** One task on a day of the calendar page. */
-export interface CalendarEntry {
-  taskId: string;
-  title: string;
-  /** Due that day, scheduled that day, or a repeat's later date. */
-  kind: 'due' | 'scheduled' | 'repeat';
-  /** A due date past: overdue, or past `needsNewDateAfterDays`. */
-  tone?: 'overdue' | 'stale';
-}
-
-/** One row of the calendar: seven days, from the week's first day. */
-export interface CalendarWeek {
-  /** The week's note name, such as week-2026-09-13-2026-09-19. */
-  week: string;
-  /** Its first day, as YYYY-MM-DD, which the week's note is found from. */
-  date: string;
-  /** The week's note, when it has one. */
-  notePath?: string;
-  days: CalendarDay[];
-}
-
-export interface CalendarSnapshot {
-  /** The month shown, as YYYY-MM. */
-  month: string;
-  /** Such as "September 2026". */
-  title: string;
-  today: string;
-  previousMonth: string;
-  nextMonth: string;
-  /** Today's month, which the Today button returns to. */
-  currentMonth: string;
-  /** The month's note, when it has one. */
-  notePath?: string;
-  /** The weekday names across the top, from the week's first day. */
-  weekdays: string[];
-  /**
-   * Days before this one, YYYY-MM-DD, are past `needsNewDateAfterDays`: their
-   * due counts are drawn muted and say the tasks need a new date. Absent
-   * when the setting is 0.
-   */
-  needsNewDateBefore?: string;
-  weeks: CalendarWeek[];
-  /** Whether repeats are drawn, from `deckard.calendar.showRepeats`. */
-  showRepeats?: boolean;
-  /**
-   * Saturday and Sunday are left out of the grid, from
-   * `deckard.calendar.showWeekends`. The weeks still hold them, for their
-   * notes and for a step that lands on one.
-   */
-  hideWeekends?: boolean;
-  /** The page's chosen day is in the Related Notes sidebar, so the page draws no panel of its own. */
-  dayInSidebar?: boolean;
-  /** Whether the chosen day is shown below the month, from `deckard.calendar.dayPanel`. */
-  dayPanel?: boolean;
-  /** The day chosen, YYYY-MM-DD: today until another is. */
-  selectedDate?: string;
-  /** The chosen day, when the panel is on. */
-  selected?: CalendarDayDetail;
-}
-
-export type { CalendarDayDetail } from '../../core/types';
+export type { CalendarDay, CalendarDayDetail, CalendarEntry, CalendarSnapshot, CalendarWeek } from '../../core/types';
 
 /** How many of a day's tasks, and of its new notes, the panel lists at once. */
 const PANEL_NOTES = 5;
