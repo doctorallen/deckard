@@ -1,5 +1,3 @@
-import type * as vscode from 'vscode';
-
 import { register as assistant } from '../ui/commands/assistant/register';
 import { register as captureAndTemplates } from '../ui/commands/captureAndTemplates/register';
 import { register as notes } from '../ui/commands/notes/register';
@@ -11,20 +9,7 @@ import { register as setup } from '../ui/commands/setup/register';
 import { register as tagsAndLinks } from '../ui/commands/tagsAndLinks/register';
 import { register as tasks } from '../ui/commands/tasks/register';
 import { register as toggles } from '../ui/commands/toggles/register';
-import type { Services } from './services';
-
-/**
- * One feature's registrations: its commands, handed the services they use.
- * A feature registers; it builds nothing that outlives its commands, since
- * `createServices` has built that already.
- */
-export type Feature = (context: vscode.ExtensionContext, services: Services) => void | Promise<void>;
-
-/** A feature, named for the log when it fails. */
-export interface NamedFeature {
-  name: string;
-  register: Feature;
-}
+import type { NamedFeature } from './feature';
 
 /**
  * Every feature, in the order activation runs them: the order in which each

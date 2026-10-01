@@ -1,6 +1,7 @@
 import type * as vscode from 'vscode';
 
 import { createServices, startServices } from './composition/services';
+import { runFeatures } from './composition/feature';
 import { features } from './composition/features';
 import type { QueryBlocks } from './ui/preview/queryBlocks';
 
@@ -13,16 +14,19 @@ export interface DeckardExports {
 }
 
 /**
- * Creates the extension's service graph and registers every VS Code entrypoint.
+ * The composition root: builds the extension's service graph once, lets each
+ * feature register its commands against it, then starts the first index.
  *
  * Keeping services alive from one activation boundary lets panels, the sidebar,
  * decorations, and completion all observe the same index and preference store.
+ * Everything that is released on deactivation is on `context.subscriptions`,
+ * which VS Code disposes in the order it was pushed, so there is no
+ * `deactivate()`. activate() stays synchronous: every command is registered,
+ * and the exports returned, by the time VS Code counts Deckard active.
  */
 export function activate(context: vscode.ExtensionContext): DeckardExports {
   const services = createServices(context);
-  for (const feature of features) {
-    void feature.register(context, services);
-  }
+  runFeatures(features, context, services);
   startServices(services);
 
   return {
