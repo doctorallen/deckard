@@ -7,7 +7,8 @@
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { DeckardStatsSnapshot, OpenTagListMessage, StatsMessage, StatsUsedOnceTag } from '../../ui/protocol/stats';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
-import { post } from '../shared/vscode';
+import { rememberScroll, restoreScroll } from '../shared/scroll';
+import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { AttentionSection } from './attention';
 import { type DrawnStats, ROW_LISTS, type RowList, type StatsState } from './model';
 import { movePairFocus, settlePairFocus, TagPairsSection } from './tagPairs';
@@ -36,17 +37,45 @@ function StatsPage({ state }: { readonly state: DrawnStats }) {
   );
 }
 
+/**
+ * What the page keeps across a hide or a reload, since it is not kept
+ * running while hidden: the reader's three choices, and, from
+ * `rememberScroll`, where it was scrolled to.
+ */
+type Choices = Pick<StatsState, 'showAllOrphans' | 'showUsedOnce' | 'pairsAsTable'>;
+
+/** The choices kept from before, each off unless it was kept on. */
+function keptChoices(): Choices {
+  const kept = keptState();
+  return {
+    showAllOrphans: kept.showAllOrphans === true,
+    showUsedOnce: kept.showUsedOnce === true,
+    pairsAsTable: kept.pairsAsTable === true,
+  };
+}
+
+let scrolled = false;
 const store = startPage<StatsState>({
-  initial: {
-    snapshot: readEmbeddedState<DeckardStatsSnapshot>(),
-    showAllOrphans: false,
-    showUsedOnce: false,
-    pairsAsTable: false,
-  },
+  initial: { snapshot: readEmbeddedState<DeckardStatsSnapshot>(), ...keptChoices() },
   ready: (state) => state.snapshot !== undefined,
   view: (state) => <StatsPage state={state as DrawnStats} />,
-  afterDraw: settlePairFocus,
+  afterDraw: () => {
+    settlePairFocus();
+    // The first page drawn goes back to where the reader left it.
+    if (scrolled) {
+      return;
+    }
+    scrolled = true;
+    restoreScroll(keptState());
+  },
 });
+
+/** Draws the page with a choice changed, and keeps the choices for the next time it is drawn. */
+function choose(change: Partial<Choices>): void {
+  store.update(change);
+  const { showAllOrphans, showUsedOnce, pairsAsTable } = store.state;
+  keepState({ showAllOrphans, showUsedOnce, pairsAsTable });
+}
 
 /** The snapshot the page shows, if it has one yet. */
 function shown(): DeckardStatsSnapshot | undefined {
@@ -145,8 +174,8 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   'open-search': (element) => send({ type: 'openSearch', query: element.dataset.query as string }),
   'open-tag-list': (element) => send({ type: 'openTagList', namespaced: element.dataset.namespaced === 'true' }),
   'open-pair': openPair,
-  'toggle-pairs-table': () => store.update({ pairsAsTable: !store.state.pairsAsTable }),
-  'toggle-used-once': () => store.update({ showUsedOnce: !store.state.showUsedOnce }),
+  'toggle-pairs-table': () => choose({ pairsAsTable: !store.state.pairsAsTable }),
+  'toggle-used-once': () => choose({ showUsedOnce: !store.state.showUsedOnce }),
   'open-tag-band': openBand,
   'open-used-once': onUsedOnce((tag, element) => send({
     type: 'openTag',
@@ -157,7 +186,7 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   'open-graph': () => send({ type: 'openNotesGraph', onlyWrittenLinks: true }),
   jump: jumpTo,
   'show-more-orphans': () => {
-    store.update({ showAllOrphans: true });
+    choose({ showAllOrphans: true });
     document.querySelector<HTMLElement>('.orphan-list .is-more .stat-row')?.focus();
   },
   reindex: () => send({ type: 'reindexWorkspace' }),
@@ -208,3 +237,4 @@ app.addEventListener('keydown', (event) => {
   openRow(row);
 });
 onHostMessage<StateMessage<DeckardStatsSnapshot>>('state', (message) => store.update({ snapshot: message.data }));
+rememberScroll(keptState, (value) => vscodeApi().setState(value));

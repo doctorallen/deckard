@@ -226,6 +226,57 @@ suite('Stats: what needs attention, first', () => {
   });
 });
 
+suite('Stats: what the reader chose, kept across a hide', () => {
+  const build = (notes: Record<string, string>) =>
+    buildWorkspaceIndex(new Map(Object.entries(notes).map(([filePath, text]) => [filePath, parseMarkdown(filePath, text)])));
+  const preferences = () =>
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
+  const notes: Record<string, string> = { 'notes/tags.md': '# A #once #design #vendor\n# B #design #vendor\n# C #design' };
+  for (let i = 0; i < 14; i += 1) {
+    notes[`notes/n${String(i).padStart(2, '0')}.md`] = `# Note ${i}`;
+  }
+  const snapshot = () => createDeckardStatsSnapshot(build(notes), preferences(), [], Date.now());
+
+  test('keeps whether the rest of the unlinked notes, the tags used once, and the table are shown, and where it was scrolled', async () => {
+    const page = openWebviewPage(renderPage('stats'), snapshot());
+    try {
+      assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
+      page.click('[data-action="toggle-used-once"]');
+      assert.deepStrictEqual(page.savedState(), { showAllOrphans: false, showUsedOnce: true, pairsAsTable: false });
+      page.click('[data-action="toggle-pairs-table"]');
+      page.click('[data-action="show-more-orphans"]');
+      assert.deepStrictEqual(page.savedState(), { showAllOrphans: true, showUsedOnce: true, pairsAsTable: true });
+      page.window.dispatchEvent(new page.window.Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepStrictEqual(page.savedState(), { showAllOrphans: true, showUsedOnce: true, pairsAsTable: true, scrollY: 0 });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('draws what was kept when VS Code loads it again, and reads anything else as nothing chosen', () => {
+    const kept = openWebviewPage(renderPage('stats'), snapshot(), {
+      savedState: { showAllOrphans: true, showUsedOnce: true, pairsAsTable: true, scrollY: 120 },
+    });
+    const stranger = openWebviewPage(renderPage('stats'), snapshot(), {
+      savedState: { showAllOrphans: 'yes', showUsedOnce: 1, pairsAsTable: null },
+    });
+    try {
+      assert.ok(kept.find('.orphan-list').classList.contains('show-all'));
+      assert.strictEqual(kept.findAll('[data-action="show-more-orphans"]').length, 0);
+      assert.strictEqual(kept.findAll('#used-once-list').length, 1);
+      assert.strictEqual(kept.find('[data-action="toggle-used-once"]').getAttribute('aria-expanded'), 'true');
+      assert.ok(kept.find('.tag-pairs').classList.contains('as-table'));
+      assert.ok(!stranger.find('.orphan-list').classList.contains('show-all'));
+      assert.strictEqual(stranger.findAll('#used-once-list').length, 0);
+      assert.ok(!stranger.find('.tag-pairs').classList.contains('as-table'));
+    } finally {
+      kept.dispose();
+      stranger.dispose();
+    }
+  });
+});
+
 suite('Stats: twelve weeks under each total', () => {
   const now = new Date(2026, 8, 21, 12).getTime();
   const DAY = 24 * 60 * 60 * 1000;

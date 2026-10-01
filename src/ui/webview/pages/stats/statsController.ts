@@ -36,7 +36,12 @@ export interface StatsControllerOptions {
  */
 export class StatsController implements PageController<DeckardStatsSnapshot, StatsPageToHost> {
   public readonly name = 'Stats';
-  public readonly options: PageOptions = { retainContextWhenHidden: true, enableFindWidget: true };
+  /**
+   * Not kept running while hidden: what the reader chose on the page and
+   * where it was scrolled are kept with `setState`, and a hidden page is
+   * drawn again from the last snapshot it was sent, which its HTML carries.
+   */
+  public readonly options: PageOptions = { retainContextWhenHidden: false, enableFindWidget: true, readsInertState: true };
   public readonly narrow = narrowStatsMessage;
   public readonly handlers: MessageHandlers<StatsPageToHost>;
 
@@ -69,9 +74,9 @@ export class StatsController implements PageController<DeckardStatsSnapshot, Sta
     };
   }
 
-  /** The Stats page's HTML. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getStatsHtml(webview, this.stats.extensionUri, theme);
+  /** The Stats page's HTML, carrying `state` for the page to draw at once when given one. */
+  public html(webview: vscode.Webview, theme: DeckardTheme, state?: DeckardStatsSnapshot): string {
+    return getStatsHtml(webview, this.stats.extensionUri, theme, state);
   }
 
   /** The totals, trends, and lists, drawn at this moment, which the trends end on. */

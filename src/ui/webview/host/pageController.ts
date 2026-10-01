@@ -89,6 +89,15 @@ export interface PageOptions {
   /** What the page's Content Security Policy grants beyond the default. */
   readonly csp?: ContentSecurityExtras;
   /**
+   * Whether the page draws a snapshot its HTML carries as inert JSON
+   * (decision 0005), which `html` is then handed. A page that does and is
+   * not kept running while hidden has its HTML set again with the last
+   * snapshot it was sent, when it is hidden, so VS Code reloads it showing
+   * that rather than its loading line (Q2 of docs/implementation/
+   * 20-webviews.md); the snapshot is the one kept, not built again.
+   */
+  readonly readsInertState?: boolean;
+  /**
    * Reads what VS Code kept for a panel across a reload, before the panel
    * is drawn again. The value is whatever the page last saved, so it is
    * checked here.
@@ -115,8 +124,11 @@ export interface PageController<TSnapshot, TPageToHost extends MessageMap<TPageT
    */
   readonly name: string;
   readonly options: PageOptions;
-  /** The page's HTML, for a webview, in a theme. */
-  html(webview: vscode.Webview, theme: DeckardTheme): string;
+  /**
+   * The page's HTML, for a webview, in a theme, carrying `state` as inert
+   * JSON when given one, which only a page that `readsInertState` is.
+   */
+  html(webview: vscode.Webview, theme: DeckardTheme, state?: TSnapshot): string;
   /** Everything the page draws, or undefined while there is nothing to send. */
   buildSnapshot(): TSnapshot | undefined;
   /** The page's narrowing table: a message it may send, or undefined. */

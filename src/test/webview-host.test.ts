@@ -151,6 +151,85 @@ suite('WebviewHost', () => {
     }
   });
 
+  suite('a page not kept running while hidden (Q2)', () => {
+    /** A page whose HTML says its theme and the snapshot it carries, on a surface that keeps that HTML. */
+    const openPage = (options: Partial<PageOptions>) => {
+      const { controller } = createController(options);
+      const themePreview = new ThemePreview();
+      const host = new WebviewHost(
+        { ...controller, html: (_webview, theme, state) => `<p>${theme}</p>${state === undefined ? '' : JSON.stringify(state)}` },
+        { themePreview },
+      );
+      const surface = new FakeSurface();
+      surface.htmlWebview = {} as vscode.Webview;
+      host.attach(surface);
+      return { host, surface, themePreview };
+    };
+
+    test('is drawn again from the last snapshot it was sent, kept rather than built again, when it is hidden', () => {
+      const { host, surface } = openPage({ readsInertState: true });
+      try {
+        surface.setVisible(false);
+        surface.setVisible(true);
+        assert.strictEqual(surface.renders, 1, 'nothing sent yet, so nothing to carry');
+        host.refresh();
+        surface.setVisible(false);
+        assert.strictEqual(surface.renders, 2);
+        assert.match(String(surface.html), /^<p>[a-z]+<\/p>\{"count":0\}$/, 'the hidden page carries what it was sent');
+        surface.setVisible(false);
+        assert.strictEqual(surface.renders, 2, 'once while it stays hidden');
+        surface.setVisible(true);
+        assert.deepStrictEqual(surface.webview.postedOf('state'), [{ type: 'state', data: { count: 0 } }], 'shown, it missed nothing');
+        surface.setVisible(false);
+        host.refresh();
+        assert.match(String(surface.html), /\{"count":0\}$/, 'an update while hidden is not built into it');
+        surface.setVisible(true);
+        assert.deepStrictEqual(surface.webview.postedOf<{ data: unknown }>('state').map((message) => message.data), [{ count: 0 }, { count: 1 }], 'shown, it is sent the update it missed');
+      } finally {
+        host.dispose();
+      }
+    });
+
+    test('carries the snapshot through a theme change only while hidden', () => {
+      const { host, surface, themePreview } = openPage({ readsInertState: true, onChromeChange: 'reload' });
+      try {
+        host.refresh();
+        themePreview.show('cooper');
+        assert.strictEqual(surface.html, '<p>cooper</p>', 'shown, it waits for its snapshot, as before');
+        surface.setVisible(false);
+        themePreview.show('lcars');
+        assert.strictEqual(surface.html, '<p>lcars</p>{"count":0}');
+      } finally {
+        host.dispose();
+      }
+    });
+
+    test('a page kept running, one that does not read inert state, or one newly attached is left alone when hidden', () => {
+      for (const options of [{ readsInertState: true, retainContextWhenHidden: true }, {}]) {
+        const { host, surface } = openPage(options);
+        try {
+          host.refresh();
+          surface.setVisible(false);
+          assert.strictEqual(surface.renders, 1, JSON.stringify(options));
+        } finally {
+          host.dispose();
+        }
+      }
+      const { host, surface } = openPage({ readsInertState: true });
+      try {
+        host.refresh();
+        const next = new FakeSurface();
+        next.htmlWebview = {} as vscode.Webview;
+        host.attach(next);
+        next.setVisible(false);
+        assert.strictEqual(next.renders, 1, 'a snapshot sent to the last panel is not this one\'s');
+        assert.strictEqual(surface.renders, 1);
+      } finally {
+        host.dispose();
+      }
+    });
+  });
+
   test('on a theme or zen change: resets the HTML and sends the snapshot, or only resets it, or leaves the page', () => {
     for (const [onChromeChange, renders, states] of [['redraw', 2, 1], ['reload', 2, 0], ['none', 1, 0]] as const) {
       const { controller } = createController({ onChromeChange });
