@@ -67,7 +67,7 @@ suite('Sample workspace', () => {
    * parks it.
    */
   async function indexSample(day: Date): Promise<{ files: Map<string, string>; index: WorkspaceIndex }> {
-    const { target } = await installSample(extensionUri, storage, day, vscode.workspace.fs, { replace: true });
+    const { target } = await installSample({ extensionUri, storageUri: storage, today: day, fs: vscode.workspace.fs, replace: true });
     const files = await installed(target);
     const parsed = new Map<string, ParsedFile>(
       [...files]
@@ -94,7 +94,7 @@ suite('Sample workspace', () => {
   });
 
   test('is a tour whose README links every note, with the settings it relies on', async () => {
-    const { target, notes } = await installSample(extensionUri, storage, today);
+    const { target, notes } = await installSample({ extensionUri, storageUri: storage, today });
     assert.strictEqual(path.basename(target.fsPath), SAMPLE_FOLDER_NAME);
     const files = await installed(target);
     for (const [name, text] of files) {
@@ -316,7 +316,7 @@ suite('Sample workspace', () => {
     const loose = index.files.get('Loose ends.md');
     assert.ok(loose);
     assert.deepStrictEqual([...loose.frontmatterTags, ...loose.sections.flatMap((section) => section.tags)], []);
-    assert.ok(rankSimilarWording(index, loose.filePath, loose).length > 0, 'Loose ends has notes worded like it');
+    assert.ok(rankSimilarWording({ index, activeFilePath: loose.filePath, activeFile: loose }).length > 0, 'Loose ends has notes worded like it');
 
     // Daily notes: yesterday and today, and a migrated line left behind.
     const days = listDailyNotes(index).map((entry) => entry.date);
@@ -341,10 +341,10 @@ suite('Sample workspace', () => {
   });
 
   test('is replaced only when asked, and never merged onto what is there', async () => {
-    const { target } = await installSample(extensionUri, storage, today);
+    const { target } = await installSample({ extensionUri, storageUri: storage, today });
     await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(target, 'mine.md'), Buffer.from('# Mine\n'));
-    await assert.rejects(() => installSample(extensionUri, storage, today), /already a sample/);
-    await installSample(extensionUri, storage, today, vscode.workspace.fs, { replace: true });
+    await assert.rejects(() => installSample({ extensionUri, storageUri: storage, today }), /already a sample/);
+    await installSample({ extensionUri, storageUri: storage, today, fs: vscode.workspace.fs, replace: true });
     assert.ok(!(await installed(target)).has('mine.md'), 'a fresh copy');
   });
 

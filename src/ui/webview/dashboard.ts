@@ -430,7 +430,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     if (!this.tryNext || !preferences.dashboardWidgets.some((widget) => widget.kind === 'tryNext')) {
       return undefined;
     }
-    return suggestTryNext(this.tryNext, index, preferences, queryContext.weekStart, queryContext.now);
+    return suggestTryNext({ ledger: this.tryNext, index, preferences, weekStart: queryContext.weekStart, now: queryContext.now });
   }
 
   /**
@@ -515,13 +515,13 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     const tryNext =
       this.dashboardMode === 'home' ? this.currentTryNext(index, viewPreferences, queryContext) : undefined;
     const data: DashboardSnapshot = {
-      ...createDashboardSnapshot(
+      ...createDashboardSnapshot({
         index,
-        viewPreferences,
-        undefined,
+        preferences: viewPreferences,
         tagTitleDisplayMode,
-        { agendaQuery: configuration.get<string>('agenda.query', ''), queryContext },
-      ),
+        agendaQuery: configuration.get<string>('agenda.query', ''),
+        queryContext,
+      }),
       homeArranged: !isDefaultHomeLayout(preferences.dashboardWidgets),
       ...(this.whatsNew?.pending() ? { whatsNew: this.whatsNew.pending() } : {}),
       // Switching tabs asks the host again, so only Home gets its widgets.
@@ -813,7 +813,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         return;
       case 'openNote':
         if (index.files.has(message.filePath)) {
-          await openSourceAt(message.filePath, 1);
+          await openSourceAt({ filePath: message.filePath, line: 1 });
         }
         return;
       case 'pinNote':

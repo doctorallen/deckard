@@ -77,7 +77,7 @@ suite('Steps in the views', () => {
 
   test('the board folds plain steps too, in every layout, and says how far along a card is', () => {
     const index = createIndex();
-    const cards = createTaskBoard(index, preferencesWith({ taskBoardGroup: 'status' }), { query: 'is:open' }, options)
+    const cards = createTaskBoard({ index, preferences: preferencesWith({ taskBoardGroup: 'status' }), search: { query: 'is:open' }, options })
       .columns.flatMap((column) => column.cards);
     assert.deepStrictEqual(cards.map((card) => card.title).sort(), [
       'Call the caterer',
@@ -87,10 +87,10 @@ suite('Steps in the views', () => {
     ]);
     const plan = cards.find((card) => card.title === 'Plan the offsite');
     assert.deepStrictEqual(plan?.steps, { label: '1 of 4 steps', next: 'Draft the email' });
-    const list = createTaskBoard(index, preferencesWith({ taskBoardLayout: 'list' }), { query: 'is:open' }, options);
+    const list = createTaskBoard({ index, preferences: preferencesWith({ taskBoardLayout: 'list' }), search: { query: 'is:open' }, options });
     assert.strictEqual(list.tasks?.length, 4);
     assert.strictEqual(list.taskCounts.all, 4);
-    const table = createTaskBoard(index, preferencesWith({ taskBoardLayout: 'table' }), { query: 'is:open' }, options);
+    const table = createTaskBoard({ index, preferences: preferencesWith({ taskBoardLayout: 'table' }), search: { query: 'is:open' }, options });
     assert.strictEqual(table.table?.rows.length, 4);
   });
 

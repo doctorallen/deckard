@@ -288,13 +288,12 @@ export class EditorTagDecorations implements vscode.Disposable {
       this.entryHoverType,
       entries.map((entry) => ({
         range: this.entryRange(editor, entry),
-        hoverMessage: createEntryRelatedNotesHoverMessage(
-          entry.title,
-          editor.document.uri.toString(),
-          entry.startLine,
-          undefined,
-          this.isPinned(editor.document.uri.fsPath, entry.startLine),
-        ),
+        hoverMessage: createEntryRelatedNotesHoverMessage({
+          title: entry.title,
+          documentUri: editor.document.uri.toString(),
+          lineNumber: entry.startLine,
+          pinned: this.isPinned(editor.document.uri.fsPath, entry.startLine),
+        }),
       })),
     );
     if (editor === vscode.window.activeTextEditor) {
@@ -446,25 +445,34 @@ export function createTagRenameHoverMessage(
   return rename;
 }
 
+/** The tagged entry a hover is about, and what its links offer. */
+export interface EntryHoverOptions {
+  title: string;
+  documentUri: string;
+  lineNumber: number;
+  /**
+   * Whether to offer the ranking breakdown as well. It explains Deckard to
+   * itself, so it is offered only where it was asked for: every tagged entry
+   * used to carry the link. `deckard.developerMode` by default.
+   */
+  includeDebug?: boolean;
+  /** Whether this entry is already pinned, which names the pin link. */
+  pinned?: boolean;
+}
+
 /**
  * A tagged entry's hover: trusted links that show its related notes, pin or
  * unpin it, and in developer mode explain its ranking.
  */
-export function createEntryRelatedNotesHoverMessage(
-  title: string,
-  documentUri: string,
-  lineNumber: number,
-  /**
-   * Whether to offer the ranking breakdown as well. It explains Deckard to
-   * itself, so it is offered only where it was asked for: every tagged entry
-   * used to carry the link.
-   */
+export function createEntryRelatedNotesHoverMessage({
+  title,
+  documentUri,
+  lineNumber,
   includeDebug = vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('developerMode', false),
-  /** Whether this entry is already pinned, which names the pin link. */
   pinned = false,
-): vscode.MarkdownString {
+}: EntryHoverOptions): vscode.MarkdownString {
   const safeTitle = escapeMarkdown(title);
   const debugLink = includeDebug
     ? `  \n[Debug related notes for ${safeTitle}](${createEntryRelatedNotesDebugUri(documentUri, lineNumber)})`

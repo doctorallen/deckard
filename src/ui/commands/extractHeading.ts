@@ -63,6 +63,16 @@ export function validateExtractedNoteName(name: string): string | undefined {
     : 'Use a name that can be a file name, without / \\ : * ? " < > or |.';
 }
 
+/** The heading to extract, where it is, and the note it becomes. */
+export interface ExtractHeadingNoteOptions {
+  section: Section;
+  sourceUri: vscode.Uri;
+  notesFolderUri: vscode.Uri;
+  name: string;
+  /** Swaps the section for its link; stood in for by tests of the failures. */
+  replace?: SectionReplacer<vscode.Uri>;
+}
+
 /**
  * Writes a heading's section into a new note named `name` and leaves a
  * link to it in its place, then opens the new note. Returns the new note's
@@ -71,14 +81,13 @@ export function validateExtractedNoteName(name: string): string | undefined {
  * source that could not be changed, in which case the new note is deleted
  * on 'unchanged' and kept on 'half'.
  */
-export async function extractHeadingNote(
-  section: Section,
-  sourceUri: vscode.Uri,
-  notesFolderUri: vscode.Uri,
-  name: string,
-  /** Swaps the section for its link; stood in for by tests of the failures. */
-  replace: SectionReplacer<vscode.Uri> = replaceSectionWithLink,
-): Promise<vscode.Uri | undefined> {
+export async function extractHeadingNote({
+  section,
+  sourceUri,
+  notesFolderUri,
+  name,
+  replace = replaceSectionWithLink,
+}: ExtractHeadingNoteOptions): Promise<vscode.Uri | undefined> {
   return extractAndReport(vscodeLinkNotes, { section, sourceUri, notesFolderUri, name }, replace);
 }
 

@@ -207,13 +207,13 @@ function provideDailyNoteLenses({
   index,
 }: LensContext): LazyCodeLens[] {
   const now = new Date();
-  const actions = findDailyNoteActions(
+  const actions = findDailyNoteActions({
     file,
     index,
-    formatLocalDate(now),
-    getRolloverLookbackDays(document.uri),
-    getRolloverMode(document.uri) === 'migrate' ? 'migrate' : 'move',
-  );
+    today: formatLocalDate(now),
+    lookbackDays: getRolloverLookbackDays(document.uri),
+    mode: getRolloverMode(document.uri) === 'migrate' ? 'migrate' : 'move',
+  });
   if (!actions) {
     return [];
   }

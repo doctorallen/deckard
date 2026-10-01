@@ -159,21 +159,37 @@ function sortTagReferences(tags: TagReference[]): TagReference[] {
   );
 }
 
+/** The active note, and how the notes related to it are ranked. */
+export interface RelatedNotesRequest {
+  index: WorkspaceIndex;
+  activeFilePath: string | undefined;
+  activeFile: ParsedFile;
+  activeTags: TagReference[];
+  /** Whether shared wording adjusts scores; on by default. */
+  enableKeywordLinks?: boolean;
+  /** How a tag in a title is drawn; inline by default. */
+  tagTitleDisplayMode?: TagTitleDisplayMode;
+  /** How much each active tag counts; 1 for a tag not in it. */
+  activeTagWeights?: ReadonlyMap<string, number>;
+  /** The ranking's settings and the moment it ranks at. */
+  ranking: RelatedNotesRankingAt;
+}
+
 /**
- * The notes related to the active one, with the ranking's arguments in the
- * order they were written before it took one subject; see
- * `rankRelatedNotes` in `src/domain/ranking/relatedNotes.ts`.
+ * The notes related to the active one, with the ranking's arguments named
+ * as its callers here have them; see `rankRelatedNotes` in
+ * `src/domain/ranking/relatedNotes.ts`.
  */
-export function rankRelatedNotes(
-  index: WorkspaceIndex,
-  activeFilePath: string | undefined,
-  activeFile: ParsedFile,
-  activeTags: TagReference[],
+export function rankRelatedNotes({
+  index,
+  activeFilePath,
+  activeFile,
+  activeTags,
   enableKeywordLinks = true,
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  activeTagWeights: ReadonlyMap<string, number> = new Map(),
-  options: RelatedNotesRankingAt,
-): RankedNote[] {
+  tagTitleDisplayMode = 'inline',
+  activeTagWeights = new Map(),
+  ranking,
+}: RelatedNotesRequest): RankedNote[] {
   return rankRelatedNotesFor(
     index,
     {
@@ -184,26 +200,39 @@ export function rankRelatedNotes(
       tagTitleDisplayMode,
       tagWeights: activeTagWeights,
     },
-    options,
+    ranking,
   );
 }
 
+/** A note with no tags, and how the entries worded like it are found. */
+export interface SimilarWordingRequest {
+  index: WorkspaceIndex;
+  activeFilePath: string | undefined;
+  activeFile: ParsedFile;
+  /** How a tag in a title is drawn; inline by default. */
+  tagTitleDisplayMode?: TagTitleDisplayMode;
+  /** The ranking's settings; the defaults when absent. */
+  ranking?: RelatedNotesRankingOptions;
+  /** The notes already listed, which are left out. */
+  listed?: readonly RankedNote[];
+}
+
 /**
- * The entries worded like a note with no tags, with the arguments in the
- * order they were written before the search took one subject; see
- * `rankSimilarWording` in `src/domain/ranking/similarWording.ts`.
+ * The entries worded like a note with no tags, with the arguments named as
+ * its callers here have them; see `rankSimilarWording` in
+ * `src/domain/ranking/similarWording.ts`.
  */
-export function rankSimilarWording(
-  index: WorkspaceIndex,
-  activeFilePath: string | undefined,
-  activeFile: ParsedFile,
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  options: RelatedNotesRankingOptions = {},
-  listed: readonly RankedNote[] = [],
-): SimilarEntry[] {
+export function rankSimilarWording({
+  index,
+  activeFilePath,
+  activeFile,
+  tagTitleDisplayMode = 'inline',
+  ranking = {},
+  listed = [],
+}: SimilarWordingRequest): SimilarEntry[] {
   return rankSimilarWordingFor(
     index,
     { filePath: activeFilePath, file: activeFile, tagTitleDisplayMode, listed },
-    options,
+    ranking,
   );
 }

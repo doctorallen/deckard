@@ -14,13 +14,13 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand(
       'deckard.pinNote',
       async (documentUri?: unknown, line?: unknown) => {
-        const pinned = await setNotePinnedCommand(
+        const pinned = await setNotePinnedCommand({
           indexer,
-          pins,
-          true,
-          typeof documentUri === 'string' ? documentUri : undefined,
-          typeof line === 'number' ? line : undefined,
-        );
+          preferences: pins,
+          pinned: true,
+          documentUri: typeof documentUri === 'string' ? documentUri : undefined,
+          line: typeof line === 'number' ? line : undefined,
+        });
         if (pinned) {
           await tryNext.retire('pinNote');
         }
@@ -30,13 +30,13 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand(
       'deckard.unpinNote',
       (documentUri?: unknown, line?: unknown) =>
-        setNotePinnedCommand(
+        setNotePinnedCommand({
           indexer,
-          pins,
-          false,
-          typeof documentUri === 'string' ? documentUri : undefined,
-          typeof line === 'number' ? line : undefined,
-        ),
+          preferences: pins,
+          pinned: false,
+          documentUri: typeof documentUri === 'string' ? documentUri : undefined,
+          line: typeof line === 'number' ? line : undefined,
+        }),
     ),
   );
 }

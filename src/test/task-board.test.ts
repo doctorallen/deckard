@@ -53,12 +53,12 @@ function board(
   query: string,
   boardOptions: TaskBoardOptions,
 ): ReturnType<typeof createTaskBoard> {
-  return createTaskBoard(
+  return createTaskBoard({
     index,
-    preferencesWith({ taskBoardGroup: groupBy }),
-    { query },
-    boardOptions,
-  );
+    preferences: preferencesWith({ taskBoardGroup: groupBy }),
+    search: { query },
+    options: boardOptions,
+  });
 }
 
 suite('Task board', () => {
@@ -232,7 +232,7 @@ suite('Task board', () => {
   test('lays out a page’s own selection of tasks', () => {
     const index = createIndex();
     const chosen = ['draft', 'ship'].map((id) => index.tasks.get(id) as Task);
-    const board = layoutTaskBoard(index, chosen, 'status', options);
+    const board = layoutTaskBoard({ index, tasks: chosen, requestedGroupBy: 'status', options });
     assert.strictEqual(board.taskCount, 2);
     assert.deepStrictEqual(
       board.columns
@@ -268,12 +268,12 @@ suite('Task board', () => {
     assert.deepStrictEqual(searched.query.matchCounts, { notes: 0, tasks: 1 });
     assert.strictEqual(searched.query.isAdvanced, true);
 
-    const invalid = createTaskBoard(
-      createIndex(),
-      preferencesWith({}),
-      { query: 'priority >= high', invalidQuery: 'priority >=' },
+    const invalid = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({}),
+      search: { query: 'priority >= high', invalidQuery: 'priority >=' },
       options,
-    );
+    });
     // The box keeps the search that ran as chips, and the typed one pending.
     assert.strictEqual(invalid.query.text, 'priority >= high');
     assert.strictEqual(invalid.query.pending, 'priority >=');
@@ -286,12 +286,12 @@ suite('Task board', () => {
   });
 
   test('lists the searched tasks when shown as a list, with the settings it edits', () => {
-    const listed = createTaskBoard(
-      createIndex(),
-      preferencesWith({ taskBoardLayout: 'list' }),
-      { query: 'is:done' },
+    const listed = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({ taskBoardLayout: 'list' }),
+      search: { query: 'is:done' },
       options,
-    );
+    });
     assert.strictEqual(listed.layout, 'list');
     assert.deepStrictEqual(listed.columns, []);
     assert.deepStrictEqual(
@@ -314,12 +314,12 @@ suite('Task board', () => {
   });
 
   test('shows the searched tasks as a table, sorted by a column when asked', () => {
-    const tabled = createTaskBoard(
-      createIndex(),
-      preferencesWith({ taskBoardLayout: 'table' }),
-      { query: '' },
+    const tabled = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({ taskBoardLayout: 'table' }),
+      search: { query: '' },
       options,
-    );
+    });
     assert.strictEqual(tabled.layout, 'table');
     assert.strictEqual(tabled.tasks, undefined, 'the list is not sent as well');
     assert.deepStrictEqual(
@@ -334,16 +334,16 @@ suite('Task board', () => {
       'every row has a cell per column and a title',
     );
 
-    const chosen = createTaskBoard(
-      createIndex(),
-      preferencesWith({
+    const chosen = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({
         taskBoardLayout: 'table',
         taskTableColumns: ['title', 'status'],
         taskTableSort: { column: 'title', direction: 'desc' },
       }),
-      { query: '' },
+      search: { query: '' },
       options,
-    );
+    });
     const titles = chosen.table?.rows.map((row) => row.cells[0].text) ?? [];
     assert.deepStrictEqual(titles, [...titles].sort().reverse(), 'sorted by title, last first');
     assert.deepStrictEqual(chosen.table?.columns.map((column) => column.label), ['Task', 'Status']);
@@ -359,12 +359,12 @@ suite('Task board', () => {
     );
     index.tasks.set(marked.id, marked);
 
-    const table = createTaskBoard(
+    const table = createTaskBoard({
       index,
-      preferencesWith({ taskBoardLayout: 'table', taskTableColumns: ['title'] }),
-      { query: '' },
+      preferences: preferencesWith({ taskBoardLayout: 'table', taskTableColumns: ['title'] }),
+      search: { query: '' },
       options,
-    ).table;
+    }).table;
     const row = table?.rows.find((entry) => entry.taskId === 'marked');
 
     // The cell draws the Markdown, as every other surface that shows a task
@@ -492,7 +492,7 @@ suite('Task board', () => {
     );
     const index = createIndex();
     doing.forEach((task) => index.tasks.set(task.id, task));
-    const layout = layoutTaskBoard(index, doing, 'status', { ...options, limits: { doing: 3, 'status:todo': 2 } });
+    const layout = layoutTaskBoard({ index, tasks: doing, requestedGroupBy: 'status', options: { ...options, limits: { doing: 3, 'status:todo': 2 } } });
     const column = layout.columns.find((each) => each.id === 'status:doing');
     assert.strictEqual(column?.overdueCount, 6);
     assert.strictEqual(column?.limit, 3, 'a limit by status');
@@ -501,12 +501,12 @@ suite('Task board', () => {
     assert.deepStrictEqual(tones, { d0: 'full', d1: 'full', d2: 'quiet', d3: 'quiet', d4: 'quiet', d5: 'quiet', d6: '', d7: '' });
 
     // At half or less, every overdue card keeps the red.
-    const half = layoutTaskBoard(index, doing.slice(4), 'status', options);
+    const half = layoutTaskBoard({ index, tasks: doing.slice(4), requestedGroupBy: 'status', options });
     const halfColumn = half.columns.find((each) => each.id === 'status:doing');
     assert.ok(halfColumn?.cards.filter((card) => card.overdue).every((card) => card.overdueTone === 'full'));
 
     // The Overdue column is all overdue by definition, so it is left alone.
-    const due = layoutTaskBoard(index, doing, 'due', options);
+    const due = layoutTaskBoard({ index, tasks: doing, requestedGroupBy: 'due', options });
     const overdue = due.columns.find((each) => each.id === 'due:overdue');
     assert.strictEqual(overdue?.overdueCount, 0);
     assert.ok(overdue?.cards.every((card) => card.overdueTone === undefined));

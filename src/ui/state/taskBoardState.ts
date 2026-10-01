@@ -143,18 +143,28 @@ export interface TaskBoardSearch {
   invalidQuery?: string;
 }
 
+/** What the Task Board page is built from. */
+export interface TaskBoardRequest {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  search: TaskBoardSearch;
+  options: TaskBoardOptions;
+  /** How a tag in a title is drawn; inline by default. */
+  tagTitleDisplayMode?: TagTitleDisplayMode;
+}
+
 /**
  * Builds the Task Board page: the tasks its search finds, as columns or as a
  * list, with the same search box state every search page shows. Only tasks
  * are searched, so the box counts and refines tasks alone.
  */
-export function createTaskBoard(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  search: TaskBoardSearch,
-  options: TaskBoardOptions,
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-): TaskBoardSnapshot {
+export function createTaskBoard({
+  index,
+  preferences,
+  search,
+  options,
+  tagTitleDisplayMode = 'inline',
+}: TaskBoardRequest): TaskBoardSnapshot {
   const selected = selectTasks(index, search.query, options.queryContext);
   // A plain step rides on its task's card, so five steps are not five cards.
   const tasks = foldSteps(selected.tasks);
@@ -164,29 +174,27 @@ export function createTaskBoard(
 
   const board: TaskBoardLayout =
     layout === 'board'
-      ? layoutTaskBoard(index, tasks, groupBy, options, preferences.taskBoardGroupNamespace)
+      ? layoutTaskBoard({ index, tasks, requestedGroupBy: groupBy, options, namespace: preferences.taskBoardGroupNamespace })
       : { groupBy, columns: [], taskCount: tasks.length };
   return {
     ...board,
-    query: createQueryViewState(
+    query: createQueryViewState({
       index,
-      parseQuery(search.query),
-      { notes: 0, tasks: tasks.length },
-      true,
-      preferences.recentQueries ?? [],
-      {
-        pending: search.invalidQuery,
-        facets: search.query.trim()
-          ? buildSearchFacets(
-              index,
-              { sections: [], files: [], tasks },
-              search.query,
-              { parkedLeftOut, now: options.queryContext.now },
-            )
-          : [],
-        queryContext: options.queryContext,
-      },
-    ),
+      parsed: parseQuery(search.query),
+      matchCounts: { notes: 0, tasks: tasks.length },
+      isAdvanced: true,
+      recentQueries: preferences.recentQueries ?? [],
+      pending: search.invalidQuery,
+      facets: search.query.trim()
+        ? buildSearchFacets(
+            index,
+            { sections: [], files: [], tasks },
+            search.query,
+            { parkedLeftOut, now: options.queryContext.now },
+          )
+        : [],
+      queryContext: options.queryContext,
+    }),
     layout,
     // Both layouts show what the search found. The board page used to keep
     // an All/Open/Done switch beside the search box, which only the list
@@ -300,18 +308,29 @@ function toTableTask(task: Task, statusNamespace: string): TableTask {
   };
 }
 
+/** A chosen set of tasks, and how the board lays them out. */
+export interface TaskBoardLayoutRequest {
+  index: WorkspaceIndex;
+  tasks: readonly Task[];
+  /** The grouping asked for; a tag grouping with no namespace lays out by status. */
+  requestedGroupBy: TaskBoardGroupBy;
+  options: TaskBoardOptions;
+  /** The tag namespace a tag grouping groups by. */
+  namespace?: string;
+}
+
 /**
  * Lays out a chosen set of tasks, such as the Dashboard's filtered list. The
  * whole index is still read, so a card knows when an open task elsewhere
  * blocks it.
  */
-export function layoutTaskBoard(
-  index: WorkspaceIndex,
-  tasks: readonly Task[],
-  requestedGroupBy: TaskBoardGroupBy,
-  options: TaskBoardOptions,
-  namespace?: string,
-): TaskBoardLayout {
+export function layoutTaskBoard({
+  index,
+  tasks,
+  requestedGroupBy,
+  options,
+  namespace,
+}: TaskBoardLayoutRequest): TaskBoardLayout {
   // A tag grouping without a namespace to group by lays out as status.
   const groupBy: TaskBoardGroupBy =
     requestedGroupBy === 'tag' && !isNamespaceName(namespace) ? 'status' : requestedGroupBy;

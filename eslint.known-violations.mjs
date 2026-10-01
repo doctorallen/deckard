@@ -36,31 +36,6 @@ export default {
       "createTask",
       "overview"
     ],
-    "src/ui/commands/assistantWrites.ts": [
-      "changeTaskLine"
-    ],
-    "src/ui/commands/extractHeading.ts": [
-      "extractHeadingNote"
-    ],
-    "src/ui/commands/hubNote.ts": [
-      "applyHubTemplate"
-    ],
-    "src/ui/commands/navigation.ts": [
-      "openSourceAt"
-    ],
-    "src/ui/commands/pinNote.ts": [
-      "setNotePinnedCommand"
-    ],
-    "src/ui/commands/sampleWorkspace.ts": [
-      "installSample"
-    ],
-    "src/ui/commands/taskEditor.ts": [
-      "setDraftDate",
-      "writeEditedTask"
-    ],
-    "src/ui/commands/tryNext.ts": [
-      "suggestTryNext"
-    ],
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
       "renderGroup"
@@ -68,45 +43,27 @@ export default {
     "src/ui/providers/linkSuggestions.ts": [
       "completeBlockIds"
     ],
-    "src/ui/providers/tagDecorations.ts": [
-      "createEntryRelatedNotesHoverMessage"
-    ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
     ],
     "src/ui/state/dashboardState.ts": [
-      "createDashboardSnapshot",
-      "createQueryViewState",
       "createTagOverviewCard"
     ],
     "src/ui/state/dashboardWidgets.ts": [
       "createWidget"
     ],
-    "src/ui/state/editorLensState.ts": [
-      "findDailyNoteActions"
-    ],
     "src/ui/state/entryScope.ts": [
       "(arrow function)"
     ],
     "src/ui/state/quickFindState.ts": [
-      "buildQuickFindResults",
       "matchTags",
       "rankEntries"
     ],
-    "src/ui/state/relatedNotesRanking.ts": [
-      "rankRelatedNotes",
-      "rankSimilarWording"
-    ],
     "src/ui/state/taskBoardState.ts": [
-      "createCard",
-      "createTaskBoard",
-      "layoutTaskBoard"
+      "createCard"
     ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
-    ],
-    "src/ui/webview/searchPage.ts": [
-      "(function)"
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
@@ -313,7 +270,7 @@ export default {
     "src/ui/state/noteLinks.ts": 2,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/queryBlockState.ts": 3,
-    "src/ui/state/quickFindState.ts": 5,
+    "src/ui/state/quickFindState.ts": 4,
     "src/ui/state/referenceState.ts": 5,
     "src/ui/state/resultTable.ts": 1,
     "src/ui/state/reviewState.ts": 1,

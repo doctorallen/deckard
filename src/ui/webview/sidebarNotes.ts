@@ -842,7 +842,7 @@ export class SidebarNotesView
         candidate.filePath === message.filePath && candidate.line === message.line,
     );
     if (link) {
-      await openSourceAt(link.filePath, link.line, undefined, message.beside === true);
+      await openSourceAt({ filePath: link.filePath, line: link.line, beside: message.beside === true });
       return;
     }
     const note = snapshot.notes.find(
@@ -856,12 +856,11 @@ export class SidebarNotesView
       }
       // A result used to replace the note it was ranked from, with no way
       // back but Ctrl+Tab. Cmd/Ctrl-click opens it alongside instead.
-      await openSourceAt(
-        note.filePath,
-        note.sourceLine,
-        undefined,
-        message.beside === true,
-      );
+      await openSourceAt({
+        filePath: note.filePath,
+        line: note.sourceLine,
+        beside: message.beside === true,
+      });
     }
   }
 

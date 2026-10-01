@@ -107,7 +107,7 @@ suite('Zen mode', () => {
     const preferences = store.reader.value;
     const built = index();
     const snapshot = {
-      ...createDashboardSnapshot(built, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
+      ...createDashboardSnapshot({ index: built, preferences, queryContext: createQueryContext(Date.now()) }),
       widgets: createDashboardWidgets(built, preferences, {
         queryContext: createQueryContext(Date.parse('2026-09-21T00:00:00Z')),
         upcomingDays: 7,

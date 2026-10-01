@@ -329,16 +329,16 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         .get<unknown>('tagTitleDisplayMode', 'inline'),
     );
     return {
-      ...createTaskBoard(
-        this.indexer.getSnapshot(),
-        this.preferences.reader.value,
-        { query: this.query, invalidQuery: this.invalidQuery },
-        {
+      ...createTaskBoard({
+        index: this.indexer.getSnapshot(),
+        preferences: this.preferences.reader.value,
+        search: { query: this.query, invalidQuery: this.invalidQuery },
+        options: {
           ...readTaskBoardOptions(readQueryContext()),
           shownColumns: this.shownColumns,
         },
         tagTitleDisplayMode,
-      ),
+      }),
       refineInSidebar: this.activeSearch.isRefineInSidebar(this),
       agendaListsThisSearch:
         normalizeAgendaQuery(
@@ -485,13 +485,13 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         // Every task the search found, whatever the layout shows: the list
         // layout with no Done limit is the board as a plain list.
         const index = this.indexer.getSnapshot();
-        const board = createTaskBoard(
+        const board = createTaskBoard({
           index,
-          { ...this.preferences.reader.value, taskBoardLayout: 'list' },
-          { query: this.query, invalidQuery: this.invalidQuery },
-          { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
-          'inline',
-        );
+          preferences: { ...this.preferences.reader.value, taskBoardLayout: 'list' },
+          search: { query: this.query, invalidQuery: this.invalidQuery },
+          options: { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
+          tagTitleDisplayMode: 'inline',
+        });
         const plan = this.exports.fromResults('tasks', {
           tasks: (board.tasks ?? []).map((item) => item.task),
           sections: [],

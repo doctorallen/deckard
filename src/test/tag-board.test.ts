@@ -40,7 +40,7 @@ function preferences(values: Partial<PersistedPreferences>): PersistedPreference
 }
 
 function board(values: Partial<PersistedPreferences>) {
-  return createTaskBoard(indexOf(), preferences(values), { query: 'is:open' }, options, 'inline');
+  return createTaskBoard({ index: indexOf(), preferences: preferences(values), search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' });
 }
 
 suite('The Task board grouped by a tag namespace', () => {

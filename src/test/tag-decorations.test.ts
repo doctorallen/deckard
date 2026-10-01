@@ -118,12 +118,12 @@ suite('Tag decorations', () => {
   });
 
   test('creates a trusted entry-level related-notes hover action', () => {
-    const hover = createEntryRelatedNotesHoverMessage(
-      'Relay checks',
-      'file:///tmp/deckard/relay.md',
-      12,
-      false,
-    );
+    const hover = createEntryRelatedNotesHoverMessage({
+      title: 'Relay checks',
+      documentUri: 'file:///tmp/deckard/relay.md',
+      lineNumber: 12,
+      includeDebug: false,
+    });
 
     assert.strictEqual(
       hover.value.includes('command:deckard.showEntryRelatedNotes'),
@@ -147,25 +147,25 @@ suite('Tag decorations', () => {
   });
 
   test('offers to unpin an entry that is already pinned', () => {
-    const hover = createEntryRelatedNotesHoverMessage(
-      'Relay checks',
-      'file:///tmp/deckard/relay.md',
-      12,
-      false,
-      true,
-    );
+    const hover = createEntryRelatedNotesHoverMessage({
+      title: 'Relay checks',
+      documentUri: 'file:///tmp/deckard/relay.md',
+      lineNumber: 12,
+      includeDebug: false,
+      pinned: true,
+    });
 
     assert.strictEqual(hover.value.includes('Unpin Relay checks from Home'), true);
     assert.strictEqual(hover.value.includes('command:deckard.unpinNote'), true);
   });
 
   test('offers the ranking breakdown in developer mode', () => {
-    const hover = createEntryRelatedNotesHoverMessage(
-      'Relay checks',
-      'file:///tmp/deckard/relay.md',
-      12,
-      true,
-    );
+    const hover = createEntryRelatedNotesHoverMessage({
+      title: 'Relay checks',
+      documentUri: 'file:///tmp/deckard/relay.md',
+      lineNumber: 12,
+      includeDebug: true,
+    });
 
     assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), true);
     assert.deepStrictEqual(hover.isTrusted, {

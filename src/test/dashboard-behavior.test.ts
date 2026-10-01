@@ -76,7 +76,7 @@ suite('Dashboard behavior', () => {
     store = createPreferences(new MemoryMemento());
     const preferences = { ...store.reader.value, ...changes };
     const snapshot: DashboardSnapshot = {
-      ...createDashboardSnapshot(index, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
+      ...createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) }),
       ...(preferences.dashboardViewState.mode === 'home'
         ? {
             widgets: createDashboardWidgets(index, preferences, {
@@ -312,7 +312,7 @@ suite('Dashboard behavior', () => {
     }
     const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
     store = createPreferences(new MemoryMemento());
-    const size = JSON.stringify(createDashboardSnapshot(index, store.reader.value, undefined, undefined, { queryContext: createQueryContext(Date.now()) })).length;
+    const size = JSON.stringify(createDashboardSnapshot({ index, preferences: store.reader.value, queryContext: createQueryContext(Date.now()) })).length;
     assert.ok(index.tags.size >= 2000, `${index.tags.size} tags`);
     assert.ok(size < 300 * 1024, `${Math.round(size / 1024)} KB`);
   });

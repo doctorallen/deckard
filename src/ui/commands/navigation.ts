@@ -53,20 +53,32 @@ export async function resolveSourceUri(
   return candidates[0];
 }
 
+/** A source line to open, and how to open it. */
+export interface OpenSourceOptions {
+  filePath: string;
+  /** One-based. */
+  line: number;
+  /** The folders a relative path is read against; the workspace's by default. */
+  workspaceFolders?: readonly vscode.WorkspaceFolder[];
+  /** Open in the column beside the active one rather than replacing it. */
+  beside?: boolean;
+  /** Open as a preview tab, which the next preview replaces. */
+  preview?: boolean;
+  /** Leave focus where it is, so a Quick Pick that opened it stays open. */
+  preserveFocus?: boolean;
+}
+
 /**
  * Opens a one-based source line and centers it without altering the document.
  */
-export async function openSourceAt(
-  filePath: string,
-  line: number,
-  workspaceFolders?: readonly vscode.WorkspaceFolder[],
-  /** Open in the column beside the active one rather than replacing it. */
+export async function openSourceAt({
+  filePath,
+  line,
+  workspaceFolders,
   beside = false,
-  /** Open as a preview tab, which the next preview replaces. */
   preview = false,
-  /** Leave focus where it is, so a Quick Pick that opened it stays open. */
   preserveFocus = false,
-): Promise<vscode.TextEditor | undefined> {
+}: OpenSourceOptions): Promise<vscode.TextEditor | undefined> {
   const uri = await resolveSourceUri(filePath, workspaceFolders);
   if (!uri) {
     void reportFailure({
@@ -115,13 +127,12 @@ export function openResultAt(
     vscode.workspace
       .getConfiguration('workbench.editor')
       .get<boolean>('enablePreview', true) !== false;
-  return openSourceAt(
+  return openSourceAt({
     filePath,
     line,
-    undefined,
-    how.beside === true,
-    previews && how.pin !== true,
-  );
+    beside: how.beside === true,
+    preview: previews && how.pin !== true,
+  });
 }
 
 /**

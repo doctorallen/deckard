@@ -376,7 +376,7 @@ export class QuickFind implements vscode.Disposable {
         void vscode.window.showInformationMessage(`Copied ${link.text}.`);
       },
       editTask: async (task) => {
-        await openSourceAt(task.filePath, task.lineNumber);
+        await openSourceAt({ filePath: task.filePath, line: task.lineNumber });
         await vscode.commands.executeCommand('deckard.editTask');
       },
       ...(moveTask ? { moveTask: (task: Task) => moveTask(task) } : {}),
@@ -464,8 +464,8 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     await (beside
-      ? openSourceAt(item.filePath, item.line, undefined, true, false, true)
-      : openSourceAt(item.filePath, item.line));
+      ? openSourceAt({ filePath: item.filePath, line: item.line, beside: true, preview: false, preserveFocus: true })
+      : openSourceAt({ filePath: item.filePath, line: item.line }));
     if (item.kind === 'note' && item.sectionId) {
       await this.preferences.usage.recordSectionAccess(item.sectionId);
     }
@@ -512,17 +512,15 @@ export class QuickFind implements vscode.Disposable {
     // One moment and one reading of the settings for everything this
     // keystroke lists.
     const queryContext = readQueryContext();
-    const results = buildQuickFindResults(
+    const results = buildQuickFindResults({
       index,
-      this.preferences.reader.value,
-      picker.value,
-      (text) => this.indexer.searchEntries(text, { limit: 200 }),
-      {
-        queryContext,
-        conditions: createQuerySuggestions(index, [], queryContext).conditions,
-        formatCapture: (text) => formatCapture(text, queryContext.now),
-      },
-    );
+      preferences: this.preferences.reader.value,
+      input: picker.value,
+      searchText: (text) => this.indexer.searchEntries(text, { limit: 200 }),
+      queryContext,
+      conditions: createQuerySuggestions(index, [], queryContext).conditions,
+      formatCapture: (text) => formatCapture(text, queryContext.now),
+    });
     picker.items = toPickItems(
       results,
       picker.value,

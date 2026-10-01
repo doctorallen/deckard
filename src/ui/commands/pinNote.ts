@@ -97,19 +97,31 @@ async function offerUndo(
   }
 }
 
+/** What Pin and Unpin read and write, and which entry they are about. */
+export interface SetNotePinnedOptions {
+  indexer: PinIndexSource;
+  preferences: PinStore;
+  /** Pin when true, unpin when false. */
+  pinned: boolean;
+  /** The note a hover link names; the active editor's when it names none. */
+  documentUri?: string;
+  /** The one-based line a hover link names; the cursor's when it names none. */
+  line?: number;
+}
+
 /**
  * The command: the entry the cursor is in, or the one a hover link names.
  *
  * The hover passes the line it was shown on, so pinning from there pins the
  * entry the hover was about rather than wherever the cursor happens to be.
  */
-export async function setNotePinnedCommand(
-  indexer: PinIndexSource,
-  preferences: PinStore,
-  pinned: boolean,
-  documentUri?: string,
-  line?: number,
-): Promise<PinnedNote | undefined> {
+export async function setNotePinnedCommand({
+  indexer,
+  preferences,
+  pinned,
+  documentUri,
+  line,
+}: SetNotePinnedOptions): Promise<PinnedNote | undefined> {
   await indexer.ready;
   const uri =
     documentUri !== undefined

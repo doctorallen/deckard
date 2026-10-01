@@ -276,21 +276,21 @@ export class SearchPanels implements vscode.Disposable {
   }
 
   private createPanel(originQuery: string, queryText = originQuery): SearchPanel {
-    const panel: SearchPanel = new SearchPanel(
+    const panel: SearchPanel = new SearchPanel({
       originQuery,
       queryText,
-      this.indexer,
-      this.preferences,
-      this.extensionUri,
-      this.activeSearch,
-      {
+      indexer: this.indexer,
+      preferences: this.preferences,
+      extensionUri: this.extensionUri,
+      activeSearch: this.activeSearch,
+      host: {
         onDispose: () => this.panels.delete(panel),
         openTag: (tagKey) => this.show(tagKey),
         writes: this.writes,
         themePreview: this.themePreview,
         exports: this.exports,
       },
-    );
+    });
     this.panels.add(panel);
     return panel;
   }
@@ -370,10 +370,30 @@ interface SearchPanelHost {
   readonly exports: ExportService;
 }
 
+/** One search page's search, and what it reads, draws with, and tells. */
+interface SearchPanelOptions {
+  /** The search the page opened with, which clearing its search goes back to. */
+  originQuery: string;
+  /** The search the page shows first. */
+  queryText: string;
+  indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
+  preferences: SearchPreferences;
+  extensionUri: vscode.Uri;
+  activeSearch: ActiveSearch;
+  host: SearchPanelHost;
+}
+
 /**
  * One search page: its webview, its search, and the search it opened with.
  */
 class SearchPanel implements SearchSource, vscode.Disposable {
+  private readonly originQuery: string;
+  private queryText: string;
+  private readonly indexer: SearchPanelOptions['indexer'];
+  private readonly preferences: SearchPreferences;
+  private readonly extensionUri: vscode.Uri;
+  private readonly activeSearch: ActiveSearch;
+  private readonly host: SearchPanelHost;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   /**
@@ -408,15 +428,15 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private lastSnapshot: SearchPageSnapshot | undefined;
   private disposed = false;
 
-  public constructor(
-    private readonly originQuery: string,
-    private queryText: string,
-    private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl,
-    private readonly preferences: SearchPreferences,
-    private readonly extensionUri: vscode.Uri,
-    private readonly activeSearch: ActiveSearch,
-    private readonly host: SearchPanelHost,
-  ) {
+  public constructor(options: SearchPanelOptions) {
+    const { indexer } = options;
+    this.originQuery = options.originQuery;
+    this.queryText = options.queryText;
+    this.indexer = indexer;
+    this.preferences = options.preferences;
+    this.extensionUri = options.extensionUri;
+    this.activeSearch = options.activeSearch;
+    this.host = options.host;
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -602,18 +622,16 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       // shows the text that did not.
       ...(this.invalidQueryText !== undefined
         ? {
-            query: createQueryViewState(
+            query: createQueryViewState({
               index,
-              parseQuery(this.queryText),
-              snapshot.query.matchCounts,
-              true,
-              preferences.recentQueries ?? [],
-              {
-                facets: snapshot.query.facets,
-                pending: this.invalidQueryText,
-                queryContext,
-              },
-            ),
+              parsed: parseQuery(this.queryText),
+              matchCounts: snapshot.query.matchCounts,
+              isAdvanced: true,
+              recentQueries: preferences.recentQueries ?? [],
+              facets: snapshot.query.facets,
+              pending: this.invalidQueryText,
+              queryContext,
+            }),
           }
         : {}),
       refineInSidebar: this.activeSearch.isRefineInSidebar(this),

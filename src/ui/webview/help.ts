@@ -9,25 +9,38 @@ import { parseHelpMessage } from './messages';
 import { Release } from '../../core/changelog';
 import { WhatsNew } from '../commands/whatsNew';
 
+/** What Help is drawn from. */
+export interface HelpPanelOptions {
+  extensionUri: vscode.Uri;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
+  /**
+   * What the extension contributes, so the commands and settings tables
+   * describe this version rather than a copy written beside them. Without
+   * it, the tables are empty.
+   */
+  manifest?: HelpManifest;
+  /** The shipped changelog's Highlights, for What's new. */
+  whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>;
+}
+
 /**
  * Hosts Deckard's self-contained product guide in a reusable webview panel.
  */
 export class HelpPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
+  private readonly extensionUri: vscode.Uri;
+  private readonly themePreview: ThemePreview;
+  private readonly manifest: HelpManifest;
+  private readonly whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>;
 
-  public constructor(
-    private readonly extensionUri: vscode.Uri,
-    /** The theme Choose Theme… is previewing, which the page draws in. */
-    private readonly themePreview: ThemePreview,
-    /**
-     * What the extension contributes, so the commands and settings tables
-     * describe this version rather than a copy written beside them.
-     */
-    private readonly manifest: HelpManifest = {},
-    /** The shipped changelog's Highlights, for What's new. */
-    private readonly whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>,
-  ) {}
+  public constructor({ extensionUri, themePreview, manifest = {}, whatsNew }: HelpPanelOptions) {
+    this.extensionUri = extensionUri;
+    this.themePreview = themePreview;
+    this.manifest = manifest;
+    this.whatsNew = whatsNew;
+  }
 
   /** Opens Help, at a section when one is named, such as `whats-new`. */
   public async show(anchor?: string): Promise<void> {

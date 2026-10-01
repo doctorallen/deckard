@@ -374,5 +374,5 @@ export function readTaskMetadataFormat(
 export async function openTask(
   task: Task,
 ): Promise<vscode.TextEditor | undefined> {
-  return openSourceAt(task.filePath, task.lineNumber);
+  return openSourceAt({ filePath: task.filePath, line: task.lineNumber });
 }

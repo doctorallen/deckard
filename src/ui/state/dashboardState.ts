@@ -111,19 +111,33 @@ export { getFileName };
 // the Related Notes engine; these keep their importers here compiling.
 export { findTagAssociation, getHeadingPath, getInlineSource, getNoteTitle, getTitleTags };
 
+/** What the dashboard model is projected from. */
+export interface DashboardSnapshotOptions {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  selectedTag?: string;
+  /** How a tag in a title is drawn; inline by default. */
+  tagTitleDisplayMode?: TagTitleDisplayMode;
+  /** The Tasks view's search, which the task glance counts within. */
+  agendaQuery?: string;
+  /** The settings and moment the task counts are taken in. */
+  queryContext: QueryContext;
+}
+
 /**
  * Projects one consistent dashboard model from the index and UI-only state,
- * its task counts taken in `options.queryContext`.
+ * its task counts taken in `queryContext`.
  */
-export function createDashboardSnapshot(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  selectedTag: string | undefined,
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  options: { agendaQuery?: string; queryContext: QueryContext },
-): DashboardSnapshot {
+export function createDashboardSnapshot({
+  index,
+  preferences,
+  selectedTag,
+  tagTitleDisplayMode = 'inline',
+  agendaQuery,
+  queryContext,
+}: DashboardSnapshotOptions): DashboardSnapshot {
   return {
-    taskGlance: createTaskGlance(index, options.agendaQuery ?? '', options.queryContext),
+    taskGlance: createTaskGlance(index, agendaQuery ?? '', queryContext),
     // The page reads a tag's name, count, and heart; the entry lists each
     // one carried ran to megabytes in a large workspace and were never read.
     tags: sortTags(index.tags.values(), preferences).map((tag) => ({
@@ -436,22 +450,20 @@ export function createSearchPageSnapshot(
           },
         }
       : {}),
-    query: createQueryViewState(
+    query: createQueryViewState({
       index,
       parsed,
-      { notes: ranked.length, tasks: tasks.length },
-      true,
-      preferences.recentQueries ?? [],
-      {
-        facets: parsed.node
-          ? buildSearchFacets(index, results, text, {
-              related,
-              now: options.queryContext.now,
-            })
-          : [],
-        queryContext: options.queryContext,
-      },
-    ),
+      matchCounts: { notes: ranked.length, tasks: tasks.length },
+      isAdvanced: true,
+      recentQueries: preferences.recentQueries ?? [],
+      facets: parsed.node
+        ? buildSearchFacets(index, results, text, {
+            related,
+            now: options.queryContext.now,
+          })
+        : [],
+      queryContext: options.queryContext,
+    }),
     ...(suggestion ? { suggestion } : {}),
     ...(preview.length > 0 ? { draftWords: preview } : {}),
     originQuery: options.originQuery?.trim() ?? '',
@@ -1923,31 +1935,48 @@ function getFrontmatterBody(content: string): string {
 }
 
 
+/** One parsed search, and what its query bar shows beside it. */
+export interface QueryViewStateOptions {
+  index: WorkspaceIndex;
+  parsed: ParsedQuery;
+  matchCounts: { notes: number; tasks: number };
+  isAdvanced: boolean;
+  recentQueries: readonly string[];
+  /** The facets to refine by; none by default. */
+  facets?: QueryFacet[];
+  /** Search text typed that does not parse, shown with its errors. */
+  pending?: string;
+  /** The settings and moment the date completions are worded in. */
+  queryContext: QueryContext;
+}
+
 /**
  * Builds everything the query bar and its builder need from one parse. The
- * date completions say what each value means in `extras.queryContext`.
+ * date completions say what each value means in `queryContext`.
  */
-export function createQueryViewState(
-  index: WorkspaceIndex,
-  parsed: ParsedQuery,
-  matchCounts: { notes: number; tasks: number },
-  isAdvanced: boolean,
-  recentQueries: readonly string[],
-  extras: { facets?: QueryFacet[]; pending?: string; queryContext: QueryContext },
-): QueryViewState {
-  const pending = extras.pending?.trim();
+export function createQueryViewState({
+  index,
+  parsed,
+  matchCounts,
+  isAdvanced,
+  recentQueries,
+  facets,
+  pending: typed,
+  queryContext,
+}: QueryViewStateOptions): QueryViewState {
+  const pending = typed?.trim();
   return {
     text: parsed.text,
     ...(pending ? { pending } : {}),
     terms: getTopLevelTerms(parsed),
     termsJoin: getTopLevelJoin(parsed),
     canAppend: canAppendTerm(parsed),
-    facets: extras.facets ?? [],
+    facets: facets ?? [],
     isAdvanced,
     diagnostics: pending ? parseQuery(pending).diagnostics : parsed.diagnostics,
     builder: toBuilderTree(parsed.node),
     tags: resolveQueryTags(index, parsed),
-    suggestions: createQuerySuggestions(index, recentQueries, extras.queryContext),
+    suggestions: createQuerySuggestions(index, recentQueries, queryContext),
     matchCounts,
   };
 }

@@ -48,21 +48,33 @@ export function addedTaskLine(text: string): string {
   return formatCaptureLine(text);
 }
 
+/** A task line, the changes asked of it, and how it is written. */
+export interface ChangeTaskLineOptions {
+  line: string;
+  changes: Omit<ChangeTaskInput, 'note' | 'line'>;
+  now: number;
+  /** The format a line with no metadata yet is written in; emoji by default. */
+  fallbackFormat?: TaskMetadataFormat;
+  /** The note's line ending, which joins a repeat's next line; `\n` by default. */
+  eol?: string;
+  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. On by default. */
+  addDoneDate?: boolean;
+}
+
 /**
  * A task line with the requested changes made, and nothing else touched:
  * the draft keeps every field it does not name, in the format the line
  * already uses. Completing a repeating task starts its next occurrence on
  * the line above, as a checkbox does.
  */
-export function changeTaskLine(
-  line: string,
-  changes: Omit<ChangeTaskInput, 'note' | 'line'>,
-  now: number,
-  fallbackFormat: TaskMetadataFormat = 'emoji',
+export function changeTaskLine({
+  line,
+  changes,
+  now,
+  fallbackFormat = 'emoji',
   eol = '\n',
-  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. */
   addDoneDate = true,
-): CompletionWrite {
+}: ChangeTaskLineOptions): CompletionWrite {
   const before: TaskDraft = parseTaskDraft(line, fallbackFormat);
   let draft = before;
   if (changes.title !== undefined) {
@@ -80,7 +92,7 @@ export function changeTaskLine(
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
     draft = completeDraft(draft, now, addDoneDate);
   }
-  return writeEditedTask(before, draft, now, eol);
+  return writeEditedTask({ before, edited: draft, now, eol });
 }
 
 /** One line saying what changed, for the preview's label and the answer. */
@@ -172,14 +184,14 @@ export async function changeTask(
   }
   const { note: _note, line: _line, ...changes } = input;
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
-  const completion = changeTaskLine(
-    current.text,
+  const completion = changeTaskLine({
+    line: current.text,
     changes,
     now,
-    readTaskMetadataFormat(configuration),
-    document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
-    configuration.get<boolean>('tasks.addDoneDate', true),
-  );
+    fallbackFormat: readTaskMetadataFormat(configuration),
+    eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
+  });
   const replacement = completion.text;
   if (replacement === current.text) {
     return { text: 'The task already reads that way; nothing to change.' };

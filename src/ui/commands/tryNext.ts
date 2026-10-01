@@ -120,14 +120,18 @@ export function collectTryNextInput(
   };
 }
 
+/** What Home's suggestion is chosen from. */
+export interface TryNextSources {
+  /** The suggestions already taken up or put off. */
+  ledger: Pick<TryNextLedger, 'retired' | 'snoozed'>;
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  weekStart: Weekday;
+  now: number;
+}
+
 /** The suggestion Home shows now, if any. */
-export function suggestTryNext(
-  ledger: Pick<TryNextLedger, 'retired' | 'snoozed'>,
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  weekStart: Weekday,
-  now: number,
-): TryNextSuggestion | undefined {
+export function suggestTryNext({ ledger, index, preferences, weekStart, now }: TryNextSources): TryNextSuggestion | undefined {
   return chooseTryNext(
     collectTryNextInput(index, preferences, weekStart, now),
     ledger.retired(),

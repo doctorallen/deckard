@@ -300,7 +300,7 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(page.query.facets, [], 'no search, nothing to refine');
     assert.strictEqual(page.tag, undefined);
     assert.strictEqual(
-      createDashboardSnapshot(index, defaultPreferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }).totalNoteCount,
+      createDashboardSnapshot({ index, preferences: defaultPreferences, queryContext: createQueryContext(Date.now()) }).totalNoteCount,
       1,
     );
   });
@@ -317,9 +317,9 @@ suite('Dashboard state', () => {
       taskOrder: [tasks[2].id, tasks[0].id, tasks[1].id],
       taskBoardLayout: 'list' as const,
     };
-    const board = createTaskBoard(index, preferences, { query: '' }, boardOptions);
+    const board = createTaskBoard({ index, preferences, search: { query: '' }, options: boardOptions });
 
-    assert.strictEqual(createDashboardSnapshot(index, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }).totalTaskCount, 3);
+    assert.strictEqual(createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) }).totalTaskCount, 3);
     assert.deepStrictEqual(board.taskCounts, { all: 3, active: 2, completed: 1 });
     assert.deepStrictEqual(board.columns, [], 'a list lays out no columns');
     assert.deepStrictEqual(
@@ -330,7 +330,7 @@ suite('Dashboard state', () => {
     // What the board searches for is what narrows it now; the filter the
     // page used to keep was obeyed by the list alone.
     assert.deepStrictEqual(
-      createTaskBoard(index, preferences, { query: 'is:open' }, boardOptions)
+      createTaskBoard({ index, preferences, search: { query: 'is:open' }, options: boardOptions })
         .tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
@@ -492,7 +492,7 @@ suite('Dashboard state', () => {
       '# Project #project-name #project/project-name #management/performance',
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createDashboardSnapshot(index, defaultPreferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) });
+    const snapshot = createDashboardSnapshot({ index, preferences: defaultPreferences, queryContext: createQueryContext(Date.now()) });
 
     assert.strictEqual(
       snapshot.tags.some((tag) => tag.key === '#project-name'),
@@ -525,7 +525,7 @@ suite('Dashboard state', () => {
       '# Atlas #project/atlas #follow-up #urgent',
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createDashboardSnapshot(index, {
+    const snapshot = createDashboardSnapshot({ index, preferences: {
       ...defaultPreferences,
       savedFilters: [
         {
@@ -539,7 +539,7 @@ suite('Dashboard state', () => {
           tagKeys: ['#follow-up', '#missing'],
         },
       ],
-    }, 'active', undefined, { queryContext: createQueryContext(Date.now()) });
+    }, selectedTag: 'active', queryContext: createQueryContext(Date.now()) });
 
     assert.deepStrictEqual(snapshot.savedFilters, [
       {
@@ -758,16 +758,14 @@ suite('Dashboard state', () => {
       strong,
     ]);
 
-    const notes = rankRelatedNotes(
+    const notes = rankRelatedNotes({
       index,
-      active.filePath,
-      active,
-      [{ key: '#source', label: '#source' }],
-      false,
-      undefined,
-      undefined,
-      { now: Date.now() },
-    );
+      activeFilePath: active.filePath,
+      activeFile: active,
+      activeTags: [{ key: '#source', label: '#source' }],
+      enableKeywordLinks: false,
+      ranking: { now: Date.now() },
+    });
     const weakNote = notes.find((note) => note.filePath === weak.filePath);
     const strongNote = notes.find((note) => note.filePath === strong.filePath);
 
@@ -814,26 +812,24 @@ suite('Dashboard state', () => {
         commonAssociation.associatedTagSourceUnitCount,
     );
 
-    const defaultNotes = rankRelatedNotes(
+    const defaultNotes = rankRelatedNotes({
       index,
-      active.filePath,
-      active,
-      [{ key: '#source', label: '#source' }],
-      false,
-      undefined,
-      undefined,
-      { now: Date.now() },
-    );
-    const minimumSupportNotes = rankRelatedNotes(
+      activeFilePath: active.filePath,
+      activeFile: active,
+      activeTags: [{ key: '#source', label: '#source' }],
+      enableKeywordLinks: false,
+      ranking: { now: Date.now() },
+    });
+    const minimumSupportNotes = rankRelatedNotes({
       index,
-      active.filePath,
-      active,
-      [{ key: '#source', label: '#source' }],
-      false,
-      'inline',
-      new Map(),
-      { now: Date.now(), associationMinimumSupport: 2 },
-    );
+      activeFilePath: active.filePath,
+      activeFile: active,
+      activeTags: [{ key: '#source', label: '#source' }],
+      enableKeywordLinks: false,
+      tagTitleDisplayMode: 'inline',
+      activeTagWeights: new Map(),
+      ranking: { now: Date.now(), associationMinimumSupport: 2 },
+    });
     assert.ok(defaultNotes.some((note) => note.filePath === rare.filePath));
     assert.strictEqual(
       minimumSupportNotes.some((note) => note.filePath === rare.filePath),
@@ -908,26 +904,24 @@ suite('Dashboard state', () => {
     const active = createFile('notes/current.md', '# Current #work');
     const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');
     const index = createFileIndex([active, daily]);
-    const disabled = rankRelatedNotes(
+    const disabled = rankRelatedNotes({
       index,
-      active.filePath,
-      active,
-      [{ key: '#work', label: '#work' }],
-      false,
-      undefined,
-      undefined,
-      { now: Date.now() },
-    );
-    const enabled = rankRelatedNotes(
+      activeFilePath: active.filePath,
+      activeFile: active,
+      activeTags: [{ key: '#work', label: '#work' }],
+      enableKeywordLinks: false,
+      ranking: { now: Date.now() },
+    });
+    const enabled = rankRelatedNotes({
       index,
-      active.filePath,
-      active,
-      [{ key: '#work', label: '#work' }],
-      false,
-      'inline',
-      new Map(),
-      { now: Date.now(), recencyHalfLifeDays: 30 },
-    );
+      activeFilePath: active.filePath,
+      activeFile: active,
+      activeTags: [{ key: '#work', label: '#work' }],
+      enableKeywordLinks: false,
+      tagTitleDisplayMode: 'inline',
+      activeTagWeights: new Map(),
+      ranking: { now: Date.now(), recencyHalfLifeDays: 30 },
+    });
 
     assert.strictEqual(disabled[0].relevanceEvidence?.recencyWeight, 0);
     assert.strictEqual(enabled[0].relevanceEvidence?.recencyWeight, 0.1);
@@ -944,24 +938,24 @@ suite('Dashboard state', () => {
       '# Ancestor #management/performance',
     );
     const index = createFileIndex([active, direct, ancestor]);
-    const notes = rankRelatedNotes(
+    const notes = rankRelatedNotes({
       index,
-      active.filePath,
-      active,
-      [
+      activeFilePath: active.filePath,
+      activeFile: active,
+      activeTags: [
         { key: '#project-name', label: '#project-name' },
         { key: '#follow-up', label: '#follow-up' },
         { key: '#management/performance', label: '#management/performance' },
       ],
-      false,
-      'inline',
-      new Map([
+      enableKeywordLinks: false,
+      tagTitleDisplayMode: 'inline',
+      activeTagWeights: new Map([
         ['#project-name', 1],
         ['#follow-up', 1],
         ['#management/performance', 0.5],
       ]),
-      { now: Date.now() },
-    );
+      ranking: { now: Date.now() },
+    });
 
     assert.deepStrictEqual(
       notes.map((note) => note.filePath),

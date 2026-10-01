@@ -66,14 +66,14 @@ suite('Notes graph navigation', () => {
       reveal: boolean | undefined;
     }> = [];
     const posted: unknown[] = [];
-    const graph = new NotesGraphPanel(
+    const graph = new NotesGraphPanel({
       indexer,
-      vscode.Uri.file(process.cwd()),
-      async (context, reveal) => {
+      extensionUri: vscode.Uri.file(process.cwd()),
+      onGraphContext: async (context, reveal) => {
         contexts.push({ context, reveal });
       },
-      new ThemePreview(),
-    );
+      themePreview: new ThemePreview(),
+    });
 
     try {
       const controller = graph as unknown as {
@@ -137,7 +137,12 @@ suite('Notes graph navigation', () => {
       isNotesFile: () => true,
     } as unknown as IndexReader & IndexUpdates;
     const posted: Array<{ type: string }> = [];
-    const graph = new NotesGraphPanel(indexer, vscode.Uri.file(process.cwd()), () => undefined, new ThemePreview());
+    const graph = new NotesGraphPanel({
+      indexer,
+      extensionUri: vscode.Uri.file(process.cwd()),
+      onGraphContext: () => undefined,
+      themePreview: new ThemePreview(),
+    });
     try {
       const controller = graph as unknown as { panel: unknown; refresh(): void };
       controller.panel = {
@@ -172,12 +177,12 @@ suite('Notes graph navigation', () => {
       aroundNoteScope({ local: false, depth: 3, skipPeriodic: true }),
       { local: true, depth: 1, skipPeriodic: true },
     );
-    const graph = new NotesGraphPanel(
-      createIndexer(buildWorkspaceIndex(new Map())),
-      vscode.Uri.file(process.cwd()),
-      () => undefined,
-      new ThemePreview(),
-    );
+    const graph = new NotesGraphPanel({
+      indexer: createIndexer(buildWorkspaceIndex(new Map())),
+      extensionUri: vscode.Uri.file(process.cwd()),
+      onGraphContext: () => undefined,
+      themePreview: new ThemePreview(),
+    });
     try {
       const controller = graph as unknown as {
         scopeChosen: boolean;

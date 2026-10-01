@@ -227,7 +227,7 @@ export class CalendarController {
       }
       case 'openNote':
         if (this.indexer.getSnapshot().files.has(message.filePath)) {
-          await openSourceAt(message.filePath, 1);
+          await openSourceAt({ filePath: message.filePath, line: 1 });
         }
         return;
       case 'searchCreated':
@@ -260,7 +260,7 @@ export class CalendarController {
           (entry) => entry.date === message.date,
         );
         if (note) {
-          await openSourceAt(note.filePath, 1);
+          await openSourceAt({ filePath: note.filePath, line: 1 });
           return;
         }
         await this.openPeriod('day', message.date);
@@ -298,7 +298,7 @@ export class CalendarController {
               names.has((filePath.split('/').pop() ?? '').replace(/\.md$/i, '')),
             );
     if (existing) {
-      await openSourceAt(existing, 1);
+      await openSourceAt({ filePath: existing, line: 1 });
       return;
     }
     const choice = await vscode.window.showInformationMessage(

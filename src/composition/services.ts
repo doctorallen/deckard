@@ -882,16 +882,16 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     },
     themePreview,
   });
-  const help = new HelpPanel(
-    context.extensionUri,
+  const help = new HelpPanel({
+    extensionUri: context.extensionUri,
     themePreview,
-    context.extension.packageJSON.contributes,
-    parts.whatsNew,
-  );
-  const notesGraph = new NotesGraphPanel(
+    manifest: context.extension.packageJSON.contributes,
+    whatsNew: parts.whatsNew,
+  });
+  const notesGraph = new NotesGraphPanel({
     indexer,
-    context.extensionUri,
-    async (graphContext, reveal) => {
+    extensionUri: context.extensionUri,
+    onGraphContext: async (graphContext, reveal) => {
       if (graphContext) {
         await sidebarNotes.showGraphConnections(graphContext, reveal);
       } else {
@@ -899,12 +899,12 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
       }
     },
     themePreview,
-  );
-  const relatedNotesDebug = new RelatedNotesDebugPanel(
+  });
+  const relatedNotesDebug = new RelatedNotesDebugPanel({
     sidebarNotes,
-    context.extensionUri,
+    extensionUri: context.extensionUri,
     themePreview,
-  );
+  });
   return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug };
 }
 

@@ -220,19 +220,23 @@ export function completeDraft(
   };
 }
 
+/** A task as it was and as edited, and how its lines are written. */
+export interface EditedTaskWrite {
+  before: TaskDraft;
+  edited: TaskDraft;
+  now: number;
+  /** The note's line ending, which joins a repeat's next line. */
+  eol: string;
+  /** The steps the next occurrence of a repeating task takes, unchecked. */
+  steps?: readonly string[];
+}
+
 /**
  * The lines an edited task is written as. Completing a repeating task starts
  * its next occurrence on the line above, as a checkbox does; reopening one,
  * or editing one already done, writes the one line.
  */
-export function writeEditedTask(
-  before: TaskDraft,
-  edited: TaskDraft,
-  now: number,
-  eol: string,
-  /** The steps the next occurrence of a repeating task takes, unchecked. */
-  steps: readonly string[] = [],
-): CompletionWrite {
+export function writeEditedTask({ before, edited, now, eol, steps = [] }: EditedTaskWrite): CompletionWrite {
   const line = formatTaskDraft(edited);
   if (before.completed || !edited.completed) {
     return { text: line };
@@ -240,14 +244,19 @@ export function writeEditedTask(
   return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol, steps);
 }
 
+/** A draft, the date field to set on it, and the words written for it. */
+export interface DraftDateChange {
+  draft: TaskDraft;
+  field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>;
+  /** The words, such as `friday` or `in 2 days`, read against `now`. */
+  written: string;
+  now: number;
+  /** How the words are read, such as the week's first day. */
+  options?: DatePhraseOptions;
+}
+
 /** A date field's new value, or nothing when the words are not a day. */
-export function setDraftDate(
-  draft: TaskDraft,
-  field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>,
-  written: string,
-  now: number,
-  options: DatePhraseOptions = {},
-): TaskDraft | undefined {
+export function setDraftDate({ draft, field, written, now, options = {} }: DraftDateChange): TaskDraft | undefined {
   const read = parseDatePhrase(written, now, options);
   return read ? { ...draft, [field]: read.date } : undefined;
 }
@@ -493,15 +502,15 @@ export async function editTaskCommand(
   }
 
   const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-  const completion = writeEditedTask(
-    draft,
+  const completion = writeEditedTask({
+    before: draft,
     edited,
     now,
     eol,
-    existing
+    steps: existing
       ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
       : [],
-  );
+  });
   const written = completion.text;
   if (written === line.text) {
     return written;

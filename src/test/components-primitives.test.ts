@@ -46,13 +46,13 @@ suite('Component primitives', () => {
   const openBoard = (markdown = '# Atlas #project/atlas\n- [ ] Send the proposal #project/atlas 📅 2026-09-21\n'): WebviewPage => {
     const index = buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', markdown)]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard(
+    const board = createTaskBoard({
       index,
-      { ...store.reader.value, taskBoardLayout: 'board' },
-      { query: '' },
-      { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
-      'inline',
-    );
+      preferences: { ...store.reader.value, taskBoardLayout: 'board' },
+      search: { query: '' },
+      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
+      tagTitleDisplayMode: 'inline',
+    });
     page = openWebviewPage(getTaskBoardHtml(webview), board);
     return page;
   };

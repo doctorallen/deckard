@@ -87,17 +87,15 @@ suite('Searches keep parked notes, last', () => {
     const store = new SearchStore(undefined);
     store.replace(index.files.values());
     try {
-      const results = buildQuickFindResults(
+      const results = buildQuickFindResults({
         index,
-        defaults(),
-        'vendor',
-        (text) => store.searchEntries(text, { limit: 200 }),
-        {
-          queryContext: createQueryContext(Date.now()),
-          conditions: createQuerySuggestions(index, [], createQueryContext(Date.now())).conditions,
-          formatCapture: (text) => formatCapture(text, Date.now()),
-        },
-      );
+        preferences: defaults(),
+        input: 'vendor',
+        searchText: (text) => store.searchEntries(text, { limit: 200 }),
+        queryContext: createQueryContext(Date.now()),
+        conditions: createQuerySuggestions(index, [], createQueryContext(Date.now())).conditions,
+        formatCapture: (text) => formatCapture(text, Date.now()),
+      });
       assert.deepStrictEqual(
         results.notes.map((note) => [note.filePath, note.description]),
         [

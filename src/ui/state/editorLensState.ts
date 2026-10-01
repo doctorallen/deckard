@@ -101,6 +101,18 @@ export interface DailyNoteActions {
   carryIn: Task[];
 }
 
+/** A note that may be a daily note, and how far back its tasks are looked for. */
+export interface DailyNoteActionsOptions {
+  file: ParsedFile;
+  index: WorkspaceIndex;
+  /** Today, as `YYYY-MM-DD`. */
+  today: string;
+  /** How many days back open tasks are carried in from; 0, the default, is every day. */
+  lookbackDays?: number;
+  /** The rollover mode, which decides whether older copies of a task count. */
+  mode?: 'move' | 'migrate';
+}
+
 /**
  * What a daily note offers: its neighbors, and on today's note, the tasks
  * still open in earlier ones. Undefined for a note that is not a daily note,
@@ -110,14 +122,13 @@ export interface DailyNoteActions {
  * those are not counted; in copy mode they stay in the note they came from,
  * and would otherwise keep offering to carry in what is already there.
  */
-export function findDailyNoteActions(
-  file: ParsedFile,
-  index: WorkspaceIndex,
-  today: string,
+export function findDailyNoteActions({
+  file,
+  index,
+  today,
   lookbackDays = 0,
-  /** The rollover mode, which decides whether older copies of a task count. */
-  mode: 'move' | 'migrate' = 'move',
-): DailyNoteActions | undefined {
+  mode = 'move',
+}: DailyNoteActionsOptions): DailyNoteActions | undefined {
   const date = findDailyNoteDate(
     file.filePath,
     file.sections

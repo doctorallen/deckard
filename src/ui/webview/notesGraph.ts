@@ -54,11 +54,31 @@ export function readNotesGraphOptions(value: unknown): NotesGraphShowOptions {
   return onlyWrittenLinks === true ? { onlyWrittenLinks: true } : {};
 }
 
+/** What the Notes Graph reads, and whom it tells what it is showing. */
+export interface NotesGraphPanelOptions {
+  indexer: IndexReader & IndexUpdates;
+  extensionUri: vscode.Uri;
+  /**
+   * Told what the graph is showing, or that it shows nothing, so Related
+   * Notes can list the connections; `reveal` asks it to show itself.
+   */
+  onGraphContext: (
+    context: SidebarGraphContext | undefined,
+    reveal?: boolean,
+  ) => void | Promise<void>;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
+}
+
 /**
  * Owns the workspace-wide Notes Graph panel and validates navigation requests
  * against the current index before opening editors or tag overviews.
  */
 export class NotesGraphPanel implements vscode.Disposable {
+  private readonly indexer: IndexReader & IndexUpdates;
+  private readonly extensionUri: vscode.Uri;
+  private readonly onGraphContext: NotesGraphPanelOptions['onGraphContext'];
+  private readonly themePreview: ThemePreview;
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
@@ -91,16 +111,12 @@ export class NotesGraphPanel implements vscode.Disposable {
    */
   private focusPath: string | undefined;
 
-  public constructor(
-    private readonly indexer: IndexReader & IndexUpdates,
-    private readonly extensionUri: vscode.Uri,
-    private readonly onGraphContext: (
-      context: SidebarGraphContext | undefined,
-      reveal?: boolean,
-    ) => void | Promise<void>,
-    /** The theme Choose Theme… is previewing, which the page draws in. */
-    private readonly themePreview: ThemePreview,
-  ) {
+  public constructor(options: NotesGraphPanelOptions) {
+    const { indexer } = options;
+    this.indexer = indexer;
+    this.extensionUri = options.extensionUri;
+    this.onGraphContext = options.onGraphContext;
+    this.themePreview = options.themePreview;
     this.disposables.push(
       onIndexUpdateInTurn(
         indexer,
@@ -436,7 +452,7 @@ export class NotesGraphPanel implements vscode.Disposable {
       node.line !== undefined &&
       this.isKnownSourceLocation(node.filePath, node.line)
     ) {
-      await openSourceAt(node.filePath, node.line);
+      await openSourceAt({ filePath: node.filePath, line: node.line });
     }
   }
 

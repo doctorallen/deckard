@@ -125,13 +125,26 @@ const TITLE_HAS_EVERY_WORD = 2000;
 const LOOSE_TITLE = 1000;
 const QUERY_MATCH = 500;
 
-export function buildQuickFindResults(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  input: string,
-  searchText: QuickFindTextSearch,
-  options: QuickFindOptions,
-): QuickFindResults {
+/** What Find lists from: the index, the words typed, and how it answers. */
+export interface QuickFindRequest extends QuickFindOptions {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  /** What is typed in Find's box. */
+  input: string;
+  searchText: QuickFindTextSearch;
+}
+
+/**
+ * Find's rows for what is typed, best first, each kind cut to its limit.
+ * With nothing typed, the rows an empty Find offers instead.
+ */
+export function buildQuickFindResults({
+  index,
+  preferences,
+  input,
+  searchText,
+  ...options
+}: QuickFindRequest): QuickFindResults {
   const { now } = options.queryContext;
   if (!input.trim()) {
     return buildEmptyResults(index, preferences, now);

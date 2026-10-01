@@ -309,7 +309,7 @@ suite('Source commands', () => {
     const template =
       '---\ntags: [meeting]\nowner: {ask:Owner}\n---\n# {title}\nNotes on {tag} from {date}.\n';
 
-    const content = applyHubTemplate(template, project, 'Atlas', now, new Map([['Owner', 'Mara']]));
+    const content = applyHubTemplate({ template, tag: project, title: 'Atlas', now, answers: new Map([['Owner', 'Mara']]) });
     assert.strictEqual(
       content,
       '---\ndescribes: project/atlas\ntags: [meeting]\nowner: Mara\n---\n# Atlas\nNotes on #project/atlas from 2026-09-03.\n',
@@ -317,24 +317,24 @@ suite('Source commands', () => {
     assert.deepStrictEqual(parseMarkdown('notes/atlas.md', content).hub?.describes, [project]);
 
     assert.strictEqual(
-      applyHubTemplate('# {title}\n', project, 'Atlas', now),
+      applyHubTemplate({ template: '# {title}\n', tag: project, title: 'Atlas', now }),
       '---\ndescribes: project/atlas\n---\n# Atlas\n',
       'front matter is added when the template has none',
     );
     assert.strictEqual(
-      applyHubTemplate('---\n---\n# {title}\n', project, 'Atlas', now),
+      applyHubTemplate({ template: '---\n---\n# {title}\n', tag: project, title: 'Atlas', now }),
       '---\ndescribes: project/atlas\n---\n# Atlas\n',
       'empty front matter gains describes',
     );
     const ownDescribes = '---\ndescribes: project/atlas-program\n---\n# {title}\n';
     assert.strictEqual(
-      applyHubTemplate(ownDescribes, project, 'Atlas', now),
+      applyHubTemplate({ template: ownDescribes, tag: project, title: 'Atlas', now }),
       '---\ndescribes: project/atlas-program\n---\n# Atlas\n',
       "the template's own describes is kept",
     );
 
     const person = { key: '@dana', label: '@dana' };
-    const personNote = applyHubTemplate('# {title}\nRole: \n', person, 'Dana', now);
+    const personNote = applyHubTemplate({ template: '# {title}\nRole: \n', tag: person, title: 'Dana', now });
     assert.ok(personNote.startsWith('---\ndescribes: "@dana"\n---\n'));
     assert.deepStrictEqual(parseMarkdown('notes/dana.md', personNote).hub?.describes, [person]);
   });
@@ -347,7 +347,7 @@ suite('Source commands', () => {
       Buffer.from('first\nsecond\nthird\n', 'utf8'),
     );
 
-    const editor = await openSourceAt(fileUri.fsPath, 2);
+    const editor = await openSourceAt({ filePath: fileUri.fsPath, line: 2 });
 
     assert.ok(editor);
     assert.strictEqual(editor.document.uri.toString(), fileUri.toString());
@@ -423,12 +423,12 @@ suite('Source commands', () => {
     // Any heading, tagged or not, is found under the cursor.
     assert.strictEqual(findHeadingAtLine(parsed.sections, 11)?.heading, 'Next');
 
-    const extractedUri = await extractHeadingNote(
-      parsed.sections[1],
+    const extractedUri = await extractHeadingNote({
+      section: parsed.sections[1],
       sourceUri,
-      notesUri,
-      'lead-note.md',
-    );
+      notesFolderUri: notesUri,
+      name: 'lead-note.md',
+    });
     assert.ok(extractedUri);
     const extractedContent = Buffer.from(
       await vscode.workspace.fs.readFile(extractedUri!),
@@ -481,7 +481,7 @@ suite('Source commands', () => {
 
     const parsed = parseMarkdown('notes/source.md', sourceContent);
     assert.ok(
-      await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'lead'),
+      await extractHeadingNote({ section: parsed.sections[1], sourceUri, notesFolderUri: notesUri, name: 'lead' }),
     );
     assert.strictEqual(
       Buffer.from(await vscode.workspace.fs.readFile(sourceUri)).toString(
@@ -505,7 +505,7 @@ suite('Source commands', () => {
       vscode.workspace.fs.stat(uri).then(() => true, () => false);
 
     assert.strictEqual(
-      await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'half', async () => 'half'),
+      await extractHeadingNote({ section: parsed.sections[1], sourceUri, notesFolderUri: notesUri, name: 'half', replace: async () => 'half' }),
       undefined,
     );
     assert.ok(
@@ -513,7 +513,7 @@ suite('Source commands', () => {
       'the heading stays in the new note while the old note is unsaved',
     );
 
-    await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'undone', async () => 'unchanged');
+    await extractHeadingNote({ section: parsed.sections[1], sourceUri, notesFolderUri: notesUri, name: 'undone', replace: async () => 'unchanged' });
     assert.ok(
       !(await exists(vscode.Uri.joinPath(notesUri, 'undone.md'))),
       'nothing changed, so the new note goes',
@@ -556,12 +556,12 @@ suite('Source commands', () => {
     );
 
     assert.strictEqual(
-      await extractHeadingNote(
-        parsed.sections[0],
+      await extractHeadingNote({
+        section: parsed.sections[0],
         sourceUri,
-        notesUri,
-        'existing',
-      ),
+        notesFolderUri: notesUri,
+        name: 'existing',
+      }),
       undefined,
     );
     assert.strictEqual(

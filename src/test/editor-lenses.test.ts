@@ -99,11 +99,11 @@ suite('Editor lenses', () => {
     const note = (filePath: string) => index.files.get(filePath) as ParsedFile;
 
     test("offers today's note the unfinished tasks it does not already hold", () => {
-      const actions = findDailyNoteActions(
-        note('notes/2026-09-22.md'),
+      const actions = findDailyNoteActions({
+        file: note('notes/2026-09-22.md'),
         index,
-        '2026-09-22',
-      );
+        today: '2026-09-22',
+      });
       assert.deepStrictEqual(
         actions?.carryIn.map((task) => task.title.trim()),
         // "Book travel" was carried already; the done task stays behind.
@@ -114,23 +114,23 @@ suite('Editor lenses', () => {
     });
 
     test('offers an earlier daily note only its neighbors', () => {
-      const actions = findDailyNoteActions(
-        note('notes/2026-09-21.md'),
+      const actions = findDailyNoteActions({
+        file: note('notes/2026-09-21.md'),
         index,
-        '2026-09-22',
-      );
+        today: '2026-09-22',
+      });
       assert.deepStrictEqual(actions?.carryIn, []);
       assert.strictEqual(actions?.previous, '2026-09-18');
       assert.strictEqual(actions?.next, '2026-09-22');
     });
 
     test('reaches only as far back as the lookback allows', () => {
-      const actions = findDailyNoteActions(
-        note('notes/2026-09-22.md'),
+      const actions = findDailyNoteActions({
+        file: note('notes/2026-09-22.md'),
         index,
-        '2026-09-22',
-        2,
-      );
+        today: '2026-09-22',
+        lookbackDays: 2,
+      });
       assert.deepStrictEqual(
         actions?.carryIn.map((task) => task.title.trim()),
         ['Write the brief'],
@@ -143,19 +143,19 @@ suite('Editor lenses', () => {
         'notes/2026-09-23.md': '# 2026-09-23\n- [ ] Chase the vendor\n',
         'notes/2026-09-24.md': '# 2026-09-24\n',
       });
-      const actions = findDailyNoteActions(
-        copies.files.get('notes/2026-09-24.md') as ParsedFile,
-        copies,
-        '2026-09-24',
-        0,
-        'migrate',
-      );
+      const actions = findDailyNoteActions({
+        file: copies.files.get('notes/2026-09-24.md') as ParsedFile,
+        index: copies,
+        today: '2026-09-24',
+        lookbackDays: 0,
+        mode: 'migrate',
+      });
       assert.strictEqual(actions?.carryIn.length, 1);
     });
 
     test('shows nothing for a note that is not a daily note', () => {
       assert.strictEqual(
-        findDailyNoteActions(note('notes/Plan.md'), index, '2026-09-22'),
+        findDailyNoteActions({ file: note('notes/Plan.md'), index, today: '2026-09-22' }),
         undefined,
       );
     });
@@ -163,11 +163,11 @@ suite('Editor lenses', () => {
     test('shows nothing for a lone daily note with nothing to carry', () => {
       const alone = createIndex({ 'notes/2026-09-22.md': '# 2026-09-22\n' });
       assert.strictEqual(
-        findDailyNoteActions(
-          alone.files.get('notes/2026-09-22.md') as ParsedFile,
-          alone,
-          '2026-09-22',
-        ),
+        findDailyNoteActions({
+          file: alone.files.get('notes/2026-09-22.md') as ParsedFile,
+          index: alone,
+          today: '2026-09-22',
+        }),
         undefined,
       );
     });

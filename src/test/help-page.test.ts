@@ -96,7 +96,7 @@ suite('Help page', () => {
     const original = commands.executeCommand;
     const ran: string[] = [];
     commands.executeCommand = async (id: string) => void ran.push(id);
-    const help = new HelpPanel(extensionUri, new ThemePreview(), manifest);
+    const help = new HelpPanel({ extensionUri, themePreview: new ThemePreview(), manifest });
     try {
       await help.handle({ type: 'runCommand', command: 'deckard.editTask' });
       await help.handle({ type: 'runCommand', command: 'workbench.action.quit' });
@@ -144,8 +144,8 @@ suite('Help page', () => {
       return fakePanel();
     };
     assert.strictEqual(window.createWebviewPanel === original, false, 'the panel can be stood in for');
-    const help = new HelpPanel(extensionUri, new ThemePreview());
-    const restoredHelp = new HelpPanel(extensionUri, new ThemePreview());
+    const help = new HelpPanel({ extensionUri, themePreview: new ThemePreview() });
+    const restoredHelp = new HelpPanel({ extensionUri, themePreview: new ThemePreview() });
     try {
       await help.show();
       assert.strictEqual((made[0] as vscode.WebviewPanelOptions & vscode.WebviewOptions).enableScripts, true);

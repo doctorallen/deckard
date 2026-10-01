@@ -143,14 +143,14 @@ function createWidget(
     case 'search':
       return {
         ...widget,
-        searchState: createQueryViewState(
+        searchState: createQueryViewState({
           index,
-          parseQuery(''),
-          { notes: 0, tasks: 0 },
-          true,
-          preferences.recentQueries ?? [],
-          { queryContext: options.queryContext },
-        ),
+          parsed: parseQuery(''),
+          matchCounts: { notes: 0, tasks: 0 },
+          isAdvanced: true,
+          recentQueries: preferences.recentQueries ?? [],
+          queryContext: options.queryContext,
+        }),
       };
     case 'tasks': {
       const query = config.query ?? '';
@@ -386,16 +386,15 @@ function createWidget(
         ranking: {},
       };
       const ranked = sortRelatedNotes(
-        rankRelatedNotes(
+        rankRelatedNotes({
           index,
-          filePath,
-          file,
-          collectFileTags(file),
-          settings.enableKeywordLinks,
-          'separate',
-          undefined,
-          { ...settings.ranking, now: options.queryContext.now },
-        ),
+          activeFilePath: filePath,
+          activeFile: file,
+          activeTags: collectFileTags(file),
+          enableKeywordLinks: settings.enableKeywordLinks,
+          tagTitleDisplayMode: 'separate',
+          ranking: { ...settings.ranking, now: options.queryContext.now },
+        }),
         'tags',
         {},
       );

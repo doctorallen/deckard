@@ -57,17 +57,15 @@ function createFinder(notes: Record<string, string>) {
       input: string,
       preferences: PersistedPreferences = createPreferences(new MemoryMemento()).reader.value,
     ): QuickFindResults =>
-      buildQuickFindResults(
+      buildQuickFindResults({
         index,
         preferences,
         input,
-        (text) => store.searchEntries(text, { limit: 200 }),
-        {
-          queryContext: createQueryContext(Date.now()),
-          conditions,
-          formatCapture: (text) => formatCapture(text, Date.now()),
-        },
-      ),
+        searchText: (text) => store.searchEntries(text, { limit: 200 }),
+        queryContext: createQueryContext(Date.now()),
+        conditions,
+        formatCapture: (text) => formatCapture(text, Date.now()),
+      }),
     dispose: () => store.dispose(),
   };
 }

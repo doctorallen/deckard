@@ -6,18 +6,29 @@ import { getRelatedNotesDebugHtml } from './relatedNotesDebugHtml';
 import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 
+/** What the Related Notes evidence page reads and draws with. */
+export interface RelatedNotesDebugPanelOptions {
+  /** Related Notes, which works out the evidence for an entry. */
+  sidebarNotes: SidebarNotesView;
+  extensionUri: vscode.Uri;
+  /** The theme Choose Theme… is previewing, which the page draws in. */
+  themePreview: ThemePreview;
+}
+
 /**
  * Displays the full evidence calculation for one Markdown entry.
  */
 export class RelatedNotesDebugPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
+  private readonly sidebarNotes: SidebarNotesView;
+  private readonly extensionUri: vscode.Uri;
+  private readonly themePreview: ThemePreview;
 
-  public constructor(
-    private readonly sidebarNotes: SidebarNotesView,
-    private readonly extensionUri: vscode.Uri,
-    /** The theme Choose Theme… is previewing, which the page draws in. */
-    private readonly themePreview: ThemePreview,
-  ) {}
+  public constructor({ sidebarNotes, extensionUri, themePreview }: RelatedNotesDebugPanelOptions) {
+    this.sidebarNotes = sidebarNotes;
+    this.extensionUri = extensionUri;
+    this.themePreview = themePreview;
+  }
 
   public async show(
     documentUri: vscode.Uri,

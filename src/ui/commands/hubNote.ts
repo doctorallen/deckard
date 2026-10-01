@@ -33,18 +33,22 @@ export function createHubNoteContent(tag: TagReference, title: string): string {
   return `---\ndescribes: ${getDescribesValue(tag)}\n---\n# ${title}\n\n`;
 }
 
+/** A namespace's hub template, and what fills it. */
+export interface HubTemplateOptions {
+  template: string;
+  tag: TagReference;
+  title: string;
+  now: Date;
+  /** The reader's answers to the template's questions, by question. */
+  answers?: ReadonlyMap<string, string>;
+}
+
 /**
  * Makes a hub note from a namespace's template: fills its placeholders, with
  * `{tag}` as well, and adds `describes:` to its front matter unless the
  * template writes its own.
  */
-export function applyHubTemplate(
-  template: string,
-  tag: TagReference,
-  title: string,
-  now: Date,
-  answers?: ReadonlyMap<string, string>,
-): string {
+export function applyHubTemplate({ template, tag, title, now, answers }: HubTemplateOptions): string {
   const content = fillTemplate(
     template,
     { ...getTemplateVariables(title, now), tag: tag.label },
@@ -104,7 +108,7 @@ export async function createHubNote(
     if (!answers) {
       return undefined;
     }
-    content = applyHubTemplate(template, tag, title, new Date(), answers);
+    content = applyHubTemplate({ template, tag, title, now: new Date(), answers });
   }
   await vscode.workspace.fs.createDirectory(notesFolderUri);
   await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));

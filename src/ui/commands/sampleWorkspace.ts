@@ -89,22 +89,33 @@ export function sampleFileName(name: string, today: Date): string {
   return name === 'dot-vscode' ? '.vscode' : name;
 }
 
+/** Where the sample comes from and goes, the day it is dated from, and whether it may replace one. */
+export interface InstallSampleOptions {
+  extensionUri: vscode.Uri;
+  storageUri: vscode.Uri;
+  today: Date;
+  /** The file system it is copied through; VS Code's by default. */
+  fs?: SampleFileAccess;
+  /** Replace a sample already there rather than refuse. */
+  replace?: boolean;
+}
+
 /**
  * Writes the sample into `storageUri/deckard-sample`, dated from `today`.
  * Refuses, rather than merging, when it is already there, unless told to
  * replace it. Returns where it went and how many notes it holds: every
  * Markdown file but the README and the templates.
  */
-export async function installSample(
-  extensionUri: vscode.Uri,
-  storageUri: vscode.Uri,
-  today: Date,
-  fs: SampleFileAccess = vscode.workspace.fs,
-  options: { replace?: boolean } = {},
-): Promise<{ target: vscode.Uri; notes: number }> {
+export async function installSample({
+  extensionUri,
+  storageUri,
+  today,
+  fs = vscode.workspace.fs,
+  replace,
+}: InstallSampleOptions): Promise<{ target: vscode.Uri; notes: number }> {
   const target = vscode.Uri.joinPath(storageUri, SAMPLE_FOLDER_NAME);
   if (await fileExists(target, fs)) {
-    if (!options.replace) {
+    if (!replace) {
       throw new SampleFolderExistsError(target);
     }
     await fs.delete(target, { recursive: true, useTrash: false });
@@ -185,7 +196,11 @@ export async function createSampleWorkspace(context: vscode.ExtensionContext): P
   if (replace || !(await fileExists(target))) {
     try {
       notes = (
-        await installSample(context.extensionUri, storage, new Date(), vscode.workspace.fs, {
+        await installSample({
+          extensionUri: context.extensionUri,
+          storageUri: storage,
+          today: new Date(),
+          fs: vscode.workspace.fs,
           replace,
         })
       ).notes;

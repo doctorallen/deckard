@@ -124,7 +124,7 @@ export async function openDailyNoteFor(
   await indexer.ready;
   const existing = listDailyNotes(indexer.getSnapshot()).find((note) => note.date === date);
   if (existing) {
-    await openSourceAt(existing.filePath, 1);
+    await openSourceAt({ filePath: existing.filePath, line: 1 });
     return;
   }
   if (date === formatIsoDate(startOfDay(Date.now()))) {

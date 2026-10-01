@@ -88,7 +88,7 @@ suite('Task editor', () => {
   test('marking a repeating task done writes its next occurrence above it', () => {
     const before = parseTaskDraft('- [ ] Water the plants 🔁 every week 📅 2026-09-21');
     const done = completeDraft(before, now);
-    const written = writeEditedTask(before, done, now, '\n');
+    const written = writeEditedTask({ before, edited: done, now, eol: '\n' });
     assert.strictEqual(
       written.text,
       '- [ ] Water the plants 🔁 every week 📅 2026-09-28\n- [x] Water the plants 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
@@ -96,10 +96,10 @@ suite('Task editor', () => {
     assert.strictEqual(written.next, '- [ ] Water the plants 🔁 every week 📅 2026-09-28');
 
     // Reopening writes the one line, and so does editing a task already done.
-    const reopened = writeEditedTask(done, completeDraft(done, now), now, '\n');
+    const reopened = writeEditedTask({ before: done, edited: completeDraft(done, now), now, eol: '\n' });
     assert.strictEqual(reopened.text, '- [ ] Water the plants 🔁 every week 📅 2026-09-21');
     assert.strictEqual(
-      writeEditedTask(done, { ...done, description: 'Water the ferns' }, now, '\n').next,
+      writeEditedTask({ before: done, edited: { ...done, description: 'Water the ferns' }, now, eol: '\n' }).next,
       undefined,
     );
   });
@@ -125,7 +125,7 @@ suite('Task editor', () => {
   test('completing writes no done date when the setting is off', () => {
     const before = parseTaskDraft('- [ ] Ship it');
     assert.strictEqual(
-      writeEditedTask(before, completeDraft(before, now, false), now, '\n').text,
+      writeEditedTask({ before, edited: completeDraft(before, now, false), now, eol: '\n' }).text,
       '- [x] Ship it',
     );
   });
@@ -133,21 +133,21 @@ suite('Task editor', () => {
   test('takes a date in words, and refuses what is not one', () => {
     const draft = parseTaskDraft('- [ ] Chase the contractor');
     assert.strictEqual(
-      formatTaskDraft(setDraftDate(draft, 'due', 'friday', now) ?? draft),
+      formatTaskDraft(setDraftDate({ draft, field: 'due', written: 'friday', now }) ?? draft),
       '- [ ] Chase the contractor 📅 2026-09-25',
     );
     assert.strictEqual(
-      formatTaskDraft(setDraftDate(draft, 'scheduled', 'in 2 days', now) ?? draft),
+      formatTaskDraft(setDraftDate({ draft, field: 'scheduled', written: 'in 2 days', now }) ?? draft),
       '- [ ] Chase the contractor ⏳ 2026-09-23',
     );
     assert.strictEqual(
-      setDraftDate(draft, 'due', 'whenever', now),
+      setDraftDate({ draft, field: 'due', written: 'whenever', now }),
       undefined,
       'nothing is guessed, so the field keeps what it had',
     );
     assert.strictEqual(
       formatTaskDraft(
-        setDraftDate(parseTaskDraft('- [ ] Chase 📅 2026-09-25'), 'due', '', now) ??
+        setDraftDate({ draft: parseTaskDraft('- [ ] Chase 📅 2026-09-25'), field: 'due', written: '', now }) ??
           draft,
       ),
       '- [ ] Chase',

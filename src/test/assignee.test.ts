@@ -155,17 +155,17 @@ suite('Task assignees', () => {
   });
 
   test('the board can column tasks by the person named on them', () => {
-    const layout = layoutTaskBoard(
+    const layout = layoutTaskBoard({
       index,
-      [...index.tasks.values()],
-      'assignee',
-      {
+      tasks: [...index.tasks.values()],
+      requestedGroupBy: 'assignee',
+      options: {
         queryContext: createQueryContext(Date.now()),
         statuses: [],
         statusNamespace: 'status',
         format: 'emoji',
       },
-    );
+    });
     assert.deepStrictEqual(
       layout.columns.map((column) => [column.label, column.cards.length]),
       [
