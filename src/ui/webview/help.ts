@@ -45,12 +45,17 @@ export class HelpPanel implements vscode.Disposable {
 
   /**
    * Opens Help, at a section when one is named, such as `whats-new`. A new
-   * panel is drawn at it; an open one is asked to show it.
+   * panel is drawn at it, and so is a hidden one, whose page is not running
+   * to be asked and is loaded again when shown; a visible one is asked to
+   * show it.
    */
   public async show(anchor?: string): Promise<void> {
-    if (!this.page.panel) {
+    const panel = this.page.panel;
+    if (!panel) {
       await this.controller.loadReleases();
       this.controller.drawingAt(anchor, () => this.page.open());
+    } else if (anchor && !panel.visible) {
+      this.controller.drawingAt(anchor, () => this.page.host.renderHtml());
     } else if (anchor) {
       const reveal: HelpRevealMessage = { type: 'reveal', anchor };
       this.page.host.post(reveal);

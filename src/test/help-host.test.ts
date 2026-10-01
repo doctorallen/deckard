@@ -142,7 +142,7 @@ suite('Help host', () => {
       const [panel] = made;
       assert.deepStrictEqual(withRoots(panel.options as vscode.WebviewOptions), {
         enableScripts: true,
-        retainContextWhenHidden: true,
+        retainContextWhenHidden: false,
         enableFindWidget: true,
         localResourceRoots: HELP_ROOTS,
       });
@@ -167,6 +167,20 @@ suite('Help host', () => {
       assert.strictEqual(made[0].reveals, 3);
       assert.strictEqual(made[0].htmls.length, 1, 'the open page is not drawn again');
       assert.deepStrictEqual(events.filter(([event]) => event === 'releases').length, 1, 'What is new is read when Help opens');
+    });
+  });
+
+  test('a hidden Help, which is not running to be asked, is drawn again at the section asked for', async () => {
+    await withHelp(async (help, made) => {
+      await help.show();
+      made[0].visible = false;
+      await help.show('commands');
+      assert.strictEqual(made[0].htmls.length, 2);
+      assert.strictEqual(anchorOf(made[0].htmls[1]), 'commands');
+      assert.deepStrictEqual(made[0].posted, [], 'nothing is posted to a page that is not running');
+      assert.strictEqual(made[0].reveals, 2);
+      await help.show();
+      assert.strictEqual(made[0].htmls.length, 2, 'shown with no section, it is only brought forward');
     });
   });
 

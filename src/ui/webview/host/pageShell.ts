@@ -80,12 +80,19 @@ export interface PageShellOptions {
   readonly bodyAttributes?: string;
   /** What the body holds, as HTML. */
   readonly body: string;
+  /**
+   * Whether the page runs its bundle, `dist/webview/<page>.js`, loaded last
+   * in the body with the page's nonce; a page whose script is still written
+   * in its body leaves it out.
+   */
+  readonly script?: boolean;
 }
 
 /**
  * A page's document: its policy, then its style sheets, linked from
  * `dist/webview/` in cascade order (the page's own sheet, its theme, and the
- * tail every page lays last), then the body, marked for zen when it is on.
+ * tail every page lays last), then the body, marked for zen when it is on,
+ * ending with the page's bundle for a page that has one.
  * The host builds no style text: every rule is in a sheet esbuild built
  * from `src/webview/`.
  */
@@ -93,9 +100,11 @@ export function buildPageShell(options: PageShellOptions): string {
   const { webview, extensionUri, theme, zen } = options;
   const tail = getPageTailCss({ theme, zen });
   const links = [`${options.page}.css`, ...tail.sheets]
-    .map((sheet) => webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview', ...sheet.split('/'))))
-    .map((uri) => `<link rel="stylesheet" href="${escapeHtml(uri.toString())}">`);
+    .map((sheet) => `<link rel="stylesheet" href="${escapeHtml(pageAsset(webview, extensionUri, sheet))}">`);
   const policy = getContentSecurityPolicy(webview.cspSource, options.nonce, options.csp);
+  const script = options.script
+    ? `<script nonce="${options.nonce}" src="${escapeHtml(pageAsset(webview, extensionUri, `${options.page}.js`))}"></script>`
+    : '';
   return [
     '<!DOCTYPE html>',
     '<html lang="en">',
@@ -106,6 +115,11 @@ export function buildPageShell(options: PageShellOptions): string {
     ...(options.title ? [`<title>${escapeHtml(options.title)}</title>`] : []),
     ...links,
     '</head>',
-    `<body${tail.bodyAttribute}${options.bodyAttributes ?? ''}>${options.body}</body></html>`,
+    `<body${tail.bodyAttribute}${options.bodyAttributes ?? ''}>${options.body}${script}</body></html>`,
   ].join('\n');
+}
+
+/** A file under `dist/webview/`, such as `help.js` or `themes/cooper.css`, as the page loads it. */
+function pageAsset(webview: PageShellOptions['webview'], extensionUri: vscode.Uri, file: string): string {
+  return webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview', ...file.split('/'))).toString();
 }

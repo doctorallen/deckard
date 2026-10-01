@@ -41,7 +41,10 @@ export class HelpController implements PageController<never, HelpPageToHost> {
   /** Draws from `help.manifest` and `help.whatsNew`, and reads the guide under `help.extensionUri`. */
   public constructor(private readonly help: HelpControllerOptions) {
     this.options = {
-      retainContextWhenHidden: true,
+      // Help is not kept running while hidden (Q1 of the webviews plan): its
+      // page saves the guide page it shows and its scroll with setState, and
+      // comes back there when shown.
+      retainContextWhenHidden: false,
       enableFindWidget: true,
       // The page's own script marks the section being read in the rail. A
       // panel restored after a reload keeps the options it was made with,
