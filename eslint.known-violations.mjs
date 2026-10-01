@@ -199,11 +199,11 @@ export default {
     ]
   },
   curly: {
-    "test/ui/checkContrast.js": 54,
+    "test/ui/checkContrast.js": 52,
     "test/ui/checkLayout.js": 5,
     "test/ui/checkRenderedContrast.js": 1,
     "test/ui/checkVisual.js": 4,
-    "test/ui/pages.js": 4,
+    "test/ui/pages.js": 3,
     "test/ui/verifyWebviews.js": 13
   },
   "jsdoc/escape-inline-tags": {
@@ -470,8 +470,10 @@ export default {
       "bench"
     ],
     "test/ui/checkLayout.js": [
-      "createSurfaces",
       "probeScript"
+    ],
+    "test/ui/surfaces.js": [
+      "createSurfaces"
     ]
   },
   "max-params": {
@@ -521,7 +523,8 @@ export default {
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 2
+    "test/ui/checkLayout.js": 1,
+    "test/ui/surfaces.js": 1
   },
   "unicorn/no-negated-condition": {
     "src/domain/markdown/parser.ts": 2,

@@ -1,0 +1,5444 @@
+<body
+  class="zen"
+><main
+  ><p
+      class="lead"
+    >Deckard / Related Notes diagnostic</p
+    ><h1
+    >Atlas</h1
+    > <p
+      class="source"
+    >notes/atlas.md / line 1</p
+    > <p
+      class="lead"
+    >Tags written on the selected entry have full weight (1.00). Explicit tags on parent and child headings provide context at <code
+      >0.5 / depth</code
+      >; tagged child items start at two levels of decay. If a tag appears in more than one place, the strongest weight wins.</p
+    > <section
+      aria-labelledby="debug-guide-title"
+      class="guide"
+    > <h2
+        id="debug-guide-title"
+      >How to read this page</h2
+      > <p
+        class="lead"
+      >Start with the <strong
+        >Contribution</strong
+        > and <strong
+        >Reasons</strong
+        > rows in each candidate. The terms below explain the detailed association and text-matching evidence.</p
+      > <div
+        class="guide-grid"
+      > <div
+          class="guide-card"
+        ><h3
+          >Source unit</h3
+          ><p
+          >One distinct place where Deckard can observe tags: a tagged heading, tagged line, task, or heading-to-heading relationship. The <strong
+            >Shared source units</strong
+            > value counts how many such places contain both tags; it is not a file count. <strong
+            >Tag appearances</strong
+            > shows selected-tag / candidate-tag / all-source-unit counts.</p
+          ></div
+        > <div
+          class="guide-card"
+        ><h3
+          >Raw evidence</h3
+          ><p
+          >The starting strength of a tag relationship. Tags written together count as a full co-occurrence; heading relationships contribute a smaller amount based on distance. Repeated observations add more raw evidence. The table labels this starting value <strong
+            >Raw connection</strong
+            >.</p
+          ></div
+        > <div
+          class="guide-card"
+        ><h3
+          >Normalized relevance</h3
+          ><p
+          >Raw evidence adjusted for confidence and popularity. Repeated support helps, while a relationship involving very common tags is discounted, so generic tags do not overwhelm intentional pairings. The table labels this adjusted value <strong
+            >Adjusted connection</strong
+            >.</p
+          ></div
+        > <div
+          class="guide-card"
+        ><h3
+          >BM25 lexical similarity</h3
+          ><p
+          >BM25 (also written BM-25) is a search-style text comparison. It looks for meaningful words shared by the selected and candidate entries, gives rarer words more influence, accounts for repeated words and entry length, and caps the result below a direct tag match. The table lists each word's <strong
+            >Text match (BM25)</strong
+            > contribution.</p
+          ></div
+        > </div
+      > </section
+    > <h2
+    >Selected tag weights</h2
+    ><table
+    ><thead
+      ><tr
+        ><th
+            title="A tag used as context for the selected entry."
+          >Tag</th
+          ><th
+            title="The tag's relevance weight. Tags written on the selected entry are 1.00; parent and child heading tags decay by distance, while child items include an additional level."
+          >Weight</th
+          ><th
+            title="Whether the tag is written on the selected entry, inherited from parent ancestry, or found in a child heading or child item."
+          >Context</th
+          ><th
+            title="The source of this weight and the distance decay formula."
+          >Why</th
+          ></tr
+        ></thead
+      ><tbody
+      ><tr
+        ><td
+          >#project/atlas</td
+          ><td
+          >1.00</td
+          ><td
+          >Selected entry</td
+          ><td
+          >Written on the selected entry</td
+          ></tr
+        ><tr
+        ><td
+          >#topic/replicants</td
+          ><td
+          >0.50</td
+          ><td
+          >Parent ancestry</td
+          ><td
+          >Parent ancestry: one level up (0.5 / 1)</td
+          ></tr
+        ><tr
+        ><td
+          >#meeting/standup</td
+          ><td
+          >0.25</td
+          ><td
+          >Child heading</td
+          ><td
+          >Child heading: 2 levels down (0.5 / 2)</td
+          ></tr
+        ></tbody
+      ></table
+    > <h2
+    >How candidate tags are evaluated</h2
+    ><p
+      class="lead"
+    >Candidate tags do not receive a second ancestor-weighting pass. A candidate contributes only tags indexed on that displayed entry; the selected tag's weight determines the shared-tag contribution. The 2.00 direct multiplier is Deckard's base signal for an exact shared tag. Learned associations retain their raw evidence, then normalize it by support and tag prevalence before saturation. Entry-scoped Wiki links are stronger than file-level links; section-scoped BM25-style lexical similarity remains capped below direct tags.</p
+    > <h2
+    >Ranked candidates</h2
+    ><article
+    ><h2
+      >1. Related note 0 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-0.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 0</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >2. Related note 1 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-1.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 1</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >3. Related note 10 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-10.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 10</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >4. Related note 11 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-11.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 11</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >5. Related note 2 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-2.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 2</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >6. Related note 3 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-3.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 3</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >7. Related note 4 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-4.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 4</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >8. Related note 5 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-5.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 5</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >9. Related note 6 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-6.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 6</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >10. Related note 7 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-7.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 7</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >11. Related note 8 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-8.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 8</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >12. Related note 9 #project/atlas #topic/replicants <strong
+        >82%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-9.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Related note 9</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >0.50</td
+            ><td
+            >2.00</td
+            ><td
+            >1.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ><tr
+          ><td
+            >@ren-kade</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >1</td
+            ><td
+            >1 / 13 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ><td
+            >1.00</td
+            ><td
+            >0.06</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >#topic/replicants</td
+            ><td
+            >12</td
+            ><td
+            >15 / 13 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >26.50</code
+          > raw association evidence and <code
+          >18.59</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (18.59 / (18.59 + 1.75)) = 3.94</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >note</td
+            ><td
+            >2.95</td
+            ></tr
+          ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.17</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas, #topic/replicants | Associated: #project/atlas, #topic/replicants | Similar terms: note, atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >4.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.94</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >13. Tasks #project/atlas <strong
+        >53%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/tasks.md / line 1</p
+      > <p
+        class="source"
+      >Heading path: Tasks</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >16 / 15 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >1</td
+            ><td
+            >2 / 15 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.03</td
+            ><td
+            >1.00</td
+            ><td
+            >0.03</td
+            ></tr
+          ><tr
+          ><td
+            >#topic/replicants</td
+            ><td
+            >#project/atlas</td
+            ><td
+            >12</td
+            ><td
+            >13 / 15 / 84</td
+            ><td
+            >12.00</td
+            ><td
+            >9.23</td
+            ><td
+            >1.00</td
+            ><td
+            >9.23</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >13.50</code
+          > raw association evidence and <code
+          >9.30</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (9.30 / (9.30 + 1.75)) = 3.25</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><p
+        class="lead"
+      >No section-scoped lexical evidence.</p
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: #project/atlas | Associated: #project/atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >3.25</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >14. Mentions @dana and the Atlas project, entry 0. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-0.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 0 &gt; Mentions and the Atlas project, entry 0.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >15. Mentions @dana and the Atlas project, entry 1. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-1.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 1 &gt; Mentions and the Atlas project, entry 1.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >16. Mentions @dana and the Atlas project, entry 10. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-10.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 10 &gt; Mentions and the Atlas project, entry 10.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >17. Mentions @dana and the Atlas project, entry 11. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-11.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 11 &gt; Mentions and the Atlas project, entry 11.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >18. Mentions @dana and the Atlas project, entry 2. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-2.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 2 &gt; Mentions and the Atlas project, entry 2.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >19. Mentions @dana and the Atlas project, entry 3. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-3.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 3 &gt; Mentions and the Atlas project, entry 3.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >20. Mentions @dana and the Atlas project, entry 4. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-4.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 4 &gt; Mentions and the Atlas project, entry 4.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >21. Mentions @dana and the Atlas project, entry 5. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-5.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 5 &gt; Mentions and the Atlas project, entry 5.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >22. Mentions @dana and the Atlas project, entry 6. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-6.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 6 &gt; Mentions and the Atlas project, entry 6.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >23. Mentions @dana and the Atlas project, entry 7. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-7.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 7 &gt; Mentions and the Atlas project, entry 7.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >24. Mentions @dana and the Atlas project, entry 8. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-8.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 8 &gt; Mentions and the Atlas project, entry 8.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ><article
+    ><h2
+      >25. Mentions @dana and the Atlas project, entry 9. <strong
+        >24%</strong
+        ></h2
+      > <p
+        class="source"
+      >notes/note-9.md / line 2</p
+      > <p
+        class="source"
+      >Heading path: Related note 9 &gt; Mentions and the Atlas project, entry 9.</p
+      > <h3
+      >Matched tags</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+              title="A tag written on this candidate entry that exactly matches a selected tag."
+            >Candidate tag</th
+            ><th
+              title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight."
+            >Selected weight</th
+            ><th
+              title="The fixed strength applied to an exact shared tag."
+            >Direct multiplier</th
+            ><th
+              title="Selected weight multiplied by the direct-match multiplier."
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >@dana</td
+            ><td
+            >1.00</td
+            ><td
+            >2.00</td
+            ><td
+            >2.00</td
+            ></tr
+          ></tbody
+        ></table
+      > <h3
+      >Association paths</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Selected tag</th
+            ><th
+            >Candidate tag</th
+            ><th
+              title="The number of distinct source units where both tags were observed."
+            >Shared source units</th
+            ><th
+              title="Selected tag / candidate tag / all source-unit counts."
+            >Tag appearances<br
+              ><small
+              >selected / candidate / all</small
+              ></th
+            ><th
+              title="The starting co-occurrence and heading-proximity strength before adjustments."
+            >Raw connection</th
+            ><th
+              title="Raw connection adjusted for support and tag popularity."
+            >Adjusted connection</th
+            ><th
+            >Selected weight</th
+            ><th
+            >Contribution</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >#meeting/standup</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >2 / 16 / 84</td
+            ><td
+            >0.50</td
+            ><td
+            >0.02</td
+            ><td
+            >1.00</td
+            ><td
+            >0.02</td
+            ></tr
+          ><tr
+          ><td
+            >#project/atlas</td
+            ><td
+            >@dana</td
+            ><td
+            >1</td
+            ><td
+            >15 / 16 / 84</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ><td
+            >1.00</td
+            ><td
+            >0.05</td
+            ></tr
+          ></tbody
+        ></table
+      > <details
+        class="calculation"
+      ><summary
+        >How association weight is applied</summary
+        ><p
+          class="lead"
+        >The selected tags provide the scale: <code
+          >1.00 + 0.50 + 0.25 = 1.75</code
+          >. This candidate has <code
+          >1.50</code
+          > raw association evidence and <code
+          >0.07</code
+          > adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p
+        ><p
+          class="source"
+        >Calculation: <code
+          >1.75 x (0.07 / (0.07 + 1.75)) = 0.07</code
+          ></p
+        ></details
+      > <h3
+      >Lexical evidence</h3
+      ><table
+      ><thead
+        ><tr
+          ><th
+            >Shared term</th
+            ><th
+              title="BM25 is a search-ranking formula that weights distinctive shared words more than common words."
+            >Text match (BM25)</th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+          ><td
+            >atlas</td
+            ><td
+            >1.89</td
+            ></tr
+          ></tbody
+        ></table
+      > <p
+      ><b
+        >Reasons:</b
+        > Shared: @dana | Associated: @dana | Similar terms: atlas</p
+      > <table
+      ><tbody
+        ><tr
+          ><td
+            >Shared tags</td
+            ><td
+            >2.00</td
+            ></tr
+          ><tr
+          ><td
+            >Associations</td
+            ><td
+            >0.07</td
+            ></tr
+          ><tr
+          ><td
+            >Lexical similarity</td
+            ><td
+            >0.30</td
+            ></tr
+          ></tbody
+        ></table
+      ></article
+    ></main
+  ></body
+>

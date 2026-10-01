@@ -121,6 +121,32 @@ export default [
     languageOptions: { sourceType: 'module' },
   },
   {
+    // A native title never shows on keyboard focus, so a control says what
+    // it does with data-tip (docs/implementation/20-webviews.md §2.4). The
+    // test of drawn pages sees only the states a surface draws; this sees
+    // every element a page's TSX can write. There is no .tsx file before
+    // Phase 6 moves the first page.
+    files: ['src/**/*.tsx'],
+    languageOptions: {
+      parser: typescriptEslint.parser,
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      'no-restricted-syntax': ['error',
+        {
+          selector: "JSXOpeningElement[name.name=/^(button|summary|input|select|textarea|a)$/] > JSXAttribute[name.name='title']",
+          message: 'A control says what it does with data-tip, which shows on keyboard focus; a native title does not.',
+        },
+        {
+          selector: "JSXOpeningElement:has(JSXAttribute[name.name=/^tab[iI]ndex$/]) > JSXAttribute[name.name='title']",
+          message: 'A focusable element says what it does with data-tip, which shows on keyboard focus; a native title does not.',
+        },
+      ],
+    },
+  },
+  {
     // A mocha suite is one callback that holds every test in it, so its
     // length is the suite's, not a function's.
     files: ['src/test/**/*.test.ts', 'test/e2e/*.e2e.js'],

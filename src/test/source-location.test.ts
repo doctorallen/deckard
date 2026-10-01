@@ -6,8 +6,8 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 class MemoryMemento implements vscode.Memento {
@@ -57,7 +57,7 @@ suite('Where an entry is written', () => {
     );
     store = createPreferences(new MemoryMemento());
     page = openWebviewPage(
-      getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }),
+      renderPage('searchPage'),
       createSearchPageSnapshot(index, store.reader.value, '#team/harbor', { queryContext: createQueryContext(Date.now()) }),
     );
 

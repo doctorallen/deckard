@@ -7,8 +7,9 @@
 // Chrome opens the page as an iframe's srcdoc, and the text checks read one
 // string. So each harness passes the page through here first, which reads
 // every <script src> and <link rel="stylesheet"> that names a file of the
-// extension and inlines it with the page's nonce. A page that is already
-// self-contained comes back unchanged.
+// extension and inlines it with the page's nonce, marking each script it
+// inlined with data-inlined-from. A page that is already self-contained
+// comes back unchanged.
 const path = require('node:path');
 const { readFileSync } = require('node:fs');
 
@@ -108,7 +109,10 @@ function loadPage(html, options = {}) {
       throw new Error(`${attributes.get('src')} contains "</script", so it cannot be inlined.`);
     }
     const nonce = attributes.get('nonce') ?? pageNonce;
-    return `<script${nonce ? ` nonce="${nonce}"` : ''}${writeAttributes(attributes, ['src', 'nonce'])}>${source}</script>`;
+    // Marked, so the checks of template script text (checkWebviewScripts.js,
+    // and verifyWebviews.js's redeclared helpers) leave a bundle alone.
+    const from = ` data-inlined-from="${attributes.get('src').replace(/"/g, '&quot;')}"`;
+    return `<script${nonce ? ` nonce="${nonce}"` : ''}${writeAttributes(attributes, ['src', 'nonce'])}${from}>${source}</script>`;
   });
   return withScripts.replace(/<link\b([^>]*)>/gi, (whole, attributeText) => {
     const attributes = readAttributes(attributeText);

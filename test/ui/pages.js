@@ -45,22 +45,11 @@ const modules = require('../harness/modules.js');
 const { loadPage } = require('../harness/loadPage.js');
 
 /**
- * The stand-in webview. An icon or image keeps the one URI it has always had
- * here, which loads nothing, so no page draws differently; a page bundle
- * under dist/webview gets a URI the page loader reads from the build.
+ * What Help renders with: the shipped manifest, and the shipped changelog's
+ * releases, so What's new is measured too. Every page renders against the
+ * one stand-in webview of src/test/pageWebview.ts, as the mocha suites do.
  */
-const webview = {
-  cspSource: 'vscode-webview://deckard',
-  asWebviewUri: (uri) => {
-    const bundle = /(?:^|\/)(dist\/webview\/.+)$/.exec(String(uri.fsPath ?? uri.path ?? ''));
-    const address = bundle ? `vscode-webview://deckard/${bundle[1]}` : 'vscode-webview://deckard/asset';
-    return { toString: () => address };
-  },
-};
-/** What every page renders against, Help with the shipped changelog's releases, so What's new is measured too. */
-const context = {
-  webview,
-  extensionUri: { fsPath: '/ext' },
+const pageOptions = {
   help: {
     manifest: require('../../package.json').contributes,
     options: {
@@ -71,7 +60,7 @@ const context = {
     },
   },
 };
-const pages = modules.pageCatalog.PAGES.map((page) => [page.id, () => loadPage(page.render(context))]);
+const pages = modules.pageCatalog.PAGES.map((page) => [page.id, () => loadPage(modules.pageCatalog.renderPage(page.id, pageOptions))]);
 
 /** Every theme Deckard ships, read from the manifest the themes declare. */
 const { deckardThemes } = modules.themes;
@@ -94,14 +83,25 @@ function renderPagesForTheme(theme, options) {
   }
 }
 
-/** Renders one page by name, with zen on or off. */
-function renderPage(name, options) {
-  const entry = pages.find(([pageName]) => pageName === name);
-  if (!entry) throw new Error(`No such page: ${name}`);
-  return renderPagesForTheme(
-    (options && options.theme) || renderTheme,
-    options,
-  ).find(([pageName]) => pageName === name)[1];
+/**
+ * Renders one page by name, in a theme, with zen on or off, and with page
+ * options of its own, such as the entry the debug page diagnoses, over the
+ * ones every page renders with.
+ */
+function renderPage(name, options = {}) {
+  if (!pages.some(([pageName]) => pageName === name)) {
+    throw new Error(`No such page: ${name}`);
+  }
+  const previousTheme = renderTheme;
+  const previousZen = renderZen;
+  renderTheme = options.theme || renderTheme;
+  renderZen = Boolean(options.zen);
+  try {
+    return loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions }));
+  } finally {
+    renderTheme = previousTheme;
+    renderZen = previousZen;
+  }
 }
 
 /**

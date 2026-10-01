@@ -44,6 +44,21 @@ class ThemeColor {
   }
 }
 
+/**
+ * A page's bundle and style sheets under dist/webview get the URI the page
+ * loader reads back from the build (test/harness/loadPage.js), as the mocha
+ * suites' stand-in webview gives them (src/test/pageWebview.ts). Anything
+ * else keeps the URI it was given, which loads nothing here.
+ */
+function asWebviewUri(uri) {
+  const bundle = /(?:^|\/)(dist\/webview\/.+)$/.exec(String(uri.fsPath ?? uri.path ?? ''));
+  if (!bundle) {
+    return uri;
+  }
+  const address = `vscode-webview://deckard/${bundle[1]}`;
+  return { scheme: 'vscode-webview', fsPath: address, path: address, toString: () => address };
+}
+
 // Editor events a test can fire through _test.emitters.
 const selectionEmitter = new EventEmitter();
 const activeEditorEmitter = new EventEmitter();
@@ -94,7 +109,7 @@ function createWebviewPanel(viewType, title, column, options) {
         return Promise.resolve(true);
       },
       onDidReceiveMessage: messageEmitter.event,
-      asWebviewUri: (uri) => uri,
+      asWebviewUri,
     },
     reveal: () => {
       panel.active = true;
@@ -135,7 +150,7 @@ function createWebviewView() {
         return Promise.resolve(true);
       },
       onDidReceiveMessage: messageEmitter.event,
-      asWebviewUri: (uri) => uri,
+      asWebviewUri,
     },
     show: () => undefined,
     onDidDispose: disposeEmitter.event,

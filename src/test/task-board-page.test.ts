@@ -1,13 +1,11 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
-import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /**
@@ -23,7 +21,6 @@ suite('Task Board page', () => {
     store = undefined;
   });
 
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
   const NOW = Date.parse('2026-09-21T12:00:00Z');
   const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
 
@@ -33,7 +30,7 @@ suite('Task Board page', () => {
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
-    page = openWebviewPage(getTaskBoardHtml(webview), board);
+    page = openWebviewPage(renderPage('taskBoard'), board);
     return { page, taskId: board.columns[0].cards[0].taskId };
   };
 
@@ -44,7 +41,7 @@ suite('Task Board page', () => {
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, search: { query: '' }, options: { ...options, limits: { doing: 3 } }, tagTitleDisplayMode: 'inline' });
-    page = openWebviewPage(getTaskBoardHtml(webview), board);
+    page = openWebviewPage(renderPage('taskBoard'), board);
     const column = page.find('.board-column[data-column-id="status:doing"]');
     assert.strictEqual(column.querySelector('.board-count')?.textContent, '6 / 3 · 5 overdue');
     assert.ok(column.classList.contains('over-limit'));
@@ -88,7 +85,7 @@ suite('Task Board page', () => {
     for (const layout of ['board', 'list'] as const) {
       const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: layout }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
       page?.dispose();
-      page = openWebviewPage(getTaskBoardHtml(webview), board);
+      page = openWebviewPage(renderPage('taskBoard'), board);
       const badge = page.find('.priority-badge.priority-highest');
       assert.strictEqual(badge.querySelector('.priority-mark')?.textContent, '↑↑', `${layout}: the arrow says how far from the middle`);
       assert.match(badge.textContent ?? '', /Highest/);
@@ -140,7 +137,7 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] One')]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: 'is:mine' }, options, tagTitleDisplayMode: 'inline' });
-    page = openWebviewPage(getTaskBoardHtml(webview), { ...board, agendaListsThisSearch: false, agendaQueryIsDefault: true });
+    page = openWebviewPage(renderPage('taskBoard'), { ...board, agendaListsThisSearch: false, agendaQueryIsDefault: true });
     assert.strictEqual(page.findAll('.query-bar-row [data-action="use-for-agenda"]').length, 0, 'not in the search bar');
     const toggle = () => page!.find('.view-options [data-action="use-for-agenda"]');
     assert.strictEqual(toggle().textContent, 'List in Tasks view');
@@ -180,7 +177,7 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', lines.join('\n'))]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
-    page = openWebviewPage(getTaskBoardHtml(webview), board);
+    page = openWebviewPage(renderPage('taskBoard'), board);
     const column = page.find('.board-column[data-column-id="status:doing"]');
     assert.strictEqual(column.querySelectorAll('.board-card').length, 100);
     assert.strictEqual(column.querySelector('.board-count')?.textContent, '120', 'the count is of the whole column');

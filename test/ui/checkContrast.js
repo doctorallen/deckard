@@ -528,39 +528,77 @@ function backgroundBehind(declared, compounds, state, pageBackground) {
  * Every element a page renders that answers to more than one selector, as a
  * compound such as `button.row.saved-filter-row.home-row`.
  *
- * A page's own script writes its markup as string literals, so the tag and its
- * classes are read out of the page text whether the element is in the HTML as
- * served or written when the page draws. A class built from an expression,
- * such as a row's `is-draggable`, is not a bare word and is left out rather
- * than guessed at.
+ * A shape is the element's tag and classes, with the attributes it carries;
+ * only the attributes some rule asks about are written into the compound, so
+ * an element is named by what actually decides which rules reach it. The
+ * shapes come from two places (see contrastShapes): the ones frozen from the
+ * page text before Phase 6, and the ones each surface draws.
+ *
+ * @param {Array<[string, Array<[string, string]>]>} shapes Each element's
+ *   `tag.class.class` and its attributes, as name and value pairs.
+ * @param {Set<string>} wantedAttributes The qualifiers the stylesheet uses.
+ * @returns {string[]} The compounds, each once.
  */
-function elementShapes(html, wantedAttributes) {
-  const shapes = new Set();
-  for (const match of html.matchAll(/<([a-z][\w-]*)\b/g)) {
-    // The opening tag runs to its first `>`. A page's script writes markup in
-    // pieces, so it is read within a window rather than to the end of a string
-    // that may not close on this line.
-    const near = html.slice(match.index, match.index + 600);
-    const close = near.indexOf('>');
-    const tag = close < 0 ? near : near.slice(0, close + 1);
-    const written = tag.match(/\bclass="([^"]*)"/);
-    if (!written) continue;
-    const classes = [
-      ...new Set(written[1].split(/\s+/).filter((name) => /^[a-zA-Z][\w-]*$/.test(name))),
-    ];
-    if (!classes.length) continue;
-    // Only the attributes some rule asks about are carried, so an element is
-    // named by what actually decides which rules reach it.
-    const attributes = [
+function elementShapes(shapes, wantedAttributes) {
+  const compounds = new Set();
+  for (const [head, attributes] of shapes) {
+    const qualifiers = [
       ...new Set(
-        [...tag.matchAll(/\b([a-z][\w-]*)="([^"]*)"/g)]
-          .flatMap(([, name, value]) => [`[${name}=${value}]`, `[${name}]`])
+        attributes
+          .flatMap(([name, value]) => [`[${name}=${value}]`, `[${name}]`])
           .filter((part) => wantedAttributes.has(part)),
       ),
     ];
-    shapes.add(`${match[1]}.${classes.join('.')}${attributes.join('')}`);
+    compounds.add(`${head}${qualifiers.join('')}`);
   }
-  return [...shapes];
+  return [...compounds];
+}
+
+/**
+ * The shape of every element with a class in a parsed body, written the way
+ * the frozen shapes are: the tag, its classes in the order written with each
+ * once, and its attributes.
+ *
+ * @param {object} body A golden's body element.
+ * @returns {Array<[string, Array<[string, string]>]>} Each classed element's tag and classes, with its attributes.
+ */
+function drawnShapes(body) {
+  const shapes = [];
+  for (const element of body.querySelectorAll('[class]')) {
+    const classes = [...new Set(element.getAttribute('class').split(/\s+/).filter((name) => /^[a-zA-Z][\w-]*$/.test(name)))];
+    if (classes.length > 0) {
+      shapes.push([`${element.localName}.${classes.join('.')}`, [...element.attributes].map((attribute) => [attribute.name, attribute.value])]);
+    }
+  }
+  return shapes;
+}
+
+/**
+ * The element shapes checked for each page: the union of the shapes frozen
+ * from its text and the shapes its surfaces draw.
+ *
+ * Until Phase 6, the shapes were read out of the page text, where a page's
+ * script writes its markup as string literals, so states no surface draws,
+ * such as an open menu or an empty list, were checked too. Compiled TSX has
+ * no such text, so those shapes were frozen in contrast-shapes.json, from
+ * the pages as they were, keeping each attribute some rule could ask about.
+ * The rewrite keeps the same classes, so a frozen shape still describes a
+ * real element. The drawn shapes come from the DOM goldens, which
+ * test:dom holds to what each surface draws now.
+ *
+ * @returns {Map<string, Array<[string, Array<[string, string]>]>>} The shapes, by page.
+ */
+function contrastShapes() {
+  const { pages } = JSON.parse(readFileSync(SHAPES, 'utf8'));
+  const shapes = new Map(Object.entries(pages));
+  const pageOf = new Map(createSurfaces(false).map((surface) => [surface.name || surface.page, surface.page]));
+  readGoldens((name, body) => {
+    const page = pageOf.get(name.replace(/\+zen$/, ''));
+    if (page) {
+      shapes.set(page, [...(shapes.get(page) ?? []), ...drawnShapes(body)]);
+    }
+  });
+  return shapes;
 }
 
 /** Every attribute qualifier the stylesheet keys on, written the one way. */
@@ -581,7 +619,7 @@ function isDecorative(selector, key) {
 }
 
 /** Every readability problem a page has in a theme. */
-function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
+function findProblems(html, { pageBackgroundToken = '--bg', shapes = [] } = {}, palette) {
   const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((match) => match[1])
     .join('\n');
@@ -665,7 +703,7 @@ function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
   // several at once, and that is where a pair of rules meets. A row that is
   // also a button takes its ground from the row rule and its text from the
   // button rule, and neither selector can be read alone to see it.
-  for (const shape of elementShapes(html, attributesUsed(rules))) {
+  for (const shape of elementShapes(shapes, attributesUsed(rules))) {
     check([shape]);
   }
   return problems;
@@ -674,13 +712,18 @@ function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
 // ---- the check ------------------------------------------------------------
 
 const { readFileSync, writeFileSync } = require('node:fs');
+const { createSurfaces } = require('./surfaces.js');
+const { readGoldens } = require('../harness/domGoldens.js');
 const path = require('node:path');
 
 const BASELINE = path.join(__dirname, 'contrast-baseline.json');
+/** The element shapes frozen from the page text; see contrastShapes. */
+const SHAPES = path.join(__dirname, 'contrast-shapes.json');
 
 /** Every problem in every theme, as [signature, problem] pairs. */
 function collect() {
   const found = new Map();
+  const shapes = contrastShapes();
   for (const theme of themes) {
     // A theme that follows VS Code is checked against both a light and a dark
     // VS Code theme, since it takes its colors from whichever is set.
@@ -693,7 +736,7 @@ function collect() {
         : [['', {}]];
     for (const [paletteName, palette] of palettes) {
       for (const [page, html] of renderPagesForTheme(theme)) {
-        for (const problem of findProblems(html, {}, palette)) {
+        for (const problem of findProblems(html, { shapes: shapes.get(page) }, palette)) {
           const where = paletteName ? `${theme} (${paletteName})` : theme;
           const signature = `${where} · ${problem.key} · ${problem.state}`;
           if (found.has(signature)) continue;

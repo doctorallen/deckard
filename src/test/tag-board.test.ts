@@ -1,15 +1,13 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { parseTaskBoardMessage } from '../ui/webview/messages';
-import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 const options: TaskBoardOptions = {
@@ -107,9 +105,8 @@ suite('The Task board grouped by a tag namespace', () => {
       page?.dispose();
       page = undefined;
     });
-    const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
     const open = (values: Partial<PersistedPreferences>): WebviewPage => {
-      page = openWebviewPage(getTaskBoardHtml(webview), board(values));
+      page = openWebviewPage(renderPage('taskBoard'), board(values));
       return page;
     };
 

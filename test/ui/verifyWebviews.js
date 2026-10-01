@@ -6,9 +6,18 @@
 // the script parses, the design tokens are present, the page's nonce gates
 // every inline style and script, and no page redeclares a shared helper.
 //
+// Every row a reader can open carries a shared surface. That rule reads the
+// page text, where a template page writes its markup as string literals, and
+// the DOM each surface draws (the test:dom goldens), which is all a compiled
+// page leaves to read. A page's state in an application/json block is data,
+// not script, so it is neither parsed nor held to the nonce, and a bundle the
+// page loader inlined (data-inlined-from) is not searched for redeclared
+// helpers, which only a template page can redeclare.
+//
 //   npm run test:ui
 const { pages } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
+const { readGoldens } = require('../harness/domGoldens.js');
 // Read after pages.js, which is what redirects 'vscode' to the stub.
 const { getZenCss } = require('../harness/modules.js').components;
 const zenSheet = getZenCss().trim();
@@ -95,13 +104,36 @@ const SHARED_HELPERS = [
   'renderTaskBoard', 'renderTaskBoardCard', 'renderTaskBoardGroupSwitch',
   'installTaskBoard', 'renderZenOption',
 ];
+/** Whether a row's classes include the shared surface every content row needs. */
+function hasSharedSurface(classes) {
+  return classes.includes('row') || classes.includes('card') || classes.includes('task');
+}
+
+/**
+ * The content rows in a drawn body that carry no shared surface.
+ *
+ * @param {object} body A golden's body element.
+ * @returns {string[]} Each such row's class attribute.
+ */
+function bareDrawnRows(body) {
+  return [...body.querySelectorAll('[class]')]
+    .map((element) => element.getAttribute('class'))
+    .filter((written) => {
+      const classes = written.split(/\s+/);
+      return CONTENT_ROWS.some((rowClass) => classes.includes(rowClass)) && !hasSharedSurface(classes);
+    });
+}
+
 let fail = 0;
 for (const [name, render] of pages) {
   let html;
   try { html = render(); }
   catch (error) { console.log(`  FAIL ${name}: render threw: ${error.message}`); fail++; continue; }
   const problems = [];
-  const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  const blocks = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+    .map(([, attributes, text]) => ({ attributes, text }))
+    .filter((block) => !/\btype="application\/json"/.test(block.attributes));
+  const scripts = blocks.map((block) => block.text);
   for (const script of scripts) {
     try { new Function(script); }
     catch (error) { problems.push('script does not parse: ' + error.message); }
@@ -109,7 +141,7 @@ for (const [name, render] of pages) {
   if (!/--amber\s*:/.test(html)) problems.push('missing design tokens');
   if (!/--panel-raised\s*:/.test(html)) problems.push('missing the full token set');
   // A helper the shared script owns must not be redeclared by a page.
-  for (const script of scripts) {
+  for (const script of blocks.filter((block) => !/\bdata-inlined-from=/.test(block.attributes)).map((block) => block.text)) {
     for (const helper of SHARED_HELPERS) {
       const count = (script.match(new RegExp('function ' + helper + '\\s*\\(', 'g')) || []).length;
       if (count > 1) problems.push(`${helper} is declared ${count} times`);
@@ -170,12 +202,28 @@ for (const [name, render] of pages) {
     problems.push('the CSP names no nonce');
   }
   const ungated = [...html.matchAll(/<(script|style)\b([^>]*)>/g)]
+    .filter(([, , attributes]) => !/\btype="application\/json"/.test(attributes))
     .filter(([, , attributes]) => !attributes.includes(`nonce="${nonce}"`));
   if (ungated.length) {
     problems.push(`${ungated.length} inline style or script without the page's nonce`);
   }
   if (problems.length) { fail++; console.log(`  FAIL ${name}\n       ` + problems.join('\n       ')); }
   else console.log(`  ok   ${name}  (${(html.length/1024).toFixed(0)}kb, ${scripts.length} script)`);
+}
+// The same rule over what each surface draws, so it still holds once a
+// page's markup is no longer text.
+let bareSurfaces = 0;
+const goldens = readGoldens((surface, body) => {
+  const bare = bareDrawnRows(body);
+  if (!bare.length) {
+    return;
+  }
+  bareSurfaces++;
+  console.log(`  FAIL ${surface} (as drawn)\n       ` + bare.map((written) => `a content row is missing a shared surface (.row/.card): "${written}"`).join('\n       '));
+});
+fail += bareSurfaces;
+if (!bareSurfaces) {
+  console.log(`  ok   the content rows of ${goldens} drawn surfaces carry a shared surface`);
 }
 console.log(fail ? `\n${fail} failed` : '\nall webviews render');
 process.exit(fail ? 1 : 0);

@@ -10,8 +10,8 @@ import { createAgenda } from '../ui/state/agendaState';
 import { createDashboardTask, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createAgendaTreeServices } from './taskWrites';
 
@@ -108,7 +108,7 @@ suite('Steps in the views', () => {
   test('a search page lists steps as it finds them, and a task row says how far along', () => {
     const index = createIndex();
     const snapshot = createSearchPageSnapshot(index, preferencesWith({}), 'is:open', { queryContext: createQueryContext(Date.now()) });
-    const page = openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }), snapshot);
+    const page = openWebviewPage(renderPage('searchPage'), snapshot);
     try {
       const rows = page.findAll('.task-row');
       assert.strictEqual(rows.length, 5, 'every open task and step the search found');

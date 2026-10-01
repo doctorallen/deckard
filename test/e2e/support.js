@@ -9,10 +9,15 @@
 // the markup the host produced, with real events that bubble through real
 // listeners. Nothing is swapped onto the test's own globals, so no suite and
 // no mount shares state with another.
+//
+// With DECKARD_DOM_RECORD=<dir>, each mounted page's normalized body is
+// written after every message the host sends it and every action a reader
+// takes, for test/ui/diffDomRecords.js to compare across commits.
 const Module = require('node:module');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
 const { loadPage } = require('../harness/loadPage.js');
+const { createDomRecorder } = require('../harness/domRecorder.js');
 
 // The extension imports "vscode", which only exists inside the editor.
 const resolveFilename = Module._resolveFilename;
@@ -153,6 +158,22 @@ function createActions(window) {
 }
 
 /**
+ * The reader's actions, each followed by a record of the body it left, when
+ * the recorder is on.
+ *
+ * @param {Record<string, Function>} actions The actions createActions made.
+ * @param {{ record(step: string): void }} recorder The page's recorder.
+ * @returns {Record<string, Function>} The same actions, recorded.
+ */
+function recordedActions(actions, recorder) {
+  return Object.fromEntries(Object.entries(actions).map(([name, action]) => [name, (...args) => {
+    const result = action(...args);
+    recorder.record(name === 'fire' || name === 'keydown' ? `${name} ${args[name === 'fire' ? 0 : 1]}` : name);
+    return result;
+  }]));
+}
+
+/**
  * Boots one webview: loads the host's HTML into its own window, runs the page
  * script, and wires postMessage in both directions.
  *
@@ -186,9 +207,14 @@ function mountWebview(html, panel) {
   const { window } = dom;
   const { document } = window;
 
+  // With DECKARD_DOM_RECORD set, the body is written after each message the
+  // host sends and each action a reader takes.
+  const recorder = createDomRecorder(document, html);
+
   // The host pushes state into this webview.
   panel._deliver = (message) => {
     window.dispatchEvent(new window.MessageEvent('message', { data: carry(message, window.JSON) }));
+    recorder.record(`deliver ${message && message.type}`);
   };
 
   return {
@@ -202,7 +228,7 @@ function mountWebview(html, panel) {
     },
     find: (selector) => document.body.querySelector(selector),
     findAll: (selector) => [...document.body.querySelectorAll(selector)],
-    ...createActions(window),
+    ...recordedActions(createActions(window), recorder),
     dispose: () => window.close(),
   };
 }

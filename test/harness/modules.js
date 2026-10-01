@@ -20,6 +20,7 @@ const MODULES = {
   // core
   changelog: 'core/changelog.js',
   parser: 'domain/markdown/parser.js',
+  queryContext: 'domain/query/queryContext.js',
   preferences: 'core/storage/preferences.js',
   searchStore: 'core/storage/searchStore.js',
   parsedFileCodec: 'core/storage/parsedFileCodec.js',
@@ -29,6 +30,7 @@ const MODULES = {
   // ui/state
   calendarState: 'ui/state/calendarState.js',
   dashboardState: 'ui/state/dashboardState.js',
+  dashboardWidgets: 'ui/state/dashboardWidgets.js',
   notesGraphState: 'ui/state/notesGraphState.js',
   relatedNotesRanking: 'ui/state/relatedNotesRanking.js',
   taskBoardState: 'ui/state/taskBoardState.js',
@@ -54,6 +56,7 @@ const MODULES = {
   calendarHtml: 'ui/webview/calendarHtml.js',
   components: 'ui/webview/components.js',
   dashboardHtml: 'ui/webview/dashboardHtml.js',
+  guide: 'ui/webview/guide.js',
   helpHtml: 'ui/webview/helpHtml.js',
   notesGraphHtml: 'ui/webview/notesGraphHtml.js',
   relatedNotesDebugHtml: 'ui/webview/relatedNotesDebugHtml.js',

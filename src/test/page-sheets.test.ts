@@ -1,7 +1,5 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { getBaseCss, getPageTailCss } from '../ui/webview/components';
 import { renderablePages } from './pages';
 
@@ -14,14 +12,7 @@ import { renderablePages } from './pages';
  * declares tokens of its own; the ones the base sheet owns it reads.
  */
 suite('Page sheets', () => {
-  const webview = {
-    cspSource: 'vscode-webview://deckard',
-    asWebviewUri: (resource: vscode.Uri) => resource,
-  } as unknown as vscode.Webview;
-  const pages = renderablePages(
-    { webview, extensionUri: vscode.Uri.file('/deckard') },
-    ['dashboard', 'searchPage', 'sidebarNotes', 'notesGraph', 'help', 'stats', 'taskBoard', 'calendar', 'relatedNotesDebug'],
-  );
+  const pages = renderablePages(['dashboard', 'searchPage', 'sidebarNotes', 'notesGraph', 'help', 'stats', 'taskBoard', 'calendar', 'relatedNotesDebug']);
   const tokens = (css: string): string[] =>
     [...css.matchAll(/(--[a-z][\w-]*)\s*:/g)].map((match) => match[1]);
 

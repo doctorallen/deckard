@@ -8,9 +8,9 @@ import {
   parseSearchPageMessage,
   parseSidebarMessage,
 } from '../ui/webview/messages';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
@@ -33,7 +33,7 @@ function openPage(query: string, parkedTags: string[]): WebviewPage {
     { tags: ['parked', 'project/old'] },
   );
   const snapshot = createSearchPageSnapshot(index, defaults(), query, { queryContext: createQueryContext(Date.now()) });
-  return openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }), {
+  return openWebviewPage(renderPage('searchPage'), {
     ...snapshot,
     parkedTags,
   });

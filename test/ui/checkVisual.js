@@ -28,6 +28,7 @@ const pixelmatchModule = require('pixelmatch');
 const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
 
 const { renderPagesForTheme, themes } = require('./pages.js');
+const { surfaceHtml } = require('./surfaces.js');
 const { chrome, createSurfaces, buildPage } = require('./checkLayout.js');
 
 /** How different one pixel may be before it counts, 0 to 1. */
@@ -59,6 +60,35 @@ const UNSETTLED = new Map([
   ['synthwave-taskBoard', 0.001],
   ['synthwave-taskBoardByTag', 0.001],
 ]);
+
+/**
+ * Surfaces macOS draws differently from one run to the next, and the share
+ * of the page each may differ by there. Related Notes' native select draws
+ * its chevron flipped on some runs on macOS, which the darwin baselines
+ * cannot settle. The list is read only on macOS: Linux, the gate of record
+ * on CI, holds these surfaces to the sliver every surface is held to.
+ */
+const DARWIN_UNSETTLED = new Map([
+  ['sidebarNotes', 0.001],
+  ['sidebarNotesUntagged', 0.001],
+]);
+
+/**
+ * How much of a surface may differ before it fails.
+ *
+ * @param {string} name The baseline's name, `<theme>-<surface>`.
+ * @param {string} surfaceName The surface's own name.
+ * @returns {number} The share of the page.
+ */
+function allowedShare(name, surfaceName) {
+  if (UNSETTLED.has(name)) {
+    return UNSETTLED.get(name);
+  }
+  if (process.platform === 'darwin' && DARWIN_UNSETTLED.has(surfaceName)) {
+    return DARWIN_UNSETTLED.get(surfaceName);
+  }
+  return FAIL_ABOVE;
+}
 
 const BASELINES = path.join(__dirname, 'visual-baseline', process.platform);
 const updating = process.argv.includes('--update');
@@ -107,7 +137,7 @@ try {
         const name = `${label}-${surfaceName}`;
         seen.add(`${name}.png`);
         const file = path.join(dir, `${name}.html`);
-        writeFileSync(file, buildPage(rendered.get(surface.page), surface));
+        writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
         const shot = path.join(dir, `${name}.png`);
         const baseline = path.join(BASELINES, `${name}.png`);
         let drawn;
@@ -134,7 +164,7 @@ try {
         const differing = pixelmatch(expected.data, drawn.data, diff.data, drawn.width, drawn.height, { threshold: PIXEL_THRESHOLD });
         const share = differing / (drawn.width * drawn.height);
         compared += 1;
-        if (share > (UNSETTLED.get(name) ?? FAIL_ABOVE)) {
+        if (share > allowedShare(name, surfaceName)) {
           failed += 1;
           const diffFile = path.join(dir, `${name}.diff.png`);
           writeFileSync(diffFile, PNG.sync.write(diff));

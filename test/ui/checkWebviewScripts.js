@@ -58,8 +58,12 @@ const problems = [];
 
 try {
   for (const [name, render] of pages) {
-    const scripts = [...render().matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)]
-      .map((match) => match[1]);
+    // Only template script is checked here: a bundle the page loader
+    // inlined was type-checked as TypeScript before it was built, and an
+    // application/json block is a page's state, not script.
+    const scripts = [...render().matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+      .filter(([, attributes]) => !/\bdata-inlined-from=|\btype="application\/json"/.test(attributes))
+      .map((match) => match[2]);
     scripts.forEach((script, scriptIndex) => {
       const label = scripts.length > 1 ? `${name} script ${scriptIndex + 1}` : name;
       const file = path.join(directory, `${name}-${scriptIndex}.js`);

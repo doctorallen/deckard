@@ -89,7 +89,43 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
   return { view, panel, board, preferences, updates, lastState, cards, shownCards, activeSearch, index };
 }
 
+/**
+ * Restores the board from what VS Code kept for it across a reload, as the
+ * serializer does, and says what its search box holds.
+ */
+async function reopenBoard(state) {
+  vscode._test.createdPanels.length = 0;
+  vscode._test.settings.clear();
+  const index = createIndex();
+  const preferences = createPreferences(createGlobalState());
+  const board = new TaskBoardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+    preferences,
+    extensionUri: { fsPath: '/ext' },
+    openTag: async () => undefined,
+    activeSearch: new ActiveSearch(),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  const panel = vscode.window.createWebviewPanel('deckard.taskBoard', 'Saved', -1, {});
+  await board.restore(panel, state);
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  const shown = view.find('.query-bar-shell').getAttribute('data-query-text');
+  board.dispose();
+  return shown;
+}
+
 // ---------------------------------------------------------------------------
+
+// Persisted formats, row 21: the board reopens on the search it was saved
+// with, pinned before Phase 6 rewrites the page.
+test('a board saved with a search reopens on it, and on its default without one', async () => {
+  assert.strictEqual(await reopenBoard({ query: 'is:open #project/atlas' }), 'is:open #project/atlas');
+  for (const state of [{}, undefined, null, { query: 7 }, 'is:open #project/atlas']) {
+    assert.strictEqual(await reopenBoard(state), 'is:open', `${JSON.stringify(state)} opens on the default search`);
+  }
+});
 
 test('the gear\'s Theme row runs Choose Theme', async () => {
   const { view } = await openBoard();

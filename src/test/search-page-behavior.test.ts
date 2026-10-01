@@ -8,8 +8,8 @@ import { SearchPageSize, SearchPageSnapshot } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /**
@@ -56,7 +56,7 @@ suite('Search page behavior', () => {
       { queryContext: createQueryContext(Date.now()), ...options },
     );
     page = openWebviewPage(
-      getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }),
+      renderPage('searchPage'),
       snapshot,
     );
     return { page, snapshot };
