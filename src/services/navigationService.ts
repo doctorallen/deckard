@@ -42,6 +42,55 @@ export type SourceLocation =
 /** The tag an open names, by its key in the index; or `unknown`. */
 export type TagLocation = { kind: 'open'; tagKey: string } | { kind: 'unknown' };
 
+/** A related note as a Related Notes click names it: by its note and first line. */
+export interface RelatedNoteRow {
+  filePath: string;
+  sourceLine: number;
+  /** The entry it is, whose visit opening it counts; none for a task. */
+  sectionId?: string;
+}
+
+/** A line that links to, or names, the note Related Notes is about. */
+export interface NoteLinkRow {
+  filePath: string;
+  line: number;
+}
+
+/** A mention of the note's name, which Link makes a link, as written. */
+export interface NoteMentionRow extends NoteLinkRow {
+  /** The note the mention is in. */
+  title: string;
+  startColumn: number;
+  endColumn: number;
+  /** The name as written, which the link keeps. */
+  name: string;
+}
+
+/** A tag offered to an untagged note, by its key and as it is written. */
+export interface SuggestedTagRow {
+  key: string;
+  label: string;
+}
+
+/**
+ * What Related Notes lists, as its snapshot holds it: the related notes,
+ * the lines that link to or name the note, and the tags offered to a note
+ * with none. Only what a click is checked against is read.
+ *
+ * The `related` policy reads these rows rather than the index, since what
+ * the sidebar lists is the ranking's choice: the rows must be built afresh
+ * for each click, from the index and the editor as they are then, so a
+ * click is accepted exactly when the sidebar, drawn now, would list it.
+ */
+export interface RelatedNotesRows {
+  notes: readonly RelatedNoteRow[];
+  links?: {
+    linkedFromNotes: readonly { entries: readonly NoteLinkRow[] }[];
+    mentions: readonly NoteMentionRow[];
+  };
+  similar?: { tags: readonly SuggestedTagRow[] };
+}
+
 /** One policy's rule: where the line opens, if it may. */
 type SourceRule = (index: WorkspaceIndex, filePath: string, line: number) => SourceLocation;
 
@@ -108,6 +157,10 @@ const TAG_RULES: Record<TagPolicy, (index: WorkspaceIndex, tagKey: string) => st
  * What a page's openSource and openTag may open. One method each, with the
  * page's policy as an argument, so the rules that differ from page to page
  * are named side by side here rather than written into each page's host.
+ *
+ * Related Notes' rows are its ranking's, not the index's, so its policy,
+ * `related`, is a method for each kind of row a click names, each reading
+ * `RelatedNotesRows` built for that click.
  */
 export class NavigationService {
   /**
@@ -127,5 +180,63 @@ export class NavigationService {
   public resolveTag(index: WorkspaceIndex, tagKey: string, policy: TagPolicy): TagLocation {
     const found = TAG_RULES[policy](index, tagKey);
     return found === undefined ? UNKNOWN : { kind: 'open', tagKey: found };
+  }
+
+  /**
+   * Where a Related Notes row opens, under the `related` policy: a line
+   * that links to or names the note opens where it is, and otherwise a
+   * related note opens at its first line, counting a visit to its entry.
+   * Anything the rows do not list is `unknown`, including an entry listed
+   * only as similar wording.
+   */
+  public resolveRelatedSource(rows: RelatedNotesRows, filePath: string, line: number): SourceLocation {
+    const link = [
+      ...(rows.links?.linkedFromNotes.flatMap((group) => group.entries) ?? []),
+      ...(rows.links?.mentions ?? []),
+    ].find((candidate) => candidate.filePath === filePath && candidate.line === line);
+    if (link) {
+      return openAt(link.filePath, link.line);
+    }
+    const note = this.findRelatedNote(rows, filePath, line);
+    if (!note) {
+      return UNKNOWN;
+    }
+    return openAt(note.filePath, note.sourceLine, note.sectionId ? { id: note.sectionId } : undefined);
+  }
+
+  /**
+   * The related note a row names by its note and first line, under the
+   * `related` policy, as Insert link writes a link to it; undefined when
+   * the rows do not list it among the related notes.
+   */
+  public findRelatedNote(rows: RelatedNotesRows, filePath: string, line: number): RelatedNoteRow | undefined {
+    return rows.notes.find((candidate) => candidate.filePath === filePath && candidate.sourceLine === line);
+  }
+
+  /**
+   * The mention a Link names, by its line and the column it starts at,
+   * under the `related` policy; undefined when the rows do not list it.
+   */
+  public findNoteMention(rows: RelatedNotesRows, filePath: string, line: number, startColumn: number): NoteMentionRow | undefined {
+    return rows.links?.mentions.find(
+      (candidate) => candidate.filePath === filePath && candidate.line === line && candidate.startColumn === startColumn,
+    );
+  }
+
+  /**
+   * The tag an untagged note is offered, by its key, under the `related`
+   * policy; undefined when the rows offer no such tag.
+   */
+  public findSuggestedTag(rows: RelatedNotesRows, tagKey: string): SuggestedTagRow | undefined {
+    return rows.similar?.tags.find((candidate) => candidate.key === tagKey);
+  }
+
+  /**
+   * Whether the rows list what links to the note, under the `related`
+   * policy, as Link all needs: they do whenever the note is one the index
+   * has.
+   */
+  public listsNoteLinks(rows: RelatedNotesRows): boolean {
+    return rows.links !== undefined;
   }
 }
