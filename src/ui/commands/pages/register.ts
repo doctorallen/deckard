@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { Services } from '../../../composition/services';
-import { isMarkdownDocument } from '../../providers/tagDecorations';
+import { isMarkdownFile } from '../../../core/workspace/scanner';
 import { registerCommand } from '../runCommand';
 
 /**
@@ -92,7 +92,7 @@ function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
           return;
         }
         const uri = vscode.Uri.parse(documentUri);
-        if (!isMarkdownDocument({ languageId: 'markdown', uri })) {
+        if (!isMarkdownFile(uri)) {
           return;
         }
         await sidebarNotes.showRelatedNotesForEntry(uri, sourceLine);
@@ -110,7 +110,7 @@ function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
           return;
         }
         const uri = vscode.Uri.parse(documentUri);
-        if (!isMarkdownDocument({ languageId: 'markdown', uri })) {
+        if (!isMarkdownFile(uri)) {
           return;
         }
         await relatedNotesDebug.show(uri, sourceLine);
