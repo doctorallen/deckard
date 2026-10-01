@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { SearchStore } from '../core/storage/searchStore';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
@@ -55,7 +55,7 @@ function createFinder(notes: Record<string, string>) {
     index,
     find: (
       input: string,
-      preferences: PersistedPreferences = new PreferencesStore(new MemoryMemento()).value,
+      preferences: PersistedPreferences = createPreferences(new MemoryMemento()).reader.value,
     ): QuickFindResults =>
       buildQuickFindResults(
         index,
@@ -184,11 +184,11 @@ suite('Quick Find', () => {
       'atlas.md': '# Atlas #project/atlas',
       'harbor.md': '# Harbor #project/harbor',
     });
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
     try {
-      await store.recordRecentQuery('#project/atlas is:open');
-      await store.recordTagAccess('#project/harbor');
-      const results = finder.find('', store.value);
+      await store.savedSearches.recordRecentQuery('#project/atlas is:open');
+      await store.usage.recordTagAccess('#project/harbor');
+      const results = finder.find('', store.reader.value);
       assert.deepStrictEqual(results.recent.map((item) => item.query), [
         '#project/atlas is:open',
       ]);
@@ -204,20 +204,20 @@ suite('Quick Find', () => {
       'harbor.md': '# Harbor',
       ...Object.fromEntries(Array.from({ length: 7 }, (_, n) => [`n${n}.md`, `# Note ${n}`])),
     });
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
     try {
       const idOf = (heading: string) =>
         [...finder.index.sections.values()].find((section) => section.heading === heading)!.id;
-      await store.pinNote({ filePath: 'atlas.md', heading: 'Next', headingLevel: 2, occurrence: 0 });
-      await store.pinNote({ filePath: 'harbor.md', heading: 'Gone', headingLevel: 1, occurrence: 0 });
-      await store.recordSectionAccess(idOf('Next'), 100);
+      await store.pins.pinNote({ filePath: 'atlas.md', heading: 'Next', headingLevel: 2, occurrence: 0 });
+      await store.pins.pinNote({ filePath: 'harbor.md', heading: 'Gone', headingLevel: 1, occurrence: 0 });
+      await store.usage.recordSectionAccess(idOf('Next'), 100);
       for (let n = 0; n < 7; n += 1) {
-        await store.recordSectionAccess(idOf(`Note ${n}`), 200 + n);
+        await store.usage.recordSectionAccess(idOf(`Note ${n}`), 200 + n);
       }
       for (let n = 0; n < 7; n += 1) {
-        await store.recordRecentQuery(`search ${n}`);
+        await store.savedSearches.recordRecentQuery(`search ${n}`);
       }
-      const results = finder.find('', store.value);
+      const results = finder.find('', store.reader.value);
       assert.deepStrictEqual(
         results.pinned?.map((item) => [item.label, item.description, item.detail]),
         [
@@ -252,31 +252,31 @@ suite('Quick Find', () => {
       'misc.md': '# Misc\nA vendor visited; vendor notes.',
       'vendors.md': '# Vendors\nList.',
     });
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
     try {
-      const misc = finder.find('vend', store.value).notes.find((item) => item.label === 'Misc')!;
+      const misc = finder.find('vend', store.reader.value).notes.find((item) => item.label === 'Misc')!;
       const key = findChoiceKey(finder.index, misc)!;
       assert.ok(key.startsWith('note:'));
-      const before = finder.find('vend', store.value).notes.map((item) => item.label);
+      const before = finder.find('vend', store.reader.value).notes.map((item) => item.label);
       assert.notStrictEqual(before[0], 'Misc');
       for (let n = 0; n < 3; n += 1) {
-        await store.recordFindChoice('Vend', key, Date.now());
+        await store.usage.recordFindChoice('Vend', key, Date.now());
       }
       for (const typed of ['vend', 'ven']) {
-        const labels = finder.find(typed, store.value).notes.map((item) => item.label);
+        const labels = finder.find(typed, store.reader.value).notes.map((item) => item.label);
         assert.strictEqual(labels[0], 'Misc', typed);
       }
       // What was typed is exactly a title: that title still leads.
-      await store.recordFindChoice('vendors', key, Date.now());
-      assert.strictEqual(finder.find('vendors', store.value).notes[0].label, 'Vendors');
+      await store.usage.recordFindChoice('vendors', key, Date.now());
+      assert.strictEqual(finder.find('vendors', store.reader.value).notes[0].label, 'Vendors');
       // An old choice weighs less than a fresh one.
-      const old = new PreferencesStore(new MemoryMemento());
-      await old.recordFindChoice('vend', key, Date.now() - 400 * 24 * 60 * 60 * 1000);
-      assert.notStrictEqual(finder.find('vend', old.value).notes[0].label, 'Misc');
-      old.dispose();
+      const old = createPreferences(new MemoryMemento());
+      await old.usage.recordFindChoice('vend', key, Date.now() - 400 * 24 * 60 * 60 * 1000);
+      assert.notStrictEqual(finder.find('vend', old.reader.value).notes[0].label, 'Misc');
+      old.repository.dispose();
     } finally {
       finder.dispose();
-      store.dispose();
+      store.repository.dispose();
     }
   });
 

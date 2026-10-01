@@ -5,7 +5,7 @@ import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLine
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { stripTags } from '../../domain/markdown/parser';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices, PreferencesReader } from '../../core/storage/preferences';
 import { Task } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -35,6 +35,12 @@ import { WriteHandle } from './workspaceWrites';
 /** One block to move, from one note. */
 export type MoveSource = ServiceMoveSource<vscode.Uri>;
 
+/**
+ * What Move to… takes of the preferences: the recent headings and view
+ * counts it ranks destinations by, and the usage it records a heading in.
+ */
+export type MovePreferences = Pick<PreferenceServices, 'reader' | 'usage'>;
+
 /** The words each refusal says. */
 const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
   heading: 'Move to… moves lines and tasks. To move a heading and everything under it, use Extract Heading.',
@@ -46,7 +52,7 @@ const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
 /** Move to… from the editor: the line, item, or selection under the cursor. */
 export async function moveToCommand(
   indexer: WorkspaceIndexer<vscode.Uri>,
-  preferences: PreferencesStore,
+  preferences: MovePreferences,
   writes: TaskWrites,
 ): Promise<void> {
   await indexer.ready;
@@ -82,7 +88,7 @@ export async function moveToCommand(
  */
 export async function moveTasks(
   indexer: WorkspaceIndexer<vscode.Uri>,
-  preferences: PreferencesStore,
+  preferences: MovePreferences,
   writes: TaskWrites,
   tasks: readonly Task[],
 ): Promise<void> {
@@ -108,11 +114,11 @@ interface ResolvedTarget extends MoveTarget<vscode.Uri> {
  */
 async function moveBlocks(
   indexer: WorkspaceIndexer<vscode.Uri>,
-  preferences: PreferencesStore,
+  preferences: MovePreferences,
   writes: TaskWrites,
   sources: readonly MoveSource[],
 ): Promise<void> {
-  const destination = await pickMoveDestination(indexer, preferences, sources);
+  const destination = await pickMoveDestination(indexer, preferences.reader, sources);
   if (!destination) {
     return;
   }
@@ -132,7 +138,7 @@ async function moveBlocks(
   if (target.heading) {
     const pin = createPinForLine(indexer.getSnapshot(), target.heading.filePath, target.heading.line);
     if (pin?.heading) {
-      await preferences.recordRecentHeading(pin);
+      await preferences.usage.recordRecentHeading(pin);
     }
   }
   announceMove(sources, target, result.created, result.handle);
@@ -144,7 +150,7 @@ async function moveBlocks(
  */
 function pickMoveDestination(
   indexer: WorkspaceIndexer<vscode.Uri>,
-  preferences: PreferencesStore,
+  preferences: Pick<PreferencesReader, 'value'>,
   sources: readonly MoveSource[],
 ): Promise<Destination | undefined> {
   const index = indexer.getSnapshot();

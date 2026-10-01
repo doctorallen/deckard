@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
@@ -33,9 +33,9 @@ function indexOf(): WorkspaceIndex {
 }
 
 function preferences(values: Partial<PersistedPreferences>): PersistedPreferences {
-  const store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-  const value = { ...store.value, taskBoardLayout: 'board' as const, ...values };
-  store.dispose();
+  const store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+  const value = { ...store.reader.value, taskBoardLayout: 'board' as const, ...values };
+  store.repository.dispose();
   return value;
 }
 
@@ -72,13 +72,13 @@ suite('The Task board grouped by a tag namespace', () => {
 
   test('keeps tag and its namespace in preferences, and nothing else under that name', () => {
     const read = (value: unknown) => {
-      const store = new PreferencesStore({
+      const store = createPreferences({
         get: (key: string, fallback?: unknown) => (key === 'deckard.preferences' ? value : fallback),
         keys: () => [],
         update: async () => undefined,
       } as never);
-      const { taskBoardGroup, taskBoardGroupNamespace } = store.value;
-      store.dispose();
+      const { taskBoardGroup, taskBoardGroupNamespace } = store.reader.value;
+      store.repository.dispose();
       return [taskBoardGroup, taskBoardGroupNamespace];
     };
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'Context' }), ['tag', 'context']);

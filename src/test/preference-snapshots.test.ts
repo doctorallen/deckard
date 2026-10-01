@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { PreferenceSnapshots, SNAPSHOTS_KEPT } from '../core/storage/preferenceSnapshots';
 import { FakeFileSystem, fileUri } from './fakeWorkspace';
 
@@ -26,9 +26,9 @@ suite('Preference snapshots through the file-system port', () => {
 
   test('writes each copy as pretty JSON named by its time, in preference-snapshots under the storage folder', async () => {
     const files = new FakeFileSystem();
-    const store = new PreferencesStore(new MemoryStore());
-    const snapshots = new PreferenceSnapshots(storage, store, files);
-    await store.toggleFavorite('#project/relay');
+    const store = createPreferences(new MemoryStore());
+    const snapshots = new PreferenceSnapshots(storage, store.reader, files);
+    await store.favorites.toggleFavorite('#project/relay');
     await snapshots.writeNow();
 
     const written = [...files.files.keys()];
@@ -37,24 +37,24 @@ suite('Preference snapshots through the file-system port', () => {
     assert.match(path.basename(written[0]), /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.json$/);
     assert.strictEqual(
       Buffer.from(files.files.get(written[0]) ?? []).toString('utf8'),
-      JSON.stringify(store.value, null, 2),
+      JSON.stringify(store.reader.value, null, 2),
     );
     const [listed] = await snapshots.list();
     assert.strictEqual(listed.uri.fsPath, written[0]);
-    assert.deepStrictEqual(await snapshots.read(listed), JSON.parse(JSON.stringify(store.value)));
+    assert.deepStrictEqual(await snapshots.read(listed), JSON.parse(JSON.stringify(store.reader.value)));
     snapshots.dispose();
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('lists only its own copies, newest first, and keeps the last few', async () => {
     const files = new FakeFileSystem();
-    const store = new PreferencesStore(new MemoryStore());
-    const snapshots = new PreferenceSnapshots(storage, store, files);
+    const store = createPreferences(new MemoryStore());
+    const snapshots = new PreferenceSnapshots(storage, store.reader, files);
     await files.createDirectory(fileUri(folder));
     await files.writeFile(fileUri(path.join(folder, 'notes.json')), Buffer.from('{}'));
     await files.createDirectory(fileUri(path.join(folder, '2026-01-01T00-00-00-000Z.json')));
     for (let i = 0; i < SNAPSHOTS_KEPT + 3; i += 1) {
-      await store.recordTagAccess('#project/relay', 1_000_000 + i);
+      await store.usage.recordTagAccess('#project/relay', 1_000_000 + i);
       await snapshots.writeNow();
       // A copy is named by the millisecond, and memory is faster than that.
       await new Promise((resolve) => setTimeout(resolve, 2));
@@ -65,18 +65,18 @@ suite('Preference snapshots through the file-system port', () => {
     assert.ok(all.every((snapshot, index) => index === 0 || all[index - 1].at >= snapshot.at), 'newest first');
     assert.ok(files.files.has(path.join(folder, 'notes.json')), 'a stray file is left alone');
     snapshots.dispose();
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('writes and lists nothing without a storage folder', async () => {
     const files = new FakeFileSystem();
-    const store = new PreferencesStore(new MemoryStore());
-    const snapshots = new PreferenceSnapshots(undefined, store, files);
-    await store.toggleFavorite('#project/relay');
+    const store = createPreferences(new MemoryStore());
+    const snapshots = new PreferenceSnapshots(undefined, store.reader, files);
+    await store.favorites.toggleFavorite('#project/relay');
     await snapshots.writeNow();
     assert.deepStrictEqual(await snapshots.list(), []);
     assert.strictEqual(files.files.size + files.folders.size, 0);
     snapshots.dispose();
-    store.dispose();
+    store.repository.dispose();
   });
 });

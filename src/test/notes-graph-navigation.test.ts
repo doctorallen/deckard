@@ -3,7 +3,6 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
 import { WorkspaceIndexer } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
@@ -14,7 +13,7 @@ import {
 } from '../core/types';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { aroundNoteScope, NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
-import { SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { SidebarNotesPreferences, SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { ThemePreview } from '../ui/webview/themePreview';
 
 const defaultPreferences: PersistedPreferences = {
@@ -241,7 +240,7 @@ suite('Notes graph navigation', () => {
     ) as SidebarNotesView;
     Object.assign(sidebar, {
       indexer: createIndexer(workspaceIndex),
-      preferences: { value: defaultPreferences } as PreferencesStore,
+      preferences: { reader: { value: defaultPreferences } } as SidebarNotesPreferences,
       activeSearch: { active: undefined },
     });
     const controller = sidebar as unknown as {

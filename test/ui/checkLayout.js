@@ -37,7 +37,7 @@ const { createSearchPageSnapshot, createDeckardStatsSnapshot } = modules.dashboa
 const { createCalendar } = modules.calendarState;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
 const { createQueryContext } = require(path.join(compiled, 'domain', 'query', 'queryContext.js'));
 
@@ -140,14 +140,14 @@ function createSurfaces(zen) {
   const { index, files } = createIndex();
   // Only the board's surfaces carry steps, so no other page's pixels move.
   const boardIndex = createIndex(true).index;
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   return [
     {
       page: 'taskBoard',
       viewport: [1400, 900],
       snapshot: () => createTaskBoard(
         boardIndex,
-        preferences.value,
+        preferences.reader.value,
         { query: '' },
         { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
         'inline',
@@ -164,7 +164,7 @@ function createSurfaces(zen) {
       viewport: [900, 700],
       snapshot: () => createTaskBoard(
         boardIndex,
-        { ...preferences.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
+        { ...preferences.reader.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
         { query: '' },
         { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
         'inline',
@@ -305,7 +305,7 @@ function createSurfaces(zen) {
       viewport: [1100, 900],
       snapshot: () => ({
         ...createDeckardStatsSnapshot(index, {
-          ...preferences.value,
+          ...preferences.reader.value,
           tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
         }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
         // "5 minutes ago" would change with the clock, and so the pixels.
@@ -318,7 +318,7 @@ function createSurfaces(zen) {
     {
       page: 'searchPage',
       viewport: [900, 900],
-      snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas', {
+      snapshot: () => createSearchPageSnapshot(index, preferences.reader.value, '#project/atlas', {
         queryContext: createQueryContext(NOW),
       }),
       scrollers: ['html'],

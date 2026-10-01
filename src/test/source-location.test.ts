@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
@@ -30,12 +30,12 @@ class MemoryMemento implements vscode.Memento {
 
 suite('Where an entry is written', () => {
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
@@ -55,10 +55,10 @@ suite('Where an entry is written', () => {
         ],
       ]),
     );
-    store = new PreferencesStore(new MemoryMemento());
+    store = createPreferences(new MemoryMemento());
     page = openWebviewPage(
       getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }),
-      createSearchPageSnapshot(index, store.value, '#team/harbor', { queryContext: createQueryContext(Date.now()) }),
+      createSearchPageSnapshot(index, store.reader.value, '#team/harbor', { queryContext: createQueryContext(Date.now()) }),
     );
 
     assert.strictEqual(page.text('.card .source'), '2026-09-22 / line 1');

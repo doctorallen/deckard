@@ -13,7 +13,7 @@ import { parseQuery } from '../../domain/query/queryParser';
 import { measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import {
   SearchPageMessage,
   SearchPageSnapshot,
@@ -49,10 +49,20 @@ import { followIndexing } from './indexingProgress';
 import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
 import { panelPriority } from './panelPriority';
 
+/**
+ * The preference services a search page reads and writes: the blob it
+ * draws, visits, saved and recent searches, its display choices, pins, the
+ * offer of a saved search on Home, and the keys a renamed tag carries.
+ */
+export type SearchPreferences = Pick<
+  PreferenceServices,
+  'reader' | 'usage' | 'savedSearches' | 'display' | 'pins' | 'homeWidgets' | 'tagRenames'
+>;
+
 /** What the search pages are built from. */
 export interface SearchPanelsOptions {
   indexer: WorkspaceIndexer<vscode.Uri>;
-  preferences: PreferencesStore;
+  preferences: SearchPreferences;
   extensionUri: vscode.Uri;
   activeSearch: ActiveSearch;
   /** What a page's checkboxes, tag renames and merges, and bulk edits write through. */
@@ -74,7 +84,7 @@ export class SearchPanels implements vscode.Disposable {
   private readonly panels = new Set<SearchPanel>();
 
   private readonly indexer: WorkspaceIndexer<vscode.Uri>;
-  private readonly preferences: PreferencesStore;
+  private readonly preferences: SearchPreferences;
   private readonly extensionUri: vscode.Uri;
   private readonly activeSearch: ActiveSearch;
   /** What a page's checkboxes, tag renames and merges, and bulk edits write through. */
@@ -93,7 +103,7 @@ export class SearchPanels implements vscode.Disposable {
     // A page about a tag that is gone closes at once; each page still open
     // redraws in a turn of its own.
     this.disposables.push(indexer.onDidUpdate(() => this.closeMissingTagPages()));
-    this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(preferences.reader.onDidChange(() => this.refresh()));
     this.disposables.push(
       activeSearch.onDidChangeRefineVisibility(() =>
         this.panels.forEach((panel) => panel.refreshIfRefineMoved()),
@@ -165,9 +175,9 @@ export class SearchPanels implements vscode.Disposable {
     const index = this.indexer.getSnapshot();
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
     if (tagKeys?.length === 1) {
-      await this.preferences.recordTagAccess(tagKeys[0]);
+      await this.preferences.usage.recordTagAccess(tagKeys[0]);
       if (index.entities.has(tagKeys[0])) {
-        await this.preferences.recordEntityAccess(tagKeys[0]);
+        await this.preferences.usage.recordEntityAccess(tagKeys[0]);
       }
     }
     const key = getSearchKey(index, text);
@@ -229,9 +239,9 @@ export class SearchPanels implements vscode.Disposable {
     }
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()));
     if (tagKeys?.length === 1) {
-      void this.preferences.recordTagAccess(tagKeys[0]);
+      void this.preferences.usage.recordTagAccess(tagKeys[0]);
       if (index.entities.has(tagKeys[0])) {
-        void this.preferences.recordEntityAccess(tagKeys[0]);
+        void this.preferences.usage.recordEntityAccess(tagKeys[0]);
       }
     }
     panel.refresh();
@@ -393,7 +403,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     private readonly originQuery: string,
     private queryText: string,
     private readonly indexer: WorkspaceIndexer<vscode.Uri>,
-    private readonly preferences: PreferencesStore,
+    private readonly preferences: SearchPreferences,
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
     private readonly host: SearchPanelHost,
@@ -545,7 +555,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
 
   private createSnapshot(): SearchPageSnapshot {
     const index = this.indexer.getSnapshot();
-    const preferences = this.preferences.value;
+    const preferences = this.preferences.reader.value;
     const queryContext = readQueryContext();
     const snapshot = createSearchPageSnapshot(
       index,
@@ -674,7 +684,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     // A different search is a different list, read from its first page.
     this.showSearch({ query: text, notePage: 1, taskPage: 1 });
     if (remember && text) {
-      await this.preferences.recordRecentQuery(text);
+      await this.preferences.savedSearches.recordRecentQuery(text);
     }
   }
 
@@ -771,22 +781,22 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         // the reader was on means nothing in it, so both lists start again.
         this.notePage = 1;
         this.taskPage = 1;
-        await this.preferences.setSearchPageSize(message.size);
+        await this.preferences.display.setSearchPageSize(message.size);
         return;
       case 'setRenderMode':
-        await this.preferences.setRenderMode(message.mode);
+        await this.preferences.display.setRenderMode(message.mode);
         return;
       case 'setTagOverviewSort':
-        await this.preferences.setTagOverviewSortMode(message.mode);
+        await this.preferences.display.setTagOverviewSortMode(message.mode);
         return;
       case 'setTagOverviewLayout':
-        await this.preferences.setTagOverviewLayout(message.layout);
+        await this.preferences.display.setTagOverviewLayout(message.layout);
         return;
       case 'setSearchPreview':
-        await this.preferences.setSearchPreview(message.preview);
+        await this.preferences.display.setSearchPreview(message.preview);
         return;
       case 'setSearchColumns':
-        await this.preferences.setDashboardColumns(
+        await this.preferences.display.setDashboardColumns(
           message.section,
           message.columns,
         );
@@ -872,7 +882,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         // the file it is written in.
         await setPinned(
           this.indexer.getSnapshot(),
-          this.preferences,
+          this.preferences.pins,
           { filePath: message.filePath, line: message.line ?? 1 },
           message.type === 'pinNote',
         );
@@ -886,7 +896,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         // A page with a search can hand it on as a live query block; a
         // page of every note has none to hand on.
         const search = this.queryText.trim();
-        const sort = this.preferences.value.tagOverviewSortMode;
+        const sort = this.preferences.reader.value.tagOverviewSortMode;
         const liveBlock = search
           ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
           : undefined;
@@ -966,7 +976,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     );
     if (card) {
       if (!card.id.startsWith('frontmatter:')) {
-        await this.preferences.recordSectionAccess(card.id);
+        await this.preferences.usage.recordSectionAccess(card.id);
       }
       await openResultAt(card.filePath, card.startLine, how);
       return;
@@ -1006,8 +1016,8 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       return;
     }
     const saved = isTagSet
-      ? await this.preferences.saveSavedFilter(name, tagKeys)
-      : await this.preferences.saveSavedQueryFilter(name, text);
+      ? await this.preferences.savedSearches.saveSavedFilter(name, tagKeys)
+      : await this.preferences.savedSearches.saveSavedQueryFilter(name, text);
     if (saved) {
       void offerSavedSearchOnHome(this.preferences, saved);
     }

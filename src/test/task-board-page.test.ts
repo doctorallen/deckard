@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
@@ -15,11 +15,11 @@ import { createQueryContext } from '../domain/query/queryContext';
  */
 suite('Task Board page', () => {
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
@@ -31,8 +31,8 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-21\n')]]),
     );
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board' }, { query: '' }, options, 'inline');
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.reader.value, taskBoardLayout: 'board' }, { query: '' }, options, 'inline');
     page = openWebviewPage(getTaskBoardHtml(webview), board);
     return { page, taskId: board.columns[0].cards[0].taskId };
   };
@@ -42,8 +42,8 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', `# Atlas\n${lines.join('\n')}\n- [ ] Fresh #status/doing\n`)]]),
     );
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, { query: '' }, { ...options, limits: { doing: 3 } }, 'inline');
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, { query: '' }, { ...options, limits: { doing: 3 } }, 'inline');
     page = openWebviewPage(getTaskBoardHtml(webview), board);
     const column = page.find('.board-column[data-column-id="status:doing"]');
     assert.strictEqual(column.querySelector('.board-count')?.textContent, '6 / 3 · 5 overdue');
@@ -84,9 +84,9 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-11 🔺 ⏳ 2026-09-22 🔁 every month on the 15th\n')]]),
     );
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     for (const layout of ['board', 'list'] as const) {
-      const board = createTaskBoard(index, { ...store.value, taskBoardLayout: layout }, { query: '' }, options, 'inline');
+      const board = createTaskBoard(index, { ...store.reader.value, taskBoardLayout: layout }, { query: '' }, options, 'inline');
       page?.dispose();
       page = openWebviewPage(getTaskBoardHtml(webview), board);
       const badge = page.find('.priority-badge.priority-highest');
@@ -138,8 +138,8 @@ suite('Task Board page', () => {
 
   test('List in Tasks view sits in the gear, and says when there is nothing to change', () => {
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] One')]]));
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board' }, { query: 'is:mine' }, options, 'inline');
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.reader.value, taskBoardLayout: 'board' }, { query: 'is:mine' }, options, 'inline');
     page = openWebviewPage(getTaskBoardHtml(webview), { ...board, agendaListsThisSearch: false, agendaQueryIsDefault: true });
     assert.strictEqual(page.findAll('.query-bar-row [data-action="use-for-agenda"]').length, 0, 'not in the search bar');
     const toggle = () => page!.find('.view-options [data-action="use-for-agenda"]');
@@ -178,8 +178,8 @@ suite('Task Board page', () => {
   test('a long column offers the rest of its cards', () => {
     const lines = Array.from({ length: 120 }, (_, number) => `- [ ] Task ${number} #status/doing`);
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', lines.join('\n'))]]));
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, { query: '' }, options, 'inline');
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, { query: '' }, options, 'inline');
     page = openWebviewPage(getTaskBoardHtml(webview), board);
     const column = page.find('.board-column[data-column-id="status:doing"]');
     assert.strictEqual(column.querySelectorAll('.board-card').length, 100);

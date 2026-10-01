@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferencesReader } from '../../core/storage/preferences';
 import { formatQueryBlock } from '../state/queryBlockState';
 import { getSavedFilterQuery } from '../state/dashboardState';
 
@@ -32,7 +32,7 @@ export function listQueryBlockItems(preferences: PersistedQueries): QueryBlockIt
   ];
 }
 
-type PersistedQueries = Pick<PreferencesStore['value'], 'savedFilters' | 'recentQueries'>;
+type PersistedQueries = Pick<PreferencesReader['value'], 'savedFilters' | 'recentQueries'>;
 
 /**
  * Where a block goes at the cursor, and the text written there: on its own
@@ -60,7 +60,7 @@ export function placeQueryBlock(
  * recent search, or of one typed, at the cursor, in one edit, so one Undo
  * takes it back.
  */
-export async function insertQueryBlock(preferences: PreferencesStore): Promise<void> {
+export async function insertQueryBlock(preferences: Pick<PreferencesReader, 'value'>): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     void vscode.window.showInformationMessage('Open a note to insert a query block into it.');

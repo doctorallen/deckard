@@ -38,6 +38,8 @@ const MODULES = {
   workspaceWrites: 'ui/commands/workspaceWrites.js',
   // The task writes a harness hands to a page host, as the extension builds them.
   taskWrites: 'test/taskWrites.js',
+  // The preference services a harness hands to a page host, as the extension builds them.
+  preferenceServices: 'test/preferenceServices.js',
   // ui/webview: page hosts
   activeCalendar: 'ui/webview/activeCalendar.js',
   activeSearch: 'ui/webview/activeSearch.js',

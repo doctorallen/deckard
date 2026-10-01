@@ -5,9 +5,6 @@
 // violation regenerates it, and the list only shrinks.
 export default {
   "@typescript-eslint/max-params": {
-    "src/core/storage/preferences.ts": [
-      "prune"
-    ],
     "src/domain/index/indexState.ts": [
       "forget",
       "remember"

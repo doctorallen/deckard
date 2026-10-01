@@ -1,8 +1,9 @@
 import * as assert from 'assert';
 import { createHash } from 'node:crypto';
 
-import { pinKey, PreferencesStore } from '../core/storage/preferences';
+import { pinKey } from '../core/storage/preferences';
 import type { PersistedPreferences, TaskColumnId } from '../core/types';
+import { createPreferences, TestPreferences } from './preferenceServices';
 
 /**
  * The persisted preferences format, pinned byte for byte.
@@ -17,6 +18,8 @@ import type { PersistedPreferences, TaskColumnId } from '../core/types';
  *
  * The expectations were taken from the store as it was before Phase 3 split
  * it, so a refactor that changes one byte of what is stored fails here.
+ * Since Phase 4 the walk drives the repository and its services, as the
+ * extension builds them, with the same inputs the facade's methods took.
  */
 
 const PREFERENCES = 'deckard.preferences';
@@ -281,23 +284,23 @@ const ELSEWHERE: Blob = {
 };
 
 /** Loads a blob with no folder open: the machine-wide store alone. */
-function loadAlone(blob: unknown): { store: PreferencesStore; global: RecordingStore; log: Entry[] } {
+function loadAlone(blob: unknown): { store: TestPreferences; global: RecordingStore; log: Entry[] } {
   const log: Entry[] = [];
   const global = new RecordingStore('global', log, blob === undefined ? {} : { [PREFERENCES]: blob });
-  return { store: watched(new PreferencesStore(global), log), global, log };
+  return { store: watched(createPreferences(global), log), global, log };
 }
 
 /** The store, with its two events logged beside the writes. */
-function watched(store: PreferencesStore, log: Entry[]): PreferencesStore {
-  store.onDidChange((value) => log.push({ kind: 'change', json: JSON.stringify(value) }));
-  store.onDidRecordVisit(() => log.push({ kind: 'visit' }));
+function watched(store: TestPreferences, log: Entry[]): TestPreferences {
+  store.reader.onDidChange((value) => log.push({ kind: 'change', json: JSON.stringify(value) }));
+  store.reader.onDidRecordVisit(() => log.push({ kind: 'visit' }));
   return store;
 }
 
 /** Writes what the store holds without changing it, and returns the JSON the machine-wide store received. */
-async function writeBack(store: PreferencesStore, log: Entry[]): Promise<string | undefined> {
+async function writeBack(store: TestPreferences, log: Entry[]): Promise<string | undefined> {
   log.length = 0;
-  await store.setSearchPageSize(store.value.searchPageSize);
+  await store.display.setSearchPageSize(store.reader.value.searchPageSize);
   const write = log.find((entry) => entry.kind === 'write' && entry.store === 'global');
   assert.ok(write && write.kind === 'write' && write.key === PREFERENCES);
   return write.json;
@@ -310,8 +313,8 @@ async function writeBack(store: PreferencesStore, log: Entry[]): Promise<string 
  */
 async function assertReadsAs(blob: unknown, want: Blob, written: Blob = want): Promise<void> {
   const { store, log } = loadAlone(blob);
-  assert.deepStrictEqual(store.value, want);
-  assert.deepStrictEqual(Object.keys(store.value), Object.keys(want), 'keys in written order');
+  assert.deepStrictEqual(store.reader.value, want);
+  assert.deepStrictEqual(Object.keys(store.reader.value), Object.keys(want), 'keys in written order');
   assert.strictEqual(await writeBack(store, log), JSON.stringify(written));
 }
 
@@ -320,14 +323,14 @@ suite('Preferences round trip', () => {
     const log: Entry[] = [];
     const global = new RecordingStore('global', log, { [PREFERENCES]: ELSEWHERE, [HANDED_OVER]: true });
     const workspace = new RecordingStore('workspace', log, { [PREFERENCES]: share(FULL) });
-    const store = watched(new PreferencesStore(global, workspace), log);
-    await store.initialize();
+    const store = watched(createPreferences(global, workspace), log);
+    await store.repository.initialize();
     assert.strictEqual(log.length, 0, 'a workspace with its own blob is not seeded');
 
-    assert.deepStrictEqual(store.value, FULL);
-    assert.deepStrictEqual(Object.keys(store.value), KEY_ORDER.slice(), 'every key, in written order');
+    assert.deepStrictEqual(store.reader.value, FULL);
+    assert.deepStrictEqual(Object.keys(store.reader.value), KEY_ORDER.slice(), 'every key, in written order');
 
-    await store.setSearchPageSize(100);
+    await store.display.setSearchPageSize(100);
     assert.deepStrictEqual(log.map((entry) => (entry.kind === 'write' ? `${entry.store} ${entry.key}` : entry.kind)), [
       `global ${PREFERENCES}`,
       `workspace ${PREFERENCES}`,
@@ -343,9 +346,9 @@ suite('Preferences round trip', () => {
 
   test('a full blob with no folder open reads and writes the machine-wide store alone', async () => {
     const { store, global, log } = loadAlone(FULL);
-    await store.initialize();
+    await store.repository.initialize();
     assert.strictEqual(log.length, 0);
-    assert.deepStrictEqual(store.value, FULL);
+    assert.deepStrictEqual(store.reader.value, FULL);
     assert.strictEqual(await writeBack(store, log), JSON.stringify(FULL));
     assert.deepStrictEqual(global.dump(), { [PREFERENCES]: JSON.stringify(FULL) });
     assert.deepStrictEqual(log.map((entry) => entry.kind), ['write', 'change'], 'no handover flag without a workspace');
@@ -362,9 +365,9 @@ suite('Preferences round trip', () => {
       const log: Entry[] = [];
       // 1.18 kept everything machine-wide.
       const global = new RecordingStore('global', log, { [PREFERENCES]: FULL });
-      const first = watched(new PreferencesStore(global, new RecordingStore('workspace', log)), log);
-      assert.deepStrictEqual(first.value, FULL, 'the seed is read at once');
-      await first.initialize();
+      const first = watched(createPreferences(global, new RecordingStore('workspace', log)), log);
+      assert.deepStrictEqual(first.reader.value, FULL, 'the seed is read at once');
+      await first.repository.initialize();
       assert.deepStrictEqual(
         log.map((entry) => (entry.kind === 'write' ? `${entry.store} ${entry.key} ${entry.json}` : entry.kind)),
         [
@@ -374,27 +377,27 @@ suite('Preferences round trip', () => {
         ],
         'the handover writes the blob, the share, then the flag, and fires nothing',
       );
-      await first.initialize();
+      await first.repository.initialize();
       assert.strictEqual(log.length, 3, 'once');
 
       log.length = 0;
-      const second = watched(new PreferencesStore(global, new RecordingStore('workspace', log)), log);
-      await second.initialize();
+      const second = watched(createPreferences(global, new RecordingStore('workspace', log)), log);
+      await second.repository.initialize();
       assert.strictEqual(log.length, 0);
       const presentation = Object.fromEntries(
         Object.entries(FULL).filter(([key]) => !(WORKSPACE_KEYS as readonly string[]).includes(key)),
       );
-      assert.deepStrictEqual(second.value, expected(presentation));
+      assert.deepStrictEqual(second.reader.value, expected(presentation));
     });
 
     test('a workspace with no blob is not seeded once the handover is recorded, even with no flag read before', async () => {
       const log: Entry[] = [];
       const global = new RecordingStore('global', log, { [PREFERENCES]: FULL, [HANDED_OVER]: false });
-      const store = watched(new PreferencesStore(global, new RecordingStore('workspace', log, { [PREFERENCES]: {} })), log);
-      await store.initialize();
+      const store = watched(createPreferences(global, new RecordingStore('workspace', log, { [PREFERENCES]: {} })), log);
+      await store.repository.initialize();
       assert.strictEqual(log.length, 0, 'an empty blob of its own is still its own');
-      assert.deepStrictEqual(store.value.favoriteTags, []);
-      assert.strictEqual(store.value.tagSortMode, 'custom');
+      assert.deepStrictEqual(store.reader.value.favoriteTags, []);
+      assert.strictEqual(store.reader.value.tagSortMode, 'custom');
     });
 
     test('Source is kept only when it was chosen since Rendered became the default', async () => {
@@ -469,12 +472,14 @@ suite('Preferences round trip', () => {
         tagFirstSeen: { '#t': 5 },
       });
       log.length = 0;
-      await store.prune(
-        ['#t'],
-        ['task-bbb2-y2', 'task-aaa1-x1', 'task-ccc3-ddd4', 'task-aaa1-x9'],
-        ['section-eee5-hhh8', 'section-fff6-ggg7', 'section-eee5-zzz9'],
-        [],
-        ['n.md'],
+      await store.maintenance.pruneKeys(
+        {
+          tags: ['#t'],
+          tasks: ['task-bbb2-y2', 'task-aaa1-x1', 'task-ccc3-ddd4', 'task-aaa1-x9'],
+          sections: ['section-eee5-hhh8', 'section-fff6-ggg7', 'section-eee5-zzz9'],
+          entities: [],
+          files: ['n.md'],
+        },
         9_000,
       );
       const want = expected({
@@ -483,7 +488,7 @@ suite('Preferences round trip', () => {
         sectionAccessTimes: { 'section-eee5-hhh8': 1_000, 'section-fff6-ggg7': 2_000 },
         tagFirstSeen: { '#t': 5 },
       });
-      assert.deepStrictEqual(store.value, want);
+      assert.deepStrictEqual(store.reader.value, want);
       assert.deepStrictEqual(
         log.map((entry) => (entry.kind === 'write' ? `${entry.store} ${entry.json}` : entry.kind)),
         [`global ${JSON.stringify(want)}`, 'change'],
@@ -492,12 +497,12 @@ suite('Preferences round trip', () => {
 
     test('a blob with no first-seen times marks every indexed tag as known before times were kept', async () => {
       const { store, log } = loadAlone({ tagAccessCounts: { '#a': 1, '#gone': 3 } });
-      assert.strictEqual('tagFirstSeen' in store.value, false, 'left out until the first index');
-      await store.prune(['#a', '#b'], [], undefined, undefined, undefined, 9_000);
-      assert.deepStrictEqual(store.value, expected({ tagAccessCounts: { '#a': 1 }, tagFirstSeen: { '#a': 0, '#b': 0 } }));
-      await store.prune(['#a', '#b', '#c'], [], undefined, undefined, undefined, 9_500);
-      assert.deepStrictEqual(store.value.tagFirstSeen, { '#a': 0, '#b': 0, '#c': 9_500 });
-      assert.strictEqual(await writeBack(store, log), JSON.stringify(store.value));
+      assert.strictEqual('tagFirstSeen' in store.reader.value, false, 'left out until the first index');
+      await store.maintenance.pruneKeys({ tags: ['#a', '#b'], tasks: [] }, 9_000);
+      assert.deepStrictEqual(store.reader.value, expected({ tagAccessCounts: { '#a': 1 }, tagFirstSeen: { '#a': 0, '#b': 0 } }));
+      await store.maintenance.pruneKeys({ tags: ['#a', '#b', '#c'], tasks: [] }, 9_500);
+      assert.deepStrictEqual(store.reader.value.tagFirstSeen, { '#a': 0, '#b': 0, '#c': 9_500 });
+      assert.strictEqual(await writeBack(store, log), JSON.stringify(store.reader.value));
     });
 
     test('saved filters with no name, too few tags, or a repeated id or view are dropped', async () => {
@@ -658,8 +663,8 @@ suite('Preferences round trip', () => {
       await assertReadsAs({ recentHeadings: [3] }, expected({ recentHeadings: [] }), expected({}));
       const choices = Array.from({ length: 205 }, (_, index) => ({ input: `q${index}`, key: `tag:#t${index}`, count: 1, at: index }));
       const { store } = loadAlone({ findChoices: choices });
-      assert.strictEqual(store.value.findChoices?.length, 200);
-      assert.strictEqual(store.value.findChoices?.[0].at, 204);
+      assert.strictEqual(store.reader.value.findChoices?.length, 200);
+      assert.strictEqual(store.reader.value.findChoices?.[0].at, 204);
     });
 
     test('pins keep a note, a named heading, a whole level, and an occurrence from zero, fifty at most', async () => {
@@ -688,7 +693,7 @@ suite('Preferences round trip', () => {
       );
       const many = Array.from({ length: 55 }, (_, index) => `n${index}.md`);
       const { store } = loadAlone({ pinnedNotes: many });
-      assert.deepStrictEqual(store.value.pinnedNotes, many.slice(0, 50).map((filePath) => ({ filePath })));
+      assert.deepStrictEqual(store.reader.value.pinnedNotes, many.slice(0, 50).map((filePath) => ({ filePath })));
     });
 
     test('Home keeps only widgets it can draw, with options in their bounds', async () => {
@@ -743,7 +748,7 @@ suite('Preferences round trip', () => {
       );
       const many = Array.from({ length: 35 }, (_, index) => ({ id: `w${index}`, kind: 'tasks' }));
       const { store } = loadAlone({ dashboardWidgets: many });
-      assert.strictEqual(store.value.dashboardWidgets.length, 30);
+      assert.strictEqual(store.reader.value.dashboardWidgets.length, 30);
     });
 
     test('the table layout keeps known columns with the title first, and a sort by a known column', async () => {
@@ -761,7 +766,7 @@ suite('Preferences round trip', () => {
 
     test('an import is normalized as a read is, and written whole', async () => {
       const { store, log } = loadAlone(undefined);
-      await store.importPreferences({ ...ELSEWHERE, renderModeChosen: undefined } as unknown as PersistedPreferences);
+      await store.maintenance.importPreferences({ ...ELSEWHERE, renderModeChosen: undefined } as unknown as PersistedPreferences);
       const want = inOrder({
         ...FULL,
         renderMode: 'html',
@@ -773,7 +778,7 @@ suite('Preferences round trip', () => {
         dashboardViewState: { mode: 'home', tagSearchQuery: 'elsewhere' },
       });
       delete want.renderModeChosen;
-      assert.deepStrictEqual(store.value, want);
+      assert.deepStrictEqual(store.reader.value, want);
       assert.deepStrictEqual(
         log.map((entry) => (entry.kind === 'write' ? entry.json : entry.kind)),
         [JSON.stringify(want), 'change'],
@@ -804,7 +809,7 @@ suite('Preferences round trip', () => {
       const log: Entry[] = [];
       const global = new RecordingStore('global', log, { [PREFERENCES]: ELSEWHERE, [HANDED_OVER]: true });
       const workspace = new RecordingStore('workspace', log, { [PREFERENCES]: share(FULL) });
-      const store = watched(new PreferencesStore(global, workspace), log);
+      const store = watched(createPreferences(global, workspace), log);
       let previous = JSON.parse(JSON.stringify(FULL)) as Blob;
       const steps: string[] = [];
       const step = async (name: string, run: () => unknown): Promise<void> => {
@@ -824,82 +829,82 @@ suite('Preferences round trip', () => {
         steps.push(`${name}${value} | ${lines.join(', ')} | ${changed.join(' ')}`);
       };
 
-      await step('toggleFavorite add', () => store.toggleFavorite('#topic/mesh'));
-      await step('toggleFavorite remove', () => store.toggleFavorite('#project/atlas'));
-      await step('toggleFavoriteEntity', () => store.toggleFavoriteEntity('#person/dax'));
-      await step('toggleFavoriteEntity remove', () => store.toggleFavoriteEntity('#person/ren'));
-      await step('setTagSortMode', () => store.setTagSortMode('count'));
-      await step('setEntitySortMode', () => store.setEntitySortMode('custom'));
-      await step('setTagAccessOrder', () => store.setTagAccessOrder(['#topic/mesh', '#topic/mesh', '#risk/vendor']));
-      await step('setEntityAccessOrder', () => store.setEntityAccessOrder(['#person/dax', '#person/ren', '#person/dax']));
+      await step('toggleFavorite add', () => store.favorites.toggleFavorite('#topic/mesh'));
+      await step('toggleFavorite remove', () => store.favorites.toggleFavorite('#project/atlas'));
+      await step('toggleFavoriteEntity', () => store.favorites.toggleFavoriteEntity('#person/dax'));
+      await step('toggleFavoriteEntity remove', () => store.favorites.toggleFavoriteEntity('#person/ren'));
+      await step('setTagSortMode', () => store.display.setTagSortMode('count'));
+      await step('setEntitySortMode', () => store.display.setEntitySortMode('custom'));
+      await step('setTagAccessOrder', () => store.favorites.setTagAccessOrder(['#topic/mesh', '#topic/mesh', '#risk/vendor']));
+      await step('setEntityAccessOrder', () => store.favorites.setEntityAccessOrder(['#person/dax', '#person/ren', '#person/dax']));
       await step('setTagAccessOrderAndFavorites', () =>
-        store.setTagAccessOrderAndFavorites(['#risk/vendor', '#topic/mesh'], ['#risk/vendor', '#risk/vendor']));
-      await step('recordTagAccess now', () => store.recordTagAccess('#topic/mesh'));
-      await step('recordTagAccess at', () => store.recordTagAccess('#project/atlas', 1_750_000_000_000));
-      await step('recordFindChoice new', () => store.recordFindChoice('  Atlas   Plan ', 'note:["notes/atlas.md","Plan",0]'));
+        store.favorites.setTagAccessOrderAndFavorites(['#risk/vendor', '#topic/mesh'], ['#risk/vendor', '#risk/vendor']));
+      await step('recordTagAccess now', () => store.usage.recordTagAccess('#topic/mesh'));
+      await step('recordTagAccess at', () => store.usage.recordTagAccess('#project/atlas', 1_750_000_000_000));
+      await step('recordFindChoice new', () => store.usage.recordFindChoice('  Atlas   Plan ', 'note:["notes/atlas.md","Plan",0]'));
       await step('recordFindChoice again', () =>
-        store.recordFindChoice('ATLAS', 'note:["notes/atlas.md","Atlas",0]', 1_800_000_000_500));
-      await step('recordFindChoice blank', () => store.recordFindChoice('   ', 'tag:#a'));
+        store.usage.recordFindChoice('ATLAS', 'note:["notes/atlas.md","Atlas",0]', 1_800_000_000_500));
+      await step('recordFindChoice blank', () => store.usage.recordFindChoice('   ', 'tag:#a'));
       await step('recordRecentHeading new', () =>
-        store.recordRecentHeading({ filePath: 'notes/relay.md', heading: 'Plan', headingLevel: 2 }));
+        store.usage.recordRecentHeading({ filePath: 'notes/relay.md', heading: 'Plan', headingLevel: 2 }));
       await step('recordRecentHeading again', () =>
-        store.recordRecentHeading({ filePath: 'notes/atlas.md', heading: 'Decisions', headingLevel: 2, occurrence: 1 }));
-      await step('removeRecentQuery', () => store.removeRecentQuery(' is:open '));
-      await step('removeRecentQuery absent', () => store.removeRecentQuery('not there'));
-      await step('recordRecentQuery', () => store.recordRecentQuery('  #topic/mesh  '));
-      await step('recordRecentQuery same', () => store.recordRecentQuery('#topic/mesh'));
-      await step('recordRecentQuery blank', () => store.recordRecentQuery('   '));
-      await step('recordEntityAccess', () => store.recordEntityAccess('#person/dax'));
-      await step('recordEntityAccess new', () => store.recordEntityAccess('#org/lantern'));
-      await step('replaceTaskInOrder', () => store.replaceTaskInOrder('task-a7b3-c8d2', 'task-a7b3-zz99'));
-      await step('replaceTaskInOrder absent', () => store.replaceTaskInOrder('task-missing', 'task-x'));
-      await step('replaceTaskInOrder onto a kept id', () => store.replaceTaskInOrder('task-k2m9-p4q1', 'task-a7b3-zz99'));
-      await step('setTaskOrder', () => store.setTaskOrder(['task-1', 'task-2', 'task-1', 'task-3']));
-      await step('setTaskSortMode', () => store.setTaskSortMode('created'));
-      await step('setDashboardColumns tasks', () => store.setDashboardColumns('tasks', 2));
-      await step('setDashboardColumns notes', () => store.setDashboardColumns('notes', 4));
-      await step('setDashboardColumns tags', () => store.setDashboardColumns('tags', 1));
-      await step('setTaskBoardLayout', () => store.setTaskBoardLayout('list'));
-      await step('setTaskBoardGroup tag', () => store.setTaskBoardGroup('tag', 'Context'));
-      await step('setTaskBoardGroup priority', () => store.setTaskBoardGroup('priority', 'ignored'));
-      await step('setTaskBoardGroup tag kept namespace', () => store.setTaskBoardGroup('tag'));
+        store.usage.recordRecentHeading({ filePath: 'notes/atlas.md', heading: 'Decisions', headingLevel: 2, occurrence: 1 }));
+      await step('removeRecentQuery', () => store.savedSearches.removeRecentQuery(' is:open '));
+      await step('removeRecentQuery absent', () => store.savedSearches.removeRecentQuery('not there'));
+      await step('recordRecentQuery', () => store.savedSearches.recordRecentQuery('  #topic/mesh  '));
+      await step('recordRecentQuery same', () => store.savedSearches.recordRecentQuery('#topic/mesh'));
+      await step('recordRecentQuery blank', () => store.savedSearches.recordRecentQuery('   '));
+      await step('recordEntityAccess', () => store.usage.recordEntityAccess('#person/dax'));
+      await step('recordEntityAccess new', () => store.usage.recordEntityAccess('#org/lantern'));
+      await step('replaceTaskInOrder', () => store.taskLayout.replaceTaskInOrder('task-a7b3-c8d2', 'task-a7b3-zz99'));
+      await step('replaceTaskInOrder absent', () => store.taskLayout.replaceTaskInOrder('task-missing', 'task-x'));
+      await step('replaceTaskInOrder onto a kept id', () => store.taskLayout.replaceTaskInOrder('task-k2m9-p4q1', 'task-a7b3-zz99'));
+      await step('setTaskOrder', () => store.taskLayout.setTaskOrder(['task-1', 'task-2', 'task-1', 'task-3']));
+      await step('setTaskSortMode', () => store.taskLayout.setTaskSortMode('created'));
+      await step('setDashboardColumns tasks', () => store.display.setDashboardColumns('tasks', 2));
+      await step('setDashboardColumns notes', () => store.display.setDashboardColumns('notes', 4));
+      await step('setDashboardColumns tags', () => store.display.setDashboardColumns('tags', 1));
+      await step('setTaskBoardLayout', () => store.taskLayout.setTaskBoardLayout('list'));
+      await step('setTaskBoardGroup tag', () => store.taskLayout.setTaskBoardGroup('tag', 'Context'));
+      await step('setTaskBoardGroup priority', () => store.taskLayout.setTaskBoardGroup('priority', 'ignored'));
+      await step('setTaskBoardGroup tag kept namespace', () => store.taskLayout.setTaskBoardGroup('tag'));
       await step('setTaskTableColumns', () =>
-        store.setTaskTableColumns(['due', 'title', 'bogus' as TaskColumnId, 'due', 'status']));
-      await step('setTaskTableColumns title only', () => store.setTaskTableColumns(['title']));
-      await step('setTaskTableSort', () => store.setTaskTableSort({ column: 'priority', direction: 'asc' }));
-      await step('setTaskTableSort none', () => store.setTaskTableSort(undefined));
+        store.taskLayout.setTaskTableColumns(['due', 'title', 'bogus' as TaskColumnId, 'due', 'status']));
+      await step('setTaskTableColumns title only', () => store.taskLayout.setTaskTableColumns(['title']));
+      await step('setTaskTableSort', () => store.taskLayout.setTaskTableSort({ column: 'priority', direction: 'asc' }));
+      await step('setTaskTableSort none', () => store.taskLayout.setTaskTableSort(undefined));
       await step('setDashboardWidgets', () =>
-        store.setDashboardWidgets([
-          ...store.value.dashboardWidgets,
+        store.homeWidgets.setDashboardWidgets([
+          ...store.reader.value.dashboardWidgets,
           { id: 'stats', kind: 'stats', width: 'full', count: 4 },
           { id: 'search', kind: 'topTags', width: 'half' },
         ]));
-      await step('addSavedSearchWidget', () => store.addSavedSearchWidget('filter-one'));
-      await step('addSavedSearchWidget present', () => store.addSavedSearchWidget('filter-one'));
-      await step('addSavedSearchWidget missing', () => store.addSavedSearchWidget('nope'));
-      await step('resetDashboardWidgets', () => store.resetDashboardWidgets());
-      await step('pinNote', () => store.pinNote({ filePath: 'notes/mesh.md', heading: 'Mesh', headingLevel: 1 }));
-      await step('pinNote present', () => store.pinNote({ filePath: 'notes/atlas.md' }));
-      await step('isPinned', () => [store.isPinned(pinKey({ filePath: 'notes/mesh.md', heading: 'Mesh' })), store.isPinned('nope')]);
-      await step('unpinNote', () => store.unpinNote(pinKey({ filePath: 'notes/atlas.md' })));
-      await step('unpinNote absent', () => store.unpinNote('nope'));
-      await step('setDashboardMode', () => store.setDashboardMode('home'));
-      await step('setDashboardSearch', () => store.setDashboardSearch('tags', 'mesh'));
-      await step('setRenderMode', () => store.setRenderMode('html'));
-      await step('setTagOverviewSortMode', () => store.setTagOverviewSortMode('created'));
-      await step('setSearchPageSize', () => store.setSearchPageSize(10));
-      await step('setSearchPreview', () => store.setSearchPreview('none'));
-      await step('setTagOverviewLayout', () => store.setTagOverviewLayout('tabs'));
-      await step('setRelatedNotesSortMode', () => store.setRelatedNotesSortMode('newest'));
-      await step('setHideDailyNotes off', () => store.setHideDailyNotes(false));
-      await step('setHideDailyNotes on', () => store.setHideDailyNotes(true));
-      await step('setRelatedNotesPreviewLines 1', () => store.setRelatedNotesPreviewLines(1));
-      await step('setRelatedNotesPreviewLines 0', () => store.setRelatedNotesPreviewLines(0));
-      await step('recordSectionAccess', () => store.recordSectionAccess('section-q1w2-e3r4'));
+      await step('addSavedSearchWidget', () => store.homeWidgets.addSavedSearchWidget('filter-one'));
+      await step('addSavedSearchWidget present', () => store.homeWidgets.addSavedSearchWidget('filter-one'));
+      await step('addSavedSearchWidget missing', () => store.homeWidgets.addSavedSearchWidget('nope'));
+      await step('resetDashboardWidgets', () => store.homeWidgets.resetDashboardWidgets());
+      await step('pinNote', () => store.pins.pinNote({ filePath: 'notes/mesh.md', heading: 'Mesh', headingLevel: 1 }));
+      await step('pinNote present', () => store.pins.pinNote({ filePath: 'notes/atlas.md' }));
+      await step('isPinned', () => [store.pins.isPinned(pinKey({ filePath: 'notes/mesh.md', heading: 'Mesh' })), store.pins.isPinned('nope')]);
+      await step('unpinNote', () => store.pins.unpinNote(pinKey({ filePath: 'notes/atlas.md' })));
+      await step('unpinNote absent', () => store.pins.unpinNote('nope'));
+      await step('setDashboardMode', () => store.homeWidgets.setDashboardMode('home'));
+      await step('setDashboardSearch', () => store.homeWidgets.setDashboardSearch('tags', 'mesh'));
+      await step('setRenderMode', () => store.display.setRenderMode('html'));
+      await step('setTagOverviewSortMode', () => store.display.setTagOverviewSortMode('created'));
+      await step('setSearchPageSize', () => store.display.setSearchPageSize(10));
+      await step('setSearchPreview', () => store.display.setSearchPreview('none'));
+      await step('setTagOverviewLayout', () => store.display.setTagOverviewLayout('tabs'));
+      await step('setRelatedNotesSortMode', () => store.display.setRelatedNotesSortMode('newest'));
+      await step('setHideDailyNotes off', () => store.display.setHideDailyNotes(false));
+      await step('setHideDailyNotes on', () => store.display.setHideDailyNotes(true));
+      await step('setRelatedNotesPreviewLines 1', () => store.display.setRelatedNotesPreviewLines(1));
+      await step('setRelatedNotesPreviewLines 0', () => store.display.setRelatedNotesPreviewLines(0));
+      await step('recordSectionAccess', () => store.usage.recordSectionAccess('section-q1w2-e3r4'));
       await step('recordSectionAccess quiet', () =>
-        store.recordSectionAccess('section-new1-new2', 1_800_000_000_900, { quiet: true }));
+        store.usage.recordSectionAccess('section-new1-new2', 1_800_000_000_900, { quiet: true }));
       await step('carrySectionAccess', () =>
-        store.carrySectionAccess(
+        store.usage.carrySectionAccess(
           new Map([
             ['section-q1w2-e3r4', 'section-q1w2-moved'],
             ['section-t5y6-u7i8', 'section-new1-new2'],
@@ -907,63 +912,67 @@ suite('Preferences round trip', () => {
             ['section-new1-new2', 'section-new1-new2'],
           ]),
         ));
-      await step('carrySectionAccess nothing', () => store.carrySectionAccess(new Map([['section-none', 'section-y']])));
-      await step('saveSavedFilter new', () => store.saveSavedFilter('  Mesh pair ', ['#topic/mesh', '#risk/vendor']));
-      await step('saveSavedFilter replace', () => store.saveSavedFilter('Renamed', ['#risk/vendor', '#project/atlas']));
-      await step('saveSavedFilter no name', () => store.saveSavedFilter(' ', ['#a', '#b']));
-      await step('saveSavedFilter one tag', () => store.saveSavedFilter('One', ['#a', ' #a ']));
-      await step('saveSavedQueryFilter new', () => store.saveSavedQueryFilter('Mesh open', ' is:open #topic/mesh '));
+      await step('carrySectionAccess nothing', () => store.usage.carrySectionAccess(new Map([['section-none', 'section-y']])));
+      await step('saveSavedFilter new', () => store.savedSearches.saveSavedFilter('  Mesh pair ', ['#topic/mesh', '#risk/vendor']));
+      await step('saveSavedFilter replace', () => store.savedSearches.saveSavedFilter('Renamed', ['#risk/vendor', '#project/atlas']));
+      await step('saveSavedFilter no name', () => store.savedSearches.saveSavedFilter(' ', ['#a', '#b']));
+      await step('saveSavedFilter one tag', () => store.savedSearches.saveSavedFilter('One', ['#a', ' #a ']));
+      await step('saveSavedQueryFilter new', () => store.savedSearches.saveSavedQueryFilter('Mesh open', ' is:open #topic/mesh '));
       await step('saveSavedQueryFilter replace', () =>
-        store.saveSavedQueryFilter('Open atlas again', 'is:open #project/atlas', 'taskBoard'));
-      await step('saveSavedQueryFilter other page', () => store.saveSavedQueryFilter('On search', 'is:open #project/atlas'));
-      await step('saveSavedQueryFilter blank', () => store.saveSavedQueryFilter('Blank', '  '));
-      await step('updateSavedFilter', () => store.updateSavedFilter('filter-one', 'Renamed again', ['#topic/mesh', '#risk/vendor']));
-      await step('updateSavedFilter missing', () => store.updateSavedFilter('missing', 'Name', ['#a', '#b']));
-      await step('updateSavedFilter no id', () => store.updateSavedFilter('', 'Name', ['#a', '#b']));
-      await step('updateSavedFilter one tag', () => store.updateSavedFilter('filter-one', 'Name', ['#a']));
-      await step('addSavedSearchWidget for removal', () => store.addSavedSearchWidget('filter-three'));
+        store.savedSearches.saveSavedQueryFilter('Open atlas again', 'is:open #project/atlas', 'taskBoard'));
+      await step('saveSavedQueryFilter other page', () => store.savedSearches.saveSavedQueryFilter('On search', 'is:open #project/atlas'));
+      await step('saveSavedQueryFilter blank', () => store.savedSearches.saveSavedQueryFilter('Blank', '  '));
+      await step('updateSavedFilter', () => store.savedSearches.updateSavedFilter('filter-one', 'Renamed again', ['#topic/mesh', '#risk/vendor']));
+      await step('updateSavedFilter missing', () => store.savedSearches.updateSavedFilter('missing', 'Name', ['#a', '#b']));
+      await step('updateSavedFilter no id', () => store.savedSearches.updateSavedFilter('', 'Name', ['#a', '#b']));
+      await step('updateSavedFilter one tag', () => store.savedSearches.updateSavedFilter('filter-one', 'Name', ['#a']));
+      await step('addSavedSearchWidget for removal', () => store.homeWidgets.addSavedSearchWidget('filter-three'));
       await step('setDashboardWidgets tasks query', () =>
-        store.setDashboardWidgets([
-          ...store.value.dashboardWidgets,
+        store.homeWidgets.setDashboardWidgets([
+          ...store.reader.value.dashboardWidgets,
           { id: 'mesh-tasks', kind: 'tasks', width: 'half', count: 5, query: '#topic/mesh and (#risk/vendor or -#risk/vendor) #risk/vendors' },
         ]));
-      await step('replaceTagKey rename', () => store.replaceTagKey('#risk/vendor', '#risk/supplier'));
-      await step('replaceTagKey merge', () => store.replaceTagKey('#topic/mesh', '#project/atlas'));
-      await step('replaceTagKey absent', () => store.replaceTagKey('#never/seen', '#also/never'));
-      await step('replaceTagKey blank', () => store.replaceTagKey('', '#x'));
-      await step('replaceTagKey same', () => store.replaceTagKey('#project/atlas', '#project/atlas'));
-      await step('removeSavedFilter', () => store.removeSavedFilter('filter-three'));
-      await step('removeSavedFilter blank', () => store.removeSavedFilter(''));
+      await step('replaceTagKey rename', () => store.tagRenames.replaceTagKey('#risk/vendor', '#risk/supplier'));
+      await step('replaceTagKey merge', () => store.tagRenames.replaceTagKey('#topic/mesh', '#project/atlas'));
+      await step('replaceTagKey absent', () => store.tagRenames.replaceTagKey('#never/seen', '#also/never'));
+      await step('replaceTagKey blank', () => store.tagRenames.replaceTagKey('', '#x'));
+      await step('replaceTagKey same', () => store.tagRenames.replaceTagKey('#project/atlas', '#project/atlas'));
+      await step('removeSavedFilter', () => store.savedSearches.removeSavedFilter('filter-three'));
+      await step('removeSavedFilter blank', () => store.savedSearches.removeSavedFilter(''));
       await step('both at once', () =>
-        Promise.all([store.toggleFavorite('#both/at-once'), store.recordTagAccess('#both/at-once', 1_800_000_111_000)]));
+        Promise.all([store.favorites.toggleFavorite('#both/at-once'), store.usage.recordTagAccess('#both/at-once', 1_800_000_111_000)]));
       await step('prune', () =>
-        store.prune(
-          ['#project/atlas', '#risk/supplier', '#both/at-once'],
-          ['task-1', 'task-3'],
-          ['section-q1w2-moved'],
-          ['#person/dax'],
-          ['notes/atlas.md', 'notes/mesh.md'],
+        store.maintenance.pruneKeys(
+          {
+            tags: ['#project/atlas', '#risk/supplier', '#both/at-once'],
+            tasks: ['task-1', 'task-3'],
+            sections: ['section-q1w2-moved'],
+            entities: ['#person/dax'],
+            files: ['notes/atlas.md', 'notes/mesh.md'],
+          },
           1_800_000_222_000,
         ));
       await step('prune again', () =>
-        store.prune(
-          ['#project/atlas', '#risk/supplier', '#both/at-once'],
-          ['task-1', 'task-3'],
-          ['section-q1w2-moved'],
-          ['#person/dax'],
-          ['notes/atlas.md', 'notes/mesh.md'],
+        store.maintenance.pruneKeys(
+          {
+            tags: ['#project/atlas', '#risk/supplier', '#both/at-once'],
+            tasks: ['task-1', 'task-3'],
+            sections: ['section-q1w2-moved'],
+            entities: ['#person/dax'],
+            files: ['notes/atlas.md', 'notes/mesh.md'],
+          },
           1_800_000_333_000,
         ));
-      await step('prune empty index', () => store.prune([], [], [], [], []));
-      await step('prune tags and tasks only', () => store.prune(['#project/atlas', '#new/tag'], ['task-1']));
-      await step('findStale', () => store.findStale(['#project/atlas'], [], ['notes/mesh.md']));
-      await step('removeStale', () => store.removeStale(store.findStale(['#project/atlas'], [], ['notes/mesh.md'])));
+      await step('prune empty index', () => store.maintenance.pruneKeys({ tags: [], tasks: [], sections: [], entities: [], files: [] }));
+      await step('prune tags and tasks only', () => store.maintenance.pruneKeys({ tags: ['#project/atlas', '#new/tag'], tasks: ['task-1'] }));
+      await step('findStale', () => store.maintenance.findStale(['#project/atlas'], [], ['notes/mesh.md']));
+      await step('removeStale', () => store.maintenance.removeStale(store.maintenance.findStale(['#project/atlas'], [], ['notes/mesh.md'])));
       await step('removeStale nothing', () =>
-        store.removeStale({ favoriteTags: [], favoriteEntities: [], pinnedNotes: [], savedFilters: [] }));
-      await step('importPreferences', () => store.importPreferences(FULL as unknown as PersistedPreferences));
+        store.maintenance.removeStale({ favoriteTags: [], favoriteEntities: [], pinnedNotes: [], savedFilters: [] }));
+      await step('importPreferences', () => store.maintenance.importPreferences(FULL as unknown as PersistedPreferences));
 
       assert.deepStrictEqual(steps, WALK);
-      assert.deepStrictEqual(store.value, FULL);
+      assert.deepStrictEqual(store.reader.value, FULL);
       assert.deepStrictEqual(global.dump(), { [PREFERENCES]: JSON.stringify(FULL), [HANDED_OVER]: 'true' });
       assert.deepStrictEqual(workspace.dump(), { [PREFERENCES]: JSON.stringify(share(FULL)) });
     });

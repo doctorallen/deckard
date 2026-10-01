@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { SearchPageSize, SearchPageSnapshot } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
@@ -22,12 +22,12 @@ import { createQueryContext } from '../domain/query/queryContext';
  */
 suite('Search page behavior', () => {
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
@@ -46,12 +46,12 @@ suite('Search page behavior', () => {
         ]),
       ),
     );
-    store = new PreferencesStore(new MemoryMemento());
+    store = createPreferences(new MemoryMemento());
     const snapshot = createSearchPageSnapshot(
       index,
       options.pageSize === undefined
-        ? store.value
-        : { ...store.value, searchPageSize: options.pageSize },
+        ? store.reader.value
+        : { ...store.reader.value, searchPageSize: options.pageSize },
       query,
       { queryContext: createQueryContext(Date.now()), ...options },
     );

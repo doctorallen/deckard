@@ -8,7 +8,7 @@ const vscode = require('vscode');
 const { mountWebview, createGlobalState } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { StatsPanel } = modules.stats;
-const { PreferencesStore } = modules.preferences;
+const { createPreferences } = modules.preferenceServices;
 const { ThemePreview } = modules.themePreview;
 
 // The stub has no editor, so record what the host tries to open instead.
@@ -63,10 +63,10 @@ async function openStats(files = []) {
     getUnreadable: () => [],
     onDidUpdate: updates.event,
   };
-  const preferences = new PreferencesStore(createGlobalState());
-  await preferences.recordTagAccess('#project/relay');
-  await preferences.recordEntityAccess('#project/relay');
-  await preferences.recordSectionAccess(section.id);
+  const preferences = createPreferences(createGlobalState());
+  await preferences.usage.recordTagAccess('#project/relay');
+  await preferences.usage.recordEntityAccess('#project/relay');
+  await preferences.usage.recordSectionAccess(section.id);
   const openedTags = [];
   const themePreview = new ThemePreview();
   const stats = new StatsPanel({
@@ -136,7 +136,7 @@ test('Enter and Space open a canonical tag from the keyboard', async () => {
 
 test('clicking a most-viewed note entry opens its note and counts the view', async () => {
   const { view, preferences, rows } = await openStats();
-  const before = preferences.value.sectionAccessCounts[section.id];
+  const before = preferences.reader.value.sectionAccessCounts[section.id];
   view.click(rows()[2]);
   await settle();
   assert.deepStrictEqual(view.posted[view.posted.length - 1], {
@@ -145,7 +145,7 @@ test('clicking a most-viewed note entry opens its note and counts the view', asy
     line: 4,
   });
   assert.deepStrictEqual(opened, ['/notes/relay.md']);
-  assert.strictEqual(preferences.value.sectionAccessCounts[section.id], before + 1);
+  assert.strictEqual(preferences.reader.value.sectionAccessCounts[section.id], before + 1);
 });
 
 test('a note nothing links to is listed, and opens without counting a view', async () => {
@@ -162,7 +162,7 @@ test('a note nothing links to is listed, and opens without counting a view', asy
   assert.strictEqual(row.querySelector('.label').textContent, 'lonely');
   assert.ok(!row.querySelector('.count'), 'with no view count');
 
-  const before = { ...preferences.value.sectionAccessCounts };
+  const before = { ...preferences.reader.value.sectionAccessCounts };
   view.click(row);
   await settle();
   assert.deepStrictEqual(view.posted[view.posted.length - 1], {
@@ -171,7 +171,7 @@ test('a note nothing links to is listed, and opens without counting a view', asy
     line: 1,
   });
   assert.deepStrictEqual(opened, ['/notes/lonely.md']);
-  assert.deepStrictEqual(preferences.value.sectionAccessCounts, before, 'no entry view is counted');
+  assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, before, 'no entry view is counted');
 });
 
 test('links that open no note are listed, open their search, and can be created', async () => {
@@ -215,7 +215,7 @@ test('a hidden Stats page skips updates and catches up when shown', async () => 
 
 test('a row the index no longer has opens nothing', async () => {
   const { view, index, preferences, openedTags, rows } = await openStats();
-  const before = { ...preferences.value.sectionAccessCounts };
+  const before = { ...preferences.reader.value.sectionAccessCounts };
   // The page still shows the rows; the host's index has moved on.
   index.tags.clear();
   index.sections.clear();
@@ -224,6 +224,6 @@ test('a row the index no longer has opens nothing', async () => {
   assert.strictEqual(view.posted.length, 3, 'every row still posted');
   assert.deepStrictEqual(openedTags, []);
   assert.deepStrictEqual(opened, []);
-  assert.deepStrictEqual(preferences.value.sectionAccessCounts, before);
+  assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, before);
 });
 

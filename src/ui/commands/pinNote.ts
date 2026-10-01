@@ -151,9 +151,10 @@ interface PinContextIndex extends PinIndexSource {
   onDidUpdate(listener: () => void): vscode.Disposable;
 }
 
+/** What the context key reads of the preferences: the pins, and when they may have changed. */
 interface PinContextStore {
-  isPinned(key: string): boolean;
-  onDidChange(listener: () => void): vscode.Disposable;
+  pins: { isPinned(key: string): boolean };
+  reader: { onDidChange(listener: () => void): vscode.Disposable };
 }
 
 /**
@@ -176,7 +177,7 @@ export class ActivePinContext implements vscode.Disposable {
         this.sync(event.textEditor),
       ),
       indexer.onDidUpdate(sync),
-      preferences.onDidChange(sync),
+      preferences.reader.onDidChange(sync),
     );
     sync();
   }
@@ -194,7 +195,7 @@ export class ActivePinContext implements vscode.Disposable {
         this.indexer.getFilePath(editor.document.uri),
         editor.selection.active.line + 1,
       );
-      next = pin !== undefined && this.preferences.isPinned(pinKey(pin));
+      next = pin !== undefined && this.preferences.pins.isPinned(pinKey(pin));
     }
     if (next === this.pinned) {
       return;

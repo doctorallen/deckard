@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import {
   PersistedPreferences,
   TagReference,
@@ -36,13 +36,13 @@ const options: TaskBoardOptions = {
 
 /** Preferences as a fresh install has them, with the board's own choices. */
 function preferencesWith(values: Partial<PersistedPreferences>): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 

@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   createDashboardSnapshot,
@@ -54,7 +54,7 @@ suite('Zen mode', () => {
   });
 
   const pages: WebviewPage[] = [];
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   const configuration = () => vscode.workspace.getConfiguration('deckard');
 
@@ -68,7 +68,7 @@ suite('Zen mode', () => {
 
   teardown(async () => {
     pages.splice(0).forEach((page) => page.dispose());
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
     await configuration().update(
       'zenMode',
@@ -103,8 +103,8 @@ suite('Zen mode', () => {
 
   /** The Dashboard's HTML and the snapshot its script is driven with. */
   const dashboard = () => {
-    store = new PreferencesStore(new MemoryMemento());
-    const preferences = store.value;
+    store = createPreferences(new MemoryMemento());
+    const preferences = store.reader.value;
     const built = index();
     const snapshot = {
       ...createDashboardSnapshot(built, preferences, undefined, undefined, { queryContext: createQueryContext(Date.now()) }),
@@ -123,10 +123,10 @@ suite('Zen mode', () => {
   };
 
   const searchPage = () => {
-    store = new PreferencesStore(new MemoryMemento());
+    store = createPreferences(new MemoryMemento());
     const page = openWebviewPage(
       getSearchPageHtml(webview),
-      createSearchPageSnapshot(index(), store.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }),
+      createSearchPageSnapshot(index(), store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }),
     );
     pages.push(page);
     return page;

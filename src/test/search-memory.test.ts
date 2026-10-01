@@ -2,11 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import {
-  PreferencesStore,
-  RECENT_QUERY_LIMIT,
-} from '../core/storage/preferences';
+import { RECENT_QUERY_LIMIT } from '../core/storage/preferences';
 import { frecencyScore } from '../ui/state/frecency';
+import { createPreferences } from './preferenceServices';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -28,50 +26,50 @@ class MemoryMemento implements vscode.Memento {
 
 suite('What search remembers', () => {
   test('keeps recent searches newest first, without duplicates', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    await store.recordRecentQuery('#project/atlas is:open');
-    await store.recordRecentQuery('vendor');
-    await store.recordRecentQuery('  #project/atlas is:open  ');
-    await store.recordRecentQuery('   ');
+    const store = createPreferences(new MemoryMemento());
+    await store.savedSearches.recordRecentQuery('#project/atlas is:open');
+    await store.savedSearches.recordRecentQuery('vendor');
+    await store.savedSearches.recordRecentQuery('  #project/atlas is:open  ');
+    await store.savedSearches.recordRecentQuery('   ');
 
-    assert.deepStrictEqual(store.value.recentQueries, [
+    assert.deepStrictEqual(store.reader.value.recentQueries, [
       '#project/atlas is:open',
       'vendor',
     ]);
   });
 
   test('keeps only the most recent searches', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
     for (let index = 0; index < RECENT_QUERY_LIMIT + 5; index += 1) {
-      await store.recordRecentQuery(`query ${index}`);
+      await store.savedSearches.recordRecentQuery(`query ${index}`);
     }
 
-    assert.strictEqual(store.value.recentQueries?.length, RECENT_QUERY_LIMIT);
-    assert.strictEqual(store.value.recentQueries?.[0], `query ${RECENT_QUERY_LIMIT + 4}`);
+    assert.strictEqual(store.reader.value.recentQueries?.length, RECENT_QUERY_LIMIT);
+    assert.strictEqual(store.reader.value.recentQueries?.[0], `query ${RECENT_QUERY_LIMIT + 4}`);
   });
 
   test('records when a tag or entry was last opened, and forgets deleted ones', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    await store.recordTagAccess('#project/atlas', 1000);
-    await store.recordTagAccess('#project/gone', 2000);
-    await store.recordSectionAccess('section-1', 3000);
+    const store = createPreferences(new MemoryMemento());
+    await store.usage.recordTagAccess('#project/atlas', 1000);
+    await store.usage.recordTagAccess('#project/gone', 2000);
+    await store.usage.recordSectionAccess('section-1', 3000);
 
-    assert.deepStrictEqual(store.value.tagAccessTimes, {
+    assert.deepStrictEqual(store.reader.value.tagAccessTimes, {
       '#project/atlas': 1000,
       '#project/gone': 2000,
     });
-    assert.deepStrictEqual(store.value.sectionAccessTimes, { 'section-1': 3000 });
+    assert.deepStrictEqual(store.reader.value.sectionAccessTimes, { 'section-1': 3000 });
 
-    await store.prune(['#project/atlas'], [], ['section-1'], []);
-    assert.deepStrictEqual(store.value.tagAccessTimes, { '#project/atlas': 1000 });
+    await store.maintenance.pruneKeys({ tags: ['#project/atlas'], tasks: [], sections: ['section-1'], entities: [] });
+    assert.deepStrictEqual(store.reader.value.tagAccessTimes, { '#project/atlas': 1000 });
   });
 
   test('moves a renamed tag’s last-opened time to its new name', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    await store.recordTagAccess('#project/apollo', 5000);
-    await store.replaceTagKey('#project/apollo', '#project/atlas');
+    const store = createPreferences(new MemoryMemento());
+    await store.usage.recordTagAccess('#project/apollo', 5000);
+    await store.tagRenames.replaceTagKey('#project/apollo', '#project/atlas');
 
-    assert.deepStrictEqual(store.value.tagAccessTimes, { '#project/atlas': 5000 });
+    assert.deepStrictEqual(store.reader.value.tagAccessTimes, { '#project/atlas': 5000 });
   });
 
   test('ranks something opened recently above something opened often long ago', () => {

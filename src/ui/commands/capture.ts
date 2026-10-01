@@ -10,7 +10,7 @@ import {
 import { readDateOptions } from './datePrompt';
 import { getPersonMarker } from '../../domain/markdown/parser';
 import { Section } from '../../core/types';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferencesReader } from '../../core/storage/preferences';
 import { pickDestination } from './destinationPicker';
 import { captureSeed, withSourceLink } from './selectionSeed';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -47,7 +47,8 @@ export interface CaptureContext {
   indexer: WorkspaceIndexer;
   captures: CaptureService<vscode.Uri>;
   drafts: CaptureDrafts;
-  preferences: PreferencesStore;
+  /** The recent headings and view counts the heading picker ranks by. */
+  preferences: Pick<PreferencesReader, 'value'>;
 }
 
 /**

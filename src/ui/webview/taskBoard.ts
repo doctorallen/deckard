@@ -7,7 +7,7 @@ import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
 import { parseQuery } from '../../domain/query/queryParser';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { measure } from '../../shared/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
@@ -50,10 +50,20 @@ import { panelPriority } from './panelPriority';
 /** What the Task Board searches for until it is told otherwise. */
 export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
 
+/**
+ * The preference services the Task Board reads and writes: the blob it
+ * draws, its layout and the rank order, saved and recent searches, the
+ * offer of a saved search on Home, and the heading Move to… records.
+ */
+export type TaskBoardPreferences = Pick<
+  PreferenceServices,
+  'reader' | 'taskLayout' | 'savedSearches' | 'homeWidgets' | 'usage'
+>;
+
 /** What the Task board is built from. */
 export interface TaskBoardPanelOptions {
   indexer: WorkspaceIndexer<vscode.Uri>;
-  preferences: PreferencesStore;
+  preferences: TaskBoardPreferences;
   extensionUri: vscode.Uri;
   openTag: (tagKey: string) => Promise<void>;
   activeSearch: ActiveSearch;
@@ -94,7 +104,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private lastSnapshot: TaskBoardSnapshot | undefined;
 
   private readonly indexer: WorkspaceIndexer<vscode.Uri>;
-  private readonly preferences: PreferencesStore;
+  private readonly preferences: TaskBoardPreferences;
   private readonly extensionUri: vscode.Uri;
   private readonly openTag: (tagKey: string) => Promise<void>;
   private readonly activeSearch: ActiveSearch;
@@ -127,7 +137,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     // dropped card back in its old column for a moment, then forward again.
     // The preferences change waits for the index the write is about to bring.
     this.disposables.push(
-      preferences.onDidChange(() => {
+      preferences.reader.onDidChange(() => {
         if (isAwaitingIndex(this.writeIndexAt, this.indexer.getSnapshot())) {
           return;
         }
@@ -186,7 +196,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     const applied = this.applyQuery(queryText);
     this.refresh();
     if (applied && this.query) {
-      await this.preferences.recordRecentQuery(this.query);
+      await this.preferences.savedSearches.recordRecentQuery(this.query);
     }
   }
 
@@ -315,7 +325,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     return {
       ...createTaskBoard(
         this.indexer.getSnapshot(),
-        this.preferences.value,
+        this.preferences.reader.value,
         { query: this.query, invalidQuery: this.invalidQuery },
         {
           ...readTaskBoardOptions(readQueryContext()),
@@ -401,7 +411,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
    * board's columns have no block of their own.
    */
   private queryBlockOptions(): QueryBlockWriteOptions {
-    const preferences = this.preferences.value;
+    const preferences = this.preferences.reader.value;
     if (preferences.taskBoardLayout === 'table') {
       const sort = preferences.taskTableSort;
       return {
@@ -431,7 +441,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     if (name === undefined) {
       return;
     }
-    const saved = await this.preferences.saveSavedQueryFilter(
+    const saved = await this.preferences.savedSearches.saveSavedQueryFilter(
       name,
       query,
       'taskBoard',
@@ -471,7 +481,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         const index = this.indexer.getSnapshot();
         const board = createTaskBoard(
           index,
-          { ...this.preferences.value, taskBoardLayout: 'list' },
+          { ...this.preferences.reader.value, taskBoardLayout: 'list' },
           { query: this.query, invalidQuery: this.invalidQuery },
           { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
           'inline',
@@ -490,23 +500,23 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         // A different grouping is a different board, so every column goes
         // back to its short form.
         this.shownColumns = new Set();
-        await this.preferences.setTaskBoardGroup(message.groupBy, message.namespace);
+        await this.preferences.taskLayout.setTaskBoardGroup(message.groupBy, message.namespace);
         return;
       case 'showColumnRest':
         this.shownColumns.add(message.columnId);
         this.refresh();
         return;
       case 'setTaskLayout':
-        await this.preferences.setTaskBoardLayout(message.layout);
+        await this.preferences.taskLayout.setTaskBoardLayout(message.layout);
         return;
 
       case 'setTaskSort':
-        await this.preferences.setTaskSortMode(message.mode);
+        await this.preferences.taskLayout.setTaskSortMode(message.mode);
         return;
       case 'setTableSort': {
         // The same column again turns the sort round; none is the rank order.
-        const current = this.preferences.value.taskTableSort;
-        await this.preferences.setTaskTableSort(
+        const current = this.preferences.reader.value.taskTableSort;
+        await this.preferences.taskLayout.setTaskTableSort(
           message.column === undefined
             ? undefined
             : {
@@ -520,11 +530,11 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         return;
       }
       case 'setTableColumns':
-        await this.preferences.setTaskTableColumns(message.columns);
+        await this.preferences.taskLayout.setTaskTableColumns(message.columns);
         return;
       case 'reorderTasks':
-        if (this.preferences.value.taskSortMode === 'rank') {
-          await this.preferences.setTaskOrder(
+        if (this.preferences.reader.value.taskSortMode === 'rank') {
+          await this.preferences.taskLayout.setTaskOrder(
             mergeOrder(message.taskIds, index.tasks.keys()),
           );
         }

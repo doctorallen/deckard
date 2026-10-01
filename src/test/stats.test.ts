@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { parseQuery } from '../domain/query/queryParser';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
@@ -61,7 +61,7 @@ suite('Stats: notes that could not be read', () => {
   const index = () =>
     buildWorkspaceIndex(new Map([['notes/good.md', parseMarkdown('notes/good.md', '# Good #project/atlas')]]));
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
 
   test('the snapshot lists each one with what opens it', () => {
@@ -133,7 +133,7 @@ suite('Stats: what needs attention, first', () => {
   const build = (notes: Record<string, string>) =>
     buildWorkspaceIndex(new Map(Object.entries(notes).map(([filePath, text]) => [filePath, parseMarkdown(filePath, text)])));
   const preferences = (value: Record<string, unknown> = {}) => ({
-    ...new PreferencesStore({ get: (_k: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never).value,
+    ...createPreferences({ get: (_k: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never).reader.value,
     ...value,
   });
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
@@ -274,7 +274,7 @@ suite('Stats: twelve weeks under each total', () => {
     ['notes/d.md', parseMarkdown('notes/d.md', '# D')],
   ]));
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
 
   test('rebuilds each total week by week from the dates notes were written', () => {
@@ -333,7 +333,7 @@ suite('Stats: how often tags are used', () => {
     return buildWorkspaceIndex(new Map([['notes/tags.md', parseMarkdown('notes/tags.md', lines.join('\n'))]]));
   };
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
 
   test('counts tags in six bands, and lists those used once with their lookalikes', () => {
@@ -416,7 +416,7 @@ suite('Stats: tags written together', () => {
     ].join('\n'))],
   ]));
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
   const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
 
   test('counts the entries carrying each two of the most-used tags', () => {

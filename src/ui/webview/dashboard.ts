@@ -17,7 +17,7 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import {
   isDefaultHomeLayout,
-  PreferencesStore,
+  PreferenceServices,
 } from '../../core/storage/preferences';
 import { measure } from '../../shared/timing';
 import {
@@ -64,10 +64,21 @@ export interface DashboardNavigation {
   addNextAction?(tagLabel: string): void | Promise<unknown>;
 }
 
+/**
+ * The preference services Home reads and writes: the blob it draws, its
+ * widgets and view state, favorites and their order, sort modes and
+ * columns, saved and recent searches, pins, visits, and the keys a renamed
+ * tag carries.
+ */
+export type DashboardPreferences = Pick<
+  PreferenceServices,
+  'reader' | 'favorites' | 'usage' | 'homeWidgets' | 'pins' | 'savedSearches' | 'display' | 'tagRenames'
+>;
+
 /** What Home is built from. */
 export interface DashboardPanelOptions {
   indexer: WorkspaceIndexer;
-  preferences: PreferencesStore;
+  preferences: DashboardPreferences;
   extensionUri: vscode.Uri;
   navigation: DashboardNavigation;
   /** Whether Home says Deckard was updated; absent, it never does. */
@@ -107,7 +118,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
   }
 
   private readonly indexer: WorkspaceIndexer;
-  private readonly preferences: PreferencesStore;
+  private readonly preferences: DashboardPreferences;
   private readonly extensionUri: vscode.Uri;
   private readonly navigation: DashboardNavigation;
   /** Whether Home says Deckard was updated; absent, it never does. */
@@ -129,7 +140,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     this.writes = options.writes;
     this.themePreview = options.themePreview;
     const { indexer, preferences, whatsNew, tryNext } = options;
-    const initialPreferences = preferences.value;
+    const initialPreferences = preferences.reader.value;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
     this.disposables.push(
@@ -157,17 +168,17 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     );
     // A visit is kept quietly; only Home's Recently opened shows it.
     this.disposables.push(
-      preferences.onDidRecordVisit(() => {
+      preferences.reader.onDidRecordVisit(() => {
         if (
           this.panel?.visible &&
-          preferences.value.dashboardWidgets.some((widget) => widget.kind === 'recentNotes')
+          preferences.reader.value.dashboardWidgets.some((widget) => widget.kind === 'recentNotes')
         ) {
           this.refresh();
         }
       }),
     );
     this.disposables.push(
-      preferences.onDidChange((nextPreferences) => {
+      preferences.reader.onDidChange((nextPreferences) => {
         this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
         this.dashboardMode = nextPreferences.dashboardViewState.mode;
         this.refresh();
@@ -211,7 +222,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
    * page with its query, or its tags that still exist joined by AND.
    */
   public async openSavedFilter(filterId: string): Promise<void> {
-    const savedFilter = this.preferences.value.savedFilters.find(
+    const savedFilter = this.preferences.reader.value.savedFilters.find(
       (filter) => filter.id === filterId,
     );
     if (!savedFilter) {
@@ -273,7 +284,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
 
   /** Whether a widget on Home shows something about the last note. */
   private followsSourceNote(): boolean {
-    return this.preferences.value.dashboardWidgets.some(
+    return this.preferences.reader.value.dashboardWidgets.some(
       (widget) => widget.kind === 'relatedNotes' || widget.kind === 'pinnedNotes',
     );
   }
@@ -288,7 +299,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     }
     const index = this.indexer.getSnapshot();
     const [latest] = Object.entries(
-      this.preferences.value.sectionAccessTimes ?? {},
+      this.preferences.reader.value.sectionAccessTimes ?? {},
     )
       .filter(([sectionId]) => index.sections.has(sectionId))
       .sort((left, right) => right[1] - left[1]);
@@ -384,7 +395,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       'Reset Widgets',
     );
     if (choice === 'Reset Widgets') {
-      await this.preferences.resetDashboardWidgets();
+      await this.preferences.homeWidgets.resetDashboardWidgets();
     }
   }
 
@@ -442,7 +453,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       return;
     }
     const index = this.indexer.getSnapshot();
-    const preferences = this.preferences.value;
+    const preferences = this.preferences.reader.value;
     // One week start and one moment for the suggestion and what it runs on.
     const queryContext = readQueryContext();
     const suggestion = this.currentTryNext(index, preferences, queryContext);
@@ -452,7 +463,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     await runTryNext(suggestion, collectTryNextInput(index, preferences, queryContext.weekStart, queryContext.now), {
       run: (command, ...args) => vscode.commands.executeCommand(command, ...args),
       pin: async (filePath, line) => {
-        const pinned = await setPinned(index, this.preferences, { filePath, line }, true);
+        const pinned = await setPinned(index, this.preferences.pins, { filePath, line }, true);
         if (pinned) {
           await this.tryNext?.retire(suggestion.key);
         }
@@ -483,7 +494,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     if (!this.panel) {
       return;
     }
-    const preferences = this.preferences.value;
+    const preferences = this.preferences.reader.value;
     const configuration = vscode.workspace.getConfiguration('deckard');
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
       configuration.get<unknown>('tagTitleDisplayMode', 'inline'),
@@ -599,7 +610,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         if (task || section || metadataOnlyFile) {
           await openResultAt(message.filePath, message.line, message);
           if (section) {
-            await this.preferences.recordSectionAccess(section.id);
+            await this.preferences.usage.recordSectionAccess(section.id);
           }
         }
         return;
@@ -612,27 +623,27 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       }
       case 'toggleFavorite':
         if (index.tags.has(message.tagKey)) {
-          await this.preferences.toggleFavorite(message.tagKey);
+          await this.preferences.favorites.toggleFavorite(message.tagKey);
         }
         return;
       case 'toggleFavoriteEntity':
         if (index.entities.has(message.entityKey)) {
-          await this.preferences.toggleFavoriteEntity(message.entityKey);
+          await this.preferences.favorites.toggleFavoriteEntity(message.entityKey);
         }
         return;
       case 'setTagSort':
-        await this.preferences.setTagSortMode(message.mode);
+        await this.preferences.display.setTagSortMode(message.mode);
         return;
       case 'setEntitySort':
-        await this.preferences.setEntitySortMode(message.mode);
+        await this.preferences.display.setEntitySortMode(message.mode);
         return;
       case 'setDashboardMode':
         this.dashboardMode = message.mode;
         this.refresh();
-        await this.preferences.setDashboardMode(message.mode);
+        await this.preferences.homeWidgets.setDashboardMode(message.mode);
         return;
       case 'setDashboardSearch':
-        await this.preferences.setDashboardSearch(
+        await this.preferences.homeWidgets.setDashboardSearch(
           message.field,
           message.query,
         );
@@ -640,31 +651,31 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       case 'setDashboardColumns':
         this.dashboardTagColumns = message.columns;
         this.refresh();
-        await this.preferences.setDashboardColumns(
+        await this.preferences.display.setDashboardColumns(
           message.section,
           message.columns,
         );
         return;
       case 'reorderTags':
         if (
-          this.preferences.value.tagSortMode === 'custom' &&
+          this.preferences.reader.value.tagSortMode === 'custom' &&
           index.tags.has(message.tagKey)
         ) {
-          const favoriteTags = new Set(this.preferences.value.favoriteTags);
+          const favoriteTags = new Set(this.preferences.reader.value.favoriteTags);
           if (message.isFavorite) {
             favoriteTags.add(message.tagKey);
           } else {
             favoriteTags.delete(message.tagKey);
           }
-          await this.preferences.setTagAccessOrderAndFavorites(
+          await this.preferences.favorites.setTagAccessOrderAndFavorites(
             mergeOrder(message.tagKeys, index.tags.keys()),
             [...favoriteTags],
           );
         }
         return;
       case 'reorderEntities':
-        if (this.preferences.value.entitySortMode === 'custom') {
-          await this.preferences.setEntityAccessOrder(
+        if (this.preferences.reader.value.entitySortMode === 'custom') {
+          await this.preferences.favorites.setEntityAccessOrder(
             mergeOrder(message.entityKeys, index.entities.keys()),
           );
         }
@@ -695,15 +706,15 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         await this.openSavedFilter(message.filterId);
         return;
       case 'addSavedSearchWidget':
-        await this.preferences.addSavedSearchWidget(message.filterId);
+        await this.preferences.homeWidgets.addSavedSearchWidget(message.filterId);
         return;
       case 'removeSavedFilter': {
         // Removing a saved search also removes any Home widget bound to it,
         // and nothing could bring either back, so it asks first.
-        const saved = this.preferences.value.savedFilters.find(
+        const saved = this.preferences.reader.value.savedFilters.find(
           (filter) => filter.id === message.filterId,
         );
-        const widgets = this.preferences.value.dashboardWidgets.filter(
+        const widgets = this.preferences.reader.value.dashboardWidgets.filter(
           (widget) => widget.filterId === message.filterId,
         ).length;
         const confirm = await vscode.window.showWarningMessage(
@@ -714,20 +725,20 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
           'Remove',
         );
         if (confirm === 'Remove') {
-          await this.preferences.removeSavedFilter(message.filterId);
+          await this.preferences.savedSearches.removeSavedFilter(message.filterId);
         }
         return;
       }
       case 'recordRecentQuery':
-        await this.preferences.recordRecentQuery(message.query);
+        await this.preferences.savedSearches.recordRecentQuery(message.query);
         return;
       case 'setDashboardWidgets':
         // A saved-search widget needs its saved search to still exist.
-        await this.preferences.setDashboardWidgets(
+        await this.preferences.homeWidgets.setDashboardWidgets(
           message.widgets.filter(
             (widget) =>
               widget.kind !== 'savedQuery' ||
-              this.preferences.value.savedFilters.some(
+              this.preferences.reader.value.savedFilters.some(
                 (filter) => filter.id === widget.filterId,
               ),
           ),
@@ -744,7 +755,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         const query = message.query.trim();
         await this.navigation.openSearch(query);
         if (query) {
-          await this.preferences.recordRecentQuery(query);
+          await this.preferences.savedSearches.recordRecentQuery(query);
         }
         return;
       }
@@ -811,7 +822,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
         return;
       case 'unpinNote':
         if (message.pinKey) {
-          await this.preferences.unpinNote(message.pinKey);
+          await this.preferences.pins.unpinNote(message.pinKey);
         }
         return;
     }
