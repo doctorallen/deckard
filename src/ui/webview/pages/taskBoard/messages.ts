@@ -27,6 +27,7 @@ import type {
 } from '../../../protocol/taskBoard';
 import {
   exactlyType,
+  isRequestId,
   isStringArray,
   MAX_QUERY_LENGTH,
   Narrower,
@@ -57,11 +58,6 @@ function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
 /** A list's orders: the ones the state layer implements. */
 function isTaskSortMode(value: unknown): value is TaskSortMode {
   return value === 'rank' || value === 'created' || value === 'updated';
-}
-
-/** A move's number, as the page counts its moves. */
-function isRequestId(value: unknown): value is number {
-  return Number.isSafeInteger(value);
 }
 
 /** The messages that name a task and nothing else. */

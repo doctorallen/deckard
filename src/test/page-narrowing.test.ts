@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import {
   exactlyType,
+  isRequestId,
   isSourceLocation,
   isStringArray,
   MAX_QUERY_LENGTH,
@@ -171,6 +172,15 @@ suite('Page message narrowing', () => {
     ]);
     // Asked directly of a message of the other type, it refuses it.
     assert.strictEqual(narrowAs('pinNote', narrowPinNote)({ type: 'unpinNote', filePath: '/a.md' }), undefined);
+  });
+
+  test('a request id is a whole number held exactly', () => {
+    for (const id of [0, 1, -3, Number.MAX_SAFE_INTEGER]) {
+      assert.strictEqual(isRequestId(id), true, String(id));
+    }
+    for (const id of [1.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity, '1', null, undefined]) {
+      assert.strictEqual(isRequestId(id), false, String(id));
+    }
   });
 
   test('an array of strings', () => {

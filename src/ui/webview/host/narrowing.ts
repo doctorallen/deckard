@@ -90,6 +90,14 @@ export function exactlyType<T extends string>(type: T): Narrower<{ type: T }> {
   return (value) => (Object.keys(value).length === 1 ? { type } : undefined);
 }
 
+/**
+ * Whether a value is a request's id, as a page numbers its requests (see
+ * `Correlated`): a whole number JavaScript holds exactly.
+ */
+export function isRequestId(value: unknown): value is number {
+  return Number.isSafeInteger(value);
+}
+
 /** Whether a value is an array of strings, as a reordering sends. */
 export function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
