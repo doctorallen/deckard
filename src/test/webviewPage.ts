@@ -1,5 +1,6 @@
 import { JSDOM } from 'jsdom';
 
+import { createDomRecorder } from '../../test/harness/domRecorder';
 import { loadPage } from '../../test/harness/loadPage';
 
 /**
@@ -72,6 +73,12 @@ export interface WebviewPageOptions {
    * returns from the start, as it does in a restored webview.
    */
   savedState?: unknown;
+  /**
+   * Makes `performance.now()` advance by this many milliseconds each time it
+   * is called, starting from 0, so a page that animates by the clock draws
+   * the same frames on every run.
+   */
+  clockStep?: number;
 }
 
 export interface PostedMessage {
@@ -122,6 +129,9 @@ export function openWebviewPage(
           getState: () => kept,
         }),
       });
+      if (options.clockStep !== undefined) {
+        installSteppedClock(window as unknown as Window & typeof globalThis, options.clockStep);
+      }
       if (options.canvas) {
         installRecordingCanvas(window as unknown as Window & typeof globalThis, canvasCalls);
         Object.defineProperty(window, 'requestAnimationFrame', {
@@ -135,6 +145,8 @@ export function openWebviewPage(
   });
   const window = dom.window as unknown as Window & typeof globalThis;
   const document = window.document;
+  // With DECKARD_DOM_RECORD set, the body is written after each step.
+  const recorder = createDomRecorder(document, html);
 
   const find = (selector: string): Element => {
     const element = document.querySelector(selector);
@@ -154,6 +166,7 @@ export function openWebviewPage(
           data: { type: 'state', data: next },
         }),
       );
+      recorder.record('send state');
     },
     lastPosted(type: string): PostedMessage | undefined {
       return [...posted].reverse().find((message) => message.type === type);
@@ -162,6 +175,7 @@ export function openWebviewPage(
       find(selector).dispatchEvent(
         new window.MouseEvent('click', { bubbles: true, cancelable: true }),
       );
+      recorder.record(`click ${selector}`);
     },
     find,
     findAll(selector: string): Element[] {
@@ -194,6 +208,22 @@ export function openWebviewPage(
     page.send(state);
   }
   return page;
+}
+
+/**
+ * Replaces `performance.now()` with a clock that starts at 0 and moves on
+ * by `step` milliseconds each time it is read, so a page's timing, and what
+ * it draws by it, is the same on every run.
+ */
+function installSteppedClock(window: Window & typeof globalThis, step: number): void {
+  let now = 0;
+  Object.defineProperty(window.performance, 'now', {
+    configurable: true,
+    value: () => {
+      now += step;
+      return now;
+    },
+  });
 }
 
 /** Drawing state a 2D context keeps between calls. */
