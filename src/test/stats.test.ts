@@ -5,55 +5,9 @@ import { parseQuery } from '../domain/query/queryParser';
 import { createPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
-import { parseStatsMessage } from '../ui/webview/messages';
-import { listStatsTags } from '../ui/webview/stats';
+import { listStatsTags } from '../ui/webview/pages/stats/statsController';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
-
-suite('Stats messages', () => {
-  test('accepts the messages its rows post', () => {
-    assert.deepStrictEqual(
-      parseStatsMessage({ type: 'openTag', tagKey: '#project/relay' }),
-      { type: 'openTag', tagKey: '#project/relay' },
-    );
-    assert.deepStrictEqual(
-      parseStatsMessage({
-        type: 'openSource',
-        filePath: 'notes/first.md',
-        line: 3,
-      }),
-      { type: 'openSource', filePath: 'notes/first.md', line: 3 },
-    );
-  });
-
-  test('keeps only the fields the host reads', () => {
-    assert.deepStrictEqual(
-      parseStatsMessage({
-        type: 'openTag',
-        tagKey: '#project/relay',
-        filterTagKeys: ['#risk/vendor'],
-      }),
-      { type: 'openTag', tagKey: '#project/relay' },
-    );
-  });
-
-  test('rejects anything its rows could not have posted', () => {
-    for (const message of [
-      undefined,
-      'openTag',
-      { type: 'openTag', tagKey: '' },
-      { type: 'openSource', filePath: 'notes/first.md', line: 0 },
-      { type: 'openSource', filePath: 'notes/first.md', line: 1.5 },
-      { type: 'toggleTask', taskId: 'a', completed: true },
-    ]) {
-      assert.strictEqual(
-        parseStatsMessage(message),
-        undefined,
-        JSON.stringify(message),
-      );
-    }
-  });
-});
 
 suite('Stats: notes that could not be read', () => {
   const index = () =>
@@ -233,19 +187,6 @@ suite('Stats: what needs attention, first', () => {
     }
   });
 
-  test('accepts the messages the totals post, and nothing like them', () => {
-    assert.deepStrictEqual(parseStatsMessage({ type: 'openTagList', namespaced: true }), { type: 'openTagList', namespaced: true });
-    assert.deepStrictEqual(parseStatsMessage({ type: 'openNotesGraph', onlyWrittenLinks: true, extra: 1 }), { type: 'openNotesGraph', onlyWrittenLinks: true });
-    for (const message of [
-      { type: 'openTagList' },
-      { type: 'openTagList', namespaced: 'yes' },
-      { type: 'openNotesGraph' },
-      { type: 'openNotesGraph', onlyWrittenLinks: false },
-    ]) {
-      assert.strictEqual(parseStatsMessage(message), undefined, JSON.stringify(message));
-    }
-  });
-
   test('a Tags total offers its tags, most used first', () => {
     const index = build({ 'notes/a.md': '# A #project/atlas #topic\n\n## B #project/atlas' });
     assert.deepStrictEqual(listStatsTags(index, false).map((row) => [row.label, row.description]), [
@@ -382,17 +323,7 @@ suite('Stats: how often tags are used', () => {
     }
   });
 
-  test('accepts a band and a merge into, and nothing malformed', () => {
-    assert.deepStrictEqual(parseStatsMessage({ type: 'openTagList', namespaced: false, min: 3, max: 5 }), { type: 'openTagList', namespaced: false, min: 3, max: 5 });
-    assert.deepStrictEqual(parseStatsMessage({ type: 'mergeTagInto', sourceKey: '#once' }), { type: 'mergeTagInto', sourceKey: '#once' });
-    for (const message of [
-      { type: 'openTagList', namespaced: false, min: 0 },
-      { type: 'openTagList', namespaced: false, min: 5, max: 3 },
-      { type: 'openTagList', namespaced: false, max: 3 },
-      { type: 'mergeTagInto', sourceKey: '' },
-    ]) {
-      assert.strictEqual(parseStatsMessage(message), undefined, JSON.stringify(message));
-    }
+  test('a band offers the tags used that often', () => {
     const index = notes();
     assert.deepStrictEqual(listStatsTags(index, false, { min: 3, max: 5 }).map((row) => row.label), ['#four', '#project/atlas']);
   });

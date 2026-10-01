@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 
 import { TagInfo, WorkspaceIndex } from '../core/types';
-import { parseStatsMessage } from '../ui/webview/messages';
 import {
   findTagLookalikes,
   findTagMergeCandidates,
@@ -122,33 +121,6 @@ suite('Tag hygiene', () => {
       found.candidates[0].detail,
       'the same name written two ways, with 2 entries and 20 entries',
     );
-  });
-
-  test('accepts the merge a pair posts, and nothing else', () => {
-    assert.deepStrictEqual(
-      parseStatsMessage({
-        type: 'mergeTags',
-        sourceKey: '#project/atlss',
-        targetKey: '#project/atlas',
-      }),
-      {
-        type: 'mergeTags',
-        sourceKey: '#project/atlss',
-        targetKey: '#project/atlas',
-      },
-    );
-    for (const message of [
-      { type: 'mergeTags', sourceKey: '#a', targetKey: '#a' },
-      { type: 'mergeTags', sourceKey: '', targetKey: '#a' },
-      { type: 'mergeTags', sourceKey: '#a' },
-      { type: 'mergeTags', sourceKey: 1, targetKey: 2 },
-    ]) {
-      assert.strictEqual(
-        parseStatsMessage(message),
-        undefined,
-        JSON.stringify(message),
-      );
-    }
   });
 
   test('a tag\'s own page names its other spellings, at most three', () => {

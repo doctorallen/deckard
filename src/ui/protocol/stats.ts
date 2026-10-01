@@ -4,6 +4,7 @@
  */
 import type { TagMergeCandidate } from '../../domain/model/tags';
 import type { UnreadableNote } from '../../domain/model/workspaceIndex';
+import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   MergeTagsMessage,
   OpenSearchMessage,
@@ -174,14 +175,28 @@ export interface OpenStatsNotesGraphMessage {
   onlyWrittenLinks: true;
 }
 
+/**
+ * What the Stats page sends its host, by type. The page only opens what it
+ * lists, and the host checks each tag and line against the index as it is
+ * now.
+ */
+export interface StatsPageToHost {
+  openTagList: OpenTagListMessage;
+  mergeTagInto: MergeTagIntoMessage;
+  openNotesGraph: OpenStatsNotesGraphMessage;
+  openTag: OpenTagMessage;
+  openSource: OpenSourceMessage;
+  openSearch: OpenSearchMessage;
+  reindexWorkspace: ReindexWorkspaceMessage;
+  mergeTags: MergeTagsMessage;
+  createMissingNotes: CreateMissingNotesMessage;
+}
+
+/** What the host sends the Stats page, by type. */
+export interface StatsHostToPage {
+  state: StateMessage<DeckardStatsSnapshot>;
+  indexing: IndexingMessage;
+}
+
 /** Messages from the Stats page, which only opens what it lists. */
-export type StatsMessage =
-  | OpenTagListMessage
-  | MergeTagIntoMessage
-  | OpenStatsNotesGraphMessage
-  | OpenTagMessage
-  | OpenSourceMessage
-  | OpenSearchMessage
-  | ReindexWorkspaceMessage
-  | MergeTagsMessage
-  | CreateMissingNotesMessage;
+export type StatsMessage = MessageOf<StatsPageToHost>;
