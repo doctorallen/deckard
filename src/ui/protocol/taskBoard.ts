@@ -1,6 +1,6 @@
 /**
  * The Task Board's protocol: its columns, list, and table, the view options
- * it edits, and the messages the page sends.
+ * it edits, and the messages the page and its host send each other.
  */
 import type {
   TableSort,
@@ -11,6 +11,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
+import type { Correlated, IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
@@ -210,13 +211,27 @@ export interface SetTaskLayoutMessage {
   layout: TaskLayout;
 }
 
-/** Moves a task to a board column, writing what that column stands for. */
-export interface MoveTaskMessage {
+/**
+ * Moves a task to a board column, writing what that column stands for. The
+ * page numbers each move, and a refusal carries the number back; a move
+ * without one is still made, as it was before moves were numbered.
+ */
+export interface MoveTaskMessage extends Partial<Correlated> {
   type: 'moveTask';
   taskId: string;
   column: string;
   /** The column the card was moved from: a task with two tags has two cards. */
   from?: string;
+}
+
+/**
+ * A move the host could not write. The card moved at once on the page, so
+ * the page says it did not; the state that follows puts the card back. It
+ * carries the move's number when the move had one.
+ */
+export interface MoveRefusedMessage extends Partial<Correlated> {
+  type: 'moveRefused';
+  taskId: string;
 }
 
 /** Chooses what the board's columns group tasks by. */
@@ -291,31 +306,49 @@ export interface AddTaskToColumnMessage {
   column: string;
 }
 
+/**
+ * What the Task Board sends its host, by type. The host checks each task,
+ * line, and tag against the index as it is now, since the page may show a
+ * task that has since changed.
+ */
+export interface TaskBoardPageToHost {
+  pickTaskDate: PickTaskDateMessage;
+  moveTaskTo: MoveTaskToMessage;
+  editTask: EditTaskMessage;
+  breakIntoSteps: BreakIntoStepsMessage;
+  addTaskToColumn: AddTaskToColumnMessage;
+  exportResults: ExportResultsMessage;
+  setZenMode: SetZenModeMessage;
+  chooseTheme: ChooseThemeMessage;
+  openHelp: OpenHelpMessage;
+  showColumnRest: ShowColumnRestMessage;
+  saveBoardSearch: SaveBoardSearchMessage;
+  useSearchForAgenda: UseSearchForAgendaMessage;
+  ready: SidebarReadyMessage;
+  openSource: OpenSourceMessage;
+  openTag: OpenTagMessage;
+  toggleTask: ToggleTaskMessage;
+  moveTask: MoveTaskMessage;
+  setBoardGroup: SetBoardGroupMessage;
+  setBoardQuery: SetBoardQueryMessage;
+  setTaskLayout: SetTaskLayoutMessage;
+  setTaskSort: SetTaskSortMessage;
+  setTableSort: SetTableSortMessage;
+  setTableColumns: SetTableColumnsMessage;
+  reorderTasks: ReorderTasksMessage;
+  setBoardStatuses: SetBoardStatusesMessage;
+  setBoardStatusNamespace: SetBoardStatusNamespaceMessage;
+}
+
+/**
+ * What the host sends the Task Board, by type: its snapshot, the first
+ * scan's progress, and a move it could not write.
+ */
+export interface TaskBoardHostToPage {
+  state: StateMessage<TaskBoardSnapshot>;
+  indexing: IndexingMessage;
+  moveRefused: MoveRefusedMessage;
+}
+
 /** Messages from the Task Board. */
-export type TaskBoardMessage =
-  | PickTaskDateMessage
-  | MoveTaskToMessage
-  | EditTaskMessage
-  | BreakIntoStepsMessage
-  | AddTaskToColumnMessage
-  | ExportResultsMessage
-  | SetZenModeMessage
-  | ChooseThemeMessage
-  | OpenHelpMessage
-  | ShowColumnRestMessage
-  | SaveBoardSearchMessage
-  | UseSearchForAgendaMessage
-  | SidebarReadyMessage
-  | OpenSourceMessage
-  | OpenTagMessage
-  | ToggleTaskMessage
-  | MoveTaskMessage
-  | SetBoardGroupMessage
-  | SetBoardQueryMessage
-  | SetTaskLayoutMessage
-  | SetTaskSortMessage
-  | SetTableSortMessage
-  | SetTableColumnsMessage
-  | ReorderTasksMessage
-  | SetBoardStatusesMessage
-  | SetBoardStatusNamespaceMessage;
+export type TaskBoardMessage = MessageOf<TaskBoardPageToHost>;

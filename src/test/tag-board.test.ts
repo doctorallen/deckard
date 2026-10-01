@@ -5,7 +5,6 @@ import { createPreferences } from './preferenceServices';
 import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
-import { parseTaskBoardMessage } from '../ui/webview/messages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -84,21 +83,6 @@ suite('The Task board grouped by a tag namespace', () => {
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: '1 bad' }), ['status', undefined]);
   });
 
-  test('the host takes a tag grouping only with a namespace, and a move with where it came from', () => {
-    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag', namespace: 'context' }), {
-      type: 'setBoardGroup',
-      groupBy: 'tag',
-      namespace: 'context',
-    });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag' }), undefined);
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag', namespace: 'a b' }), undefined);
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'moveTask', taskId: 't', column: 'tag:context/phone', from: 'tag:context/' }),
-      { type: 'moveTask', taskId: 't', column: 'tag:context/phone', from: 'tag:context/' },
-    );
-    assert.strictEqual(parseTaskBoardMessage({ type: 'moveTask', taskId: 't', column: 'done', from: 3 }), undefined);
-  });
-
   suite('on the page', () => {
     let page: WebviewPage | undefined;
     teardown(() => {
@@ -144,6 +128,7 @@ suite('The Task board grouped by a tag namespace', () => {
         taskId: copies[1].getAttribute('data-task-id'),
         column: 'tag:context/',
         from: 'tag:context/computer',
+        requestId: 1,
       });
     });
   });

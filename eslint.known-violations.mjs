@@ -172,8 +172,7 @@ export default {
       "parseDashboardMessage",
       "parseNotesGraphMessage",
       "parseSearchPageMessage",
-      "parseSidebarMessage",
-      "parseTaskBoardMessage"
+      "parseSidebarMessage"
     ],
     "src/ui/webview/searchPage.ts": [
       "handleValidMessage",
@@ -183,9 +182,6 @@ export default {
       "createSnapshot",
       "handleMessage",
       "handleValidMessage"
-    ],
-    "src/ui/webview/taskBoard.ts": [
-      "handleMessage"
     ],
     "src/ui/webview/themes.ts": [
       "getDeckardThemeCss"
@@ -291,7 +287,6 @@ export default {
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
     "src/ui/webview/sidebarNotes.ts": 5,
-    "src/ui/webview/taskBoard.ts": 5,
     "test/e2e/vscodeStub.js": 17
   },
   "max-depth": {
@@ -427,8 +422,7 @@ export default {
     "src/ui/webview/messages.ts": [
       "parseDashboardMessage",
       "parseSearchPageMessage",
-      "parseSidebarMessage",
-      "parseTaskBoardMessage"
+      "parseSidebarMessage"
     ],
     "src/ui/webview/notesGraphHtml.ts": [
       "getNotesGraphHtml"
@@ -449,9 +443,6 @@ export default {
     ],
     "src/ui/webview/statsHtml.ts": [
       "getStatsHtml"
-    ],
-    "src/ui/webview/taskBoard.ts": [
-      "handleMessage"
     ],
     "src/ui/webview/taskBoardHtml.ts": [
       "getTaskBoardHtml"
@@ -509,7 +500,6 @@ export default {
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
-    "src/ui/webview/messages.ts": 1,
     "src/ui/webview/sidebarNotes.ts": 1
   },
   "no-unused-vars": {
@@ -560,7 +550,6 @@ export default {
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/activeHome.ts": 1,
-    "src/ui/webview/sidebarNotes.ts": 3,
-    "src/ui/webview/taskBoard.ts": 1
+    "src/ui/webview/sidebarNotes.ts": 3
   }
 };
