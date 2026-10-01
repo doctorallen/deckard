@@ -13,6 +13,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
+import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
@@ -270,32 +271,57 @@ export interface SetRenderModeMessage {
   mode: RenderMode;
 }
 
+/**
+ * What a search page sends its host, by type. A message that serves two
+ * types, such as Park Tag and Unpark Tag, is listed under each.
+ */
+export interface SearchPagePageToHost {
+  exportResults: ExportResultsMessage;
+  setZenMode: SetZenModeMessage;
+  chooseTheme: ChooseThemeMessage;
+  pinNote: PinNoteMessage & { type: 'pinNote' };
+  unpinNote: PinNoteMessage & { type: 'unpinNote' };
+  openHelp: OpenHelpMessage;
+  openSource: OpenSourceMessage;
+  toggleTask: ToggleTaskMessage;
+  setRenderMode: SetRenderModeMessage;
+  setSearchPreview: SetSearchPreviewMessage;
+  openTag: OpenTagMessage;
+  renameTag: RenameTagMessage;
+  parkTag: ParkTagMessage & { type: 'parkTag' };
+  unparkTag: ParkTagMessage & { type: 'unparkTag' };
+  parkNote: ParkNoteMessage & { type: 'parkNote' };
+  unparkNote: ParkNoteMessage & { type: 'unparkNote' };
+  setTagOverviewSort: SetTagOverviewSortMessage;
+  setTagOverviewLayout: SetTagOverviewLayoutMessage;
+  setSearchColumns: SetSearchColumnsMessage;
+  saveTagOverviewFilter: SaveTagOverviewFilterMessage;
+  setOverviewQuery: SetOverviewQueryMessage;
+  clearOverviewQuery: ClearOverviewQueryMessage;
+  navigateSearchHistory: NavigateSearchHistoryMessage;
+  setResultPage: SetResultPageMessage;
+  setResultsPerPage: SetResultsPerPageMessage;
+  previewSearch: PreviewSearchMessage;
+  editResults: EditResultsMessage;
+  createHubNote: CreateHubNoteMessage;
+  excludeHubLinks: ExcludeHubLinksMessage;
+  mergeTags: MergeTagsMessage;
+}
+
+/**
+ * What a search page is sent as its state: its snapshot, with the tags
+ * parked from search. In the Markdown view each card is sent without its
+ * rendered HTML, since that view shows the note's source.
+ */
+export interface SearchPageState extends SearchPageSnapshot {
+  parkedTags: string[];
+}
+
+/** What the host sends a search page, by type. */
+export interface SearchPageHostToPage {
+  state: StateMessage<SearchPageState>;
+  indexing: IndexingMessage;
+}
+
 /** Messages from a search page. */
-export type SearchPageMessage =
-  | ExportResultsMessage
-  | SetZenModeMessage
-  | ChooseThemeMessage
-  | PinNoteMessage
-  | OpenHelpMessage
-  | OpenSourceMessage
-  | ToggleTaskMessage
-  | SetRenderModeMessage
-  | SetSearchPreviewMessage
-  | OpenTagMessage
-  | RenameTagMessage
-  | ParkTagMessage
-  | ParkNoteMessage
-  | SetTagOverviewSortMessage
-  | SetTagOverviewLayoutMessage
-  | SetSearchColumnsMessage
-  | SaveTagOverviewFilterMessage
-  | SetOverviewQueryMessage
-  | ClearOverviewQueryMessage
-  | NavigateSearchHistoryMessage
-  | SetResultPageMessage
-  | SetResultsPerPageMessage
-  | PreviewSearchMessage
-  | EditResultsMessage
-  | CreateHubNoteMessage
-  | ExcludeHubLinksMessage
-  | MergeTagsMessage;
+export type SearchPageMessage = MessageOf<SearchPagePageToHost>;
