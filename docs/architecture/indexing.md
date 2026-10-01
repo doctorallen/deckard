@@ -15,8 +15,8 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 | [`src/core/workspace/changeWatcher.ts`](../../src/core/workspace/changeWatcher.ts) | `ChangeWatcher`: the workspace's events and file watchers, and the debounced change queue |
 | [`src/core/workspace/viewPublisher.ts`](../../src/core/workspace/viewPublisher.ts) | `ViewPublisher`: the plain listeners, and the views redrawn one host turn at a time |
 | [`src/core/workspace/scanner.ts`](../../src/core/workspace/scanner.ts) | `WorkspaceScanner`: finds, reads, and parses notes, and builds the parse fingerprint |
-| [`src/core/workspace/indexState.ts`](../../src/core/workspace/indexState.ts) | `IndexState`: the index as a fold over each note's contribution |
-| [`src/core/workspace/associationEvidence.ts`](../../src/core/workspace/associationEvidence.ts) | `collectAssociationEvidence`: the one walk that finds how tags relate, for the fold and the direct build |
+| [`src/domain/index/indexState.ts`](../../src/domain/index/indexState.ts) | `IndexState`: the index as a fold over each note's contribution |
+| [`src/domain/index/associationEvidence.ts`](../../src/domain/index/associationEvidence.ts) | `collectAssociationEvidence`: the one walk that finds how tags relate, for the fold and the direct build |
 | [`src/core/storage/searchStore.ts`](../../src/core/storage/searchStore.ts) | `SearchStore`: the full-text cache, searched on the extension host |
 | [`src/core/storage/searchDatabase.ts`](../../src/core/storage/searchDatabase.ts) | The SQLite layout and writer, shared by the host and the worker |
 | [`src/core/storage/searchStoreWorker.ts`](../../src/core/storage/searchStoreWorker.ts) | The worker thread that writes large batches |

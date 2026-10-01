@@ -6,7 +6,7 @@ import { createPreferences } from './preferenceServices';
 import { SearchStore } from '../core/storage/searchStore';
 import { PersistedPreferences } from '../core/types';
 import { formatCapture } from '../ui/commands/capture';
-import { WikiLinkCompletionProvider } from '../ui/commands/linkSuggestions';
+import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { createQuerySuggestions, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { buildQuickFindResults } from '../ui/state/quickFindState';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
