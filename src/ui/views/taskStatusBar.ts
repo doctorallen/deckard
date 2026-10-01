@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { listOverdueTasks } from './agendaTree';
+import { listOverdueTasks } from '../commands/agendaActions';
 
 import { QueryContext } from '../../domain/query/queryContext';
 import { escapeMarkdown } from '../../shared/text';

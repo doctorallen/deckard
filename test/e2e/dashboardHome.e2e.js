@@ -12,7 +12,6 @@ const { DashboardPanel } = modules.dashboard;
 const { PreferencesStore } = modules.preferences;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
-const { WorkspaceWriteHistory } = modules.workspaceWrites;
 const { ThemePreview } = modules.themePreview;
 
 /** Longer than the page's search debounce. */
@@ -71,7 +70,7 @@ async function openDashboard(
     navigation,
     whatsNew,
     tryNext,
-    writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+    writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
   await dashboard.show();
@@ -147,7 +146,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       preferences: new PreferencesStore(globalState),
       extensionUri: { fsPath: '/ext' },
       navigation: createNavigation(),
-      writes: { history: new WorkspaceWriteHistory(), keepRank: () => undefined },
+      writes: modules.taskWrites.createTaskWrites(),
       themePreview: new ThemePreview(),
     });
     await dashboard.show();

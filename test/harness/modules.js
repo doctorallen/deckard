@@ -36,6 +36,8 @@ const MODULES = {
   dailyNote: 'ui/commands/dailyNote.js',
   tagDecorations: 'ui/commands/tagDecorations.js',
   workspaceWrites: 'ui/commands/workspaceWrites.js',
+  // The task writes a harness hands to a page host, as the extension builds them.
+  taskWrites: 'test/taskWrites.js',
   // ui/webview: page hosts
   activeCalendar: 'ui/webview/activeCalendar.js',
   activeSearch: 'ui/webview/activeSearch.js',

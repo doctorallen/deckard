@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { updateTaskLine } from '../ui/commands/taskActions';
-import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { createTaskWrites } from './taskWrites';
 
 /** Stands in for VS Code's messages, and gives back what was said. */
 function listen(): { said: string[]; restore: () => void } {
@@ -28,7 +28,7 @@ function listen(): { said: string[]; restore: () => void } {
 
 suite('Task line edits', () => {
   // The history these edits write to, which no other suite shares.
-  const writes = { history: new WorkspaceWriteHistory(), keepRank: () => undefined };
+  const writes = createTaskWrites();
 
   test('says so when the task is no longer where it was', async () => {
     const uri = vscode.Uri.file(path.join(os.tmpdir(), `deckard-task-${Date.now()}.md`));

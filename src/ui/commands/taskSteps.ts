@@ -5,18 +5,16 @@ import { parseTaskMetadata } from '../../domain/markdown/taskMetadata';
 import {
   findCheckboxColumn,
   findStepFamily,
-  formatStepLines,
   isCheckedTaskLine,
   parseSuggestedSteps,
-  planStepInsertion,
   splitTypedSteps,
 } from '../../domain/markdown/taskSteps';
 import { measureAsync, reportError } from '../../shared/timing';
 import { Task } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveSourceUri } from './navigation';
+import { countSteps } from '../../domain/tasks/taskLines';
 import { describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
-import { quoteTitle, readIndexedTaskLine } from './taskActions';
+import { quoteTitle, TaskWrites } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
@@ -194,10 +192,6 @@ export class StepList {
 
 function separator(label: string): StepItem {
   return { label, kind: vscode.QuickPickItemKind.Separator, row: { kind: 'separator' } };
-}
-
-function countSteps(count: number): string {
-  return `${count} ${count === 1 ? 'step' : 'steps'}`;
 }
 
 /** The steps already written under a task line, read from the note. */
@@ -423,57 +417,50 @@ export function describeSuggestFailure(model: string, error: unknown): string {
 
 /**
  * Writes steps under a task, after whatever is under it already, in one
- * change: said with an Undo, and taken back by Undo Last Change too.
+ * change: said with an Undo, and taken back by Undo Last Change too. The
+ * task service decides whether the task is still where the index read it,
+ * and writes; this says what became of it.
  */
 export async function addTaskSteps(
-  history: WorkspaceWriteHistory,
+  writes: TaskWrites,
   target: StepTarget,
   steps: readonly string[],
 ): Promise<boolean> {
-  if (steps.length === 0) {
-    return false;
-  }
-  const uri = await resolveSourceUri(target.filePath);
-  if (!uri) {
-    void reportFailure({
-      outcome: `Deckard could not find ${target.filePath}, so nothing was written.`,
-      fix: 'It may have been moved or deleted since Deckard last read it.',
-      action: reindexAction(),
-    });
-    return false;
-  }
-  try {
-    const document = await vscode.workspace.openTextDocument(uri);
-    if (!readIndexedTaskLine(document, target)) {
-      void reportStale([uri]);
+  const result = await writes.tasks.addSteps(target, steps);
+  switch (result.kind) {
+    case 'nothing':
       return false;
-    }
-    const lines = document.getText().split(/\r?\n/);
-    const plan = planStepInsertion(lines, target.lineNumber - 1);
-    const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-    const written = formatStepLines(steps, plan.indent, plan.marker);
-    const edit = new vscode.WorkspaceEdit();
-    edit.insert(uri, document.lineAt(plan.afterLine).range.end, eol + written.join(eol));
-    const quoted = quoteTitle(target.title);
-    const result = await history.write(edit, {
-      label: `writing ${countSteps(steps.length)} under ${quoted}`,
-    });
-    if (!result.applied) {
-      void reportFailure(describeRejectedEdit(noteName(uri)));
+    case 'missing':
+      reportMissing(target.filePath);
       return false;
-    }
-    result.handle.offerUndo(`Wrote ${countSteps(steps.length)} under ${quoted}.`, {
-      guard: 'latest',
-      done: `Took the ${countSteps(steps.length)} back out.`,
-    });
-    return true;
-  } catch (error) {
-    void reportFailure({
-      outcome: `Deckard could not write the steps in ${noteName(uri)}, so nothing was written.`,
-      error,
-    });
-    return false;
+    case 'stale':
+      void reportStale([result.uri]);
+      return false;
+    case 'rejected':
+      void reportFailure(describeRejectedEdit(noteName(result.uri)));
+      return false;
+    case 'failed':
+      void reportFailure({
+        outcome: `Deckard could not write the steps in ${noteName(result.uri)}, so nothing was written.`,
+        error: result.error,
+      });
+      return false;
+    case 'written':
+      result.handle.offerUndo(`Wrote ${countSteps(result.count)} under ${quoteTitle(target.title)}.`, {
+        guard: 'latest',
+        done: `Took the ${countSteps(result.count)} back out.`,
+      });
+      return true;
   }
+}
+
+/** Says that no folder holds a task's note, so nothing was written. */
+function reportMissing(filePath: string): void {
+  void reportFailure({
+    outcome: `Deckard could not find ${filePath}, so nothing was written.`,
+    fix: 'It may have been moved or deleted since Deckard last read it.',
+    action: reindexAction(),
+  });
 }
 
 /** A task with words after its box, which is what can be broken into steps. */
@@ -512,43 +499,71 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
 /**
  * Deckard: Break into Steps… — for a task from the Tasks view or the board,
  * or the task on the cursor's line.
+ *
+ * The Task Board hands over only its write history, not the task service
+ * the history belongs to, so its call runs the registered command, which
+ * has the service, with the same task.
  */
 export async function breakIntoStepsCommand(
   indexer: WorkspaceIndexer,
-  history: WorkspaceWriteHistory,
+  writes: TaskWrites | WorkspaceWriteHistory,
   task?: Task,
   suggester: StepSuggester | undefined = createLanguageModelSuggester(),
 ): Promise<boolean> {
-  let target: StepTarget;
-  let lines: string[];
-  if (task) {
-    const uri = await resolveSourceUri(task.filePath);
-    if (!uri) {
-      void reportFailure({
-        outcome: `Deckard could not find ${task.filePath}, so nothing was written.`,
-        fix: 'It may have been moved or deleted since Deckard last read it.',
-        action: reindexAction(),
-      });
-      return false;
-    }
-    const document = await vscode.workspace.openTextDocument(uri);
-    if (!readIndexedTaskLine(document, task)) {
-      void reportStale([uri]);
-      return false;
-    }
-    target = task;
-    lines = document.getText().split(/\r?\n/);
-  } else {
-    const read = readCursorTask(indexer);
-    if (!read) {
-      void vscode.window.showInformationMessage('Put the cursor on a task to break it into steps.');
-      return false;
-    }
-    ({ target, lines } = read);
+  if (writes instanceof WorkspaceWriteHistory) {
+    return (await vscode.commands.executeCommand<boolean>(BREAK_INTO_STEPS, task)) ?? false;
   }
+  const read = task ? await readIndexedTask(writes, task) : readCursorTask(indexer);
+  if (!read) {
+    if (!task) {
+      void vscode.window.showInformationMessage('Put the cursor on a task to break it into steps.');
+    }
+    return false;
+  }
+  const { target, lines } = read;
   const steps = await pickSteps(target, readWrittenSteps(lines, target.lineNumber - 1), suggester);
   if (!steps || steps.length === 0) {
     return false;
   }
-  return addTaskSteps(history, target, steps);
+  return addTaskSteps(writes, target, steps);
+}
+
+/** The command Break into Steps… is registered as. */
+const BREAK_INTO_STEPS = 'deckard.breakIntoSteps';
+
+/**
+ * A task the index knows, with its note's lines, once its line is proved to
+ * read as the index read it; undefined, having said why, when it cannot be.
+ * A note that cannot be read at all rejects, as opening it always has.
+ */
+async function readIndexedTask(
+  writes: TaskWrites,
+  task: Task,
+): Promise<{ target: StepTarget; lines: string[] } | undefined> {
+  const opened = await writes.tasks.openIndexedTask(task);
+  if (opened.kind === 'missing') {
+    reportMissing(task.filePath);
+    return undefined;
+  }
+  if (opened.kind === 'unreadable') {
+    throw opened.error;
+  }
+  if (opened.kind === 'stale') {
+    void reportStale([opened.uri]);
+    return undefined;
+  }
+  return { target: task, lines: opened.note.getText().split(/\r?\n/) };
+}
+
+/**
+ * The argument the registered command may be given: a task from the Task
+ * Board, as its call passes one, and not the note an editor menu passes.
+ */
+export function readTaskArgument(value: unknown): Task | undefined {
+  return value !== null &&
+    typeof value === 'object' &&
+    typeof (value as Partial<Task>).sourceLineText === 'string' &&
+    typeof (value as Partial<Task>).checkboxColumn === 'number'
+    ? (value as Task)
+    : undefined;
 }

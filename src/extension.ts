@@ -8,11 +8,12 @@ import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './shared/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { WorkspaceScanner } from './core/workspace/scanner';
+import { createVscodeEditApplier, createVscodeHistoryWriter } from './platform/vscodeEditApplier';
 import { createVscodeProgress } from './platform/vscodeProgress';
 import { createVscodeWorkspace } from './platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from './platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from './core/workspace/publishing';
-import { capture, CaptureDrafts, captureToToday, createCaptureNotes } from './ui/commands/capture';
+import { capture, CaptureDrafts, captureToToday, createCaptureNotes, getCaptureInsertion } from './ui/commands/capture';
 import { CaptureService } from './services/captureService';
 import { createHubNote } from './ui/commands/hubNote';
 import { openAdjacentDailyNote } from './ui/commands/dailyNote';
@@ -28,16 +29,18 @@ import {
   writeReviewCommand,
 } from './ui/commands/review';
 import {
-  openTask,
-  quoteTaskTitle,
+  TaskRankKeeper,
   TaskWrites,
 } from './ui/commands/taskActions';
+import { MoveService } from './services/moveService';
+import { TaskService } from './services/taskService';
+import { resolveSourceUri } from './ui/commands/navigation';
 import {
   editTaskCommand,
   TaskEditorActions,
   TaskLineContext,
 } from './ui/commands/taskEditor';
-import { breakIntoStepsCommand } from './ui/commands/taskSteps';
+import { breakIntoStepsCommand, readTaskArgument } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { TemplateService } from './services/templateService';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
@@ -82,13 +85,10 @@ import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { ActivePinContext, setNotePinnedCommand } from './ui/commands/pinNote';
 import {
-  askForDueDate,
-  dueDateFor,
-  DueChoice,
-  countLoad,
-  RescheduleContext,
-  rescheduleTasks,
-  setTasksDue,
+  AgendaContextKeys,
+  getAgendaQuery,
+  pickAgendaGrouping,
+  registerAgendaCommands,
 } from './ui/commands/agendaActions';
 import { PinService } from './services/pinService';
 import {
@@ -99,7 +99,7 @@ import { vscodeLiveNotes } from './ui/commands/linkMaintenancePorts';
 import { LinkNoteService, LinkService } from './services/linkService';
 import { findUnlinkedMentions } from './ui/state/editorLensState';
 import { WikiLinkCompletionProvider } from './ui/providers/linkSuggestions';
-import { WorkspaceWriteHistory } from './ui/commands/workspaceWrites';
+import { WorkspaceWriteHistory, WriteHandle } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { NoteVisits } from './ui/commands/noteVisits';
 import { carrySectionIds } from './ui/state/frecency';
@@ -152,13 +152,12 @@ import {
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
-import { listOverdueTasks, AgendaNode,
-  AgendaTreeProvider,
-  getAgendaQuery,
-  pickAgendaGrouping,
-} from './ui/views/agendaTree';
+import { AgendaTreeProvider } from './ui/views/agendaTree';
 import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
-import { selectAgendaTasks } from './ui/state/agendaState';
+import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from './ui/state/agendaState';
+import { isNamespaceName } from './ui/state/tagGrouping';
+import { resolveTaskMove } from './ui/state/taskBoardState';
+import { AgendaService } from './services/agendaService';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
 import { isWhatsNewShown, WhatsNew } from './ui/commands/whatsNew';
 import { chooseTheme, createChooseThemeDeps } from './ui/commands/chooseTheme';
@@ -258,14 +257,34 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const snapshots = new PreferenceSnapshots(context.storageUri, preferences, vscodeWorkspace);
   context.subscriptions.push(snapshots);
   // What an edit to a task writes through, for every view that edits one.
+  // A task's id comes from its own text, so an edit Deckard writes makes it
+  // a new task to anything keyed by id. This keeps its place in a ranked
+  // list across the edit, and across an Undo of it.
+  const keepRank: TaskRankKeeper = (previousId, nextId) => {
+    void preferences.replaceTaskInOrder(previousId, nextId);
+  };
   const taskWrites: TaskWrites = {
     history,
-    // A task's id comes from its own text, so an edit Deckard writes makes it
-    // a new task to anything keyed by id. This keeps its place in a ranked
-    // list across the edit, and across an Undo of it.
-    keepRank: (previousId, nextId) => {
-      void preferences.replaceTaskInOrder(previousId, nextId);
-    },
+    keepRank,
+    tasks: new TaskService<vscode.Uri, WriteHandle>({
+      notes: createVscodeEditApplier(),
+      history: createVscodeHistoryWriter(history),
+      ownWrites: history.ownWrites,
+      keepRank,
+      resolveUri: (filePath) => resolveSourceUri(filePath),
+      configuration: vscodeWorkspace,
+      clock: { now: () => Date.now() },
+    }),
+    moves: new MoveService<vscode.Uri, WriteHandle>({
+      notes: createVscodeEditApplier(),
+      history: createVscodeHistoryWriter(history),
+      files: vscodeWorkspace,
+      configuration: vscodeWorkspace,
+      getFilePath: (uri) => indexer.getFilePath(uri),
+      keepRank,
+      resolveUri: (filePath) => resolveSourceUri(filePath),
+      placeInsertion: getCaptureInsertion,
+    }),
   };
   // What renaming or merging a tag writes through, for the commands that
   // rename one; the service decides what a rename does.
@@ -521,7 +540,27 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
-  const agenda = new AgendaTreeProvider(indexer, taskWrites, preferences);
+  // What the Tasks view lists, and what dropping or checking a task in it
+  // writes, over the index and the settings.
+  const agendaService = new AgendaService<AgendaGroup>({
+    configuration: vscodeWorkspace,
+    index: indexer,
+    readQueryContext: () => readQueryContext(),
+    model: {
+      select: selectAgendaTasks,
+      build: createAgenda,
+      countDue: countDueTasks,
+      listOverdue: selectOverdueTasks,
+      resolveMove: resolveTaskMove,
+      isNamespaceName,
+    },
+    writeSetting: (key, value) => writeSetting(key, value, vscode.ConfigurationTarget.Global),
+  });
+  const agenda = new AgendaTreeProvider(
+    indexer,
+    { agenda: agendaService, writes: taskWrites, contextKeys: new AgendaContextKeys() },
+    preferences,
+  );
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
   // What was typed into Capture and not yet written, for this workspace.
   const captureDrafts = new CaptureDrafts(context.workspaceState);
@@ -686,106 +725,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
-  // The Tasks view's own menus: a date by name or in plain words, on one
-  // task, on the tasks selected, or on every task in a group.
-  const dueFromView = (
-    date: (subject: string) => Promise<string | undefined | null>,
-  ) =>
-    async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
-      const tasks = agenda.tasksFor(node, selected);
-      if (tasks.length === 0) {
-        return;
-      }
-      const subject =
-        tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`;
-      const chosen = await date(subject);
-      if (chosen !== null) {
-        await setTasksDue(taskWrites, tasks, chosen, rescheduleContext());
-      }
-    };
-  // A named day is read on the day the menu item is chosen.
-  const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice, Date.now()));
-  // How full a day is, of what the Tasks view lists, read beside the
-  // reschedule choices and again after the write.
-  const rescheduleContext = (): RescheduleContext => ({
-    load: (date) =>
-      countLoad(selectAgendaTasks(indexer.getSnapshot(), getAgendaQuery(), readQueryContext()).tasks, date),
-    refresh: async () => {
-      try {
-        await indexer.refresh();
-      } catch {
-        // The watcher catches up; the load is read from what is there.
-      }
-    },
-    todayCount: () =>
-      countDueTasks(indexer.getSnapshot(), readQueryContext(), getAgendaQuery()).today,
-  });
   context.subscriptions.push(
-    vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
-    vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
-    vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
-    vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
-    vscode.commands.registerCommand(
-      'deckard.agenda.moveTo',
-      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
-        const tasks = agenda.tasksFor(node, selected);
-        if (tasks.length > 0) {
-          await moveTasks(indexer, preferences, taskWrites, tasks);
-        }
-      },
-    ),
-    vscode.commands.registerCommand(
-      'deckard.agenda.reschedule',
-      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
-        const tasks = agenda.tasksFor(node, selected);
-        if (tasks.length === 0) {
-          return;
-        }
-        await rescheduleTasks(
-          taskWrites,
-          tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`,
-          tasks,
-          rescheduleContext(),
-        );
-      },
-    ),
-    vscode.commands.registerCommand('deckard.agenda.showMore', (groupId?: unknown) => {
-      if (typeof groupId === 'string') {
-        agenda.showMore(groupId);
-      }
-    }),
-    vscode.commands.registerCommand('deckard.rescheduleOverdue', async () => {
-      await indexer.ready;
-      const overdue = listOverdueTasks(indexer.getSnapshot(), readQueryContext());
-      if (overdue.length === 0) {
-        void vscode.window.showInformationMessage('Nothing is overdue.');
-        return;
-      }
-      await rescheduleTasks(
-        taskWrites,
-        overdue.length === 1 ? quoteTaskTitle(overdue[0]) : `${overdue.length} overdue tasks`,
-        overdue,
-        rescheduleContext(),
-      );
-    }),
-    vscode.commands.registerCommand(
-      'deckard.agenda.editTask',
-      async (node?: AgendaNode) => {
-        const [task] = agenda.tasksFor(node);
-        if (task && (await openTask(task))) {
-          await vscode.commands.executeCommand('deckard.editTask');
-        }
-      },
-    ),
-    vscode.commands.registerCommand(
-      'deckard.agenda.breakIntoSteps',
-      async (node?: AgendaNode) => {
-        const [task] = agenda.tasksFor(node);
-        if (task) {
-          await breakIntoStepsCommand(indexer, history, task);
-        }
-      },
-    ),
+    ...registerAgendaCommands({ view: agenda, agenda: agendaService, writes: taskWrites, indexer, preferences }),
   );
   void syncOutlineFollowCursorContext();
   void syncZenModeContext();
@@ -882,7 +823,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       writeSetting('calendar.showRepeats', false, settingTarget('calendar.showRepeats')),
     ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
-      pickAgendaGrouping(indexer.getSnapshot()),
+      pickAgendaGrouping(agendaService, indexer.getSnapshot()),
     ),
     // The board is the search editor: the view's search opens there to be
     // tried and changed, and its Tasks view button keeps it.
@@ -1070,11 +1011,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
     ),
-    vscode.commands.registerCommand('deckard.breakIntoSteps', () =>
-      breakIntoStepsCommand(indexer, history),
+    // The Task Board runs this with the task it was asked about; an editor
+    // menu passes its note, which is not a task.
+    vscode.commands.registerCommand('deckard.breakIntoSteps', (task?: unknown) =>
+      breakIntoStepsCommand(indexer, taskWrites, readTaskArgument(task)),
     ),
     vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
-      toggleTaskDoneCommand({ paths: indexer, keepRank: taskWrites.keepRank }),
+      toggleTaskDoneCommand({ paths: indexer, tasks: taskWrites.tasks }),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
       capture(captureContext, 'today'),

@@ -24,11 +24,11 @@ import { summarizeTagMerge } from '../domain/index/tagMerge';
 import { replaceIndexedTag } from '../domain/markdown/tagRename';
 import { parseRenameTag } from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
-import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { createTaskWrites } from './taskWrites';
 
 suite('Source commands', () => {
   // The history these edits write to, which no other suite shares.
-  const writes = { history: new WorkspaceWriteHistory(), keepRank: () => undefined };
+  const writes = createTaskWrites();
 
   test('toggles a checklist character and adds only its completion date', async () => {
     const temporaryRoot = await createTemporaryRoot();

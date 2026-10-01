@@ -57,9 +57,6 @@ export default {
     "src/ui/commands/sampleWorkspace.ts": [
       "installSample"
     ],
-    "src/ui/commands/taskActions.ts": [
-      "readCompletionFamily"
-    ],
     "src/ui/commands/taskEditor.ts": [
       "setDraftDate",
       "writeEditedTask"
@@ -174,9 +171,6 @@ export default {
     "src/ui/commands/checkSetup.ts": [
       "buildSetupReport"
     ],
-    "src/ui/commands/moveTo.ts": [
-      "moveBlocks"
-    ],
     "src/ui/commands/quickFind.ts": [
       "accept",
       "toPickItems",
@@ -192,8 +186,7 @@ export default {
       "renderTask"
     ],
     "src/ui/state/agendaState.ts": [
-      "createAgenda",
-      "placeTask"
+      "createAgenda"
     ],
     "src/ui/state/assistantWriteInput.ts": [
       "readChangeTaskInput"
@@ -218,14 +211,10 @@ export default {
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard",
-      "resolveTagMove",
-      "resolveTaskMove"
+      "resolveTagMove"
     ],
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
-    ],
-    "src/ui/views/agendaTree.ts": [
-      "getChildren"
     ],
     "src/ui/webview/calendar.ts": [
       "handle"
@@ -305,7 +294,6 @@ export default {
     "src/test/relatedNotesFixture.ts": 1,
     "src/test/webviewPage.ts": 2,
     "src/ui/commands/activeNoteContext.ts": 2,
-    "src/ui/commands/agendaActions.ts": 1,
     "src/ui/commands/assistantTools.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/bulkEdit.ts": 1,
@@ -347,7 +335,7 @@ export default {
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
-    "src/ui/views/agendaTree.ts": 6,
+    "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
@@ -378,7 +366,6 @@ export default {
     "src/domain/markdown/wordCount.ts": 1,
     "src/domain/query/queryParser.ts": 2,
     "src/test/naming.test.ts": 1,
-    "src/ui/commands/taskActions.ts": 1,
     "test/ui/checkContrast.js": 2,
     "test/ui/checkLayout.js": 17,
     "test/ui/checkRenderedContrast.js": 5,
@@ -434,9 +421,6 @@ export default {
     "src/ui/commands/extractHeading.ts": [
       "replaceSectionWithLink"
     ],
-    "src/ui/commands/moveTo.ts": [
-      "moveBlocks"
-    ],
     "src/ui/commands/quickFind.ts": [
       "toPickItems"
     ],
@@ -480,12 +464,6 @@ export default {
     "src/ui/state/reviewState.ts": [
       "formatReview",
       "summarizeReview"
-    ],
-    "src/ui/state/taskBoardState.ts": [
-      "resolveTaskMove"
-    ],
-    "src/ui/views/agendaTree.ts": [
-      "getChildren"
     ],
     "src/ui/webview/calendarDay.ts": [
       "getCalendarDayScript"
@@ -593,7 +571,7 @@ export default {
     "src/ui/state/referenceState.ts": 2,
     "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
-    "src/ui/views/agendaTree.ts": 6,
+    "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/messages.ts": 1,
@@ -617,7 +595,6 @@ export default {
     "src/ui/commands/settings.ts": 1,
     "src/ui/commands/taskBoardActions.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/commands/toggleTaskDone.ts": 2,
     "src/ui/preview/queryBlockHtml.ts": 1,
     "src/ui/state/assistantTools.ts": 2,
     "src/ui/state/calendarState.ts": 2,

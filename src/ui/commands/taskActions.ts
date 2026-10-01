@@ -1,21 +1,19 @@
 import * as vscode from 'vscode';
 
-import { getTaskLineId, parseMarkdown } from '../../domain/markdown/parser';
-import {
-  findCheckboxColumn,
-  findStepFamily,
-  isCheckedTaskLine,
-  readStepsForNextOccurrence,
-} from '../../domain/markdown/taskSteps';
-import {
-  formatIsoDate,
-  parseTaskMetadata,
-  setTaskLineCompletion,
-  TaskMetadataFormat,
-  writeCompletion,
-} from '../../domain/markdown/taskMetadata';
+import { parseTaskMetadata, TaskMetadataFormat } from '../../domain/markdown/taskMetadata';
+import { CompletionFamily, countSteps, quoteTitle, readMetadataFormat } from '../../domain/tasks/taskLines';
 import { Task } from '../../core/types';
-import { openSourceAt, resolveSourceUri } from './navigation';
+import {
+  Completion,
+  LineRevert,
+  LineUpdate,
+  TaskLineContext as ServiceLineContext,
+  TaskRankKeeper,
+  TaskService,
+  WrittenTaskLine,
+} from '../../services/taskService';
+import { MoveService } from '../../services/moveService';
+import { openSourceAt } from './navigation';
 import {
   describeRejectedEdit,
   noteName,
@@ -24,86 +22,37 @@ import {
   reportFailure,
   reportStale,
 } from './notify';
-import { WorkspaceWriteHistory } from './workspaceWrites';
+import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
+
+export type { TaskRankKeeper } from '../../services/taskService';
+export { quoteTitle } from '../../domain/tasks/taskLines';
 
 /**
- * Carries a task's place in the rank order from the line it was to the line
- * it becomes. A task's id comes from its own text, so an edit Deckard writes
- * makes it a new task to anything keyed by id; the extension's keeper moves
- * its place in the preferences to the new id. Made once, where the
- * preferences live, and handed to whatever edits a task.
- */
-export type TaskRankKeeper = (previousId: string, nextId: string) => void;
-
-/**
- * Tells the rank order that a task's line was rewritten, so a completed task
- * and a task put back by Undo both keep the place they were dragged to.
- * `task` is the line as it was, its number one-based, and `replacement` what
- * was written over it.
- */
-export function carryTaskRank(
-  keepRank: TaskRankKeeper,
-  task: Pick<Task, 'filePath' | 'lineNumber' | 'id'>,
-  replacement: string,
-): void {
-  // A completion may add a line above, so the task is the last line written.
-  const lines = replacement.split(/\r?\n/);
-  const nextId = getTaskLineId(
-    task.filePath,
-    task.lineNumber + lines.length - 1,
-    lines[lines.length - 1],
-  );
-  if (nextId) {
-    keepRank(task.id, nextId);
-  }
-}
-
-/**
- * Tells the rank order that a task now lives on another line, in its own
- * note or another one, as Move to… leaves it, so it keeps its place on the
- * board. The line is one-based.
- */
-export function carryMovedTaskRank(
-  keepRank: TaskRankKeeper,
-  previousId: string,
-  to: { filePath: string; lineNumber: number; lineText: string },
-): void {
-  const nextId = getTaskLineId(to.filePath, to.lineNumber, to.lineText);
-  if (nextId) {
-    keepRank(previousId, nextId);
-  }
-}
-
-/**
- * What an edit to a task reaches beyond its own line: the write history,
- * which marks the note's save as Deckard's own so the index reads it back at
- * once, and keeps Complete Steps as the write Undo takes back; and the rank
- * keeper, which carries the task's place in the rank order to its new id.
- * Created once, where the extension starts, and handed to whatever edits a
- * task.
+ * What an edit to a task reaches: the task service, which makes every edit
+ * to a task line and carries the task's place in the rank order to its new
+ * id; the write history, which marks the note's save as Deckard's own so the
+ * index reads it back at once, and keeps Complete Steps as the write Undo
+ * takes back; and the rank keeper itself. Created once, where the extension
+ * starts, and handed to whatever edits a task.
  */
 export interface TaskWrites {
   readonly history: WorkspaceWriteHistory;
   readonly keepRank: TaskRankKeeper;
+  readonly tasks: TaskService<vscode.Uri, WriteHandle>;
+  /** Move to…, which takes tasks and lines to another heading or note. */
+  readonly moves: MoveService<vscode.Uri, WriteHandle>;
 }
 
 /** What an edit to a task line may need to know about its document. */
-export interface TaskLineContext {
-  uri: vscode.Uri;
-  /** The document's line ending, for an edit that adds a line. */
-  eol: string;
-  /** The note's lines as they are before the edit. */
-  lines: readonly string[];
-  /** The task's own line among them, 0-based. */
-  lineIndex: number;
-}
+export type TaskLineContext = ServiceLineContext<vscode.Uri>;
 
 /**
  * Rewrites a task's line after proving the indexed source is unchanged.
  *
  * The line comparison prevents a delayed webview action from overwriting edits
  * made after the task was indexed. Every edit Deckard makes to a task, from
- * its checkbox to a task-board move, goes through here.
+ * its checkbox to a task-board move, goes through here; the task service
+ * makes the edit, and this says what became of it.
  */
 export async function updateTaskLine(
   writes: TaskWrites,
@@ -118,108 +67,69 @@ export async function updateTaskLine(
    */
   description?: string | (() => string | CompletionMessage),
 ): Promise<boolean> {
-  const uri = await resolveSourceUri(task.filePath);
-  if (!uri) {
-    void reportFailure({
-      outcome: `Deckard could not find ${task.filePath}, so nothing was written.`,
-      fix: 'It may have been moved or deleted since Deckard last read it.',
-      action: reindexAction(),
-    });
-    return false;
-  }
-
-  // Once VS Code has taken the edit, a failure is only a failure to save.
-  let applied = false;
-  try {
-    const document = await vscode.workspace.openTextDocument(uri);
-    const sourceLine = readIndexedTaskLine(document, task);
-    if (!sourceLine) {
-      void reportStale([uri]);
-      return false;
-    }
-    const line = sourceLine.text;
-
-    const replacement = transform(line, {
-      uri,
-      eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
-      lines: document.getText().split(/\r?\n/),
-      lineIndex: task.lineNumber - 1,
-    });
-    if (replacement === line) {
-      return true;
-    }
-
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(uri, sourceLine.range, replacement);
-    if (!(await vscode.workspace.applyEdit(edit))) {
-      void reportFailure(describeRejectedEdit(noteName(uri)));
-      return false;
-    }
-    applied = true;
-
-    const updatedDocument =
-      vscode.workspace.textDocuments.find(
-        (openDocument) => openDocument.uri.toString() === uri.toString(),
-      ) ?? (await vscode.workspace.openTextDocument(uri));
-    writes.history.ownWrites.note(updatedDocument.uri.toString());
-    if (!(await updatedDocument.save())) {
-      void reportFailure(describeUnsavedTaskEdit(uri));
-      return false;
-    }
-    carryTaskRank(writes.keepRank, task, replacement);
-    const described =
-      typeof description === 'function' ? description() : description;
-    const said =
-      typeof described === 'string'
-        ? { text: described, severity: 'info' as const }
-        : described;
-    if (said?.text) {
-      offerUndo(
-        said,
-        { uri, lineNumber: task.lineNumber, replacement, original: line, filePath: task.filePath },
-        writes.keepRank,
-      );
-    }
-    return true;
-  } catch (error) {
-    void reportFailure(
-      applied
-        ? { ...describeUnsavedTaskEdit(uri), error }
-        : {
-            outcome: `Deckard could not update the task in ${noteName(uri)}, so nothing was written.`,
-            error,
-          },
-    );
-    return false;
-  }
+  return presentLineUpdate(writes, task, await writes.tasks.updateLine(task, transform), description);
 }
 
 /**
- * A task's line in its note, if it still reads as the index read it: the
- * same text, with the checkbox where it was. A line past the end of the note
- * is a line that changed too.
+ * Says what became of a task line's edit: the failure, with its way out, or
+ * what was written, offered with an Undo. Returns whether the edit stands.
  */
-export function readIndexedTaskLine(
-  document: vscode.TextDocument,
-  task: Pick<Task, 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'checkboxValue'>,
-): vscode.TextLine | undefined {
-  if (
-    task.lineNumber < 1 ||
-    task.lineNumber > document.lineCount ||
-    document.lineAt(task.lineNumber - 1).text !== task.sourceLineText
-  ) {
-    return undefined;
+function presentLineUpdate<T>(
+  writes: TaskWrites,
+  task: Pick<Task, 'filePath'>,
+  result: LineUpdate<vscode.Uri, T>,
+  description?: string | (() => string | CompletionMessage),
+): boolean {
+  if (result.kind !== 'updated') {
+    reportLineFailure(task, result);
+    return result.kind === 'unchanged';
   }
-  const sourceLine = document.lineAt(task.lineNumber - 1);
-  const line = sourceLine.text;
-  if (
-    line[task.checkboxColumn] !== task.checkboxValue ||
-    line[task.checkboxColumn - 1] !== '[' ||
-    line[task.checkboxColumn + 1] !== ']'
-  ) {
-    return undefined;
+  const described = typeof description === 'function' ? description() : description;
+  const said =
+    typeof described === 'string'
+      ? { text: described, severity: 'info' as const }
+      : described;
+  if (said?.text) {
+    offerUndo(writes, said, result.written);
   }
-  return sourceLine;
+  return true;
+}
+
+/** Says why a task line's edit wrote nothing, or was not saved. */
+function reportLineFailure<T>(
+  task: Pick<Task, 'filePath'>,
+  result: Exclude<LineUpdate<vscode.Uri, T>, { kind: 'updated' }>,
+): void {
+  switch (result.kind) {
+    case 'unchanged':
+      return;
+    case 'missing':
+      void reportFailure({
+        outcome: `Deckard could not find ${task.filePath}, so nothing was written.`,
+        fix: 'It may have been moved or deleted since Deckard last read it.',
+        action: reindexAction(),
+      });
+      return;
+    case 'stale':
+      void reportStale([result.uri]);
+      return;
+    case 'rejected':
+      void reportFailure(describeRejectedEdit(noteName(result.uri)));
+      return;
+    case 'unsaved':
+      void reportFailure(
+        'error' in result
+          ? { ...describeUnsavedTaskEdit(result.uri), error: result.error }
+          : describeUnsavedTaskEdit(result.uri),
+      );
+      return;
+    case 'failed':
+      void reportFailure({
+        outcome: `Deckard could not update the task in ${noteName(result.uri)}, so nothing was written.`,
+        error: result.error,
+      });
+      return;
+  }
 }
 
 /** The task changed in the editor, but the note on disk did not. */
@@ -232,19 +142,6 @@ function describeUnsavedTaskEdit(uri: vscode.Uri) {
 }
 
 /**
- * A task line as an edit left it, and as it was: its note, its one-based
- * line, what was written, and what was there. `filePath` is the index's path
- * for the note, which the rank order is keyed by.
- */
-interface TaskLineEdit {
-  uri: vscode.Uri;
-  lineNumber: number;
-  replacement: string;
-  original: string;
-  filePath?: string;
-}
-
-/**
  * Says what was written to a note, and offers to put it back.
  *
  * A board move or a checkbox writes to a file the reader may not have open,
@@ -252,9 +149,9 @@ interface TaskLineEdit {
  * the edit, so it carries the way out of it.
  */
 function offerUndo(
+  writes: TaskWrites,
   description: CompletionMessage,
-  written: TaskLineEdit,
-  keepRank: TaskRankKeeper,
+  written: WrittenTaskLine<vscode.Uri>,
 ): void {
   // A warning when part of what was asked could not be done, such as a
   // repeat rule Deckard could not read; the edit is still offered back.
@@ -267,7 +164,7 @@ function offerUndo(
       : vscode.window.showInformationMessage(description.text, ...choices)
   ).then((choice) => {
       if (choice === 'Undo') {
-        void revertTaskLine(written, keepRank);
+        void revertTaskLine(writes, written);
       } else if (choice !== undefined && choice === description.action?.label) {
         void description.action.run();
       }
@@ -275,55 +172,22 @@ function offerUndo(
 }
 
 /**
- * Puts a task line back the way it was.
- *
- * The edit may have added a line, such as the next occurrence of a repeating
- * task, so the whole written range goes back. Anything that has changed the
- * range since is left alone rather than overwritten.
+ * Puts a task line back the way it was, through the task service, and says
+ * so only when it could not: the range changed since, or the undo failed.
  */
 async function revertTaskLine(
-  { uri, lineNumber, replacement, original, filePath }: TaskLineEdit,
-  keepRank: TaskRankKeeper,
+  writes: TaskWrites,
+  written: WrittenTaskLine<vscode.Uri>,
 ): Promise<void> {
-  try {
-    const document = await vscode.workspace.openTextDocument(uri);
-    const writtenLines = replacement.split(/\r?\n/).length;
-    const lastLine = lineNumber - 2 + writtenLines;
-    if (lineNumber < 1 || lastLine >= document.lineCount) {
-      void reportStale([uri]);
-      return;
-    }
-    const range = new vscode.Range(
-      new vscode.Position(lineNumber - 1, 0),
-      document.lineAt(lastLine).range.end,
-    );
-    if (document.getText(range) !== replacement) {
-      void reportStale([uri]);
-      return;
-    }
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(uri, range, original);
-    if (await vscode.workspace.applyEdit(edit)) {
-      await document.save();
-      // The line is the one it was, so the task is too: give it back the
-      // place in the rank order the edit carried away.
-      if (filePath) {
-        const written = replacement.split(/\r?\n/);
-        const writtenId = getTaskLineId(
-          filePath,
-          lineNumber + written.length - 1,
-          written[written.length - 1],
-        );
-        const restoredId = getTaskLineId(filePath, lineNumber, original);
-        if (writtenId && restoredId) {
-          keepRank(writtenId, restoredId);
-        }
-      }
-    }
-  } catch (error) {
+  const result: LineRevert<vscode.Uri> = await writes.tasks.revertLine(written);
+  if (result.kind === 'stale') {
+    void reportStale([result.uri]);
+    return;
+  }
+  if (result.kind === 'failed') {
     void reportFailure({
-      outcome: `Deckard could not undo the task edit in ${noteName(uri)}, so the note keeps the edit.`,
-      error,
+      outcome: `Deckard could not undo the task edit in ${noteName(result.uri)}, so the note keeps the edit.`,
+      error: result.error,
     });
   }
 }
@@ -341,100 +205,31 @@ export async function toggleTask(
   task: Task,
   completed: boolean,
 ): Promise<boolean> {
+  const result = await writes.tasks.toggle(task, completed);
   // A repeating task is completed and immediately replaced by its next
   // occurrence, which looks like nothing happened unless the edit says so.
   // A rule that could not be read is said in the same message, beside Undo.
-  let startedNext: string | undefined;
-  let unreadRule: string | undefined;
-  // What the note says about the task's steps, read as the edit is made.
-  let family: CompletionFamily | undefined;
-  const description = (): string | CompletionMessage =>
-    completed
-      ? describeStepsCompletion(writes, task, describeCompletion(task.title, startedNext, unreadRule), family)
-      : `Reopened ${quoteTaskTitle(task)}.`;
-  return updateTaskLine(
-    writes,
-    task,
-    (line, { uri, eol, lines, lineIndex }) => {
-      const now = Date.now();
-      const configuration = vscode.workspace.getConfiguration('deckard', uri);
-      const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
-      const replacement = setTaskLineCompletion(
-        line,
-        task.checkboxColumn,
-        completed,
-        addDoneDate ? formatIsoDate(now) : undefined,
-        readTaskMetadataFormat(configuration),
-      );
-      if (!completed || task.completed) {
-        return replacement;
-      }
-
-      const completion = writeCompletion(
-        replacement,
-        task.checkboxColumn,
-        now,
-        eol,
-        readStepsForNextOccurrence(lines, lineIndex),
-      );
-      startedNext = completion.next;
-      unreadRule = completion.unreadRule;
-      family = readCompletionFamily(uri, task.filePath, lines, lineIndex, completion.text);
-      return completion.text;
-    },
-    description,
-  );
-}
-
-/**
- * What completing a task means for its steps, read from the note as it was
- * before the edit: the task whose last open step this was, or how many of
- * its own steps are still open.
- */
-interface CompletionFamily {
-  uri: vscode.Uri;
-  filePath: string;
-  /** The task this was the last open step of: its line, 0-based, and words. */
-  lastStepOf?: { line: number; title: string };
-  /** The task's own open steps. */
-  openSteps: number;
-  /** The completed task's line once the edit is written, 0-based. */
-  writtenLine: number;
-}
-
-function readCompletionFamily(
-  uri: vscode.Uri,
-  filePath: string,
-  lines: readonly string[],
-  lineIndex: number,
-  written: string,
-): CompletionFamily {
-  const family = findStepFamily(lines, lineIndex);
-  const openSteps = family.steps.filter((line) => !isCheckedTaskLine(lines[line])).length;
-  let lastStepOf: CompletionFamily['lastStepOf'];
-  if (family.parent !== undefined && !isCheckedTaskLine(lines[family.parent])) {
-    const stillOpen = findStepFamily(lines, family.parent).steps.filter(
-      (line) => line !== lineIndex && !isCheckedTaskLine(lines[line]),
-    );
-    if (stillOpen.length === 0) {
-      lastStepOf = { line: family.parent, title: readTaskWords(lines[family.parent]) };
+  const description = (): string | CompletionMessage => {
+    if (!completed) {
+      return `Reopened ${quoteTaskTitle(task)}.`;
     }
-  }
-  return {
-    uri,
-    filePath,
-    openSteps,
-    // A next occurrence written above moves the completed line down.
-    writtenLine: lineIndex + written.split(/\r?\n/).length - 1,
-    ...(lastStepOf ? { lastStepOf } : {}),
+    const outcome: Completion | undefined = result.kind === 'updated' ? result.outcome : undefined;
+    const family =
+      result.kind === 'updated' && outcome?.family
+        ? { ...outcome.family, uri: result.written.uri, filePath: task.filePath }
+        : undefined;
+    return describeStepsCompletion(
+      writes,
+      task,
+      describeCompletion(task.title, outcome?.next, outcome?.unreadRule),
+      family,
+    );
   };
+  return presentLineUpdate(writes, task, result, description);
 }
 
-/** A task line's words, its metadata left out. */
-function readTaskWords(line: string): string {
-  const words = line.slice(findCheckboxColumn(line) + 2).trim();
-  return parseTaskMetadata(words).title || words;
-}
+/** What the note says about a completed task's steps, and where the note is. */
+type StepsFamily = CompletionFamily & { uri: vscode.Uri; filePath: string };
 
 /**
  * A completion's message, with what it offers next: finishing the task
@@ -445,7 +240,7 @@ export function describeStepsCompletion(
   writes: TaskWrites,
   task: Pick<Task, 'title'>,
   said: CompletionMessage,
-  family: CompletionFamily | undefined,
+  family: StepsFamily | undefined,
 ): CompletionMessage {
   if (!family) {
     return said;
@@ -483,11 +278,8 @@ async function completeTaskAtLine(
   filePath: string,
   line: number,
 ): Promise<void> {
-  const document = await vscode.workspace.openTextDocument(uri);
-  const task = parseMarkdown(filePath, document.getText()).tasks.find(
-    (candidate) => candidate.lineNumber === line + 1,
-  );
-  if (!task || task.completed) {
+  const task = await writes.tasks.findOpenTaskAt(uri, filePath, line);
+  if (!task) {
     void reportStale([uri]);
     return;
   }
@@ -504,35 +296,16 @@ async function completeOpenSteps(
   taskLine: number,
   title: string,
 ): Promise<void> {
-  const document = await vscode.workspace.openTextDocument(uri);
-  const lines = document.getText().split(/\r?\n/);
-  const open = findStepFamily(lines, taskLine).steps.filter((line) => !isCheckedTaskLine(lines[line]));
-  if (open.length === 0) {
+  const result = await writes.tasks.completeSteps(uri, taskLine, title);
+  if (result.kind === 'stale') {
     void reportStale([uri]);
     return;
   }
-  const configuration = vscode.workspace.getConfiguration('deckard', uri);
-  const doneDate = configuration.get<boolean>('tasks.addDoneDate', true)
-    ? formatIsoDate(Date.now())
-    : undefined;
-  const format = readTaskMetadataFormat(configuration);
-  const edit = new vscode.WorkspaceEdit();
-  open.forEach((line) => {
-    const text = lines[line];
-    edit.replace(
-      uri,
-      document.lineAt(line).range,
-      setTaskLineCompletion(text, findCheckboxColumn(text), true, doneDate, format),
-    );
-  });
-  const steps = `${open.length} ${open.length === 1 ? 'step' : 'steps'}`;
-  const result = await writes.history.write(edit, {
-    label: `completing ${steps} of ${quoteTitle(title)}`,
-  });
-  if (!result.applied) {
+  if (result.kind !== 'written') {
     void reportFailure(describeRejectedEdit(noteName(uri)));
     return;
   }
+  const steps = countSteps(result.count);
   result.handle.offerUndo(`Completed ${steps} of ${quoteTitle(title)}.`, {
     guard: 'latest',
     done: `Reopened the ${steps}.`,
@@ -584,12 +357,6 @@ export function quoteTaskTitle(task: Task): string {
   return quoteTitle(task.title);
 }
 
-/** A task's words, quoted and short enough to sit in a notification. */
-export function quoteTitle(text: string): string {
-  const title = text.trim();
-  return `"${title.length > 60 ? `${title.slice(0, 57)}…` : title}"`;
-}
-
 /**
  * The Tasks format Deckard writes for a task that has no metadata yet. A task
  * that already has some keeps its own format.
@@ -597,10 +364,7 @@ export function quoteTitle(text: string): string {
 export function readTaskMetadataFormat(
   configuration: vscode.WorkspaceConfiguration,
 ): TaskMetadataFormat {
-  return configuration.get<string>('tasks.metadataFormat', 'emoji') ===
-    'dataview'
-    ? 'dataview'
-    : 'emoji';
+  return readMetadataFormat(configuration);
 }
 
 /**

@@ -1,125 +1,15 @@
 import * as vscode from 'vscode';
 
-import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../../domain/markdown/lineShapes';
-import { getTaskLineId } from '../../domain/markdown/parser';
-import {
-  formatIsoDate,
-  parseTaskMetadata,
-  setTaskLineCompletion,
-  TaskMetadataFormat,
-  writeCompletion,
-} from '../../domain/markdown/taskMetadata';
-import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
+import { selectedLines, ToggleResult } from '../../domain/tasks/toggleLines';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { TaskService } from '../../services/taskService';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
-import {
-  carryTaskRank,
-  describeCompletion,
-  quoteTitle,
-  readTaskMetadataFormat,
-  TaskRankKeeper,
-} from './taskActions';
+import { describeCompletion, quoteTitle } from './taskActions';
 
-/** The checkbox a line must open with to be toggled. */
-const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
-
-/** One task line under a cursor, as it is and as it will be written. */
-export interface ToggledLine {
-  /** Zero-based. */
-  line: number;
-  before: string;
-  after: string;
-  title: string;
-  next?: string;
-  unreadRule?: string;
-}
-
-/** What one toggle wrote, and what it says about it. */
-export interface ToggleResult {
-  completed: boolean;
-  lines: ToggledLine[];
-}
-
-/**
- * The lines a set of selections touches, each once, top to bottom. A
- * selection that ends at the very start of a line does not take that line,
- * the way Toggle Line Comment reads it.
- */
-export function selectedLines(
-  selections: readonly { start: { line: number; character: number }; end: { line: number; character: number } }[],
-): number[] {
-  const lines = new Set<number>();
-  for (const selection of selections) {
-    const last =
-      selection.end.line > selection.start.line && selection.end.character === 0
-        ? selection.end.line - 1
-        : selection.end.line;
-    for (let line = selection.start.line; line <= last; line += 1) {
-      lines.add(line);
-    }
-  }
-  return [...lines].sort((a, b) => a - b);
-}
-
-/**
- * Completes or reopens the task lines given, the way Toggle Line Comment
- * decides: if any of them is open, every open one is completed; otherwise
- * every one is reopened. A completion writes its done date and, for a
- * repeating task, its next occurrence on the line above, through the same
- * path as every other completion.
- */
-export function toggleTaskLines(
-  lines: readonly { line: number; text: string }[],
-  now: number,
-  options: {
-    addDoneDate: boolean;
-    format: TaskMetadataFormat;
-    eol: string;
-    /** The whole note, so a repeating task's next occurrence takes its steps. */
-    documentLines?: readonly string[];
-  },
-): ToggleResult {
-  const tasks = lines
-    .map((entry) => ({ ...entry, match: matchTaskLine(entry.text, TASK_LINE) }))
-    .filter((entry): entry is typeof entry & { match: TaskLineMatch } => entry.match !== undefined);
-  const completed = tasks.some((entry) => entry.match.mark === ' ');
-  const toggled: ToggledLine[] = [];
-  for (const { line, text, match } of tasks) {
-    const open = match.mark === ' ';
-    if (completed !== open) {
-      continue;
-    }
-    const checkboxColumn = match.opening.length;
-    const marked = setTaskLineCompletion(
-      text,
-      checkboxColumn,
-      completed,
-      options.addDoneDate ? formatIsoDate(now) : undefined,
-      options.format,
-    );
-    const title = parseTaskMetadata(text.slice(checkboxColumn + 2)).title;
-    if (!completed) {
-      toggled.push({ line, before: text, after: marked, title });
-      continue;
-    }
-    const completion = writeCompletion(
-      marked,
-      checkboxColumn,
-      now,
-      options.eol,
-      options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],
-    );
-    toggled.push({
-      line,
-      before: text,
-      after: completion.text,
-      title,
-      ...(completion.next !== undefined ? { next: completion.next } : {}),
-      ...(completion.unreadRule !== undefined ? { unreadRule: completion.unreadRule } : {}),
-    });
-  }
-  return { completed, lines: toggled };
-}
+// Toggle Task Done's rule moved to domain/tasks; its names stay here for the
+// modules that import them from the command.
+export { selectedLines, toggleTaskLines } from '../../domain/tasks/toggleLines';
+export type { ToggledLine, ToggleResult } from '../../domain/tasks/toggleLines';
 
 /** The sentence a toggle says in the status bar, or as a warning. */
 export function describeToggle(result: ToggleResult): { text: string; severity: 'info' | 'warning' } {
@@ -156,12 +46,13 @@ interface RankPaths {
 }
 
 /**
- * How each toggled task keeps its place in the rank order: the index's own
- * path for the note, and the keeper that carries a rank to the line's new id.
+ * What Toggle Task Done writes through: the task service, which toggles the
+ * lines and carries each task's rank, and the index's path for the note,
+ * which the ranks are kept by.
  */
-interface RankCarry {
+export interface TaskToggle {
+  tasks: TaskService<vscode.Uri, unknown>;
   paths: RankPaths;
-  keepRank: TaskRankKeeper;
 }
 
 /**
@@ -170,7 +61,7 @@ interface RankCarry {
  * the index, so an unsaved note works like any other.
  */
 export async function toggleTaskDoneCommand(
-  rank?: RankCarry,
+  toggle: TaskToggle,
   now: number = Date.now(),
 ): Promise<ToggleResult | undefined> {
   const editor = vscode.window.activeTextEditor;
@@ -183,57 +74,38 @@ export async function toggleTaskDoneCommand(
     return undefined;
   }
   const document = editor.document;
-  const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
-  const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-  const result = toggleTaskLines(
-    selectedLines(editor.selections).map((line) => ({ line, text: document.lineAt(line).text })),
-    now,
+  const outcome = await toggle.tasks.toggleLines(
     {
-      addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
-      format: readTaskMetadataFormat(configuration),
-      eol,
+      uri: document.uri,
+      lines: selectedLines(editor.selections).map((line) => ({ line, text: document.lineAt(line).text })),
       documentLines: document.getText().split(/\r?\n/),
+      eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+      now,
+      // Each task keeps its place in the rank order; an untitled note has
+      // no place in the index to keep it by.
+      ...(document.isUntitled ? {} : { filePath: toggle.paths.getFilePath(document.uri) }),
     },
+    (lines) =>
+      editor.edit((builder) => {
+        for (const toggled of [...lines].reverse()) {
+          builder.replace(document.lineAt(toggled.line).range, toggled.after);
+        }
+      }),
   );
-  if (result.lines.length === 0) {
+  if (outcome.kind === 'none') {
     void vscode.window.showInformationMessage('Put the cursor on a task to mark it done.');
     return undefined;
   }
-
-  const applied = await editor.edit((builder) => {
-    for (const toggled of [...result.lines].reverse()) {
-      builder.replace(document.lineAt(toggled.line).range, toggled.after);
-    }
-  });
-  if (!applied) {
+  if (outcome.kind === 'rejected') {
     void reportFailure(describeRejectedEdit(noteName(document.uri)));
     return undefined;
   }
 
-  // Each task keeps its place in the rank order. A next occurrence written
-  // above a line moves every line below it down by one.
-  if (rank && !document.isUntitled) {
-    const filePath = rank.paths.getFilePath(document.uri);
-    let added = 0;
-    for (const toggled of result.lines) {
-      const lineNumber = toggled.line + 1;
-      const previousId = getTaskLineId(filePath, lineNumber, toggled.before);
-      if (previousId) {
-        carryTaskRank(
-          rank.keepRank,
-          { filePath, lineNumber: lineNumber + added, id: previousId },
-          toggled.after,
-        );
-      }
-      added += toggled.after.split(/\r?\n/).length - 1;
-    }
-  }
-
-  const said = describeToggle(result);
+  const said = describeToggle(outcome.result);
   if (said.severity === 'warning') {
     void vscode.window.showWarningMessage(said.text);
   } else {
     vscode.window.setStatusBarMessage(said.text, 5000);
   }
-  return result;
+  return outcome.result;
 }

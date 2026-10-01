@@ -7,11 +7,23 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
 } from '../../domain/markdown/taskMetadata';
+import { AgendaGroupBy, readAgendaQuery, readUpcomingDays } from '../../domain/tasks/agendaGroups';
+import { DayLoad, DueChoice, dueDateFor, RescheduleContext } from '../../domain/tasks/reschedule';
+import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
-import { Task } from '../../core/types';
+import { PreferencesStore } from '../../core/storage/preferences';
+import { Task, WorkspaceIndex } from '../../core/types';
+import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { AgendaService } from '../../services/agendaService';
+import { AGENDA_GROUPINGS, AgendaGroup, selectOverdueTasks } from '../state/agendaState';
+import { describeNamespaceValues, listTaskNamespaces } from '../state/tagGrouping';
+import type { AgendaNode } from '../views/agendaTree';
 import { applyBulkEdit, reportBulkEditResult } from './bulkEdit';
 import { askForDate } from './datePrompt';
+import { moveTasks } from './moveTo';
+import { breakIntoStepsCommand } from './taskSteps';
 import {
+  openTask,
   quoteTaskTitle,
   readTaskMetadataFormat,
   TaskWrites,
@@ -28,25 +40,10 @@ import {
  * overdue tasks are cleared without editing each.
  */
 
-/** The dates offered by name, beside one typed in plain words. */
-export type DueChoice = 'today' | 'tomorrow' | 'nextWeek';
-
-/**
- * The date a named choice means on the day of `now`, as `YYYY-MM-DD`.
- * `nextWeek` is the next Monday, and never today: on a Monday it is the
- * Monday after.
- */
-export function dueDateFor(choice: DueChoice, now: number): string {
-  const today = startOfDay(now);
-  if (choice === 'today') {
-    return formatIsoDate(today);
-  }
-  if (choice === 'tomorrow') {
-    return formatIsoDate(addDays(today, 1));
-  }
-  const weekday = new Date(today).getDay();
-  return formatIsoDate(addDays(today, ((8 - weekday) % 7) || 7));
-}
+// The reschedule rules moved to domain/tasks; their names stay here for the
+// modules that import them from the command.
+export { countLoad, dueDateFor } from '../../domain/tasks/reschedule';
+export type { DayLoad, DueChoice, RescheduleContext } from '../../domain/tasks/reschedule';
 
 /**
  * Asks for a date in plain words: `friday`, `oct 3`, `in 3 days`.
@@ -61,24 +58,6 @@ export async function askForDueDate(
   return read === undefined ? null : read.date;
 }
 
-/** How full a day is: the open tasks due on it and scheduled for it. */
-export interface DayLoad {
-  due: number;
-  scheduled: number;
-}
-
-/**
- * What a reschedule reads beside the choices and after the write: how full
- * a day is, and how many tasks Today holds once the index has caught up.
- */
-export interface RescheduleContext {
-  load(date: string): DayLoad;
-  /** Reads the index again after a write, so the load said is true. */
-  refresh(): Promise<void>;
-  /** The Tasks view's Today group, as the status bar counts it. */
-  todayCount(): number;
-}
-
 /** A day's load in words: `3 due · 1 scheduled`, or `nothing due`. */
 export function describeLoad(load: DayLoad): string {
   const parts = [
@@ -86,24 +65,6 @@ export function describeLoad(load: DayLoad): string {
     load.scheduled > 0 ? `${load.scheduled} scheduled` : '',
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'nothing due';
-}
-
-/** The open tasks due on, and scheduled for, a day. */
-export function countLoad(tasks: Iterable<Task>, date: string): DayLoad {
-  let due = 0;
-  let scheduled = 0;
-  for (const task of tasks) {
-    if (task.completed) {
-      continue;
-    }
-    if (task.dueAt !== undefined && formatIsoDate(task.dueAt) === date) {
-      due += 1;
-    }
-    if (task.scheduledAt !== undefined && formatIsoDate(task.scheduledAt) === date) {
-      scheduled += 1;
-    }
-  }
-  return { due, scheduled };
 }
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -186,11 +147,6 @@ export function describeLoadAfter(
 }
 
 /**
- * Writes one due date on every task. One task is one line, offered back with
- * an Undo; several are one write, previewed as any multi-note write is and
- * taken back by Undo Last Change.
- */
-/**
  * Sets one task's due or scheduled date, saying what it is now, with Undo
  * through the same checked edit as every other task change. Several tasks
  * go through `setTasksDue`, whose bulk edit writes due dates alone.
@@ -231,6 +187,11 @@ export function describeDateChange(
   return date ? `${title} is due ${date}.` : `${title} has no due date now.`;
 }
 
+/**
+ * Writes one due date on every task. One task is one line, offered back with
+ * an Undo; several are one write, previewed as any multi-note write is and
+ * taken back by Undo Last Change.
+ */
 export async function setTasksDue(
   writes: TaskWrites,
   tasks: readonly Task[],
@@ -405,4 +366,218 @@ export async function rescheduleTasks(
     return;
   }
   await setTasksDueEach(writes, choice, tasks, context);
+}
+
+/**
+ * The open tasks the Tasks view lists as overdue on the context's today, as
+ * `deckard.agenda.query` selects them. The status bar's hover lists these.
+ */
+export function listOverdueTasks(index: WorkspaceIndex, context: QueryContext): Task[] {
+  const settings = vscode.workspace.getConfiguration('deckard');
+  return selectOverdueTasks(index, context, {
+    query: readAgendaQuery(settings),
+    upcomingDays: readUpcomingDays(settings),
+  });
+}
+
+/** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */
+export function getAgendaQuery(): string {
+  return readAgendaQuery(vscode.workspace.getConfiguration('deckard'));
+}
+
+/**
+ * The Tasks view's context keys: whether its search narrows the list, which
+ * offers the way back to every open task, and whether it has a search at
+ * all. Each build of the view publishes them.
+ */
+export class AgendaContextKeys {
+  /** Sets both keys, as the build that read them found them. */
+  public publish(keys: { filtered: boolean; querySet: boolean }): void {
+    void vscode.commands.executeCommand('setContext', 'deckard.agendaFiltered', keys.filtered);
+    void vscode.commands.executeCommand('setContext', 'deckard.agendaQuerySet', keys.querySet);
+  }
+}
+
+/**
+ * Asks how to group the Agenda, and keeps the answer where the setting is,
+ * so the panel and the settings say the same thing. Which settings that
+ * writes is the agenda service's; this asks and returns the grouping now in
+ * force, or undefined when nothing changed.
+ */
+export async function pickAgendaGrouping(
+  agenda: AgendaService<AgendaGroup>,
+  index?: WorkspaceIndex,
+): Promise<AgendaGroupBy | undefined> {
+  const { groupBy: current, groupNamespace: namespace } = agenda.readGrouping();
+  const chosen = await vscode.window.showQuickPick(
+    AGENDA_GROUPINGS.map((grouping) => ({
+      label: grouping.label,
+      description: describeCurrentGrouping(grouping.id, current, namespace),
+      detail: grouping.detail,
+      id: grouping.id,
+    })),
+    { title: 'Group tasks by', placeHolder: 'Choose what the groups are' },
+  );
+  if (!chosen) {
+    return undefined;
+  }
+  let picked: string | undefined;
+  if (chosen.id === 'tag') {
+    picked = index ? await pickTagNamespace(agenda, index, current === 'tag' ? namespace : undefined) : undefined;
+    if (!picked) {
+      return undefined;
+    }
+  }
+  const change = await agenda.setGrouping({ chosen: chosen.id, current, namespace: picked });
+  return change.kind === 'grouped' ? change.groupBy : undefined;
+}
+
+/** What the picker says beside the grouping in force. */
+function describeCurrentGrouping(
+  id: AgendaGroupBy,
+  current: AgendaGroupBy,
+  namespace: string,
+): string | undefined {
+  if (id !== current) {
+    return undefined;
+  }
+  return id === 'tag' ? `Current: #${namespace}` : 'Current';
+}
+
+/** Asks which namespace to group by, busiest first; nothing when none is in use. */
+export async function pickTagNamespace(
+  agenda: Pick<AgendaService<AgendaGroup>, 'readStatusNamespace'>,
+  index: WorkspaceIndex,
+  current?: string,
+): Promise<string | undefined> {
+  const namespaces = listTaskNamespaces(index, [agenda.readStatusNamespace()]);
+  if (namespaces.length === 0) {
+    void vscode.window.showInformationMessage(
+      'No open task carries a namespaced tag, such as #context/phone, yet. Write one on a task, or on the heading above it, to group by it.',
+    );
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(
+    namespaces.map((namespace) => ({
+      label: `#${namespace.name}`,
+      description: `${namespace.openTasks} open ${namespace.openTasks === 1 ? 'task' : 'tasks'}${namespace.name === current ? ' · Current' : ''}`,
+      detail: describeNamespaceValues(namespace.values),
+      name: namespace.name,
+    })),
+    {
+      title: 'Group tasks by tag namespace',
+      placeHolder: 'Choose the namespace whose tags are the groups',
+    },
+  );
+  return picked?.name;
+}
+
+/**
+ * Deckard: Reschedule Overdue Tasks: every task the Tasks view lists as
+ * overdue, once the index is built, or a word that nothing is.
+ */
+export async function rescheduleOverdueCommand(
+  agenda: AgendaService<AgendaGroup>,
+  writes: TaskWrites,
+): Promise<void> {
+  const overdue = await agenda.listOverdue();
+  if (overdue.length === 0) {
+    void vscode.window.showInformationMessage('Nothing is overdue.');
+    return;
+  }
+  await rescheduleTasks(writes, agenda.describeSubject(overdue, 'overdue tasks'), overdue, agenda.rescheduleContext());
+}
+
+/** The Tasks view as its menu commands read it: the tasks a menu was run on. */
+interface AgendaSelection {
+  tasksFor(node?: AgendaNode, selected?: readonly AgendaNode[]): Task[];
+  showMore(groupId: string): void;
+}
+
+/** What the Tasks view's commands work with. */
+export interface AgendaCommandServices {
+  view: AgendaSelection;
+  agenda: AgendaService<AgendaGroup>;
+  writes: TaskWrites;
+  indexer: WorkspaceIndexer<vscode.Uri>;
+  preferences: PreferencesStore;
+}
+
+/**
+ * The Tasks view's own menus: a date by name or in plain words, on one
+ * task, on the tasks selected, or on every task in a group; Move to…,
+ * Reschedule…, Show More, Edit Task, and Break into Steps; and Reschedule
+ * Overdue Tasks from the palette and the status bar.
+ */
+export function registerAgendaCommands(services: AgendaCommandServices): vscode.Disposable[] {
+  const { view, agenda, writes, indexer, preferences } = services;
+  const dueFromView = (date: (subject: string) => Promise<string | undefined | null>) =>
+    async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+      const tasks = view.tasksFor(node, selected);
+      if (tasks.length === 0) {
+        return;
+      }
+      const chosen = await date(agenda.describeSubject(tasks));
+      if (chosen !== null) {
+        await setTasksDue(writes, tasks, chosen, agenda.rescheduleContext());
+      }
+    };
+  // A named day is read on the day the menu item is chosen.
+  const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice, Date.now()));
+  return [
+    vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
+    vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
+    vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
+    vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
+    vscode.commands.registerCommand(
+      'deckard.agenda.moveTo',
+      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+        const tasks = view.tasksFor(node, selected);
+        if (tasks.length > 0) {
+          await moveTasks(indexer, preferences, writes, tasks);
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.agenda.reschedule',
+      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+        const tasks = view.tasksFor(node, selected);
+        if (tasks.length === 0) {
+          return;
+        }
+        await rescheduleTasks(writes, agenda.describeSubject(tasks), tasks, agenda.rescheduleContext());
+      },
+    ),
+    vscode.commands.registerCommand('deckard.agenda.showMore', (groupId?: unknown) => {
+      if (typeof groupId === 'string') {
+        view.showMore(groupId);
+      }
+    }),
+    vscode.commands.registerCommand('deckard.rescheduleOverdue', () => rescheduleOverdueCommand(agenda, writes)),
+    ...registerTaskMenus(services),
+  ];
+}
+
+/** Edit Task and Break into Steps, on a task in the Tasks view. */
+function registerTaskMenus({ view, writes, indexer }: AgendaCommandServices): vscode.Disposable[] {
+  return [
+    vscode.commands.registerCommand(
+      'deckard.agenda.editTask',
+      async (node?: AgendaNode) => {
+        const [task] = view.tasksFor(node);
+        if (task && (await openTask(task))) {
+          await vscode.commands.executeCommand('deckard.editTask');
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.agenda.breakIntoSteps',
+      async (node?: AgendaNode) => {
+        const [task] = view.tasksFor(node);
+        if (task) {
+          await breakIntoStepsCommand(indexer, writes, task);
+        }
+      },
+    ),
+  ];
 }

@@ -1,35 +1,26 @@
 import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
-import {
-  applySplices,
-  blockSplice,
-  dedentBlock,
-  LeaveBehind,
-  leaveBehind,
-  MoveBlock,
-  MoveRefusalReason,
-  readMoveBlock,
-  TextSplice,
-} from '../../domain/markdown/moveLines';
+import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLines';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { stripTags } from '../../domain/markdown/parser';
 import { PreferencesStore } from '../../core/storage/preferences';
-import { Section, Task } from '../../core/types';
+import { Task } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { createPinForLine } from '../state/pinnedNotes';
-import { findSameSection, getCaptureInsertion } from './capture';
+import { findSameSection } from './capture';
 import { chooseTargetFolder, ensureDailyNote, getPeriodicNote } from './dailyNote';
 import { readWeekStart } from './datePrompt';
 import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
-import { carryMovedTaskRank, TaskWrites } from './taskActions';
+import { MoveSource as ServiceMoveSource, MoveTarget } from '../../services/moveService';
+import { TaskWrites } from './taskActions';
 import { createWikiLink } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
-import { getWritePreview, WriteHandle } from './workspaceWrites';
+import { WriteHandle } from './workspaceWrites';
 
 /**
  * Deckard: Move to… — a line, a task and its steps, or a selection, taken
@@ -42,13 +33,7 @@ import { getWritePreview, WriteHandle } from './workspaceWrites';
  */
 
 /** One block to move, from one note. */
-export interface MoveSource {
-  uri: vscode.Uri;
-  filePath: string;
-  block: MoveBlock;
-  /** From the index: the line must still be the task it knows. */
-  task?: Task;
-}
+export type MoveSource = ServiceMoveSource<vscode.Uri>;
 
 /** The words each refusal says. */
 const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
@@ -101,55 +86,71 @@ export async function moveTasks(
   writes: TaskWrites,
   tasks: readonly Task[],
 ): Promise<void> {
-  const sources: MoveSource[] = [];
-  for (const task of tasks) {
-    const uri = await resolveSourceUri(task.filePath);
-    if (!uri) {
-      continue;
-    }
-    const document = await vscode.workspace.openTextDocument(uri);
-    const line = task.lineNumber - 1;
-    const read = readMoveBlock(document.getText().split(/\r?\n/), {
-      start: { line, character: 0 },
-      end: { line, character: 0 },
-      isEmpty: true,
-    });
-    if ('refused' in read || read.lines[0] !== task.sourceLineText) {
-      void reportStaleMove();
-      return;
-    }
-    sources.push({ uri, filePath: task.filePath, block: read, task });
+  const read = await writes.moves.readTasks(tasks);
+  if (read.kind === 'stale') {
+    void reportStaleMove();
+    return;
   }
-  if (sources.length > 0) {
-    await moveBlocks(indexer, preferences, writes, sources);
+  if (read.sources.length > 0) {
+    await moveBlocks(indexer, preferences, writes, read.sources);
   }
 }
 
-/** Where a move writes, once chosen and found again. */
-interface ResolvedTarget {
-  uri: vscode.Uri;
-  /** What the link left behind names, without its brackets. */
-  link: string;
-  /** How a message names the place. */
-  name: string;
-  /** Under a heading: its own lines. Absent: the end of the note. */
-  section?: Pick<Section, 'startLine' | 'endLine'>;
-  /** A note to create, with what it starts with before the moved lines. */
-  create?: string;
+/** Where a move writes, once chosen and found again, and the heading it names. */
+interface ResolvedTarget extends MoveTarget<vscode.Uri> {
   /** The heading to remember as recent. */
   heading?: { filePath: string; line: number };
 }
 
+/**
+ * Moves the blocks where the reader chooses: the destination is picked and
+ * found again here, the move is MoveService's, and what moved is said here.
+ */
 async function moveBlocks(
   indexer: WorkspaceIndexer<vscode.Uri>,
   preferences: PreferencesStore,
   writes: TaskWrites,
   sources: readonly MoveSource[],
 ): Promise<void> {
+  const destination = await pickMoveDestination(indexer, preferences, sources);
+  if (!destination) {
+    return;
+  }
+  const target = await resolveTarget(indexer, destination, sources);
+  if (!target) {
+    return;
+  }
+  const result = await writes.moves.move(sources, target);
+  if (result.kind === 'stale') {
+    void reportStaleMove();
+    return;
+  }
+  if (result.kind === 'failed') {
+    void reportFailure({ outcome: 'Deckard could not move it, so nothing was written.' });
+    return;
+  }
+  if (target.heading) {
+    const pin = createPinForLine(indexer.getSnapshot(), target.heading.filePath, target.heading.line);
+    if (pin?.heading) {
+      await preferences.recordRecentHeading(pin);
+    }
+  }
+  announceMove(sources, target, result.created, result.handle);
+}
+
+/**
+ * Asks where the blocks go: a heading, today's note, or a new note, never a
+ * heading inside what moves or the one whose own lines hold it.
+ */
+function pickMoveDestination(
+  indexer: WorkspaceIndexer<vscode.Uri>,
+  preferences: PreferencesStore,
+  sources: readonly MoveSource[],
+): Promise<Destination | undefined> {
   const index = indexer.getSnapshot();
   const todayName = getPeriodicNote('day', new Date(), readWeekStart()).name;
   const sourceFiles = new Set(sources.map((source) => source.filePath));
-  const destination = await pickDestination(index, preferences, {
+  return pickDestination(index, preferences, {
     title: 'Deckard: Move to…',
     placeholder: 'Choose where it goes: a heading, today’s note, or a new note',
     today: { fileName: `${todayName}.md` },
@@ -164,164 +165,70 @@ async function moveBlocks(
             (section.startLine - 1 < source.block.start && section.bodyEndLine - 1 >= source.block.end)),
       ),
   });
-  if (!destination) {
-    return;
-  }
-  const target = await resolveTarget(indexer, destination, sources);
-  if (!target) {
-    return;
-  }
-
-  // Read again: what moves must still be what was chosen.
-  const texts = new Map<string, string>();
-  for (const source of sources) {
-    const document = await vscode.workspace.openTextDocument(source.uri);
-    const text = document.getText();
-    texts.set(source.uri.toString(), text);
-    const now = text.split(/\r?\n/).slice(source.block.start, source.block.end + 1);
-    if (
-      now.join('\n') !== source.block.lines.join('\n') ||
-      (source.task && now[0] !== source.task.sourceLineText)
-    ) {
-      void reportStaleMove();
-      return;
-    }
-  }
-
-  const mode = readLeaveBehind();
-  const targetDocument = target.create ? undefined : await vscode.workspace.openTextDocument(target.uri);
-  const targetText = targetDocument?.getText() ?? '';
-  const eol = (targetDocument ? targetText : texts.get(sources[0].uri.toString()) ?? '').includes('\r\n') ? '\r\n' : '\n';
-  const moved = sources.flatMap((source) => dedentBlock(source.block.lines)).join(eol);
-
-  const edit = new vscode.WorkspaceEdit();
-  const splicesBy = new Map<string, { uri: vscode.Uri; text: string; splices: TextSplice[] }>();
-  for (const source of sources) {
-    const key = source.uri.toString();
-    const text = texts.get(key) ?? '';
-    const lines = text.split(/\r?\n/);
-    const entry = splicesBy.get(key) ?? { uri: source.uri, text, splices: [] };
-    entry.splices.push(blockSplice(text, source.block, leaveBehind(source.block, lines, target.link, mode)));
-    splicesBy.set(key, entry);
-  }
-  let insertedAt: number | undefined;
-  if (!target.create) {
-    const insertion = getCaptureInsertion(targetText, moved, target.section);
-    insertedAt = insertion.taskLine;
-    const offset = (targetDocument as vscode.TextDocument).offsetAt(
-      new vscode.Position(insertion.line, insertion.character),
-    );
-    const key = target.uri.toString();
-    const entry = splicesBy.get(key) ?? { uri: target.uri, text: targetText, splices: [] };
-    entry.splices.push({ start: offset, end: offset, text: insertion.text });
-    splicesBy.set(key, entry);
-  }
-  for (const entry of splicesBy.values()) {
-    // A note is written as one whole replace, so a take and a put in the
-    // same note can never overlap.
-    const document = await vscode.workspace.openTextDocument(entry.uri);
-    edit.replace(
-      entry.uri,
-      new vscode.Range(document.positionAt(0), document.positionAt(entry.text.length)),
-      applySplices(entry.text, entry.splices),
-    );
-  }
-
-  let created: { uri: vscode.Uri; text: string } | undefined;
-  if (target.create !== undefined) {
-    const text = `${target.create}${moved}${eol}`;
-    await vscode.workspace.fs.writeFile(target.uri, Buffer.from(text, 'utf8'));
-    created = { uri: target.uri, text };
-  }
-  const deleteCreated = async (): Promise<void> => {
-    if (!created) {
-      return;
-    }
-    try {
-      const now = Buffer.from(await vscode.workspace.fs.readFile(created.uri)).toString('utf8');
-      if (now === created.text) {
-        await vscode.workspace.fs.delete(created.uri, { useTrash: false });
-      }
-    } catch {
-      // Already gone.
-    }
-  };
-  const write = await writes.history.write(edit, {
-    label: 'Move to…',
-    description: `Moved to ${target.name}`,
-    preview: getWritePreview() === 'always' ? 'always' : 'never',
-    restore: deleteCreated,
-  });
-  if (!write.applied) {
-    await deleteCreated();
-    void reportFailure({ outcome: 'Deckard could not move it, so nothing was written.' });
-    return;
-  }
-  // A task moved to another note keeps its place on the board.
-  if (insertedAt !== undefined && sources.every((source) => source.uri.toString() !== target.uri.toString())) {
-    const targetPath = indexer.getFilePath(target.uri);
-    let line = insertedAt;
-    for (const source of sources) {
-      const first = dedentBlock(source.block.lines)[0];
-      if (source.task) {
-        carryMovedTaskRank(writes.keepRank, source.task.id, {
-          filePath: targetPath,
-          lineNumber: line + 1,
-          lineText: first,
-        });
-      }
-      line += source.block.lines.length;
-    }
-  }
-  if (target.heading) {
-    const pin = createPinForLine(indexer.getSnapshot(), target.heading.filePath, target.heading.line);
-    if (pin?.heading) {
-      await preferences.recordRecentHeading(pin);
-    }
-  }
-  announceMove(sources, target, created !== undefined, write.handle);
 }
 
+/** Finds the chosen destination again, as a place a move can write. */
 async function resolveTarget(
   indexer: WorkspaceIndexer<vscode.Uri>,
   destination: Destination,
   sources: readonly MoveSource[],
 ): Promise<ResolvedTarget | undefined> {
   if (destination.kind === 'today') {
-    const folder = await chooseTargetFolder();
-    if (!folder) {
-      return undefined;
-    }
-    const uri = await ensureDailyNote(folder);
-    const title = noteTitle(uri.path);
-    return { uri, link: title, name: title };
+    return resolveToday();
   }
   if (destination.kind === 'newNote') {
-    const first = sources[0].block.lines[0] ?? '';
-    const name = await vscode.window.showInputBox({
-      title: 'Deckard: Move to…',
-      prompt: 'Name the new note',
-      value: suggestNoteName(first),
-      validateInput: async (value) => {
-        const invalid = validateExtractedNoteName(value);
-        if (invalid) {
-          return invalid;
-        }
-        const uri = await newNoteUri(indexer, sources[0].uri, value);
-        return uri && (await fileExists(uri)) ? `A note called “${value.trim()}” already exists.` : undefined;
-      },
-    });
-    if (name === undefined) {
-      return undefined;
-    }
-    const uri = await newNoteUri(indexer, sources[0].uri, name);
-    if (!uri || (await fileExists(uri))) {
-      return undefined;
-    }
-    const title = noteTitle(uri.path);
-    const eol = '\n';
-    return { uri, link: title, name: title, create: `# ${name.trim()}${eol}${eol}` };
+    return resolveNewNote(indexer, sources);
   }
+  return resolveSection(indexer, destination);
+}
+
+/** Today's note, made if it is missing, in the folder the reader picks. */
+async function resolveToday(): Promise<ResolvedTarget | undefined> {
+  const folder = await chooseTargetFolder();
+  if (!folder) {
+    return undefined;
+  }
+  const uri = await ensureDailyNote(folder);
+  const title = noteTitle(uri.path);
+  return { uri, link: title, name: title };
+}
+
+/** A new note, named by the reader, which must not exist yet. */
+async function resolveNewNote(
+  indexer: WorkspaceIndexer<vscode.Uri>,
+  sources: readonly MoveSource[],
+): Promise<ResolvedTarget | undefined> {
+  const first = sources[0].block.lines[0] ?? '';
+  const name = await vscode.window.showInputBox({
+    title: 'Deckard: Move to…',
+    prompt: 'Name the new note',
+    value: suggestNoteName(first),
+    validateInput: async (value) => {
+      const invalid = validateExtractedNoteName(value);
+      if (invalid) {
+        return invalid;
+      }
+      const uri = await newNoteUri(indexer, sources[0].uri, value);
+      return uri && (await fileExists(uri)) ? `A note called “${value.trim()}” already exists.` : undefined;
+    },
+  });
+  if (name === undefined) {
+    return undefined;
+  }
+  const uri = await newNoteUri(indexer, sources[0].uri, name);
+  if (!uri || (await fileExists(uri))) {
+    return undefined;
+  }
+  const title = noteTitle(uri.path);
+  const eol = '\n';
+  return { uri, link: title, name: title, create: `# ${name.trim()}${eol}${eol}` };
+}
+
+/** A heading the index knows, found again in its note as the note is now. */
+async function resolveSection(
+  indexer: WorkspaceIndexer<vscode.Uri>,
+  destination: Extract<Destination, { kind: 'heading' }>,
+): Promise<ResolvedTarget | undefined> {
   const uri = await resolveSourceUri(destination.filePath);
   if (!uri) {
     void reportFailure({ outcome: `Deckard could not find ${destination.filePath}, so nothing was moved.` });
@@ -345,13 +252,6 @@ async function resolveTarget(
     section: { startLine: live.startLine, endLine: live.bodyEndLine },
     heading: { filePath: destination.filePath, line: destination.section.startLine },
   };
-}
-
-/** What Move to… leaves behind, from `deckard.moveTo.leaveBehind`. */
-function readLeaveBehind(): LeaveBehind {
-  return vscode.workspace.getConfiguration('deckard').get<string>('moveTo.leaveBehind', 'link') === 'nothing'
-    ? 'nothing'
-    : 'link';
 }
 
 /** The first eight words of a line, without its marker, tags, or metadata. */
