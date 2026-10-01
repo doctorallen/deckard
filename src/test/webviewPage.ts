@@ -67,6 +67,11 @@ export interface WebviewPageOptions {
    * 800 by 600 size, so a page that paints can be tested by what it paints.
    */
   canvas?: boolean;
+  /**
+   * What VS Code kept for the page across a reload, which its `getState`
+   * returns from the start, as it does in a restored webview.
+   */
+  savedState?: unknown;
 }
 
 export interface PostedMessage {
@@ -85,7 +90,8 @@ function clone<T>(value: T): T {
  * The page goes through the shared page loader first, so a page that loads
  * its script or style sheet by URI runs here as it would in VS Code.
  * `state` is sent as soon as the page is loaded, which is what the host does
- * once the page says it is ready.
+ * once the page says it is ready. `options.savedState` is what the page's
+ * `getState` returns until it saves something of its own.
  */
 export function openWebviewPage(
   html: string,
@@ -95,7 +101,7 @@ export function openWebviewPage(
   const posted: PostedMessage[] = [];
   const canvasCalls: CanvasCall[] = [];
   let frames: FrameRequestCallback[] = [];
-  let kept: unknown;
+  let kept: unknown = clone(options.savedState);
   const dom = new JSDOM(loadPage(html), {
     runScripts: 'dangerously',
     pretendToBeVisual: true,

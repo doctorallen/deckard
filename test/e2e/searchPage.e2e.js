@@ -545,6 +545,61 @@ test('a page saved before search pages reopens on its tag, tags, and words', asy
   assert.strictEqual(gone.disposed, true, 'a page for a tag that is gone is not restored');
 });
 
+/**
+ * Restores a page from what VS Code kept for it across a reload, as the
+ * serializer does, and says what it reopened on: the search in its box and
+ * the record it keeps, or that it closed.
+ */
+async function reopen(panels, state) {
+  const panel = vscode.window.createWebviewPanel('deckard.tagOverview', 'Saved', -1, {});
+  await panels.restore(panel, state);
+  if (panel.disposed) {
+    return 'closed';
+  }
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  return { box: box(view), kept: view.state };
+}
+
+// Persisted formats, row 20: every shape a release has saved a search page
+// in, read back through the host, pinned before Phase 6 rewrites the page.
+test('every saved shape of a search page reopens on the search it held', async () => {
+  const { panels } = await openSearch('kickoff');
+  assert.deepStrictEqual(
+    await reopen(panels, { query: '#risk/vendor elevator', origin: '#risk/vendor' }),
+    { box: '#risk/vendor elevator', kept: { query: '#risk/vendor elevator', origin: '#risk/vendor' } },
+    'the current shape',
+  );
+  assert.deepStrictEqual(
+    await reopen(panels, { query: '  audit  ', origin: ' audit ', tab: 'tasks', scrollY: 40 }),
+    { box: 'audit', kept: { query: 'audit', origin: 'audit' } },
+    'the current shape, with the tab and the scroll the page keeps for itself',
+  );
+  assert.deepStrictEqual(
+    await reopen(panels, { query: 'ledger' }),
+    { box: 'ledger', kept: { query: 'ledger', origin: 'ledger' } },
+    'a search with no origin opens on itself',
+  );
+  assert.deepStrictEqual(
+    await reopen(panels, { tagKey: '#project/atlas', filterTagKeys: ['@ren-kade'] }),
+    { box: '#project/atlas AND @ren-kade', kept: { query: '#project/atlas AND @ren-kade', origin: '#project/atlas' } },
+    'a tag and the tags added to it',
+  );
+  assert.deepStrictEqual(
+    await reopen(panels, { tagKey: '#project/beta', filterTagKeys: [], refinement: 'notes' }),
+    { box: '#project/beta notes', kept: { query: '#project/beta notes', origin: '#project/beta' } },
+    'a tag and the words typed after it',
+  );
+  assert.deepStrictEqual(
+    await reopen(panels, { refinement: 'elevator' }),
+    { box: 'elevator', kept: { query: 'elevator', origin: 'elevator' } },
+    'words with no tag',
+  );
+  for (const state of [{ tagKey: '#missing', refinement: 'audit' }, {}, null, 'text', { query: 5 }]) {
+    assert.strictEqual(await reopen(panels, state), 'closed', JSON.stringify(state));
+  }
+});
+
 // ---------------------------------------------------------------------------
 // The search box as a field of chips.
 

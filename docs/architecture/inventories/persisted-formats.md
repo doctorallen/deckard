@@ -27,11 +27,11 @@ This inventory lists every format Deckard writes and later reads back, so that a
 | 17 | Preference snapshots, `preference-snapshots/*.json` | `storageUri` | the blob's `version: 1` | `preference-backups.test.ts` |
 | 18 | Preference export file | a file the reader picks | `deckard.version: 1`, not checked on read | `preference-backups.test.ts` |
 | 19 | Sample workspace folder, `deckard-sample` | `globalStorageUri` | none | `sample-workspace.test.ts` |
-| 20 | Search page state, view type `deckard.tagOverview` | webview state | none | `search-page-behavior.test.ts`, write only |
-| 21 | Task Board state, view type `deckard.taskBoard` | webview state | none | none yet |
-| 22 | Dashboard state, view type `deckard.dashboard` | webview state | none | `dashboard-behavior.test.ts`, write only |
-| 23 | Notes graph state, view type `deckard.notesGraph` | webview state | none | `notes-graph-behavior.test.ts`, `parked-views.test.ts`; write only |
-| 24 | Calendar page state, view type `deckard.calendarPage` | webview state | none | none yet |
+| 20 | Search page state, view type `deckard.tagOverview` | webview state | none | `search-page-behavior.test.ts`, `webview-saved-state.test.ts`, `searchPage.e2e.js` |
+| 21 | Task Board state, view type `deckard.taskBoard` | webview state | none | `taskBoard.e2e.js` |
+| 22 | Dashboard state, view type `deckard.dashboard` | webview state | none | `dashboard-behavior.test.ts`, `webview-saved-state.test.ts` |
+| 23 | Notes graph state, view type `deckard.notesGraph` | webview state | none | `notes-graph-behavior.test.ts`, `parked-views.test.ts`, `webview-saved-state.test.ts` |
+| 24 | Calendar page state, view type `deckard.calendarPage` | webview state | none | `webview-saved-state.test.ts` |
 | 25 | Entry ids, tag keys, and Find keys stored inside rows 1, 9, and 17 | inside other formats | none | `preferences-prune.test.ts`, `preferences.test.ts`; relative only |
 | 26 | Settings Deckard writes | `settings.json` | none | `exclude-folders.test.ts`, `settings.test.ts`; partly |
 
@@ -243,35 +243,35 @@ No test restores a page from saved state. The harness starts its kept state as `
 - **Read by the page:** `tab` at `:161`, `scrollY` at `:715`.
 - **Read by the host:** `readSerializedSearch` (`src/ui/webview/searchPage.ts:272` to `:314`), called from `restore` (`:156`).
 - **Migration:** a page saved before search pages kept one string is read from `tagKey`, `filterTagKeys`, and `refinement` or `query` (`src/ui/webview/searchPage.ts:287` to `:313`). A page whose tag no longer exists is closed.
-- **Pinned by:** `search-page-behavior.test.ts:650` asserts the written `{ query, origin }`. Nothing pins `readSerializedSearch`, including its legacy branch. A pinning test would pass each saved shape, current and legacy, to the serializer and assert the search the page reopens with.
+- **Pinned by:** `search-page-behavior.test.ts:650` asserts the written `{ query, origin }`. `searchPage.e2e.js` restores a page from each saved shape, current and legacy, through `readSerializedSearch`, and asserts the search it reopens on or that it closes. `webview-saved-state.test.ts` asserts the page's reads of `tab` and `scrollY`.
 
 ### 21. Task Board
 
 - **Shape:** `{ query: string; scrollY?: number }`.
 - **Written:** `src/ui/webview/taskBoardHtml.ts:541` and `:545`.
 - **Read by the page:** `scrollY` at `:543`. **Read by the host:** `query` in `restore` (`src/ui/webview/taskBoard.ts:175` to `:180`).
-- **Pinned by:** none yet. A pinning test would restore the board with `{ query: 'is:open #project/atlas' }` and assert the query it shows.
+- **Pinned by:** `taskBoard.e2e.js` restores the board with `{ query: 'is:open #project/atlas' }` and asserts the query it shows, and with shapes it ignores, which open on `is:open`.
 
 ### 22. Dashboard
 
 - **Shape:** `{ dashboardMode, tagColumns, browseQuery, tagNamespaceFilter, editingHome, homeHintDismissed }`.
 - **Written:** `saveDashboardViewState`, `src/ui/webview/dashboardHtml.ts:376`.
 - **Read by the page:** `src/ui/webview/dashboardHtml.ts:271` to `:291`. `dashboardMode` is kept only as `'browse'`, and `tagColumns` only as 1 to 4. `browseQuery` is written but never read back. The host's `restore` (`src/ui/webview/dashboard.ts:221`) ignores the state.
-- **Pinned by:** `dashboard-behavior.test.ts:437` asserts `homeHintDismissed` is written. A pinning test would load the page with each field set and assert the mode, columns, namespace filter, arranging state, and hint it draws.
+- **Pinned by:** `dashboard-behavior.test.ts:437` asserts `homeHintDismissed` is written. `webview-saved-state.test.ts` loads the page with each field set, and with values it does not know, and asserts the mode, columns, namespace filter, arranging state, and hint it draws and the record it writes back.
 
 ### 23. Notes graph
 
 - **Shape:** the 23 keys of `defaults` (`src/ui/webview/notesGraphHtml.ts:270` to `:294`), such as `showNotes`, `selectedTags`, `group`, `headings`, and `linkDistance`, plus `camera: { x, y, k }`.
 - **Written:** `persist`, `src/ui/webview/notesGraphHtml.ts:301`.
 - **Read by the page:** `src/ui/webview/notesGraphHtml.ts:295` to `:300`, and the camera at `:354`. Any saved value other than `undefined` is taken as is, with no type check. The host's `restore` (`src/ui/webview/notesGraph.ts:165`) ignores the state.
-- **Pinned by:** `notes-graph-behavior.test.ts:250`, `:307`, `:472`, `:513`, `:556` and `parked-views.test.ts:79` assert keys the page writes. A pinning test would load the page with a saved state of every key and assert each control and the camera.
+- **Pinned by:** `notes-graph-behavior.test.ts:250`, `:307`, `:472`, `:513`, `:556` and `parked-views.test.ts:79` assert keys the page writes. `webview-saved-state.test.ts` loads the page with every key and the camera, asserts each control and the zoom, and asserts every key comes back as given, of whatever type.
 
 ### 24. Calendar page
 
 - **Shape:** `{ layout: 'month' | 'week' }`.
 - **Written:** `setLayout`, `src/ui/webview/calendarHtml.ts:352`.
 - **Read by the page:** `src/ui/webview/calendarHtml.ts:114`. Anything but `'week'` reads as `'month'`. The host's `restore` (`src/ui/webview/calendarPage.ts:106`) ignores the state.
-- **Pinned by:** none yet. A pinning test would load the page with `{ layout: 'week' }` and assert the week layout.
+- **Pinned by:** `webview-saved-state.test.ts` loads the page with `{ layout: 'week' }` and asserts the week layout, and with other values, which read as the month.
 
 ## 25. Keys stored inside other formats
 
