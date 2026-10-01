@@ -25,6 +25,30 @@ class Range {
   }
 }
 
+class Position {
+  constructor(line, character) {
+    this.line = line;
+    this.character = character;
+  }
+}
+
+/**
+ * A selection, made from an anchor and an active position, or from their
+ * four numbers, as VS Code's is.
+ */
+class Selection {
+  constructor(anchorOrLine, activeOrCharacter, activeLine, activeCharacter) {
+    const numbers = typeof anchorOrLine === 'number';
+    this.anchor = numbers ? new Position(anchorOrLine, activeOrCharacter) : anchorOrLine;
+    this.active = numbers ? new Position(activeLine, activeCharacter) : activeOrCharacter;
+    const reversed =
+      this.active.line < this.anchor.line ||
+      (this.active.line === this.anchor.line && this.active.character < this.anchor.character);
+    this.start = reversed ? this.active : this.anchor;
+    this.end = reversed ? this.anchor : this.active;
+  }
+}
+
 class DocumentLink {
   constructor(range, target) {
     this.range = range;
@@ -196,15 +220,23 @@ function getConfiguration(section) {
 module.exports = {
   EventEmitter,
   Range,
+  Position,
+  Selection,
   DocumentLink,
   MarkdownString,
   ThemeColor,
   Uri: {
-    joinPath: (...parts) => ({ fsPath: parts.join('/') }),
+    // The path is joined to the base's path, as VS Code's is; the fsPath is
+    // joined as it always was here.
+    joinPath: (base, ...parts) => ({
+      fsPath: [base, ...parts].join('/'),
+      path: [base && typeof base === 'object' ? base.path ?? base.fsPath : base, ...parts].join('/'),
+    }),
     parse: (value) => ({ fsPath: value, path: value, toString: () => value }),
     file: (value) => ({ scheme: 'file', fsPath: value, path: value, toString: () => `file://${value}` }),
   },
-  ViewColumn: { Active: -1, One: 1 },
+  ViewColumn: { Active: -1, Beside: -2, One: 1 },
+  TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
   window: {
     createWebviewPanel,
     showInformationMessage: (message) => {
