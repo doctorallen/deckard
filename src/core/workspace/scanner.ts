@@ -5,6 +5,7 @@ import type { Configuration, ConfigurationSection } from '../../ports/configurat
 import type { FileStat, FileSystem } from '../../ports/fileSystem';
 import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
 import type { FolderPattern, WorkspaceFiles } from '../../ports/workspace';
+import type { NoteFiles } from './indexReader';
 import {
   extractTags,
   getEntityNamespaceAliases,
@@ -79,7 +80,7 @@ function getNoteBoundaries(value: unknown): NoteBoundaries {
   return value === 'heading' || value === 'marked' ? value : 'line';
 }
 
-export class WorkspaceScanner<U extends ResourceUri = ResourceUri> {
+export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements NoteFiles<U> {
   public constructor(
     private readonly access: WorkspaceFileAccess<U>,
   ) {}
