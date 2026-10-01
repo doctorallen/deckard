@@ -2,7 +2,6 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import {
-  parseSearchPageMessage,
   parseSidebarMessage,
 } from '../ui/webview/messages';
 import { renderMarkdown } from '../ui/webview/rendering';
@@ -162,146 +161,6 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('child items start at two levels'), true);
-  });
-
-  test('accepts only supported search page messages', () => {
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setRenderMode', mode: 'html' }),
-      {
-        type: 'setRenderMode',
-        mode: 'html',
-      },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'saveTagOverviewFilter' }),
-      { type: 'saveTagOverviewFilter' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'tasks', page: 3 }),
-      { type: 'setResultPage', kind: 'tasks', page: 3 },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'everything', page: 3 }),
-      undefined,
-    );
-    // A page number is a whole number of at least one, whatever a page that
-    // had been tampered with might ask for.
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: 0 }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: 1.5 }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: '2' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'saveTagOverviewFilter',
-        tagKeys: ['#untrusted', '#browser-data'],
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setRenderMode', mode: 'unsafe' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: true,
-      }),
-      {
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: true,
-      },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: 'yes',
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'active' }),
-      undefined,
-      'the search is the filter; the page keeps none of its own',
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'openTag', tagKey: 'other' }),
-      { type: 'openTag', tagKey: 'other' },
-    );
-    // Opening a tag opens its page; tags added to a search are in its text.
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', '#second'],
-      }),
-      { type: 'openTag', tagKey: '#focus' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'openTag', tagKey: '' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setOverviewRefinement', refinement: 'x' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setSearchColumns', section: 'notes', columns: 3 }),
-      { type: 'setSearchColumns', section: 'notes', columns: 3 },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setSearchColumns', section: 'tags', columns: 3 }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'clearOverviewQuery' }),
-      { type: 'clearOverviewQuery' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'renameTag',
-        tagKey: '#child',
-      }),
-      { type: 'renameTag', tagKey: '#child' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewSort',
-        mode: 'access',
-      }),
-      { type: 'setTagOverviewSort', mode: 'access' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewSort',
-        mode: 'random',
-      }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewLayout',
-        layout: 'split',
-      }),
-      { type: 'setTagOverviewLayout', layout: 'split' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewLayout',
-        layout: 'stacked',
-      }),
-      undefined,
-    );
   });
 
   test('renders safe Markdown without executable HTML or unsafe links', () => {
@@ -865,13 +724,6 @@ suite('Webview contracts', () => {
                                                                                 assert.strictEqual(
       html.includes("vscode.postMessage({ type: 'createHubNote' })"),
       true,
-    );
-    assert.deepStrictEqual(parseSearchPageMessage({ type: 'createHubNote' }), {
-      type: 'createHubNote',
-    });
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'createHubNote', tagKey: '#other' }),
-      undefined,
     );
                         // The Notes and Tasks tabs are the shared result tabs.
     assert.strictEqual(html.includes("{ id: 'notes', label: 'Notes', count: notesCount },"), true);

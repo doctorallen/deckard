@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 
 import { SearchHistory, SearchHistoryEntry } from '../ui/state/searchHistory';
-import { parseSearchPageMessage } from '../ui/webview/messages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
@@ -48,25 +47,6 @@ suite('Search history', () => {
     assert.strictEqual(history.forward(at('#d')), undefined);
     assert.deepStrictEqual(history.back(at('#d')), at('#b'));
     assert.deepStrictEqual(history.back(at('#b')), at('#a'));
-  });
-
-  test('accepts only a step back or forward from the page', () => {
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'navigateSearchHistory', direction: 'back' }),
-      { type: 'navigateSearchHistory', direction: 'back' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'navigateSearchHistory', direction: 'forward' }),
-      { type: 'navigateSearchHistory', direction: 'forward' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'navigateSearchHistory', direction: 'up' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'navigateSearchHistory', direction: 'back', query: '#a' }),
-      undefined,
-    );
   });
 
   test('the mouse\'s back and forward buttons ask the host to step', () => {

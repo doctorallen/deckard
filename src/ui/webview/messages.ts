@@ -1,13 +1,7 @@
 import { isObject } from '../../shared/guards';
 import {
   PinNoteMessage,
-  RenderMode,
-  SearchPageSize,
-  SEARCH_PAGE_SIZES,
-  SearchPageMessage,
   SidebarMessage,
-  TagOverviewLayout,
-  TagOverviewSortMode,
   RelatedNotesSortMode,
   CalendarMessage,
   CalendarPageMessage,
@@ -37,166 +31,8 @@ export function parsePinMessage(
   };
 }
 
-/**
- * Restricts a search page's messages to its navigation and display API.
- */
-export function parseSearchPageMessage(
-  value: unknown,
-): SearchPageMessage | undefined {
-  if (!isObject(value) || typeof value.type !== 'string') {
-    return undefined;
-  }
-
-  switch (value.type) {
-    case 'exportResults':
-      return value.kind === 'notes' || value.kind === 'tasks'
-        ? { type: 'exportResults', kind: value.kind }
-        : undefined;
-    case 'setZenMode':
-      return typeof value.enabled === 'boolean'
-        ? { type: 'setZenMode', enabled: value.enabled }
-        : undefined;
-    case 'chooseTheme':
-      return { type: 'chooseTheme' };
-    case 'openSource':
-      return isSourceMessage(value)
-        ? (value as unknown as SearchPageMessage)
-        : undefined;
-    case 'previewSearch':
-      return Array.isArray(value.words) &&
-        value.words.length <= MAX_PREVIEW_WORDS &&
-        value.words.every(
-          (word) =>
-            typeof word === 'string' &&
-            word.length > 0 &&
-            word.length <= MAX_PREVIEW_WORD_LENGTH,
-        )
-        ? { type: 'previewSearch', words: value.words as string[] }
-        : undefined;
-    case 'setResultsPerPage':
-      return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
-        ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
-        : undefined;
-    case 'pinNote':
-    case 'unpinNote':
-      return parsePinMessage(value);
-    case 'editResults':
-      return value.kind === 'notes' || value.kind === 'tasks'
-        ? { type: 'editResults', kind: value.kind }
-        : undefined;
-    case 'setResultPage':
-      return (value.kind === 'notes' || value.kind === 'tasks') &&
-        typeof value.page === 'number' &&
-        Number.isInteger(value.page) &&
-        value.page >= 1
-        ? { type: 'setResultPage', kind: value.kind, page: value.page }
-        : undefined;
-    case 'toggleTask':
-      return typeof value.taskId === 'string' &&
-        typeof value.completed === 'boolean'
-        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
-        : undefined;
-    case 'setRenderMode':
-      return isRenderMode(value.mode)
-        ? { type: 'setRenderMode', mode: value.mode }
-        : undefined;
-    case 'setSearchPreview':
-      return value.preview === 'none' || value.preview === 'lines' || value.preview === 'full'
-        ? { type: 'setSearchPreview', preview: value.preview }
-        : undefined;
-    case 'setTagOverviewSort':
-      return isTagOverviewSortMode(value.mode)
-        ? { type: 'setTagOverviewSort', mode: value.mode }
-        : undefined;
-    case 'setTagOverviewLayout':
-      return isTagOverviewLayout(value.layout)
-        ? { type: 'setTagOverviewLayout', layout: value.layout }
-        : undefined;
-    case 'setSearchColumns':
-      return (value.section === 'notes' || value.section === 'tasks') &&
-        isDashboardColumnCount(value.columns)
-        ? { type: 'setSearchColumns', section: value.section, columns: value.columns }
-        : undefined;
-    case 'openTag':
-      return isOpenTagMessage(value)
-        ? { type: 'openTag', tagKey: value.tagKey as string }
-        : undefined;
-    case 'renameTag':
-      return isRenameTagMessage(value)
-        ? { type: 'renameTag', tagKey: value.tagKey as string }
-        : undefined;
-    case 'parkTag':
-    case 'unparkTag':
-      return isRenameTagMessage(value) && Object.keys(value).length === 2
-        ? { type: value.type, tagKey: value.tagKey as string }
-        : undefined;
-    case 'parkNote':
-    case 'unparkNote':
-      return typeof value.filePath === 'string' &&
-        value.filePath.length > 0 &&
-        value.filePath.length <= 4096 &&
-        Object.keys(value).length === 2
-        ? { type: value.type, filePath: value.filePath }
-        : undefined;
-    case 'mergeTags':
-      return typeof value.sourceKey === 'string' &&
-        value.sourceKey.length > 0 &&
-        value.sourceKey.length <= 500 &&
-        typeof value.targetKey === 'string' &&
-        value.targetKey.length > 0 &&
-        value.targetKey.length <= 500 &&
-        value.sourceKey !== value.targetKey
-        ? { type: 'mergeTags', sourceKey: value.sourceKey, targetKey: value.targetKey }
-        : undefined;
-    case 'saveTagOverviewFilter':
-    case 'createHubNote':
-    case 'excludeHubLinks':
-    case 'clearOverviewQuery':
-    case 'openHelp':
-      return Object.keys(value).length === 1 ? { type: value.type } : undefined;
-    case 'navigateSearchHistory':
-      return Object.keys(value).length === 2 &&
-        (value.direction === 'back' || value.direction === 'forward')
-        ? { type: 'navigateSearchHistory', direction: value.direction }
-        : undefined;
-    case 'setOverviewQuery':
-      return isOverviewQueryMessage(value)
-        ? {
-            type: 'setOverviewQuery',
-            query: value.query as string,
-            remember: value.remember !== false,
-          }
-        : undefined;
-    default:
-      return undefined;
-  }
-}
-
 /** Upper bound on query text accepted from the webview. */
-/**
- * What a page may send as the words being typed. A draft is a handful of
- * short words; anything longer is not one, whatever sent it.
- */
-const MAX_PREVIEW_WORDS = 12;
-const MAX_PREVIEW_WORD_LENGTH = 100;
-
 const MAX_QUERY_LENGTH = 2000;
-
-/**
- * Bounds query text before it reaches the parser.
- *
- * The parser is linear in the length of its input, but a bound keeps a runaway
- * webview from handing the host an unreasonable string to tokenize on every
- * keystroke.
- */
-function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
-  return (
-    Object.keys(value).length <= 3 &&
-    typeof value.query === 'string' &&
-    value.query.length <= MAX_QUERY_LENGTH &&
-    (value.remember === undefined || typeof value.remember === 'boolean')
-  );
-}
 
 /**
  * Validates the sidebar's navigation and shortcut messages independently.
@@ -426,40 +262,6 @@ function isOpenTagMessage(value: Record<string, unknown>): boolean {
 
 function isRenameTagMessage(value: Record<string, unknown>): boolean {
   return typeof value.tagKey === 'string' && value.tagKey.length > 0;
-}
-
-/**
- * Keeps task filtering constrained to the three supported dashboard states.
- */
-
-function isDashboardColumnCount(value: unknown): value is 1 | 2 | 3 | 4 {
-  return value === 1 || value === 2 || value === 3 || value === 4;
-}
-
-/**
- * Validates the two tag-overview body representations.
- */
-function isRenderMode(value: unknown): value is RenderMode {
-  return value === 'markdown' || value === 'html';
-}
-
-/**
- * Validates overview sorting separately from dashboard tag sorting.
- */
-function isTagOverviewSortMode(value: unknown): value is TagOverviewSortMode {
-  return (
-    value === 'alphabetical' ||
-    value === 'created' ||
-    value === 'updated' ||
-    value === 'access'
-  );
-}
-
-/**
- * Keeps the Tag Overview layout constrained to its two supported views.
- */
-function isTagOverviewLayout(value: unknown): value is TagOverviewLayout {
-  return value === 'tabs' || value === 'split';
 }
 
 /**
