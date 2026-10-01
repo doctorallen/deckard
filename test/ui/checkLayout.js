@@ -39,7 +39,7 @@ const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexer;
 const { PreferencesStore } = modules.preferences;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
-const { createQueryContext } = require(path.join(compiled, 'core', 'query', 'queryContext.js'));
+const { createQueryContext } = require(path.join(compiled, 'domain', 'query', 'queryContext.js'));
 
 const chrome = findChrome();
 if (!chrome) {
