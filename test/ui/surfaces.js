@@ -170,9 +170,11 @@ function createDashboardSurfaces(index, preferences) {
 }
 
 /**
- * The guide page the helpGuide surface shows: what Help's host sent for it
- * before Phase 6, captured once from renderGuidePage (markdown-it), so Step 4
- * can compare the page markdown.api.render draws with it.
+ * The guide page the helpGuide surface shows: what Help's host sends for it,
+ * captured in the extension host from renderGuidePage, which renders it with
+ * VS Code's markdown.api.render (VS Code 1.140) and rewrites its links and
+ * images. It replaced the markdown-it capture of before Phase 6 step 4, from
+ * which it differs only by the engine's data-line, code-line, and dir marks.
  */
 const GUIDE_FIXTURE = {
   page: 'daily-notes',

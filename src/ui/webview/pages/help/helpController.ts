@@ -3,8 +3,10 @@ import * as vscode from 'vscode';
 import type { Release } from '../../../../core/changelog';
 import type { HelpGuideMessage, HelpPageToHost } from '../../../protocol/help';
 import type { WhatsNew } from '../../../commands/whatsNew';
-import { GUIDE_PAGES, isGuidePage, renderGuidePage } from '../../guide';
-import { getHelpHtml, HelpManifest, isRunnableFromHelp } from '../../helpHtml';
+import { GUIDE_PAGES, isGuidePage } from '../../guide';
+import { getHelpHtml } from '../../helpHtml';
+import { guideUnavailableHtml, renderGuidePage, warmGuideRenderer } from './guidePage';
+import { HelpManifest, isRunnableFromHelp } from './helpManifest';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowHelpMessage } from './messages';
@@ -39,7 +41,10 @@ export class HelpController implements PageController<never, HelpPageToHost> {
   /** Draws from `help.manifest` and `help.whatsNew`, and reads the guide under `help.extensionUri`. */
   public constructor(private readonly help: HelpControllerOptions) {
     this.options = {
-      retainContextWhenHidden: true,
+      // Help is not kept running while hidden (Q1 of the webviews plan): its
+      // page saves the guide page it shows and its scroll with setState, and
+      // comes back there when shown.
+      retainContextWhenHidden: false,
       enableFindWidget: true,
       // The page's own script marks the section being read in the rail. A
       // panel restored after a reload keeps the options it was made with,
@@ -100,22 +105,23 @@ export class HelpController implements PageController<never, HelpPageToHost> {
   }
 
   /**
-   * Shows a guide page in the panel, read from the copy the VSIX ships. A
-   * page that cannot be read says so where the page would be.
+   * Starts VS Code's Markdown extension as Help opens, made new or
+   * restored, so the first guide page it shows does not wait on it.
+   */
+  public onDidAttach(): void {
+    warmGuideRenderer();
+  }
+
+  /**
+   * Shows a guide page in the panel, read from the copy the VSIX ships and
+   * rendered by VS Code's Markdown extension. A page that cannot be read,
+   * or rendered, says so where the page would be.
    */
   private async showGuide(page: PageContext, name: string, anchor?: string): Promise<void> {
     if (!page.surface || !isGuidePage(name)) {
       return;
     }
-    let html: string;
-    try {
-      const bytes = await vscode.workspace.fs.readFile(
-        vscode.Uri.joinPath(this.help.extensionUri, 'docs', 'guide', `${name}.md`),
-      );
-      html = renderGuidePage(Buffer.from(bytes).toString('utf8'));
-    } catch {
-      html = '<p>Deckard could not read this page of the guide. It is also on GitHub, at <a href="https://github.com/doctorallen/deckard/blob/master/docs/guide/' + name + '.md">docs/guide/' + name + '.md</a>.</p>';
-    }
+    const html = await this.guideHtml(name);
     const message: HelpGuideMessage = {
       type: 'guide',
       page: name,
@@ -123,9 +129,31 @@ export class HelpController implements PageController<never, HelpPageToHost> {
       html,
       ...(anchor ? { anchor } : {}),
     };
-    // The panel is looked up again once the file is read, so a Help opened
-    // again meanwhile is the one sent the page; as before the move, one
-    // closed meanwhile is not checked for.
+    // The panel is looked up again once the page is rendered, so a Help
+    // opened again meanwhile is the one sent the page; as before the move,
+    // one closed meanwhile is not checked for.
     void page.surface!.webview.postMessage(message);
+  }
+
+  /**
+   * A guide page's HTML for the panel: the page rendered, or a sentence
+   * saying it could not be read, with the page on GitHub, or could not be
+   * rendered, with the page on the guide's site.
+   */
+  private async guideHtml(name: string): Promise<string> {
+    let source: string;
+    try {
+      const bytes = await vscode.workspace.fs.readFile(
+        vscode.Uri.joinPath(this.help.extensionUri, 'docs', 'guide', `${name}.md`),
+      );
+      source = Buffer.from(bytes).toString('utf8');
+    } catch {
+      return '<p>Deckard could not read this page of the guide. It is also on GitHub, at <a href="https://github.com/doctorallen/deckard/blob/master/docs/guide/' + name + '.md">docs/guide/' + name + '.md</a>.</p>';
+    }
+    try {
+      return await renderGuidePage(source);
+    } catch {
+      return guideUnavailableHtml(name);
+    }
   }
 }

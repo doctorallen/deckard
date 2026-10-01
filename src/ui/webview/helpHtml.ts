@@ -1,4 +1,4 @@
-import { GUIDE_IMAGE_BASE, GUIDE_PAGES, HELP_READ_MORE } from './guide';
+import { GUIDE_PAGES, HELP_READ_MORE } from './guide';
 import * as vscode from 'vscode';
 
 import {
@@ -8,117 +8,9 @@ import { buildPageShell } from './host/pageShell';
 import { isZenModeEnabled } from './zenMode';
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
 import { escapeHtml } from '../../shared/html';
+import { GUIDE_IMAGE_BASE } from './pages/help/guideLinks';
+import { describeHelpCommands, type HelpManifest, linkCommandNames, renderCommandName } from './pages/help/helpManifest';
 import { type DeckardTheme, getDeckardTheme } from './themes';
-
-/**
- * What the Help page reads from the extension's own manifest.
- *
- * The commands and settings tables are built from what Deckard actually
- * contributes rather than from a copy of it, so a feature cannot ship with
- * the guide still describing the workspace before it.
- */
-export interface HelpManifest {
-  commands?: { command: string; title: string; category?: string }[];
-  configuration?: {
-    title?: string;
-    properties?: Record<
-      string,
-      { default?: unknown; description?: string; markdownDescription?: string }
-    >;
-  }[];
-  keybindings?: { command: string; key?: string; mac?: string; when?: string }[];
-  menus?: { commandPalette?: { command: string; when?: string }[] };
-}
-
-/** A Deckard command as Help names it, and whether Help can run it. */
-export interface HelpCommand {
-  command: string;
-  /** Runs from Help: it needs no note in the editor, and the palette offers it. */
-  runnable: boolean;
-  binding?: { key: string; mac?: string };
-}
-
-/** A palette `when` that needs a note in the editor to act on. */
-const EDITOR_CONTEXT = /\beditorLangId\b|\beditorTextFocus\b|\bdeckard\.onTaskLine\b|\bdeckard\.isNote\b/;
-
-/**
- * Every Deckard command by its title, with whether Help may run it: a
- * command the palette hides, or one that acts on the note in the editor,
- * would have nothing to act on from Help.
- */
-export function describeHelpCommands(manifest: HelpManifest): Map<string, HelpCommand> {
-  const when = new Map(
-    (manifest.menus?.commandPalette ?? []).map((entry) => [entry.command, entry.when]),
-  );
-  const bindings = new Map(
-    (manifest.keybindings ?? [])
-      .filter((binding) => binding.key)
-      .map((binding) => [binding.command, { key: binding.key!, ...(binding.mac ? { mac: binding.mac } : {}) }]),
-  );
-  const commands = new Map<string, HelpCommand>();
-  for (const command of manifest.commands ?? []) {
-    if (command.category !== 'Deckard' || commands.has(command.title)) {
-      continue;
-    }
-    const condition = when.get(command.command);
-    const binding = bindings.get(command.command);
-    commands.set(command.title, {
-      command: command.command,
-      runnable: condition !== 'false' && !EDITOR_CONTEXT.test(condition ?? ''),
-      ...(binding ? { binding } : {}),
-    });
-  }
-  return commands;
-}
-
-/** Whether a message from the Help page may run this command. */
-export function isRunnableFromHelp(manifest: HelpManifest, command: string): boolean {
-  return [...describeHelpCommands(manifest).values()].some(
-    (candidate) => candidate.runnable && candidate.command === command,
-  );
-}
-
-/** A key binding as this platform writes it: Cmd+Shift+Alt+F. */
-export function formatShortcut(
-  binding: { key: string; mac?: string },
-  platform: NodeJS.Platform,
-): string {
-  const keys = platform === 'darwin' ? binding.mac ?? binding.key : binding.key;
-  return keys
-    .split('+')
-    .map((part) => (part.length === 1 ? part.toUpperCase() : part[0].toUpperCase() + part.slice(1)))
-    .join('+');
-}
-
-/** A command's name as a button that runs it, or as code where it cannot. */
-function renderCommandName(
-  label: string,
-  command: HelpCommand | undefined,
-  platform: NodeJS.Platform,
-): string {
-  const name = command?.runnable
-    ? `<button type="button" class="command-link" data-command="${escapeHtml(command.command)}">${label}</button>`
-    : `<code>${label}</code>`;
-  return command?.binding
-    ? `${name} <kbd class="shortcut">${escapeHtml(formatShortcut(command.binding, platform))}</kbd>`
-    : name;
-}
-
-/**
- * Turns every `<code>Deckard: Title</code>` in the page's prose into the
- * command's button, with its shortcut beside it. A name the manifest does not
- * contribute is left as it was, and the Help test fails on it.
- */
-export function linkCommandNames(
-  html: string,
-  commands: ReadonlyMap<string, HelpCommand>,
-  platform: NodeJS.Platform,
-): string {
-  return html.replace(/<code>Deckard: ([^<]+)<\/code>/g, (whole, title: string) => {
-    const command = commands.get(title.replace(/&amp;/g, '&').replace(/’/g, "'"));
-    return command ? renderCommandName(`Deckard: ${title}`, command, platform) : whole;
-  });
-}
 
 /** A short line for what a command is for, beyond the name it goes by. */
 const COMMAND_NOTES: Readonly<Record<string, string>> = {
@@ -353,6 +245,8 @@ function buildHelpHtml(
     zen: isZenModeEnabled(),
     csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
     bodyAttributes: options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : '',
+    // src/webview/help/main.ts: the rail, the guide view, and the way back.
+    bundle: true,
     body: `
 <main>
   <nav aria-label="Help sections">
@@ -658,102 +552,6 @@ tag = #project/atlas AND task = open
     </article>
   <div id="guide-view" hidden></div>
 </main>
-<script nonce="${nonce}">
-(function () {
-  // A command named in the guide runs from it; the host checks the id.
-  var vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
-  document.addEventListener('click', function (event) {
-    var target = event.target && event.target.closest ? event.target : null;
-    var button = target ? target.closest('.command-link') : null;
-    if (button && vscode) vscode.postMessage({ type: 'runCommand', command: button.getAttribute('data-command') });
-    if (target && target.closest('[data-action="open-changelog"]') && vscode) { event.preventDefault(); vscode.postMessage({ type: 'openChangelog' }); }
-    var guideLink = target ? target.closest('[data-guide-page], [data-guide-anchor]') : null;
-    if (guideLink) {
-      event.preventDefault();
-      var page = guideLink.getAttribute('data-guide-page');
-      var anchor = guideLink.getAttribute('data-guide-anchor') || undefined;
-      if (page && vscode) {
-        // Where Help was, for Back: the section the link sat in.
-        if (guideView.hidden) { var from = guideLink.closest('section'); returnTo = from ? from.id : undefined; }
-        vscode.postMessage(anchor ? { type: 'openGuide', page: page, anchor: anchor } : { type: 'openGuide', page: page });
-      } else if (anchor) {
-        revealIn(guideView, anchor);
-      }
-      return;
-    }
-    if (target && target.closest('[data-action="guide-back"]')) { event.preventDefault(); showHelp(returnTo); return; }
-    // The rail leads back to Help from a guide page.
-    var railLink = target ? target.closest('nav a[href^="#"]') : null;
-    if (railLink && !guideView.hidden) { event.preventDefault(); showHelp(railLink.getAttribute('href').slice(1)); }
-  });
-  var article = document.querySelector('main > article');
-  var guideView = document.getElementById('guide-view');
-  var returnTo;
-  function revealIn(root, anchor) {
-    var heading = anchor ? root.querySelector('[id="' + anchor.replace(/"/g, '') + '"]') : null;
-    if (heading && heading.scrollIntoView) heading.scrollIntoView({ block: 'start' });
-  }
-  /** A guide page in place of Help, with the way back first. */
-  function showGuide(message) {
-    guideView.innerHTML = '<div class="guide-bar"><a href="#" class="guide-back" data-action="guide-back">← Back to Help</a>'
-      + (message.page !== 'README' ? '<a href="#" class="guide-back" data-guide-page="README">All guide topics</a>' : '') + '</div>'
-      + message.html;
-    article.hidden = true;
-    guideView.hidden = false;
-    if (message.anchor) revealIn(guideView, message.anchor);
-    else window.scrollTo(0, 0);
-    var title = guideView.querySelector('h1');
-    if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: Boolean(message.anchor) }); }
-  }
-  function showHelp(anchor) {
-    guideView.hidden = true;
-    guideView.innerHTML = '';
-    article.hidden = false;
-    if (anchor) reveal(anchor); else window.scrollTo(0, 0);
-  }
-  // Opened on a section, such as What's new, the page goes to it.
-  function reveal(anchor) {
-    var section = anchor ? document.getElementById(anchor) : null;
-    if (!section) return;
-    if (section.scrollIntoView) section.scrollIntoView({ block: 'start' });
-    var heading = section.querySelector('h2');
-    if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
-  }
-  window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'reveal') { if (!guideView.hidden) showHelp(); reveal(event.data.anchor); }
-    if (event.data && event.data.type === 'guide') showGuide(event.data);
-  });
-  reveal(document.body.getAttribute('data-anchor'));
-})();
-(function () {
-  // The rail marks the section under the top of the window as the reader
-  // scrolls, so a long page says where it is. A section counts as read once
-  // it crosses the band between a tenth and a third of the way down, and the
-  // last one counts when the page cannot scroll any further.
-  var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
-  var sections = links.map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); }).filter(Boolean);
-  if (!sections.length) return;
-  var current;
-  function mark(id) {
-    if (id === current) return;
-    current = id;
-    links.forEach(function (link) {
-      if (link.getAttribute('href') === '#' + id) link.setAttribute('aria-current', 'location');
-      else link.removeAttribute('aria-current');
-    });
-  }
-  mark(sections[0].id);
-  if (typeof IntersectionObserver !== 'function') return;
-  var crossing = {};
-  var observer = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) { crossing[entry.target.id] = entry.isIntersecting; });
-    var atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-    var first = atEnd ? sections[sections.length - 1] : sections.filter(function (section) { return crossing[section.id]; })[0];
-    if (first) mark(first.id);
-  }, { rootMargin: '-10% 0px -67% 0px' });
-  sections.forEach(function (section) { observer.observe(section); });
-})();
-</script>
 `,
   });
 }

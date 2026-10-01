@@ -32,6 +32,7 @@ This inventory lists every format Deckard writes and later reads back, so that a
 | 22 | Dashboard state, view type `deckard.dashboard` | webview state | none | `dashboard-behavior.test.ts`, `webview-saved-state.test.ts` |
 | 23 | Notes graph state, view type `deckard.notesGraph` | webview state | none | `notes-graph-behavior.test.ts`, `parked-views.test.ts`, `webview-saved-state.test.ts` |
 | 24 | Calendar page state, view type `deckard.calendarPage` | webview state | none | `webview-saved-state.test.ts` |
+| 24a | Help state, view type `deckard.help`, since Phase 6 step 4.1: `{ guide?: { page, anchor? }, scrollY, drawn }`, read only by the drawing of the page that saved it | webview state | `drawn`, a hash of the HTML's nonce | `help-page.test.ts` |
 | 25 | Entry ids, tag keys, and Find keys stored inside rows 1, 9, and 17 | inside other formats | none | `preferences-prune.test.ts`, `preferences.test.ts`; relative only |
 | 26 | Settings Deckard writes | `settings.json` | none | `exclude-folders.test.ts`, `settings.test.ts`; partly |
 
@@ -230,7 +231,7 @@ The plan's list does not include this store.
 
 ## Webview state
 
-VS Code keeps what a page passes to `setState` and hands it back when it restores the panel after a reload, through the serializers registered at `src/extension.ts:892` to `:916`. A page restored after an upgrade receives state written by the old script. Seven panel view types are serialized: `deckard.dashboard`, `deckard.stats`, `deckard.help`, `deckard.notesGraph`, `deckard.calendarPage`, `deckard.taskBoard`, and `deckard.tagOverview`. `stats` and `help` keep no state. The sidebar views `deckard.relatedNotes` and `deckard.calendar` are webview views (`src/extension.ts:631`, `:636`). The sidebar calendar runs the calendar script but never writes state, because its layout control is drawn only on the page (`src/ui/webview/calendarHtml.ts:305`, `:312`).
+VS Code keeps what a page passes to `setState` and hands it back when it restores the panel after a reload, through the serializers registered at `src/extension.ts:892` to `:916`. A page restored after an upgrade receives state written by the old script. Seven panel view types are serialized: `deckard.dashboard`, `deckard.stats`, `deckard.help`, `deckard.notesGraph`, `deckard.calendarPage`, `deckard.taskBoard`, and `deckard.tagOverview`. `stats` keeps no state, and `help` kept none before Phase 6 step 4.1 (row 24a). The sidebar views `deckard.relatedNotes` and `deckard.calendar` are webview views (`src/extension.ts:631`, `:636`). The sidebar calendar runs the calendar script but never writes state, because its layout control is drawn only on the page (`src/ui/webview/calendarHtml.ts:305`, `:312`).
 
 The ten `getState()` calls the plan counts are `calendarHtml.ts:114`, `:352`; `searchPageHtml.ts:161`, `:552`, `:564`, `:715`; `dashboardHtml.ts:271`; `taskBoardHtml.ts:540`, `:545`; and `notesGraphHtml.ts:295`, all under `src/ui/webview/`. The `getState` option at `components.ts:3617` is a host-state callback, not the VS Code API. The shared scroll helpers `rememberScroll` and `restoreScroll` (`src/ui/webview/components.ts:1769`, `:1780`) merge `scrollY` into a page's state.
 

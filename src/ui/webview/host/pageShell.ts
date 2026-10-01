@@ -120,7 +120,8 @@ function bundleTail(options: PageShellOptions): string {
 /**
  * A page's document: its policy, then its style sheets, linked from
  * `dist/webview/` in cascade order (the page's own sheet, its theme, and the
- * tail every page lays last), then the body, marked for zen when it is on.
+ * tail every page lays last), then the body, marked for zen when it is on,
+ * ending with the page's bundle for a page that has one.
  * The host builds no style text: every rule is in a sheet esbuild built
  * from `src/webview/`. A bundled page's body ends with its first snapshot,
  * if it has one, and its script.
@@ -129,8 +130,7 @@ export function buildPageShell(options: PageShellOptions): string {
   const { webview, extensionUri, theme, zen } = options;
   const tail = getPageTailCss({ theme, zen });
   const links = [`${options.page}.css`, ...tail.sheets]
-    .map((sheet) => webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview', ...sheet.split('/'))))
-    .map((uri) => `<link rel="stylesheet" href="${escapeHtml(uri.toString())}">`);
+    .map((sheet) => `<link rel="stylesheet" href="${escapeHtml(pageAsset(webview, extensionUri, sheet))}">`);
   const policy = getContentSecurityPolicy(webview.cspSource, options.nonce, options.csp);
   return [
     '<!DOCTYPE html>',
@@ -145,4 +145,9 @@ export function buildPageShell(options: PageShellOptions): string {
     '</head>',
     `<body${tail.bodyAttribute}${options.bodyAttributes ?? ''}>${options.body}${bundleTail(options)}</body></html>`,
   ].join('\n');
+}
+
+/** A file under `dist/webview/`, such as `help.js` or `themes/cooper.css`, as the page loads it. */
+function pageAsset(webview: PageShellOptions['webview'], extensionUri: vscode.Uri, file: string): string {
+  return webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview', ...file.split('/'))).toString();
 }
