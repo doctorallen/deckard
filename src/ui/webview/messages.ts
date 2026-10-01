@@ -731,41 +731,6 @@ export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
 }
 
 /**
- * Checks source locations before they are used to open an editor line.
- */
-/** What the Help page may ask of its host. */
-export type HelpMessage =
-  | { type: 'runCommand'; command: string }
-  | { type: 'openChangelog' }
-  | { type: 'openGuide'; page: string; anchor?: string };
-
-/**
- * Validates the Help page's messages. Only the shape is checked here; the
- * host runs a command only when Help is allowed to run it.
- */
-export function parseHelpMessage(value: unknown): HelpMessage | undefined {
-  if (!isObject(value) || typeof value.type !== 'string') {
-    return undefined;
-  }
-  switch (value.type) {
-    case 'runCommand':
-      return typeof value.command === 'string' && /^deckard\.[\w.]+$/.test(value.command)
-        ? { type: 'runCommand', command: value.command }
-        : undefined;
-    case 'openChangelog':
-      return { type: 'openChangelog' };
-    case 'openGuide':
-      // A page's file name and a heading's anchor: nothing that climbs out.
-      return typeof value.page === 'string' && /^[\w-]+$/.test(value.page) &&
-        (value.anchor === undefined || (typeof value.anchor === 'string' && /^[\w-]+$/.test(value.anchor)))
-        ? { type: 'openGuide', page: value.page, ...(typeof value.anchor === 'string' ? { anchor: value.anchor } : {}) }
-        : undefined;
-    default:
-      return undefined;
-  }
-}
-
-/**
  * Accepts the calendar page's messages. Dates and months are checked for their
  * shape; the host checks that each names a real day.
  */

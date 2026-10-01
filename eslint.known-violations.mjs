@@ -285,7 +285,6 @@ export default {
     "src/ui/webview/calendarPage.ts": 5,
     "src/ui/webview/dashboard.ts": 2,
     "src/ui/webview/guide.ts": 1,
-    "src/ui/webview/help.ts": 3,
     "src/ui/webview/helpHtml.ts": 1,
     "src/ui/webview/icons.ts": 1,
     "src/ui/webview/notesGraph.ts": 6,
