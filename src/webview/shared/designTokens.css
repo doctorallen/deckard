@@ -1,8 +1,7 @@
 /*
- * *
  * The palette every webview starts from.
  *
- * Themes in `themes.ts` re-declare these after the base sheet, so a token may
+ * Themes in `themes/` re-declare these after the base sheet, so a token may
  * only be introduced here. Several pairs look like aliases at their default
  * values — `--amber` and `--amber-bright` are both #FFB000 — but themes
  * deliberately pull them apart, so they are separate tokens, not synonyms.

@@ -1,5 +1,4 @@
 /*
- * *
  * Zen mode: Deckard's own chrome, turned down.
  *
  * Every rule is scoped under `body.zen`, and the sheet ships whether or not
@@ -12,8 +11,8 @@
  *
  * Position still matters and is not replaced by the specificity: LCARS'
  * `.metric:nth-child(3n + 2)::before` ties with `body.zen .metric::before`, so
- * this has to come after the theme sheet. `getPageTailCss()` is what puts it
- * there.
+ * this has to come after the theme sheet. tail.css, which the page shell
+ * links after the theme, is what puts it there.
  *
  * **This sheet declares no color, background, or border-color.** Only what it
  * takes to hide, thin, and fold. Under that rule the contrast matrix cannot
@@ -43,7 +42,7 @@ body.zen .tag-row, body.zen .task-row, body.zen .note-row, body.zen .entity-row,
 body.zen .saved-filter-row, body.zen .stat-row, body.zen .empty,
 body.zen .view-panel, body.zen .board-column { clip-path: none; box-shadow: none; }
 /* Under the pointer the frame reaches down to take in where the entry is
-   written (getProvenanceCss); zen's frame has no corners to keep. The
+   written (provenance.css); zen's frame has no corners to keep. The
    insets follow zen's tighter padding. */
 body.zen .card:hover, body.zen .card:focus-within, body.zen .note:hover,
 body.zen .note:focus-within, body.zen .task-row:hover,
@@ -56,8 +55,8 @@ body.zen .row:hover, body.zen .card:hover, body.zen .note:hover,
 body.zen .task:hover, body.zen .task-row:hover, body.zen .note-row:hover,
 body.zen .tag-row:hover, body.zen .entity-row:hover,
 body.zen .saved-filter-row:hover, body.zen .stat-row:hover { transform: none; }
-/* Spacing. These literals mirror getShellCss, getSurfaceCss, getTaskBoardCss
-   and getTaskListCss; there are no spacing tokens to lean on, so a change
+/* Spacing. These literals mirror shell.css, surface.css, taskBoard.css
+   and taskList.css; there are no spacing tokens to lean on, so a change
    there needs a change here. The layout suite measures both. */
 /* Zen is a denser scale, not a second set of rules: the steps shrink, and
    every card, row, column, and margin in the shared sheet follows. */

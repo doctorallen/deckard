@@ -166,9 +166,6 @@ export default {
     "src/ui/webview/searchPage.ts": [
       "readSerializedSearch"
     ],
-    "src/ui/webview/themes.ts": [
-      "getDeckardThemeCss"
-    ],
     "test/ui/checkContrast.js": [
       "parseColor"
     ]
@@ -374,12 +371,7 @@ export default {
     ],
     "src/ui/webview/components.ts": [
       "getComponentScript",
-      "getControlCss",
-      "getDesignTokens",
-      "getProvenanceCss",
       "getQueryEditorScript",
-      "getSurfaceCss",
-      "getTaskBoardCss",
       "getTipScript"
     ],
     "src/ui/webview/dashboardHtml.ts": [
@@ -402,9 +394,6 @@ export default {
     ],
     "src/ui/webview/taskBoardHtml.ts": [
       "getTaskBoardHtml"
-    ],
-    "src/ui/webview/themes.ts": [
-      "getDeckardThemeCss"
     ],
     "test/perf/indexSpeed.js": [
       "bench"

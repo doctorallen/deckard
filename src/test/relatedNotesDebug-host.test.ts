@@ -34,6 +34,7 @@ function fakePanel(options: unknown) {
     webview: {
       options: {} as vscode.WebviewOptions,
       cspSource: 'vscode-webview://deckard',
+      asWebviewUri: (uri: vscode.Uri) => uri,
       get html(): string {
         return panel.htmls[panel.htmls.length - 1] ?? '';
       },
@@ -95,6 +96,9 @@ async function withDebugPage(
   }
 }
 
+/** The folders the debug page may load from: the built pages and the icons. */
+const DEBUG_ROOTS = ['/tmp/deckard-extension/dist/webview', '/tmp/deckard-extension/resources'];
+
 suite('Related Notes debug host', () => {
   const note = vscode.Uri.file('/notes/a.md');
 
@@ -103,12 +107,19 @@ suite('Related Notes debug host', () => {
       await debug.show(note, 1);
       assert.strictEqual(made.length, 1);
       const [panel] = made;
-      assert.deepStrictEqual(panel.options, {
-        viewType: 'deckard.relatedNotesDebug',
-        title: 'Deckard: Related Notes Debug',
-        options: { retainContextWhenHidden: true, enableFindWidget: true },
+      const roots = (options: vscode.WebviewOptions) => options.localResourceRoots?.map((root) => root.path);
+      const { options, ...made0 } = panel.options as { options: vscode.WebviewPanelOptions & vscode.WebviewOptions };
+      assert.deepStrictEqual(made0, { viewType: 'deckard.relatedNotesDebug', title: 'Deckard: Related Notes Debug' });
+      assert.deepStrictEqual({ ...options, localResourceRoots: roots(options) }, {
+        retainContextWhenHidden: true,
+        enableFindWidget: true,
+        localResourceRoots: DEBUG_ROOTS,
       });
-      assert.deepStrictEqual(panel.webview.options, {}, 'the page runs no script');
+      assert.deepStrictEqual(
+        { ...panel.webview.options, localResourceRoots: roots(panel.webview.options) },
+        { localResourceRoots: DEBUG_ROOTS },
+        'the page runs no script, and loads its sheet from the built pages',
+      );
       assert.ok(String((panel.iconPath as vscode.Uri).fsPath).endsWith('resources/deckard.svg'));
       assert.strictEqual(panel.title, 'Deckard: Related Notes Debug — Kickoff');
       assert.strictEqual(panel.htmls.length, 1);

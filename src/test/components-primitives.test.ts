@@ -5,9 +5,10 @@ import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
-import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCssText, getZenCss } from '../ui/webview/components';
-import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
+import { ENABLED } from '../ui/webview/components';
+import { deckardThemes } from '../ui/webview/themes';
 import { renderablePages, renderPage } from './pages';
+import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { readGoldens } from '../../test/harness/domGoldens';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -18,8 +19,8 @@ import { createQueryContext } from '../domain/query/queryContext';
  */
 suite('Component primitives', () => {
   const pages = renderablePages(['dashboard', 'searchPage', 'sidebarNotes', 'notesGraph', 'help', 'stats', 'taskBoard', 'calendar']);
-  const stylesOf = (html: string): string =>
-    [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n');
+  /** Every rule a page draws with, as written, in the order its shell links them. */
+  const stylesOf = (html: string): string => pageSheets(html);
 
   let page: WebviewPage | undefined;
   let store: TestPreferences | undefined;
@@ -96,7 +97,7 @@ suite('Component primitives', () => {
 
     test('no hover rule on a control reaches a disabled one, in any theme', () => {
       const sheets = pages.map(([name, render]) => [name, stylesOf(render())] as const);
-      for (const theme of deckardThemes) {sheets.push([theme, getDeckardThemeCss(theme)]);}
+      for (const theme of deckardThemes) {sheets.push([theme, themeSheet(theme)]);}
       let guarded = 0;
       for (const [name, css] of sheets) {
         const found = selectorsOf(css).filter(unguarded);
@@ -131,12 +132,19 @@ suite('Component primitives', () => {
 
   suite('tags on cards (decision 4)', () => {
     test('the card-tag layer comes after the themes and high contrast, and before zen', () => {
-      const tail = getPageTailCssText();
-      const layer = tail.indexOf(getCardTagCss());
-      assert.ok(layer > tail.indexOf(getHighContrastCss()), 'after high contrast, and so after the theme');
-      assert.ok(layer < tail.indexOf(getZenCss()), 'before zen');
-      assert.ok(getCardTagCss().includes('body .board-card button.tag-open:not(:hover):not(:focus-visible)'));
-      assert.doesNotMatch(getCardTagCss(), /white-space/, 'one-line geometry stays with the tag sheet');
+      for (const [name, render] of pages) {
+        const linked = linkedSheets(render());
+        assert.match(linked[1] ?? '', /^themes\/[a-z]+\.css$/, `${name}: the theme follows the page's own sheet`);
+        assert.strictEqual(linked[2], 'tail.css', `${name}: the tail follows the theme, last`);
+        assert.strictEqual(linked.length, 3, `${name}: links its sheet, its theme, and the tail`);
+      }
+      const tail = readSheet('shared/tail.css');
+      const layer = tail.indexOf('@import "./cardTag.css";');
+      assert.ok(layer > tail.indexOf('@import "./highContrast.css";'), 'after high contrast, and so after the theme');
+      assert.ok(layer < tail.indexOf('@import "./zen.css";'), 'before zen');
+      const cardTag = readSheet('shared/cardTag.css');
+      assert.ok(cardTag.includes('body .board-card button.tag-open:not(:hover):not(:focus-visible)'));
+      assert.doesNotMatch(cardTag, /white-space/, 'one-line geometry stays with the tag sheet');
     });
   });
 

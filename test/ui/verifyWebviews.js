@@ -18,9 +18,19 @@
 const { pages } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { readGoldens } = require('../harness/domGoldens.js');
-// Read after pages.js, which is what redirects 'vscode' to the stub.
-const { getZenCss } = require('../harness/modules.js').components;
-const zenSheet = getZenCss().trim();
+const path = require('node:path');
+const { readFileSync } = require('node:fs');
+const esbuild = require('esbuild');
+
+/**
+ * CSS with its whitespace and comments set aside, so a sheet as written and
+ * the same sheet as esbuild built it read alike.
+ */
+function normalizeCss(css) {
+  return esbuild.transformSync(css, { loader: 'css', minifyWhitespace: true }).code.trim();
+}
+/** The zen sheet as written, which every page's tail ends with. */
+const zenSheet = normalizeCss(readFileSync(path.join(__dirname, '..', '..', 'src', 'webview', 'shared', 'zen.css'), 'utf8'));
 /**
  * Layout each page must still have after the cascade.
  *
@@ -183,10 +193,11 @@ for (const [name, render] of pages) {
   // Zen is the last layer. Its rules only beat a theme's because they come
   // after them — LCARS' .metric:nth-child(3n + 2)::before ties with
   // body.zen .metric::before on specificity, so position is what decides it.
-  if (!styles.includes(zenSheet)) {
-    problems.push('the zen sheet is missing or altered after getZenCss()');
-  } else if (styles.trimEnd() !== styles.slice(0, styles.indexOf(zenSheet)) + zenSheet) {
-    problems.push('the zen sheet is not the last layer in the style block');
+  const cascade = normalizeCss(styles);
+  if (!cascade.includes(zenSheet)) {
+    problems.push('the zen sheet is missing or altered from src/webview/shared/zen.css');
+  } else if (!cascade.endsWith(zenSheet)) {
+    problems.push('the zen sheet is not the last layer of the page\'s sheets');
   }
 
   // Tokens must be declared once, by the shared sheet.

@@ -1,12 +1,6 @@
 import * as assert from 'assert';
 
-import {
-  getShellCss,
-  getSurfaceCss,
-  getTaskBoardCss,
-  getTaskListCss,
-  getZenCss,
-} from '../ui/webview/components';
+import { readSheet } from './sheets';
 
 /**
  * The shared sheet spaces everything from one six-step scale, and zen
@@ -30,17 +24,17 @@ function offScale(css: string): string[] {
 suite('Spacing scale', () => {
   test('the shared sheet spaces from the scale', () => {
     for (const [name, sheet] of [
-      ['shell', getShellCss()],
-      ['surfaces', getSurfaceCss()],
-      ['task board', getTaskBoardCss()],
-      ['task list', getTaskListCss()],
+      ['shell', readSheet('shared/shell.css')],
+      ['surfaces', readSheet('shared/surface.css')],
+      ['task board', readSheet('shared/taskBoard.css')],
+      ['task list', readSheet('shared/taskList.css')],
     ] as const) {
       assert.deepStrictEqual(offScale(sheet), [], `${name}: every padding, gap, and margin is a step of the scale`);
     }
   });
 
   test('zen re-declares the steps and restates no spacing rule', () => {
-    const zen = getZenCss();
+    const zen = readSheet('shared/zen.css');
     assert.match(zen, /body\.zen \{ --space-1: 3px; --space-2: 6px; --space-3: 8px;/);
     assert.ok(
       !/body\.zen \.(card|task|task-row|metric|board-column) \{[^}]*padding:/.test(zen),

@@ -2,10 +2,10 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { renderMarkdown } from '../ui/webview/rendering';
-import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
-import { getHighContrastCss, getPageTailCssText } from '../ui/webview/components';
+import { deckardThemes, getDeckardTheme } from '../ui/webview/themes';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
 
 function assertWebviewScriptParses(html: string): void {
   const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
@@ -24,7 +24,7 @@ function extension(): vscode.Extension<unknown> {
 
 suite('Webview contracts', () => {
   test('renders tag-clustered graph relationships', () => {
-    const html = renderPage('notesGraph');
+    const html = withSheets(renderPage('notesGraph'));
 
     assertWebviewScriptParses(html);
     // The graph's controls are driven in the Notes Graph behavior suite.
@@ -171,7 +171,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders accessible Home and Tags dashboard modes with focused controls', () => {
-    const html = renderPage('dashboard');
+    const html = withSheets(renderPage('dashboard'));
 
     assert.strictEqual(html.includes('img-src vscode-webview://deckard;'), true);
     assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
@@ -301,7 +301,7 @@ suite('Webview contracts', () => {
   test('draws a tag the same way in every theme', () => {
     // A tag is a button, so a theme that shouts its controls shouted its tags.
     for (const theme of deckardThemes) {
-      const shouting = (getDeckardThemeCss(theme).match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
+      const shouting = (themeSheet(theme).match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
         (rule) =>
           /\.tag-open|\.inline-tag/.test(rule.slice(0, rule.indexOf('{'))) &&
           /text-transform:\s*uppercase/.test(rule.slice(rule.indexOf('{'))),
@@ -311,7 +311,7 @@ suite('Webview contracts', () => {
   });
 
   test('Corpo takes every color from the VS Code theme and drops the chrome', () => {
-    const corpo = getDeckardThemeCss('corpo');
+    const corpo = themeSheet('corpo');
     assert.strictEqual(corpo.includes('--bg: var(--vscode-editor-background);'), true);
     assert.strictEqual(corpo.includes('--text: var(--vscode-foreground);'), true);
     assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
@@ -347,138 +347,138 @@ suite('Webview contracts', () => {
       'cooper',
     ]);
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.note:hover, .note-row:hover { border-color: var(--amber); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes('#3fb6c9'),
+      themeSheet('oblivion').includes('#3fb6c9'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes(
+      themeSheet('oblivion').includes(
         '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes(
+      themeSheet('oblivion').includes(
         '.card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }',
       ),
       true,
     );
-    assert.strictEqual(getDeckardThemeCss('lcars').includes('#211b25'), true);
+    assert.strictEqual(themeSheet('lcars').includes('#211b25'), true);
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('border-radius: 0 15px 15px 0'),
+      themeSheet('lcars').includes('border-radius: 0 15px 15px 0'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         'border-left: 7px solid var(--amber)',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('background: var(--favorite-red)'),
+      themeSheet('lcars').includes('background: var(--favorite-red)'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('.metrics { gap: 0; }'),
+      themeSheet('lcars').includes('.metrics { gap: 0; }'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.dashboard-tabs-row { border-bottom-color: var(--line-strong); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.overview-tabs-row { border-bottom-color: var(--line-strong); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.metric::before { border-bottom-color: var(--amber); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.active-file .tag-list button { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.inline-tag, .note-title .inline-tag, .task-title .inline-tag { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.saved-filter-remove.saved-filter-remove { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.active-name .active-filter-tag { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0;',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.favorite-toggle { background: var(--cyan); color: #7a1f1f; }',
       ),
       true,
@@ -486,165 +486,165 @@ suite('Webview contracts', () => {
     // The heart is drawn in the toggle's own color, so no theme colors it
     // apart: a theme that did would strand it when the toggle is hovered.
     assert.strictEqual(
-      deckardThemes.some((theme) => getDeckardThemeCss(theme).includes('.favorite-heart {')),
+      deckardThemes.some((theme) => themeSheet(theme).includes('.favorite-heart {')),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.task-row .task-title, .task .task-title, .note-row .card-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source, .note-row .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         'section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.tag-filter summary, .tag-filter-search { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; } .tag-filter-search::placeholder { color: #050505; opacity: 1; } .tag-filter summary .control-icon-svg, .tag-filter-search-control .control-icon-svg, .tag-filter-clear { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover:where(:not(:disabled):not([aria-disabled="true"])), button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.overview-search, .catalog-search, .task-search, .note-search { border: 2px solid var(--cyan-bright); border-radius: 0 15px 15px 0; background: var(--panel); box-shadow: inset 0 0 0 1px var(--cyan-bright); color: var(--text); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.dashboard-tabs button { border-radius: 0; } .dashboard-tabs button:first-child { border-radius: 15px 0 0 0; } .dashboard-tabs button:last-child { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.save-filter.save-filter { border-color: var(--panel-deep); color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('.sidebar-toolbar'),
+      themeSheet('lcars').includes('.sidebar-toolbar'),
       false,
       'the sidebar\'s actions are in its view title bar, not the page',
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.control-icon select:hover:where(:not(:disabled):not([aria-disabled="true"])) + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes('--bg-dark: #090713'),
+      themeSheet('synthwave').includes('--bg-dark: #090713'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes('repeating-linear-gradient'),
+      themeSheet('synthwave').includes('repeating-linear-gradient'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes(
+      themeSheet('synthwave').includes(
         'background: var(--cyan); color: var(--bg-dark);',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes(
+      themeSheet('synthwave').includes(
         '.favorite-toggle.favorite { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes('--bg-dark: #010401'),
+      themeSheet('tomcat').includes('--bg-dark: #010401'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes('repeating-linear-gradient'),
+      themeSheet('tomcat').includes('repeating-linear-gradient'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes('inset 0 0 0 1px'),
+      themeSheet('tomcat').includes('inset 0 0 0 1px'),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes(
+      themeSheet('tomcat').includes(
         'box-shadow: inset 2px 0 0 var(--green)',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes(
+      themeSheet('tomcat').includes(
         '.favorite-toggle { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('--bg-dark: #d6cda9'),
+      themeSheet('fellowship').includes('--bg-dark: #d6cda9'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes(
+      themeSheet('fellowship').includes(
         "--font-display: Georgia, 'Times New Roman', serif",
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes(
+      themeSheet('fellowship').includes(
         'body { background-image: none; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('gradient'),
+      themeSheet('fellowship').includes('gradient'),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('border-radius: 5px'),
+      themeSheet('fellowship').includes('border-radius: 5px'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('inset 0 0 0 1px'),
+      themeSheet('fellowship').includes('inset 0 0 0 1px'),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes(
+      themeSheet('tomcat').includes(
         '.favorite-toggle.favorite { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
       ),
       true,
     );
-    const cooper = getDeckardThemeCss('cooper');
+    const cooper = themeSheet('cooper');
     assert.strictEqual(cooper.includes('--bg-dark: #030405'), true);
     assert.strictEqual(cooper.includes('--amber: #dca24a'), true, "Gargantua's gold");
     // A tag's resting color never outranks the fill a theme gives it on hover.
@@ -677,23 +677,23 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {
-    const html = renderPage('dashboard');
+    const css = pageSheets(renderPage('dashboard'));
 
     // The shared shell centers main without a frame; the Dashboard widens it.
     assert.strictEqual(
-      html.includes(
+      css.includes(
         'main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }',
       ),
       true,
     );
     assert.strictEqual(
-      html.includes('main { width: 100%; max-width: 1400px; }'),
+      css.includes('main { width: 100%; max-width: 1400px; }'),
       true,
     );
     // A theme may restyle main; the page and the shared sheet give it no frame.
-    const themeCss = getDeckardThemeCss(getDeckardTheme());
-    assert.strictEqual(html.includes(themeCss), true);
-    const pageCss = html.replace(themeCss, '');
+    const themeCss = themeSheet(getDeckardTheme());
+    assert.strictEqual(css.includes(themeCss), true, 'the page links the theme it draws in');
+    const pageCss = css.replace(themeCss, '');
     assert.strictEqual(
       /(^|[\s}])main\s*\{[^}]*\bborder(-[a-z]+)?\s*:/.test(pageCss),
       false,
@@ -701,7 +701,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders search page tabs and side-by-side layouts', () => {
-    const html = renderPage('searchPage');
+    const html = withSheets(renderPage('searchPage'));
 
     assertWebviewScriptParses(html);
     assert.strictEqual(
@@ -778,7 +778,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders formatted related-note relevance explanations', () => {
-    const html = renderPage('sidebarNotes');
+    const html = withSheets(renderPage('sidebarNotes'));
 
     assertWebviewScriptParses(html);
                                         // Writing a link to a result is held to what the sidebar does; see the
@@ -885,7 +885,7 @@ suite('Webview contracts', () => {
   });
 
   test('every theme defers to a high contrast editor theme', () => {
-    const contrast = getHighContrastCss();
+    const contrast = readSheet('shared/highContrast.css');
     const block = /body\.vscode-high-contrast, body\.vscode-high-contrast-light \{([^}]*)\}/.exec(contrast);
     assert.ok(block, 'a high contrast block');
     assert.ok(block[1].includes('--text: var(--vscode-foreground);'), 'the text is the editor\'s own');
@@ -893,12 +893,14 @@ suite('Webview contracts', () => {
     assert.ok(!/#[0-9a-f]{3,6}\b/i.test(block[1]), 'the block names no color of its own');
     assert.ok(contrast.includes('@media (forced-colors: active)'), 'forced colors are tidied too');
     // Laid down after the theme, and before zen, which stays the last layer.
-    const tail = getPageTailCssText();
-    assert.ok(tail.includes(contrast), 'every page carries the block');
-    assert.ok(tail.indexOf(contrast) > tail.indexOf(getDeckardThemeCss(getDeckardTheme())), 'after the theme');
-    assert.ok(tail.indexOf('body.vscode-high-contrast') < tail.indexOf('body.zen'), 'before zen');
+    const page = renderPage('stats');
+    assert.ok(pageSheets(page).includes(contrast), 'every page carries the block');
+    const linked = linkedSheets(page);
+    assert.ok(linked.indexOf('tail.css') > linked.indexOf(`themes/${getDeckardTheme()}.css`), 'after the theme');
+    const tail = readSheet('shared/tail.css');
+    assert.ok(tail.indexOf('@import "./highContrast.css";') < tail.indexOf('@import "./zen.css";'), 'before zen');
     for (const theme of deckardThemes) {
-      assert.ok(!getDeckardThemeCss(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
+      assert.ok(!themeSheet(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
     }
   });
 

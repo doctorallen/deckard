@@ -10,10 +10,10 @@ import {
   createSearchPageSnapshot,
 } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { getProvenanceCss, getZenCss } from '../ui/webview/components';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { pageSheets, readSheet } from './sheets';
 import { createQueryContext } from '../domain/query/queryContext';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
@@ -154,10 +154,18 @@ suite('Zen mode', () => {
     await setZen(true);
     const on = renderPage('dashboard');
 
-    assert.ok(!off.includes('<body class="zen">'), 'off marks the body');
-    assert.ok(on.includes('<body class="zen">'), 'on does not mark the body');
-    assert.ok(off.includes('body.zen {'), 'the sheet ships when zen is off');
-    assert.ok(on.includes('body.zen {'), 'the sheet ships when zen is on');
+    const zenOf = (html: string): boolean => {
+      const page = openWebviewPage(html);
+      try {
+        return page.document.body.classList.contains('zen');
+      } finally {
+        page.dispose();
+      }
+    };
+    assert.strictEqual(zenOf(off), false, 'off marks the body');
+    assert.strictEqual(zenOf(on), true, 'on does not mark the body');
+    assert.ok(pageSheets(off).includes('body.zen {'), 'the sheet ships when zen is off');
+    assert.ok(pageSheets(on).includes('body.zen {'), 'the sheet ships when zen is on');
   });
 
   test('takes no control away from the Dashboard', async () => {
@@ -209,7 +217,7 @@ suite('Zen mode', () => {
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {
-    const sheet = getZenCss();
+    const sheet = readSheet('shared/zen.css');
 
     // Ornament goes.
     assert.match(sheet, /body\.zen \.eyebrow,/);
@@ -231,7 +239,7 @@ suite('Zen mode', () => {
   });
 
   test('folds where an entry is written, in and out of zen, without leaving the tree', () => {
-    const sheet = getProvenanceCss();
+    const sheet = readSheet('shared/provenance.css');
 
     // Folded off-screen rather than out of the tree, so it is still
     // announced, still found by find-in-page, and comes back on focus.
@@ -250,7 +258,7 @@ suite('Zen mode', () => {
   });
 
   test('declares no color, so the contrast matrix cannot move', () => {
-    const sheet = getZenCss();
+    const sheet = readSheet('shared/zen.css');
     const declarations = sheet.match(/[a-z-]+\s*:[^;}]+/g) ?? [];
     const colored = declarations.filter((declaration) =>
       /^\s*(color|background|background-color|border-color)\s*:/.test(

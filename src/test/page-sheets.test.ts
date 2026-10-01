@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { getBaseCss, getPageTailCssText } from '../ui/webview/components';
 import { renderablePages } from './pages';
+import { expandSheet, linkedSheets, readSheet, sheetSource } from './sheets';
 
 /**
  * What a page's own sheet may and may not do beside the shared ones.
@@ -17,15 +17,18 @@ suite('Page sheets', () => {
     [...css.matchAll(/(--[a-z][\w-]*)\s*:/g)].map((match) => match[1]);
 
   test('no page sheet redeclares a token the base sheet owns', () => {
-    const base = getBaseCss();
-    const tail = getPageTailCssText();
+    const base = expandSheet('shared/base.css');
     const owned = new Set(tokens(base));
     assert.ok(owned.has('--text') && owned.has('--cyan-bright') && owned.has('--font-mono'), 'the base sheet owns the palette');
     for (const [name, render] of pages) {
-      const html = render();
-      const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n');
-      assert.ok(styles.includes(base) && styles.includes(tail), `${name}: carries the shared sheets`);
-      const own = styles.replace(base, '').replace(tail, '');
+      const [sheet, ...tail] = linkedSheets(render());
+      assert.match(tail.join(' '), /^themes\/[a-z]+\.css tail\.css$/, `${name}: links its theme and the tail after its own sheet`);
+      assert.match(
+        readSheet(sheetSource(sheet)),
+        /^\/\*[\s\S]*?\*\/\s*@import "\.\.\/shared\/base\.css";/,
+        `${name}: its sheet imports the base sheet first`,
+      );
+      const own = expandSheet(sheetSource(sheet)).replace(base, '');
       const redeclared = [...new Set(tokens(own).filter((token) => owned.has(token)))];
       assert.deepStrictEqual(redeclared, [], `${name}: redeclares a base token`);
     }

@@ -1,8 +1,8 @@
 /*
- * *
  * The complete base sheet, in cascade order.
  *
- * A page includes this first, then its own rules, then the theme sheet.
+ * Each page's sheet imports this first, then holds its own rules; the page
+ * shell links the theme and the tail after it.
  */
 @import "./designTokens.css";
 @import "./shell.css";
