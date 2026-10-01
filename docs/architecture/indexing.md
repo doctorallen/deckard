@@ -8,7 +8,8 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 
 | File | What it does |
 | --- | --- |
-| [`src/core/workspace/indexer.ts`](../../src/core/workspace/indexer.ts) | `WorkspaceIndexer`: the facade every caller uses, which puts the four pieces below together and hands each call to one |
+| [`src/core/workspace/indexReader.ts`](../../src/core/workspace/indexReader.ts) | The roles callers take the index by: `IndexReader`, `IndexSearch`, `IndexScanStatus`, `IndexUpdates`, and `IndexControl`, and `IndexRoles`, all of them at once |
+| [`src/core/workspace/indexer.ts`](../../src/core/workspace/indexer.ts) | `createWorkspaceIndex`: builds the pieces below in order, wires the watcher to the service and the service to the publisher, and returns every role as one `IndexRoles` value |
 | [`src/core/workspace/indexService.ts`](../../src/core/workspace/indexService.ts) | `IndexService`: lifecycle, warm start, the cache fingerprint, scans and their progress, the fold, parking, the full-text cache, and the notes that could not be read |
 | [`src/core/workspace/changeReactions.ts`](../../src/core/workspace/changeReactions.ts) | `reactionsTo`: what each change to the workspace requires, as a pure table |
 | [`src/core/workspace/changeWatcher.ts`](../../src/core/workspace/changeWatcher.ts) | `ChangeWatcher`: the workspace's events and file watchers, and the debounced change queue |
@@ -25,7 +26,21 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 
 None of the modules in `src/core` imports `vscode`. The scanner reads folders, files, and settings through one `WorkspaceFileAccess` made of the workspace, file-system, and configuration ports. The `ChangeWatcher` hears about changes through the `WorkspaceEvents` port, the `IndexService` shows a scan's progress through the `Progress` port, and the `ViewPublisher` announces updates with core's own `Emitter`. `SearchStore` takes the storage folder as a path, and `PreferenceSnapshots` writes through the file-system port. Each port call goes to the same VS Code API with the same arguments as before, so nothing a reader sees changed.
 
-Both the scanner and the indexer are generic in the URI type they are given, `WorkspaceScanner<U>` and `WorkspaceIndexer<U>`. The extension gives them `vscode.Uri`, so every URI they hand back, such as `getUri` or `getNotesFolderUri`, is a `vscode.Uri` the UI passes to VS Code as it is. A UI function that does so names its parameter `WorkspaceIndexer<vscode.Uri>`. A test gives them plain objects from `src/test/fakeWorkspace.ts`, so the scanner, indexer, and cache suites run under `test:unit`.
+The scanner, and the roles that hand back its URIs, are generic in the URI type they are given: `WorkspaceScanner<U>`, `NoteFiles<U>`, `IndexReader<U>`, and `IndexRoles<U>`. The extension gives them `vscode.Uri`, so every URI they hand back, such as `getUri` or `getNotesFolderUri`, is a `vscode.Uri` the UI passes to VS Code as it is. A UI function that does so names its parameter `IndexReader<vscode.Uri>`. A test gives them plain objects from `src/test/fakeWorkspace.ts`, so the scanner, index, and cache suites run under `test:unit`.
+
+## The roles callers take
+
+No caller holds the pieces. Each is typed by the roles it uses, from `indexReader.ts`, and is handed the one value `createWorkspaceIndex` returns, or in a test a fake with only those members.
+
+| Role | Members | Played by |
+| --- | --- | --- |
+| `IndexReader` | `IndexContents` (`ready`, `getSnapshot`, `getTask`, `getParkedRules`) and `NoteFiles` (`getFilePath`, `getUri`, `isNotesFile`, `getNotesFolderUri`, `getTemplatesFolderUri`, `parse`) | `IndexService`, and the scanner for `NoteFiles` |
+| `IndexSearch` | `searchEntries`, `suggestWords` | `IndexService`, over the full-text cache |
+| `IndexScanStatus` | `hasIndexed`, `scanProgress`, `onDidProgress`, `isStale`, `getUnreadable`, `getLastScan` | `IndexService` |
+| `IndexUpdates` | `onDidUpdate`, `onDidUpdateView`, `published` | `ViewPublisher` |
+| `IndexControl` | `start`, `refresh` | `createWorkspaceIndex`, whose `start` starts the watcher, then the service |
+
+`parse` is a reader's: it parses the text an editor holds as the index would, and changes nothing, so the lenses, the Outline, and capture take it without being able to rescan. Most commands take an `IndexReader`. One that rescans after it writes, such as a tag rename, a review, or a rollover, adds `IndexControl`. A view adds `IndexUpdates` to redraw, and `IndexScanStatus` to say how far a first scan has got. Find and the search pages add `IndexSearch`. `extension.ts` keeps the whole `IndexRoles` value, and disposing of it stops the watcher, then the publisher, then the service.
 
 ## Scan and parse
 
@@ -72,7 +87,7 @@ The queue is keyed by URI and keeps only the newest change for each. It flushes 
 
 ## The cache and its fingerprint
 
-The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. On a warm start the indexer reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
+The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. On a warm start the `IndexService` reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
 
 The cache is trusted only when it was written under the same fingerprint. The fingerprint joins these parts:
 
@@ -120,4 +135,4 @@ The mechanism above stays. The cache format and the fingerprint do not change, s
 | 1 | `buildWorkspaceIndex` moves to `domain/index`, and `panelPriority` and `viewPriority` move to the webview host. |
 | 2 | Done: the scanner and indexer take the workspace, `FileSystem`, `Configuration`, `WorkspaceEvents`, and `Progress` ports; their `EventEmitter`s and `withProgress` left core. `SearchStore` takes a path instead of a `Uri`. The workspace, warm-start, index-publishing, search-store, and preference-snapshots suites run under `test:unit`. |
 | 3 | Done: `WorkspaceIndexer` split into an `IndexService`, a `ChangeWatcher` with its pure `reactionsTo` table, and a `ViewPublisher`, and the two association walks became one `collectAssociationEvidence`. The watcher stayed in core, since it needs only the `WorkspaceEvents` port. `WorkspaceIndexer` is a facade with its old surface. |
-| 4 | Callers move from the `WorkspaceIndexer` facade to the piece each uses, and the facade is deleted. |
+| 4 | Done: callers take the roles of the index they use, `IndexService` and `ViewPublisher` implement the roles they own, and the `WorkspaceIndexer` facade is gone. `createWorkspaceIndex` builds the pieces in the facade's order and returns every role as one value. |

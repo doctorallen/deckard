@@ -6,7 +6,8 @@ import * as vscode from 'vscode';
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './shared/timing';
-import { WorkspaceIndexer } from './core/workspace/indexer';
+import { createWorkspaceIndex } from './core/workspace/indexer';
+import type { IndexReader, IndexRoles } from './core/workspace/indexReader';
 import { WorkspaceScanner } from './core/workspace/scanner';
 import { createVscodeEditApplier, createVscodeHistoryWriter } from './platform/vscodeEditApplier';
 import { createVscodeProgress } from './platform/vscodeProgress';
@@ -232,19 +233,17 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // The index reads the workspace through ports; this is VS Code's.
   const vscodeWorkspace = createVscodeWorkspace();
   const scanner = new WorkspaceScanner(vscodeWorkspace);
-  const indexer = new WorkspaceIndexer(
+  const indexer = createWorkspaceIndex({
     scanner,
-    new SearchStore(context.storageUri?.fsPath),
-    {
-      version: String(context.extension.packageJSON.version),
-      // A developer's parser edits do not change the version, so only an
-      // installed Deckard starts from the notes the cache kept.
-      readCache: context.extensionMode === vscode.ExtensionMode.Production,
-      events: createVscodeWorkspaceEvents(),
-      progress: createVscodeProgress(),
-      ownWrites: history.ownWrites,
-    },
-  );
+    searchStore: new SearchStore(context.storageUri?.fsPath),
+    version: String(context.extension.packageJSON.version),
+    // A developer's parser edits do not change the version, so only an
+    // installed Deckard starts from the notes the cache kept.
+    readCache: context.extensionMode === vscode.ExtensionMode.Production,
+    events: createVscodeWorkspaceEvents(),
+    progress: createVscodeProgress(),
+    ownWrites: history.ownWrites,
+  });
   // Favorites, pins and view counts name what is in a workspace, so they are
   // kept with it. A window with no folder open has no workspace to own them
   // and nothing to index, so it reads the machine-wide store alone.
@@ -1324,7 +1323,7 @@ export function deactivate(): void {
  * Names the long-lived services that share the extension lifecycle.
  */
 interface ExtensionServices {
-  indexer: WorkspaceIndexer;
+  indexer: IndexRoles;
   preferences: PreferencesStore;
   activeSearch: ActiveSearch;
   searchPanels: SearchPanels;
@@ -1381,7 +1380,7 @@ function asOutlineNode(value: unknown): OutlineNode | undefined {
  */
 async function showQuerySearch(
   searchPanels: SearchPanels,
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
   requestedQuery: unknown,
 ): Promise<void> {
   await indexer.ready;
@@ -1407,7 +1406,7 @@ async function showQuerySearch(
  */
 async function showTagOverview(
   searchPanels: SearchPanels,
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
   requestedTag: unknown,
 ): Promise<void> {
   await indexer.ready;
