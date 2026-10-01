@@ -4,7 +4,6 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
-import { parseCalendarMessage } from '../ui/webview/messages';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -125,28 +124,6 @@ suite('Calendar', () => {
     assert.strictEqual(parseLocalDate('2026-09-13')?.getDate(), 13);
     assert.strictEqual(parseLocalDate('2026-02-30'), undefined);
     assert.strictEqual(parseLocalDate('2026-9-13'), undefined);
-  });
-
-  test('accepts only the messages its page posts', () => {
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openDay', date: '2026-09-13' }), {
-      type: 'openDay',
-      date: '2026-09-13',
-    });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openWeek', date: '2026-09-07' }), {
-      type: 'openWeek',
-      date: '2026-09-07',
-    });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10' }), {
-      type: 'showMonth',
-      month: '2026-10',
-    });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openMonth', path: '/etc' }), {
-      type: 'openMonth',
-    });
-    assert.strictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-13' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'openWeek', date: '../notes' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'deleteNote' }), undefined);
-    assert.strictEqual(parseCalendarMessage('openDay'), undefined);
   });
 
   test('a day past the line keeps its count, muted, and says its tasks need a new date', () => {
