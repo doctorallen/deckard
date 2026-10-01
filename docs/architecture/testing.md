@@ -1,6 +1,6 @@
 # Testing
 
-**Status: current.** This page describes the suites as they stand after Phase 5 of [the refactor plan](../implementation/19-refactor.md); each later phase rewrites it to describe what then exists.
+**Status: current.** This page describes the suites as they stand after Phase 6 step 3 of [the refactor plan](../implementation/19-refactor.md); each later phase rewrites it to describe what then exists.
 
 Deckard has one suite per kind of failure. Each catches something no other suite can, so a change is verified by the set, not by one suite.
 
@@ -17,7 +17,9 @@ Deckard has one suite per kind of failure. Each catches something no other suite
 | `npm run test:visual` | `checkVisual.js` screenshots every surface, theme, and zen state, and compares pixels to a baseline | A backdrop, a glow, or a control that moved. Nothing else sees how a page looks |
 | `npm run test:dom` | `checkDom.js` draws every surface in Chrome, in Replicant with and without zen, and compares its normalized body with the golden in `test/ui/dom-baseline/` | A class, attribute, element, or text node that changed anywhere on a page, before any pixel moves and below the first screen. It is the gate for Phase 6, which rewrites every page's markup |
 
-`npm run check-types` and `npm run lint` are not suites, but they are the per-commit gate. `lint` runs ESLint over the source, the tests, and the scripts, and dependency-cruiser over the imports ([layers.md](layers.md)). `bench:index` measures indexing speed and asserts nothing.
+`npm run check-types` and `npm run lint` are not suites, but they are the per-commit gate. `check-types` runs `tsc` over the root config and over `src/webview/tsconfig.json`, which checks page code against the DOM. `lint` runs ESLint over the source (`.ts` and `.tsx`), the tests, and the scripts, and dependency-cruiser over the imports ([layers.md](layers.md)). `bench:index` measures indexing speed and asserts nothing.
+
+Every page links its style sheets from `dist/webview/` (and will load its bundle from there), so a suite that draws a page builds them first: `test:unit`, `test:ui`, `test:contrast`, `test:e2e`, `test:layout`, `test:visual`, and `test:dom` each run `npm run build:webview` after `compile-tests`, and `pretest` runs `node esbuild.js`, which builds the host and the pages. `node scripts/check-bundle-inputs.js` checks what each bundle took in, from the metafiles the last build wrote to `out/`: the host only the third-party packages it took in when the check arrived, a page's script only Preact, and a page's sheet nothing ([webviews.md](webviews.md#bundling-and-loading)).
 
 ## Which suites run where
 
@@ -29,9 +31,11 @@ The Node harnesses share three modules in `test/harness/`, so a page or a file c
 
 | Module | What it does |
 | --- | --- |
-| `loadPage.js` | Makes a page self-contained: each `<script src>` and stylesheet `<link>` that names a file of the extension is inlined with the page's nonce. jsdom runs only inline scripts, Chrome opens a page as an iframe's `srcdoc`, and the text checks read one string, so every harness passes its page through here |
+| `loadPage.js` | Makes a page self-contained: each `<script src>` and stylesheet `<link>` that names a file of the extension is inlined with the page's nonce and marked `data-inlined-from`. A sheet's `url()`s are resolved against the sheet, and the nonce is added to `style-src` for a sheet the policy admits by its origin, so Chrome admits the inline copy exactly when VS Code would admit the link. jsdom runs only inline scripts, Chrome opens a page as an iframe's `srcdoc`, and the text checks read one string, so every harness passes its page through here |
 | `modules.js` | Names each compiled module the harnesses load once, as a lazy getter, so a file move is one edit |
 | `importGraph.js` | Reads the import graph with the project's own dependency-cruiser configuration |
+
+Tests that assert on CSS text read the sheets as written under `src/webview`, through `src/test/sheets.ts`: `readSheet` and `themeSheet` read one file, `expandSheet` puts each `@import` in place as esbuild does, `linkedSheets` lists the sheets a page's shell links in cascade order, and `pageSheets` and `withSheets` give every rule a page draws with, the latter after its HTML. `verifyWebviews.js` holds the zen sheet, as written, to be the last layer of every loaded page.
 
 `src/test/pages.ts` is the page catalog: every webview page and how to render it. Every mocha suite that builds a page calls its `renderPage(id, options)`, and `test/ui/pages.js` takes its pages from it too, so a builder's signature changes in one file. Each page renders against the one stand-in webview of `src/test/pageWebview.ts`, whose `extensionUri` is the repository and whose `asWebviewUri` hands out every file of the repository as `vscode-webview://deckard/<path>`, the address the page loader reads back. A page that loads its bundle from `dist/webview` therefore runs in every harness, and gets the same URIs on every machine. The e2e stub's `asWebviewUri` maps `dist/webview` the same way. `openWebviewPage(html, state, options)` in `src/test/webviewPage.ts` runs a page in jsdom for a mocha suite, and `test/e2e/support.js` mounts one for an e2e suite. Both pass messages as JSON, as VS Code does. `options.savedState` is what the page's `getState` returns from the start, as in a webview VS Code restored. `webview-saved-state.test.ts` uses it to pin what each page draws from every state shape a release has saved (the persisted-formats inventory, rows 20 to 24), and `searchPage.e2e.js` and `taskBoard.e2e.js` pin what the hosts reopen on.
 
@@ -61,7 +65,7 @@ A refactor phase lands only on a clean full run with no pixel changes. A visual 
 
 ## Continuous integration
 
-`ci.yml` runs on pushes to `dev`, the release branches, and every `refactor/**` branch, and on pull requests into the release branches, with a 25-minute limit. It runs `npm test` under `xvfb`, which runs `test:unit` first, then `test:ui`, `test:e2e`, `test:layout`, and `test:visual -- --ci`. With `--ci`, a surface with no baseline fails the run rather than being recorded, and the screenshots, diffs, and any recorded baseline are uploaded as the run's `visual-<sha>` artifact. Each run also writes the folder-level import graph to its summary.
+`ci.yml` runs on pushes to `dev`, the release branches, and every `refactor/**` branch, and on pull requests into the release branches, with a 25-minute limit. It runs `npm test` under `xvfb`, which runs `test:unit` first, then `test:ui`, `test:e2e`, `test:layout`, and `test:visual -- --ci`. After packaging the VSIX it runs `scripts/check-bundle-inputs.js` over the production build. With `--ci`, a surface with no baseline fails the run rather than being recorded, and the screenshots, diffs, and any recorded baseline are uploaded as the run's `visual-<sha>` artifact. Each run also writes the folder-level import graph to its summary.
 
 `release.yml` calls the same job as a reusable workflow before it builds and publishes, so a merge whose CI run was cancelled is not released untested.
 

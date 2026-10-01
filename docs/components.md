@@ -1,36 +1,55 @@
 # Deckard webview components
 
-Every Deckard panel is a standalone HTML document built from a template
-literal in `src/ui/webview/*Html.ts`. Nothing can be imported at runtime, so
-anything shared between panels is shared as **text**: one style sheet and one
-script, both produced by `src/ui/webview/components.ts` and interpolated into
-each page.
+> **Since Phase 6 step 3 the style sheets are files.** Each `get…Css()`
+> function this page names is now a sheet under `src/webview/shared/`, named
+> after it (`getShellCss()` is `shell.css`, `getZenCss()` is `zen.css`,
+> `getQueryEditorCss()` is `queryEditor.css`, and so on); `getBaseCss()` is
+> `base.css`, which imports its parts; the tail is `tail.css`; each theme is
+> `themes/<theme>.css`; and each page's own rules are in
+> `src/webview/<page>/page.css`. The page shell links them from
+> `dist/webview/` in the cascade order below
+> ([architecture/webviews.md](architecture/webviews.md#css-and-theming)).
+> The scripts are still text, as this page describes, until Phase 6 moves
+> each page to a bundle and rewrites this page.
 
-That file is the single place to change a component. A page keeps only the
-rules and behavior that are genuinely its own.
+Every Deckard panel is an HTML document whose body, script and all, is built
+from a template literal in `src/ui/webview/*Html.ts`. Nothing can be
+imported at runtime, so the script shared between panels is shared as
+**text**, produced by `src/ui/webview/components.ts` and interpolated into
+each page. The style sheets every page shares are files under
+`src/webview/shared/`, which each page links.
+
+Those are the places to change a component. A page keeps only the rules and
+behavior that are genuinely its own.
 
 ```
-components.ts   tokens, base stylesheet, shared page script, nonce, CSP
-themes.ts       per-theme token overrides, applied after the base sheet
-icons.ts        SVG assets shared between pages
+components.ts          shared page script, nonce, the sheets after a page's own
+host/pageShell.ts      the document around a page's body: CSP and sheet links
+src/webview/shared/    tokens, base sheet, component sheets, themes, the tail
+icons.ts               SVG assets shared between pages
 ```
 
 ## How a page is assembled
 
 ```ts
-import {
-  createNonce, getBaseCss, getComponentScript, getPageTailCss, zenBodyAttribute,
-} from './components';
+import { createNonce, getComponentScript } from './components';
+import { buildPageShell } from './host/pageShell';
 
 const nonce = createNonce();
-const csp = getContentSecurityPolicy(webview.cspSource, nonce);
+return buildPageShell({
+  webview, extensionUri, page: 'stats', title: 'Deckard Stats', nonce,
+  theme, zen: isZenModeEnabled(),
+  body: `…`,
+});
+```
+
+```css
+/* src/webview/stats/page.css */
+@import "../shared/base.css";
+/* only what is specific to this page */
 ```
 
 ```html
-<style nonce="${nonce}">${getBaseCss()}
-  /* only what is specific to this page */
-  ${getPageTailCss()}
-</style>
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
@@ -42,11 +61,12 @@ ${getComponentScript()}
 
 Cascade order matters and is always the same: **base sheet → page rules →
 theme sheet → control edges → provenance → high contrast → card tags → zen
-sheet.** A page overrides a component by restating the rule after
-`getBaseCss()`; a theme overrides tokens for everyone; card tags come after
-every theme so no theme's button rule reaches them; zen comes last because
-what it takes away is largely what a theme adds. `getPageTailCss()` emits
-everything after the page's rules, so no page has to remember the order.
+sheet.** A page overrides a component by restating the rule after the
+`@import` of `base.css`; a theme overrides tokens for everyone; card tags come
+after every theme so no theme's button rule reaches them; zen comes last
+because what it takes away is largely what a theme adds. The shell links the
+page's sheet, then its theme, then `tail.css`, which imports everything from
+control edges to zen, so no page has to remember the order.
 
 The page's `<body>` carries `${zenBodyAttribute()}`, which is `class="zen"`
 when zen is on and nothing when it is off. See **Zen mode** below.

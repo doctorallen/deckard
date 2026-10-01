@@ -4,9 +4,9 @@
 
 ## How pages are built today
 
-Each page's host function returns one template literal that holds the whole document. It carries a CSP `<meta>`, one inline `<style nonce>`, and one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
+Each page's host function still writes its page's script as one template literal. Since Phase 6 step 3 it hands that body to `buildPageShell`, which writes the CSP `<meta>` and links the page's style sheets from `dist/webview/` (see [Bundling and loading](#bundling-and-loading)); the body keeps one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
 
-This has costs. The compiler never sees page code, so `test/ui/checkWebviewScripts.js` extracts it by regex and runs `tsc` with `strict: false`. Every redraw assigns `app.innerHTML`, and `renderKeepingPlace` exists to restore the focus and scroll that each redraw loses. Seven of nine builders hand-write their CSP, and the copies have drifted. Everything below replaces this model. [docs/components.md](../components.md) documents the current mechanism until Phase 6 rewrites it.
+This has costs. The compiler never sees page code, so `test/ui/checkWebviewScripts.js` extracts it by regex and runs `tsc` with `strict: false`. Every redraw assigns `app.innerHTML`, and `renderKeepingPlace` exists to restore the focus and scroll that each redraw loses. Until step 3, seven of nine builders hand-wrote their CSP, and the copies had drifted. Everything below replaces this model. [docs/components.md](../components.md) documents the current mechanism until Phase 6 rewrites it.
 
 ## The shape every well-made extension shares
 
@@ -36,6 +36,7 @@ The research read the official guide and samples and the webview source of GitLe
 | The shared handlers | `sharedHandlers.ts` | Factories for the handlers that two or more pages run identically today: `chooseTheme`, `setZenMode`, `openHelp(section?)`, `ready`, `renameTag`, `parkTag` (both types), `toggleTask`, `openSource`, and `openTag` |
 | `ActiveSource<T>` | `activeSource.ts` | Which page of a kind is in front, and whether the sidebar shows its part. It is the one shape of `ActiveSearch`, `ActiveCalendar`, and `ActiveHome`. |
 | `panelPriority`, `viewPriority` | `panelPriority.ts` | A panel's or view's redraw priority. The old path re-exports them until 2.10. |
+| `buildPageShell`, `getContentSecurityPolicy`, `pageResourceRoots` | `pageShell.ts` | A page's document, its policy, and the folders its webview may load from; see [Bundling and loading](#bundling-and-loading). Added in step 3. |
 
 ### What a controller tells its host
 
@@ -120,13 +121,60 @@ Page-to-host messages are untrusted, so the host narrows each one before handlin
 
 ## Bundling and loading
 
-`esbuild.js` gains a second build context for the pages: `platform: 'browser'`, `format: 'iife'`, and one script entry and one CSS entry per page, written to `dist/webview/`. Page code lives in `src/webview/<page>/main.ts`, and shared code in `src/webview/shared/` as imported modules. A second `tsconfig.webview.json` with the DOM library type-checks it, so `checkWebviewScripts.js` is retired. Whether the four query-editor pages share one components bundle or each carry a copy is decided in Phase 6 by measuring both.
+*As built in Phase 6 step 3.* `esbuild.js` has two contexts. `node esbuild.js` builds both, `--production` minifies them, `--watch` watches them, and `--webview` (`npm run build:webview`) builds the pages alone.
 
-Each page's HTML shell links `dist/webview/<page>.css` and loads `dist/webview/<page>.js` with `<script nonce src>`. The webview's `localResourceRoots` is `dist/webview`, plus `resources/` where a page uses icons. The official guide calls external files the best practice, and every surveyed extension loads its bundle this way; see [decision 0001](decisions/0001-load-page-bundles-through-aswebviewuri.md).
+| Context | Entries | Output |
+| --- | --- | --- |
+| Host | `src/extension.ts`, `src/core/storage/searchStoreWorker.ts` | `dist/*.js`, Node, CommonJS |
+| Pages | Found, not listed: each folder of `src/webview` but `shared` gives its `main.ts` or `main.tsx` and its `page.css`, each sheet in `shared/themes` gives a theme, and `shared/tail.css` the tail | `dist/webview/<page>.js` and `<page>.css`, `dist/webview/themes/<theme>.css`, and `dist/webview/tail.css`; browser, `iife`, target `chrome148` (VS Code 1.134 runs Electron 42) |
+
+The page context compiles JSX with the automatic runtime and `jsxImportSource: 'preact'`. Its output folder is emptied before each build, so a removed page leaves no bundle behind, and with no page entries it builds nothing and still succeeds. Each build writes its esbuild metafile to `out/extension-meta.json` or `out/webview-meta.json`, which never ship. `scripts/check-bundle-inputs.js` reads them: the host bundles may take in only the 23 packages they took in when the check arrived (`markdown-it`, `sanitize-html`, `picomatch`, and theirs; the list only shrinks), a page's script only Preact, and a page's sheet nothing. CI runs it after packaging the VSIX.
+
+`src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency; no page imports it yet. Whether the query-editor pages share one components bundle or each carry a copy is decided in Phase 6 by measuring both.
+
+No page has a script entry yet: each still runs the inline script its builder writes. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body })`, which writes:
+
+1. the policy `getContentSecurityPolicy` builds (next section);
+2. `<link rel="stylesheet">` for `dist/webview/<page>.css`, then `themes/<theme>.css`, then `tail.css`, each through `asWebviewUri`, in that cascade order;
+3. `<body>`, with `class="zen"` when zen is on and any attributes the page adds, such as Help's anchor, around the body the builder wrote.
+
+The theme and zen come from the page's host, and `getPageTailCss({ theme, zen })` names the sheets after the page's own and the body's class, so nothing in the shell reads a setting. Each webview's `localResourceRoots` is `[dist/webview, resources]`, set wherever its options are set: the panel and view adapters, the search pages, and Related Notes. A builder therefore takes the extension's folder, and so do the controllers and `CalendarView` and `SidebarNotesView`, which hand it on.
+
+The page loader, `test/harness/loadPage.js`, inlines each linked sheet as it inlines a bundle, so every harness still sees a self-contained page. A sheet's `url()` is resolved against the sheet's URI, as the browser does, and the page nonce is added to `style-src` for a sheet the policy admits by its origin, so Chrome in the layout harness lets the inline copy through exactly when VS Code would let the link through.
+
+The built pages in development, and minified for the VSIX:
+
+| Sheet | Development | Production | Gzip |
+| --- | --- | --- | --- |
+| `dashboard.css` | 55.3 KB | 46.0 KB | 8.8 KB |
+| `searchPage.css` | 45.8 KB | 38.2 KB | 7.6 KB |
+| `sidebarNotes.css` | 44.7 KB | 37.1 KB | 7.3 KB |
+| `taskBoard.css` | 40.9 KB | 34.1 KB | 6.9 KB |
+| `calendarPage.css` | 37.1 KB | 30.9 KB | 6.4 KB |
+| `notesGraph.css` | 35.0 KB | 29.1 KB | 6.2 KB |
+| `help.css` | 34.2 KB | 28.4 KB | 6.3 KB |
+| `stats.css` | 33.6 KB | 27.8 KB | 6.1 KB |
+| `calendar.css` | 32.6 KB | 27.0 KB | 5.9 KB |
+| `relatedNotesDebug.css` | 30.1 KB | 25.0 KB | 5.6 KB |
+| `tail.css` | 14.5 KB | 13.1 KB | 2.4 KB |
+| `themes/*.css` | 0.9 to 9.5 KB | 0.8 to 8.3 KB | 0.3 to 1.8 KB |
+
+Each page's sheet carries the base sheet, about 28 KB of it in development; a page loads its own sheet, one theme, and the tail. The development build writes a source map beside each sheet; `.vscodeignore` keeps every `.map` out of the VSIX.
+
+Each page will load `dist/webview/<page>.js` with `<script nonce src>` once its script moves. The official guide calls external files the best practice, and every surveyed extension loads its bundle this way; see [decision 0001](decisions/0001-load-page-bundles-through-aswebviewuri.md).
 
 ## The Content Security Policy
 
-Every page builds its policy with `getContentSecurityPolicy`, so no policy can drift from the others. Scripts need the page nonce. `style-src` is plain `${cspSource}`, since no style is inline any more. `font-src` is granted only to a page that loads a font.
+*As built in Phase 6 step 3.* Every page's policy is built by `getContentSecurityPolicy(cspSource, nonce, extras)` in `host/pageShell.ts`, so no policy can drift from the others. `style-src` is the extension alone, since no style is inline any more. Scripts need the page nonce. `extras` (`ContentSecurityExtras`) adds images from the extension and the origins it lists, or from any HTTPS origin for `images: true`; fonts from the extension; or, for `scripts: false`, no `script-src` at all.
+
+| Page | Policy beyond `default-src 'none'; style-src <extension>` |
+| --- | --- |
+| Stats, Task Board, both calendars, search page, Related Notes, Notes Graph | `script-src 'nonce-…'` |
+| Dashboard | `script-src 'nonce-…'; img-src <extension>`, for the favorite heart in `resources/` |
+| Help | `script-src 'nonce-…'; img-src <extension> https://raw.githubusercontent.com`, for its logo and the guide's screenshots |
+| Related Notes debug | nothing: it runs no script and shows no image |
+
+No page loads a font, so none is granted `font-src`.
 
 Only Chrome enforces the policy. jsdom ignores CSP entirely: a script with the wrong nonce ran in the probe. So the headless-Chrome `srcdoc` harness in `test/ui/checkLayout.js` is the one place a CSP regression can show. A `srcdoc` document inherits its parent's policy, so from Phase 0 the harness's parent page carries the intended CSP rather than stripping it.
 
@@ -153,7 +201,17 @@ Domain logic leaves page script. The graph's clustering and salience, the Home w
 
 ## CSS and theming
 
-Page and shared CSS move to `.css` files bundled by esbuild. Pages keep styling with `--vscode-*` variables, which is what Microsoft recommends since the webview toolkit was deprecated. `getDeckardThemeCss` becomes a `Record<DeckardTheme, string>` lookup instead of a 373-line ladder. `getPageTailCss` takes `{ theme, zen }` as input instead of reading settings, so a page can render without a VS Code stub. The `previewTheme` global becomes a `ThemePreview` object owned by the composition root.
+*As built in Phase 6 step 3.* Every rule is in a `.css` file under `src/webview`, bundled by esbuild; the host builds no style text. Pages keep styling with `--vscode-*` variables, which is what Microsoft recommends since the webview toolkit was deprecated. The files were written once from the CSS functions they replace, checked equal to them for every page, theme, and zen state, and are maintained by hand.
+
+| File | What it holds |
+| --- | --- |
+| `shared/base.css` | Imports the base sheet's parts in cascade order: `designTokens`, `shell`, `typography`, `control`, `tag`, `popover`, `surface`, `taskBoard`, and `taskList` |
+| `shared/queryEditor.css`, `shared/calendarDay.css`, `shared/calendar/calendar.css` | Component sheets two or more pages import: the query editor, the calendar's day panel, and the rules both calendars share |
+| `<page>/page.css` | Imports `base.css` first, then the component sheets the page uses, then holds the page's own rules. An `@import` must lead a sheet, so Related Notes keeps the rules that come before the day panel in `notes.css` and imports it ahead of `calendarDay.css`, and every rule keeps its place in the cascade. |
+| `shared/themes/<theme>.css` | One theme each, `ENABLED` written out; `deckardThemeCss` in `themes.ts` names each by theme |
+| `shared/tail.css` | Imports what every page lays after its theme: `controlEdge`, `provenance`, `highContrast`, `cardTag`, and `zen`, in that order. The card-tag selector lists are written out. |
+
+A sheet names a file of the extension in `url()` by its path from `dist/webview/`, where it is served: the favorite heart is `../../resources/favorite-heart-outline.svg`, which esbuild leaves as written. `getPageTailCss` takes `{ theme, zen }` as input instead of reading settings. The `previewTheme` global became a `ThemePreview` object owned by the composition root. A theme or zen change still resets the page's HTML, which links the new theme.
 
 ## What ships
 
