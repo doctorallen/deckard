@@ -4,7 +4,7 @@
 
 ## The problem this solves
 
-Today the decisions live in the routing. `activate()` in [`src/extension.ts`](../../src/extension.ts) runs from line 187 to 1294 and registers all 102 commands. Webview message handlers are long `switch` chains that decide inline: `DashboardPanel.handleValidMessage` covers 40 message types in 250 lines. Command files such as `renameTag.ts` and `parking.ts` hold the domain rules and the user-facing text in one function of 60 to 170 lines. The same rule is written in several places, and the copies disagree: which index entity makes an `openSource` line openable has three different answers across four hosts.
+The decisions lived in the routing. Until Phase 5, `activate()` in [`src/extension.ts`](../../src/extension.ts) ran from line 187 to 1294 and registered all 102 commands. Webview message handlers are long `switch` chains that decide inline: `DashboardPanel.handleValidMessage` covers 40 message types in 250 lines. Command files such as `renameTag.ts` and `parking.ts` hold the domain rules and the user-facing text in one function of 60 to 170 lines. The same rule is written in several places, and the copies disagree: which index entity makes an `openSource` line openable has three different answers across four hosts.
 
 The fix is one split, applied everywhere. A service decides. An adapter asks and reports.
 
@@ -32,7 +32,7 @@ A service owns one capability. It is a class with three properties:
 | `CaptureService` | Capture into a note. In [`src/services/captureService.ts`](../../src/services/captureService.ts): `captureToToday(noteUri, line)` and `captureUnderHeading(line, section)` return `added`, `refused`, and, under a heading, `missing-note` or `missing-heading`; the draft is let go, and the heading remembered through the preferences' `UsageService`, only once the line is in. `CaptureDrafts` keeps the words until then. The line itself is written by the pure `writeCapture` in `src/domain/capture`, from the options `readCaptureOptions` reads once, and the box's state is the `CaptureBox` beside the command |
 | `SavedSearchService` | Saved searches |
 | `PinService` | Pinned notes. In [`src/services/pinService.ts`](../../src/services/pinService.ts): which entry a line of a note pins (`pinFor`), whether it is pinned (`isLinePinned`, which the tag hover reads), and `pin` and `unpin` by line, returning `pinned`, `unpinned`, or `no-entry`. How pins are kept is the preferences' `PinsService`, which it is handed; the pure pin rules are in `src/domain/notes/pins.ts` |
-| `ExportService` | Exporting results. In [`src/services/exportService.ts`](../../src/services/exportService.ts): `fromSearch(query, kind)` evaluates the whole search, not the page of it on screen, and `fromResults(kind, results, query)` takes results already found; each returns `nothing`, or the `results` with their count, the text each format makes of them, and the live query block when there is a search. `presentExport` in `ui/commands/exportResults.ts` asks how and where, and copies or saves; the rows and formats are in `src/domain/export`. `extension.ts` builds one and hands it to the search pages and the Task Board, which pass the results they found to `fromResults` and present the plan with a live block of their own, since the block keeps the page's sort, or the board's layout, sort, and columns |
+| `ExportService` | Exporting results. In [`src/services/exportService.ts`](../../src/services/exportService.ts): `fromSearch(query, kind)` evaluates the whole search, not the page of it on screen, and `fromResults(kind, results, query)` takes results already found; each returns `nothing`, or the `results` with their count, the text each format makes of them, and the live query block when there is a search. `presentExport` in `ui/commands/exportResults.ts` asks how and where, and copies or saves; the rows and formats are in `src/domain/export`. `createServices` builds one and hands it to the search pages and the Task Board, which pass the results they found to `fromResults` and present the plan with a live block of their own, since the block keeps the page's sort, or the board's layout, sort, and columns |
 | `NavigationService` | `resolveSourceLocation(index, filePath, line)`: one rule for what `openSource` and `openTag` may open, with page policy as an option |
 | `IndexService` | The index lifecycle, warm start, and fold. Callers take the roles of the index they use, `IndexReader`, `IndexSearch`, `IndexScanStatus`, `IndexUpdates`, and `IndexControl`, which `createWorkspaceIndex` hands back as one value; see [indexing.md](indexing.md) |
 | `ConfigurationService` | Building the `QueryContext` that replaces the query and task-policy setters |
@@ -83,23 +83,51 @@ None of the surveyed extensions does this. Foam returns or throws, Dendron retur
 
 ## `runCommand`
 
-Every command is registered through one `runCommand(id, handler)`. It swallows `vscode.CancellationError` silently, logs any unexpected exception, and shows one generic message. So no handler needs its own `try`, and every command fails the same way.
+Every command is registered through `registerCommand(id, handler)` in [`src/ui/commands/runCommand.ts`](../../src/ui/commands/runCommand.ts), which registers the handler that `runCommand(id, handler)` wraps. The wrapper does two things:
+
+- A `vscode.CancellationError` is the reader backing out. It is swallowed, and the command returns `undefined`.
+- Any other exception is written to Deckard's log as `The command <id> failed: <message>`, through `reportError`, and thrown on unchanged.
+
+It shows no message of its own. The plan called for one generic message, but a command that words a failure already says so itself, and an exception a command lets through has always been reported by VS Code's own notification, or by a rejected `executeCommand` when code ran it. A generic message would be a second message, or a new one, so the wrapper only logs and lets VS Code report as it always has: whatever a command showed before, it shows now, and nothing more. A handler's result passes through as it was: a value at once, a promise as a promise that settles the same way. `run-command.test.ts` holds the three outcomes.
 
 ## Composition
 
-`extension.ts` becomes the composition root, with three steps:
+`extension.ts` is the composition root, and `activate()` is four lines:
 
-1. `createServices(context)` builds the ports and services once, into a plain `Services` object.
-2. Each feature's `register(context, services)` runs.
-3. Every disposable goes to `context.subscriptions`, which disposes of them all.
+1. `createServices(context)` in [`src/composition/services.ts`](../../src/composition/services.ts) builds every port implementation, store, service, index, provider, view, page host, and status bar once, into one typed `Services` object, and hands every disposable to `context.subscriptions`.
+2. `runFeatures(features, context, services)` runs each feature's `register(context, services)`, in the order of [`src/composition/features.ts`](../../src/composition/features.ts).
+3. `startServices(services)` starts what reads the notes: Home on startup when the setting asks, the status bar's first draw, and the first index, which prunes the preferences once it is read.
+4. It returns `DeckardExports`, the Markdown preview's `extendMarkdownIt`.
 
-The services are pushed into `context.subscriptions` before any feature runs. A feature that throws therefore cannot leave a watcher alive. The features are one ordered array of `(context, services) => void | Promise<void>`, run with `Promise.allSettled`. A failed feature is logged, and the rest still activate. This is Foam's pattern; Markdown All in One and the git extension do the same.
+`createServices` builds in the order activation always did, because VS Code can see it: which provider registers first, which listener hears an index update first, and which context key is set first all follow from it. Only the command registrations that sat between those steps moved out, to the features. Within one synchronous activation VS Code cannot tell when a command was registered, and its registry is keyed by id.
+
+`Services` holds what a feature, the startup steps, or the exports reach, grouped where that reads naturally: `preferences` (the repository, one service per capability, the snapshots, and Move to…'s pair), `writes` (tasks, tags, parking, rollover, reviews, templates, and capture), `links`, `pages` (one host per page), `views` (the sidebar views, the two trees, and the task status bar), and `pageCommands`, the two functions page modules export that commands call, since a command may not import a page host's module. What only lives to be disposed, such as a completion provider or a context key, is owned by `context.subscriptions` alone.
+
+A feature is a `(context, services) => void | Promise<void>` in `src/ui/commands/<feature>/register.ts`. There are eleven, ordered by where each one's first command used to be registered:
+
+| Feature | Module | Commands |
+| --- | --- | --- |
+| Preferences and setup | `setup` | Show Log, tidy, export, import, and restore the preferences, Check Setup, the sample workspace, Choose Theme…, the walkthrough, Reindex Workspace |
+| Tasks and the Tasks view | `tasks` | The Tasks view's menus (`registerAgendaCommands`), its grouping and search, Edit Task, Add Task, Break into Steps, Toggle Task Done, Move to… |
+| The Outline and sections | `outline` | Revealing a heading, a heading's tags, Focus Section, Unfold All Sections, the Outline's tag filter |
+| Settings toggles | `toggles` | The ten commands in `SETTING_TOGGLES`, one registration loop |
+| Pages | `pages` | Home, Stats, Help and What's new, the Notes Graph and its nodes, the Calendar page, the Task Board, Related Notes for an entry |
+| Notes and daily notes | `notes` | Note Actions, the daily, weekly, and monthly notes, Roll Tasks Forward, Write Review, Pin and Unpin, Undo Last Change |
+| Capture and templates | `captureAndTemplates` | Capture, Capture under a Heading, New Note from Template, here and anywhere |
+| Parking and exclusion | `parkingAndExclusion` | Exclude from and Include in the index, park and unpark a note, a folder, or a tag |
+| Assistant and MCP | `assistant` | Copy MCP Setup, Reset MCP Token |
+| Tags and links | `tagsAndLinks` | The notes a link names, Link Mentions, Extract Heading, Link Current Heading, Move Tags to Frontmatter, Rename and Merge Tag, Rename Heading |
+| Search and Find | `search` | A tag's page, a search page, Insert Query Block, Find and its keys |
+
+`runFeatures` runs each feature synchronously, in its own `try`. One that throws, or whose promise rejects, is written to the log as `Deckard could not register <feature>`, and the rest still register. The plan named `Promise.allSettled`; a loop does the same for features that are all synchronous, and keeps `activate()` synchronous, so every command exists and the exports are returned by the time VS Code counts Deckard active. This is Foam's pattern; Markdown All in One and the git extension do the same.
+
+The ten commands that only turn one setting on and off are rows of `SETTING_TOGGLES` in [`src/ui/commands/toggles/settingToggles.ts`](../../src/ui/commands/toggles/settingToggles.ts): an enable and a disable command, the setting, its two values, and the target it is written to, `where-set`, `user`, or `folder-where-set`. `setting-toggles.test.ts` runs under `test:unit`.
 
 There is no dependency-injection container and no static locator. GitLens's `Container.instance` and Dendron's `ExtensionProvider` both carry comments working around a static locator. Decorator containers such as `tsyringe` and `inversify` need `reflect-metadata` and `emitDecoratorMetadata`, which esbuild does not support without a Babel shim. A plain object built once is enough, and it is what lets services run under the fast test tier.
 
 Everything still registers in `activate()`. Since VS Code 1.74, contributed commands need no `onCommand` events, and the index already builds in the background.
 
-`activeServices`, the `ExtensionServices` interface, and the hand-written `deactivate()` list go away. Today the service list is written four times, and the copies disagree: `deactivate()` omits `notesGraph`.
+`activeServices`, the `ExtensionServices` interface, and `deactivate()` are gone; `context.subscriptions` releases everything. VS Code runs an extension's `deactivate()`, then disposes its subscriptions in the order they were pushed. The old `deactivate()` disposed 27 services first, in an order of its own, while the log was open, and two of those disposals redraw something: a search page that is the active search releases it, which redraws Related Notes, and Related Notes going hides itself from the active calendar, which redraws the Calendar page. So `createServices` pushes a `DisposalOrder` first and hands it those 27 in that order, which keeps the moment and the order, and each is now disposed once rather than twice.
 
 ## Replacing hidden state
 
@@ -108,12 +136,12 @@ Module-level `let`s stood in for injection, and pure functions read them. Four t
 | Was | Now held by |
 | --- | --- |
 | `setQueryIdentity`, `setQueryWeekStart`, `setTaskPolicy` | A `QueryContext { identity, weekStart, taskPolicy, now }` that each view, command, and tool reads with `readQueryContext` when it starts its work, and passes to `evaluateQuery`, `resolveDateRange`, `needsNewDate`, `readLineStatus`, and `describeDueDate` |
-| `timing.log` | Still a module sink in `core/timing.ts`, since a log has no answer to give back. `activate()` sets it with `setTimingLog`, and the disposable that returns clears it on deactivation |
-| `keepTaskRank` | The `keepRank` of the `TaskWrites` that `activate()` makes and hands to every task edit: `updateTaskLine` and its Undo, Move to, and Toggle Task Done |
-| `workspaceWrites`, `ownWrites` | One `WorkspaceWriteHistory`, core's `WriteHistory` with VS Code's edits, made in `activate()` and handed to every command, view, and page that writes, and to Undo Last Change. Its `write()` returns a `WriteHandle`, whose `isLatest()` and `offerUndo()` replace each command's `lastWrite` comparison; its `ownWrites` goes to `createWorkspaceIndex`'s options |
-| `focusedIn` | A `SectionFocus` made in `activate()`, whose `focus()` and `unfoldAll()` are the two commands |
-| `previewTheme` | A `ThemePreview` made in `activate()` and handed to Choose Theme… and every page host. A host reads `getDeckardTheme(preview)` when it builds its HTML and redraws through `onDidChangePageChrome(listener, preview)` |
-| `activeServices` | Unchanged until Phase 5, when `context.subscriptions` owns every disposable |
+| `timing.log` | Still a module sink in `shared/timing.ts`, since a log has no answer to give back. `createServices` sets it with `setTimingLog`, and the disposable that returns clears it on deactivation |
+| `keepTaskRank` | The `keepRank` of the `TaskWrites` that `createServices` makes and hands to every task edit: `updateTaskLine` and its Undo, Move to, and Toggle Task Done |
+| `workspaceWrites`, `ownWrites` | One `WorkspaceWriteHistory`, core's `WriteHistory` with VS Code's edits, made in `createServices` and handed to every command, view, and page that writes, and to Undo Last Change. Its `write()` returns a `WriteHandle`, whose `isLatest()` and `offerUndo()` replace each command's `lastWrite` comparison; its `ownWrites` goes to `createWorkspaceIndex`'s options |
+| `focusedIn` | A `SectionFocus` made in `createServices`, whose `focus()` and `unfoldAll()` are the two commands |
+| `previewTheme` | A `ThemePreview` made in `createServices` and handed to Choose Theme… and every page host. A host reads `getDeckardTheme(preview)` when it builds its HTML and redraws through `onDidChangePageChrome(listener, preview)` |
+| `activeServices` | Nothing: `context.subscriptions` owns every disposable, and a `DisposalOrder` pushed first keeps the order the old `deactivate()` disposed 27 of them in |
 | `lastSource` | A parser from `createSourceParser()` per Markdown engine, made in `addNoteEmbedRenderer`, and one per `findEmbedProblems` call |
 | `linkNamesByPath` | A map each `rankRelatedNotes` call makes and hands down |
 | `entityKinds` | A memo each `IndexState` holds, handed on to the state built to replace it |

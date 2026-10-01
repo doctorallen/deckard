@@ -33,6 +33,8 @@ src/
   webview/         Browser code, bundled by esbuild.
     shared/        components, query editor, calendar day, html escaping, CSS.
     <page>/        main.ts and page.css
+  composition/     createServices, the features list, and runFeatures: the
+                   composition root's other half.
   extension.ts     Composition root only.
 ```
 
@@ -44,9 +46,11 @@ src/
 | `platform` | The VS Code implementations of the ports | `ports`, `domain`, and `vscode`, never what uses it |
 | `ui` | Adapters: command handlers, providers, tree views, webview hosts, and the protocol | `services`, `domain`, and `vscode`. `ui/protocol` may import only `domain/model` |
 | `webview` | Page code that runs in the sandbox | Its own folder, `webview/shared`, `ui/protocol`, and Preact |
-| `extension.ts` | The composition root: builds the ports and services, then registers each feature | Every layer. It is the only module that may import `platform` |
+| `extension.ts`, `composition` | The composition root: `createServices` builds the ports and services, each feature registers against them, and `startServices` starts the index | Every layer. `extension.ts` and `composition/services.ts` are the only modules that may import `platform` |
 
-`ui/providers` exists now. Each completion, CodeLens, hover, decoration, and diagnostic provider takes only its collaborators in its constructor and subscribes to VS Code in `register()`, which returns the provider, so `extension.ts` builds and registers each in one expression at the point in activation where it always registered. What a provider draws with, its decoration types or its diagnostic collection, is still made with it, so a test can call its draw and check methods without registering anything. The rules the providers apply are in `domain`, where `test:unit` runs their tests: `markdown/completionContext`, `markdown/taggedEntries`, `markdown/repeatRuleProblems`, and `index/wikiLinkTargets`. `ui/providers/codeLenses` holds the lazy lens and the `locate` lookup the two lens providers share. Each provider's old path under `ui/commands` re-exports it until Phase 7.
+`ui/commands/<feature>` exists now. Eleven feature modules, from `setup` to `search`, each export `register(context, services)`, which registers its commands through `registerCommand` and takes what they use from the `Services` object `createServices` builds; [services.md](services.md#composition) lists them. A feature imports the `Services` type from `composition/services.ts`, type-only, and reaches the page hosts through it, since a command may not import a page host's module. The commands whose handlers were not already in `ui/commands` moved into their feature's module.
+
+`ui/providers` exists now. Each completion, CodeLens, hover, decoration, and diagnostic provider takes only its collaborators in its constructor and subscribes to VS Code in `register()`, which returns the provider, so `createServices` builds and registers each in one expression at the point in activation where it always registered. What a provider draws with, its decoration types or its diagnostic collection, is still made with it, so a test can call its draw and check methods without registering anything. The rules the providers apply are in `domain`, where `test:unit` runs their tests: `markdown/completionContext`, `markdown/taggedEntries`, `markdown/repeatRuleProblems`, and `index/wikiLinkTargets`. `ui/providers/codeLenses` holds the lazy lens and the `locate` lookup the two lens providers share. Each provider's old path under `ui/commands` re-exports it until Phase 7.
 
 ## The rule
 
@@ -63,7 +67,7 @@ flowchart LR
   page --> shared["webview/shared"]
 ```
 
-Every arrow points from the importer to what it imports. Nothing points back up. Only `extension.ts` imports `platform`, because it builds the implementations and hands them to everything else. `services` never sees `vscode`; it sees a port, and `platform` supplies the VS Code version of it. That is why a service can be tested under plain mocha with a fake port. `webview` is separate from the host entirely: it runs in the sandbox and shares only the protocol types with the host, so a page cannot import host code by accident.
+Every arrow points from the importer to what it imports. Nothing points back up. Only the composition root, `extension.ts` and `composition/services.ts`, imports `platform`, because it builds the implementations and hands them to everything else. `services` never sees `vscode`; it sees a port, and `platform` supplies the VS Code version of it. That is why a service can be tested under plain mocha with a fake port. `webview` is separate from the host entirely: it runs in the sandbox and shares only the protocol types with the host, so a page cannot import host code by accident.
 
 ## What goes where
 
@@ -98,7 +102,7 @@ Some examples from the audit:
 | `services-use-ports` | A service importing `vscode`, a Node I/O module, `platform`, or `ui`, so it reaches all of them only through ports |
 | `ports-are-interfaces` | A port importing anything but `domain` and other ports |
 | `platform-implements-ports` | `platform` importing what uses it |
-| `only-the-composition-root-imports-platform` | Any module but `extension.ts` importing `platform` |
+| `only-the-composition-root-imports-platform` | Any module but `extension.ts` and `composition/services.ts` importing `platform` |
 | `protocol-is-shared-types` | `ui/protocol` importing anything but `domain/model` |
 | `pages-import-protocol-and-shared`, `pages-not-to-other-pages` | Page code importing host code, or another page's folder |
 | `host-not-to-page-code` | Host code importing page code, which it reaches only by URI |
