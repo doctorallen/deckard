@@ -9,6 +9,7 @@ import {
   skipBlank,
 } from './linkTargets';
 import { isAsciiPunctuation, isSpace } from './markdownCharacters';
+import type { EmphasisToken, InlineToken } from '../model/inline';
 
 /**
  * Inline Markdown as tokens: the words of a title or a paragraph with their
@@ -21,62 +22,20 @@ import { isAsciiPunctuation, isSpace } from './markdownCharacters';
  * HTML, no linkify), ported one for one, because titles and cards must read
  * as they did when markdown-it and sanitize-html drew them. Where the two
  * part ways it is on purpose and named where it happens: wiki links, links
- * to anything but the web and mail, and images.
+ * to anything but the web and mail, and images. The tokens' types are the
+ * domain model's (`model/inline.ts`), which the protocol carries to the
+ * pages; they are exported here too.
  */
 
-/** Words, with backslash escapes and character references already decoded. */
-export interface TextToken {
-  kind: 'text';
-  text: string;
-}
-
-/** A code span's contents, verbatim but for line breaks read as spaces. */
-export interface CodeToken {
-  kind: 'code';
-  text: string;
-}
-
-/**
- * A line break. Every line break inside a paragraph is one, not only a hard
- * break, because Deckard renders with `breaks: true`: a note's lines stay
- * lines on its card.
- */
-export interface BreakToken {
-  kind: 'break';
-}
-
-/** Strong emphasis, emphasis, or strikethrough (`~~`) around other tokens. */
-export interface EmphasisToken {
-  kind: 'strong' | 'em' | 'del';
-  children: InlineToken[];
-}
-
-/**
- * A Markdown link to the web or to mail. `url` is percent-encoded and always
- * starts with `http:`, `https:`, or `mailto:`; a link to anything else is
- * read as its words alone, so no token can carry a script or a file path.
- */
-export interface LinkToken {
-  kind: 'link';
-  url: string;
-  title?: string;
-  children: InlineToken[];
-}
-
-/**
- * A `[[wiki link]]` or a `![[embed]]`. It is drawn as `text`, exactly as
- * written, brackets and all, as the pages have always shown one; `target` is
- * the note it names, kept for when a page makes it a control.
- */
-export interface WikiLinkToken {
-  kind: 'wikiLink';
-  text: string;
-  target: string;
-  embed: boolean;
-}
-
-/** One piece of inline Markdown. */
-export type InlineToken = TextToken | CodeToken | BreakToken | EmphasisToken | LinkToken | WikiLinkToken;
+export type {
+  BreakToken,
+  CodeToken,
+  EmphasisToken,
+  InlineToken,
+  LinkToken,
+  TextToken,
+  WikiLinkToken,
+} from '../model/inline';
 
 /**
  * Reads a line of inline Markdown, such as a task title, into tokens, as

@@ -11,7 +11,8 @@ import { StatsController, StatsControllerOptions } from '../ui/webview/pages/sta
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { createPreferences } from './preferenceServices';
-import { pageExtensionUri } from './pageWebview';
+import { pageExtensionUri, pageWebview } from './pageWebview';
+import { openWebviewPage } from './webviewPage';
 
 /** An in-memory store for the preferences. */
 function createStore() {
@@ -27,7 +28,7 @@ function createStore() {
  * Stats over two notes, attached to a fake panel: what the page is sent,
  * the tags it opens, the visits it counts, and the commands it runs.
  */
-function openStats() {
+function openStats(options: { drawHtml?: boolean } = {}) {
   const files = [
     parseMarkdown('/notes/atlas.md', '# Atlas #project/relay\nSome words.\n- [ ] Call the vendor #once\n'),
     parseMarkdown('/notes/plain.md', 'Nothing to see here.\n'),
@@ -51,10 +52,14 @@ function openStats() {
   });
   const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();
+  if (options.drawHtml) {
+    surface.htmlWebview = pageWebview as vscode.Webview;
+  }
   host.attach(surface);
   const entry = [...index.sections.keys()][0];
   return {
     host,
+    controller,
     surface,
     preferences,
     openedTags,
@@ -119,6 +124,50 @@ suite('Stats host', () => {
       assert.strictEqual(states().length, 3);
       assert.strictEqual(states()[2].data.fileCount, 0, 'with the newest index');
     } finally {
+      host.dispose();
+    }
+  });
+
+  test('is not kept running while hidden: its hidden HTML carries the last snapshot it was sent, and showing it sends one only if it missed one', () => {
+    const { host, controller, surface, updateIndex } = openStats({ drawHtml: true });
+    const pages: ReturnType<typeof openWebviewPage>[] = [];
+    try {
+      assert.strictEqual(controller.options.retainContextWhenHidden, false);
+      assert.ok(String(surface.html).includes('Loading statistics…'), 'it opens on its loading line');
+      assert.ok(!String(surface.html).includes('id="state"'));
+      let builds = 0;
+      const build = controller.buildSnapshot.bind(controller);
+      controller.buildSnapshot = () => {
+        builds += 1;
+        return build();
+      };
+      host.refresh();
+      const [sent] = surface.webview.postedOf<{ data: { fileCount: number } }>('state');
+      surface.setVisible(false);
+      assert.strictEqual(builds, 1, 'the snapshot it carries is the one sent, not built again');
+      const carried = /<script type="application\/json" id="state">([^<]*)<\/script>/.exec(String(surface.html));
+      assert.ok(carried, 'the hidden page\'s HTML carries a snapshot');
+      assert.deepStrictEqual(JSON.parse(carried[1]), sent.data);
+
+      // VS Code loads that HTML when the tab is shown: the page draws it at
+      // once, asking for nothing, as it drew the snapshot it was sent.
+      const reloaded = openWebviewPage(String(surface.html));
+      const drawn = openWebviewPage(String(surface.html).replace(carried[0], ''), sent.data);
+      pages.push(reloaded, drawn);
+      assert.strictEqual(reloaded.findAll('#app .loading').length, 0);
+      assert.strictEqual(reloaded.posted.length, 0);
+      assert.strictEqual(reloaded.find('#app').innerHTML, drawn.find('#app').innerHTML);
+
+      surface.setVisible(true);
+      assert.strictEqual(surface.webview.postedOf('state').length, 1, 'shown, it missed nothing');
+      surface.setVisible(false);
+      updateIndex(buildWorkspaceIndex(new Map()));
+      assert.strictEqual(builds, 1, 'nothing is built while hidden');
+      surface.setVisible(true);
+      const states = surface.webview.postedOf<{ data: { fileCount: number } }>('state');
+      assert.deepStrictEqual(states.map((state) => state.data.fileCount), [2, 0], 'shown, it is sent the update it missed');
+    } finally {
+      pages.forEach((page) => page.dispose());
       host.dispose();
     }
   });

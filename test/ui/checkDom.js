@@ -17,6 +17,13 @@
 // in Replicant only, with and without zen. The DOM is Chrome's, laid out at
 // the surface's size, because the Task Board draws only the cards on screen.
 //
+//
+// A page that reads its first snapshot from inert JSON in its shell
+// (readsInertState in src/test/pages.ts) is drawn twice: with the snapshot
+// posted, as every page is, and with it embedded in the shell. The two must
+// be the same DOM, so a page draws alike however its state reached it
+// (docs/implementation/20-webviews.md §2.3).
+//
 //   npm run test:dom
 //   npm run test:dom -- --update   record what is drawn now as the goldens
 //   DOM_ONLY=taskBoard+zen         one surface, or every surface of a page
@@ -26,7 +33,8 @@ const os = require('node:os');
 const { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
 const { JSDOM } = require('jsdom');
 
-const { renderPagesForTheme } = require('./pages.js');
+const { renderPage, renderPagesForTheme } = require('./pages.js');
+const modules = require('../harness/modules.js');
 const { buildPage, measure, probeScript } = require('./checkLayout.js');
 const { createSurfaces, surfaceHtml } = require('./surfaces.js');
 const { readPageNonce } = require('../harness/loadPage.js');
@@ -128,6 +136,47 @@ function compareSurface(name, drawn, options) {
 }
 
 /**
+ * Whether a surface's page reads its first snapshot from its shell, so it is
+ * drawn with the snapshot embedded as well as posted.
+ *
+ * @param {{ page: string, snapshot?: () => unknown }} surface Which page it draws, and the snapshot it is drawn from.
+ * @returns {boolean} Whether to draw it embedded too.
+ */
+function readsInertState(surface) {
+  const page = modules.pageCatalog.PAGES.find((entry) => entry.id === surface.page);
+  return Boolean(page && page.readsInertState && surface.snapshot);
+}
+
+/**
+ * Draws a surface with its snapshot embedded in the shell rather than
+ * posted, and says whether it drew what the posted state drew.
+ *
+ * @param {{ surface: object, name: string }} entry The surface and its golden's name.
+ * @param {string} posted What the surface drew with its snapshot posted.
+ * @param {{ chrome: { theme: string, zen: boolean }, dir: string }} options The theme and zen state, and where to write the page.
+ * @returns {boolean} Whether the two drew the same DOM.
+ */
+function checkEmbedded(entry, posted, options) {
+  const { surface, name } = entry;
+  const pageOptions = { ...(surface.pageOptions ? surface.pageOptions() : {}), state: surface.snapshot() };
+  const html = renderPage(surface.page, { ...options.chrome, pageOptions });
+  let embedded;
+  try {
+    embedded = drawSurface({ ...surface, snapshot: undefined }, html, path.join(options.dir, `${name}.embedded.html`));
+  } catch (error) {
+    console.log(`  FAIL ${name}, embedded: ${error.message}`);
+    return false;
+  }
+  if (embedded === posted) {
+    console.log(`  ok   ${name}, embedded and posted alike`);
+    return true;
+  }
+  console.log(`  FAIL ${name}: the DOM drawn from the shell's inert JSON differs from the DOM drawn from the posted state`);
+  describeDifference(posted, embedded).forEach((line) => console.log(`         ${line}`));
+  return false;
+}
+
+/**
  * The surfaces to draw in one zen state, each with its golden's name.
  *
  * @param {boolean} zen Whether zen mode is on.
@@ -184,6 +233,9 @@ function checkZenState(zen, options) {
       continue;
     }
     failed += compareSurface(name, drawn, options) === 'failed' ? 1 : 0;
+    if (readsInertState(surface) && !checkEmbedded({ surface, name }, drawn, { chrome: { theme: THEME, zen }, dir: options.dir })) {
+      failed += 1;
+    }
   }
   return failed;
 }

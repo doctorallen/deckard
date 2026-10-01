@@ -35,3 +35,4 @@ A record is not edited to change its decision. A new record supersedes it instea
 | [0011](0011-host-bundle-ships-no-third-party-code.md) | The host bundle ships no third-party code | Accepted |
 | [0012](0012-help-renders-through-markdown-api.md) | Help renders the guide through VS Code's `markdown.api.render` | Accepted: the Phase 0 check passed |
 | [0013](0013-exclude-globs-and-path-matchesglob.md) | Exclude globs stay on `picomatch` | Accepted: `path.matchesGlob` failed the check |
+| [0014](0014-pages-render-synchronously-from-one-store.md) | Pages render synchronously from one store | Accepted |

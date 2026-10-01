@@ -1,5 +1,6 @@
 import type * as vscode from 'vscode';
 
+import type { DeckardStatsSnapshot } from '../ui/protocol/stats';
 import type { EntryRelatedNotesDiagnostic } from '../ui/webview/sidebarNotes';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
@@ -20,6 +21,11 @@ import { pageExtensionUri, pageWebview } from './pageWebview';
 export interface PageOptions {
   help?: { manifest?: HelpManifest; options?: HelpOptions };
   diagnostic?: EntryRelatedNotesDiagnostic;
+  /**
+   * The snapshot the shell carries as inert JSON, for a page that reads
+   * one (`readsInertState`); a page drawn without it waits for a post.
+   */
+  state?: unknown;
 }
 
 /**
@@ -51,6 +57,12 @@ export interface CatalogPage {
   /** The page's name in a test's failure message. */
   title: string;
   render(context: PageContext): string;
+  /**
+   * Whether the page draws a snapshot its shell carries as inert JSON, so
+   * test:dom draws its surfaces both ways, embedded and posted, and holds
+   * the two to the same DOM (docs/implementation/20-webviews.md §2.3).
+   */
+  readsInertState?: true;
 }
 
 /** The Related Notes debug page needs an entry to diagnose; this is an empty one. */
@@ -76,7 +88,12 @@ export const PAGES: readonly CatalogPage[] = [
     title: 'Help',
     render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, context.help?.options),
   },
-  { id: 'stats', title: 'Stats', render: (context) => getStatsHtml(context.webview as vscode.Webview, context.extensionUri) },
+  {
+    id: 'stats',
+    title: 'Stats',
+    render: (context) => getStatsHtml(context.webview as vscode.Webview, context.extensionUri, undefined, context.state as DeckardStatsSnapshot | undefined),
+    readsInertState: true,
+  },
   { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as vscode.Webview, context.extensionUri) },
   { id: 'calendar', title: 'Calendar', render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri) },
   {

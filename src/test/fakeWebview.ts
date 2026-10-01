@@ -65,15 +65,25 @@ export class FakeSurface implements WebviewSurface {
   public renders = 0;
   /** Whether the host closed the page. */
   public closed = false;
+  /**
+   * The webview the page's HTML is built for, such as the stand-in of
+   * `pageWebview.ts`; without one, the HTML is only counted.
+   */
+  public htmlWebview: vscode.Webview | undefined;
+  /** The HTML the host last set, when there is a webview to build it for. */
+  public html: string | undefined;
   private readonly viewStateListeners: Array<() => void> = [];
   private readonly disposeListeners: Array<() => void> = [];
 
   /** Wraps a fake webview, or a new one. */
   public constructor(public readonly webview: FakeWebview = new FakeWebview()) {}
 
-  /** Counts the render; the fake webview cannot build a page's HTML. */
-  public render(): void {
+  /** Counts the render, and keeps the HTML when there is a webview to build it for. */
+  public render(html: (webview: vscode.Webview) => string): void {
     this.renders += 1;
+    if (this.htmlWebview) {
+      this.html = html(this.htmlWebview);
+    }
   }
 
   /** Listens for a show, hide, or focus change. */
@@ -137,9 +147,9 @@ function subscribe(listeners: Array<() => void>, listener: () => void): vscode.D
 export function recordSurface(surface: FakeSurface): string[] {
   const events: string[] = [];
   const render = surface.render.bind(surface);
-  surface.render = () => {
+  surface.render = (html) => {
     events.push('html');
-    render();
+    render(html);
   };
   const post = surface.webview.postMessage.bind(surface.webview);
   surface.webview.postMessage = (message: unknown) => {

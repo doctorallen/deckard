@@ -52,6 +52,10 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
   private current: WebviewSurface | undefined;
   /** Whether the snapshot changed while the page was hidden. */
   private isStale = false;
+  /** The last snapshot sent to the page now attached, which a hidden page is drawn from again. */
+  private lastSent: TSnapshot | undefined;
+  /** Whether the hidden page's HTML already carries `lastSent`. */
+  private resetWhileHidden = false;
   private readonly indexer: HostIndexer | undefined;
   private readonly themePreview: WebviewHostOptions['themePreview'];
 
@@ -102,6 +106,8 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
    */
   public attach(surface: WebviewSurface): void {
     this.current = surface;
+    this.lastSent = undefined;
+    this.resetWhileHidden = false;
     this.renderHtml();
     this.sessionDisposables = [
       this.followIndexing(surface),
@@ -115,6 +121,7 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
         if (surface.visible && this.isOutOfDate()) {
           this.refresh();
         }
+        this.resetWhenHidden(surface);
         this.controller.onDidChangeViewState?.(this);
       }),
     ];
@@ -126,9 +133,14 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
     this.sessionDisposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
-  /** Sets the page's HTML again, in the theme it is drawn in now. */
+  /**
+   * Sets the page's HTML again, in the theme it is drawn in now. A hidden
+   * page that is reset when hidden carries the last snapshot it was sent.
+   */
   public renderHtml(): void {
-    this.current?.render((webview) => this.controller.html(webview, getDeckardTheme(this.themePreview)));
+    const surface = this.current;
+    const state = surface && !surface.visible && this.resetsWhenHidden() ? this.lastSent : undefined;
+    surface?.render((webview) => this.controller.html(webview, getDeckardTheme(this.themePreview), state));
   }
 
   /**
@@ -198,6 +210,7 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
       return false;
     }
     this.isStale = false;
+    this.lastSent = data;
     const message: StateMessage<TSnapshot> = { type: 'state', data };
     void surface.webview.postMessage(message);
     return true;
@@ -216,6 +229,34 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
     const type = (message as unknown as PageMessage).type as keyof TPageToHost;
     const handler = this.controller.handlers[type] as MessageHandler<MessageOf<TPageToHost>>;
     await handler(message, this);
+  }
+
+  /**
+   * Whether the page is drawn again from its last snapshot when hidden: it
+   * is not kept running then, it draws a snapshot its HTML carries, and it
+   * is sent snapshots at all.
+   */
+  private resetsWhenHidden(): boolean {
+    const options = this.controller.options;
+    return options.retainContextWhenHidden === false && options.readsInertState === true && options.hasSnapshot !== false;
+  }
+
+  /**
+   * When a page that is not kept running is hidden, VS Code will load its
+   * HTML afresh when it is shown, so the HTML is set once, then, to carry
+   * the last snapshot the page was sent (cached, not built again). Showing
+   * it then sends a newer one only if it missed one, as for any page.
+   */
+  private resetWhenHidden(surface: WebviewSurface): void {
+    if (surface.visible) {
+      this.resetWhileHidden = false;
+      return;
+    }
+    if (this.resetWhileHidden || this.lastSent === undefined || !this.resetsWhenHidden()) {
+      return;
+    }
+    this.resetWhileHidden = true;
+    this.renderHtml();
   }
 
   /**

@@ -18,6 +18,14 @@
 //   LAYOUT_ONLY=oblivion:taskBoard npm run test:layout   one surface, or a theme, or a page
 //   LAYOUT_DEBUG=1                                       the measurements themselves
 //   LAYOUT_KEEP=/tmp/pages LAYOUT_DRY=1                  write the pages to open by hand
+//   LAYOUT_TIMING=1 LAYOUT_ONLY=stats                    time each surface's first render instead
+//
+// LAYOUT_TIMING=1 measures nothing about layout: it opens each surface ten
+// times (LAYOUT_TIMING_RUNS) in real time, without --virtual-time-budget,
+// since virtual time does not advance while a script runs and so cannot
+// time one, and prints the median time from the page's start to its first
+// render: its script run and its state drawn and laid out. Chrome is run
+// once at a time, so the runs do not compete.
 const path = require('node:path');
 const os = require('node:os');
 const { existsSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
@@ -189,10 +197,6 @@ function probeScript(surface, options = {}) {
 }
 
 /**
- * The page as the webview shows it, with the VS Code bridge replaced. probe
- * is the script that measures it, the layout probe unless another is given.
- */
-/**
  * Every transition and animation at its end, and no caret. A page is
  * measured and photographed once, at a moment Chrome picks, so anything
  * still moving then is caught at a different point on each run: CI drew 17
@@ -246,7 +250,26 @@ function allowHarnessScripts(html, nonce) {
   ));
 }
 
-function buildPage(source, surface, probe = probeScript(surface)) {
+/**
+ * What LAYOUT_TIMING=1 puts where the probe goes: once the state has been
+ * sent and drawn, it lays the page out and writes the milliseconds since the
+ * page's document started into the parent's #layout-probe, at once, since
+ * Chrome dumps the DOM as soon as the page has loaded when time is real.
+ *
+ * @returns {string} The script.
+ */
+function timingProbe() {
+  return `void document.documentElement.offsetHeight;
+parent.document.getElementById('layout-probe').textContent = JSON.stringify([{ firstRender: performance.now() }]);`;
+}
+
+/**
+ * The page as the webview shows it, with the VS Code bridge replaced. probe
+ * is the script that measures it, the layout probe unless another is given,
+ * run a moment after the state has drawn, or, with `options.at` set to
+ * `once-drawn`, at once, as LAYOUT_TIMING=1 needs.
+ */
+function buildPage(source, surface, probe = probeScript(surface), options = {}) {
   const html = allowHarnessScripts(source, readPageNonce(source));
   // Help draws without a state; every other page waits for one.
   const state = surface.snapshot
@@ -265,7 +288,9 @@ window.acquireVsCodeApi = function () {
   return { postMessage: function () {}, getState: function () {}, setState: function () {} };
 };
 </script>`;
-  const drive = `<script${nonced}>
+  const drive = options.at === 'once-drawn'
+    ? `<script${nonced}>\n${state}${probe}\n</script>`
+    : `<script${nonced}>
 ${state}${interactionScript(surface)}setTimeout(function () { ${probe} }, 50);
 </script>`;
   // Replaced by functions, so a `$` in a page or a message is not read as a
@@ -299,11 +324,11 @@ setTimeout(function () {
 // twice on the same surface is a fault and is reported as one.
 const MEASURE_TIMEOUT_MS = 60000;
 
-function runChrome(file, viewport) {
+function runChrome(file, viewport, options = {}) {
   return spawnSync(chrome, [
     '--headless=new', '--disable-gpu', '--no-sandbox',
     `--window-size=${Math.max(viewport[0], 800)},${Math.max(viewport[1], 800)}`,
-    '--virtual-time-budget=3000', '--dump-dom', `file://${file}`,
+    ...(options.realTime ? [] : ['--virtual-time-budget=3000']), '--dump-dom', `file://${file}`,
   ], {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
@@ -312,11 +337,15 @@ function runChrome(file, viewport) {
   });
 }
 
-function measure(file, viewport) {
-  let result = runChrome(file, viewport);
+/**
+ * Opens a page in Chrome and returns what its probe reported. With
+ * `options.realTime`, time is not virtual, as LAYOUT_TIMING=1 needs.
+ */
+function measure(file, viewport, options = {}) {
+  let result = runChrome(file, viewport, options);
   if (result.signal === 'SIGKILL') {
     console.log(`       chrome wedged after ${MEASURE_TIMEOUT_MS / 1000}s, retrying once`);
-    result = runChrome(file, viewport);
+    result = runChrome(file, viewport, options);
   }
   if (result.signal === 'SIGKILL') {
     throw new Error(
@@ -349,9 +378,53 @@ function findChrome() {
 
 // The surfaces, the page builder and the browser are shared with the visual
 // check, which draws the same pages and compares the pixels instead.
-module.exports = { chrome, createSurfaces, buildPage, findChrome, measure, probeScript };
+module.exports = { chrome, createSurfaces, buildPage, findChrome, measure, medianFirstRender, probeScript, timingProbe };
 
-if (require.main === module) {
+/**
+ * The median of `runs` first renders of a page in Chrome, in milliseconds,
+ * each from the page's start to its state drawn and laid out.
+ *
+ * @param {string} html The page, self-contained, as surfaceHtml gives it.
+ * @param {object} surface The surface it is drawn as.
+ * @param {{ file: string, runs?: number }} options Where to write the page, and how many times to open it.
+ * @returns {number} The middle time, in milliseconds.
+ */
+function medianFirstRender(html, surface, options) {
+  writeFileSync(options.file, buildPage(html, surface, timingProbe(), { at: 'once-drawn' }));
+  const times = [];
+  for (let run = 0; run < (options.runs ?? 10); run += 1) {
+    times.push(measure(options.file, surface.viewport, { realTime: true })[0].firstRender);
+  }
+  times.sort((a, b) => a - b);
+  return times[Math.floor(times.length / 2)];
+}
+
+/**
+ * LAYOUT_TIMING=1: each surface's median first render, printed, and
+ * nothing checked.
+ *
+ * @param {string} dir Where to write the pages.
+ */
+function timeSurfaces(dir) {
+  const runs = Number(process.env.LAYOUT_TIMING_RUNS) || 10;
+  const rendered = new Map(renderPagesForTheme('replicant', { zen: false }));
+  for (const surface of createSurfaces(false)) {
+    const surfaceName = surface.name || surface.page;
+    const only = process.env.LAYOUT_ONLY;
+    if (only && only !== surfaceName && only !== surface.page) continue;
+    const median = medianFirstRender(surfaceHtml(surface, rendered, { theme: 'replicant', zen: false }), surface, { file: path.join(dir, `timing-${surfaceName}.html`), runs });
+    console.log(`  ${surfaceName.padEnd(24)} ${median.toFixed(1)} ms, median of ${runs} first renders`);
+  }
+}
+
+if (require.main === module && process.env.LAYOUT_TIMING === '1') {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
+  try {
+    timeSurfaces(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+} else if (require.main === module) {
 // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
 const keep = process.env.LAYOUT_KEEP;
 const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
