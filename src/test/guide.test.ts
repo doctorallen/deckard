@@ -3,7 +3,9 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { GUIDE_IMAGE_BASE, GUIDE_PAGES, guideSlug, HELP_READ_MORE, renderGuidePage, resolveGuideLink } from '../ui/webview/guide';
+import { GUIDE_PAGES, guideSlug, HELP_READ_MORE } from '../ui/webview/guide';
+import { GUIDE_IMAGE_BASE, resolveGuideLink } from '../ui/webview/pages/help/guideLinks';
+import { renderGuidePage } from '../ui/webview/pages/help/guidePage';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 

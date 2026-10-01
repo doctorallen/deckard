@@ -253,7 +253,6 @@ export default {
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
-    "src/ui/webview/guide.ts": 1,
     "src/ui/webview/helpHtml.ts": 1,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
@@ -440,8 +439,7 @@ export default {
     "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
     "src/ui/views/agendaTree.ts": 3,
-    "src/ui/views/outlineTree.ts": 1,
-    "src/ui/webview/guide.ts": 1
+    "src/ui/views/outlineTree.ts": 1
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,

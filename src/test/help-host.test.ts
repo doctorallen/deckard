@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import type { HelpPageToHost } from '../ui/protocol/help';
 import { HelpPanel } from '../ui/webview/help';
-import type { HelpManifest } from '../ui/webview/helpHtml';
+import type { HelpManifest } from '../ui/webview/pages/help/helpManifest';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { HelpController } from '../ui/webview/pages/help/helpController';
 import { ThemePreview } from '../ui/webview/themePreview';

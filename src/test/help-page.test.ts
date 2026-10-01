@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { HelpPanel } from '../ui/webview/help';
-import { HelpManifest } from '../ui/webview/helpHtml';
+import { HelpManifest } from '../ui/webview/pages/help/helpManifest';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { ThemePreview } from '../ui/webview/themePreview';

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import type { HelpMessage, HelpPageToHost, HelpRevealMessage } from '../protocol/help';
 import type { WhatsNew } from '../commands/whatsNew';
-import type { HelpManifest } from './helpHtml';
+import type { HelpManifest } from './pages/help/helpManifest';
 import type { MessageHandler } from './host/pageController';
 import { PanelAdapter } from './host/panelAdapter';
 import { WebviewHost } from './host/webviewHost';
