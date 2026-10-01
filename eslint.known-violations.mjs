@@ -75,8 +75,7 @@ export default {
     "src/ui/commands/quickFindActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/state/quickFindState.ts": 1,
-    "src/ui/webview/calendarPage.ts": 1
+    "src/ui/state/quickFindState.ts": 1
   },
   complexity: {
     "scripts/capture-dashboard-screenshot.mjs": [
@@ -161,19 +160,18 @@ export default {
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
     ],
-    "src/ui/webview/calendar.ts": [
-      "handle"
-    ],
     "src/ui/webview/dashboard.ts": [
       "handleValidMessage"
     ],
     "src/ui/webview/messages.ts": [
-      "parseCalendarMessage",
       "parseDashboardMessage",
       "parseNotesGraphMessage",
       "parseSearchPageMessage",
       "parseSidebarMessage",
       "parseTaskBoardMessage"
+    ],
+    "src/ui/webview/pages/calendar/calendarController.ts": [
+      "handle"
     ],
     "src/ui/webview/searchPage.ts": [
       "handleValidMessage",
@@ -277,11 +275,8 @@ export default {
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
-    "src/ui/webview/activeCalendar.ts": 5,
     "src/ui/webview/activeHome.ts": 6,
     "src/ui/webview/activeSearch.ts": 3,
-    "src/ui/webview/calendar.ts": 4,
-    "src/ui/webview/calendarPage.ts": 5,
     "src/ui/webview/dashboard.ts": 2,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/help.ts": 3,

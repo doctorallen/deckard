@@ -20,8 +20,6 @@ import {
   DashboardSearchField,
   TaskBoardGroupBy,
   TaskBoardMessage,
-  CalendarMessage,
-  CalendarPageMessage,
 } from '../../core/types';
 
 /**
@@ -766,89 +764,10 @@ export function parseHelpMessage(value: unknown): HelpMessage | undefined {
 }
 
 /**
- * Accepts the calendar page's messages. Dates and months are checked for their
- * shape; the host checks that each names a real day.
+ * The sidebar Calendar's narrowing table, under the name Related Notes
+ * reads a calendar day's messages with until it has a table of its own.
  */
-export function parseCalendarMessage(
-  value: unknown,
-): CalendarMessage | undefined {
-  if (!isObject(value) || typeof value.type !== 'string') {
-    return undefined;
-  }
-  const date = typeof value.date === 'string' ? value.date : '';
-  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
-
-  switch (value.type) {
-    case 'ready':
-      return { type: 'ready' };
-    case 'openMonth':
-      return { type: 'openMonth' };
-    case 'showMonth':
-      return typeof value.month === 'string' &&
-        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month) &&
-        (value.date === undefined || isDate)
-        ? { type: 'showMonth', month: value.month, ...(isDate ? { date } : {}) }
-        : undefined;
-    case 'openDay':
-      return isDate ? { type: 'openDay', date } : undefined;
-    case 'openWeek':
-      return isDate ? { type: 'openWeek', date } : undefined;
-    case 'selectDay':
-      return isDate && Object.keys(value).length === 2 ? { type: 'selectDay', date } : undefined;
-    case 'createDay':
-      return isDate && Object.keys(value).length === 2 ? { type: 'createDay', date } : undefined;
-    case 'openNote':
-      return typeof value.filePath === 'string' &&
-        value.filePath.length > 0 &&
-        value.filePath.length <= 4096 &&
-        Object.keys(value).length === 2
-        ? { type: 'openNote', filePath: value.filePath }
-        : undefined;
-    case 'searchCreated':
-      return isDate && Object.keys(value).length === 2 ? { type: 'searchCreated', date } : undefined;
-    case 'openTask':
-      return typeof value.taskId === 'string' && value.taskId.length > 0 && Object.keys(value).length === 2
-        ? { type: 'openTask', taskId: value.taskId }
-        : undefined;
-    case 'toggleTask':
-      return typeof value.taskId === 'string' &&
-        value.taskId.length > 0 &&
-        typeof value.completed === 'boolean' &&
-        Object.keys(value).length === 3
-        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
-        : undefined;
-    case 'moveTask':
-      return typeof value.taskId === 'string' &&
-        value.taskId.length > 0 &&
-        (value.field === 'due' || value.field === 'scheduled') &&
-        isDate &&
-        Object.keys(value).length === 4
-        ? { type: 'moveTask', taskId: value.taskId, field: value.field, date }
-        : undefined;
-    default:
-      return undefined;
-  }
-}
-
-/** The calendar page's messages: the sidebar Calendar's, and its gear's and help's. */
-export function parseCalendarPageMessage(value: unknown): CalendarPageMessage | undefined {
-  if (isObject(value)) {
-    switch (value.type) {
-      case 'setShowRepeats':
-      case 'setShowWeekends':
-        return typeof value.show === 'boolean' && Object.keys(value).length === 2
-          ? { type: value.type, show: value.show }
-          : undefined;
-      case 'setZenMode':
-        return typeof value.enabled === 'boolean' ? { type: 'setZenMode', enabled: value.enabled } : undefined;
-      case 'chooseTheme':
-        return { type: 'chooseTheme' };
-      case 'openHelp':
-        return { type: 'openHelp' };
-    }
-  }
-  return parseCalendarMessage(value);
-}
+export { narrowCalendarMessage as parseCalendarMessage } from './pages/calendar/messages';
 
 function isSourceMessage(value: Record<string, unknown>): boolean {
   return (

@@ -1,19 +1,17 @@
 import * as vscode from 'vscode';
 
-import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
-import { viewPriority } from './panelPriority';
-import { CalendarDayDetail, CalendarMessage, WorkspaceIndex } from '../../core/types';
-import { ActiveCalendar, CalendarDaySource } from './activeCalendar';
-import { settingTarget, writeSetting } from '../commands/settings';
-import { CalendarController, readShowRepeats, readShowWeekends } from './calendar';
-import { TaskWrites } from '../commands/taskActions';
-import { getCalendarHtml } from './calendarHtml';
-import { onDidChangePageChrome } from './components';
-import { getDeckardTheme } from './themes';
-import { ThemePreview } from './themePreview';
-import { parseCalendarPageMessage } from './messages';
-import { setZenMode } from './zenMode';
+import type { WorkspaceIndex } from '../../domain/model';
+import type { CalendarDayDetail, CalendarMessage, CalendarPagePageToHost, CalendarSnapshot } from '../protocol/calendar';
+import type { TaskWrites } from '../commands/taskActions';
+import type { ActiveCalendar, CalendarDaySource } from './activeCalendar';
+import { PanelAdapter } from './host/panelAdapter';
+import { viewPriority } from './host/panelPriority';
+import { WebviewHost } from './host/webviewHost';
+import type { CalendarController } from './pages/calendar/calendarController';
+import { CalendarPageController } from './pages/calendarPage/calendarPageController';
+import type { ThemePreview } from './themePreview';
 
+/** The index the calendar page is drawn from and redraws on. */
 interface CalendarPageIndexSource {
   readonly ready: Promise<void>;
   readonly published?: Promise<void>;
@@ -38,69 +36,46 @@ export interface CalendarPanelOptions {
  * enough to list their tasks by name, with the chosen day's panel beside
  * it. It keeps its own month and day, apart from the sidebar Calendar's,
  * and does what the sidebar's does through the same controller.
+ *
+ * The page is `CalendarPageController`, run by a `WebviewHost` in one
+ * panel; this is the name the extension and its serializer know it by, and
+ * what Related Notes reads the chosen day from while the page is in front.
  */
 export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
-  private panel: vscode.WebviewPanel | undefined;
-  private readonly disposables: vscode.Disposable[] = [];
-  private panelDisposables: vscode.Disposable[] = [];
-  /** Whether the index changed while the page was hidden. */
-  private isStale = false;
+  private readonly page: PanelAdapter<CalendarSnapshot, CalendarPagePageToHost>;
+  private readonly pageController: CalendarPageController;
+  /** The month and day the page shows. */
   public readonly controller: CalendarController;
-  /** The chosen day as last drawn, which Related Notes shows while the page is in front. */
-  private day: CalendarDayDetail | undefined;
 
-  private readonly indexer: CalendarPageIndexSource;
-  private readonly extensionUri: vscode.Uri;
-  /** Where the page says it is in front, so Related Notes can show its day. */
-  private readonly activeCalendar: ActiveCalendar | undefined;
-  /** The theme Choose Theme… is previewing, which the page draws in. */
-  private readonly themePreview: ThemePreview;
-
+  /** Builds the page; nothing is shown until `show` or `restore`. */
   public constructor(options: CalendarPanelOptions) {
-    this.indexer = options.indexer;
-    this.extensionUri = options.extensionUri;
-    this.activeCalendar = options.activeCalendar;
-    this.themePreview = options.themePreview;
-    const { indexer, writes, activeCalendar, themePreview } = options;
-    // The page always shows the chosen day: it has the room.
-    this.controller = new CalendarController(indexer, writes, {
-      dayPanel: () => true,
-      refresh: () => this.refresh(),
-      refused: (taskId) => {
-        void this.panel?.webview.postMessage({ type: 'moveRefused', taskId });
-        this.refresh();
-      },
+    const { indexer, themePreview } = options;
+    this.pageController = new CalendarPageController({
+      indexer,
+      writes: options.writes,
+      themePreview,
+      activeCalendar: options.activeCalendar,
+      source: this,
+      refresh: () => this.page.host.refresh(),
+      post: (message) => this.page.host.post(message),
     });
-    this.disposables.push(
-      onIndexUpdateInTurn(
-        indexer,
-        { name: 'Calendar page', priority: () => viewPriority(this.panel) },
-        () => this.refresh(),
-      ),
-      // What counts as today moves at midnight.
-      vscode.window.onDidChangeWindowState((state) => {
-        if (state.focused) {
-          this.refresh();
-        }
-      }),
-      onDidChangePageChrome(() => this.renderHtml(), themePreview),
-      // The day moving to or from the sidebar redraws the page with or
-      // without its own panel.
-      ...(activeCalendar ? [activeCalendar.onDidChangeDayVisibility(() => this.refresh())] : []),
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.calendar.weekStart') ||
-          event.affectsConfiguration('deckard.calendar.showRepeats') ||
-          event.affectsConfiguration('deckard.calendar.showWeekends') ||
-          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
-        ) {
-          this.refresh();
-        }
-      }),
-    );
+    this.controller = this.pageController.calendar;
+    // The page ranks for a redraw as a side view does: never ahead of the
+    // editor in front.
+    this.page = new PanelAdapter(new WebviewHost(this.pageController, { indexer, themePreview }), {
+      viewType: 'deckard.calendarPage',
+      title: 'Deckard Calendar',
+      extensionUri: options.extensionUri,
+      icon: ['resources', 'views', 'calendar.svg'],
+      priority: viewPriority,
+    });
   }
 
-  /** Opens the page, on a month and a day when given, such as the sidebar's. */
+  /**
+   * Opens the page, on a month and a day when given, such as the sidebar's.
+   * An open page is brought forward and drawn at once; a new one is drawn
+   * once the index has notes to show.
+   */
   public async show(month?: string, date?: string): Promise<void> {
     if (month) {
       this.controller.month = month;
@@ -108,143 +83,34 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
     if (date) {
       this.controller.selectedDate = date;
     }
-    if (this.panel) {
-      this.panel.reveal(vscode.ViewColumn.Active);
-      this.refresh();
+    const open = this.page.panel;
+    if (open) {
+      open.reveal(vscode.ViewColumn.Active);
+      this.page.host.refresh();
       return;
     }
-    const panel = vscode.window.createWebviewPanel(
-      'deckard.calendarPage',
-      'Deckard Calendar',
-      vscode.ViewColumn.Active,
-      { enableScripts: true, retainContextWhenHidden: true },
-    );
-    this.attachPanel(panel);
-    await whenPublished(this.indexer);
-    this.refresh();
+    this.page.open();
+    await this.page.host.whenPublished();
+    this.page.host.refresh();
   }
 
   /** Takes back a page VS Code kept across a reload. */
-  public async restore(panel: vscode.WebviewPanel): Promise<void> {
-    if (this.panel) {
-      panel.dispose();
-      return;
-    }
-    this.attachPanel(panel);
-    await whenPublished(this.indexer);
-    this.refresh();
+  public restore(panel: vscode.WebviewPanel): Promise<void> {
+    return this.page.restore(panel);
   }
 
+  /** The chosen day as last drawn, which Related Notes shows while the page is in front. */
   public getDay(): CalendarDayDetail | undefined {
-    return this.day;
+    return this.pageController.getDay();
   }
 
+  /** Does what Related Notes' copy of the day panel asks, as the page's own panel would. */
   public async handleDayMessage(message: CalendarMessage): Promise<void> {
     await this.controller.handle(message);
   }
 
+  /** Closes the page, if it is open, and stops every listener. */
   public dispose(): void {
-    this.activeCalendar?.release(this);
-    this.disposePanelListeners();
-    this.panel?.dispose();
-    this.disposables.splice(0).forEach((disposable) => disposable.dispose());
-  }
-
-  private attachPanel(panel: vscode.WebviewPanel): void {
-    this.panel = panel;
-    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'calendar.svg');
-    panel.webview.options = { enableScripts: true };
-    this.renderHtml();
-    this.panelDisposables = [
-      panel.onDidDispose(() => {
-        this.panel = undefined;
-        this.day = undefined;
-        this.activeCalendar?.release(this);
-        this.disposePanelListeners();
-      }),
-      panel.webview.onDidReceiveMessage((message: unknown) => this.handleMessage(message)),
-      panel.onDidChangeViewState(() => {
-        if (panel.visible && this.isStale) {
-          this.refresh();
-        }
-        this.updateActivity(panel.active);
-      }),
-    ];
-    this.updateActivity(panel.active);
-  }
-
-  /** Says the page is in front, or is not, so Related Notes follows it. */
-  private updateActivity(active: boolean): void {
-    if (active) {
-      this.activeCalendar?.setActive(this);
-    } else {
-      this.activeCalendar?.release(this);
-    }
-  }
-
-  private disposePanelListeners(): void {
-    this.panelDisposables.splice(0).forEach((disposable) => disposable.dispose());
-  }
-
-  private renderHtml(): void {
-    if (this.panel) {
-      this.panel.webview.html = getCalendarHtml(this.panel.webview, {
-        page: true,
-        theme: getDeckardTheme(this.themePreview),
-      });
-    }
-  }
-
-  private refresh(): void {
-    if (!this.panel) {
-      return;
-    }
-    // A hidden page keeps its month and catches up when shown again.
-    if (!this.panel.visible) {
-      this.isStale = true;
-      return;
-    }
-    this.isStale = false;
-    const snapshot = this.controller.snapshot({ layout: 'page', dayPanel: true });
-    this.day = snapshot.selected;
-    void this.panel.webview.postMessage({
-      type: 'state',
-      data: {
-        ...snapshot,
-        // Related Notes is showing the day, so the month takes the width.
-        ...(this.activeCalendar?.isDayInSidebar(this) ? { dayInSidebar: true } : {}),
-      },
-    });
-    this.activeCalendar?.notifyChanged(this);
-  }
-
-  public async handleMessage(value: unknown): Promise<void> {
-    const message = parseCalendarPageMessage(value);
-    if (!message) {
-      return;
-    }
-    switch (message.type) {
-      case 'setShowRepeats':
-        if (message.show !== readShowRepeats()) {
-          await writeSetting('calendar.showRepeats', message.show, settingTarget('calendar.showRepeats'));
-        }
-        return;
-      case 'setShowWeekends':
-        if (message.show !== readShowWeekends()) {
-          await writeSetting('calendar.showWeekends', message.show, settingTarget('calendar.showWeekends'));
-        }
-        return;
-      case 'setZenMode':
-        await setZenMode(message.enabled);
-        return;
-      case 'chooseTheme':
-        await vscode.commands.executeCommand('deckard.chooseTheme');
-        return;
-      case 'openHelp':
-        await vscode.commands.executeCommand('deckard.showHelp', 'periodic');
-        return;
-      default:
-        await this.controller.handle(message);
-    }
+    this.page.dispose();
   }
 }
