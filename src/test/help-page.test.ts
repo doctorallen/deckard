@@ -133,6 +133,7 @@ suite('Help page', () => {
         postMessage: async () => true,
       },
       onDidDispose: () => ({ dispose: () => undefined }),
+      onDidChangeViewState: () => ({ dispose: () => undefined }),
       reveal: () => undefined,
       dispose: () => undefined,
     });

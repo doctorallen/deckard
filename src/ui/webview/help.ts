@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
-import { onDidChangePageChrome } from './components';
-import { getDeckardTheme } from './themes';
-import { ThemePreview } from './themePreview';
 
-import { GUIDE_PAGES, isGuidePage, renderGuidePage } from './guide';
-import { getHelpHtml, HelpManifest, isRunnableFromHelp } from './helpHtml';
-import { parseHelpMessage } from './messages';
-import { Release } from '../../core/changelog';
-import { WhatsNew } from '../commands/whatsNew';
+import type { HelpMessage, HelpPageToHost, HelpRevealMessage } from '../protocol/help';
+import type { WhatsNew } from '../commands/whatsNew';
+import type { HelpManifest } from './helpHtml';
+import type { MessageHandler } from './host/pageController';
+import { PanelAdapter } from './host/panelAdapter';
+import { WebviewHost } from './host/webviewHost';
+import { HelpController } from './pages/help/helpController';
+import type { ThemePreview } from './themePreview';
 
 /** What Help is drawn from. */
 export interface HelpPanelOptions {
@@ -26,147 +26,58 @@ export interface HelpPanelOptions {
 
 /**
  * Hosts Deckard's self-contained product guide in a reusable webview panel.
+ *
+ * The page is `HelpController`, run by a `WebviewHost` in one panel; this
+ * is the name the extension and its serializer know it by.
  */
 export class HelpPanel implements vscode.Disposable {
-  private panel: vscode.WebviewPanel | undefined;
-  private panelDisposables: vscode.Disposable[] = [];
-  private readonly extensionUri: vscode.Uri;
-  private readonly themePreview: ThemePreview;
-  private readonly manifest: HelpManifest;
-  private readonly whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>;
+  private readonly controller: HelpController;
+  private readonly page: PanelAdapter<never, HelpPageToHost>;
 
+  /** Builds the page; nothing is shown until `show` or `restore`. */
   public constructor({ extensionUri, themePreview, manifest = {}, whatsNew }: HelpPanelOptions) {
-    this.extensionUri = extensionUri;
-    this.themePreview = themePreview;
-    this.manifest = manifest;
-    this.whatsNew = whatsNew;
-  }
-
-  /** Opens Help, at a section when one is named, such as `whats-new`. */
-  public async show(anchor?: string): Promise<void> {
-    if (!this.panel) {
-      await this.loadReleases();
-      this.createPanel(anchor);
-    } else if (anchor) {
-      void this.panel.webview.postMessage({ type: 'reveal', anchor });
-    }
-    this.panel?.reveal(vscode.ViewColumn.Active);
-  }
-
-  private releases: Release[] = [];
-
-  private async loadReleases(): Promise<void> {
-    this.releases = (await this.whatsNew?.releases()) ?? [];
-  }
-
-  private html(webview: vscode.Webview, anchor?: string): string {
-    const newSince = this.whatsNew?.newSince();
-    return getHelpHtml(webview, this.extensionUri, this.manifest, {
-      releases: this.releases,
-      ...(newSince ? { newSince } : {}),
-      ...(anchor ? { anchor } : {}),
-      theme: getDeckardTheme(this.themePreview),
-    });
-  }
-
-  public async restore(panel: vscode.WebviewPanel): Promise<void> {
-    if (this.panel) {
-      panel.dispose();
-      return;
-    }
-    await this.loadReleases();
-    this.attachPanel(panel);
-  }
-
-  public dispose(): void {
-    this.disposePanelListeners();
-    this.panel?.dispose();
-  }
-
-  private createPanel(anchor?: string): void {
-    const panel = vscode.window.createWebviewPanel(
-      'deckard.help',
-      'Deckard Help',
-      vscode.ViewColumn.Active,
-      {
-        // The page's own script marks the section being read in the rail.
-        enableScripts: true,
-        enableFindWidget: true,
-        retainContextWhenHidden: true,
-      },
+    this.controller = new HelpController({ extensionUri, manifest, whatsNew });
+    this.page = new PanelAdapter(
+      new WebviewHost<never, HelpPageToHost>(this.controller, { themePreview }),
+      { viewType: 'deckard.help', title: 'Deckard Help', extensionUri, icon: ['resources', 'deckard.svg'] },
     );
-    this.attachPanel(panel, anchor);
-  }
-
-  private attachPanel(panel: vscode.WebviewPanel, anchor?: string): void {
-    this.panel = panel;
-    // A panel restored after a reload keeps the options it was made with,
-    // which before 1.23 had no scripts.
-    panel.webview.options = { ...panel.webview.options, enableScripts: true };
-    panel.iconPath = vscode.Uri.joinPath(
-      this.extensionUri,
-      'resources',
-      'deckard.svg',
-    );
-    panel.webview.html = this.html(panel.webview, anchor);
-    this.panelDisposables = [
-      onDidChangePageChrome(() => {
-        if (this.panel) {
-          this.panel.webview.html = this.html(this.panel.webview);
-        }
-      }, this.themePreview),
-      panel.webview.onDidReceiveMessage((message: unknown) => this.handle(message)),
-      panel.onDidDispose(() => {
-        this.panel = undefined;
-        this.disposePanelListeners();
-      }),
-    ];
-  }
-
-  /** Runs a command the page names, when Help is allowed to run it. */
-  public async handle(value: unknown): Promise<void> {
-    const message = parseHelpMessage(value);
-    if (message?.type === 'runCommand' && isRunnableFromHelp(this.manifest, message.command)) {
-      await vscode.commands.executeCommand(message.command);
-    } else if (message?.type === 'openGuide') {
-      await this.showGuide(message.page, message.anchor);
-    } else if (message?.type === 'openChangelog') {
-      await vscode.commands.executeCommand(
-        'markdown.showPreview',
-        vscode.Uri.joinPath(this.extensionUri, 'CHANGELOG.md'),
-      );
-    }
   }
 
   /**
-   * Shows a guide page in the panel, read from the copy the VSIX ships. A
-   * page that cannot be read says so where the page would be.
+   * Opens Help, at a section when one is named, such as `whats-new`. A new
+   * panel is drawn at it; an open one is asked to show it.
    */
-  private async showGuide(page: string, anchor?: string): Promise<void> {
-    if (!this.panel || !isGuidePage(page)) {
-      return;
+  public async show(anchor?: string): Promise<void> {
+    if (!this.page.panel) {
+      await this.controller.loadReleases();
+      this.controller.drawingAt(anchor, () => this.page.open());
+    } else if (anchor) {
+      const reveal: HelpRevealMessage = { type: 'reveal', anchor };
+      this.page.host.post(reveal);
     }
-    let html: string;
-    try {
-      const bytes = await vscode.workspace.fs.readFile(
-        vscode.Uri.joinPath(this.extensionUri, 'docs', 'guide', `${page}.md`),
-      );
-      html = renderGuidePage(Buffer.from(bytes).toString('utf8'));
-    } catch {
-      html = '<p>Deckard could not read this page of the guide. It is also on GitHub, at <a href="https://github.com/doctorallen/deckard/blob/master/docs/guide/' + page + '.md">docs/guide/' + page + '.md</a>.</p>';
-    }
-    void this.panel.webview.postMessage({
-      type: 'guide',
-      page,
-      title: GUIDE_PAGES[page],
-      html,
-      ...(anchor ? { anchor } : {}),
-    });
+    this.page.panel?.reveal(vscode.ViewColumn.Active);
   }
 
-  private disposePanelListeners(): void {
-    this.panelDisposables
-      .splice(0)
-      .forEach((disposable) => disposable.dispose());
+  /** Takes back the Help panel VS Code kept across a reload, with What's new read again. */
+  public restore(panel: vscode.WebviewPanel): Promise<void> {
+    return this.page.restore(panel);
+  }
+
+  /** Closes Help, if it is open, and stops every listener. */
+  public dispose(): void {
+    this.page.dispose();
+  }
+
+  /**
+   * Acts on a message as one from the page is acted on: a command runs
+   * only when Help is allowed to run it.
+   */
+  public async handle(value: unknown): Promise<void> {
+    const message = this.controller.narrow(value);
+    if (!message) {
+      return;
+    }
+    const handler = this.controller.handlers[message.type] as MessageHandler<HelpMessage>;
+    await handler(message, this.page.host);
   }
 }

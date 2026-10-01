@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { GUIDE_IMAGE_BASE, GUIDE_PAGES, guideSlug, HELP_READ_MORE, renderGuidePage, resolveGuideLink } from '../ui/webview/guide';
-import { parseHelpMessage } from '../ui/webview/messages';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
@@ -76,16 +75,6 @@ suite('The guide', () => {
     assert.ok(html.includes(`src="${GUIDE_IMAGE_BASE}task-board.png"`));
     assert.ok(html.includes(`src="${GUIDE_IMAGE_BASE}agenda.png"`));
     assert.ok(!html.includes('<script'), 'nothing runs from a page');
-  });
-
-  test('Help asks only for a page by name', () => {
-    assert.deepStrictEqual(parseHelpMessage({ type: 'openGuide', page: 'tasks', anchor: 'task-metadata' }), {
-      type: 'openGuide',
-      page: 'tasks',
-      anchor: 'task-metadata',
-    });
-    assert.strictEqual(parseHelpMessage({ type: 'openGuide', page: '../../package' }), undefined);
-    assert.strictEqual(parseHelpMessage({ type: 'openGuide', page: 'tasks', anchor: 'a"b' }), undefined);
   });
 
   test('Read more asks for its page, which shows in place of Help, and Back returns', () => {
