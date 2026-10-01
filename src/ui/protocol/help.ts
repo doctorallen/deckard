@@ -42,7 +42,9 @@ export interface HelpRevealMessage {
 /**
  * A guide page, rendered from the copy the VSIX ships, to show in place of
  * Help, at a heading when one was asked for. A page that cannot be read is
- * one sentence saying so, with a link to it on GitHub.
+ * one sentence saying so, with a link to it on GitHub; one VS Code's
+ * Markdown extension cannot render is one sentence saying so, with a link
+ * to it on the guide's site.
  */
 export interface HelpGuideMessage {
   type: 'guide';

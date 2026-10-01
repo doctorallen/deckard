@@ -2,6 +2,8 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
+import * as path from 'path';
+
 import type { HelpPageToHost } from '../ui/protocol/help';
 import { HelpPanel } from '../ui/webview/help';
 import type { HelpManifest } from '../ui/webview/pages/help/helpManifest';
@@ -12,6 +14,10 @@ import { FakeSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 
 const extensionUri = vscode.Uri.file('/tmp/deckard-extension');
+/** The repository, whose docs/guide is the guide the VSIX ships. */
+const repositoryUri = vscode.Uri.file(path.resolve(__dirname, '..', '..'));
+/** The Markdown extension's command Help renders the guide with. */
+const RENDER = 'markdown.api.render';
 
 /** Two commands: one Help may run, and one it names as code only. */
 const manifest: HelpManifest = {
@@ -131,7 +137,7 @@ suite('Help host', () => {
   test('a new Help reads What is new first, opens at the section asked for, and runs scripts', async () => {
     await withHelp(async (help, made, events) => {
       await help.show('whats-new');
-      assert.deepStrictEqual(events, [['releases'], ['create', 'deckard.help', 'Deckard Help']]);
+      assert.deepStrictEqual(events, [['releases'], ['create', 'deckard.help', 'Deckard Help'], [RENDER, '']], 'and starts the Markdown extension');
       assert.strictEqual(made.length, 1);
       const [panel] = made;
       assert.deepStrictEqual(withRoots(panel.options as vscode.WebviewOptions), {
@@ -180,7 +186,7 @@ suite('Help host', () => {
       kept.webview.options = { enableCommandUris: true };
       const read = events.length;
       await help.restore(kept as unknown as vscode.WebviewPanel);
-      assert.deepStrictEqual(events.slice(read), [['releases']]);
+      assert.deepStrictEqual(events.slice(read), [['releases'], [RENDER, '']]);
       assert.deepStrictEqual(withRoots(kept.webview.options), { enableCommandUris: true, enableScripts: true, localResourceRoots: HELP_ROOTS });
       assert.strictEqual(kept.htmls.length, 1);
       assert.strictEqual(anchorOf(kept.htmls[0]), undefined);
@@ -191,7 +197,7 @@ suite('Help host', () => {
       await help.restore(second as unknown as vscode.WebviewPanel);
       assert.strictEqual(second.disposed, true, 'a second kept panel is closed');
       assert.strictEqual(second.htmls.length, 0);
-      assert.deepStrictEqual(events.slice(read), [['releases']]);
+      assert.deepStrictEqual(events.slice(read), [['releases'], [RENDER, '']]);
     });
   });
 
@@ -291,4 +297,100 @@ suite('Help host', () => {
       host.dispose();
     }
   });
+
+  test('a guide page is rendered by the Markdown extension, its links and screenshots rewritten for the panel', async () => {
+    const rendered: unknown[] = [];
+    await withGuideRenderer(
+      async (source) => {
+        rendered.push(source);
+        return '<span id="markdown-mermaid" aria-hidden="true"></span>\n<h1 data-line="0" class="code-line" dir="auto" id="tasks">Tasks</h1>\n' +
+          '<p data-line="2" class="code-line" dir="auto"><a href="task-board.md" data-href="task-board.md">board</a> ' +
+          '<img src="../images/agenda.png" alt="Tasks view." data-src="../images/agenda.png"></p>';
+      },
+      async (surface) => {
+        assert.deepStrictEqual(rendered, [''], 'the Markdown extension was started as Help opened');
+        await surface.webview.send({ type: 'openGuide', page: 'tasks', anchor: 'task-metadata' });
+        assert.strictEqual(rendered.length, 2);
+        assert.match(String(rendered[1]), /^# Tasks\n/, 'the page as the VSIX ships it');
+        assert.deepStrictEqual(surface.webview.posted, [{
+          type: 'guide',
+          page: 'tasks',
+          title: 'Tasks',
+          anchor: 'task-metadata',
+          html: '<h1 data-line="0" class="code-line" dir="auto" id="tasks">Tasks</h1>\n' +
+            '<p data-line="2" class="code-line" dir="auto"><a href="#" data-guide-page="task-board">board</a> ' +
+            '<img src="https://raw.githubusercontent.com/doctorallen/deckard/master/docs/images/agenda.png" alt="Tasks view."></p>',
+        }]);
+      },
+    );
+  });
+
+  test('without the Markdown extension, a guide page says so in one sentence and links to the page on the site', async () => {
+    for (const unavailable of [
+      () => Promise.reject(new Error(`command '${RENDER}' not found`)),
+      () => Promise.resolve(undefined),
+    ]) {
+      await withGuideRenderer(unavailable, async (surface) => {
+        await surface.webview.send({ type: 'openGuide', page: 'daily-notes' });
+        await surface.webview.send({ type: 'openGuide', page: 'README' });
+        assert.deepStrictEqual(surface.webview.posted, [
+          {
+            type: 'guide',
+            page: 'daily-notes',
+            title: 'Daily notes, reviews, and the calendar',
+            html: '<p>Help shows the guide with VS Code’s built-in Markdown extension, which is not available, so this page is on the guide’s site: ' +
+              '<a href="https://deckard.esperinnovations.com/daily-notes.html">Daily notes, reviews, and the calendar</a>.</p>',
+          },
+          {
+            type: 'guide',
+            page: 'README',
+            title: 'Deckard guide',
+            html: '<p>Help shows the guide with VS Code’s built-in Markdown extension, which is not available, so this page is on the guide’s site: ' +
+              '<a href="https://deckard.esperinnovations.com">Deckard guide</a>.</p>',
+          },
+        ]);
+      });
+    }
+  });
+
+  test('a failed start of the Markdown extension as Help opens is not reported', async () => {
+    await withGuideRenderer(
+      () => Promise.reject(new Error(`command '${RENDER}' not found`)),
+      async (surface, calls) => {
+        assert.deepStrictEqual(calls, [[RENDER, '']], 'it was asked to start as Help opened');
+        assert.deepStrictEqual(surface.webview.posted, []);
+      },
+    );
+  });
 });
+
+/**
+ * Runs `run` with Help's controller reading the repository's guide in a
+ * fake panel, and VS Code's Markdown extension standing in as `render`.
+ * Every command run is recorded in `calls`; only the Markdown extension's
+ * answers.
+ */
+async function withGuideRenderer(
+  render: (source: unknown) => Promise<unknown>,
+  run: (surface: FakeSurface, calls: unknown[][]) => Promise<void>,
+): Promise<void> {
+  const commands = vscode.commands as unknown as Record<string, unknown>;
+  const original = commands.executeCommand;
+  const calls: unknown[][] = [];
+  commands.executeCommand = (...call: unknown[]) => {
+    calls.push(call);
+    return call[0] === RENDER ? render(call[1]) : Promise.resolve(undefined);
+  };
+  const controller = new HelpController({ extensionUri: repositoryUri, manifest });
+  const host = new WebviewHost<never, HelpPageToHost>(controller, { themePreview: new ThemePreview() });
+  const surface = new FakeSurface();
+  try {
+    host.attach(surface);
+    // Lets the start the host asked for as it attached settle, or fail.
+    await new Promise((resolve) => setImmediate(resolve));
+    await run(surface, calls);
+  } finally {
+    commands.executeCommand = original;
+    host.dispose();
+  }
+}
