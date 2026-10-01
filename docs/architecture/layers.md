@@ -87,7 +87,7 @@ Some examples from the audit:
 | `createNotesGraphSnapshot` in `ui/state/notesGraphState.ts` | `domain/graph/notesGraph.ts` (done in Phase 4) | It builds a graph from the index. `toWire`, which trims it for the page, stays in `ui/state`. |
 | `buildWorkspaceIndex` in `core/workspace/indexer.ts` | `domain/index` | It is pure, and 54 test files import it through a module that imports `vscode`. |
 | `listOverdueTasks` in `ui/views/agendaTree.ts` | `AgendaService` | The status bar and `extension.ts` import a domain query from a tree view. |
-| `panelPriority` and `viewPriority` in `core/workspace/publishing.ts` | `ui/webview/host` | They map a panel's visibility to a redraw priority, which is a UI concern. |
+| `panelPriority` and `viewPriority` in `core/workspace/publishing.ts` | `ui/webview/host/panelPriority.ts` (done in Phase 6 step 2.1; the old `ui/webview/panelPriority.ts` re-exports them until 2.10) | They map a panel's visibility to a redraw priority, which is a UI concern. |
 | `core/types.ts` | `domain/model` and `ui/protocol` | 45% of it is webview view models and 34% is webview messages. |
 
 ## How the rule is enforced
