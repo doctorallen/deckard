@@ -9,7 +9,7 @@ import { setZenMode } from './zenMode';
 import { parseQuery } from '../../domain/query/queryParser';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../shared/timing';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
 import { openResultAt } from '../commands/navigation';
 import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
@@ -52,7 +52,7 @@ export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
 
 /** What the Task board is built from. */
 export interface TaskBoardPanelOptions {
-  indexer: WorkspaceIndexer<vscode.Uri>;
+  indexer: IndexReader<vscode.Uri> & IndexScanStatus & IndexUpdates;
   preferences: PreferencesStore;
   extensionUri: vscode.Uri;
   openTag: (tagKey: string) => Promise<void>;
@@ -93,7 +93,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private refineWasInSidebar = false;
   private lastSnapshot: TaskBoardSnapshot | undefined;
 
-  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly indexer: IndexReader<vscode.Uri> & IndexScanStatus & IndexUpdates;
   private readonly preferences: PreferencesStore;
   private readonly extensionUri: vscode.Uri;
   private readonly openTag: (tagKey: string) => Promise<void>;

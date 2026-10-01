@@ -7,7 +7,7 @@ import { ThemePreview } from './themePreview';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../shared/timing';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { refineQueryText } from '../../domain/query/queryEdit';
@@ -57,7 +57,7 @@ const selectionRefreshDelayMs = 120;
 
 /** What Related Notes is built from. */
 export interface SidebarNotesViewOptions {
-  indexer: WorkspaceIndexer;
+  indexer: IndexReader & IndexScanStatus & IndexUpdates & IndexControl;
   preferences: PreferencesStore;
   activeSearch: ActiveSearch;
   onOpenTag: (tagKey: string) => void | Promise<void>;
@@ -93,7 +93,7 @@ export class SidebarNotesView
   /** Whether the first scan has finished, which tells indexing from missing. */
   private indexed = false;
 
-  private readonly indexer: WorkspaceIndexer;
+  private readonly indexer: IndexReader & IndexScanStatus & IndexUpdates & IndexControl;
   private readonly preferences: PreferencesStore;
   private readonly activeSearch: ActiveSearch;
   private readonly onOpenTag: (tagKey: string) => void | Promise<void>;

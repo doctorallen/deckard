@@ -11,7 +11,7 @@ import { formatEntityTitle } from '../../domain/markdown/parser';
 import { formatQuery } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
 import { measure } from '../../shared/timing';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader, IndexScanStatus, IndexSearch, IndexUpdates } from '../../core/workspace/indexReader';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
 import {
@@ -51,7 +51,7 @@ import { panelPriority } from './panelPriority';
 
 /** What the search pages are built from. */
 export interface SearchPanelsOptions {
-  indexer: WorkspaceIndexer<vscode.Uri>;
+  indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
   preferences: PreferencesStore;
   extensionUri: vscode.Uri;
   activeSearch: ActiveSearch;
@@ -73,7 +73,7 @@ export class SearchPanels implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly panels = new Set<SearchPanel>();
 
-  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
   private readonly preferences: PreferencesStore;
   private readonly extensionUri: vscode.Uri;
   private readonly activeSearch: ActiveSearch;
@@ -392,7 +392,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   public constructor(
     private readonly originQuery: string,
     private queryText: string,
-    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
+    private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
