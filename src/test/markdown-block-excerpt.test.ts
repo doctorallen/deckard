@@ -159,6 +159,12 @@ suite('Block excerpt: lists', () => {
     assert.strictEqual(outline(buildBlockExcerpt('para\n1. one')), 'p(para) ol(tight [p(one)])');
   });
 
+  test('a list of links to notes keeps its items, each its words', () => {
+    const [list] = buildBlockExcerpt('1. [Tasks](<01 Tasks.md>): dates,\n   priorities\n2. [Search](<04 Search.md>)');
+    assert.strictEqual(outline([list]), 'ol(tight [p(Tasks: dates,/priorities)][p(Search)])');
+    assert.ok(list.kind === 'list' && list.items.flat().every((block) => block.kind === 'paragraph' && block.children.every((token) => token.kind !== 'link')));
+  });
+
   test('an item holds code and quotes indented to its content', () => {
     assert.strictEqual(outline(buildBlockExcerpt('- a\n  ```\n  b\n  ```\n- > c')), 'ul(tight [p(a) code("b\\n")][quote(p(c))])');
   });

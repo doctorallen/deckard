@@ -158,6 +158,13 @@ suite('Inline tokens: links', () => {
     }
   });
 
+  test('a link to a note, as the sample workspace and the development notes write one, is its words', () => {
+    // The only links scripts/compare-card-markdown.js finds in its corpora.
+    // markdown-it drew each as an anchor the page could not follow.
+    assert.strictEqual(describe(tokenizeInline('1. [Tasks](<01 Tasks.md>): due dates')), '"1. Tasks: due dates"');
+    assert.strictEqual(describe(tokenizeInline('the #location/monorail [link](asdfasdf).')), '"the #location/monorail link."');
+  });
+
   test('a link that never closes is text', () => {
     assert.strictEqual(describe(tokenizeInline('[a](https://x')), '"[a](https://x"');
     assert.strictEqual(describe(tokenizeInline('[a] (https://x)')), '"[a] (https://x)"');
