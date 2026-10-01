@@ -7,7 +7,7 @@ import type { RelatedNotesSortMode } from '../../domain/model/preferences';
 import type { RankedNote, SuggestedTag } from '../../domain/model/relatedNotes';
 import type { TagReference } from '../../domain/model/tags';
 import type { CalendarDayDetail, CalendarMessage } from './calendar';
-import type { MessageOf, StateMessage } from './messaging';
+import type { MessageAs, MessageOf, StateMessage } from './messaging';
 import type { SidebarGraphContext } from './notesGraph';
 import type {
   OpenHelpMessage,
@@ -278,8 +278,8 @@ export interface SidebarNotesPageToHost {
   setHideDailyNotes: SetHideDailyNotesMessage;
   insertLink: InsertLinkMessage;
   renameTag: RenameTagMessage;
-  parkTag: ParkTagMessage & { type: 'parkTag' };
-  unparkTag: ParkTagMessage & { type: 'unparkTag' };
+  parkTag: MessageAs<ParkTagMessage, 'parkTag'>;
+  unparkTag: MessageAs<ParkTagMessage, 'unparkTag'>;
   refineActiveSearch: RefineActiveSearchMessage;
   setRelatedNotesSort: SetRelatedNotesSortMessage;
   openDashboard: OpenDashboardMessage;

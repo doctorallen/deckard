@@ -12,7 +12,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind, TagReference } from '../../domain/model/tags';
-import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
+import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
@@ -368,8 +368,8 @@ export interface DashboardPageToHost {
   reorderEntities: ReorderEntitiesMessage;
   openTag: OpenTagMessage;
   renameTag: RenameTagMessage;
-  parkTag: ParkTagMessage & { type: 'parkTag' };
-  unparkTag: ParkTagMessage & { type: 'unparkTag' };
+  parkTag: MessageAs<ParkTagMessage, 'parkTag'>;
+  unparkTag: MessageAs<ParkTagMessage, 'unparkTag'>;
   openSavedFilter: OpenSavedFilterMessage;
   addSavedSearchWidget: AddSavedSearchWidgetMessage;
   removeSavedFilter: RemoveSavedFilterMessage;
@@ -377,11 +377,11 @@ export interface DashboardPageToHost {
   setDashboardWidgets: SetDashboardWidgetsMessage;
   resetDashboardWidgets: ResetDashboardWidgetsMessage;
   widgetChoices: DashboardWidgetChoicesMessage;
-  openWhatsNew: WhatsNewMessage & { type: 'openWhatsNew' };
-  dismissWhatsNew: WhatsNewMessage & { type: 'dismissWhatsNew' };
-  runTryNext: TryNextMessage & { type: 'runTryNext' };
-  snoozeTryNext: TryNextMessage & { type: 'snoozeTryNext' };
-  retireTryNext: TryNextMessage & { type: 'retireTryNext' };
+  openWhatsNew: MessageAs<WhatsNewMessage, 'openWhatsNew'>;
+  dismissWhatsNew: MessageAs<WhatsNewMessage, 'dismissWhatsNew'>;
+  runTryNext: MessageAs<TryNextMessage, 'runTryNext'>;
+  snoozeTryNext: MessageAs<TryNextMessage, 'snoozeTryNext'>;
+  retireTryNext: MessageAs<TryNextMessage, 'retireTryNext'>;
   openSearch: OpenSearchMessage;
   openTaskBoard: OpenTaskBoardMessage;
   openView: OpenDeckardViewMessage;
@@ -390,8 +390,8 @@ export interface DashboardPageToHost {
   createTagHub: CreateTagHubMessage;
   addNextAction: AddNextActionMessage;
   openNote: OpenNoteMessage;
-  pinNote: PinNoteMessage & { type: 'pinNote' };
-  unpinNote: PinNoteMessage & { type: 'unpinNote' };
+  pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
+  unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;
 }
 
 /** Messages from the Dashboard. */

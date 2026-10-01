@@ -5,6 +5,7 @@ import {
   isSourceLocation,
   isStringArray,
   MAX_QUERY_LENGTH,
+  narrowAs,
   narrowExportResults,
   narrowOpenSearch,
   narrowOpenSource,
@@ -152,6 +153,24 @@ suite('Page message narrowing', () => {
       [{ type: 'exportResults', kind: 'notes' }, { type: 'exportResults', kind: 'notes' }],
       [{ type: 'exportResults', kind: 'cards' }, undefined],
     ]);
+  });
+
+  test('one type of a check that serves two, under the key a table lists it by', () => {
+    const tabled = narrowWith({
+      parkTag: narrowAs('parkTag', narrowParkTag),
+      unparkTag: narrowAs('unparkTag', narrowParkTag),
+      pinNote: narrowAs('pinNote', narrowPinNote),
+      unpinNote: narrowAs('unpinNote', narrowPinNote),
+    });
+    check(tabled, [
+      [{ type: 'parkTag', tagKey: '#a' }, { type: 'parkTag', tagKey: '#a' }],
+      [{ type: 'unparkTag', tagKey: '#a' }, { type: 'unparkTag', tagKey: '#a' }],
+      [{ type: 'parkTag', tagKey: '#a', extra: 1 }, undefined],
+      [{ type: 'pinNote', filePath: '/a.md', line: 2 }, { type: 'pinNote', filePath: '/a.md', line: 2 }],
+      [{ type: 'unpinNote', filePath: '/a.md', pinKey: 'k' }, { type: 'unpinNote', filePath: '/a.md', pinKey: 'k' }],
+    ]);
+    // Asked directly of a message of the other type, it refuses it.
+    assert.strictEqual(narrowAs('pinNote', narrowPinNote)({ type: 'unpinNote', filePath: '/a.md' }), undefined);
   });
 
   test('an array of strings', () => {

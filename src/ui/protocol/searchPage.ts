@@ -13,7 +13,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
-import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
+import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
@@ -279,8 +279,8 @@ export interface SearchPagePageToHost {
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;
   chooseTheme: ChooseThemeMessage;
-  pinNote: PinNoteMessage & { type: 'pinNote' };
-  unpinNote: PinNoteMessage & { type: 'unpinNote' };
+  pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
+  unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;
   openHelp: OpenHelpMessage;
   openSource: OpenSourceMessage;
   toggleTask: ToggleTaskMessage;
@@ -288,10 +288,10 @@ export interface SearchPagePageToHost {
   setSearchPreview: SetSearchPreviewMessage;
   openTag: OpenTagMessage;
   renameTag: RenameTagMessage;
-  parkTag: ParkTagMessage & { type: 'parkTag' };
-  unparkTag: ParkTagMessage & { type: 'unparkTag' };
-  parkNote: ParkNoteMessage & { type: 'parkNote' };
-  unparkNote: ParkNoteMessage & { type: 'unparkNote' };
+  parkTag: MessageAs<ParkTagMessage, 'parkTag'>;
+  unparkTag: MessageAs<ParkTagMessage, 'unparkTag'>;
+  parkNote: MessageAs<ParkNoteMessage, 'parkNote'>;
+  unparkNote: MessageAs<ParkNoteMessage, 'unparkNote'>;
   setTagOverviewSort: SetTagOverviewSortMessage;
   setTagOverviewLayout: SetTagOverviewLayoutMessage;
   setSearchColumns: SetSearchColumnsMessage;

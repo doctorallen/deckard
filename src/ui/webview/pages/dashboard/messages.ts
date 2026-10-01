@@ -31,6 +31,7 @@ import type { OpenTaskBoardMessage } from '../../../protocol/shared';
 import {
   isStringArray,
   MAX_QUERY_LENGTH,
+  narrowAs,
   Narrower,
   NarrowingTable,
   narrowOpenSearch,
@@ -80,21 +81,6 @@ function isDashboardSearchField(value: unknown): value is DashboardSearchField {
 /** How many columns the Tags tab may lay its tags out in. */
 function isDashboardColumnCount(value: unknown): value is 1 | 2 | 3 | 4 {
   return value === 1 || value === 2 || value === 3 || value === 4;
-}
-
-/**
- * One type of a shared check that serves two, as the table names it.
- * `narrowWith` hands each check only messages of its own type, so the
- * message the check rebuilds already carries it.
- */
-function narrowAs<T extends string, M extends { type: string }>(
-  type: T,
-  narrow: Narrower<M>,
-): Narrower<M & { type: T }> {
-  return (value) => {
-    const message = narrow(value);
-    return message?.type === type ? (message as M & { type: T }) : undefined;
-  };
 }
 
 /** A tag's heart, by any key; the host checks the index has it. */

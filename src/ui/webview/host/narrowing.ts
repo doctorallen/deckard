@@ -10,7 +10,7 @@
  * that page's table, so pages moved in parallel never edit one file.
  */
 import { isObject } from '../../../shared/guards';
-import type { MessageOf } from '../../protocol/messaging';
+import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type {
   ExportResultsMessage,
   OpenSearchMessage,
@@ -60,6 +60,23 @@ export function narrowWith<M>(
     }
     const narrow = table[value.type as keyof M] as Narrower<MessageOf<M>>;
     return narrow(value as UncheckedMessage);
+  };
+}
+
+/**
+ * One type of a shared check that serves several, as a table lists it
+ * under each, such as `parkTag: narrowAs('parkTag', narrowParkTag)`. The
+ * table hands a check only messages of the type it is listed under, and a
+ * shared check keeps the type it was handed, so the message comes back of
+ * that type; one that somehow did not is refused.
+ */
+export function narrowAs<M extends PageMessage, T extends M['type']>(
+  type: T,
+  narrow: Narrower<M>,
+): Narrower<MessageAs<M, T>> {
+  return (value) => {
+    const message = narrow(value);
+    return message?.type === type ? (message as MessageAs<M, T>) : undefined;
   };
 }
 

@@ -21,6 +21,13 @@ export type MessageMap<M> = { [K in keyof M]: { type: K } };
 export type MessageOf<M> = M[keyof M];
 
 /**
+ * One type of a message that serves several, such as Park Tag and Unpark
+ * Tag, as a map lists it under each: the shared shape, with `type` the key
+ * it is listed under, as in `{ parkTag: MessageAs<ParkTagMessage, 'parkTag'> }`.
+ */
+export type MessageAs<M extends PageMessage, T extends M['type']> = M & { type: T };
+
+/**
  * Carried by a message that expects an answer, and by the answer, so the
  * page can tell which of its requests a reply is about. The page mints the
  * id; the host only hands it back.

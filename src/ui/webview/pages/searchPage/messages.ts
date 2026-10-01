@@ -4,7 +4,6 @@
  * checks each tag, line, and task against the index as it is now.
  */
 import { SEARCH_PAGE_SIZES, SearchPageSize } from '../../../../domain/model/preferences';
-import type { PageMessage } from '../../../protocol/messaging';
 import type {
   EditResultsMessage,
   NavigateSearchHistoryMessage,
@@ -24,6 +23,7 @@ import type { MergeTagsMessage } from '../../../protocol/shared';
 import {
   exactlyType,
   MAX_QUERY_LENGTH,
+  narrowAs,
   Narrower,
   NarrowingTable,
   narrowExportResults,
@@ -50,15 +50,6 @@ const MAX_TAG_KEY_LENGTH = 500;
 
 /** The longest path Park Note or Unpark Note may name. */
 const MAX_FILE_PATH_LENGTH = 4096;
-
-/**
- * One type of a check that serves two, such as Park Tag and Unpark Tag. The
- * table hands the check only messages of the type it is listed under, and
- * the check keeps the type it was handed, so what it returns is of that type.
- */
-function ofType<M extends PageMessage, T extends M['type']>(narrow: Narrower<M>): Narrower<M & { type: T }> {
-  return narrow as Narrower<M & { type: T }>;
-}
 
 /**
  * A search to run, no longer than a search may be. Whether to remember it
@@ -173,8 +164,8 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   openSource: narrowOpenSource,
   previewSearch: narrowPreviewSearch,
   setResultsPerPage: narrowSetResultsPerPage,
-  pinNote: ofType(narrowPinNote),
-  unpinNote: ofType(narrowPinNote),
+  pinNote: narrowAs('pinNote', narrowPinNote),
+  unpinNote: narrowAs('unpinNote', narrowPinNote),
   editResults: narrowEditResults,
   setResultPage: narrowSetResultPage,
   toggleTask: narrowToggleTask,
@@ -185,8 +176,8 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   setSearchColumns: narrowSetSearchColumns,
   openTag: narrowOpenTag,
   renameTag: narrowRenameTag,
-  parkTag: ofType(narrowParkTag),
-  unparkTag: ofType(narrowParkTag),
+  parkTag: narrowAs('parkTag', narrowParkTag),
+  unparkTag: narrowAs('unparkTag', narrowParkTag),
   parkNote: narrowParkNote('parkNote'),
   unparkNote: narrowParkNote('unparkNote'),
   mergeTags: narrowMergeTags,

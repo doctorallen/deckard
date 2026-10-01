@@ -22,6 +22,7 @@ import { narrowCalendarMessage } from '../calendar/messages';
 import {
   isSourceLocation,
   MAX_QUERY_LENGTH,
+  narrowAs,
   Narrower,
   NarrowingTable,
   narrowOpenSource,
@@ -114,13 +115,6 @@ const narrowCalendarDay: Narrower<CalendarDayMessage> = (value) => {
   return message ? { type: 'calendarDay', message } : undefined;
 };
 
-/**
- * Park Tag and Unpark Tag share one check, which hands back the type it
- * was given, so each is the type its key in the table names.
- */
-const narrowPark = narrowParkTag as Narrower<SidebarNotesPageToHost['parkTag']>;
-const narrowUnpark = narrowParkTag as Narrower<SidebarNotesPageToHost['unparkTag']>;
-
 /** Each message the Related Notes sidebar may send, and what it must hold. */
 export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   ready: onlyType('ready'),
@@ -137,8 +131,8 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   setHideDailyNotes: narrowSetHideDailyNotes,
   insertLink: narrowInsertLink,
   renameTag: narrowRenameTag,
-  parkTag: narrowPark,
-  unparkTag: narrowUnpark,
+  parkTag: narrowAs('parkTag', narrowParkTag),
+  unparkTag: narrowAs('unparkTag', narrowParkTag),
   refineActiveSearch: narrowRefineActiveSearch,
   setRelatedNotesSort: narrowSetRelatedNotesSort,
   openDashboard: onlyType('openDashboard'),
