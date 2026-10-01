@@ -13,7 +13,7 @@ import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { Task, WorkspaceIndex } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { AgendaService } from '../../services/agendaService';
 import { AGENDA_GROUPINGS, AgendaGroup, selectOverdueTasks } from '../state/agendaState';
 import { describeNamespaceValues, listTaskNamespaces } from '../state/tagGrouping';
@@ -499,7 +499,7 @@ export interface AgendaCommandServices {
   view: AgendaSelection;
   agenda: AgendaService<AgendaGroup>;
   writes: TaskWrites;
-  indexer: WorkspaceIndexer<vscode.Uri>;
+  indexer: IndexReader<vscode.Uri>;
   /** What Move to… ranks destinations by and records a heading in. */
   preferences: Pick<PreferenceServices, 'reader' | 'usage'>;
 }

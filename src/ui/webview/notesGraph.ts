@@ -18,7 +18,7 @@ import {
 } from '../../core/types';
 import { logTrace, measure } from '../../shared/timing';
 import { noteTitle } from '../../domain/index/backlinks';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader';
 import { openResultAt, openSourceAt } from '../commands/navigation';
 import {
   createLocalGraphSnapshot,
@@ -92,7 +92,7 @@ export class NotesGraphPanel implements vscode.Disposable {
   private focusPath: string | undefined;
 
   public constructor(
-    private readonly indexer: WorkspaceIndexer,
+    private readonly indexer: IndexReader & IndexUpdates,
     private readonly extensionUri: vscode.Uri,
     private readonly onGraphContext: (
       context: SidebarGraphContext | undefined,

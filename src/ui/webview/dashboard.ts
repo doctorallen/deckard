@@ -13,7 +13,7 @@ import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
 import { setZenMode } from './zenMode';
 
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import {
   isDefaultHomeLayout,
@@ -77,7 +77,7 @@ export type DashboardPreferences = Pick<
 
 /** What Home is built from. */
 export interface DashboardPanelOptions {
-  indexer: WorkspaceIndexer;
+  indexer: IndexReader & IndexScanStatus & IndexUpdates & IndexControl;
   preferences: DashboardPreferences;
   extensionUri: vscode.Uri;
   navigation: DashboardNavigation;
@@ -117,7 +117,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     return this.publishedOn !== startOfToday();
   }
 
-  private readonly indexer: WorkspaceIndexer;
+  private readonly indexer: IndexReader & IndexScanStatus & IndexUpdates & IndexControl;
   private readonly preferences: DashboardPreferences;
   private readonly extensionUri: vscode.Uri;
   private readonly navigation: DashboardNavigation;

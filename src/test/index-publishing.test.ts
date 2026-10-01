@@ -2,7 +2,8 @@ import * as assert from 'assert';
 
 import { Emitter } from '../shared/emitter';
 import { setTimingLog, TimingLog } from '../shared/timing';
-import { WorkspaceIndexer } from '../core/workspace/indexer';
+import { createWorkspaceIndex } from '../core/workspace/indexer';
+import type { IndexRoles } from '../core/workspace/indexReader';
 import {
   onIndexUpdateInTurn,
   VIEW_PRIORITY,
@@ -11,7 +12,7 @@ import { WorkspaceScanner } from '../core/workspace/scanner';
 import { createFakeAccess, fakeFolder } from './fakeWorkspace';
 
 /** An indexer over an empty folder whose view turns a test steps through. */
-function createIndexer(): { indexer: WorkspaceIndexer; step: () => boolean; pending: () => number } {
+function createIndexer(): { indexer: IndexRoles; step: () => boolean; pending: () => number } {
   const turns: Array<() => void> = [];
   const workspaceFolder = fakeFolder('/tmp/deckard-publishing', 'w');
   const scanner = new WorkspaceScanner(createFakeAccess({
@@ -19,7 +20,8 @@ function createIndexer(): { indexer: WorkspaceIndexer; step: () => boolean; pend
     findFiles: async () => [],
     readFile: async () => new Uint8Array(),
   }));
-  const indexer = new WorkspaceIndexer(scanner, undefined, {
+  const indexer = createWorkspaceIndex({
+    scanner,
     schedule: (run) => turns.push(run),
   });
   return {

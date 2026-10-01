@@ -38,44 +38,31 @@ type HowToExport = { kind: 'live' } | { kind: 'format'; to: ExportChoice['to']; 
 /** A row of the export list, and the choice it stands for. */
 type ExportPick = vscode.QuickPickItem & { how: HowToExport };
 
-/** A plan as a page makes one, naming its results by any word. */
-type ExportOffer =
-  | { kind: 'nothing'; what: string }
-  | (Omit<Extract<ExportPlan, { kind: 'results' }>, 'what'> & { what: string });
-
-/**
- * Asks how, and where, and does it. `text` is made only once the reader has
- * chosen. `liveBlock`, given for a page with a search, makes the first
- * choice a query block of the search, which a note keeps up to date.
- */
-export async function exportResults(
-  what: string,
-  count: number,
-  text: (format: ExportFormat) => string,
-  liveBlock?: () => string,
-): Promise<void> {
-  await presentExport(
-    count === 0
-      ? { kind: 'nothing', what }
-      : { kind: 'results', what, count, text, ...(liveBlock ? { liveBlock } : {}) },
-  );
-}
-
 /**
  * Presents an export ExportService planned: says there is nothing to
- * export, or asks how and where and copies or saves the results.
+ * export, or asks how and where and copies or saves the results. The text
+ * is made only once the reader has chosen.
+ *
+ * A live block makes the first choice a query block of the search, which a
+ * note keeps up to date: `liveBlock` when given, else the plan's. A page
+ * gives its own when the block carries the page's sort or layout, which
+ * the plan's does not.
  */
-export async function presentExport(plan: ExportPlan | ExportOffer): Promise<void> {
+export async function presentExport(
+  plan: ExportPlan,
+  liveBlock?: () => string,
+): Promise<void> {
   if (plan.kind === 'nothing') {
     void vscode.window.showInformationMessage(`There are no ${plan.what} to export.`);
     return;
   }
-  const how = await askHowToExport(plan.count, plan.what, plan.liveBlock !== undefined);
+  const live = liveBlock ?? plan.liveBlock;
+  const how = await askHowToExport(plan.count, plan.what, live !== undefined);
   if (!how) {
     return;
   }
   if (how.kind === 'live') {
-    await copyLiveBlock(plan.liveBlock);
+    await copyLiveBlock(live);
     return;
   }
   const body = plan.text(how.entry.format);

@@ -4,7 +4,7 @@ import { describeMissingTag, openNoteAction, reportFailure, reportNeedsFolder } 
 
 import { getTagKind } from '../../domain/query/queryEvaluator';
 import { TagInfo, TagReference, WorkspaceIndex } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { getExtractedNoteFileName } from './extractHeading';
 import { resolveSourceUri } from './navigation';
 import {
@@ -68,7 +68,7 @@ export function applyHubTemplate(
  * already has the name is never overwritten.
  */
 export async function createHubNote(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   tagKey: string,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
@@ -126,7 +126,7 @@ function getDescribesValue(tag: TagReference): string {
  * `project.md` for `#project/atlas`, when the templates folder has one.
  */
 async function readHubTemplate(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   workspaceFolder: vscode.WorkspaceFolder,
   tag: TagReference,
 ): Promise<string | undefined> {

@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndexer } from '../core/workspace/indexer';
+import { createWorkspaceIndex } from '../core/workspace/indexer';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   collectExcludePatterns,
@@ -103,7 +103,7 @@ suite('Workspace scanner and index', () => {
     ], 'one line of reason, not a stack');
 
     // The indexer carries it to where a reader can see it.
-    const indexer = new WorkspaceIndexer(scanner);
+    const indexer = createWorkspaceIndex({ scanner });
     await indexer.refresh();
     assert.deepStrictEqual(indexer.getUnreadable().map((note) => note.filePath), ['notes/bad.md']);
     indexer.dispose();
@@ -123,7 +123,10 @@ suite('Workspace scanner and index', () => {
       findFiles: async () => [...texts.keys()].map(uriOf),
       readFile: async (uri) => Buffer.from(texts.get(uri.path.split('/').pop() ?? '') ?? '', 'utf8'),
     }));
-    const indexer = new WorkspaceIndexer(scanner);
+    const events = new FakeWorkspaceEvents();
+    // A save of Deckard's own is read back at once, and a watcher's delete
+    // waits out the debounce.
+    const indexer = createWorkspaceIndex({ scanner, events, ownWrites: { take: () => true } });
     const lines: string[] = [];
     setTimingLog({
       logLevel: 2,
@@ -131,12 +134,6 @@ suite('Workspace scanner and index', () => {
       debug: (line) => lines.push(line),
       info: (line) => lines.push(line),
     });
-    const controller = (indexer as unknown as {
-      watcher: {
-        queueUpsert(uri: ResourceUri, content?: string, now?: boolean): void;
-        queueDelete(uri: ResourceUri): void;
-      };
-    }).watcher;
     const published = () =>
       new Promise<void>((resolve) => {
         const subscription = indexer.onDidUpdate(() => {
@@ -147,13 +144,13 @@ suite('Workspace scanner and index', () => {
     const fullBuild = () =>
       normalizeIndex(buildWorkspaceIndex(new Map(indexer.getSnapshot().files)));
     try {
-      await indexer.refresh();
+      await indexer.start();
       assert.ok(lines.some((line) => line.startsWith('Build index')));
 
       lines.length = 0;
       texts.set('a.md', '# A #project/atlas #topic/new\n- [ ] Task #topic/maps');
       let update = published();
-      controller.queueUpsert(uriOf('a.md'), undefined, true);
+      events.saves.fire({ uri: uriOf('a.md') });
       await update;
       assert.ok(
         lines.some((line) => /^Update index: .* \(1 note changed, 3 notes\)$/.test(line)),
@@ -165,7 +162,7 @@ suite('Workspace scanner and index', () => {
 
       texts.delete('b.md');
       update = published();
-      controller.queueDelete(uriOf('b.md'));
+      events.watchers[0].deleted.fire(uriOf('b.md'));
       await update;
       assert.deepStrictEqual([...indexer.getSnapshot().files.keys()], ['a.md', 'c.md']);
       assert.strictEqual(indexer.getSnapshot().tags.has('#topic/detail'), false);
@@ -211,7 +208,7 @@ suite('Workspace scanner and index', () => {
     assert.deepStrictEqual(files.map((file) => file.filePath), names, 'in the order found');
     assert.strictEqual(mostAtOnce, 8, 'eight reads at a time, never more');
 
-    const indexer = new WorkspaceIndexer(scanner);
+    const indexer = createWorkspaceIndex({ scanner });
     try {
       await indexer.refresh();
       reads.length = 0;
@@ -248,7 +245,7 @@ suite('Workspace scanner and index', () => {
       settings,
     }));
     const events = new FakeWorkspaceEvents();
-    const indexer = new WorkspaceIndexer(scanner, undefined, { events });
+    const indexer = createWorkspaceIndex({ scanner, events });
     const published = () =>
       new Promise<void>((resolve) => {
         const subscription = indexer.onDidUpdate(() => {
@@ -314,7 +311,7 @@ suite('Workspace scanner and index', () => {
       settings,
     }));
     const events = new FakeWorkspaceEvents();
-    const indexer = new WorkspaceIndexer(scanner, undefined, { events });
+    const indexer = createWorkspaceIndex({ scanner, events });
     try {
       indexer.start();
       await indexer.ready;

@@ -47,7 +47,7 @@ const load = (name) => {
   }
 };
 const { parseMarkdown } = load('parser');
-const { buildWorkspaceIndex, WorkspaceIndexer } = load('indexer');
+const { buildWorkspaceIndex, createWorkspaceIndex, WorkspaceIndexer } = load('indexer');
 const { WorkspaceScanner } = load('scanner');
 const { SearchStore } = load('searchStore');
 const { setTimingLog } = load('timing');
@@ -139,7 +139,7 @@ async function bench(size) {
     const file = path.join(notes, name);
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^# (.*)$/m, `# $1 #topic/t${(i * 4 + 1) % 600}`));
     log.lines.length = 0;
-    saves.push(await save(cold.indexer, file));
+    saves.push(await save(cold, file));
     updates.push(readTiming(log.lines, ['Update index', 'Build index']));
   }
   row('Save: read, index, publish (median of 5)', ms(median(saves)));
@@ -151,7 +151,7 @@ async function bench(size) {
     const name = corpus[3 % size][0];
     const file = path.join(notes, name);
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('lorem ipsum', 'lorem ipsum ipsum'));
-    await save(cold.indexer, file);
+    await save(cold, file);
     const after = cold.indexer.getSnapshot();
     let changed;
     row('Notes Graph check after a prose-only save', ms(time(() => { changed = graphState.graphInputsChanged(before, after); })) + (changed ? ' (redraws)' : ' (skipped)'));
@@ -199,7 +199,24 @@ async function startIndexer(folder, storage) {
     },
   };
   const store = SearchStore ? await openStore(storage) : undefined;
-  const indexer = new WorkspaceIndexer(new WorkspaceScanner(access), store, { readCache: true, version: 'bench' });
+  const scanner = new WorkspaceScanner(access);
+  // A save reaches the index as the editor reports one, and the index reads
+  // a save of Deckard's own back at once. An older checkout's indexer took
+  // it straight into the change queue it held.
+  const saves = new vscode.EventEmitter();
+  const indexer = createWorkspaceIndex
+    ? createWorkspaceIndex({
+      scanner,
+      searchStore: store,
+      readCache: true,
+      version: 'bench',
+      events: createEvents(saves),
+      ownWrites: { take: () => true },
+    })
+    : new WorkspaceIndexer(scanner, store, { readCache: true, version: 'bench' });
+  const saveNote = createWorkspaceIndex
+    ? (uri) => saves.fire({ uri })
+    : (uri) => indexer.watcher.queueUpsert(uri, undefined, true);
   let publishes = 0;
   let firstPublish;
   const started = performance.now();
@@ -209,7 +226,23 @@ async function startIndexer(folder, storage) {
   });
   await indexer.start();
   const ready = performance.now() - started;
-  return { indexer, store, firstPublish: firstPublish ?? ready, ready, publishes: () => publishes };
+  return { indexer, saveNote, store, firstPublish: firstPublish ?? ready, ready, publishes: () => publishes };
+}
+
+/** The workspace's events, of which only saves ever fire. */
+function createEvents(saves) {
+  const never = () => ({ dispose: () => undefined });
+  return {
+    onDidChangeConfiguration: never,
+    onDidChangeWorkspaceFolders: never,
+    onDidSaveTextDocument: saves.event,
+    createFileSystemWatcher: () => ({
+      onDidCreate: never,
+      onDidChange: never,
+      onDidDelete: never,
+      dispose: () => undefined,
+    }),
+  };
 }
 
 /** Opens the cache, waiting out a worker the last session is still closing. */
@@ -241,17 +274,16 @@ function createStore(storage) {
   }
 }
 
-/** Saves a note as the file watcher reports it, and waits for the publish. */
-async function save(indexer, file) {
+/** Saves a note as Deckard's own save reports it, and waits for the publish. */
+async function save(session, file) {
   const started = performance.now();
   const published = new Promise((resolve) => {
-    const subscription = indexer.onDidUpdate(() => {
+    const subscription = session.indexer.onDidUpdate(() => {
       subscription.dispose();
       resolve();
     });
   });
-  // The change queue is the watcher's, which the indexer holds privately.
-  indexer.watcher.queueUpsert(vscode.Uri.file(file), undefined, true);
+  session.saveNote(vscode.Uri.file(file));
   await published;
   return performance.now() - started;
 }

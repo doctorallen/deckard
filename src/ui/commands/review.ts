@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { PreferencesReader } from '../../core/storage/preferences';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import {
   parsePeriodicNoteName,
   PeriodicNoteName,
@@ -149,7 +149,7 @@ interface ReviewCommandRequest {
  * review's title, or undefined when nothing was chosen or written.
  */
 async function writeReview(
-  indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
   writes: ReviewWrites,
   request: ReviewCommandRequest,
 ): Promise<string | undefined> {
@@ -199,7 +199,7 @@ async function chooseReviewNote(
 function reportReview(
   result: ReviewResult<vscode.Uri, WriteHandle, ReviewSummary>,
   silent: boolean | undefined,
-  indexer: Pick<WorkspaceIndexer, 'refresh'>,
+  indexer: Pick<IndexControl, 'refresh'>,
 ): string | undefined {
   switch (result.kind) {
     case 'unchanged':
@@ -232,7 +232,7 @@ function offerReview(
   message: string,
   noteUri: vscode.Uri,
   written: WriteHandle,
-  indexer: Pick<WorkspaceIndexer, 'refresh'>,
+  indexer: Pick<IndexControl, 'refresh'>,
 ): void {
   written.offerUndo(
     message,
@@ -266,7 +266,7 @@ function offerReview(
  * reader picks.
  */
 export async function writeReviewCommand(
-  indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
   writes: ReviewWrites,
 ): Promise<string | undefined> {
   const open = findOpenPeriod();
@@ -300,7 +300,7 @@ async function pickReviewPeriod(): Promise<Exclude<NotePeriod, 'day'> | undefine
  * Opens the note for a period, writing its review in when the note is new.
  */
 export async function openPeriodicNoteWithReview(
-  indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
   writes: ReviewWrites,
   period: Exclude<NotePeriod, 'day'>,
 ): Promise<vscode.Uri | undefined> {

@@ -15,7 +15,8 @@ import { TaskLayoutService } from './core/storage/preferencesTaskLayout';
 import { UsageService } from './core/storage/preferencesUsage';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './shared/timing';
-import { WorkspaceIndexer } from './core/workspace/indexer';
+import { createWorkspaceIndex } from './core/workspace/indexer';
+import type { IndexReader, IndexRoles } from './core/workspace/indexReader';
 import { WorkspaceScanner } from './core/workspace/scanner';
 import { createVscodeEditApplier, createVscodeHistoryWriter } from './platform/vscodeEditApplier';
 import { createVscodeProgress } from './platform/vscodeProgress';
@@ -52,6 +53,9 @@ import {
 import { breakIntoStepsCommand, readTaskArgument } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { TemplateService } from './services/templateService';
+import { ExportService } from './services/exportService';
+import { evaluateSearchPage } from './ui/state/dashboardState';
+import { formatQueryBlock } from './ui/state/queryBlockState';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
@@ -238,19 +242,17 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // The index reads the workspace through ports; this is VS Code's.
   const vscodeWorkspace = createVscodeWorkspace();
   const scanner = new WorkspaceScanner(vscodeWorkspace);
-  const indexer = new WorkspaceIndexer(
+  const indexer = createWorkspaceIndex({
     scanner,
-    new SearchStore(context.storageUri?.fsPath),
-    {
-      version: String(context.extension.packageJSON.version),
-      // A developer's parser edits do not change the version, so only an
-      // installed Deckard starts from the notes the cache kept.
-      readCache: context.extensionMode === vscode.ExtensionMode.Production,
-      events: createVscodeWorkspaceEvents(),
-      progress: createVscodeProgress(),
-      ownWrites: history.ownWrites,
-    },
-  );
+    searchStore: new SearchStore(context.storageUri?.fsPath),
+    version: String(context.extension.packageJSON.version),
+    // A developer's parser edits do not change the version, so only an
+    // installed Deckard starts from the notes the cache kept.
+    readCache: context.extensionMode === vscode.ExtensionMode.Production,
+    events: createVscodeWorkspaceEvents(),
+    progress: createVscodeProgress(),
+    ownWrites: history.ownWrites,
+  });
   // Favorites, pins and view counts name what is in a workspace, so they are
   // kept with it. A window with no folder open has no workspace to own them
   // and nothing to index, so it reads the machine-wide store alone.
@@ -340,6 +342,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // Every page draws with it, and redraws when it changes.
   const themePreview = new ThemePreview();
   const activeSearch = new ActiveSearch();
+  // What a search page's and the Task Board's Export plan with. A page
+  // exports the results it found, and writes the live block itself, with
+  // its own sort and layout; a search is run as a search page runs one.
+  const exportService = new ExportService({
+    index: indexer,
+    search: (query) =>
+      evaluateSearchPage(indexer.getSnapshot(), query, {
+        includeHubLinks: vscode.workspace
+          .getConfiguration('deckard')
+          .get<boolean>('tagOverview.includeHubLinks', true),
+        queryContext: readQueryContext(),
+      }).results,
+    queryBlock: (query) => formatQueryBlock(query),
+  });
   const searchPanels = new SearchPanels({
     indexer,
     preferences: { reader: preferences, usage, savedSearches, display, pins: preferencePins, homeWidgets, tagRenames },
@@ -347,6 +363,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
     writes: taskWrites,
     themePreview,
+    exports: exportService,
   });
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
   // Which entry a line of a note pins, and whether it is pinned, for the
@@ -481,6 +498,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
     writes: taskWrites,
     themePreview,
+    exports: exportService,
   });
   const dashboard = new DashboardPanel({
     indexer,
@@ -1337,7 +1355,7 @@ export function deactivate(): void {
  * Names the long-lived services that share the extension lifecycle.
  */
 interface ExtensionServices {
-  indexer: WorkspaceIndexer;
+  indexer: IndexRoles;
   preferences: PreferencesRepository;
   activeSearch: ActiveSearch;
   searchPanels: SearchPanels;
@@ -1394,7 +1412,7 @@ function asOutlineNode(value: unknown): OutlineNode | undefined {
  */
 async function showQuerySearch(
   searchPanels: SearchPanels,
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
   requestedQuery: unknown,
 ): Promise<void> {
   await indexer.ready;
@@ -1420,7 +1438,7 @@ async function showQuerySearch(
  */
 async function showTagOverview(
   searchPanels: SearchPanels,
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
   requestedTag: unknown,
 ): Promise<void> {
   await indexer.ready;

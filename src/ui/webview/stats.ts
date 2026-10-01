@@ -6,7 +6,7 @@ import { ThemePreview } from './themePreview';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { WorkspaceIndex } from '../../core/types';
 import { measure } from '../../shared/timing';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { openResultAt, resolveSourceUri } from '../commands/navigation';
 import { createMissingNotes, reportCreatedNotes } from '../commands/linkHealth';
@@ -21,7 +21,7 @@ import { panelPriority } from './panelPriority';
 
 /** What the Stats page is built from. */
 export interface StatsPanelOptions {
-  indexer: WorkspaceIndexer<vscode.Uri>;
+  indexer: IndexReader<vscode.Uri> & IndexScanStatus & IndexUpdates;
   /** The blob Stats counts from, and the visits it records. */
   preferences: Pick<PreferenceServices, 'reader' | 'usage'>;
   extensionUri: vscode.Uri;
@@ -41,7 +41,7 @@ export class StatsPanel implements vscode.Disposable {
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
 
-  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly indexer: IndexReader<vscode.Uri> & IndexScanStatus & IndexUpdates;
   private readonly preferences: Pick<PreferenceServices, 'reader' | 'usage'>;
   private readonly extensionUri: vscode.Uri;
   private readonly onOpenTag: (tagKey: string) => void | Promise<void>;

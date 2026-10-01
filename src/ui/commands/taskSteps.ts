@@ -11,7 +11,7 @@ import {
 } from '../../domain/markdown/taskSteps';
 import { measureAsync, reportError } from '../../shared/timing';
 import { Task } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { countSteps } from '../../domain/tasks/taskLines';
 import { describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { quoteTitle, TaskWrites } from './taskActions';
@@ -469,7 +469,7 @@ const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', af
  * The task on the cursor's line, read from the editor itself, so a task
  * typed a moment ago can be broken into steps before the index has it.
  */
-function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines: string[] } | undefined {
+function readCursorTask(indexer: IndexReader): { target: StepTarget; lines: string[] } | undefined {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     return undefined;
@@ -500,7 +500,7 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
  * or the task on the cursor's line.
  */
 export async function breakIntoStepsCommand(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
   writes: TaskWrites,
   task?: Task,
   suggester: StepSuggester | undefined = createLanguageModelSuggester(),

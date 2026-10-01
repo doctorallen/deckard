@@ -8,7 +8,7 @@ import { stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices, PreferencesReader } from '../../core/storage/preferences';
 import { Task } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { createPinForLine } from '../state/pinnedNotes';
 import { findSameSection } from './capture';
 import { chooseTargetFolder, ensureDailyNote, getPeriodicNote } from './dailyNote';
@@ -51,7 +51,7 @@ const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
 
 /** Move to… from the editor: the line, item, or selection under the cursor. */
 export async function moveToCommand(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   preferences: MovePreferences,
   writes: TaskWrites,
 ): Promise<void> {
@@ -87,7 +87,7 @@ export async function moveToCommand(
  * written; they land together, in the order given.
  */
 export async function moveTasks(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   preferences: MovePreferences,
   writes: TaskWrites,
   tasks: readonly Task[],
@@ -113,7 +113,7 @@ interface ResolvedTarget extends MoveTarget<vscode.Uri> {
  * found again here, the move is MoveService's, and what moved is said here.
  */
 async function moveBlocks(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   preferences: MovePreferences,
   writes: TaskWrites,
   sources: readonly MoveSource[],
@@ -149,7 +149,7 @@ async function moveBlocks(
  * heading inside what moves or the one whose own lines hold it.
  */
 function pickMoveDestination(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   preferences: Pick<PreferencesReader, 'value'>,
   sources: readonly MoveSource[],
 ): Promise<Destination | undefined> {
@@ -175,7 +175,7 @@ function pickMoveDestination(
 
 /** Finds the chosen destination again, as a place a move can write. */
 async function resolveTarget(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   destination: Destination,
   sources: readonly MoveSource[],
 ): Promise<ResolvedTarget | undefined> {
@@ -201,7 +201,7 @@ async function resolveToday(): Promise<ResolvedTarget | undefined> {
 
 /** A new note, named by the reader, which must not exist yet. */
 async function resolveNewNote(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   sources: readonly MoveSource[],
 ): Promise<ResolvedTarget | undefined> {
   const first = sources[0].block.lines[0] ?? '';
@@ -232,7 +232,7 @@ async function resolveNewNote(
 
 /** A heading the index knows, found again in its note as the note is now. */
 async function resolveSection(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   destination: Extract<Destination, { kind: 'heading' }>,
 ): Promise<ResolvedTarget | undefined> {
   const uri = await resolveSourceUri(destination.filePath);
@@ -273,7 +273,7 @@ export function suggestNoteName(line: string): string {
 }
 
 async function newNoteUri(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   from: vscode.Uri,
   name: string,
 ): Promise<vscode.Uri | undefined> {
@@ -329,7 +329,7 @@ function describeTask(line: string): string {
  * on almost every line.
  */
 export class MoveToActions implements vscode.CodeActionProvider {
-  public constructor(private readonly indexer: Pick<WorkspaceIndexer, 'isNotesFile'>) {}
+  public constructor(private readonly indexer: Pick<IndexReader, 'isNotesFile'>) {}
 
   public provideCodeActions(
     document: vscode.TextDocument,

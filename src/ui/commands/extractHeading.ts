@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { stripTags } from '../../domain/markdown/parser';
 import { Section } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findHeadingAtLine } from '../../domain/notes/headingLookup';
 import {
@@ -30,7 +30,7 @@ export { getExtractedNoteFileName };
  * into a note of its own, and leaves a link to it in its place.
  */
 export async function extractHeadingCommand(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: IndexReader<vscode.Uri>,
   notes: LinkNoteService<vscode.Uri> = vscodeLinkNotes,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
@@ -119,7 +119,7 @@ interface HeadingChoice extends vscode.QuickPickItem {
 }
 
 async function chooseHeading(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
 ): Promise<HeadingChoice | undefined> {
   const editor = vscode.window.activeTextEditor;
   if (editor && isMarkdownFile(editor.document.uri)) {

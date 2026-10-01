@@ -2,6 +2,7 @@ import type { Disposable, Event } from '../../ports/events';
 import { Emitter } from '../../shared/emitter';
 import { measure, reportError } from '../../shared/timing';
 import type { WorkspaceIndex } from '../types';
+import type { IndexUpdates } from './indexReader';
 import type { ViewUpdateOptions } from './publishing';
 
 /** A view waiting for its turn to redraw from the index. */
@@ -20,7 +21,7 @@ interface ViewSubscription {
  * single turn pays for every open view. A publish while views are still
  * waiting starts the order again, and each waiting view still runs once.
  */
-export class ViewPublisher implements Disposable {
+export class ViewPublisher implements IndexUpdates, Disposable {
   private readonly updateEmitter = new Emitter<WorkspaceIndex>();
   /** Fires with each published index, for listeners that only keep it or fire a cheap event. */
   public readonly onDidUpdate: Event<WorkspaceIndex> = this.updateEmitter.event;

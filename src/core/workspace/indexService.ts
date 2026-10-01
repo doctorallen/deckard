@@ -9,8 +9,9 @@ import {
   SearchStore,
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../../shared/timing';
-import { ParsedFile, UnreadableNote, WorkspaceIndex } from '../types';
+import { ParsedFile, Task, UnreadableNote, WorkspaceIndex } from '../types';
 import type { ChangeTarget, QueuedChange } from './changeWatcher';
+import type { IndexContents, IndexScanStatus, IndexSearch, RefreshOptions } from './indexReader';
 import { IndexState, NoteChange } from '../../domain/index/indexState';
 import { computeParked, NO_PARKED_RULES, ParkedRules } from '../../domain/index/parked';
 import { FileStamp, WorkspaceScanner, describeError } from './scanner';
@@ -36,11 +37,6 @@ export interface IndexServiceOptions {
   progress?: Progress;
 }
 
-/** How a refresh treats the notes it already holds; see {@link IndexService.refresh}. */
-export interface RefreshOptions {
-  reuse?: 'session' | 'cache' | 'none';
-}
-
 /** Progress for a scan with nowhere to show it: the task runs as it is. */
 const PROGRESS_NOWHERE: Progress = {
   withProgress: (_title, task) => task({ report: () => undefined }),
@@ -58,7 +54,9 @@ const PROGRESS_NOWHERE: Progress = {
  * Files are cached separately from the derived index so rapid editor and file
  * watcher events can be coalesced before one consistent snapshot is published.
  */
-export class IndexService<U extends ResourceUri = ResourceUri> implements ChangeTarget<U>, Disposable {
+export class IndexService<U extends ResourceUri = ResourceUri>
+  implements IndexContents, IndexSearch, IndexScanStatus, ChangeTarget<U>, Disposable
+{
   /** The notes and the index derived from them, updated a note at a time. */
   private state = IndexState.build([]);
   /** The parse settings the notes in the state were read under. */
@@ -158,6 +156,13 @@ export class IndexService<U extends ResourceUri = ResourceUri> implements Change
    */
   public getSnapshot(): WorkspaceIndex {
     return this.snapshot ?? this.publishState('Build index', () => undefined, describeBuild);
+  }
+
+  /**
+   * Looks up a task from the latest derived index for source-safe actions.
+   */
+  public getTask(taskId: string): Task | undefined {
+    return this.getSnapshot().tasks.get(taskId);
   }
 
   /** What `deckard.parked` parks now, as the index reads it. */

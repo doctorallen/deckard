@@ -1,7 +1,13 @@
 import * as vscode from 'vscode';
 
 import { PreferenceServices } from '../../core/storage/preferences';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type {
+  IndexControl,
+  IndexReader,
+  IndexScanStatus,
+  IndexSearch,
+  IndexUpdates,
+} from '../../core/workspace/indexReader';
 import { createQuerySuggestions } from '../state/dashboardState';
 import {
   buildQuickFindResults,
@@ -105,7 +111,7 @@ export type QuickFindPreferences = Pick<
 
 /** What Find reads, writes through, and hands a chosen row to. */
 export interface QuickFindOptions {
-  indexer: WorkspaceIndexer<vscode.Uri>;
+  indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
   /**
    * What Find ranks by and keeps: the blob, favorites, Find choices and
    * visits, saved and recent searches, and pins.
@@ -166,7 +172,7 @@ export class QuickFind implements vscode.Disposable {
   /** The editor Find was opened from, where Insert link writes. */
   private editor: vscode.TextEditor | undefined;
 
-  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
   private readonly preferences: QuickFindPreferences;
   private readonly actions: QuickFindActions;
   private readonly writes: TaskWrites;

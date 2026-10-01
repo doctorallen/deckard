@@ -11,7 +11,7 @@ import { formatEntityTitle } from '../../domain/markdown/parser';
 import { formatQuery } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
 import { measure } from '../../shared/timing';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader, IndexScanStatus, IndexSearch, IndexUpdates } from '../../core/workspace/indexReader';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { PreferenceServices } from '../../core/storage/preferences';
 import {
@@ -33,7 +33,7 @@ import {
 import { isWritten } from '../state/searchFacets';
 import { SearchHistory, SearchHistoryEntry } from '../state/searchHistory';
 import { editResults } from '../commands/bulkEditPrompts';
-import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
+import { presentExport } from '../commands/exportResults';
 import { formatQueryBlock } from '../state/queryBlockState';
 import { setPinned } from '../commands/pinNote';
 import { readQueryContext } from '../commands/queryContext';
@@ -48,6 +48,7 @@ import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
 import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
 import { panelPriority } from './panelPriority';
+import type { ExportService } from '../../services/exportService';
 
 /**
  * The preference services a search page reads and writes: the blob it
@@ -61,7 +62,7 @@ export type SearchPreferences = Pick<
 
 /** What the search pages are built from. */
 export interface SearchPanelsOptions {
-  indexer: WorkspaceIndexer<vscode.Uri>;
+  indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
   preferences: SearchPreferences;
   extensionUri: vscode.Uri;
   activeSearch: ActiveSearch;
@@ -69,6 +70,8 @@ export interface SearchPanelsOptions {
   writes: TaskWrites;
   /** The theme Choose Theme… is previewing, which the page draws in. */
   themePreview: ThemePreview;
+  /** What a page's Export plans its results with. */
+  exports: ExportService;
 }
 
 /**
@@ -83,7 +86,7 @@ export class SearchPanels implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly panels = new Set<SearchPanel>();
 
-  private readonly indexer: WorkspaceIndexer<vscode.Uri>;
+  private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
   private readonly preferences: SearchPreferences;
   private readonly extensionUri: vscode.Uri;
   private readonly activeSearch: ActiveSearch;
@@ -91,6 +94,8 @@ export class SearchPanels implements vscode.Disposable {
   private readonly writes: TaskWrites;
   /** The theme Choose Theme… is previewing, which the page draws in. */
   private readonly themePreview: ThemePreview;
+  /** What a page's Export plans its results with. */
+  private readonly exports: ExportService;
 
   public constructor(options: SearchPanelsOptions) {
     this.indexer = options.indexer;
@@ -99,6 +104,7 @@ export class SearchPanels implements vscode.Disposable {
     this.activeSearch = options.activeSearch;
     this.writes = options.writes;
     this.themePreview = options.themePreview;
+    this.exports = options.exports;
     const { indexer, preferences, activeSearch } = options;
     // A page about a tag that is gone closes at once; each page still open
     // redraws in a turn of its own.
@@ -282,6 +288,7 @@ export class SearchPanels implements vscode.Disposable {
         openTag: (tagKey) => this.show(tagKey),
         writes: this.writes,
         themePreview: this.themePreview,
+        exports: this.exports,
       },
     );
     this.panels.add(panel);
@@ -359,6 +366,8 @@ interface SearchPanelHost {
   readonly writes: TaskWrites;
   /** The theme Choose Theme… is previewing, which the page draws in. */
   readonly themePreview: ThemePreview;
+  /** What the page's Export plans its results with. */
+  readonly exports: ExportService;
 }
 
 /**
@@ -402,7 +411,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   public constructor(
     private readonly originQuery: string,
     private queryText: string,
-    private readonly indexer: WorkspaceIndexer<vscode.Uri>,
+    private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl,
     private readonly preferences: SearchPreferences,
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
@@ -891,22 +900,15 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         await editResults(this.host.writes.history, message.kind, this.currentResults());
         return;
       case 'exportResults': {
-        const results = this.currentResults();
-        const index = this.indexer.getSnapshot();
-        // A page with a search can hand it on as a live query block; a
-        // page of every note has none to hand on.
+        const plan = this.host.exports.fromResults(message.kind, this.currentResults());
+        // A page with a search can hand it on as a live query block, in the
+        // page's own sort; a page of every note has none to hand on.
         const search = this.queryText.trim();
         const sort = this.preferences.reader.value.tagOverviewSortMode;
         const liveBlock = search
           ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
           : undefined;
-        if (message.kind === 'tasks') {
-          const rows = taskRows(results.tasks, index);
-          await exportResults('tasks', rows.length, (format) => formatTasks(rows, format), liveBlock);
-        } else {
-          const rows = noteRows(results.sections);
-          await exportResults('notes', rows.length, (format) => formatNotes(rows, format), liveBlock);
-        }
+        await presentExport(plan, liveBlock);
         return;
       }
       case 'openSource':

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { NoteFiles } from '../../core/workspace/indexReader';
 import { findTemplatePrompts } from '../../domain/notes/templates';
 import { TemplateNoteResult, TemplateService } from '../../services/templateService';
 import { chooseTargetFolder } from './dailyNote';
@@ -55,7 +55,7 @@ const TITLE = 'Deckard: New Note from Template';
  * does not index is said so once the note is made.
  */
 export async function newNoteFromTemplate(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: NoteFiles<vscode.Uri>,
   templates: TemplateService<vscode.Uri>,
   targetFolder?: vscode.Uri,
 ): Promise<vscode.Uri | undefined> {
@@ -110,7 +110,7 @@ async function chooseFolder(targetFolder?: vscode.Uri): Promise<vscode.Workspace
  * returns undefined, when there is no templates folder or nothing in it.
  */
 async function chooseTemplate(
-  indexer: WorkspaceIndexer<vscode.Uri>,
+  indexer: NoteFiles<vscode.Uri>,
   folder: vscode.WorkspaceFolder,
 ): Promise<vscode.Uri | undefined> {
   const templatesUri = indexer.getTemplatesFolderUri(folder);

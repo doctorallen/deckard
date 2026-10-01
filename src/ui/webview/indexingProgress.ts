@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader, IndexScanStatus } from '../../core/workspace/indexReader';
 
 /**
  * Tells a page how far the first scan has got, as it goes, until the index
@@ -9,7 +9,7 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
  * notes read…". Does nothing once the workspace has been indexed.
  */
 export function followIndexing(
-  indexer: Pick<WorkspaceIndexer, 'hasIndexed' | 'scanProgress' | 'onDidProgress' | 'ready'>,
+  indexer: Pick<IndexReader & IndexScanStatus, 'hasIndexed' | 'scanProgress' | 'onDidProgress' | 'ready'>,
   post: (message: unknown) => void,
 ): vscode.Disposable {
   // Only an indexer that says it has not indexed yet is followed.
