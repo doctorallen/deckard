@@ -1,5 +1,6 @@
 import { Task } from '../../core/types';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { FavoritesService } from '../../core/storage/preferencesFavorites';
+import { SavedSearchesService } from '../../core/storage/preferencesSavedSearches';
 import { PinService } from '../../services/pinService';
 import { QuickFindItem } from '../state/quickFindState';
 import { keyLabel } from './quickFindKeys';
@@ -83,7 +84,10 @@ export interface RowActionHost {
   /** Asks for a name, and saves the search under it. */
   saveSearch(query: string): Promise<void>;
   pins: Pick<PinService, 'pin' | 'unpin'>;
-  preferences: Pick<PreferencesStore, 'toggleFavorite' | 'removeRecentQuery'>;
+  preferences: {
+    favorites: Pick<FavoritesService, 'toggleFavorite'>;
+    savedSearches: Pick<SavedSearchesService, 'removeRecentQuery'>;
+  };
   /** Task edits, through the task functions every view writes with. */
   tasks: {
     toggle(task: Task, completed: boolean): Promise<void>;
@@ -147,7 +151,7 @@ async function toggle(run: RowActionRun, completed: boolean): Promise<void> {
 /** Toggles a tag row's favorite, then returns to Find. */
 async function toggleFavorite(item: QuickFindItem, run: RowActionRun): Promise<void> {
   if (item.tagKey) {
-    await run.host.preferences.toggleFavorite(item.tagKey);
+    await run.host.preferences.favorites.toggleFavorite(item.tagKey);
   }
   await run.back();
 }
@@ -300,7 +304,7 @@ export const ROW_ACTIONS: Readonly<Record<RowActionId, RowActionEntry>> = {
     // The row is gone once removed, so there is no row to highlight again.
     run: async (item, { host, returnTo }) => {
       if (item.query) {
-        await host.preferences.removeRecentQuery(item.query);
+        await host.preferences.savedSearches.removeRecentQuery(item.query);
       }
       await host.show(returnTo);
     },

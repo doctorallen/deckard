@@ -101,8 +101,8 @@ function recordingHost(open = true): { host: RowActionHost; calls: string[] } {
       },
     },
     preferences: {
-      toggleFavorite: async (tagKey) => record(`favorite ${tagKey}`),
-      removeRecentQuery: async (query) => record(`forget ${query}`),
+      favorites: { toggleFavorite: async (tagKey) => record(`favorite ${tagKey}`) },
+      savedSearches: { removeRecentQuery: async (query) => record(`forget ${query}`) },
     },
     tasks: {
       toggle: async (task, completed) => record(`${completed ? 'complete' : 'reopen'} ${task.title}`),

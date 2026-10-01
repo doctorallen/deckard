@@ -11,7 +11,7 @@ import { AgendaGroupBy, readAgendaQuery, readUpcomingDays } from '../../domain/t
 import { DayLoad, DueChoice, dueDateFor, RescheduleContext } from '../../domain/tasks/reschedule';
 import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { AgendaService } from '../../services/agendaService';
@@ -500,7 +500,8 @@ export interface AgendaCommandServices {
   agenda: AgendaService<AgendaGroup>;
   writes: TaskWrites;
   indexer: WorkspaceIndexer<vscode.Uri>;
-  preferences: PreferencesStore;
+  /** What Move to… ranks destinations by and records a heading in. */
+  preferences: Pick<PreferenceServices, 'reader' | 'usage'>;
 }
 
 /**

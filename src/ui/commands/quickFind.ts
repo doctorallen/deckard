@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { createQuerySuggestions } from '../state/dashboardState';
 import {
@@ -97,10 +97,20 @@ export function findDailyNoteRow(
 
 export { keyLabel, rowKey };
 
+/** The preference services Find reads and writes through. */
+export type QuickFindPreferences = Pick<
+  PreferenceServices,
+  'reader' | 'favorites' | 'usage' | 'savedSearches' | 'pins'
+>;
+
 /** What Find reads, writes through, and hands a chosen row to. */
 export interface QuickFindOptions {
   indexer: WorkspaceIndexer<vscode.Uri>;
-  preferences: PreferencesStore;
+  /**
+   * What Find ranks by and keeps: the blob, favorites, Find choices and
+   * visits, saved and recent searches, and pins.
+   */
+  preferences: QuickFindPreferences;
   actions: QuickFindActions;
   /** What completing or dating a task from a row writes through. */
   writes: TaskWrites;
@@ -157,7 +167,7 @@ export class QuickFind implements vscode.Disposable {
   private editor: vscode.TextEditor | undefined;
 
   private readonly indexer: WorkspaceIndexer<vscode.Uri>;
-  private readonly preferences: PreferencesStore;
+  private readonly preferences: QuickFindPreferences;
   private readonly actions: QuickFindActions;
   private readonly writes: TaskWrites;
   private readonly pins: PinService;
@@ -169,7 +179,7 @@ export class QuickFind implements vscode.Disposable {
     this.preferences = options.preferences;
     this.actions = options.actions;
     this.writes = options.writes;
-    this.pins = options.pins ?? new PinService({ index: options.indexer, store: options.preferences });
+    this.pins = options.pins ?? new PinService({ index: options.indexer, store: options.preferences.pins });
     this.linkNotes = options.linkNotes;
   }
 
@@ -294,7 +304,7 @@ export class QuickFind implements vscode.Disposable {
     const value = picker.value;
     const groups = buildRowActions(item, {
       pinned: item.kind === 'note' && !!item.filePath && !!item.line && this.pins.isLinePinned(item.filePath, item.line),
-      favorite: item.tagKey !== undefined && this.preferences.value.favoriteTags.includes(item.tagKey),
+      favorite: item.tagKey !== undefined && this.preferences.reader.value.favoriteTags.includes(item.tagKey),
       canMove: this.actions.moveTask !== undefined,
     });
     if (groups.length === 0) {
@@ -409,7 +419,7 @@ export class QuickFind implements vscode.Disposable {
     if (name === undefined) {
       return;
     }
-    const saved = await this.preferences.saveSavedQueryFilter(name, query);
+    const saved = await this.preferences.savedSearches.saveSavedQueryFilter(name, query);
     if (saved) {
       void vscode.window.showInformationMessage(
         `Saved the search "${saved.name}".`,
@@ -433,7 +443,7 @@ export class QuickFind implements vscode.Disposable {
     }
     const key = findChoiceKey(this.indexer.getSnapshot(), item);
     if (key) {
-      await this.preferences.recordFindChoice(typed, key);
+      await this.preferences.usage.recordFindChoice(typed, key);
     }
   }
 
@@ -451,7 +461,7 @@ export class QuickFind implements vscode.Disposable {
       ? openSourceAt(item.filePath, item.line, undefined, true, false, true)
       : openSourceAt(item.filePath, item.line));
     if (item.kind === 'note' && item.sectionId) {
-      await this.preferences.recordSectionAccess(item.sectionId);
+      await this.preferences.usage.recordSectionAccess(item.sectionId);
     }
   }
 
@@ -498,7 +508,7 @@ export class QuickFind implements vscode.Disposable {
     const queryContext = readQueryContext();
     const results = buildQuickFindResults(
       index,
-      this.preferences.value,
+      this.preferences.reader.value,
       picker.value,
       (text) => this.indexer.searchEntries(text, { limit: 200 }),
       {
@@ -570,7 +580,7 @@ export class QuickFind implements vscode.Disposable {
 
     picker.hide();
     if (query) {
-      await this.preferences.recordRecentQuery(query);
+      await this.preferences.savedSearches.recordRecentQuery(query);
       await this.rememberChoice(query, item);
     }
     if (item.kind === 'tag' && item.tagKey) {
@@ -607,7 +617,7 @@ export class QuickFind implements vscode.Disposable {
     const query = this.picker?.value.trim() ?? '';
     this.picker?.hide();
     if (query) {
-      await this.preferences.recordRecentQuery(query);
+      await this.preferences.savedSearches.recordRecentQuery(query);
     }
     await this.actions.showSearch(query);
   }

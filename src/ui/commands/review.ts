@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferencesReader } from '../../core/storage/preferences';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   parsePeriodicNoteName,
@@ -128,7 +128,7 @@ class ReviewDocuments implements ReviewNotes<vscode.Uri, WriteHandle> {
  */
 export interface ReviewWrites {
   reviews: VscodeReviewService;
-  preferences?: Pick<PreferencesStore, 'value'>;
+  preferences?: Pick<PreferencesReader, 'value'>;
 }
 
 /** Which review to write, and whether to say so. */

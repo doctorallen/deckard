@@ -98,7 +98,7 @@ export interface PreferenceServices {
  * The refactor plan keeps an old surface for one phase after its code
  * moves: Phase 4 moves the callers to the services and deletes this class.
  */
-export class PreferencesStore implements Disposable {
+export class PreferencesStore implements PreferenceServices, Disposable {
   private readonly repository: PreferencesRepository;
 
   /** The favorite tags and entities, and the custom order of each. */
@@ -157,6 +157,14 @@ export class PreferencesStore implements Disposable {
    */
   public initialize(): Promise<void> {
     return this.repository.initialize();
+  }
+
+  /**
+   * The store itself as a reader, so it stands in for the whole
+   * `PreferenceServices` while callers move to the services one by one.
+   */
+  public get reader(): PreferencesReader {
+    return this;
   }
 
   /**

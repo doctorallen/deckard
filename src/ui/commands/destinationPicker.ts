@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { stripTags } from '../../domain/markdown/parser';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferencesReader } from '../../core/storage/preferences';
 import { PersistedPreferences, Section, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from '../state/dashboardState';
 import { frecencyScore } from '../state/frecency';
@@ -117,7 +117,7 @@ export function buildDestinationItems(
  */
 export function pickDestination(
   index: WorkspaceIndex,
-  preferences: Pick<PreferencesStore, 'value'> | undefined,
+  preferences: Pick<PreferencesReader, 'value'> | undefined,
   options: DestinationOptions & { title: string; placeholder: string },
 ): Promise<Destination | undefined> {
   const items = buildDestinationItems(index, preferences?.value ?? {}, options);

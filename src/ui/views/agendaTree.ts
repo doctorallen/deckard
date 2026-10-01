@@ -26,11 +26,16 @@ interface AgendaIndexSource {
   readonly onDidProgress?: vscode.Event<void>;
 }
 
-/** What the Agenda reads from preferences: the order tasks were dragged into. */
+/**
+ * What the Agenda reads from preferences, and writes: the order tasks were
+ * dragged into, read from the blob and kept by the task layout.
+ */
 interface AgendaPreferences {
-  readonly onDidChange: vscode.Event<unknown>;
-  readonly value: { taskOrder: string[] };
-  setTaskOrder(taskOrder: string[]): Promise<void>;
+  reader: {
+    readonly onDidChange: vscode.Event<unknown>;
+    readonly value: { taskOrder: string[] };
+  };
+  taskLayout: { setTaskOrder(taskOrder: string[]): Promise<void> };
 }
 
 /**
@@ -146,7 +151,7 @@ export class AgendaTreeProvider
   ) {
     this.disposables.push(
       this.changeEmitter,
-      ...(preferences ? [preferences.onDidChange(() => this.refresh())] : []),
+      ...(preferences ? [preferences.reader.onDidChange(() => this.refresh())] : []),
       ...(indexer.onDidProgress
         ? [indexer.onDidProgress(() => {
             if (!this.index) {
@@ -264,7 +269,7 @@ export class AgendaTreeProvider
       this.setStatus(describeIndexing(this.indexer.scanProgress), 0);
       return [];
     }
-    const view = this.services.agenda.buildView(this.index, this.preferences?.value.taskOrder ?? []);
+    const view = this.services.agenda.buildView(this.index, this.preferences?.reader.value.taskOrder ?? []);
     this.setStatus(describeAgendaStatus(view.status), view.urgent);
     // The way back to every open task is offered while a search narrows it.
     this.services.contextKeys.publish({ filtered: view.filtered, querySet: view.querySet });
@@ -391,7 +396,7 @@ export class AgendaTreeProvider
       }
       ordered.push(taskId);
     }
-    await this.preferences.setTaskOrder(
+    await this.preferences.taskLayout.setTaskOrder(
       mergeOrder(ordered, this.index.tasks.keys()),
     );
     this.refresh();

@@ -38,9 +38,10 @@ export interface PreferenceExport {
   preferences: PersistedPreferences;
 }
 
+/** What export, import, and restore read, and what replaces the blob whole. */
 interface BackupStore {
-  readonly value: PersistedPreferences;
-  importPreferences(value: PersistedPreferences): Promise<void>;
+  reader: { readonly value: PersistedPreferences };
+  maintenance: { importPreferences(value: PersistedPreferences): Promise<void> };
 }
 
 export function createExport(
@@ -103,10 +104,10 @@ export async function exportPreferences(store: BackupStore): Promise<void> {
   if (!target) {
     return;
   }
-  const body = JSON.stringify(createExport(store.value), null, 2);
+  const body = JSON.stringify(createExport(store.reader.value), null, 2);
   await vscode.workspace.fs.writeFile(target, Buffer.from(body, 'utf8'));
   void vscode.window.showInformationMessage(
-    `Exported ${describePreferences(store.value)} to ${target.fsPath}.`,
+    `Exported ${describePreferences(store.reader.value)} to ${target.fsPath}.`,
   );
 }
 
@@ -187,14 +188,14 @@ async function replaceAfterAsking(
     `Replace what this workspace remembers with ${from.what}${when}?`,
     {
       modal: true,
-      detail: `It holds ${describePreferences(preferences)}. What is here now holds ${describePreferences(store.value)}, and is copied first so it can be restored.`,
+      detail: `It holds ${describePreferences(preferences)}. What is here now holds ${describePreferences(store.reader.value)}, and is copied first so it can be restored.`,
     },
     'Replace',
   );
   if (confirm !== 'Replace') {
     return;
   }
-  await store.importPreferences(preferences);
+  await store.maintenance.importPreferences(preferences);
   void vscode.window.showInformationMessage(
     `Restored ${describePreferences(preferences)}.`,
   );

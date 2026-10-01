@@ -6,7 +6,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
 } from '../../domain/markdown/parser';
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { pluralize } from '../../shared/text';
 import {
   TagInfo,
@@ -40,7 +40,7 @@ import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
  */
 export interface TagWrites {
   history: WorkspaceWriteHistory;
-  preferences?: PreferencesStore;
+  preferences?: Pick<PreferenceServices, 'tagRenames'>;
   tags?: TagService;
 }
 
@@ -177,7 +177,7 @@ async function rewriteTag(
   choice: TagChoice,
   writes: TagWrites,
 ): Promise<TagReference | undefined> {
-  const tags = writes.tags ?? new TagService({ index: indexer, preferences: writes.preferences });
+  const tags = writes.tags ?? new TagService({ index: indexer, preferences: writes.preferences?.tagRenames });
   const notes = new TagNoteDocuments(writes.history);
   const result = await tags.rewrite({
     index: choice.index,

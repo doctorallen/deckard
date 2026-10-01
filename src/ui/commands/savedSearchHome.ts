@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 
 /** The two ways on from a saved search, as the message's buttons say them. */
 export const SHOW_RESULTS_ON_HOME = 'Show Results on Home';
@@ -11,7 +11,7 @@ export const OPEN_HOME = 'Open Home';
  * results on Home, or Home itself. Home opens on its own tab either way.
  */
 export async function offerSavedSearchOnHome(
-  preferences: PreferencesStore,
+  preferences: Pick<PreferenceServices, 'homeWidgets'>,
   saved: { id: string; name: string },
 ): Promise<void> {
   const choice = await vscode.window.showInformationMessage(
@@ -20,10 +20,10 @@ export async function offerSavedSearchOnHome(
     OPEN_HOME,
   );
   if (choice === SHOW_RESULTS_ON_HOME) {
-    await preferences.addSavedSearchWidget(saved.id);
+    await preferences.homeWidgets.addSavedSearchWidget(saved.id);
   }
   if (choice === SHOW_RESULTS_ON_HOME || choice === OPEN_HOME) {
-    await preferences.setDashboardMode('home');
+    await preferences.homeWidgets.setDashboardMode('home');
     await vscode.commands.executeCommand('deckard.showDashboard');
   }
 }

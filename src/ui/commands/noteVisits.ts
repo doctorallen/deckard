@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../../core/storage/preferences';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 
 /**
@@ -45,7 +45,7 @@ export class NoteVisits implements vscode.Disposable {
 
   public constructor(
     private readonly indexer: NoteVisitSource,
-    private readonly preferences: Pick<PreferencesStore, 'value' | 'recordSectionAccess'>,
+    private readonly preferences: Pick<PreferenceServices, 'reader' | 'usage'>,
     options: NoteVisitOptions = {},
   ) {
     this.dwellMs = options.dwellMs ?? 1500;
@@ -100,12 +100,12 @@ export class NoteVisits implements vscode.Disposable {
       return;
     }
     const now = this.now();
-    const last = this.preferences.value.sectionAccessTimes?.[section.id];
+    const last = this.preferences.reader.value.sectionAccessTimes?.[section.id];
     // A heading opened from Find a moment ago was counted then.
     if (last !== undefined && now - last < this.repeatMs) {
       return;
     }
-    await this.preferences.recordSectionAccess(section.id, now, { quiet: true });
+    await this.preferences.usage.recordSectionAccess(section.id, now, { quiet: true });
   }
 }
 
