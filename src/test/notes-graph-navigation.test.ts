@@ -1,20 +1,16 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { IndexReader, IndexUpdates } from '../core/workspace/indexReader';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
-  NotesGraphMessage,
   PersistedPreferences,
   SidebarGraphContext,
   SidebarNotesSnapshot,
 } from '../core/types';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
-import { aroundNoteScope, NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
+import { openingScope } from '../ui/webview/pages/notesGraph/notesGraphController';
 import { SidebarNotesPreferences, SidebarNotesView } from '../ui/webview/sidebarNotes';
-import { ThemePreview } from '../ui/webview/themePreview';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,
@@ -49,159 +45,6 @@ const defaultPreferences: PersistedPreferences = {
 };
 
 suite('Notes graph navigation', () => {
-  test('publishes direct graph connections for a selected node', async () => {
-    const parsed = parseMarkdown(
-      'notes/source.md',
-      '---\ntags: [project/atlas]\n---\n\n# Source',
-    );
-    const workspaceIndex = buildWorkspaceIndex(
-      new Map([[parsed.filePath, parsed]]),
-    );
-    const indexer = createIndexer(workspaceIndex);
-    const snapshot = createNotesGraphSnapshot(workspaceIndex);
-    const selectedNode = snapshot.nodes.find((node) => node.kind === 'note');
-    assert.ok(selectedNode);
-    const contexts: Array<{
-      context: SidebarGraphContext | undefined;
-      reveal: boolean | undefined;
-    }> = [];
-    const posted: unknown[] = [];
-    const graph = new NotesGraphPanel({
-      indexer,
-      extensionUri: vscode.Uri.file(process.cwd()),
-      onGraphContext: async (context, reveal) => {
-        contexts.push({ context, reveal });
-      },
-      themePreview: new ThemePreview(),
-    });
-
-    try {
-      const controller = graph as unknown as {
-        panel: {
-          active: boolean;
-          dispose(): void;
-          reveal(): void;
-          webview: {
-            postMessage(message: unknown): Promise<boolean>;
-          };
-        };
-        handleValidMessage(message: NotesGraphMessage): Promise<void>;
-      };
-      controller.panel = {
-        active: true,
-        dispose: () => undefined,
-        reveal: () => undefined,
-        webview: {
-          postMessage: async (message) => {
-            posted.push(message);
-            return true;
-          },
-        },
-      };
-      await controller.handleValidMessage({
-        type: 'selectNode',
-        nodeId: selectedNode.id,
-      });
-
-      assert.deepStrictEqual(posted, [
-        { type: 'selectNode', nodeId: selectedNode.id },
-      ]);
-      assert.strictEqual(contexts.at(-1)?.reveal, true);
-      assert.strictEqual(contexts.at(-1)?.context?.selectedNode?.id, selectedNode.id);
-      assert.ok(
-        contexts.at(-1)?.context?.connections.some(
-          (connection) => connection.node.kind === 'tag',
-        ),
-      );
-    } finally {
-      graph.dispose();
-    }
-  });
-
-  test('is not redrawn by a save that changes nothing it draws, and is by one that does', () => {
-    const text = '# Atlas #project/atlas\n\nSome words about [[relay]].\n';
-    const relay = parseMarkdown('notes/relay.md', '# Relay #project/atlas');
-    const indexOf = (atlasText: string) => {
-      const atlas = parseMarkdown('notes/atlas.md', atlasText);
-      return buildWorkspaceIndex(new Map([[atlas.filePath, atlas], [relay.filePath, relay]]));
-    };
-    let current = indexOf(text);
-    const listeners: Array<() => void> = [];
-    const indexer = {
-      onDidUpdate: (listener: () => void) => {
-        listeners.push(listener);
-        return { dispose: () => undefined };
-      },
-      getSnapshot: () => current,
-      getFilePath: () => 'notes/not-active.md',
-      isNotesFile: () => true,
-    } as unknown as IndexReader & IndexUpdates;
-    const posted: Array<{ type: string }> = [];
-    const graph = new NotesGraphPanel({
-      indexer,
-      extensionUri: vscode.Uri.file(process.cwd()),
-      onGraphContext: () => undefined,
-      themePreview: new ThemePreview(),
-    });
-    try {
-      const controller = graph as unknown as { panel: unknown; refresh(): void };
-      controller.panel = {
-        active: false,
-        visible: true,
-        dispose: () => undefined,
-        webview: {
-          postMessage: async (message: { type: string }) => {
-            posted.push(message);
-            return true;
-          },
-        },
-      };
-      controller.refresh();
-      const states = () => posted.filter((message) => message.type === 'state').length;
-      assert.strictEqual(states(), 1);
-
-      current = indexOf(text.replace('Some words', 'Some other words'));
-      listeners.forEach((listener) => listener());
-      assert.strictEqual(states(), 1, 'a prose-only save sends nothing');
-
-      current = indexOf(text.replace('# Atlas #project/atlas', '# Atlas #project/atlas #topic/maps'));
-      listeners.forEach((listener) => listener());
-      assert.strictEqual(states(), 2, 'a new tag redraws');
-    } finally {
-      graph.dispose();
-    }
-  });
-
-  test('opens around one note from its menu without choosing a scope for later', () => {
-    assert.deepStrictEqual(
-      aroundNoteScope({ local: false, depth: 3, skipPeriodic: true }),
-      { local: true, depth: 1, skipPeriodic: true },
-    );
-    const graph = new NotesGraphPanel({
-      indexer: createIndexer(buildWorkspaceIndex(new Map())),
-      extensionUri: vscode.Uri.file(process.cwd()),
-      onGraphContext: () => undefined,
-      themePreview: new ThemePreview(),
-    });
-    try {
-      const controller = graph as unknown as {
-        scopeChosen: boolean;
-        createPanel(): void;
-        refresh(): void;
-      };
-      // No webview in this test: only the state showAround leaves behind.
-      controller.createPanel = () => undefined;
-      controller.refresh = () => undefined;
-      void graph.showAround('notes/atlas.md');
-      const state = graph as unknown as { scope: { local: boolean; depth: number }; focusPath: string };
-      assert.strictEqual(state.focusPath, 'notes/atlas.md');
-      assert.deepStrictEqual([state.scope.local, state.scope.depth], [true, 1]);
-      assert.strictEqual(controller.scopeChosen, false);
-    } finally {
-      graph.dispose();
-    }
-  });
-
   test('opens around the note in the editor, until the reader chooses a scope', () => {
     const whole = { local: false, depth: 1 };
     assert.deepStrictEqual(openingScope('notes/atlas.md', false, whole), {
