@@ -14,7 +14,8 @@ import {
   DashboardNavigation,
 } from '../ui/webview/pages/dashboard/dashboardController';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { FakeSurface } from './fakeWebview';
+import { withConfigurationEvents } from './configurationEvents';
+import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
 import { createTaskWrites } from './taskWrites';
@@ -157,6 +158,17 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Dashboard host', () => {
+  test('an edit to the theme and the agenda at once resets the HTML before either sends a snapshot', () => {
+    const { result: home, fire } = withConfigurationEvents(() => openHome());
+    try {
+      const events = recordSurface(home.surface);
+      fire('deckard.theme', 'deckard.agenda.query');
+      assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
+    } finally {
+      home.dispose();
+    }
+  });
+
   test('takes its turn as Home, and times its snapshot, posted, as Dashboard, as it always has', () => {
     const home = openHome();
     try {

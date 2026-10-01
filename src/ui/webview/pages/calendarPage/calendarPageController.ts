@@ -13,12 +13,10 @@ import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { chooseTheme, openHelp, setZenMode } from '../../host/sharedHandlers';
 import type { DeckardTheme } from '../../themeNames';
-import type { ThemePreview } from '../../themePreview';
 import {
   CalendarController,
   CalendarIndex,
   calendarHandlers,
-  onDidChangeCalendarChrome,
   onDidFocusWindow,
   readShowRepeats,
   readShowWeekends,
@@ -30,8 +28,6 @@ export interface CalendarPageControllerOptions {
   indexer: CalendarIndex;
   /** What checking a task off, or dropping it on a day, writes through. */
   writes: TaskWrites;
-  /** The theme Choose Theme… is previewing, which the page draws in. */
-  themePreview: Pick<ThemePreview, 'current' | 'onDidChange'>;
   /** Where the page says it is in front, so Related Notes can show its day. */
   activeCalendar?: ActiveCalendar;
   /** The page as Related Notes knows it: what it reads the day from and hands the day's messages to. */
@@ -54,12 +50,15 @@ export interface CalendarPageControllerOptions {
  */
 export class CalendarPageController implements PageController<CalendarSnapshot, CalendarPagePageToHost> {
   public readonly name = 'Calendar page';
-  /** A theme or zen change is listened for in `subscribe`, so the host leaves it alone. */
+  /**
+   * A theme or zen change only resets the HTML; the page then reloads and
+   * asks for its state with `ready`.
+   */
   public readonly options: PageOptions = {
     retainContextWhenHidden: true,
     enableFindWidget: false,
     followIndexing: false,
-    onChromeChange: 'none',
+    onChromeChange: 'reload',
     // CalendarController times the calendar it builds, as "Calendar".
     measure: false,
   };
@@ -124,14 +123,13 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
   }
 
   /**
-   * Redraws when today may have moved, on a theme or zen change, when the
-   * day moves to or from the sidebar, and when a calendar setting changes.
+   * Redraws when today may have moved, when the day moves to or from the
+   * sidebar, and when a calendar setting changes.
    */
   public subscribe(page: PageContext): vscode.Disposable[] {
-    const { activeCalendar, themePreview } = this.calendarPage;
+    const { activeCalendar } = this.calendarPage;
     return [
       onDidFocusWindow(() => page.refresh()),
-      onDidChangeCalendarChrome(page, (webview, theme) => this.html(webview, theme), themePreview),
       // The day moving to or from the sidebar redraws the page with or
       // without its own panel.
       ...(activeCalendar ? [activeCalendar.onDidChangeSidebarVisibility(() => page.refresh())] : []),

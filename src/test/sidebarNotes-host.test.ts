@@ -15,7 +15,8 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 import { SidebarNotesView, SidebarNotesViewOptions } from '../ui/webview/sidebarNotes';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { FakeSurface } from './fakeWebview';
+import { withConfigurationEvents } from './configurationEvents';
+import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
 
@@ -405,6 +406,41 @@ function openController() {
 }
 
 suite('Related Notes controller', () => {
+  test('an edit to the theme and a ranking setting at once resets the HTML and sends the state, then sends it again', async () => {
+    await closeEditors();
+    const { result: page, fire } = withConfigurationEvents(() => openController());
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const events = recordSurface(page.surface);
+      fire('deckard.theme', 'deckard.enableKeywordLinks');
+      assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('tells the pages the sidebar is gone once it has let go of the view, so a redraw that asks for sends nothing', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const source = { getRefineState: () => undefined, applySearch: async () => undefined };
+      page.activeSearch.setActive(source);
+      // A search page gives its Refine back when the sidebar goes, and
+      // tells the sidebar its results changed.
+      page.activeSearch.onDidChangeSidebarVisibility(() => page.activeSearch.notifyChanged(source));
+      const sent = page.states().length;
+      const lines = captureTimingLog(() => page.host.dispose(), [], 1).filter((line) => line.startsWith('[Related Notes]'));
+      assert.deepStrictEqual(lines, ['[Related Notes] Skipped Related Notes refresh because no webview is attached.']);
+      assert.strictEqual(page.states().length, sent);
+      assert.strictEqual(page.activeSearch.isRefineInSidebar(source), false);
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('takes its turn as Related Notes, and times its ranking with how many it found, as it always has', async () => {
     await closeEditors();
     const page = openController();

@@ -53,7 +53,6 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
     this.pageController = new CalendarPageController({
       indexer,
       writes: options.writes,
-      themePreview,
       activeCalendar: options.activeCalendar,
       source: this,
       refresh: () => this.page.host.refresh(),

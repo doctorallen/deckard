@@ -20,12 +20,9 @@ import { readQueryContext } from '../../../commands/queryContext';
 import { openTask, TaskWrites, toggleTask } from '../../../commands/taskActions';
 import { CalendarOptions, clampToMonth, createCalendar } from '../../../state/calendarState';
 import { getCalendarHtml } from '../../calendarHtml';
-import { onDidChangePageChrome } from '../../components';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { ready } from '../../host/sharedHandlers';
 import type { DeckardTheme } from '../../themeNames';
-import type { ThemePreview } from '../../themePreview';
-import { getDeckardTheme } from '../../themes';
 import { narrowCalendarMessage } from './messages';
 
 /** The index a calendar reads its days, notes, and tasks from. */
@@ -231,8 +228,6 @@ export interface CalendarViewControllerOptions {
   indexer: CalendarIndex;
   /** What checking a task off, or dropping it on a day, writes through. */
   writes: TaskWrites;
-  /** The theme Choose Theme… is previewing, which the calendar draws in. */
-  themePreview: Pick<ThemePreview, 'current' | 'onDidChange'>;
   /** Sends the calendar its snapshot through its host, or marks it stale while hidden. */
   refresh: () => void;
 }
@@ -248,13 +243,14 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
   public readonly name = 'Calendar';
   /**
    * The view's registration keeps it running while hidden. A theme or zen
-   * change is listened for in `subscribe`, so the host leaves it alone.
+   * change only resets the HTML; the page then reloads and asks for its
+   * state with `ready`.
    */
   public readonly options: PageOptions = {
     retainContextWhenHidden: true,
     enableFindWidget: false,
     followIndexing: false,
-    onChromeChange: 'none',
+    onChromeChange: 'reload',
     // CalendarController times the calendar it builds.
     measure: false,
   };
@@ -264,7 +260,7 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
   public readonly calendar: CalendarController;
 
   /** Starts on this month, with the day panel as `deckard.calendar.dayPanel` says. */
-  public constructor(private readonly view: CalendarViewControllerOptions) {
+  public constructor(view: CalendarViewControllerOptions) {
     this.calendar = new CalendarController(view.indexer, view.writes, {
       dayPanel: readDayPanel,
       refresh: view.refresh,
@@ -282,11 +278,10 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
     return this.calendar.snapshot();
   }
 
-  /** Redraws when today may have moved, on a theme or zen change, and when a calendar setting changes. */
+  /** Redraws when today may have moved, and when a calendar setting changes. */
   public subscribe(page: PageContext): vscode.Disposable[] {
     return [
       onDidFocusWindow(() => page.refresh()),
-      onDidChangeCalendarChrome(page, (webview, theme) => this.html(webview, theme), this.view.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
@@ -332,23 +327,4 @@ export function onDidFocusWindow(listener: () => void): vscode.Disposable {
       listener();
     }
   });
-}
-
-/**
- * Sets a calendar's HTML again on a theme or zen change; the page then
- * reloads and asks for its state with `ready`. A calendar listens for this
- * itself, between its focus and settings listeners, where it always has,
- * rather than through the host, which would listen after both: one settings
- * change that touches the theme and a calendar setting still resets the
- * HTML before the snapshot is posted.
- */
-export function onDidChangeCalendarChrome(
-  page: PageContext,
-  html: (webview: vscode.Webview, theme: DeckardTheme) => string,
-  themePreview: Pick<ThemePreview, 'current' | 'onDidChange'>,
-): vscode.Disposable {
-  return onDidChangePageChrome(
-    () => page.surface?.render((webview) => html(webview, getDeckardTheme(themePreview))),
-    themePreview,
-  );
 }

@@ -10,7 +10,8 @@ import { ActiveCalendar, CalendarDaySource } from '../ui/webview/activeCalendar'
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { CalendarPageController } from '../ui/webview/pages/calendarPage/calendarPageController';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { FakeSurface } from './fakeWebview';
+import { withConfigurationEvents } from './configurationEvents';
+import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
 
@@ -39,7 +40,6 @@ function openPage() {
   const controller: CalendarPageController = new CalendarPageController({
     indexer,
     writes: createTaskWrites(),
-    themePreview,
     activeCalendar,
     source,
     refresh: () => host?.refresh(),
@@ -80,6 +80,17 @@ async function recordCommands(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Calendar page host', () => {
+  test('an edit to the theme and a calendar setting at once reloads the page before the month is sent', () => {
+    const { result: page, fire } = withConfigurationEvents(() => openPage());
+    try {
+      const events = recordSurface(page.surface);
+      fire('deckard.zenMode', 'deckard.calendar.showRepeats');
+      assert.deepStrictEqual(events, ['html', 'post state']);
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('takes its turn as Calendar page, and times the calendar as Calendar, as it always has', () => {
     const page = openPage();
     try {
@@ -174,7 +185,7 @@ suite('Calendar page host', () => {
         retainContextWhenHidden: true,
         enableFindWidget: false,
         followIndexing: false,
-        onChromeChange: 'none',
+        onChromeChange: 'reload',
         measure: false,
       });
     } finally {

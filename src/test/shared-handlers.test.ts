@@ -19,6 +19,7 @@ function createPage(): PageContext & { refreshes: number } {
       this.refreshes += 1;
     },
     post: () => undefined,
+    renderHtml: () => undefined,
   };
 }
 

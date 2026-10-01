@@ -38,7 +38,6 @@ import { openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers
 import { ViewSurface, WebviewSurface } from '../../host/surface';
 import { getSidebarNotesHtml } from '../../sidebarNotesHtml';
 import type { DeckardTheme } from '../../themeNames';
-import { getDeckardTheme } from '../../themes';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
 
@@ -98,8 +97,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     onChromeChange: 'none',
   };
   public readonly handlers: MessageHandlers<SidebarNotesPageToHost>;
-  /** The view the sidebar is shown in, from when it is attached until it goes. */
-  private surface: WebviewSurface | undefined;
+  /** The host the sidebar is run by, from when it subscribes. */
+  private page: PageContext | undefined;
   private entryContext: EntryContext | undefined;
   private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
@@ -143,7 +142,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * progress, the active search, the editor and its cursor, the theme and
    * zen, and the settings ranking reads.
    */
-  public subscribe(): vscode.Disposable[] {
+  public subscribe(page: PageContext): vscode.Disposable[] {
+    this.page = page;
     const { indexer, activeSearch, activeCalendar, activeHome } = this.sidebar;
     const disposables: vscode.Disposable[] = [];
     if (activeHome) {
@@ -167,7 +167,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       // The theme or zen changing reloads the page, and the state is sent
       // again at once rather than when the page asks.
       onDidChangePageChrome(() => {
-        this.renderHtml();
+        page.renderHtml();
         this.refresh();
       }, this.sidebar.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => this.onDidChangeConfiguration(event)),
@@ -180,7 +180,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * its state at once and again once the index has notes to show.
    */
   public onDidAttach(page: PageContext): void {
-    this.surface = page.surface;
     const visible = page.surface?.visible === true;
     this.sidebar.activeSearch.setSidebarVisible(visible);
     this.sidebar.activeCalendar?.setSidebarVisible(visible);
@@ -209,15 +208,17 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   /** VS Code let the view go, so the sidebar is no longer open. */
   public onDidDetach(): void {
     logRelatedNotes('Related Notes webview disposed.');
-    this.surface = undefined;
     this.sidebar.activeSearch.setSidebarVisible(false);
     this.sidebar.activeCalendar?.setSidebarVisible(false);
   }
 
-  /** Stops a waiting refresh, and tells the pages the sidebar is gone. */
-  public dispose(): void {
+  /**
+   * Stops a waiting refresh, and tells the pages the sidebar is gone. The
+   * host has let go of the view by then, so a refresh that telling them
+   * asks for finds no view, as it always has.
+   */
+  public onDidDispose(): void {
     clearTimeout(this.refreshHandle);
-    this.surface = undefined;
     this.sidebar.activeSearch.setSidebarVisible(false);
     this.sidebar.activeCalendar?.setSidebarVisible(false);
   }
@@ -479,9 +480,9 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     this.refresh();
   }
 
-  /** Sets the view's HTML again, in the theme it is drawn in now, while it is attached. */
-  private renderHtml(): void {
-    this.surface?.render((webview) => this.html(webview, getDeckardTheme(this.sidebar.themePreview)));
+  /** The view the sidebar is shown in, while its host has one. */
+  private get surface(): WebviewSurface | undefined {
+    return this.page?.surface;
   }
 
   /** Brings the view to the front of its side bar, keeping the focus where it is. */

@@ -3,14 +3,15 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { exactlyType, narrowOpenTag, narrowWith } from '../ui/webview/host/narrowing';
-import type { PageController, PageOptions } from '../ui/webview/host/pageController';
+import type { PageContext, PageController, PageOptions } from '../ui/webview/host/pageController';
 import { PanelAdapter } from '../ui/webview/host/panelAdapter';
 import { PanelSurface, scriptOptions } from '../ui/webview/host/surface';
 import { ViewAdapter } from '../ui/webview/host/viewAdapter';
 import { HostIndexer, WebviewHost } from '../ui/webview/host/webviewHost';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { VIEW_PRIORITY } from '../core/workspace/publishing';
-import { FakeSurface, FakeWebview } from './fakeWebview';
+import { withConfigurationEvents } from './configurationEvents';
+import { FakeSurface, FakeWebview, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 
 /** What the test page sends. */
@@ -165,6 +166,100 @@ suite('WebviewHost', () => {
         host.dispose();
       }
     }
+  });
+
+  test('listens to the theme and zen before what the controller subscribes to, so one change resets the HTML first', () => {
+    for (const onChromeChange of ['redraw', 'reload'] as const) {
+      const { controller } = createController({ onChromeChange });
+      const { result: host, fire } = withConfigurationEvents(
+        () =>
+          new WebviewHost(
+            {
+              ...controller,
+              subscribe: (page) => [
+                vscode.workspace.onDidChangeConfiguration((event) => {
+                  if (event.affectsConfiguration('deckard.test')) {
+                    page.refresh();
+                  }
+                }),
+              ],
+            },
+            { themePreview: new ThemePreview() },
+          ),
+      );
+      const surface = new FakeSurface();
+      try {
+        host.attach(surface);
+        const events = recordSurface(surface);
+        fire('deckard.theme', 'deckard.test.setting');
+        assert.deepStrictEqual(
+          events,
+          onChromeChange === 'redraw' ? ['html', 'post state', 'post state'] : ['html', 'post state'],
+          onChromeChange,
+        );
+      } finally {
+        host.dispose();
+      }
+    }
+  });
+
+  test('a page not ready yet is sent nothing and owes nothing, hidden or shown, until it is', () => {
+    let ready = false;
+    const marked: string[] = [];
+    const { controller } = createController();
+    const host = new WebviewHost(
+      { ...controller, isReady: () => ready, onDidMarkStale: () => void marked.push('stale') },
+      { themePreview: new ThemePreview() },
+    );
+    const surface = new FakeSurface();
+    try {
+      host.attach(surface);
+      host.refresh();
+      surface.setVisible(false);
+      host.refresh();
+      ready = true;
+      surface.setVisible(true);
+      assert.deepStrictEqual([...surface.webview.posted, ...marked], []);
+      host.refresh();
+      assert.deepStrictEqual(surface.webview.postedOf('state'), [{ type: 'state', data: { count: 0 } }]);
+    } finally {
+      host.dispose();
+    }
+  });
+
+  test('says it is disposed of once it has let go of the page, before its listeners go', () => {
+    const calls: string[] = [];
+    const { controller } = createController();
+    const host = new WebviewHost(
+      {
+        ...controller,
+        subscribe: () => [{ dispose: () => void calls.push('listener gone') }],
+        dispose: () => void calls.push('dispose'),
+        onDidDispose: (page) => {
+          calls.push(`did dispose, ${page.surface === undefined ? 'no page' : 'a page'}`);
+          page.refresh();
+        },
+      },
+      { themePreview: new ThemePreview() },
+    );
+    const surface = new FakeSurface();
+    host.attach(surface);
+    host.dispose();
+    assert.deepStrictEqual(calls, ['dispose', 'did dispose, no page', 'listener gone']);
+    assert.strictEqual(surface.closed, true);
+    assert.deepStrictEqual(surface.webview.posted, [], 'a refresh asked for then sends nothing');
+  });
+
+  test('sets the HTML again when a controller asks, while the page is open', () => {
+    const { controller } = createController();
+    const host = new WebviewHost(controller, { themePreview: new ThemePreview() });
+    const surface = new FakeSurface();
+    const page: PageContext = host;
+    page.renderHtml();
+    host.attach(surface);
+    page.renderHtml();
+    assert.strictEqual(surface.renders, 2, 'once on attaching, and once when asked');
+    host.dispose();
   });
 
   test('on showing, sends a snapshot the controller says is out of date, and none when the page refreshes itself', () => {

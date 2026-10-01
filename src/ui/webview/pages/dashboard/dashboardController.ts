@@ -192,8 +192,11 @@ export class DashboardController implements PageController<DashboardPageState, D
   /**
    * What else redraws Home besides the index and its theme: What's new and
    * Try next changing, the note in the editor changing while a widget
-   * follows it, a visit while Recently opened is shown, and the
-   * preferences. The settings are followed by `followSettings`.
+   * follows it, a visit while Recently opened is shown, the preferences,
+   * and the settings it draws from: how tag titles show, the agenda, and
+   * whether What's new is said. The host listens to the theme and zen
+   * first, so an edit that changes the theme and the agenda at once resets
+   * the page's HTML before either sends it a snapshot, as it always did.
    */
   public subscribe(page: PageContext): vscode.Disposable[] {
     const { whatsNew, tryNext, preferences } = this.home;
@@ -227,26 +230,18 @@ export class DashboardController implements PageController<DashboardPageState, D
         this.dashboardMode = nextPreferences.dashboardViewState.mode;
         page.refresh();
       }),
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        const titleDisplayChanged = event.affectsConfiguration('deckard.tagTitleDisplayMode');
+        if (
+          titleDisplayChanged ||
+          event.affectsConfiguration('deckard.agenda') ||
+          event.affectsConfiguration('deckard.showWhatsNew')
+        ) {
+          page.refresh();
+        }
+      }),
     );
     return disposables;
-  }
-
-  /**
-   * Redraws Home when a setting it draws from changes: how tag titles
-   * show, the agenda, and whether What's new is said. Kept apart from
-   * `subscribe` so its host can listen after the theme and zen listener.
-   */
-  public followSettings(page: PageContext): vscode.Disposable {
-    return vscode.workspace.onDidChangeConfiguration((event) => {
-      const titleDisplayChanged = event.affectsConfiguration('deckard.tagTitleDisplayMode');
-      if (
-        titleDisplayChanged ||
-        event.affectsConfiguration('deckard.agenda') ||
-        event.affectsConfiguration('deckard.showWhatsNew')
-      ) {
-        page.refresh();
-      }
-    });
   }
 
   /**

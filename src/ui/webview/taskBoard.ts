@@ -39,7 +39,6 @@ export interface TaskBoardPanelOptions {
 export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private readonly controller: TaskBoardController;
   private readonly page: PanelAdapter<TaskBoardSnapshot, TaskBoardPageToHost>;
-  private readonly settings: vscode.Disposable;
 
   /** Builds the board; nothing is shown until `show` or `restore`. */
   public constructor(options: TaskBoardPanelOptions) {
@@ -60,7 +59,6 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       extensionUri: options.extensionUri,
       icon: ['resources', 'deckard.svg'],
     });
-    this.settings = this.controller.subscribeToSettings(host);
   }
 
   /**
@@ -92,6 +90,5 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   /** Closes the board, if it is open, and stops every listener. */
   public dispose(): void {
     this.page.dispose();
-    this.settings.dispose();
   }
 }

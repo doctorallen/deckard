@@ -40,7 +40,6 @@ export class CalendarView implements vscode.WebviewViewProvider, vscode.Disposab
     const controller = new CalendarViewController({
       indexer,
       writes,
-      themePreview,
       refresh: () => this.page.host.refresh(),
     });
     this.controller = controller.calendar;

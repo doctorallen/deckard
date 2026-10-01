@@ -16,6 +16,8 @@ export interface PageContext {
   refresh(): void;
   /** Sends the page one message, while it is open. */
   post(message: PageMessage): void;
+  /** Sets the page's HTML again, in the theme it is drawn in now, while it is open. */
+  renderHtml(): void;
   /** The panel or view the page is shown in, while it is open. */
   readonly surface: WebviewSurface | undefined;
 }
@@ -68,7 +70,9 @@ export interface PageOptions {
    * What a theme or zen change does to the open page: `redraw` (the
    * default) resets its HTML and sends the snapshot; `reload` only resets
    * the HTML, for a page that asks for its state when it loads; `none`
-   * leaves it, for a page drawn afresh each time it is shown.
+   * leaves it, for a page drawn afresh each time it is shown, or one that
+   * listens for the change itself. The host listens before anything the
+   * controller subscribes to.
    */
   readonly onChromeChange?: 'redraw' | 'reload' | 'none';
   /**
@@ -128,8 +132,17 @@ export interface PageController<TSnapshot, TPageToHost extends MessageMap<TPageT
   /** The page's narrowing table: a message it may send, or undefined. */
   narrow(value: unknown): MessageOf<TPageToHost> | undefined;
   readonly handlers: MessageHandlers<TPageToHost>;
-  /** What else redraws the page, besides the index and its theme. */
+  /**
+   * What else redraws the page, besides the index and its theme. These are
+   * listened to after the theme and zen.
+   */
   subscribe?(page: PageContext): vscode.Disposable[];
+  /**
+   * Whether the page has anything to show yet, such as a search page
+   * before the first scan. While it says no, a refresh sends nothing, and a
+   * hidden page is not marked stale.
+   */
+  isReady?(): boolean;
   /**
    * Whether the page needs a new snapshot when shown for a reason besides
    * an index update it missed, such as Home's day having turned.
@@ -149,4 +162,10 @@ export interface PageController<TSnapshot, TPageToHost extends MessageMap<TPageT
   onDidDetach?(page: PageContext): void;
   /** Called first when the host is disposed of. */
   dispose?(): void;
+  /**
+   * Called when the host is disposed of, once it has stopped listening to
+   * its panel or view and let go of it, and before its listeners go: a
+   * refresh a listener asks for then finds no page.
+   */
+  onDidDispose?(page: PageContext): void;
 }

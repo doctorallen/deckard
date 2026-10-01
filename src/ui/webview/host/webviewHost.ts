@@ -57,7 +57,10 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
 
   /**
    * Runs `controller`'s page, redrawing it after each index update, each
-   * change the controller subscribes to, and each theme or zen change.
+   * theme or zen change, and each change the controller subscribes to. The
+   * theme and zen are listened to before what the controller subscribes
+   * to, so when one settings change touches both, the page's HTML is reset
+   * before a listener of the controller's sends it anything.
    */
   public constructor(
     public readonly controller: PageController<TSnapshot, TPageToHost>,
@@ -74,7 +77,6 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
         ),
       );
     }
-    this.disposables.push(...(controller.subscribe?.(this) ?? []));
     const onChrome = controller.options.onChromeChange ?? 'redraw';
     if (onChrome !== 'none') {
       this.disposables.push(
@@ -86,6 +88,7 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
         }, this.themePreview),
       );
     }
+    this.disposables.push(...(controller.subscribe?.(this) ?? []));
   }
 
   /** The panel or view the page is shown in, while it is open. */
@@ -132,11 +135,12 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
    * Sends the page its snapshot. A hidden page keeps what it shows and is
    * sent the newest when it is shown again. While the controller has no
    * snapshot, nothing is sent and a page that missed one still has. A page
-   * that is never sent one is left alone.
+   * that is never sent one is left alone, and one not ready to be sent
+   * one is sent nothing and owes nothing.
    */
   public refresh(): void {
     const surface = this.current;
-    if (!surface || this.controller.options.hasSnapshot === false) {
+    if (!surface || this.controller.options.hasSnapshot === false || this.controller.isReady?.() === false) {
       return;
     }
     if (!surface.visible) {
@@ -165,6 +169,7 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
     this.detach();
     this.current?.close();
     this.current = undefined;
+    this.controller.onDidDispose?.(this);
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 

@@ -10,7 +10,8 @@ import { formatLocalDate } from '../ui/commands/dailyNote';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { CalendarViewController } from '../ui/webview/pages/calendar/calendarController';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { FakeSurface } from './fakeWebview';
+import { withConfigurationEvents } from './configurationEvents';
+import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
 
@@ -39,7 +40,6 @@ function openCalendar(options: { scanning?: boolean } = {}) {
   const controller = new CalendarViewController({
     indexer,
     writes: createTaskWrites(),
-    themePreview,
     refresh: () => host?.refresh(),
   });
   host = new WebviewHost(controller, { indexer, themePreview });
@@ -89,6 +89,17 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Calendar host', () => {
+  test('an edit to the theme and a calendar setting at once reloads the page before the month is sent', () => {
+    const { result: calendar, fire } = withConfigurationEvents(() => openCalendar());
+    try {
+      const events = recordSurface(calendar.surface);
+      fire('deckard.theme', 'deckard.calendar.showWeekends');
+      assert.deepStrictEqual(events, ['html', 'post state']);
+    } finally {
+      calendar.host.dispose();
+    }
+  });
+
   test('takes its turn as Calendar, and times the calendar as Calendar, as it always has', () => {
     const { host, controller } = openCalendar();
     try {
@@ -194,7 +205,7 @@ suite('Calendar host', () => {
         retainContextWhenHidden: true,
         enableFindWidget: false,
         followIndexing: false,
-        onChromeChange: 'none',
+        onChromeChange: 'reload',
         measure: false,
       });
     } finally {

@@ -150,7 +150,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         } else {
           this.taskPage = message.page;
         }
-        this.refresh(page);
+        page.refresh();
       },
       previewSearch: (message, page) => this.previewSearch(page, message.words),
       setResultsPerPage: async (message) => {
@@ -232,26 +232,17 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   }
 
   /**
-   * Sends the page its snapshot, as the host does. Before the first scan
-   * there is nothing to show but how far it has got, so nothing is sent and
-   * a hidden page is not marked stale.
+   * Before the first scan there is nothing to show but how far it has got,
+   * so a refresh sends nothing and a hidden page is not marked stale.
    */
-  public refresh(page: PageContext): void {
-    if (this.search.indexer.hasIndexed === false) {
-      return;
-    }
-    page.refresh();
-  }
-
-  /** An index update redraws the page, once the first scan is done. */
-  public onIndexUpdate(page: PageContext): void {
-    this.refresh(page);
+  public isReady(): boolean {
+    return this.search.indexer.hasIndexed !== false;
   }
 
   /** Sends the state again when the sidebar took or gave back Refine. */
   public refreshIfRefineMoved(page: PageContext): void {
     if (this.search.activeSearch.isRefineInSidebar(this.search.source) !== this.refineWasInSidebar) {
-      this.refresh(page);
+      page.refresh();
     }
   }
 
@@ -409,7 +400,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const text = queryText.trim();
     if (text && parseQuery(text).node === undefined) {
       this.invalidQueryText = text;
-      this.refresh(page);
+      page.refresh();
       return;
     }
     if (text !== this.queryText) {
@@ -454,7 +445,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     this.previewWords = [];
     this.notePage = entry.notePage;
     this.taskPage = entry.taskPage;
-    this.refresh(page);
+    page.refresh();
   }
 
   /** Narrows the results by the words being typed, unless they are the same words. */
@@ -472,7 +463,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     // Narrowing is a different list, read from its first page.
     this.notePage = 1;
     this.taskPage = 1;
-    this.refresh(page);
+    page.refresh();
   }
 
   /**

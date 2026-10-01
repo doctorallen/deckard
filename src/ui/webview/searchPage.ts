@@ -425,7 +425,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   }
 
   public refresh(): void {
-    this.controller.refresh(this.host);
+    this.host.refresh();
   }
 
   /** Sends the state again when the sidebar took or gave back Refine. */

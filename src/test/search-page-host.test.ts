@@ -143,7 +143,7 @@ suite('Search page host', () => {
     const page = openSearchPage();
     try {
       assert.strictEqual(page.controller.name, 'search page');
-      assert.deepStrictEqual(captureTimingLog(() => page.controller.refresh(page.host)), ['Search page: N ms']);
+      assert.deepStrictEqual(captureTimingLog(() => page.host.refresh()), ['Search page: N ms']);
     } finally {
       page.dispose();
     }
@@ -152,7 +152,7 @@ suite('Search page host', () => {
   test('names the tab, sends its snapshot, then tells the sidebar, and is the active search while in front', () => {
     const page = openSearchPage();
     try {
-      page.controller.refresh(page.host);
+      page.host.refresh();
       assert.deepStrictEqual(page.log, ['active set', 'title Project: Atlas', 'post state', 'active set']);
       const state = page.last();
       assert.strictEqual(state.query.text, '#project/atlas');
@@ -171,11 +171,11 @@ suite('Search page host', () => {
     const page = openSearchPage();
     try {
       await page.preferences.display.setRenderMode('markdown');
-      page.controller.refresh(page.host);
+      page.host.refresh();
       assert.ok(page.last().sections.length > 0);
       assert.ok(page.last().sections.every((card) => card.renderedHtml === ''));
       await page.preferences.display.setRenderMode('html');
-      page.controller.refresh(page.host);
+      page.host.refresh();
       assert.ok(page.last().sections.some((card) => card.renderedHtml !== ''));
     } finally {
       page.dispose();
@@ -185,7 +185,7 @@ suite('Search page host', () => {
   test('a hidden page is marked stale and tells the sidebar, and is sent one snapshot when shown', () => {
     const page = openSearchPage();
     try {
-      page.controller.refresh(page.host);
+      page.host.refresh();
       page.surface.setVisible(false);
       page.log.length = 0;
       page.updateIndex();
@@ -204,10 +204,10 @@ suite('Search page host', () => {
     const page = openSearchPage('#project/atlas', { hasIndexed: false });
     try {
       page.log.length = 0;
-      page.controller.refresh(page.host);
+      page.host.refresh();
       page.updateIndex();
       page.surface.setVisible(false);
-      page.controller.refresh(page.host);
+      page.host.refresh();
       page.surface.setVisible(true);
       assert.deepStrictEqual(page.log, ['active none', 'active set'], 'nothing is sent, and showing it again sends nothing');
 
@@ -223,7 +223,7 @@ suite('Search page host', () => {
   test('sends again when the sidebar takes or gives back Refine, and only then', () => {
     const page = openSearchPage();
     try {
-      page.controller.refresh(page.host);
+      page.host.refresh();
       page.controller.refreshIfRefineMoved(page.host);
       assert.strictEqual(page.states().length, 1);
       page.activeSearch.setActive(page.source);
@@ -306,7 +306,7 @@ suite('Search page host', () => {
   test('opens the hub, a card counting its visit, or a task the page shows, and nothing else', async () => {
     const page = openSearchPage();
     try {
-      page.controller.refresh(page.host);
+      page.host.refresh();
       const card = page.last().sections.find((section) => section.filePath === '/notes/planning.md');
       assert.ok(card);
       const calls = await record(async () => {

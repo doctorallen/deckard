@@ -11,7 +11,8 @@ import { ActiveSearch } from '../ui/webview/activeSearch';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { TaskBoardController, TaskBoardControllerOptions } from '../ui/webview/pages/taskBoard/taskBoardController';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { FakeSurface } from './fakeWebview';
+import { withConfigurationEvents } from './configurationEvents';
+import { FakeSurface, recordSurface } from './fakeWebview';
 import { createPreferences } from './preferenceServices';
 
 /** An in-memory store for the preferences. */
@@ -115,6 +116,17 @@ async function recordOpens(run: () => Promise<void>): Promise<string[]> {
 }
 
 suite('Task Board host', () => {
+  test('an edit to the theme and the board at once reloads the page before the board is sent', () => {
+    const { result: board, fire } = withConfigurationEvents(() => openBoard());
+    try {
+      const events = recordSurface(board.surface);
+      fire('deckard.theme', 'deckard.board.columns');
+      assert.deepStrictEqual(events, ['html', 'post state']);
+    } finally {
+      board.dispose();
+    }
+  });
+
   test('sends the board, as the active search, and tells the sidebar each time', () => {
     const board = openBoard();
     try {

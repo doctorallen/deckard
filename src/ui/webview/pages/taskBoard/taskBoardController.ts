@@ -149,9 +149,10 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /**
-   * What else redraws the board: the preferences it draws, and the sidebar
-   * opening or closing, which moves Refine. Its settings are listened to
-   * apart, by `subscribeToSettings`.
+   * What else redraws the board: the preferences it draws, the sidebar
+   * opening or closing, which moves Refine, and its settings. The host
+   * listens to the theme and zen first, so a change to both reloads the
+   * page before the board is sent, as it always did.
    */
   public subscribe(page: PageContext): vscode.Disposable[] {
     const { preferences, activeSearch, source } = this.board;
@@ -171,25 +172,16 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
           page.refresh();
         }
       }),
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (
+          event.affectsConfiguration('deckard.board') ||
+          event.affectsConfiguration('deckard.tasks') ||
+          event.affectsConfiguration('deckard.tagTitleDisplayMode')
+        ) {
+          page.refresh();
+        }
+      }),
     ];
-  }
-
-  /**
-   * Redraws the board when one of its settings changes. It is listened to
-   * after the page's theme and zen, as it always was, so a change to both
-   * reloads the page before the board is sent, rather than after; the host
-   * subscribes `subscribe`'s listeners before those, so this is apart.
-   */
-  public subscribeToSettings(page: PageContext): vscode.Disposable {
-    return vscode.workspace.onDidChangeConfiguration((event) => {
-      if (
-        event.affectsConfiguration('deckard.board') ||
-        event.affectsConfiguration('deckard.tasks') ||
-        event.affectsConfiguration('deckard.tagTitleDisplayMode')
-      ) {
-        page.refresh();
-      }
-    });
   }
 
   /** An index update brings any write back, so a preferences change redraws again. */

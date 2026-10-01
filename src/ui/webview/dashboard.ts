@@ -47,8 +47,6 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
   private readonly host: WebviewHost<DashboardPageState, DashboardPageToHost>;
   private readonly page: PanelAdapter<DashboardPageState, DashboardPageToHost>;
   private readonly indexer: DashboardPanelOptions['indexer'];
-  /** The settings Home draws from, followed after the theme and zen. */
-  private readonly settings: vscode.Disposable;
 
   /** Builds the page and starts following what it draws from; nothing is shown until `show` or `restore`. */
   public constructor(options: DashboardPanelOptions) {
@@ -71,10 +69,6 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       extensionUri: options.extensionUri,
       icon: ['resources', 'deckard.svg'],
     });
-    // Listened to after the host's theme and zen listener, as it always
-    // was: an edit that changes the theme and the agenda at once resets the
-    // page's HTML before either sends it a snapshot.
-    this.settings = this.controller.followSettings(this.host);
   }
 
   /** Where Home says it is in front, so Related Notes can offer its widgets. */
@@ -130,7 +124,6 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
    */
   public dispose(): void {
     this.page.dispose();
-    this.settings.dispose();
   }
 
   /** The widgets + Add widget offers, as the page last listed them. */

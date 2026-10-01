@@ -129,3 +129,22 @@ function subscribe(listeners: Array<() => void>, listener: () => void): vscode.D
     },
   };
 }
+
+/**
+ * Records, in order, each time a host sets `surface`'s HTML and the type
+ * of each message it posts there, from now on.
+ */
+export function recordSurface(surface: FakeSurface): string[] {
+  const events: string[] = [];
+  const render = surface.render.bind(surface);
+  surface.render = () => {
+    events.push('html');
+    render();
+  };
+  const post = surface.webview.postMessage.bind(surface.webview);
+  surface.webview.postMessage = (message: unknown) => {
+    events.push(`post ${(message as { type?: unknown } | undefined)?.type}`);
+    return post(message);
+  };
+  return events;
+}
