@@ -1,0 +1,37 @@
+/*
+ * *
+ * The page shell: reset, the grid backdrop, and the document rhythm.
+ *
+ * A page that is not a scrolling document — the notes graph — overrides
+ * `body` and `main` after this.
+ */
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-width: 280px;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
+main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }
+header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--edge) solid var(--line-strong);
+}
+@media (max-width: 700px) {
+  main { padding: var(--space-4); }
+  header { align-items: start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+}

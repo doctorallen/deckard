@@ -74,6 +74,8 @@ export interface SearchPageControllerOptions {
   navigation: NavigationService;
   /** Opens a tag's page. */
   openTag(tagKey: string): Promise<void>;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
   /** Names the page's tab, before each snapshot is sent. */
   setTitle(title: string): void;
   /** Called when the reader closes the page. */
@@ -205,7 +207,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /** The page as its template draws it, in a theme. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getSearchPageHtml(webview, theme);
+    return getSearchPageHtml(webview, this.search.extensionUri, theme);
   }
 
   /** What names the page's search, so the same search reached two ways finds this page. */

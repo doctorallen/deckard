@@ -19,6 +19,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
+import { pageExtensionUri } from './pageWebview';
 
 /** An in-memory store for the preferences. */
 function createStore() {
@@ -188,6 +189,7 @@ async function openSidebar() {
     extensionVersion: 'test',
     history: { write: async () => ({ applied: false, notes: [] }) } as never,
     themePreview: new ThemePreview(),
+    extensionUri: pageExtensionUri(),
   });
   const view = createView();
   sidebar.resolveWebviewView(view.view);
@@ -364,6 +366,7 @@ function openController() {
     history: { write: async () => ({ applied: false, notes: [] }) } as never,
     themePreview,
     navigation: new NavigationService(),
+    extensionUri: pageExtensionUri(),
   });
   const host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();

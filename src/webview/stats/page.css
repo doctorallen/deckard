@@ -1,0 +1,74 @@
+/*
+ * Stats.
+ * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
+ */
+@import "../shared/base.css";
+
+.updated, .count { font-family: var(--font-mono); }
+.updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
+.parked-line { margin: var(--space-3) 0 0; color: var(--muted); font-size: var(--text-xs); }
+.parked-line .text-button { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
+.views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
+.view-panel { border: 2px solid var(--line); background: var(--panel); }
+.view-panel h3 { margin: 0; padding: 12px; border-bottom: 2px solid var(--line); color: var(--cyan); font-size: var(--text-md); font-weight: 650; }
+.stats-section { margin-top: 24px; }
+.stats-section > h2 { margin: 0; }
+.stats-section > .views { margin-top: 12px; align-items: start; }
+.view-panel > p.detail { margin: 0; padding: 10px 12px 0; }
+.attention-clear, .views-empty { margin: 8px 0 0; color: var(--muted); font-size: var(--text-sm); }
+.orphan-list:not(.show-all) .is-more { display: none; }
+/* How often tags are used: six bars in one hue, each labeled with its count. */
+.tag-use { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+@media (max-width: 600px) { .tag-use { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tag-use-band { display: grid; grid-template-rows: 80px auto; gap: 6px; min-width: 0; padding: 8px; border: 2px solid var(--line); background: var(--panel); color: var(--text); font: inherit; text-align: left; }
+button.tag-use-band { cursor: pointer; }
+button.tag-use-band:hover:where(:not(:disabled):not([aria-disabled="true"])), button.tag-use-band:focus-visible, button.tag-use-band[aria-expanded="true"] { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.tag-use-track { display: flex; align-items: flex-end; height: 80px; }
+.tag-use-bar { display: block; width: 100%; min-height: 2px; background: var(--cyan); }
+.tag-use-words { font-size: var(--text-xs); overflow-wrap: anywhere; }
+.used-once { margin-top: 12px; }
+.used-once .pair { align-items: center; }
+@media (forced-colors: active) { .tag-use-bar { background: CanvasText; } }
+/* Tags written together: an upper triangle of the most-used tags. A cell's
+   shade is a swatch beside its count, never behind it, so the count reads at
+   full contrast in every theme; five opacity steps of one hue. */
+.pairs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pairs-toggle { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
+.pair-grid { margin-top: 12px; border-collapse: collapse; font-size: var(--text-xs); }
+.pair-grid th { padding: 4px 6px; color: var(--muted); font-weight: 400; text-align: right; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.pair-grid thead th { height: 120px; vertical-align: bottom; text-align: left; }
+.pair-grid thead th span.pair-col { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 116px; overflow: hidden; text-overflow: ellipsis; }
+.pair-grid td { padding: 1px; }
+.pair-cell { display: inline-flex; align-items: center; gap: 4px; width: 100%; min-width: 44px; min-height: 26px; padding: 2px 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.pair-cell:hover:where(:not(:disabled):not([aria-disabled="true"])), .pair-cell:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.pair-swatch { flex: none; width: 12px; height: 12px; background: var(--cyan); }
+.pair-swatch.step-1 { opacity: .1; } .pair-swatch.step-2 { opacity: .25; } .pair-swatch.step-3 { opacity: .45; } .pair-swatch.step-4 { opacity: .7; } .pair-swatch.step-5 { opacity: 1; }
+.pair-empty { display: inline-block; min-width: 44px; }
+.pair-list { margin-top: 12px; }
+.pair-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 10px 12px; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.tag-pairs:not(.as-table) .pair-list { display: none; }
+.tag-pairs.as-table .pair-grid { display: none; }
+@media (max-width: 600px) { .tag-pairs .pair-grid, .tag-pairs .pairs-toggle { display: none; } .tag-pairs .pair-list { display: block; } }
+@media (forced-colors: active) { .pair-swatch { background: CanvasText; } }
+.show-more { margin: 0 12px 12px; min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
+.list { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
+.stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
+.label { overflow-wrap: anywhere; }
+.detail { margin-top: 3px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+.count { color: var(--green); font-size: 16px; }
+/* A pair that looks alike: both tags on one line, with what to do about it. */
+.pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.pair-tag { padding: 2px 6px; font-size: var(--text-sm); }
+.pair-arrow { color: var(--muted); }
+.view-panel h3.with-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); white-space: nowrap; }
+@media (max-width: 600px) { main { padding: 16px; } }
+
+/* Stats leads with a green rule and lists plain empty states. */
+main { max-width: 1100px; border-top: 2px solid var(--green); }
+/* Eight tiles in two rows of four, not seven and one left over. */
+.metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.eyebrow { margin: 0 0 6px; }
+.empty { margin-top: 0; border: 0; background: none; padding: 16px 12px; }

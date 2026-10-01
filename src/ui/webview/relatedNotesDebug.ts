@@ -25,12 +25,13 @@ export interface RelatedNotesDebugPanelOptions {
  */
 export class RelatedNotesDebugPanel implements vscode.Disposable {
   private readonly sidebarNotes: SidebarNotesView;
-  private readonly controller = new RelatedNotesDebugController();
+  private readonly controller: RelatedNotesDebugController;
   private readonly page: PanelAdapter<never, RelatedNotesDebugPageToHost>;
 
   /** Builds the page; nothing is shown until `show`. */
   public constructor({ sidebarNotes, extensionUri, themePreview }: RelatedNotesDebugPanelOptions) {
     this.sidebarNotes = sidebarNotes;
+    this.controller = new RelatedNotesDebugController(extensionUri);
     this.page = new PanelAdapter(
       new WebviewHost<never, RelatedNotesDebugPageToHost>(this.controller, { themePreview }),
       {

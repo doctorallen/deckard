@@ -16,6 +16,7 @@ import type { ExportService } from '../../services/exportService';
 import { NavigationService } from '../../services/navigationService';
 import type { SearchPagePageToHost, SearchPageState } from '../protocol/searchPage';
 import type { SearchRefineState } from '../protocol/shared';
+import { pageResourceRoots } from './host/pageShell';
 import { PanelSurface } from './host/surface';
 import { WebviewHost } from './host/webviewHost';
 import {
@@ -370,6 +371,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       exports: options.host.exports,
       navigation: options.host.navigation,
       openTag: (tagKey) => options.host.openTag(tagKey),
+      extensionUri: options.extensionUri,
       setTitle: (title) => {
         const panel = this.panel;
         if (panel) {
@@ -411,6 +413,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
             enableScripts: true,
             retainContextWhenHidden,
             enableFindWidget,
+            localResourceRoots: pageResourceRoots(this.extensionUri),
           },
         ),
       );
@@ -461,9 +464,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   }
 
   /**
-   * Gives a new or restored panel its icon and scripts, and the page. A
-   * panel restored after a reload keeps the options it was made with, so
-   * scripts are switched on here too.
+   * Gives a new or restored panel its icon, its scripts and the folders it
+   * may load from, and the page. A panel restored after a reload keeps the
+   * options it was made with, so they are set here too.
    */
   private attachPanel(panel: vscode.WebviewPanel): void {
     panel.iconPath = vscode.Uri.joinPath(
@@ -471,7 +474,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       'resources',
       'deckard.svg',
     );
-    panel.webview.options = { enableScripts: true };
+    panel.webview.options = { enableScripts: true, localResourceRoots: pageResourceRoots(this.extensionUri) };
     this.host.attach(new PanelSurface(panel));
   }
 }

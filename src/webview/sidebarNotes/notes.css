@@ -1,0 +1,147 @@
+/*
+ * Related Notes' own rules, which come before the day panel. page.css
+ * imports this, and lays the rules that come after the panel itself.
+ */
+
+.relevance-score, .version { font-family: var(--font-mono); }
+/* What links to the note, under its related notes. */
+.note-links { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.links-group summary { color: var(--muted); font: var(--text-xs) var(--font-mono); cursor: pointer; }
+.links-count { color: var(--text); }
+.link-list { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.link-row { display: grid; gap: 2px; }
+.link-line { display: flex; align-items: flex-start; gap: var(--space-1); min-width: 0; }
+.link-group { display: grid; gap: 2px; margin-top: var(--space-2); }
+.link-group-head { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; padding: 0 var(--space-2); }
+.link-group-open { flex: 0 1 auto; min-width: 0; min-height: 0; padding: 0; overflow: hidden; border-color: transparent; background: transparent; color: var(--cyan); font-size: var(--text-sm); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.link-group-meta { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); }
+.link-expand { flex: 0 0 auto; width: 28px; min-width: 28px; min-height: 28px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
+.link-expand svg { width: 14px; height: 14px; transition: transform 120ms ease; }
+.link-expand[aria-expanded="true"] svg { transform: rotate(90deg); }
+.link-section { margin: 0 0 var(--space-1) var(--space-2); padding-left: var(--space-2); border-left: 1px solid var(--line); color: var(--muted); font-size: var(--text-xs); white-space: pre-wrap; overflow-wrap: anywhere; }
+.links-search { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.link-open { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; min-height: 0; padding: var(--space-1) var(--space-2); border-color: transparent; background: transparent; text-align: left; }
+.link-note { color: var(--cyan); font-size: var(--text-sm); }
+.link-path { color: var(--muted); font-size: var(--text-xs); }
+.link-context { overflow: hidden; color: var(--text); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.link-one, .link-all { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.link-all { margin-top: var(--space-2); }
+.links-more { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--text-xs); }
+.sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
+.sidebar-header .eyebrow { flex: 0 0 auto; }
+/* The selected entry is context for the list, not the subject of the pane:
+   two lines of it, so the related notes start above the fold. */
+.active-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.version { flex: 0 0 auto; color: var(--green); font-size: var(--text-xs); }
+.active-file { margin-top: 8px; padding: 7px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
+.graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
+.graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.active-label, .section-label { color: var(--muted); font-size: var(--text-xs); }
+.active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
+.active-summary::-webkit-details-marker { display: none; }
+.active-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.active-file[open] .active-name { -webkit-line-clamp: 3; }
+.sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
+.active-name { margin-top: 3px; }
+.clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; }
+.clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+/* The toolbar drops under the name when the panel is narrower than both, as
+   VS Code lets a sidebar be, rather than reaching past its edge. */
+.sidebar-header { flex-wrap: wrap; }
+.sidebar-toolbar { display: flex; flex: 0 0 auto; margin-left: auto; justify-content: flex-end; gap: 6px; }
+/* Themes slide a row right on hover, which reads well across a wide list and
+   badly in a panel this narrow: the row has nowhere to go but out, and the
+   panel answers with a scrollbar. The hover keeps its border and ground.
+   Written to outweigh the theme sheet, which is laid down after this one. */
+body .note:hover { transform: none; }
+.icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
+.icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
+.icon-button svg.outline-icon { fill: none; stroke: currentColor; }
+.related-notes-controls { display: flex; align-items: stretch; gap: 6px; margin-top: 10px; }
+.related-notes-sort-control { position: relative; display: block; flex: 1 1 auto; min-width: 0; }
+/* The gear's menu opens under it, inside a sidebar only as wide as the pane. */
+.related-notes-controls .view-options-menu { min-width: 0; width: max-content; max-width: calc(100vw - 24px); }
+/* A result's first lines, clamped to the Preview the gear sets. */
+main { --preview-lines: 1; }
+main[data-preview-lines="2"] { --preview-lines: 2; }
+.suggested-tags { display: grid; gap: 4px; margin: 10px 0; }
+.suggested-tag { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
+.suggested-tag .tag-open { flex: 1 1 auto; min-width: 0; }
+.suggested-tag-add { flex: 0 0 auto; min-height: 30px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.similar-hint { margin: 0 0 6px; color: var(--muted); font-size: var(--text-xs); }
+.note-excerpt { display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: var(--preview-lines); overflow-wrap: anywhere; }
+select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
+.related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
+/* The sort control takes the shared control hover, border and all: its own
+   amber border and amber text were both out of step with every other hover,
+   and unreadable on a theme whose hover background is light. The icon sits
+   over the control, so it follows the same text color. */
+select.related-notes-sort:hover:where(:not(:disabled):not([aria-disabled="true"])) ~ .related-notes-sort-icon { color: var(--hover-fg); }
+.active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
+button:hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
+.active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
+.section-label { display: block; margin: 10px 0 6px; padding-left: 6px; border-left: 2px solid var(--amber); }
+.note-list { display: grid; gap: 8px; }
+.note { position: relative; border: 2px solid var(--line); background: var(--panel); padding: 9px; cursor: pointer; }
+.note:hover, .note:focus-within { z-index: 20; border-color: var(--line-strong); }
+.note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.note-title { min-width: 0; overflow-wrap: anywhere; }
+.note-title .inline-tag { color: var(--text); }
+.relevance-score { display: inline-grid; flex: 0 0 auto; place-items: center; min-width: 24px; min-height: 24px; color: var(--green); }
+.relevance-score .tag-weight-rail-segment.filled { background: currentColor; }
+.note-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.insert-link { flex: 0 0 auto; min-height: 0; border: 0; background: transparent; padding: 0; color: var(--muted); cursor: pointer; opacity: 0; }
+.insert-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
+.insert-link:hover { background: transparent; color: var(--text); }
+.relevance-wrap { position: relative; flex: 0 0 auto; }
+.relevance-tooltip { position: absolute; top: calc(100% + 7px); right: 0; display: none; width: 220px; max-width: none; padding: 8px; line-height: 1.35; }
+.relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
+.relevance-score { border: 0; background: transparent; padding: 0; cursor: pointer; }
+.relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
+.relevance-reason { margin-top: 5px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
+.relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
+.relevance-tooltip li + li { margin-top: 3px; }
+.relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: var(--text-xs); }
+.relevance-weights strong { color: var(--green); font-weight: 600; }
+.note .tag-list { margin-top: 7px; }
+.active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
+.graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
+.graph-kind.kind-task { color: var(--amber); }
+.graph-kind.kind-tag { color: var(--green); }
+.graph-tag-pill { margin-left: 0; color: var(--text); }
+/* The active search's Refine options. */
+.refine-values { display: grid; gap: 3px; }
+.refine-subject { margin: 2px 0 0; color: var(--cyan); font: var(--text-xs) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refine-value { display: flex; align-items: stretch; gap: 3px; }
+/* A tag as a full-width row, for the note's own tags and the related tags in
+   Refine: its rail, its name, and its count. The theme's own .tag-open layout
+   is set aside here, and the text matches the other Refine rows rather than a
+   tag's smaller size. */
+.active-tag-list .tag-open.active-tag-open, .suggested-tag .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
+.active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .suggested-tag .tag-open.active-tag-open:hover, .suggested-tag .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
+.active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; }
+.refine-open-tag { display: inline-grid; flex: 0 0 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 2px; }
+.refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.refine-open-tag:hover, .refine-open-tag:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+.refine-count { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.refine-more.refine-more { justify-self: start; min-height: 24px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 2px 8px; font: var(--text-xs) var(--font-mono); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
+.refine-more.refine-more:hover, .refine-more.refine-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
+.refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
+.refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+.refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
+.refine-heading h2 { margin: 0; color: var(--amber); font-size: var(--text-xs); }
+.refine-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
+
+/* The sidebar is narrow, so it runs tighter than a full-width page. */
+body { min-width: 220px; font-size: var(--text-sm); }
+main { width: 100%; max-width: none; padding: 12px; border-top: 2px solid var(--amber); }
+.eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; }
+button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
+.inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
+.source { margin-top: 4px; font-size: var(--text-xs); }
+.empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }

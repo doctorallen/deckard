@@ -3,14 +3,12 @@ import * as vscode from 'vscode';
 
 import {
   createNonce,
-  getBaseCss,
   getTipScript,
   getUndoScript,
-  getPageTailCss,
-  zenBodyAttribute,
 } from './components';
-import { ENABLED } from './selectors';
-import type { DeckardTheme } from './themes';
+import { buildPageShell } from './host/pageShell';
+import { isZenModeEnabled } from './zenMode';
+import { type DeckardTheme, getDeckardTheme } from './themes';
 
 /**
  * Builds the Notes Graph document: a full-viewport Canvas 2D force-directed
@@ -22,102 +20,23 @@ import type { DeckardTheme } from './themes';
  * thousands of nodes stay interactive while they converge.
  */
 export function getNotesGraphHtml(
-  webview: Pick<vscode.Webview, 'cspSource'>,
+  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri,
   /** The theme its host read, preview and all; the configured one without. */
   theme?: DeckardTheme,
 ): string {
   const nonce = createNonce();
-  const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="${csp}">
-<title>Deckard Notes Graph</title>
-<style nonce="${nonce}">${getBaseCss()}
-:root {
-  /* The palette is the base sheet's, as every page's is. A copy of it lived
-     here and kept the fully saturated cyan and green after the base sheet
-     had desaturated them, so the graph alone drew the old colors. */
-  color-scheme: dark;
-}
-* { box-sizing: border-box; }
-html, body { height: 100%; }
-body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
-#graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
-#graph.is-panning { cursor: grabbing; }
-#graph.is-pointing { cursor: pointer; }
-.overlay { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px); overflow-y: auto; }
-.control-group { border: 1px solid var(--slate-border); background: rgba(13, 16, 23, .94); }
-.control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 var(--text-xs) var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
-.control-group summary::before { content: '▸ '; color: var(--muted); }
-.control-group[open] summary::before { content: '▾ '; }
-.control-group summary:hover, .control-group summary:focus-visible { background: var(--panel-raised); }
-.control-body { display: flex; flex-direction: column; gap: 8px; padding: 4px 10px 10px; border-top: 1px solid var(--slate-border); }
-.control-row { display: flex; flex-direction: column; gap: 3px; }
-.control-row label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.control-row output { color: var(--toxic-green); font: var(--text-xs) var(--font-mono); }
-.control-row .slider-line { display: flex; align-items: center; gap: 8px; }
-.slider-end { flex: none; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.control-group.advanced { border: 0; background: transparent; }
-.control-row .control-label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.graph-segmented button { flex: 1; min-height: 24px; padding: 2px 6px; font: var(--text-xs) var(--font-mono); }
-.control-group.advanced > summary { padding: 4px 0; color: var(--muted); }
-input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
-input[type='checkbox'] { accent-color: var(--amber-bright); }
-.toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: var(--text-xs) var(--font-mono); cursor: pointer; }
-.graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: var(--text-xs) var(--font-mono); }
-input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
-.graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); }
-.graph-select { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 6px; font: var(--text-xs) var(--font-mono); }
-.graph-select:focus { border-color: var(--cyan-bright); }
-.control-row[hidden] { display: none; }
-.tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
-.tag-list .toggle-row { padding: 2px 4px; font-size: var(--text-xs); }
-.tag-list .toggle-row:hover { background: var(--panel-raised); }
-.tag-list .tag-count { margin-left: auto; color: var(--muted); }
-.tag-list-note { color: var(--muted); font: var(--text-xs) var(--font-mono); padding: 2px 4px; }
-.relationship-note { margin: 0; color: var(--muted); font: var(--text-xs)/1.45 var(--font-mono); }
-.clear-tags { align-self: flex-start; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
-.clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
-.graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.zoom-controls { display: inline-flex; }
-.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
-.zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
-.zoom-controls button:hover${ENABLED}, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
-.zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
-.reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
-.graph-reset-undo { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.graph-reset-undo:empty { display: none; }
-.status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: var(--text-xs) var(--font-mono); pointer-events: none; }
-.status-line .sim-note { color: var(--amber-bright); }
-.graph-legend { display: flex; align-items: center; gap: 5px; }
-.graph-legend .legend-swatch { width: 8px; height: 8px; border-radius: 50%; }
-.graph-legend .legend-swatch + .legend-swatch, .graph-legend .legend-swatch:not(:first-child) { margin-left: 7px; }
-.legend-note { background: var(--cyan-bright); }
-.legend-task { background: var(--amber-bright); }
-.legend-tag { background: var(--toxic-green); }
-/* A line sample per kind of edge, drawn with the canvas's own dash pattern.
-   Kinds are told apart by pattern, not color, so the legend survives forced
-   colors, colorblindness, and every theme. */
-.graph-legend .legend-line { display: inline-block; width: 16px; height: 8px; margin-left: 7px; color: var(--muted); }
-.graph-legend .legend-line line { stroke: currentColor; stroke-width: 1.5; }
-.graph-legend .legend-line[hidden], .graph-legend .legend-word[hidden] { display: none; }
-/* The panels follow the theme rather than a fixed near-black, which was
-   unreadable when corpo took its text color from a light VS Code theme. */
-.control-group { background: var(--panel); }
-.tooltip { position: absolute; z-index: var(--z-tooltip); display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
-.tooltip .tooltip-title { color: var(--text); font: 700 var(--text-xs) var(--font-mono); }
-.tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
-.focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
-.empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); pointer-events: none; }
-${getPageTailCss(theme)}
-</style>
-</head>
-<body${zenBodyAttribute()}>
+  return buildPageShell({
+    webview,
+    extensionUri,
+    page: 'notesGraph',
+    title: 'Deckard Notes Graph',
+    nonce,
+    theme: theme ?? getDeckardTheme(),
+    zen: isZenModeEnabled(),
+    body: `
 <canvas id="graph" tabindex="0" role="application" aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Escape to clear." aria-describedby="graph-legend"></canvas>
 <div class="empty-state" id="empty-state">No indexed notes yet — save a Markdown file with tags or links.</div>
 <div class="overlay" role="group" aria-label="Graph controls">
@@ -2836,6 +2755,6 @@ ${getUndoScript()}
   resizeCanvas();
 })();
 </script>
-</body>
-</html>`;
+`,
+  });
 }

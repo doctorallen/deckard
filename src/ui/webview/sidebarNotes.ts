@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import type { SidebarGraphContext } from '../../core/types';
 import { NavigationService } from '../../services/navigationService';
 import type { SidebarNotesPageState, SidebarNotesPageToHost } from '../protocol/sidebarNotes';
+import { pageResourceRoots } from './host/pageShell';
 import { ViewSurface } from './host/surface';
 import { WebviewHost } from './host/webviewHost';
 import {
@@ -31,9 +32,12 @@ export type SidebarNotesViewOptions = Omit<SidebarNotesControllerOptions, 'navig
 export class SidebarNotesView implements vscode.WebviewViewProvider, vscode.Disposable {
   private readonly controller: SidebarNotesController;
   private readonly host: WebviewHost<SidebarNotesPageState, SidebarNotesPageToHost>;
+  /** The extension's folder, whose style sheets and icons the view may load. */
+  private readonly extensionUri: vscode.Uri;
 
   /** Builds the sidebar; nothing is shown until VS Code resolves its view. */
   public constructor(options: SidebarNotesViewOptions) {
+    this.extensionUri = options.extensionUri;
     this.controller = new SidebarNotesController({ ...options, navigation: new NavigationService() });
     this.host = new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview });
   }
@@ -47,7 +51,7 @@ export class SidebarNotesView implements vscode.WebviewViewProvider, vscode.Disp
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
     logRelatedNotes('Resolving Related Notes webview.');
     this.host.detach();
-    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.options = { enableScripts: true, localResourceRoots: pageResourceRoots(this.extensionUri) };
     this.host.attach(new ViewSurface(webviewView));
   }
 

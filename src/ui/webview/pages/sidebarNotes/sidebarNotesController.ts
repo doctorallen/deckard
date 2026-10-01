@@ -67,6 +67,8 @@ export interface SidebarNotesControllerOptions {
   themePreview: ThemePreview;
   /** What a row a click names may open, write to, or link. */
   navigation: NavigationService;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
 }
 
 /** Writes a line to the log at Trace, under Related Notes' name. */
@@ -114,7 +116,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   /** The sidebar's HTML, which is logged each time it is set. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
     logRelatedNotes('Rendering Related Notes webview HTML.');
-    return getSidebarNotesHtml(webview, this.sidebar.extensionVersion, theme);
+    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, theme);
   }
 
   /** Narrows a message the page sent, after logging that it came. */

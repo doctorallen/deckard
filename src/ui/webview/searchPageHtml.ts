@@ -10,16 +10,13 @@ import {
 } from './icons';
 import {
   createNonce,
-  getBaseCss,
   getComponentScript,
-  getPageTailCss,
-  getQueryEditorCss,
   getQueryEditorScript,
   loadingHtml,
-  zenBodyAttribute,
 } from './components';
-import { ENABLED } from './selectors';
-import type { DeckardTheme } from './themes';
+import { buildPageShell } from './host/pageShell';
+import { isZenModeEnabled } from './zenMode';
+import { type DeckardTheme, getDeckardTheme } from './themes';
 
 /**
  * Builds a search page: the search box, the tag or entity a one-tag search is
@@ -29,123 +26,23 @@ import type { DeckardTheme } from './themes';
  * source text and posts user intent back across the webview boundary.
  */
 export function getSearchPageHtml(
-  webview: Pick<vscode.Webview, 'cspSource'>,
+  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri,
   /** The theme its host read, preview and all; the configured one without. */
   theme?: DeckardTheme,
 ): string {
   const nonce = createNonce();
-  const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="${csp}">
-<title>Deckard Search</title>
-<style nonce="${nonce}">${getBaseCss()}
-${getQueryEditorCss()}
-/* The gear sits in the header's top-right corner. The margin keeps a short
-   header tall enough to hold it. */
-header > .toolbar { margin-top: 36px; }
-header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
-.overview-tag-link.overview-tag-link {
-  min-height: 0;
-  margin: 0;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  font: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-  text-align: inherit;
-  text-decoration: none;
-  vertical-align: baseline;
-  cursor: pointer;
-  clip-path: none;
-}
-.overview-tag-link.overview-tag-link:hover, .overview-tag-link.overview-tag-link:focus-visible {
-  border-color: var(--cyan);
-  background: transparent;
-  color: var(--cyan);
-  transform: none;
-  box-shadow: none;
-}
-.overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.saved-view-name { margin: 0 0 8px; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
-.saved-view-name-label { color: var(--muted); }
-.overview-tab-panel[hidden] { display: none; }
-.overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
-.overview-pane { min-width: 0; }
-.overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* Bulk Edit and Export sit together at the right, after the heading. */
-.overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
-.overview-pane-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; }
-.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
-.overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
-.card-header { display: block; }
-.entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
-.hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.hub-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-/* A tag with no hub note offers one in a line under its title: text, not a
-   panel, since it is an offer and not a part of the page. */
-.hub-offer { margin: var(--space-1) 0 0; }
-.hub-offer-button.hub-offer-button { min-height: 0; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-sm) var(--font-display); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
-.hub-offer-button.hub-offer-button:hover, .hub-offer-button.hub-offer-button:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
-.hub > summary { cursor: pointer; list-style: none; }
-.hub > summary::-webkit-details-marker { display: none; }
-.hub > summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
-.hub-title { display: inline-flex; align-items: center; gap: 8px; }
-.hub-toggle { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--amber); transition: transform 120ms ease; }
-.hub[open] .hub-toggle { transform: rotate(90deg); }
-.hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
-.hub-properties div { display: flex; align-items: baseline; gap: 6px; }
-.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
-.hub-properties dd { margin: 0; }
-.hub .markdown, .hub .rendered { margin: 12px 0 0; }
-.hub-note { margin: 10px 0 0; color: var(--muted); }
-/* A tag's page's quiet lines under its hub, and what they mark on cards. */
-.tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
-.tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }
-.tag-note-tag { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: var(--text-sm) var(--font-mono); cursor: pointer; }
-.tag-note-tag:hover${ENABLED} { color: var(--hover-fg); text-decoration: underline; }
-.tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
-.card-via { margin-left: 6px; color: var(--muted); font-size: var(--text-xs); font-style: italic; }
-.stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: var(--text-sm); }
-.empty-action { margin: 12px 0 0; }
-.pagination .page-size { font-size: var(--text-sm); }
-.pagination .page-size select { min-width: 64px; }
-.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: var(--text-sm); }
-.did-you-mean button { background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
-@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
-
-/* The amber rule above the page, and the containing block the gear is
-   positioned against. */
-main { border-top: 2px solid var(--amber); }
-header { position: relative; }
-/* Three lines of each result, or of the paragraph its words are in, and
-   Show all for the rest. The clamp is Chromium's; the height is the guard. */
-.card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.card-body.is-clamped > .rendered { max-height: 4.65em; }
-.card-snippet-lead { margin-top: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.card-snippet-lead + .rendered, .card-snippet-lead + .markdown { margin-top: var(--space-1); }
-/* A text button: words that open the rest, drawn as words. */
-.card-more.card-more { display: inline-block; min-height: 0; margin: var(--space-2) 0 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-xs) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
-.card-more.card-more:hover, .card-more.card-more:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
-/* A result's file, line, and headings fold under it on hover, as the
-   sidebar's notes do, and Show all waits for hover too: on every card at
-   rest they were noise. Show all keeps its room, so appearing moves
-   nothing; focus on the card shows it, so Tab reaches it next. */
-.card .card-more.card-more { visibility: hidden; opacity: 0; transition: opacity 120ms ease, visibility 0s linear 120ms; }
-.card:hover .card-more.card-more, .card:focus-within .card-more.card-more { visibility: visible; opacity: 1; transition: opacity 120ms ease; }
-${getPageTailCss(theme)}
-</style>
-</head>
-<body${zenBodyAttribute()}>
+  return buildPageShell({
+    webview,
+    extensionUri,
+    page: 'searchPage',
+    title: 'Deckard Search',
+    nonce,
+    theme: theme ?? getDeckardTheme(),
+    zen: isZenModeEnabled(),
+    body: `
 ${loadingHtml('Loading search…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
@@ -722,6 +619,6 @@ ${getQueryEditorScript()}
   });
 }());
 </script>
-</body>
-</html>`;
+`,
+  });
 }

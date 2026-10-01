@@ -1,0 +1,44 @@
+/*
+ * Tomcat.
+ *
+ * A theme sheet: linked after the page's own sheet and before the tail.
+ */
+:root {
+  --bg-dark: #010401;
+  --bg: #030703;
+  --panel-bg: #061006;
+  --panel: #061006;
+  --panel-raised: #0a1a09;
+  --panel-deep: #000200;
+  --text: #ccfa7b;
+  --muted: #82aa51;
+  --slate-border: #1e5724;
+  --line: #278a31;
+  --line-strong: #54db51;
+  --control-line: var(--line-strong);
+  --cyan-bright: #8ce87c;
+  --cyan: #6fd96c;
+  --amber-bright: #f0bf47;
+  --amber: #d89d31;
+  --amber-dim: #896b28;
+  --green: #8ce87c;
+  --toxic-green: #8ce87c;
+  --favorite-red: #e24b26;
+  --warning-orange: #e24b26;
+  --font-display: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+body { background-image: repeating-linear-gradient(0deg, rgba(118, 255, 99, .025) 0, rgba(118, 255, 99, .025) 1px, transparent 1px, transparent 4px); }
+main { border-color: var(--line); box-shadow: 0 0 22px rgba(41, 165, 47, .08); }
+header { border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(118, 255, 99, .2); }
+h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+button, select, .tag-open, .view-options summary { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
+button, select { text-transform: uppercase; }
+button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover { background: var(--green); border-color: var(--green); color: #071006; }
+:root { --hover-bg: var(--green); --hover-fg: #071006; }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(3, 12, 3, .9); box-shadow: inset 2px 0 0 var(--green); }
+.metric::before { border-bottom-color: var(--green); }
+.metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--green); background: var(--panel-raised); box-shadow: inset 3px 0 0 var(--green), 0 0 14px rgba(118, 255, 99, .16); }
+.favorite-toggle { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }
+.favorite-toggle.favorite { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }

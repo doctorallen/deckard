@@ -79,6 +79,8 @@ export interface TaskBoardControllerOptions {
    * sidebar shows and whose search it runs.
    */
   source: SearchSource;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
 }
 
 /** The board's handler map, by message type. */
@@ -134,7 +136,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
 
   /** The board's template page, in a theme; it asks for its state when it loads. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getTaskBoardHtml(webview, theme);
+    return getTaskBoardHtml(webview, this.board.extensionUri, theme);
   }
 
   /**

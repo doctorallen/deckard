@@ -37,6 +37,7 @@ export class StatsPanel implements vscode.Disposable {
       preferences: options.preferences,
       onOpenTag: options.onOpenTag,
       navigation: new NavigationService(),
+      extensionUri: options.extensionUri,
     });
     this.page = new PanelAdapter(
       new WebviewHost(controller, { indexer: options.indexer, themePreview: options.themePreview }),

@@ -3,15 +3,12 @@ import * as vscode from 'vscode';
 
 import {
   createNonce,
-  getBaseCss,
-  getPageTailCss,
-  zenBodyAttribute,
 } from './components';
-import { getFavoriteHeartAssetUris } from './icons';
-import { ENABLED } from './selectors';
+import { buildPageShell } from './host/pageShell';
+import { isZenModeEnabled } from './zenMode';
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
 import { escapeHtml } from '../../shared/html';
-import type { DeckardTheme } from './themes';
+import { type DeckardTheme, getDeckardTheme } from './themes';
 
 /**
  * What the Help page reads from the extension's own manifest.
@@ -345,116 +342,18 @@ function buildHelpHtml(
   const logoUri = webview
     .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
     .toString();
-  const favoriteHeartUris = getFavoriteHeartAssetUris(webview, extensionUri);
-  const csp = `default-src 'none'; img-src ${webview.cspSource} ${new URL(GUIDE_IMAGE_BASE).origin}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="${csp}">
-<title>Deckard Help</title>
-<style nonce="${nonce}">${getBaseCss()}
-html { scroll-behavior: smooth; }
-nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--line); background: var(--panel); padding: 12px; }
-.nav-title, .step-number { font-family: var(--font-mono); }
-.nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
-nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
-nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: 2px solid transparent; }
-/* The section being read, marked in the rail so twenty links say where the reader is. */
-nav a[aria-current] { border-left-color: var(--amber); color: var(--text); }
-/* Prose here is full of inline code chips, each a border and a pixel of padding
-   taller than its text; a line box the chips fit inside keeps two on
-   neighboring lines from touching. */
-article { min-width: 0; line-height: 1.55; }
-h1, h2, h3 { line-height: 1.2; }
-p { margin: 0 0 12px; }
-.steps, .cards { display: grid; gap: 10px; }
-.steps { counter-reset: quick-start; }
-.step, .card { min-width: 0; border: 1px solid var(--line); background: var(--panel); padding: 14px; }
-.step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
-.step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: var(--text-xs); }
-.card p:last-child, .step p:last-child { margin-bottom: 0; }
-.card:target { border-color: var(--amber); }
-/* A card jumped to from the map is not hidden under the sticky navigation. */
-.card[id] { scroll-margin-top: 20px; }
-code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--text); font-size: .9em; }
-.inline-icon, .deckard-logo { display: inline-block; width: 16px; height: 16px; margin: 0 2px; vertical-align: -3px; }
-.dashboard-icon { fill: var(--green); }
-.favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
-.favorite-heart.filled { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
-pre { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--panel); padding: 12px; color: var(--text); }
-pre code { border: 0; padding: 0; color: inherit; background: transparent; }
-/* A cell breaks between words, never inside one, so a column is at least as
-   wide as its longest word — a setting's name, a command's — and the table
-   shares the rest by content. Broken anywhere, a column could be crushed to
-   five characters a line, and every column with a long sentence beside it was.
-   A table too wide for the page scrolls in .table-scroll instead. */
-th, td, table code { overflow-wrap: break-word; }
-ul { margin: 8px 0 0; padding-left: 20px; }
-li + li { margin-top: 5px; }
-.note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--text); }
-/* Reference tables: commands, markers, query fields, settings. */
-table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: var(--text-md); }
-caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: left; }
-th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-th { color: var(--cyan); font-size: var(--text-xs); }
-td:first-child { white-space: normal; }
-tbody tr:hover { background: var(--panel); }
-/* A group's name inside the settings table: a heading row, ruled under like
-   the column header, so a group starts somewhere the eye can find. */
-.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: var(--text-sm) var(--font-mono); }
-.table-group:hover { background: transparent; }
-.table-scroll { overflow-x: auto; }
-/* The navigation groups its sections, so a long guide stays scannable. */
-.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-nav a.nav-sub { padding-left: 16px; font-size: var(--text-sm); }
-section { scroll-margin-top: 20px; }
-/* A command named in the prose is a button that runs it: the code chip's
-   look, in the link color, underlined under the pointer and on focus. */
-.command-link { display: inline; min-height: 0; margin: 0; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--cyan); font: inherit; font-size: .9em; font-family: var(--font-mono); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
-.command-link:hover${ENABLED}, .command-link:focus-visible { text-decoration: underline; }
-.command-link:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
-td .command-link { display: inline-block; min-height: var(--control-height); }
-.whats-new-chip { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); color: var(--cyan); font: var(--text-xs) var(--font-mono); vertical-align: middle; }
-#whats-new h3 { margin-top: 16px; }
-kbd.shortcut { display: inline-block; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
-@media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
-
-/* Help is a two-column reference: navigation beside the article. */
-main {
-  display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(0, 800px);
-  gap: 32px;
-  max-width: 1120px;
-  padding: 30px 24px 48px;
-}
-header { display: block; padding-bottom: 20px; border-bottom: 2px solid var(--line); }
-h1 { font-size: 28px; line-height: 1.2; overflow-wrap: normal; }
-h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; line-height: 1.2; }
-h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
-.eyebrow { margin: 0 0 6px; }
-.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.card { cursor: default; }
-@media (max-width: 900px) {
-  main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
-  h1 { font-size: 24px; }
-  .cards { grid-template-columns: 1fr; }
-}
-/* Read more: the way from a section's quick glance into the guide page. */
-.read-more { margin-top: 12px; }
-.read-more a, .guide-back { color: var(--cyan); font-family: var(--font-mono); font-size: var(--text-sm); }
-/* A guide page in place of Help: the same measure, its screenshots fitted. */
-#guide-view img { max-width: 100%; height: auto; }
-#guide-view h1 { margin-top: 12px; }
-#guide-view h2, #guide-view h3, #guide-view h4 { scroll-margin-top: 20px; }
-#guide-view h3 { margin-top: 20px; }
-.guide-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-${getPageTailCss(options.theme)}
-</style>
-</head>
-<body${zenBodyAttribute()}${options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : ''}>
+  return buildPageShell({
+    webview,
+    extensionUri,
+    page: 'help',
+    title: 'Deckard Help',
+    nonce,
+    theme: options.theme ?? getDeckardTheme(),
+    zen: isZenModeEnabled(),
+    csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
+    bodyAttributes: options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : '',
+    body: `
 <main>
   <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
@@ -855,7 +754,7 @@ tag = #project/atlas AND task = open
   sections.forEach(function (section) { observer.observe(section); });
 })();
 </script>
-</body>
-</html>`;
+`,
+  });
 }
 

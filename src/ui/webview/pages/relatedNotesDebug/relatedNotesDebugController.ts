@@ -29,6 +29,9 @@ export class RelatedNotesDebugController implements PageController<never, Relate
   /** The entry's evidence the page draws, once one has been shown. */
   private diagnostic: EntryRelatedNotesDiagnostic | undefined;
 
+  /** Draws with the style sheet under `extensionUri`. */
+  public constructor(private readonly extensionUri: vscode.Uri) {}
+
   /** Keeps the evidence the next HTML draws. */
   public setDiagnostic(diagnostic: EntryRelatedNotesDiagnostic): void {
     this.diagnostic = diagnostic;
@@ -39,7 +42,7 @@ export class RelatedNotesDebugController implements PageController<never, Relate
    * after keeping the evidence, so it is never empty on screen.
    */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return this.diagnostic ? getRelatedNotesDebugHtml(webview, this.diagnostic, theme) : '';
+    return this.diagnostic ? getRelatedNotesDebugHtml(webview, this.extensionUri, this.diagnostic, theme) : '';
   }
 
   /** The evidence is drawn whole in the HTML, so there is never a snapshot to send. */

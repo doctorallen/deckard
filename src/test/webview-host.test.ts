@@ -450,14 +450,14 @@ suite('ViewAdapter', () => {
   test('shows the page in each view VS Code resolves, and only in the newest', async () => {
     const { controller, calls } = createController();
     const host = new WebviewHost(controller, { themePreview: new ThemePreview() });
-    const adapter = new ViewAdapter(host);
+    const adapter = new ViewAdapter(host, vscode.Uri.file('/ext'));
     const first = createView();
     const second = createView();
     try {
       adapter.resolveWebviewView(first.view);
       await host.whenPublished();
       await Promise.resolve();
-      assert.deepStrictEqual(first.view.webview.options, { enableScripts: true });
+      assert.deepStrictEqual(withRoots(first.view.webview.options), { enableScripts: true, localResourceRoots: PAGE_ROOTS });
       assert.match(first.view.webview.html, /^<p>[a-z]+<\/p>$/, 'its HTML, in the configured theme');
       assert.deepStrictEqual(first.webview.postedOf('state'), [{ type: 'state', data: { count: 0 } }]);
 
@@ -489,7 +489,7 @@ suite('PanelAdapter', () => {
       await adapter.restore(kept.panel, { query: 'is:open' });
       assert.deepStrictEqual(steps, ['restored {"query":"is:open"}', 'attached']);
       assert.strictEqual(adapter.panel, kept.panel);
-      assert.deepStrictEqual(kept.panel.webview.options, { enableScripts: true });
+      assert.deepStrictEqual(withRoots(kept.panel.webview.options), { enableScripts: true, localResourceRoots: PAGE_ROOTS });
       assert.strictEqual((kept.panel.iconPath as vscode.Uri).path, '/ext/resources/deckard.svg');
       assert.deepStrictEqual(kept.webview.postedOf('state'), [{ type: 'state', data: { count: 0 } }]);
       assert.strictEqual(adapter.open(), kept.panel, 'an open page is not opened again');
@@ -512,14 +512,29 @@ suite('PanelAdapter', () => {
     assert.strictEqual(new PanelSurface(panel, () => VIEW_PRIORITY.housekeeping).priority(), VIEW_PRIORITY.housekeeping);
   });
 
-  test('sets scripts on, keeps the options a panel was made with, or leaves a page with no script alone', () => {
+  test('sets scripts on, keeps the options a panel was made with, or leaves a page with no script its own, and always names the folders it loads from', () => {
     const kept = { enableScripts: false, enableCommandUris: true };
-    assert.deepStrictEqual(scriptOptions(undefined, kept), { enableScripts: true });
-    assert.deepStrictEqual(scriptOptions('on', kept), { enableScripts: true });
-    assert.deepStrictEqual(scriptOptions('merge', kept), { enableScripts: true, enableCommandUris: true });
-    assert.strictEqual(scriptOptions('off', kept), undefined);
+    const extension = vscode.Uri.file('/ext');
+    assert.deepStrictEqual(withRoots(scriptOptions(undefined, kept, extension)), { enableScripts: true, localResourceRoots: PAGE_ROOTS });
+    assert.deepStrictEqual(withRoots(scriptOptions('on', kept, extension)), { enableScripts: true, localResourceRoots: PAGE_ROOTS });
+    assert.deepStrictEqual(
+      withRoots(scriptOptions('merge', kept, extension)),
+      { enableScripts: true, enableCommandUris: true, localResourceRoots: PAGE_ROOTS },
+    );
+    assert.deepStrictEqual(
+      withRoots(scriptOptions('off', kept, extension)),
+      { enableScripts: false, enableCommandUris: true, localResourceRoots: PAGE_ROOTS },
+    );
   });
 });
+
+/** The folders a page under `/ext` may load from: its built pages and its icons. */
+const PAGE_ROOTS = ['/ext/dist/webview', '/ext/resources'];
+
+/** Webview options with each resource root as its path, to compare. */
+function withRoots(options: vscode.WebviewOptions): Omit<vscode.WebviewOptions, 'localResourceRoots'> & { localResourceRoots?: string[] } {
+  return { ...options, localResourceRoots: options.localResourceRoots?.map((root) => root.path) };
+}
 
 /** A webview panel around a fake webview, as VS Code makes or keeps one. */
 function createPanel() {

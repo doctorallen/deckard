@@ -15,6 +15,7 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { pageExtensionUri } from './pageWebview';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -72,6 +73,7 @@ suite('Adding a suggested tag', () => {
       history,
       themePreview,
       navigation: new NavigationService(),
+      extensionUri: pageExtensionUri(),
     });
     const view = new WebviewHost(controller, { indexer: indexer as never, themePreview });
     // A hidden sidebar ranks nothing until it is shown, so only the

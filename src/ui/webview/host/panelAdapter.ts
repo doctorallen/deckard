@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { MessageMap } from '../../protocol/messaging';
+import { pageResourceRoots } from './pageShell';
 import { PanelSurface, scriptOptions } from './surface';
 import type { WebviewHost } from './webviewHost';
 
@@ -69,6 +70,7 @@ export class PanelAdapter<TSnapshot, TPageToHost extends MessageMap<TPageToHost>
         ...(scripts === 'off' ? {} : { enableScripts: true }),
         retainContextWhenHidden,
         ...(enableFindWidget ? { enableFindWidget: true } : {}),
+        localResourceRoots: pageResourceRoots(this.options.extensionUri),
       },
     );
     this.attach(panel);
@@ -99,16 +101,17 @@ export class PanelAdapter<TSnapshot, TPageToHost extends MessageMap<TPageToHost>
   }
 
   /**
-   * Gives a new or restored panel its icon and scripts, and the page. A
-   * panel restored after a reload keeps the options it was made with, so
-   * scripts are switched on here too.
+   * Gives a new or restored panel its icon, its scripts and the folders it
+   * may load from, and the page. A panel restored after a reload keeps the
+   * options it was made with, so they are set here too.
    */
   private attach(panel: vscode.WebviewPanel): void {
     panel.iconPath = vscode.Uri.joinPath(this.options.extensionUri, ...this.options.icon);
-    const options = scriptOptions(this.host.controller.options.scripts, panel.webview.options);
-    if (options) {
-      panel.webview.options = options;
-    }
+    panel.webview.options = scriptOptions(
+      this.host.controller.options.scripts,
+      panel.webview.options,
+      this.options.extensionUri,
+    );
     this.host.attach(new PanelSurface(panel, this.options.priority));
   }
 }

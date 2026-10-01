@@ -68,26 +68,26 @@ const EMPTY_DIAGNOSTIC = {
  */
 export const PAGES: readonly CatalogPage[] = [
   { id: 'dashboard', title: 'Dashboard', render: (context) => getDashboardHtml(context.webview, context.extensionUri) },
-  { id: 'searchPage', title: 'search page', render: (context) => getSearchPageHtml(context.webview) },
-  { id: 'sidebarNotes', title: 'Related Notes', render: (context) => getSidebarNotesHtml(context.webview, '1.0.0') },
-  { id: 'notesGraph', title: 'Notes Graph', render: (context) => getNotesGraphHtml(context.webview) },
+  { id: 'searchPage', title: 'search page', render: (context) => getSearchPageHtml(context.webview, context.extensionUri) },
+  { id: 'sidebarNotes', title: 'Related Notes', render: (context) => getSidebarNotesHtml(context.webview, context.extensionUri, '1.0.0') },
+  { id: 'notesGraph', title: 'Notes Graph', render: (context) => getNotesGraphHtml(context.webview, context.extensionUri) },
   {
     id: 'help',
     title: 'Help',
     render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, context.help?.options),
   },
-  { id: 'stats', title: 'Stats', render: (context) => getStatsHtml(context.webview as vscode.Webview) },
-  { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as vscode.Webview) },
-  { id: 'calendar', title: 'Calendar', render: (context) => getCalendarHtml(context.webview as vscode.Webview) },
+  { id: 'stats', title: 'Stats', render: (context) => getStatsHtml(context.webview as vscode.Webview, context.extensionUri) },
+  { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as vscode.Webview, context.extensionUri) },
+  { id: 'calendar', title: 'Calendar', render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri) },
   {
     id: 'calendarPage',
     title: 'Calendar page',
-    render: (context) => getCalendarHtml(context.webview as vscode.Webview, { page: true }),
+    render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri, { page: true }),
   },
   {
     id: 'relatedNotesDebug',
     title: 'Related Notes debug',
-    render: (context) => getRelatedNotesDebugHtml(context.webview, context.diagnostic ?? EMPTY_DIAGNOSTIC),
+    render: (context) => getRelatedNotesDebugHtml(context.webview, context.extensionUri, context.diagnostic ?? EMPTY_DIAGNOSTIC),
   },
 ];
 

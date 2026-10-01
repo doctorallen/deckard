@@ -763,7 +763,7 @@ function createCalendar(
   themePreview: ThemePreview,
 ) {
   const { indexer } = core;
-  const calendar = new CalendarView(indexer, writes.tasks, themePreview);
+  const calendar = new CalendarView(indexer, writes.tasks, themePreview, context.extensionUri);
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
   context.subscriptions.push(activeCalendar, activeHome);
@@ -867,6 +867,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeSearch,
     onOpenTag: (tagKey) => searchPanels.show(tagKey),
     extensionVersion: context.extension.packageJSON.version,
+    extensionUri: context.extensionUri,
     activeCalendar,
     activeHome,
     history,

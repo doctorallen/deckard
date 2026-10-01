@@ -258,7 +258,6 @@ export default {
     "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/helpHtml.ts": 1,
-    "src/ui/webview/icons.ts": 1,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
     "test/e2e/vscodeStub.js": 17
@@ -378,7 +377,6 @@ export default {
       "getControlCss",
       "getDesignTokens",
       "getProvenanceCss",
-      "getQueryEditorCss",
       "getQueryEditorScript",
       "getSurfaceCss",
       "getTaskBoardCss",

@@ -13,8 +13,14 @@ import type { WebviewHost } from './webviewHost';
 export class ViewAdapter<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
-  /** Shows `host`'s page in the views VS Code resolves. */
-  public constructor(public readonly host: WebviewHost<TSnapshot, TPageToHost>) {}
+  /**
+   * Shows `host`'s page in the views VS Code resolves, loading its style
+   * sheets and icons from under `extensionUri`.
+   */
+  public constructor(
+    public readonly host: WebviewHost<TSnapshot, TPageToHost>,
+    private readonly extensionUri: vscode.Uri,
+  ) {}
 
   /** The view VS Code is showing the page in, while it has one. */
   public get view(): vscode.WebviewView | undefined {
@@ -25,10 +31,7 @@ export class ViewAdapter<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
   /** Attaches the view VS Code made, then draws it once there are notes. */
   public resolveWebviewView(view: vscode.WebviewView): void {
     this.host.detach();
-    const options = scriptOptions(this.host.controller.options.scripts, view.webview.options);
-    if (options) {
-      view.webview.options = options;
-    }
+    view.webview.options = scriptOptions(this.host.controller.options.scripts, view.webview.options, this.extensionUri);
     this.host.attach(new ViewSurface(view));
     void this.host.whenPublished().then(() => this.host.refresh());
   }

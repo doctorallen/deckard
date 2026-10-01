@@ -1,0 +1,109 @@
+/*
+ * *
+ * Content surfaces: the cards, tasks, metrics, and empty states that make up
+ * the body of every page.
+ */
+
+/*
+ * Any content row a reader can open: a card, a task, a tag, an entity, a
+ * saved view. One rule gives them all the same border, hover and focus, so a
+ * new kind of row cannot quietly ship without the treatment the others have.
+ */
+.row, .card, .task {
+  min-width: 0;
+  border: var(--edge) solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+}
+.row:hover, .card:hover, .task:hover { border-color: var(--amber); }
+.row:focus-visible, .card:focus-visible, .task:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 1px;
+}
+.row[hidden] { display: none; }
+
+.cards { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+.card { padding: var(--space-4); }
+.card[hidden], .task[hidden] { display: none; }
+.card-title { margin: 0; color: var(--cyan); font-size: 16px; overflow-wrap: anywhere; }
+/* A parked result: muted words, no box, at the size of the other small meta. */
+.parked-label { margin-left: var(--space-2); color: var(--muted); font-size: var(--text-xs); font-weight: normal; }
+.task-meta .parked-label { margin-left: 0; }
+
+.task {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+  padding: var(--space-3);
+}
+.task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
+.task-title { color: var(--cyan); overflow-wrap: anywhere; }
+.task-title a { color: var(--cyan); }
+.task.completed .task-title { color: var(--muted); text-decoration: line-through; }
+.task-summary { display: grid; gap: var(--space-2); }
+.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
+
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: var(--space-3); }
+/* A metric that opens what it counts keeps the tile's look, and gains the
+   hover and focus treatment every other control has. The tile rules paint it,
+   not the control ones, so it carries the text that belongs on a panel: a
+   theme whose controls have a ground of their own writes their text for that
+   ground, and on LCARS that is near-black, which the tile never becomes. */
+.metric-open { display: grid; gap: var(--space-1); justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.metric-label { display: block; color: var(--muted); font-size: var(--text-xs); }
+.metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
+/* How a total moved: a line of its last twelve weeks, the latest point in
+   the accent, and the change in words. Muted, not green or red: a rise in
+   open tasks is not good news. */
+.sparkline { display: block; width: 100%; height: 20px; margin-top: var(--space-1); overflow: visible; }
+.sparkline .sparkline-line { fill: none; stroke: var(--muted); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.sparkline .sparkline-end { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sparkline .sparkline-hit { fill: transparent; }
+.metric-change { display: block; color: var(--muted); font-size: var(--text-xs); }
+@media (forced-colors: active) {
+  .sparkline .sparkline-line { stroke: CanvasText; }
+  .sparkline .sparkline-end { stroke: Highlight; }
+}
+
+/* A page still waiting for what it shows: muted words in the page's flow,
+   not the dashed box an empty result is drawn in. Revealed after 400 ms by a
+   step rather than motion, so a page that draws within that never flashes
+   it, and reduced motion, which stops transitions, leaves it alone. */
+.loading { display: grid; min-height: 96px; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); opacity: 0; animation: loading-reveal 0s linear 400ms forwards; }
+.loading.is-immediate { opacity: 1; animation: none; }
+@keyframes loading-reveal { to { opacity: 1; } }
+
+.empty {
+  margin-top: var(--space-5);
+  border: var(--edge) dashed var(--line);
+  background: var(--panel-deep);
+  padding: var(--space-5);
+  color: var(--muted);
+}
+
+.markdown {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  overflow-x: auto;
+  border: var(--edge) solid var(--line);
+  border-left: 4px solid var(--amber);
+  background: var(--panel-deep);
+  color: var(--text);
+  white-space: pre-wrap;
+  font: var(--text-sm)/1.55 var(--font-mono);
+}
+.rendered { margin-top: var(--space-4); line-height: 1.55; overflow-wrap: anywhere; }
+.rendered :first-child { margin-top: 0; }
+.rendered :last-child { margin-bottom: 0; }
+.rendered code, .rendered pre { font-family: var(--font-mono); }
+.rendered pre { overflow-x: auto; padding: var(--space-3); border: var(--edge) solid var(--line); background: var(--panel-deep); }
+.rendered a { color: var(--cyan); }

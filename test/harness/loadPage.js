@@ -7,9 +7,19 @@
 // Chrome opens the page as an iframe's srcdoc, and the text checks read one
 // string. So each harness passes the page through here first, which reads
 // every <script src> and <link rel="stylesheet"> that names a file of the
-// extension and inlines it with the page's nonce, marking each script it
-// inlined with data-inlined-from. A page that is already self-contained
-// comes back unchanged.
+// extension and inlines it with the page's nonce, marking each script and
+// sheet it inlined with data-inlined-from. A page that is already
+// self-contained comes back unchanged.
+//
+// An inlined sheet must load as the linked one would, so two things follow
+// it. A url() in it names a file relative to the sheet, so it is rewritten
+// against the sheet's URI, as the browser would resolve it. And a page's
+// policy admits a linked sheet by its origin (style-src names the
+// extension's), which says nothing of an inline copy; Chrome enforces the
+// policy in the layout harness, so the loader adds the page's nonce to
+// style-src, and gives it to each sheet the policy admitted. A sheet from an
+// origin the policy does not name is inlined without it, and Chrome blocks
+// it, as VS Code would block the link.
 const path = require('node:path');
 const { readFileSync } = require('node:fs');
 
@@ -81,10 +91,67 @@ function readAsset(uri, root, kind) {
   }
 }
 
+/** The page's Content-Security-Policy meta element, matched, or null. */
+const POLICY = /(<meta\s+http-equiv="Content-Security-Policy"\s+content=")([^"]*)(")/i;
+
+/** The nonce the loader gives inlined sheets on a page whose policy names none. */
+const LOADER_NONCE = 'deckardPageLoader';
+
 /** The nonce the page's Content-Security-Policy names, if any. */
 function readPageNonce(html) {
-  const policy = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i.exec(html);
-  return policy && /'nonce-([^']+)'/.exec(policy[1])?.[1];
+  const policy = POLICY.exec(html);
+  return policy && /'nonce-([^']+)'/.exec(policy[2])?.[1];
+}
+
+/**
+ * Whether a policy admits a style sheet from `uri`: there is no policy, or
+ * its style-src (or default-src, without one) names a source the URI is
+ * under. A `*` in a source stands for one part of a host name.
+ *
+ * @param {string | undefined} policy The policy's text.
+ * @param {string} uri The sheet's URI as the page links it.
+ */
+function admitsSheet(policy, uri) {
+  if (policy === undefined) {
+    return true;
+  }
+  const directives = new Map(policy.split(';').map((part) => part.trim().split(/\s+/)).filter(([name]) => name).map(([name, ...sources]) => [name, sources]));
+  const sources = directives.get('style-src') ?? directives.get('default-src') ?? [];
+  return sources
+    .filter((source) => !source.startsWith("'"))
+    .some((source) => new RegExp(`^${source.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/.]+')}(/|$)`).test(uri));
+}
+
+/**
+ * The policy with `'nonce-<nonce>'` among its style-src sources, where it
+ * was not already.
+ */
+function addStyleNonce(policy, nonce) {
+  const source = `'nonce-${nonce}'`;
+  const parts = policy.split(';').map((part) => part.trim()).filter(Boolean);
+  const at = parts.findIndex((part) => /^style-src\b/.test(part));
+  if (at < 0) {
+    parts.push(`style-src ${source}`);
+  } else if (!parts[at].split(/\s+/).includes(source)) {
+    parts[at] = `${parts[at]} ${source}`;
+  }
+  return `${parts.join('; ')};`;
+}
+
+/**
+ * A sheet's text with each relative url() resolved against the sheet's URI,
+ * as the browser resolves it when the sheet is linked.
+ *
+ * @param {string} sheet The sheet's text.
+ * @param {string} base The sheet's URI.
+ */
+function resolveSheetUrls(sheet, base) {
+  return sheet.replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/g, (whole, _quote, target) => {
+    if (/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(target)) {
+      return whole;
+    }
+    return `url("${new URL(target, base).href}")`;
+  });
 }
 
 /**
@@ -114,18 +181,27 @@ function loadPage(html, options = {}) {
     const from = ` data-inlined-from="${attributes.get('src').replace(/"/g, '&quot;')}"`;
     return `<script${nonce ? ` nonce="${nonce}"` : ''}${writeAttributes(attributes, ['src', 'nonce'])}${from}>${source}</script>`;
   });
-  return withScripts.replace(/<link\b([^>]*)>/gi, (whole, attributeText) => {
+  const policy = POLICY.exec(withScripts)?.[2];
+  const sheetNonce = pageNonce ?? LOADER_NONCE;
+  let admitted = false;
+  const withSheets = withScripts.replace(/<link\b([^>]*)>/gi, (whole, attributeText) => {
     const attributes = readAttributes(attributeText);
     if ((attributes.get('rel') ?? '').toLowerCase() !== 'stylesheet' || !attributes.has('href')) {
       return whole;
     }
-    const sheet = readAsset(attributes.get('href'), root, 'style sheet');
+    const href = attributes.get('href');
+    const sheet = resolveSheetUrls(readAsset(href, root, 'style sheet'), href);
     if (/<\/style/i.test(sheet)) {
-      throw new Error(`${attributes.get('href')} contains "</style", so it cannot be inlined.`);
+      throw new Error(`${href} contains "</style", so it cannot be inlined.`);
     }
-    const nonce = attributes.get('nonce') ?? pageNonce;
-    return `<style${nonce ? ` nonce="${nonce}"` : ''}>${sheet}</style>`;
+    const nonce = admitsSheet(policy, href) ? sheetNonce : undefined;
+    admitted ||= nonce !== undefined;
+    const from = ` data-inlined-from="${href.replace(/"/g, '&quot;')}"`;
+    return `<style${nonce ? ` nonce="${nonce}"` : ''}${from}>${sheet}</style>`;
   });
+  return admitted && policy !== undefined
+    ? withSheets.replace(POLICY, (whole, open, text, close) => `${open}${addStyleNonce(text, sheetNonce)}${close}`)
+    : withSheets;
 }
 
 module.exports = { loadPage, resolveAsset, readPageNonce };

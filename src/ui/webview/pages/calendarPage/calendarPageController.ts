@@ -36,6 +36,8 @@ export interface CalendarPageControllerOptions {
   refresh: () => void;
   /** Sends the page one message through its host, while it is open. */
   post: (message: CalendarMoveRefusedMessage) => void;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
 }
 
 /**
@@ -100,7 +102,7 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
 
   /** The calendar's HTML, laid out as a page rather than for the sidebar. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getCalendarHtml(webview, { page: true, theme });
+    return getCalendarHtml(webview, this.calendarPage.extensionUri, { page: true, theme });
   }
 
   /**

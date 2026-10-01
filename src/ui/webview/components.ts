@@ -1,11 +1,12 @@
 /**
  * Shared building blocks for every Deckard webview.
  *
- * Each webview is a self-contained HTML document, so anything they have in
- * common has to be shared as text rather than as modules the browser can
- * import. This file is that shared layer: one design-token set, one style
- * sheet for the elements every page uses, and one script of the helpers the
- * page scripts all need.
+ * Each page's script is still a template the host writes into its HTML, so
+ * what the scripts have in common has to be shared as text rather than as
+ * modules the browser can import. This file is that shared layer: one script
+ * of the helpers the page scripts all need, and the pieces of HTML the host
+ * builds. The style sheets are files under src/webview, which esbuild builds
+ * into dist/webview and every page links (host/pageShell.ts).
  *
  * A page keeps only the styles and behavior that are genuinely its own.
  * Changing a component here changes it everywhere.
@@ -15,12 +16,12 @@ import * as vscode from 'vscode';
 import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
 import {
   DeckardTheme,
+  deckardThemeCss,
   deckardThemeNames,
   getDeckardTheme,
   getDeckardThemeCss,
 } from './themes';
 import type { ThemePreview } from './themePreview';
-import { isZenModeEnabled } from './zenMode';
 import { ENABLED } from './selectors';
 import { escapeHtml } from '../../shared/html';
 export { ENABLED };
@@ -526,7 +527,6 @@ export function getSurfaceCss(): string {
 .task-summary { display: grid; gap: var(--space-2); }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
-
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
@@ -1005,13 +1005,39 @@ body.zen .saved-filter-row:hover, body.zen .stat-row:hover { transform: none; }
 body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 24px; }`;
 }
 
+/** What a page lays over its own rules, and how its body is marked. */
+export interface PageTail {
+  /**
+   * The sheets a page links after its own, under dist/webview, in cascade
+   * order: its theme, then the tail (src/webview/shared/tail.css), which
+   * holds control edges, provenance, high contrast, card tags, and zen.
+   */
+  readonly sheets: readonly string[];
+  /** The marker the zen sheet hangs on, ` class="zen"`, or nothing. */
+  readonly bodyAttribute: string;
+}
+
 /**
- * What every page puts after its own rules: the theme, then zen. Kept in one
- * place so "zen comes after the theme" is a fact in the code rather than a
- * convention nine files have to remember. `theme` is the one the page's host
- * read, preview and all; without it, the configured theme.
+ * What every page puts after its own rules: the theme, then the tail, which
+ * ends with zen. Kept in one place so "zen comes after the theme" is a fact
+ * in the code rather than a convention ten pages have to remember. `theme`
+ * is the one the page's host read, preview and all, and `zen` whether zen
+ * mode is on; neither is read from the settings here.
  */
-export function getPageTailCss(theme: DeckardTheme = getDeckardTheme()): string {
+export function getPageTailCss(chrome: { theme: DeckardTheme; zen: boolean }): PageTail {
+  return {
+    sheets: [deckardThemeCss[chrome.theme], 'tail.css'],
+    bodyAttribute: chrome.zen ? ' class="zen"' : '',
+  };
+}
+
+/**
+ * The text of the sheets a page linked after its own before they were
+ * files: the theme, then the tail. Kept, with the sheet functions it joins,
+ * only until the tests that read them read src/webview instead (Phase 6
+ * step 3.3).
+ */
+export function getPageTailCssText(theme: DeckardTheme = getDeckardTheme()): string {
   return `${getDeckardThemeCss(theme)}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getCardTagCss()}\n${getZenCss()}`;
 }
 
@@ -1173,11 +1199,6 @@ body.vscode-high-contrast button.active, body.vscode-high-contrast-light button.
   .query-bar-shell:focus-within { outline: 2px solid Highlight; }
   .legend-swatch, .note-dot, .tag-weight-rail-segment { forced-color-adjust: none; border: 1px solid CanvasText; }
 }`;
-}
-
-/** The marker `getZenCss()` hangs on, or nothing. */
-export function zenBodyAttribute(): string {
-  return isZenModeEnabled() ? ' class="zen"' : '';
 }
 
 /** Whether a settings change alters how a page is drawn rather than what it says. */
@@ -1968,7 +1989,6 @@ export function getComponentScript(theme: DeckardTheme = getDeckardTheme()): str
     return template.innerHTML;
   }
 
-
 ${getTipScript()}
 ${getUndoScript()}
   /**
@@ -1987,7 +2007,6 @@ ${getUndoScript()}
       + (options.disabledReason ? ' aria-disabled="true" data-tip-disabled="' + escapeHtml(options.disabledReason) + '"' : '')
       + '>' + (options.icon || '') + '</button>';
   }
-
 
   /**
    * Right-click actions for any element carrying a tag key.
@@ -3021,7 +3040,6 @@ ${getUndoScript()}
     return ' id="' + resultPanelId(id) + '" role="tabpanel" aria-labelledby="' + resultTabId(id) + '"';
   }
 
-
   /**
    * Rows a reader ranks by dragging them, or by Move to top and Move to
    * bottom on their context menu. Call once; listeners sit on the document,
@@ -3374,138 +3392,6 @@ ${getUndoScript()}
     return first + '\u2013' + last + ' of ' + paging.total;
   }
 `;
-}
-
-/**
- * The search box every search page shares: the query bar and its
- * completions, the builder, the removable terms, and the facets.
- */
-export function getQueryEditorCss(): string {
-  return `
-.query-workspace { position: relative; margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
-/* A search still out after a second: a thin bar along the box's foot. It is
-   information, not ornament, so zen keeps it. */
-.query-workspace.is-searching::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: searching 1.1s linear infinite; }
-@keyframes searching { from { background-position: -40% 0; } to { background-position: 140% 0; } }
-@media (prefers-reduced-motion: reduce) { .query-workspace.is-searching::after { animation: none; background: var(--accent); opacity: .5; } }
-.query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
-.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: var(--text-sm) var(--font-mono); }
-.query-input:focus { border-color: var(--amber); outline: 2px solid transparent; }
-.query-input:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
-.query-input.invalid { border-color: #FF5555; }
-.query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
-/*
- * The search box is a field of chips, as a multi-select is: each term of the
- * search is a chip with a remove icon, joined by AND, and the text field after
- * them takes the next term. The field wraps onto more lines as terms are added.
- */
-.query-bar-shell { flex-wrap: wrap; align-items: center; gap: 4px 5px; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 3px 6px; cursor: text; }
-.query-bar-shell:focus-within { border-color: var(--amber); }
-.query-bar-shell.invalid { border-color: #FF5555; }
-.query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: 2px solid transparent; }
-/* Every chip looks the same, whatever its term; only a left-out tag is red. */
-.query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: var(--text-xs) var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
-.query-chip-label { max-width: 28ch; }
-.query-bar-shell .query-chip.is-negated { border-style: dashed; border-color: var(--muted); background: transparent; color: var(--text); text-decoration: line-through; text-decoration-color: var(--muted); }
-/* A group of the search: its own chips inside a frame, with the group's
-   remove at the end, so what the builder nests the box shows nested. The
-   frame removes the group, as a chip's whole face removes its term. */
-.query-chip-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%; border: 1px dashed color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; padding: 2px 3px 2px 5px; color: var(--cyan); cursor: pointer; }
-.query-chip-group.is-negated { border-color: var(--muted); color: var(--text); }
-/* The group's own remove is the circle alone, ringed with the group's dash
-   so it reads as the group's rather than one more chip. */
-.query-bar-shell .query-chip-group-remove { border: 0; background: none; padding: 0 2px; min-height: 0; color: inherit; }
-.query-bar-shell .query-chip-group-remove .query-chip-remove { border: 1px dashed currentColor; }
-/* Pointing at the frame, or at its remove, lights the whole group, since
-   that is what a press there removes; pointing at a chip inside, or at a
-   group nested inside, lights that alone. */
-.query-chip-group:hover:not(:has(.query-chip:hover, .query-chip-group:hover)), .query-chip-group:has(> .query-chip-group-remove:hover), .query-chip-group:has(> .query-chip-group-remove:focus-visible) { border-color: var(--amber); border-style: solid; color: var(--amber); }
-.query-bar-shell .query-chip-group-remove:hover, .query-bar-shell .query-chip-group-remove:focus-visible { background: none; color: inherit; }
-.query-bar-shell .query-chip-group-remove:hover .query-chip-remove, .query-bar-shell .query-chip-group-remove:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); border-color: var(--amber); }
-.query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: var(--text-sm); line-height: 1; }
-.query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
-.query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
-.query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
-.query-op { font-size: inherit; }
-.query-paren { color: var(--muted); }
-.query-suggestions { position: absolute; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; padding: 0; }
-.query-suggestions[hidden] { display: none; }
-/* A completion reads as written, whatever a theme does to buttons, and each
-   sits on its own ruled row; a long one wraps beside its note. */
-.query-suggestions .query-suggestion { display: flex; width: 100%; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); padding: 6px 10px; text-align: left; font: var(--text-sm) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
-.query-suggestions .query-suggestion:last-child { border-bottom: 0; }
-.query-suggestions .query-suggestion:hover, .query-suggestions .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
-.query-suggestion-label { min-width: 0; overflow-wrap: anywhere; }
-.query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
-.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: var(--text-xs); }
-.query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
-/* Search is the bar's primary action in every theme; hover and focus keep
-   the theme's own look. */
-/* One filled control per page: the one the reader most likely wants. A
-   chosen segment is drawn another way (see button.active), so filled means
-   "do this" and nothing else. */
-.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
-.query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
-.query-error { color: #FF8080; font: var(--text-xs) var(--font-mono); }
-.query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
-/* The line of syntax stays put. Shown only while the box was in use, it
-   came and went as focus moved to the grouping and back, and read as a
-   line that had gone missing. Zen still takes it away. */
-.query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
-.query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
-.query-builder-group.is-negated { border-style: dashed; }
-/* The root group is the builder itself, so it draws no box of its own: a
-   frame around everything would only look like one more level of nesting. */
-.query-builder-group.is-root { border: 0; background: none; padding: 0; }
-.query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
-.query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-.query-builder-group-head select { min-height: 28px; font-size: var(--text-sm); }
-.query-builder-head-text { color: var(--muted); font-size: var(--text-xs); }
-.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: var(--text-xs); }
-.query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
-.query-builder-item > .query-builder-and { margin-top: 9px; }
-.query-builder-item.has-group { margin-top: 10px; margin-bottom: 10px; }
-.query-builder-item > .query-builder-group { flex: 1 1 auto; min-width: 0; }
-.query-builder-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.query-builder-row + .query-builder-row { margin-top: 6px; }
-.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: var(--text-sm); }
-.query-builder-row .query-builder-operator { font-family: var(--font-mono); }
-.query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
-.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); }
-.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: 2px solid transparent; }
-.query-builder-row .query-builder-pending { border-style: dashed; }
-.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
-.query-builder-remove { min-height: 28px; padding: 4px 8px; }
-.query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-.query-builder-actions button { font-size: var(--text-xs); }
-.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
-.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
-/* The facets wrap on the left; the result count holds the top-right corner. */
-.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-2) var(--space-4); margin: var(--space-3) 0; padding: var(--space-3); border: 1px dashed var(--line-strong); }
-/* Each group is a labeled region, its label above its values and the
-   groups a wide step apart, so where one group ends is a shape and not a
-   word in the run. */
-.query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
-.query-facets-count { align-self: center; color: var(--muted); font-size: var(--text-xs); line-height: 26px; white-space: nowrap; }
-.query-facets-empty { color: var(--muted); font-size: var(--text-xs); }
-/* A value and its two other modes read as one control. The modes stay out of
-   the way until the value is hovered or something in it has focus. */
-
-/* The mode is held back by staying hidden until the value is hovered, not by
-   a muted color, which would be muted against whatever ground a theme gives
-   its controls rather than against the page. */
-.query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); }
-.query-facets-heading { color: var(--amber); font: var(--text-xs) var(--font-mono); }
-.query-facet { display: grid; gap: var(--space-1); }
-.query-facet-values { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
-.query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); text-transform: none; }
-.query-facet-count { color: var(--muted); font-size: var(--text-xs); }
-/* The rest of a facet's values, or fewer: words, the height of a value. */
-.query-facet-more.query-facet-more { min-height: 26px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
-.query-facet-more.query-facet-more:hover, .query-facet-more.query-facet-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
-.query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
 /**
@@ -4940,7 +4826,7 @@ export function getQueryEditorScript(): string {
 }
 
 /**
- * A per-webview nonce for the inline style and script.
+ * A per-webview nonce for the page's scripts.
  */
 export function createNonce(): string {
   const alphabet =
@@ -4952,27 +4838,3 @@ export function createNonce(): string {
   return nonce;
 }
 
-/**
- * The content security policy every webview uses.
- *
- * Scripts and styles are allowed only with the page's own nonce, so a policy
- * cannot drift looser on one page than another.
- */
-export function getContentSecurityPolicy(
-  cspSource: string,
-  nonce: string,
-  options: { images?: boolean; fonts?: boolean } = {},
-): string {
-  const directives = [
-    `default-src 'none'`,
-    `style-src ${cspSource} 'nonce-${nonce}'`,
-    `script-src 'nonce-${nonce}'`,
-  ];
-  if (options.images) {
-    directives.push(`img-src ${cspSource} data:`);
-  }
-  if (options.fonts) {
-    directives.push(`font-src ${cspSource}`);
-  }
-  return `${directives.join('; ')};`;
-}

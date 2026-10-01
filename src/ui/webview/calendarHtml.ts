@@ -1,17 +1,15 @@
-import { getCalendarDayCss, getCalendarDayScript } from './calendarDay';
+import { getCalendarDayScript } from './calendarDay';
 import { calendarIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
   createNonce,
-  getBaseCss,
   getComponentScript,
-  getContentSecurityPolicy,
-  getPageTailCss,
   loadingHtml,
-  zenBodyAttribute,
 } from './components';
-import type { DeckardTheme } from './themes';
+import { buildPageShell } from './host/pageShell';
+import { isZenModeEnabled } from './zenMode';
+import { type DeckardTheme, getDeckardTheme } from './themes';
 
 /**
  * Draws the sidebar calendar: a month of weeks from Sunday to Saturday.
@@ -20,6 +18,8 @@ import type { DeckardTheme } from './themes';
  */
 export function getCalendarHtml(
   webview: vscode.Webview,
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri,
   options: {
     /**
      * The calendar page: a month or a week of days large enough to list their
@@ -32,67 +32,16 @@ export function getCalendarHtml(
 ): string {
   const { theme } = options;
   const nonce = createNonce();
-  const csp = getContentSecurityPolicy(webview.cspSource, nonce);
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="${csp}">
-<title>Deckard Calendar</title>
-<style nonce="${nonce}">${getBaseCss()}
-/* The calendar fits a narrow sidebar rather than a reading column. */
-main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber); }
-/* A sidebar is dragged narrower than a page's 280px floor, as Related Notes allows. */
-body { min-width: 220px; }
-.calendar-header { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
-.calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
-.calendar-row, .calendar-cell { display: contents; }
-/* With the weekends hidden, a row is its five working days. */
-.calendar-grid.no-weekends { grid-template-columns: auto repeat(5, minmax(0, 1fr)); }
-/* The week opens its note and marks whether it has one; it is not a date,
-   so it is drawn as a rail beside the days rather than as another cell. */
-.week-label { display: grid; align-self: stretch; width: 18px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); place-items: center; }
-.week-label svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; }
-.week-label.has-note { color: var(--cyan); }
-.week-label:hover, .week-label:focus-visible { color: var(--amber); background: none; }
-.weekday { padding: 2px 0; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
-/* Every day is the same three rows, whether or not it has anything to mark,
-   so a note or a due count never moves the date it belongs to. */
-.day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: var(--text-sm) var(--font-mono); text-align: center; }
-/* A neighbor month's day, told apart in the muted ink rather than faded,
-   which took it below a readable contrast. */
-.day.outside { color: var(--muted); }
-.day.today { border-color: var(--amber); }
-.day-number { line-height: 15px; }
-.note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
-.counts { display: flex; align-items: center; gap: 2px; }
-.due { color: var(--green); font-size: var(--text-xs); line-height: 13px; }
-.due.overdue { color: var(--warning-orange); }
-.due.stale { color: var(--muted); }
-/* What is scheduled is drawn hollow and never in a warning color: it is a
-   plan for the day, not a deadline. */
-.scheduled-count { padding: 0 1px; border: 1px solid currentColor; border-radius: 3px; color: var(--muted); font-size: var(--text-xs); line-height: 11px; }
-.scheduled-count:empty { display: none; }
-.scheduled-ring { width: 5px; height: 5px; border: 1px solid var(--muted); border-radius: 50%; }
-/* A repeating task's later date: projected from its rule, not due, so it
-   is the quietest mark, and never colored. */
-.repeat-count { color: var(--muted); font-size: var(--text-xs); line-height: 11px; white-space: nowrap; }
-.repeat-count:empty { display: none; }
-/* The chosen day, with the panel on: outlined and underlined in the accent,
-   so it reads apart from today's border. Not filled: the hover ground is a
-   pale cream in some themes, and the due and scheduled counts on it went
-   unreadable. */
-.day.selected { box-shadow: inset 0 0 0 1px var(--accent), inset 0 -2px 0 var(--accent); }
-.day-created-folder { flex: none; max-width: 45%; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
-${getCalendarDayCss()}
-${options.page ? getCalendarPageCss() : ''}
-${getPageTailCss(theme)}
-</style>
-</head>
-<body${zenBodyAttribute()}>
+  return buildPageShell({
+    webview,
+    extensionUri,
+    page: options.page ? 'calendarPage' : 'calendar',
+    title: 'Deckard Calendar',
+    nonce,
+    theme: theme ?? getDeckardTheme(),
+    zen: isZenModeEnabled(),
+    body: `
 ${loadingHtml('Loading calendar…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
@@ -589,67 +538,7 @@ ${getCalendarDayScript()}
   post({ type: 'ready' });
 }());
 </script>
-</body>
-</html>`;
-}
-
-/**
- * The calendar page's layout: the month, or a week, across the editor, and
- * the day panel docked beside it. Scoped under the page's own classes, so
- * the sidebar's calendar is not touched.
- */
-function getCalendarPageCss(): string {
-  return `
-body { min-width: 0; }
-main { max-width: none; padding: var(--space-5) var(--space-5) var(--space-6); }
-.calendar-page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); padding-bottom: var(--space-3); border-bottom: var(--edge) solid var(--line); }
-.calendar-page-header h1 { margin: 0; }
-.calendar-page-header .calendar-title { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; white-space: normal; }
-.calendar-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-/* The month beside the day it has chosen; under a narrow editor, above it. */
-.calendar-page-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); align-items: start; }
-/* The day is in Related Notes: the month has the whole width. */
-.calendar-page-body.day-in-sidebar { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 900px) { .calendar-page-body { grid-template-columns: minmax(0, 1fr); } }
-.calendar-page-body .day-panel { position: sticky; top: var(--space-4); margin-top: 0; padding: var(--space-3); border: var(--edge) solid var(--line); background: var(--panel); }
-.calendar-page-body .calendar-grid { gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
-.calendar-page-body .weekday { padding: var(--space-1) var(--space-2); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; }
-.calendar-page-body .week-label { width: 22px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-/* A day is a column of what is on it: the date, the daily note, its tasks. */
-.calendar-page-body .day-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 118px; padding: var(--space-1); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.calendar-page-body.is-week .day-cell { min-height: 60vh; }
-/* The chosen day is outlined in the accent, not filled: a fill is the hover
-   ground, which in some themes is the ink of the links on the day. */
-.calendar-page-body .day-cell { cursor: pointer; }
-/* The whole day lights under the pointer, faintly, in the accent: a fill in
-   the hover ground would take the ink of its tasks and its date with it.
-   The date inside takes no hover of its own, which in some themes turned
-   it the color of the ground. */
-.calendar-page-body .day-cell:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
-.calendar-page-body .day.day:hover:not(.selected), .calendar-page-body .day.day:focus-visible:not(.selected) { background: none; color: var(--text); }
-.calendar-page-body .day.outside.outside:hover:not(.selected) { color: var(--muted); }
-.calendar-page-body .day.day.selected:hover, .calendar-page-body .day.day.selected:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
-.calendar-page-body .day-cell.is-selected { box-shadow: inset 0 0 0 var(--edge) var(--accent); }
-.calendar-page-body .day-cell.drop-target { outline: var(--edge) solid var(--amber); outline-offset: -2px; }
-.calendar-page-body .day { display: block; align-self: flex-start; min-height: 0; padding: 0 var(--space-1); border: 1px solid transparent; background: none; font: var(--text-sm) var(--font-mono); text-align: left; box-shadow: none; }
-.calendar-page-body .day.today { border-color: var(--amber); }
-/* The chosen date is filled on the page, where it is only a number: the
-   hover ground, with the ink chosen for it. */
-.calendar-page-body .day.selected { background: var(--hover-bg); color: var(--hover-fg); }
-/* The daily note and +N more are words on the day, drawn as the search
-   cards' Show all is, so every theme reads them the same. */
-.cal-note.cal-note, .cal-more.cal-more { align-self: flex-start; min-height: 0; margin: 0; padding: 0 var(--space-1); border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: normal; text-transform: none; white-space: nowrap; box-shadow: none; clip-path: none; transform: none; }
-.cal-note.cal-note:hover, .cal-note.cal-note:focus-visible, .cal-more.cal-more:hover, .cal-more.cal-more:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
-.cal-chips { display: grid; gap: 2px; min-width: 0; }
-.cal-chip { min-width: 0; overflow: hidden; padding: 1px var(--space-1); border: 1px solid var(--line); border-left: 3px solid var(--green); background: var(--panel); color: var(--text); font-size: var(--text-xs); line-height: 16px; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
-.cal-chip.tone-overdue { border-left-color: var(--danger); }
-.cal-chip.tone-stale { border-left-color: var(--muted); color: var(--muted); }
-/* Scheduled is a plan for the day, hollow as the sidebar draws it; a repeat
-   is the rule's date, dashed and quietest. */
-.cal-chip.kind-scheduled { border-left-color: var(--line-strong); background: transparent; }
-.cal-chip.kind-repeat { border-style: dashed; border-left-width: 1px; background: transparent; color: var(--muted); cursor: default; }
-.cal-chip[draggable="true"] { cursor: grab; }
-.cal-chip.dragging, .cal-chip.is-pending { opacity: .5; }
-`;
+`,
+  });
 }
 

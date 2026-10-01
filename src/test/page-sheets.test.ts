@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { getBaseCss, getPageTailCss } from '../ui/webview/components';
+import { getBaseCss, getPageTailCssText } from '../ui/webview/components';
 import { renderablePages } from './pages';
 
 /**
@@ -18,7 +18,7 @@ suite('Page sheets', () => {
 
   test('no page sheet redeclares a token the base sheet owns', () => {
     const base = getBaseCss();
-    const tail = getPageTailCss();
+    const tail = getPageTailCssText();
     const owned = new Set(tokens(base));
     assert.ok(owned.has('--text') && owned.has('--cyan-bright') && owned.has('--font-mono'), 'the base sheet owns the palette');
     for (const [name, render] of pages) {

@@ -155,6 +155,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   const activeCalendar = new ActiveCalendar();
   const sidebar = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences: createPreferences(globalState),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,

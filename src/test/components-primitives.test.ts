@@ -5,7 +5,7 @@ import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
-import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCss, getZenCss } from '../ui/webview/components';
+import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCssText, getZenCss } from '../ui/webview/components';
 import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
 import { renderablePages, renderPage } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
@@ -131,7 +131,7 @@ suite('Component primitives', () => {
 
   suite('tags on cards (decision 4)', () => {
     test('the card-tag layer comes after the themes and high contrast, and before zen', () => {
-      const tail = getPageTailCss();
+      const tail = getPageTailCssText();
       const layer = tail.indexOf(getCardTagCss());
       assert.ok(layer > tail.indexOf(getHighContrastCss()), 'after high contrast, and so after the theme');
       assert.ok(layer < tail.indexOf(getZenCss()), 'before zen');

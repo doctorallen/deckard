@@ -1,44 +1,13 @@
+// A chosen day of the calendar: its daily note, the tasks due, scheduled,
+// repeating, and done that day, and the notes created on it.
+//
+// The calendar page draws it beside the month, the sidebar Calendar under
+// it, and Related Notes in its own pane while the calendar page is the
+// active editor. Each page's sheet imports src/webview/shared/calendarDay.css,
+// each page injects the script here, and calls installCalendarDayPanel once
+// with how it posts to its host, since Related Notes posts through its own
+// host to the calendar's.
 import { calendarIcon } from './icons';
-
-/**
- * A chosen day of the calendar: its daily note, the tasks due, scheduled,
- * repeating, and done that day, and the notes created on it.
- *
- * The calendar page draws it beside the month, the sidebar Calendar under
- * it, and Related Notes in its own pane while the calendar page is the
- * active editor. Each page injects the sheet and the script, and calls
- * installCalendarDayPanel once with how it posts to its host, since
- * Related Notes posts through its own host to the calendar's.
- */
-export function getCalendarDayCss(): string {
-  return `
-.repeat-mark { color: var(--muted); font-size: var(--text-sm); line-height: 20px; text-align: center; }
-.day-panel { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
-.day-panel h2 { margin: 0 0 var(--space-2); color: var(--text); font: var(--text-sm) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-note { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
-.day-note svg { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.2; }
-.day-note-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-note-action { flex: none; font-size: var(--text-xs); }
-.day-note-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.day-note-line .day-note-label { color: var(--muted); }
-.day-panel .empty { margin-top: var(--space-2); }
-.day-group { margin-top: var(--space-3); }
-.day-group > h3, .day-group > summary { margin: 0 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.day-group .task-list { gap: var(--space-1); }
-/* A row is one line in a narrow sidebar: the checkbox, the words, and its
-   button, the words cut short rather than pushing the button off. */
-.day-panel .task-row { grid-template-columns: 20px minmax(0, 1fr) auto; padding: var(--space-2); clip-path: none; }
-.day-panel .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-move { align-self: center; min-height: 0; padding: 2px var(--space-1); font-size: var(--text-xs); letter-spacing: normal; white-space: nowrap; }
-.day-more { margin-top: var(--space-1); }
-.day-notes { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
-.day-notes > li { min-width: 0; }
-.day-panel, .day-group, .day-group .task-list { min-width: 0; }
-.day-group .task-list { grid-template-columns: minmax(0, 1fr); }
-.day-created { display: flex; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
-.day-created-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-`;
-}
 
 /**
  * The script: renderCalendarDayPanel(day), and installCalendarDayPanel(send,
@@ -106,7 +75,6 @@ export function getCalendarDayScript(): string {
       + (rest > 0 ? '<button type="button" class="day-more" data-action="search-created" data-date="' + escapeHtml(day.date) + '" aria-label="' + escapeHtml('Search the ' + day.notesTotal + ' notes created on ' + day.date) + '">Search all ' + day.notesTotal + '</button>' : '')
       + '</section>';
   }
-
 
   /**
    * Wires every day panel on the page, once: a row opens its task, its

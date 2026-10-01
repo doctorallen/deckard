@@ -1,0 +1,56 @@
+/*
+ * *
+ * Tags, in every place a tag is shown.
+ *
+ * A namespaced tag always dims its `#namespace/` prefix so the value it
+ * carries stays the readable part.
+ */
+
+.tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
+/* A tag reads as written wherever it sits: text-transform inherits, so a
+   heading or a control a theme shouts would otherwise shout the tag too. */
+.tag-open, .inline-tag { text-transform: none; }
+.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }
+.inline-tag {
+  min-height: 24px;
+  margin-left: 3px;
+  padding: 2px 4px;
+  font-size: .78em;
+  vertical-align: 1px;
+}
+/* The namespace is told from the name by color, not by fading it: at 62%
+   it fell under 3:1 on every dark ground. */
+.tag-namespace { color: var(--muted); }
+/* One line, always. A tag or chip too long for its place keeps to one line
+   and shortens, the namespace first down to about #p…/, then the value; the
+   whole tag is its tip (data-tip-overflow) and its accessible name. This is
+   geometry only, so any look a view gives its tags composes with it. */
+.tag-open, .inline-tag, .query-chip, .query-facet-value { max-width: 100%; min-width: 0; }
+.tag-label { display: inline-flex; max-width: 100%; min-width: 0; vertical-align: bottom; white-space: nowrap; }
+.tag-label > .tag-namespace { display: inline-flex; flex: 0 1000 auto; min-width: 3ch; }
+.tag-namespace-text, .tag-label > .tag-value, .query-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-label > .tag-value { flex: 0 1 auto; }
+/* How much a tag weighs, as a rail of three steps: Related Notes' active
+   tags, and related tags in Refine. Empty steps are faint so filled ones read. */
+.tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .3; }
+.tag-weight-rail-segment.filled { background: var(--cyan); opacity: 1; }
+.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
+
+/* Right-click actions on any tag; drawn by .popover. */
+.tag-context-menu { position: fixed; }
+/* A searched word where it appears in a result. */
+mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transparent); color: inherit; }
+/* The page's keys, on ?. */
+.key-sheet { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.key-sheet-panel { max-width: 520px; max-height: calc(100vh - 48px); overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); color: var(--text); padding: var(--space-4); }
+.key-sheet-panel h2 { margin: 0 0 var(--space-2); }
+.key-sheet-panel h3 { margin: var(--space-3) 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.key-sheet-panel dl { display: grid; gap: var(--space-1); margin: 0; }
+.key-sheet-panel dl div { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: var(--space-3); }
+.key-sheet-panel dt, .key-sheet-panel dd { margin: 0; }
+.key-sheet-panel kbd { font-family: var(--font-mono); color: var(--cyan); }
+.key-sheet-panel button { margin-top: var(--space-4); }
+/* A group's name inside a menu of several: Status, Priority, Due. */
+.tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.tag-context-menu > .menu-group:first-child .menu-heading { padding-top: var(--space-1); }

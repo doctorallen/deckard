@@ -114,6 +114,14 @@ async function withHelp(
   }
 }
 
+/** The folders Help may load from: the built pages and the icons. */
+const HELP_ROOTS = ['/tmp/deckard-extension/dist/webview', '/tmp/deckard-extension/resources'];
+
+/** Webview options with each resource root as its path, to compare. */
+function withRoots<T extends { localResourceRoots?: readonly vscode.Uri[] }>(options: T): Omit<T, 'localResourceRoots'> & { localResourceRoots?: string[] } {
+  return { ...options, localResourceRoots: options.localResourceRoots?.map((root) => root.path) };
+}
+
 /** The section a Help page's HTML opens at, or undefined for the top. */
 function anchorOf(html: string): string | undefined {
   return /<body[^>]* data-anchor="([^"]*)"/.exec(html)?.[1];
@@ -126,7 +134,12 @@ suite('Help host', () => {
       assert.deepStrictEqual(events, [['releases'], ['create', 'deckard.help', 'Deckard Help']]);
       assert.strictEqual(made.length, 1);
       const [panel] = made;
-      assert.deepStrictEqual(panel.options, { enableScripts: true, retainContextWhenHidden: true, enableFindWidget: true });
+      assert.deepStrictEqual(withRoots(panel.options as vscode.WebviewOptions), {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        enableFindWidget: true,
+        localResourceRoots: HELP_ROOTS,
+      });
       assert.strictEqual(panel.webview.options.enableScripts, true);
       assert.ok(String((panel.iconPath as vscode.Uri).fsPath).endsWith('resources/deckard.svg'));
       assert.strictEqual(panel.htmls.length, 1);
@@ -168,7 +181,7 @@ suite('Help host', () => {
       const read = events.length;
       await help.restore(kept as unknown as vscode.WebviewPanel);
       assert.deepStrictEqual(events.slice(read), [['releases']]);
-      assert.deepStrictEqual(kept.webview.options, { enableCommandUris: true, enableScripts: true });
+      assert.deepStrictEqual(withRoots(kept.webview.options), { enableCommandUris: true, enableScripts: true, localResourceRoots: HELP_ROOTS });
       assert.strictEqual(kept.htmls.length, 1);
       assert.strictEqual(anchorOf(kept.htmls[0]), undefined);
       assert.deepStrictEqual(kept.posted, []);

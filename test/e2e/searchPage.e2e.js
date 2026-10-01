@@ -78,6 +78,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
   sidebarHost._onWebviewMessage = sidebarHost._fromWebview;
   const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences,
     activeSearch,
     onOpenTag: (tagKey) => panels.show(tagKey),

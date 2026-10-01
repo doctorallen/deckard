@@ -57,6 +57,7 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
       source: this,
       refresh: () => this.page.host.refresh(),
       post: (message) => this.page.host.post(message),
+      extensionUri: options.extensionUri,
     });
     this.controller = this.pageController.calendar;
     // The page ranks for a redraw as a side view does: never ahead of the

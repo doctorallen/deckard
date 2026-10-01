@@ -230,6 +230,8 @@ export interface CalendarViewControllerOptions {
   writes: TaskWrites;
   /** Sends the calendar its snapshot through its host, or marks it stale while hidden. */
   refresh: () => void;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
 }
 
 /**
@@ -260,7 +262,7 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
   public readonly calendar: CalendarController;
 
   /** Starts on this month, with the day panel as `deckard.calendar.dayPanel` says. */
-  public constructor(view: CalendarViewControllerOptions) {
+  public constructor(private readonly view: CalendarViewControllerOptions) {
     this.calendar = new CalendarController(view.indexer, view.writes, {
       dayPanel: readDayPanel,
       refresh: view.refresh,
@@ -270,7 +272,7 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
 
   /** The sidebar Calendar's HTML. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getCalendarHtml(webview, { theme });
+    return getCalendarHtml(webview, this.view.extensionUri, { theme });
   }
 
   /** The month as it is now. */

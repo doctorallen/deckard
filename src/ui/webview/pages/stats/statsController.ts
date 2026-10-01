@@ -24,6 +24,8 @@ export interface StatsControllerOptions {
   onOpenTag: (tagKey: string) => void | Promise<void>;
   /** What a row's tag or line may open. */
   navigation: NavigationService;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
 }
 
 /**
@@ -69,7 +71,7 @@ export class StatsController implements PageController<DeckardStatsSnapshot, Sta
 
   /** The Stats page's HTML. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getStatsHtml(webview, theme);
+    return getStatsHtml(webview, this.stats.extensionUri, theme);
   }
 
   /** The totals, trends, and lists, drawn at this moment, which the trends end on. */

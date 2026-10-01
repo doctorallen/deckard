@@ -14,6 +14,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
+import { pageExtensionUri } from './pageWebview';
 
 const today = formatLocalDate(new Date());
 
@@ -44,6 +45,7 @@ function openPage() {
     source,
     refresh: () => host?.refresh(),
     post: (message) => host?.post(message),
+    extensionUri: pageExtensionUri(),
   });
   host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();

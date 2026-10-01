@@ -36,14 +36,17 @@ export class CalendarView implements vscode.WebviewViewProvider, vscode.Disposab
     writes: TaskWrites,
     /** The theme Choose Theme… is previewing, which the calendar draws in. */
     themePreview: ThemePreview,
+    /** The extension's folder, which the calendar's style sheets are under. */
+    extensionUri: vscode.Uri,
   ) {
     const controller = new CalendarViewController({
       indexer,
       writes,
       refresh: () => this.page.host.refresh(),
+      extensionUri,
     });
     this.controller = controller.calendar;
-    this.page = new ViewAdapter(new WebviewHost(controller, { indexer, themePreview }));
+    this.page = new ViewAdapter(new WebviewHost(controller, { indexer, themePreview }), extensionUri);
   }
 
   /** Draws the calendar in the view VS Code made, and again once there are notes. */

@@ -51,6 +51,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       exports: options.exports,
       navigation: new NavigationService(),
       source: this,
+      extensionUri: options.extensionUri,
     });
     const host = new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview });
     this.page = new PanelAdapter(host, {

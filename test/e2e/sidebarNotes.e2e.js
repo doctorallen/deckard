@@ -48,6 +48,7 @@ async function openSidebar(noteCount, options) {
   const preferences = createPreferences(createGlobalState());
   const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences,
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
@@ -105,6 +106,7 @@ async function openForEditor() {
   vscode.window.activeTextEditor = editor;
   const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences: createPreferences(createGlobalState()),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
@@ -257,6 +259,7 @@ async function openLinked() {
   };
   const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences: createPreferences(createGlobalState()),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
@@ -341,6 +344,7 @@ test('a note with no tags lists entries worded like it, through the real host', 
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/today.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
   const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences: createPreferences(createGlobalState()),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
@@ -378,6 +382,7 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   const preferences = createPreferences(createGlobalState());
   const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: { fsPath: '/ext' },
     preferences,
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,

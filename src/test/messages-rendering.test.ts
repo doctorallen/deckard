@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 
 import { renderMarkdown } from '../ui/webview/rendering';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
-import { getHighContrastCss, getPageTailCss } from '../ui/webview/components';
+import { getHighContrastCss, getPageTailCssText } from '../ui/webview/components';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
@@ -893,7 +893,7 @@ suite('Webview contracts', () => {
     assert.ok(!/#[0-9a-f]{3,6}\b/i.test(block[1]), 'the block names no color of its own');
     assert.ok(contrast.includes('@media (forced-colors: active)'), 'forced colors are tidied too');
     // Laid down after the theme, and before zen, which stays the last layer.
-    const tail = getPageTailCss();
+    const tail = getPageTailCssText();
     assert.ok(tail.includes(contrast), 'every page carries the block');
     assert.ok(tail.indexOf(contrast) > tail.indexOf(getDeckardThemeCss(getDeckardTheme())), 'after the theme');
     assert.ok(tail.indexOf('body.vscode-high-contrast') < tail.indexOf('body.zen'), 'before zen');

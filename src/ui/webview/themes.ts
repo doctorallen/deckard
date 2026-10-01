@@ -130,7 +130,11 @@ export function getDeckardTheme(preview?: { readonly current: DeckardTheme | und
   return isDeckardTheme(configuredTheme) ? configuredTheme : 'corpo';
 }
 
-/** Provides theme-level tokens after a webview's local layout styles. */
+/**
+ * The text of each theme's sheet before the sheets were files under
+ * src/webview/shared/themes. Kept only until the tests that read it read
+ * those files instead (Phase 6 step 3.3).
+ */
 export function getDeckardThemeCss(theme: DeckardTheme): string {
   if (theme === 'corpo') {
     return corpoCss;
@@ -505,6 +509,21 @@ ${theme === 'lcars' ? '.saved-filter-remove.saved-filter-remove { color: #050505
 ${theme === 'lcars' ? 'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover' + ENABLED + ', button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }' : ''}
 ${theme === 'lcars' ? 'section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 0 15px 0; }' : ''}`;
 }
+
+/**
+ * Each theme's sheet, under dist/webview: the tokens and surfaces a theme
+ * lays after a page's own rules, built from src/webview/shared/themes.
+ */
+export const deckardThemeCss: Readonly<Record<DeckardTheme, string>> = {
+  corpo: 'themes/corpo.css',
+  replicant: 'themes/replicant.css',
+  oblivion: 'themes/oblivion.css',
+  lcars: 'themes/lcars.css',
+  synthwave: 'themes/synthwave.css',
+  tomcat: 'themes/tomcat.css',
+  fellowship: 'themes/fellowship.css',
+  cooper: 'themes/cooper.css',
+};
 
 function isDeckardTheme(value: string): value is DeckardTheme {
   return (deckardThemes as readonly string[]).includes(value);

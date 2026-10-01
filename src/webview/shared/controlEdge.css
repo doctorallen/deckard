@@ -1,0 +1,13 @@
+/*
+ * *
+ * The resting edge of every text field and list box, laid over each theme.
+ *
+ * A field is found by its edge: it holds no words until it is typed in, and
+ * its ground is often a step from the page's. The themes drew that edge in
+ * the divider color, 1.3:1 to 2.9:1 against the ground in six of them,
+ * where WCAG's 1.4.11 asks 3:1. Each theme names a --control-line that meets
+ * it; hover, focus, a search that is set, and an invalid query keep the
+ * edges their own rules give them.
+ */
+
+:is(select, input[type="text"], input[type="search"], .query-bar-shell):not(:hover):not(:focus):not(:focus-within):not([data-has-query]):not(.invalid):not(:disabled) { border-color: var(--control-line); }

@@ -1,0 +1,7 @@
+/*
+ * The Calendar view, in the sidebar: the base sheet, the calendar, and
+ * the day panel. The page shell links its theme and the tail after it.
+ */
+@import "../shared/base.css";
+@import "../shared/calendar/calendar.css";
+@import "../shared/calendarDay.css";

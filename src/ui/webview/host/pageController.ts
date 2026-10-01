@@ -2,6 +2,7 @@ import type * as vscode from 'vscode';
 
 import type { MessageMap, MessageOf, PageMessage } from '../../protocol/messaging';
 import type { DeckardTheme } from '../themeNames';
+import type { ContentSecurityExtras } from './pageShell';
 import type { PageScripts, WebviewSurface } from './surface';
 
 /**
@@ -30,17 +31,6 @@ export type MessageHandler<T> = (message: T, page: PageContext) => unknown;
 
 /** A page's handlers, one for each message type its map names. */
 export type MessageHandlers<M> = { readonly [K in keyof M]: MessageHandler<M[K]> };
-
-/**
- * What a page's Content Security Policy grants beyond scripts by nonce and
- * styles from the extension: images from other origins, or `true` for any
- * HTTPS origin, and fonts. The page shell of Phase 6 step 3 reads it; until
- * then each page's builder writes its own policy.
- */
-export interface ContentSecurityExtras {
-  readonly images?: readonly string[] | true;
-  readonly fonts?: boolean;
-}
 
 /**
  * How the host times a page's snapshot in the log: the name the line is

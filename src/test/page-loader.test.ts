@@ -30,7 +30,10 @@ suite('Page loader', () => {
     const html = `<html><head>${CSP}<link rel="stylesheet" href="vscode-webview://deckard/dist/webview/stats.css"></head>`
       + `<body><script nonce="abc" src="vscode-webview://deckard/dist/webview/stats.js"></script></body></html>`;
     const loaded = loadPage(html, { root });
-    assert.ok(loaded.includes('<style nonce="abc">body { color: red; }</style>'), loaded);
+    assert.ok(
+      loaded.includes('<style nonce="abc" data-inlined-from="vscode-webview://deckard/dist/webview/stats.css">body { color: red; }</style>'),
+      loaded,
+    );
     assert.ok(
       loaded.includes('<script nonce="abc" data-inlined-from="vscode-webview://deckard/dist/webview/stats.js">window.drawn = true;</script>'),
       loaded,
@@ -50,6 +53,39 @@ suite('Page loader', () => {
   test('keeps the other attributes a script carries', () => {
     const html = `${CSP}<script type="module" src="dist/webview/stats.js"></script>`;
     assert.ok(loadPage(html, { root }).includes('<script nonce="abc" type="module" data-inlined-from="dist/webview/stats.js">'));
+  });
+
+  test('admits an inlined sheet by the page nonce, as its policy admitted the link by origin', () => {
+    const policy = (sources: string) => `<meta http-equiv="Content-Security-Policy" content="${sources}">`;
+    const link = '<link rel="stylesheet" href="vscode-webview://deckard/dist/webview/stats.css">';
+    assert.strictEqual(
+      loadPage(`${policy("default-src 'none'; style-src vscode-webview://deckard; script-src 'nonce-abc';")}${link}`, { root }),
+      `${policy("default-src 'none'; style-src vscode-webview://deckard 'nonce-abc'; script-src 'nonce-abc';")}`
+        + '<style nonce="abc" data-inlined-from="vscode-webview://deckard/dist/webview/stats.css">body { color: red; }</style>',
+    );
+    assert.strictEqual(
+      loadPage(`${policy("default-src 'none'; style-src vscode-webview://deckard;")}${link}`, { root }),
+      `${policy("default-src 'none'; style-src vscode-webview://deckard 'nonce-deckardPageLoader';")}`
+        + '<style nonce="deckardPageLoader" data-inlined-from="vscode-webview://deckard/dist/webview/stats.css">body { color: red; }</style>',
+      'a page with no nonce is given the loader\'s',
+    );
+    assert.strictEqual(
+      loadPage(`${policy("default-src 'none'; style-src https://example.com; script-src 'nonce-abc';")}${link}`, { root }),
+      `${policy("default-src 'none'; style-src https://example.com; script-src 'nonce-abc';")}`
+        + '<style data-inlined-from="vscode-webview://deckard/dist/webview/stats.css">body { color: red; }</style>',
+      'a sheet the policy does not admit is inlined with no nonce, so Chrome blocks it as VS Code would',
+    );
+  });
+
+  test('resolves a url() in a sheet against the sheet, as the browser does', () => {
+    writeFileSync(
+      path.join(root, 'dist', 'webview', 'stats.css'),
+      '.a { mask: url("../../resources/heart.svg"); } .b { background: url(data:image/png;base64,AA) } .c { mask: url(\'https://example.com/x.svg\') }',
+    );
+    const loaded = loadPage(`${CSP}<link rel="stylesheet" href="vscode-webview://deckard/dist/webview/stats.css">`, { root });
+    assert.ok(loaded.includes('.a { mask: url("vscode-webview://deckard/resources/heart.svg"); }'), loaded);
+    assert.ok(loaded.includes('url(data:image/png;base64,AA)'), 'a data URI is left alone');
+    assert.ok(loaded.includes("url('https://example.com/x.svg')"), 'an absolute URI is left alone');
   });
 
   test('resolves VS Code webview URIs and the stand-in harnesses use', () => {

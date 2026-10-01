@@ -14,6 +14,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
+import { pageExtensionUri } from './pageWebview';
 
 /** Today, and the month it is in, as the calendar starts on. */
 const today = formatLocalDate(new Date());
@@ -41,6 +42,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     indexer,
     writes: createTaskWrites(),
     refresh: () => host?.refresh(),
+    extensionUri: pageExtensionUri(),
   });
   host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();

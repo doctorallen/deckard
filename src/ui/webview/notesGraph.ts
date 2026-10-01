@@ -60,6 +60,7 @@ export class NotesGraphPanel implements vscode.Disposable {
       indexer: options.indexer,
       onGraphContext: options.onGraphContext,
       navigation: new NavigationService(),
+      extensionUri: options.extensionUri,
     });
     this.page = new PanelAdapter(
       new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview }),

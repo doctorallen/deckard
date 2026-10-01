@@ -1,0 +1,64 @@
+/*
+ * *
+ * Tags on cards: written text that opens the tag's page, not a control.
+ *
+ * A card can carry five tags, and five boxes outweigh the title they sit in.
+ * On search results, task rows, board cards, and Related Notes a tag is
+ * monospace text with no box or fill, its namespace muted, and a faint
+ * accent ground and underline under the pointer or focus; it is still a
+ * button, one Tab stop, with its context menu. The editor keeps its box, as
+ * do Refine, the query chips, and the Dashboard's Tags tab.
+ *
+ * After every theme and the high contrast sheet, so no theme's button rule
+ * reaches these tags; the body prefix and the :not() pair outweigh the page
+ * and theme rules that color a card's tags. Geometry that keeps a tag on one
+ * line is the shared tag sheet's, which this does not restate.
+ */
+
+body .card button.tag-open:not(:hover):not(:focus-visible), body .card button.inline-tag:not(:hover):not(:focus-visible), body .task-row button.tag-open:not(:hover):not(:focus-visible), body .task-row button.inline-tag:not(:hover):not(:focus-visible), body .board-card button.tag-open:not(:hover):not(:focus-visible), body .board-card button.inline-tag:not(:hover):not(:focus-visible), body .note button.tag-open:not(:hover):not(:focus-visible), body .note button.inline-tag:not(:hover):not(:focus-visible),
+body .card button.tag-open, body .card button.inline-tag, body .task-row button.tag-open, body .task-row button.inline-tag, body .board-card button.tag-open, body .board-card button.inline-tag, body .note button.tag-open, body .note button.inline-tag {
+  display: inline;
+  min-height: 0;
+  margin: 0 0 0 .2em;
+  padding: 0 .15em;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .9em;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: none;
+  text-decoration: none;
+  vertical-align: baseline;
+  transform: none;
+  transition: none;
+  cursor: pointer;
+}
+body .card button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])), body .card button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])), body .task-row button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])), body .task-row button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])), body .board-card button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])), body .board-card button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])), body .note button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])), body .note button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])), body .card button.tag-open:focus-visible, body .card button.inline-tag:focus-visible, body .task-row button.tag-open:focus-visible, body .task-row button.inline-tag:focus-visible, body .board-card button.tag-open:focus-visible, body .board-card button.inline-tag:focus-visible, body .note button.tag-open:focus-visible, body .note button.inline-tag:focus-visible {
+  border: 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: none;
+  color: var(--text);
+  text-decoration: underline 1px var(--accent);
+  text-underline-offset: 2px;
+  transform: none;
+}
+body .card button.tag-open:focus-visible, body .card button.inline-tag:focus-visible, body .task-row button.tag-open:focus-visible, body .task-row button.inline-tag:focus-visible, body .board-card button.tag-open:focus-visible, body .board-card button.inline-tag:focus-visible, body .note button.tag-open:focus-visible, body .note button.inline-tag:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
+/* The namespace is muted at rest by the tag sheet; on the tinted ground it
+   takes the tag's own ink, which is what keeps it readable there. */
+body .card button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .card button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .task-row button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .task-row button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .board-card button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .board-card button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .note button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .note button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])) .tag-namespace, body .card button.tag-open:focus-visible .tag-namespace, body .card button.inline-tag:focus-visible .tag-namespace, body .task-row button.tag-open:focus-visible .tag-namespace, body .task-row button.inline-tag:focus-visible .tag-namespace, body .board-card button.tag-open:focus-visible .tag-namespace, body .board-card button.inline-tag:focus-visible .tag-namespace, body .note button.tag-open:focus-visible .tag-namespace, body .note button.inline-tag:focus-visible .tag-namespace { color: inherit; }
+/* A tag is never a chosen control, whatever a theme draws button.active as. */
+body .card button.tag-open.active, body .card button.inline-tag.active, body .task-row button.tag-open.active, body .task-row button.inline-tag.active, body .board-card button.tag-open.active, body .board-card button.inline-tag.active, body .note button.tag-open.active, body .note button.inline-tag.active { background: transparent; color: var(--text); }
+/* Separate tags under a title are a line of words, not a row of chips. */
+body .card .tag-list, body .note .tag-list { gap: 0 var(--space-2); }
+/* High contrast: a tag reads as a link at rest, since there is no tint. */
+body.vscode-high-contrast .card button.tag-open, body.vscode-high-contrast .card button.inline-tag, body.vscode-high-contrast .task-row button.tag-open, body.vscode-high-contrast .task-row button.inline-tag, body.vscode-high-contrast .board-card button.tag-open, body.vscode-high-contrast .board-card button.inline-tag, body.vscode-high-contrast .note button.tag-open, body.vscode-high-contrast .note button.inline-tag, body.vscode-high-contrast-light .card button.tag-open, body.vscode-high-contrast-light .card button.inline-tag, body.vscode-high-contrast-light .task-row button.tag-open, body.vscode-high-contrast-light .task-row button.inline-tag, body.vscode-high-contrast-light .board-card button.tag-open, body.vscode-high-contrast-light .board-card button.inline-tag, body.vscode-high-contrast-light .note button.tag-open, body.vscode-high-contrast-light .note button.inline-tag { text-decoration: underline 1px; }
+@media (forced-colors: active) {
+  .card button.tag-open, .card button.inline-tag, .task-row button.tag-open, .task-row button.inline-tag, .board-card button.tag-open, .board-card button.inline-tag, .note button.tag-open, .note button.inline-tag { color: LinkText; forced-color-adjust: none; }
+}

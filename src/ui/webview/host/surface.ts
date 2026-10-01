@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { pageResourceRoots } from './pageShell';
 import { panelPriority, viewPriority } from './panelPriority';
 
 /**
@@ -139,15 +140,21 @@ export class ViewSurface implements WebviewSurface {
 export type PageScripts = 'on' | 'merge' | 'off';
 
 /**
- * The webview options a page's `scripts` choice sets on a panel or view it
- * is given, `on` when it made none, or undefined to leave them as they are.
+ * The webview options a page sets on a panel or view it is given: what its
+ * `scripts` choice says (`on` when it made none), and, whatever it chose,
+ * the folders under `extensionUri` it may load from, which hold its style
+ * sheets and icons. A page with no script keeps the rest of what it had.
  */
 export function scriptOptions(
   scripts: PageScripts | undefined,
   kept: vscode.WebviewOptions,
-): vscode.WebviewOptions | undefined {
+  extensionUri: vscode.Uri,
+): vscode.WebviewOptions {
+  const localResourceRoots = pageResourceRoots(extensionUri);
   if (scripts === 'off') {
-    return undefined;
+    return { ...kept, localResourceRoots };
   }
-  return scripts === 'merge' ? { ...kept, enableScripts: true } : { enableScripts: true };
+  return scripts === 'merge'
+    ? { ...kept, enableScripts: true, localResourceRoots }
+    : { enableScripts: true, localResourceRoots };
 }

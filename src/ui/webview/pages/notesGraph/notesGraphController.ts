@@ -47,6 +47,8 @@ export interface NotesGraphControllerOptions {
   ) => void | Promise<void>;
   /** What a node's line or tag may open. */
   navigation: NavigationService;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
 }
 
 /**
@@ -135,7 +137,7 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
 
   /** The Notes Graph page's HTML. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getNotesGraphHtml(webview, theme);
+    return getNotesGraphHtml(webview, this.graph.extensionUri, theme);
   }
 
   /**
