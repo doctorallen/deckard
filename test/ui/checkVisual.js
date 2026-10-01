@@ -61,6 +61,35 @@ const UNSETTLED = new Map([
   ['synthwave-taskBoardByTag', 0.001],
 ]);
 
+/**
+ * Surfaces macOS draws differently from one run to the next, and the share
+ * of the page each may differ by there. Related Notes' native select draws
+ * its chevron flipped on some runs on macOS, which the darwin baselines
+ * cannot settle. The list is read only on macOS: Linux, the gate of record
+ * on CI, holds these surfaces to the sliver every surface is held to.
+ */
+const DARWIN_UNSETTLED = new Map([
+  ['sidebarNotes', 0.001],
+  ['sidebarNotesUntagged', 0.001],
+]);
+
+/**
+ * How much of a surface may differ before it fails.
+ *
+ * @param {string} name The baseline's name, `<theme>-<surface>`.
+ * @param {string} surfaceName The surface's own name.
+ * @returns {number} The share of the page.
+ */
+function allowedShare(name, surfaceName) {
+  if (UNSETTLED.has(name)) {
+    return UNSETTLED.get(name);
+  }
+  if (process.platform === 'darwin' && DARWIN_UNSETTLED.has(surfaceName)) {
+    return DARWIN_UNSETTLED.get(surfaceName);
+  }
+  return FAIL_ABOVE;
+}
+
 const BASELINES = path.join(__dirname, 'visual-baseline', process.platform);
 const updating = process.argv.includes('--update');
 // On CI a missing baseline is a failure: recording one and passing is how
@@ -135,7 +164,7 @@ try {
         const differing = pixelmatch(expected.data, drawn.data, diff.data, drawn.width, drawn.height, { threshold: PIXEL_THRESHOLD });
         const share = differing / (drawn.width * drawn.height);
         compared += 1;
-        if (share > (UNSETTLED.get(name) ?? FAIL_ABOVE)) {
+        if (share > allowedShare(name, surfaceName)) {
           failed += 1;
           const diffFile = path.join(dir, `${name}.diff.png`);
           writeFileSync(diffFile, PNG.sync.write(diff));

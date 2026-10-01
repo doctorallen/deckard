@@ -28,7 +28,9 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Phase 6 step 1 added ten surfaces, about 160 more screenshots and as
+    # many more layouts, to the 15 minutes the job used to need.
+    timeout-minutes: 25
 
     steps:
       - name: Check out source
