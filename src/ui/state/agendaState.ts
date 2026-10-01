@@ -16,8 +16,7 @@ import { readLineStatus } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from './dashboardState';
-import { stripTrailingTags } from './queryBlockState';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 
 /**
  * The Agenda is a list of open tasks — the ones a query chose, or every one

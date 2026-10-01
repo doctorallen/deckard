@@ -85,3 +85,16 @@ export function getDailyNoteDate(file: ParsedFile): string | undefined {
       .map((section) => section.heading),
   );
 }
+
+/**
+ * Removes the tags written after a title, which only label it, and keeps the
+ * tags inside the sentence, which are part of what it says. Removing every
+ * tag would turn `Pair @ren with @dax.` into `Pair with .`.
+ */
+export function stripTrailingTags(text: string): string {
+  const words = text.trim().split(/\s+/);
+  while (words.length > 0 && stripTags(words[words.length - 1]) === '') {
+    words.pop();
+  }
+  return words.join(' ');
+}

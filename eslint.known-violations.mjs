@@ -259,8 +259,7 @@ export default {
     "test/ui/verifyWebviews.js": 13
   },
   "jsdoc/escape-inline-tags": {
-    "src/test/components-primitives.test.ts": 1,
-    "src/ui/state/queryBlockState.ts": 2
+    "src/test/components-primitives.test.ts": 1
   },
   "jsdoc/require-jsdoc": {
     "src/core/changelog.ts": 1,

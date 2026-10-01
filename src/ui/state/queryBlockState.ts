@@ -1,4 +1,3 @@
-import { stripTags } from '../../domain/markdown/parser';
 import { getFileName } from '../../shared/paths';
 import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskMetadata';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
@@ -12,7 +11,9 @@ import {
   TaskPriority,
   WorkspaceIndex,
 } from '../../core/types';
-import { getHeadingPath } from './dashboardState';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+
+export { stripTrailingTags } from '../../domain/ranking/entryLabels';
 import {
   compareTasksByColumn,
   isTaskColumnId,
@@ -511,19 +512,6 @@ function createTaskItem(
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   };
-}
-
-/**
- * Removes the tags written after a title, which only label it, and keeps the
- * tags inside the sentence, which are part of what it says. Removing every
- * tag would turn "Pair @ren with @dax." into "Pair with .".
- */
-export function stripTrailingTags(text: string): string {
-  const words = text.trim().split(/\s+/);
-  while (words.length > 0 && stripTags(words[words.length - 1]) === '') {
-    words.pop();
-  }
-  return words.join(' ');
 }
 
 /**
