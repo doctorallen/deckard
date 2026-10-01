@@ -83,7 +83,18 @@ ${getQueryEditorScript()}
   const STATUS_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
   const NAMESPACE_NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
-  function post(message) { vscode.postMessage(message); }
+  /**
+   * The number of the last move sent. Each move carries the next one, and a
+   * refusal carries back the number of the move it refuses.
+   */
+  let lastMoveRequestId = 0;
+  function post(message) {
+    if (message.type === 'moveTask') {
+      lastMoveRequestId += 1;
+      message = Object.assign({}, message, { requestId: lastMoveRequestId });
+    }
+    vscode.postMessage(message);
+  }
 
   document.addEventListener('click', function (event) {
     const help = event.target.closest('[data-action="open-help"]');
@@ -550,7 +561,8 @@ ${getQueryEditorScript()}
   rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
   window.addEventListener('message', function (event) {
     // A card moved at once that the host could not write: its next state
-    // puts the card back, and this says so.
+    // puts the card back, and this says so. The refusal names the task as
+    // well as the move's number, and the task is what finds the card.
     if (event.data && event.data.type === 'moveRefused') {
       const card = Array.prototype.find.call(document.querySelectorAll('.board-card'), function (candidate) { return candidate.dataset.taskId === String(event.data.taskId); });
       announce((card ? taskTitleOf(card) : 'The task') + ' was not moved.');

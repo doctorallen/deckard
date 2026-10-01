@@ -128,6 +128,7 @@ suite('The Task board grouped by a tag namespace', () => {
         taskId: copies[1].getAttribute('data-task-id'),
         column: 'tag:context/',
         from: 'tag:context/computer',
+        requestId: 1,
       });
     });
   });

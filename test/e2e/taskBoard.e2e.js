@@ -210,13 +210,13 @@ test('the board is one Tab stop, and a focused card answers single keys', async 
   view.keydown(card, 'd');
   assert.deepStrictEqual(sent(), { type: 'pickTaskDate', taskId: card.dataset.taskId });
   view.keydown(card, 't');
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'due:today', from: column.dataset.columnId });
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'due:today', from: column.dataset.columnId, requestId: 1 });
   view.keydown(card, '2');
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'priority:high', from: column.dataset.columnId });
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'priority:high', from: column.dataset.columnId, requestId: 2 });
   view.keydown(card, ']');
   const droppable = view.findAll('.board-column').filter((candidate) => candidate.dataset.droppable === 'true');
   const next = droppable[droppable.indexOf(column) + 1];
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: next.dataset.columnId, from: column.dataset.columnId });
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: next.dataset.columnId, from: column.dataset.columnId, requestId: 3 });
   view.keydown(card, 'x');
   assert.deepStrictEqual(sent(), { type: 'toggleTask', taskId: card.dataset.taskId, completed: true });
 
@@ -237,7 +237,7 @@ test('a card\'s menu checks where the task is, and its keys work inside it', asy
   assert.strictEqual(own.getAttribute('aria-checked'), 'true', 'the column the card is in is checked');
   assert.strictEqual(view.document.activeElement, own, 'and focus starts there');
   view.keydown(view.document.activeElement, 't');
-  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', from: columnId });
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', from: columnId, requestId: 1 });
   assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
 });
 
@@ -272,7 +272,7 @@ test('a list row and a table row have the card\'s menu, which checks where the t
   );
   assert.ok(view.find('#action-menu [data-menu-value="move-to"]'), 'with the Note group');
   view.keydown(view.document.activeElement, 't');
-  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today' });
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', requestId: 1 });
   assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
 
   view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
