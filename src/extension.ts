@@ -43,6 +43,9 @@ import {
 import { breakIntoStepsCommand, readTaskArgument } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { TemplateService } from './services/templateService';
+import { ExportService } from './services/exportService';
+import { evaluateSearchPage } from './ui/state/dashboardState';
+import { formatQueryBlock } from './ui/state/queryBlockState';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
@@ -317,6 +320,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // Every page draws with it, and redraws when it changes.
   const themePreview = new ThemePreview();
   const activeSearch = new ActiveSearch();
+  // What a search page's and the Task Board's Export plan with. A page
+  // exports the results it found, and writes the live block itself, with
+  // its own sort and layout; a search is run as a search page runs one.
+  const exportService = new ExportService({
+    index: indexer,
+    search: (query) =>
+      evaluateSearchPage(indexer.getSnapshot(), query, {
+        includeHubLinks: vscode.workspace
+          .getConfiguration('deckard')
+          .get<boolean>('tagOverview.includeHubLinks', true),
+        queryContext: readQueryContext(),
+      }).results,
+    queryBlock: (query) => formatQueryBlock(query),
+  });
   const searchPanels = new SearchPanels({
     indexer,
     preferences,
@@ -324,6 +341,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
     writes: taskWrites,
     themePreview,
+    exports: exportService,
   });
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
   // Which entry a line of a note pins, and whether it is pinned, for the
@@ -458,6 +476,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
     writes: taskWrites,
     themePreview,
+    exports: exportService,
   });
   const dashboard = new DashboardPanel({
     indexer,

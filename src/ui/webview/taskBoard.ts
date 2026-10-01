@@ -12,7 +12,8 @@ import { measure } from '../../shared/timing';
 import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
 import { openResultAt } from '../commands/navigation';
-import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
+import { presentExport } from '../commands/exportResults';
+import type { ExportService } from '../../services/exportService';
 import { formatQueryBlock, QueryBlockWriteOptions } from '../state/queryBlockState';
 import {
   captureIntoColumn,
@@ -61,6 +62,8 @@ export interface TaskBoardPanelOptions {
   writes: TaskWrites;
   /** The theme Choose Theme… is previewing, which the page draws in. */
   themePreview: ThemePreview;
+  /** What the board's Export plans its tasks with. */
+  exports: ExportService;
 }
 
 /**
@@ -102,6 +105,8 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private readonly writes: TaskWrites;
   /** The theme Choose Theme… is previewing, which the page draws in. */
   private readonly themePreview: ThemePreview;
+  /** What the board's Export plans its tasks with. */
+  private readonly exports: ExportService;
 
   public constructor(options: TaskBoardPanelOptions) {
     this.indexer = options.indexer;
@@ -111,6 +116,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     this.activeSearch = options.activeSearch;
     this.writes = options.writes;
     this.themePreview = options.themePreview;
+    this.exports = options.exports;
     const { indexer, preferences, activeSearch } = options;
     this.disposables.push(
       onIndexUpdateInTurn(
@@ -476,12 +482,14 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
           { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
           'inline',
         );
-        const rows = taskRows((board.tasks ?? []).map((item) => item.task), index);
+        const plan = this.exports.fromResults('tasks', {
+          tasks: (board.tasks ?? []).map((item) => item.task),
+          sections: [],
+        });
+        // The live block keeps the board's layout, sort, and columns.
         const search = this.query.trim();
-        await exportResults(
-          'tasks',
-          rows.length,
-          (format) => formatTasks(rows, format),
+        await presentExport(
+          plan,
           search ? () => formatQueryBlock(search, this.queryBlockOptions()) : undefined,
         );
         return;
