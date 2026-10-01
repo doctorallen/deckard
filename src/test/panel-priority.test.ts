@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { VIEW_PRIORITY } from '../core/workspace/publishing';
-import { panelPriority, viewPriority } from '../ui/webview/panelPriority';
+import { panelPriority, viewPriority } from '../ui/webview/host/panelPriority';
 
 // On its own, since the panels' priorities are the UI's, and the suite that
 // publishes the index to views runs without VS Code.

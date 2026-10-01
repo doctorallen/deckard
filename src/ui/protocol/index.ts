@@ -5,6 +5,7 @@
  */
 export type * from './calendar';
 export type * from './dashboard';
+export type * from './messaging';
 export type * from './notesGraph';
 export type * from './searchPage';
 export type * from './shared';

@@ -517,7 +517,6 @@ export default {
     "src/ui/views/outlineTree.ts": 1,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/messages.ts": 1,
-    "src/ui/webview/panelPriority.ts": 1,
     "src/ui/webview/sidebarNotes.ts": 1,
     "src/ui/webview/stats.ts": 2
   },
