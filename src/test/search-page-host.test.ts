@@ -16,6 +16,7 @@ import {
 } from '../ui/webview/pages/searchPage/searchPageController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
 
 /** An in-memory store for the preferences. */
@@ -138,6 +139,16 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Search page host', () => {
+  test('takes its turn as search page, and times its search as Search page, as it always has', () => {
+    const page = openSearchPage();
+    try {
+      assert.strictEqual(page.controller.name, 'search page');
+      assert.deepStrictEqual(captureTimingLog(() => page.controller.refresh(page.host)), ['Search page: N ms']);
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('names the tab, sends its snapshot, then tells the sidebar, and is the active search while in front', () => {
     const page = openSearchPage();
     try {

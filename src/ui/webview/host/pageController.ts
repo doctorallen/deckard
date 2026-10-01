@@ -40,6 +40,17 @@ export interface ContentSecurityExtras {
   readonly fonts?: boolean;
 }
 
+/**
+ * How the host times a page's snapshot in the log: the name the line is
+ * written under, and whether the time includes posting the snapshot as
+ * well as building it.
+ */
+export interface SnapshotTiming {
+  readonly name: string;
+  /** Time the post too, as Home's host always did; false unless a page says so. */
+  readonly includesPost?: boolean;
+}
+
 /** What a page needs from the webview it is shown in. */
 export interface PageOptions {
   /** Keep the page running while its tab is hidden; see decision 0006. */
@@ -66,6 +77,14 @@ export interface PageOptions {
    * refreshes itself in `onDidChangeViewState`.
    */
   readonly refreshWhenShown?: 'if-stale' | 'never';
+  /**
+   * How the host times each snapshot in the log. By default it times
+   * `buildSnapshot` under the page's `name`. A page whose line has always
+   * had another name, or timed the post too, says so; `false` leaves the
+   * timing to the page, for one that times only part of its build, inside
+   * `buildSnapshot`, as it always has.
+   */
+  readonly measure?: SnapshotTiming | false;
   /** What the page's Content Security Policy grants beyond the default. */
   readonly csp?: ContentSecurityExtras;
   /**
@@ -89,8 +108,9 @@ export interface PageOptions {
  */
 export interface PageController<TSnapshot, TPageToHost extends MessageMap<TPageToHost>> {
   /**
-   * The page's name in the log: its turn after an index update, and how
-   * long its snapshot took to build.
+   * The page's name in the log: its turn after an index update, and, unless
+   * `options.measure` names it otherwise, how long its snapshot took to
+   * build.
    */
   readonly name: string;
   readonly options: PageOptions;

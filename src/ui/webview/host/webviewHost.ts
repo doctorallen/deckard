@@ -143,14 +143,9 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
       this.controller.onDidMarkStale?.(this);
       return;
     }
-    const data = measure(this.controller.name, () => this.controller.buildSnapshot());
-    if (data === undefined) {
-      return;
+    if (this.sendSnapshot(surface)) {
+      this.controller.onDidSendSnapshot?.(this);
     }
-    this.isStale = false;
-    const message: StateMessage<TSnapshot> = { type: 'state', data };
-    void surface.webview.postMessage(message);
-    this.controller.onDidSendSnapshot?.(this);
   }
 
   /** Sends the page one message, while it is open. */
@@ -170,6 +165,36 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
     this.current?.close();
     this.current = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+  }
+
+  /**
+   * Builds the snapshot and posts it, timed in the log as the page's
+   * options say, and says whether there was one to post.
+   */
+  private sendSnapshot(surface: WebviewSurface): boolean {
+    const timing = this.controller.options.measure ?? { name: this.controller.name };
+    const build = (): TSnapshot | undefined => this.controller.buildSnapshot();
+    if (timing === false) {
+      return this.send(surface, build());
+    }
+    if (timing.includesPost === true) {
+      return measure(timing.name, () => this.send(surface, build()));
+    }
+    return this.send(surface, measure(timing.name, build));
+  }
+
+  /**
+   * Posts a snapshot the controller built, and says whether there was one
+   * to post. A page that was owed one is owed nothing once it is sent.
+   */
+  private send(surface: WebviewSurface, data: TSnapshot | undefined): boolean {
+    if (data === undefined) {
+      return false;
+    }
+    this.isStale = false;
+    const message: StateMessage<TSnapshot> = { type: 'state', data };
+    void surface.webview.postMessage(message);
+    return true;
   }
 
   /**

@@ -11,6 +11,7 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { CalendarPageController } from '../ui/webview/pages/calendarPage/calendarPageController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
 
 const today = formatLocalDate(new Date());
@@ -79,6 +80,16 @@ async function recordCommands(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Calendar page host', () => {
+  test('takes its turn as Calendar page, and times the calendar as Calendar, as it always has', () => {
+    const page = openPage();
+    try {
+      assert.strictEqual(page.controller.name, 'Calendar page');
+      assert.deepStrictEqual(captureTimingLog(() => page.host.refresh()), ['Calendar: N ms']);
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('is the active calendar while in front, and lets go when it leaves or closes', () => {
     const page = openPage();
     try {
@@ -164,6 +175,7 @@ suite('Calendar page host', () => {
         enableFindWidget: false,
         followIndexing: false,
         onChromeChange: 'none',
+        measure: false,
       });
     } finally {
       page.dispose();

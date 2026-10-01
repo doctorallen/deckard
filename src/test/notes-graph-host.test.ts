@@ -15,6 +15,7 @@ import {
 } from '../ui/webview/pages/notesGraph/notesGraphController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 
 /** A note with an entry, a plain line, a task, and a link; one that only links; one that does neither. */
 const NOTES: Array<[string, string]> = [
@@ -105,6 +106,20 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Notes graph host', () => {
+  test('takes its turn as Notes Graph, and times the graph alone with every node it holds, as it always has', async () => {
+    const { host, controller, send, states } = openGraph();
+    try {
+      assert.strictEqual(controller.name, 'Notes Graph');
+      await send({ type: 'setGraphFilter', showNotes: true, showTasks: false });
+      const lines = captureTimingLog(() => host.refresh());
+      const { nodes, hiddenNodeCount = 0 } = states()[states().length - 1].data;
+      assert.ok(hiddenNodeCount > 0, 'a kind is hidden');
+      assert.deepStrictEqual(lines, [`Notes Graph: N ms (${nodes.length + hiddenNodeCount} nodes)`]);
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('a selected node is sent back after each graph, and Related Notes lists what it is joined to', async () => {
     const { host, contexts, nodeOf, send, types } = openGraph();
     try {

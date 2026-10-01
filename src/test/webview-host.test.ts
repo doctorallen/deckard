@@ -11,6 +11,7 @@ import { HostIndexer, WebviewHost } from '../ui/webview/host/webviewHost';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { VIEW_PRIORITY } from '../core/workspace/publishing';
 import { FakeSurface, FakeWebview } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 
 /** What the test page sends. */
 interface TestPageToHost {
@@ -226,6 +227,42 @@ suite('WebviewHost', () => {
     } finally {
       custom.dispose();
     }
+  });
+
+  test('names its turn by the page, and times each snapshot under its name, another, with the post, or not at all', () => {
+    const turns: string[] = [];
+    const indexer: HostIndexer = {
+      ready: Promise.resolve(),
+      onDidUpdate: () => ({ dispose: () => undefined }),
+      onDidUpdateView: (_listener, options) => {
+        turns.push(options.name);
+        return { dispose: () => undefined };
+      },
+    };
+    const lines = (measure?: PageOptions['measure']) => {
+      const { controller } = createController(measure === undefined ? {} : { measure });
+      const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
+      const surface = new FakeSurface();
+      const post = surface.webview.postMessage.bind(surface.webview);
+      const order: string[] = [];
+      surface.webview.postMessage = (message: unknown) => {
+        order.push('post');
+        return post(message);
+      };
+      try {
+        host.attach(surface);
+        // A line is written when its time ends, so the post comes before a
+        // line that times it, and after one that does not.
+        return captureTimingLog(() => host.refresh(), order);
+      } finally {
+        host.dispose();
+      }
+    };
+    assert.deepStrictEqual(lines(), ['Test page: N ms', 'post']);
+    assert.deepStrictEqual(lines({ name: 'Tested' }), ['Tested: N ms', 'post']);
+    assert.deepStrictEqual(lines({ name: 'Tested', includesPost: true }), ['post', 'Tested: N ms']);
+    assert.deepStrictEqual(lines(false), ['post']);
+    assert.deepStrictEqual(turns, ['Test page', 'Test page', 'Test page', 'Test page']);
   });
 
   test('tells the page how far the first scan has got, unless the page says not to', () => {

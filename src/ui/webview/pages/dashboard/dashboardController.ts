@@ -103,7 +103,15 @@ type Handlers<K extends keyof DashboardPageToHost> = Pick<MessageHandlers<Dashbo
  */
 export class DashboardController implements PageController<DashboardPageState, DashboardPageToHost> {
   public readonly name = 'Home';
-  public readonly options: PageOptions = { retainContextWhenHidden: true, enableFindWidget: true };
+  /**
+   * Home's turn after an index update is "Home", and its snapshot has
+   * always been timed as "Dashboard", from building it to posting it.
+   */
+  public readonly options: PageOptions = {
+    retainContextWhenHidden: true,
+    enableFindWidget: true,
+    measure: { name: 'Dashboard', includesPost: true },
+  };
   public readonly narrow = narrowDashboardMessage;
   public readonly handlers: MessageHandlers<DashboardPageToHost>;
   /** Where Home says it is in front, so Related Notes can offer its widgets. */

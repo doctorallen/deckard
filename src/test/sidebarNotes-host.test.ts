@@ -16,6 +16,7 @@ import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebar
 import { SidebarNotesView, SidebarNotesViewOptions } from '../ui/webview/sidebarNotes';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
 
 /** An in-memory store for the preferences. */
@@ -404,6 +405,18 @@ function openController() {
 }
 
 suite('Related Notes controller', () => {
+  test('takes its turn as Related Notes, and times its ranking with how many it found, as it always has', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      const lines = captureTimingLog(() => page.host.attach(page.surface));
+      assert.deepStrictEqual(lines, [`Related Notes: N ms (${page.states()[0].notes.length} results)`]);
+      assert.strictEqual((page.host.controller as { name: string }).name, 'Related Notes');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('is sent its state when attached and again once published, says the sidebar is open, and says when it goes', async () => {
     await closeEditors();
     const page = openController();

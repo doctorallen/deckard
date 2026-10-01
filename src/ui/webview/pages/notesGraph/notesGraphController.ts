@@ -6,7 +6,7 @@ import { noteTitle } from '../../../../domain/index/backlinks';
 import { findDailyNoteDate, isPeriodicNoteFile, isPeriodicNotePath } from '../../../../domain/markdown/parser';
 import type { WorkspaceIndex } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
-import { logTrace } from '../../../../shared/timing';
+import { logTrace, measure } from '../../../../shared/timing';
 import type { MessageOf } from '../../../protocol/messaging';
 import type {
   NotesGraphHostToPage,
@@ -59,8 +59,14 @@ export interface NotesGraphControllerOptions {
  */
 export class NotesGraphController implements PageController<NotesGraphWireSnapshot, NotesGraphPageToHost> {
   public readonly name = 'Notes Graph';
-  // The page has no loading line, so it is not told how far the first scan has got.
-  public readonly options: PageOptions = { retainContextWhenHidden: true, enableFindWidget: false, followIndexing: false };
+  public readonly options: PageOptions = {
+    retainContextWhenHidden: true,
+    enableFindWidget: false,
+    // The page has no loading line, so it is not told how far the first scan has got.
+    followIndexing: false,
+    // The graph's build is timed in buildSnapshot, with how many nodes it drew.
+    measure: false,
+  };
   public readonly narrow = narrowNotesGraphMessage;
   public readonly handlers: MessageHandlers<NotesGraphPageToHost>;
   private selectedNodeId: string | undefined;
@@ -134,10 +140,16 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
 
   /**
    * The graph in its scope, with only the kinds of node the page shows. A
-   * selection the graph no longer holds is let go.
+   * selection the graph no longer holds is let go. The log times the graph
+   * alone, and counts every node it holds, before the kinds hidden are left
+   * out, as it always has.
    */
   public buildSnapshot(): NotesGraphWireSnapshot {
-    const snapshot = this.getSnapshot();
+    const snapshot = measure(
+      'Notes Graph',
+      () => this.getSnapshot(),
+      (graph) => `${graph.nodes.length} nodes`,
+    );
     if (this.selectedNodeId && !snapshot.nodes.some((node) => node.id === this.selectedNodeId)) {
       this.selectedNodeId = undefined;
     }

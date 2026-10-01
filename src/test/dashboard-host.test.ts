@@ -15,6 +15,7 @@ import {
 } from '../ui/webview/pages/dashboard/dashboardController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
 import { createTaskWrites } from './taskWrites';
 
@@ -156,6 +157,16 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Dashboard host', () => {
+  test('takes its turn as Home, and times its snapshot, posted, as Dashboard, as it always has', () => {
+    const home = openHome();
+    try {
+      assert.strictEqual(home.controller.name, 'Home');
+      assert.deepStrictEqual(captureTimingLog(() => home.host.refresh()), ['Dashboard: N ms']);
+    } finally {
+      home.dispose();
+    }
+  });
+
   test('sends its snapshot with the parked tags, and Home\'s widgets only while Home is shown', async () => {
     const home = openHome();
     try {

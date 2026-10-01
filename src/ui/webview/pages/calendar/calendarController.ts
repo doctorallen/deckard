@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { WorkspaceIndex } from '../../../../domain/model';
+import { measure } from '../../../../shared/timing';
 import type { CalendarMessage, CalendarPageToHost, CalendarSnapshot } from '../../../protocol/calendar';
 import { setTaskDateField } from '../../../commands/agendaActions';
 import {
@@ -61,17 +62,19 @@ export class CalendarController {
   ) {}
 
   /**
-   * The calendar as it is now, for the host to post. The host times it,
-   * under the name of the view or page it posts to.
+   * The calendar as it is now, for the host to post, timed in the log as
+   * "Calendar" for either calendar, as it always was.
    */
   public snapshot(options: CalendarOptions = {}): CalendarSnapshot {
-    return createCalendar(this.indexer.getSnapshot(), this.month, readQueryContext(), {
-      dayPanel: this.host.dayPanel(),
-      selectedDate: this.selectedDate,
-      showRepeats: readShowRepeats(),
-      showWeekends: readShowWeekends(),
-      ...options,
-    });
+    return measure('Calendar', () =>
+      createCalendar(this.indexer.getSnapshot(), this.month, readQueryContext(), {
+        dayPanel: this.host.dayPanel(),
+        selectedDate: this.selectedDate,
+        showRepeats: readShowRepeats(),
+        showWeekends: readShowWeekends(),
+        ...options,
+      }),
+    );
   }
 
   /**
@@ -252,6 +255,8 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
     enableFindWidget: false,
     followIndexing: false,
     onChromeChange: 'none',
+    // CalendarController times the calendar it builds.
+    measure: false,
   };
   public readonly narrow = narrowCalendarMessage;
   public readonly handlers: MessageHandlers<CalendarPageToHost>;

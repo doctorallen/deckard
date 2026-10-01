@@ -11,6 +11,7 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { CalendarViewController } from '../ui/webview/pages/calendar/calendarController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
 
 /** Today, and the month it is in, as the calendar starts on. */
@@ -88,6 +89,16 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Calendar host', () => {
+  test('takes its turn as Calendar, and times the calendar as Calendar, as it always has', () => {
+    const { host, controller } = openCalendar();
+    try {
+      assert.strictEqual(controller.name, 'Calendar');
+      assert.deepStrictEqual(captureTimingLog(() => host.refresh()), ['Calendar: N ms']);
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('sends the month when asked, and once on showing after a hidden update', async () => {
     const { host, surface, states, send, updateIndex } = openCalendar();
     try {
@@ -184,6 +195,7 @@ suite('Calendar host', () => {
         enableFindWidget: false,
         followIndexing: false,
         onChromeChange: 'none',
+        measure: false,
       });
     } finally {
       host.dispose();

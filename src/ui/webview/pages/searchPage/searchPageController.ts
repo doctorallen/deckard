@@ -11,6 +11,7 @@ import { formatQuery } from '../../../../domain/query/queryFormat';
 import { parseQuery } from '../../../../domain/query/queryParser';
 import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
+import { measure } from '../../../../shared/timing';
 import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState } from '../../../protocol/searchPage';
 import type { SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
@@ -87,13 +88,16 @@ export interface SearchPageControllerOptions {
  * acted on, since the page may still show an entry that has since changed.
  */
 export class SearchPageController implements PageController<SearchPageState, SearchPagePageToHost> {
-  public readonly name = 'Search page';
+  /** A page's turn after an index update, as the log has always named it. */
+  public readonly name = 'search page';
   public readonly options: PageOptions = {
     retainContextWhenHidden: true,
     enableFindWidget: true,
     // SearchPanels redraws every page's HTML, and then refreshes each page
     // or closes it when its tag has gone.
     onChromeChange: 'none',
+    // The page times its search alone, as "Search page", in buildSnapshot.
+    measure: false,
   };
   public readonly narrow = narrowSearchPageMessage;
   public readonly handlers: MessageHandlers<SearchPagePageToHost>;
@@ -257,7 +261,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
    * the parked tags, and the Markdown view's cards carry no rendered HTML.
    */
   public buildSnapshot(): SearchPageState {
-    const snapshot = this.createSnapshot();
+    const snapshot = measure('Search page', () => this.createSnapshot());
     // The snapshot clamps a page number to the pages the search has, and a
     // search shortens under an open page whenever a note is saved. Reading
     // the clamped numbers back keeps the page the reader is on and the page

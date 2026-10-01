@@ -60,6 +60,8 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
     enableFindWidget: false,
     followIndexing: false,
     onChromeChange: 'none',
+    // CalendarController times the calendar it builds, as "Calendar".
+    measure: false,
   };
   public readonly narrow = narrowCalendarPageMessage;
   public readonly handlers: MessageHandlers<CalendarPagePageToHost>;
