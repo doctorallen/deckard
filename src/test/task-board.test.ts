@@ -16,7 +16,6 @@ import {
   TaskBoardOptions,
 } from '../ui/state/taskBoardState';
 import {
-  parseDashboardMessage,
   parseSidebarMessage,
   parseTaskBoardMessage,
 } from '../ui/webview/messages';
@@ -445,20 +444,6 @@ suite('Task board', () => {
       parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: '' }),
       undefined,
     );
-  });
-
-  test('no longer takes task messages on the Dashboard', () => {
-    for (const message of [
-      { type: 'setDashboardTaskLayout', layout: 'board' },
-      { type: 'setBoardGroup', groupBy: 'due' },
-      { type: 'moveTask', taskId: 'a', column: 'status:doing' },
-      { type: 'setTaskFilter', filter: 'all' },
-      { type: 'setTaskTags', tagKeys: ['work'] },
-      { type: 'reorderTasks', taskIds: ['a'] },
-      { type: 'setDashboardMode', mode: 'tasks' },
-    ]) {
-      assert.strictEqual(parseDashboardMessage(message), undefined, message.type);
-    }
   });
 
   test('opens from the sidebar toolbar', () => {

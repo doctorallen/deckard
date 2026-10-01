@@ -5,8 +5,12 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { DashboardMessage, PersistedPreferences } from '../core/types';
-import { DashboardNavigation, DashboardPanel, DashboardPanelOptions, DashboardPreferences } from '../ui/webview/dashboard';
+import { NavigationService } from '../services/navigationService';
+import { DashboardNavigation, DashboardPanelOptions, DashboardPreferences } from '../ui/webview/dashboard';
+import { WebviewHost } from '../ui/webview/host/webviewHost';
+import { DashboardController } from '../ui/webview/pages/dashboard/dashboardController';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { FakeSurface } from './fakeWebview';
 import { createTaskWrites } from './taskWrites';
 
 const defaultPreferences: PersistedPreferences = {
@@ -80,9 +84,27 @@ function createIndexer(files: Parameters<typeof parseMarkdown>[] = []) {
   } as unknown as DashboardPanelOptions['indexer'];
 }
 
-type Controller = {
-  handleValidMessage(message: DashboardMessage): Promise<void>;
-};
+/**
+ * Home's page on a fake panel, built as `DashboardPanel` builds it: `send`
+ * hands it a message as the page posts one, and resolves when it is done.
+ */
+function openHome(options: Pick<DashboardPanelOptions, 'indexer' | 'preferences' | 'navigation'>) {
+  const controller = new DashboardController({
+    ...options,
+    extensionUri: vscode.Uri.file(process.cwd()),
+    writes: createTaskWrites(),
+    navigationService: new NavigationService(),
+    source: { getWidgetChoices: () => [], addWidget: () => undefined, resetWidgets: async () => undefined },
+  });
+  const host = new WebviewHost(controller, { indexer: options.indexer, themePreview: new ThemePreview() });
+  const surface = new FakeSurface();
+  host.attach(surface);
+  return {
+    controller,
+    host,
+    send: (message: DashboardMessage) => surface.webview.send(message),
+  };
+}
 
 suite('Dashboard navigation', () => {
   test('opens a project entity from its indexed Dashboard key', async () => {
@@ -97,23 +119,16 @@ suite('Dashboard navigation', () => {
       },
     } as unknown as DashboardPreferences;
     const navigation = createNavigation();
-    const dashboard = new DashboardPanel({
-      indexer: index,
-      preferences,
-      extensionUri: vscode.Uri.file(process.cwd()),
-      navigation,
-      writes: createTaskWrites(),
-      themePreview: new ThemePreview(),
-    });
+    const home = openHome({ indexer: index, preferences, navigation });
 
     try {
-      await (dashboard as unknown as Controller).handleValidMessage({
+      await home.send({
         type: 'openTag',
         tagKey: '#project/neon-relay',
       });
       assert.deepStrictEqual(navigation.opened, ['tag #project/neon-relay']);
     } finally {
-      dashboard.dispose();
+      home.host.dispose();
     }
   });
 
@@ -139,27 +154,20 @@ suite('Dashboard navigation', () => {
       },
     } as unknown as DashboardPreferences;
     const navigation = createNavigation();
-    const dashboard = new DashboardPanel({
-      indexer: index,
-      preferences,
-      extensionUri: vscode.Uri.file(process.cwd()),
-      navigation,
-      writes: createTaskWrites(),
-      themePreview: new ThemePreview(),
-    });
+    const home = openHome({ indexer: index, preferences, navigation });
 
     try {
-      await (dashboard as unknown as Controller).handleValidMessage({
+      await home.send({
         type: 'openSavedFilter',
         filterId: 'atlas-follow-up',
       });
-      await dashboard.openSavedFilter('open-atlas');
+      await home.controller.openSavedFilter('open-atlas');
       assert.deepStrictEqual(navigation.opened, [
         'search #follow-up AND #project/atlas AND #urgent',
         'search #project/atlas is:open',
       ]);
     } finally {
-      dashboard.dispose();
+      home.host.dispose();
     }
   });
 
@@ -189,20 +197,12 @@ suite('Dashboard navigation', () => {
       },
     } as unknown as DashboardPreferences;
     const navigation = createNavigation();
-    const dashboard = new DashboardPanel({
-      indexer: createIndexer(),
-      preferences,
-      extensionUri: vscode.Uri.file(process.cwd()),
-      navigation,
-      writes: createTaskWrites(),
-      themePreview: new ThemePreview(),
-    });
+    const home = openHome({ indexer: createIndexer(), preferences, navigation });
 
     try {
-      const controller = dashboard as unknown as Controller;
-      await controller.handleValidMessage({ type: 'openSearch', query: ' #project/atlas ' });
-      await controller.handleValidMessage({ type: 'openTaskBoard', query: 'is:open' });
-      await controller.handleValidMessage({
+      await home.send({ type: 'openSearch', query: ' #project/atlas ' });
+      await home.send({ type: 'openTaskBoard', query: 'is:open' });
+      await home.send({
         type: 'setDashboardWidgets',
         widgets: [
           { id: 'kept', kind: 'savedQuery', width: 'half', filterId: 'kept' },
@@ -214,7 +214,7 @@ suite('Dashboard navigation', () => {
       const warn = vscode.window.showWarningMessage;
       (vscode.window as { showWarningMessage: unknown }).showWarningMessage = async () => 'Reset Widgets';
       try {
-        await controller.handleValidMessage({ type: 'resetDashboardWidgets' });
+        await home.send({ type: 'resetDashboardWidgets' });
       } finally {
         (vscode.window as { showWarningMessage: unknown }).showWarningMessage = warn;
       }
@@ -229,7 +229,7 @@ suite('Dashboard navigation', () => {
         'reset',
       ]);
     } finally {
-      dashboard.dispose();
+      home.host.dispose();
     }
   });
 
@@ -247,24 +247,17 @@ suite('Dashboard navigation', () => {
         },
       },
     } as unknown as DashboardPreferences;
-    const dashboard = new DashboardPanel({
-      indexer: createIndexer(),
-      preferences,
-      extensionUri: vscode.Uri.file(process.cwd()),
-      navigation: createNavigation(),
-      writes: createTaskWrites(),
-      themePreview: new ThemePreview(),
-    });
+    const home = openHome({ indexer: createIndexer(), preferences, navigation: createNavigation() });
 
     try {
-      await (dashboard as unknown as Controller).handleValidMessage({
+      await home.send({
         type: 'setDashboardColumns',
         section: 'tags',
         columns: 4,
       });
       assert.deepStrictEqual(columnUpdates, [{ section: 'tags', columns: 4 }]);
     } finally {
-      dashboard.dispose();
+      home.host.dispose();
     }
   });
 });

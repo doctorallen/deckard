@@ -1,9 +1,7 @@
 import { isTaskColumnId } from '../state/resultTable';
 import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { isObject } from '../../shared/guards';
-import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
-  DashboardMessage,
   NotesGraphMessage,
   PinNoteMessage,
   RenderMode,
@@ -14,190 +12,12 @@ import {
   TagOverviewLayout,
   TagOverviewSortMode,
   RelatedNotesSortMode,
-  TagSortMode,
   TaskSortMode,
-  DashboardMode,
-  DashboardSearchField,
   TaskBoardGroupBy,
   TaskBoardMessage,
   CalendarMessage,
   CalendarPageMessage,
 } from '../../core/types';
-
-/**
- * Validates messages received by the dashboard webview before dispatch.
- *
- * Webview payloads cross a trust boundary as `unknown`, so runtime checks keep
- * malformed or stale browser state from reaching commands and preferences.
- */
-export function parseDashboardMessage(
-  value: unknown,
-): DashboardMessage | undefined {
-  if (!isObject(value) || typeof value.type !== 'string') {
-    return undefined;
-  }
-
-  switch (value.type) {
-    case 'setZenMode':
-      return typeof value.enabled === 'boolean'
-        ? { type: 'setZenMode', enabled: value.enabled }
-        : undefined;
-    case 'chooseTheme':
-      return { type: 'chooseTheme' };
-    case 'openSource':
-      return isSourceMessage(value)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'toggleTask':
-      return typeof value.taskId === 'string' &&
-        typeof value.completed === 'boolean'
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'toggleFavorite':
-      return typeof value.tagKey === 'string'
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'toggleFavoriteEntity':
-      return typeof value.entityKey === 'string'
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setTagSort':
-      return isTagSortMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setEntitySort':
-      return isTagSortMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setDashboardMode':
-      return isDashboardMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setDashboardSearch':
-      return isDashboardSearchField(value.field) &&
-        typeof value.query === 'string'
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setDashboardColumns':
-      return value.section === 'tags' && isDashboardColumnCount(value.columns)
-        ? { type: 'setDashboardColumns', section: 'tags', columns: value.columns }
-        : undefined;
-    case 'reorderTags':
-      return isStringArray(value.tagKeys) &&
-        typeof value.tagKey === 'string' &&
-        typeof value.isFavorite === 'boolean'
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'reorderEntities':
-      return isStringArray(value.entityKeys)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'openTag':
-      return isOpenTagMessage(value)
-        ? { type: 'openTag', tagKey: value.tagKey as string }
-        : undefined;
-    case 'renameTag':
-      return isRenameTagMessage(value)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'parkTag':
-    case 'unparkTag':
-      return isRenameTagMessage(value) && Object.keys(value).length === 2
-        ? { type: value.type, tagKey: value.tagKey as string }
-        : undefined;
-    case 'openSavedFilter':
-    case 'removeSavedFilter':
-    case 'addSavedSearchWidget':
-      return isSavedFilterMessage(value)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'recordRecentQuery':
-      return typeof value.query === 'string' &&
-        value.query.length <= MAX_QUERY_LENGTH
-        ? { type: 'recordRecentQuery', query: value.query }
-        : undefined;
-    case 'setDashboardWidgets':
-      return Array.isArray(value.widgets) &&
-        value.widgets.length <= MAX_DASHBOARD_WIDGETS
-        ? {
-            type: 'setDashboardWidgets',
-            widgets: normalizeDashboardWidgets(value.widgets),
-          }
-        : undefined;
-    case 'resetDashboardWidgets':
-      return { type: 'resetDashboardWidgets' };
-    case 'widgetChoices':
-      return Array.isArray(value.choices) && value.choices.length <= 200 &&
-        value.choices.every((choice) => isObject(choice) && typeof choice.value === 'string' && typeof choice.label === 'string' &&
-          (choice.description === undefined || typeof choice.description === 'string'))
-        ? {
-            type: 'widgetChoices',
-            choices: (value.choices as Array<Record<string, string>>).map((choice) => ({
-              value: choice.value,
-              label: choice.label,
-              ...(choice.description ? { description: choice.description } : {}),
-            })),
-          }
-        : undefined;
-    case 'openWhatsNew':
-    case 'dismissWhatsNew':
-      return { type: value.type };
-    case 'runTryNext':
-    case 'snoozeTryNext':
-    case 'retireTryNext':
-      return typeof value.key === 'string' && value.key.length > 0 && value.key.length <= 1000
-        ? { type: value.type, key: value.key }
-        : undefined;
-    case 'openSearch':
-      return typeof value.query === 'string' &&
-        value.query.length <= MAX_QUERY_LENGTH
-        ? { type: 'openSearch', query: value.query }
-        : undefined;
-    case 'openTaskBoard':
-      return value.query === undefined ||
-        (typeof value.query === 'string' &&
-          value.query.length <= MAX_QUERY_LENGTH)
-        ? {
-            type: 'openTaskBoard',
-            ...(typeof value.query === 'string' ? { query: value.query } : {}),
-          }
-        : undefined;
-    case 'openView':
-      return value.view === 'agenda' ||
-        value.view === 'stats' ||
-        value.view === 'sampleWorkspace' ||
-        value.view === 'checkSetup' ||
-        value.view === 'walkthrough'
-        ? { type: 'openView', view: value.view }
-        : undefined;
-    case 'openDailyNote':
-      return { type: 'openDailyNote' };
-    case 'quickAdd':
-      return typeof value.text === 'string' &&
-        value.text.trim().length > 0 &&
-        value.text.length <= MAX_QUICK_ADD_LENGTH &&
-        !/[\r\n]/.test(value.text)
-        ? { type: 'quickAdd', text: value.text }
-        : undefined;
-    case 'createTagHub':
-      return typeof value.tagKey === 'string' && value.tagKey.length > 0
-        ? { type: 'createTagHub', tagKey: value.tagKey }
-        : undefined;
-    case 'addNextAction':
-      return typeof value.tagKey === 'string' && value.tagKey.length > 0 && value.tagKey.length <= 200
-        ? { type: 'addNextAction', tagKey: value.tagKey }
-        : undefined;
-    case 'openNote':
-      return typeof value.filePath === 'string' && value.filePath.length > 0
-        ? { type: value.type, filePath: value.filePath }
-        : undefined;
-    case 'pinNote':
-    case 'unpinNote':
-      return parsePinMessage(value);
-    default:
-      return undefined;
-  }
-}
 
 /**
  * A pin names the entry at a line, and an unpin names the pin a row carries.
@@ -222,12 +42,6 @@ export function parsePinMessage(
       : {}),
   };
 }
-
-/** A quick-add task is one line. */
-const MAX_QUICK_ADD_LENGTH = 1000;
-
-/** More widgets than Home keeps are refused rather than cut short. */
-const MAX_DASHBOARD_WIDGETS = 60;
 
 /**
  * Restricts a search page's messages to its navigation and display API.
@@ -869,14 +683,6 @@ function isRenameTagMessage(value: Record<string, unknown>): boolean {
   return typeof value.tagKey === 'string' && value.tagKey.length > 0;
 }
 
-function isSavedFilterMessage(value: Record<string, unknown>): boolean {
-  return (
-    Object.keys(value).length === 2 &&
-    typeof value.filterId === 'string' &&
-    value.filterId.length > 0
-  );
-}
-
 /**
  * Narrows arrays before their values are used as persisted ordering input.
  */
@@ -887,33 +693,11 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 /**
- * Keeps tag sorting an explicit allow-list instead of accepting arbitrary UI data.
- */
-function isTagSortMode(value: unknown): value is TagSortMode {
-  return (
-    value === 'alphabetical' ||
-    value === 'count' ||
-    value === 'access' ||
-    value === 'custom'
-  );
-}
-
-/**
  * Keeps task filtering constrained to the three supported dashboard states.
  */
 
 function isDashboardColumnCount(value: unknown): value is 1 | 2 | 3 | 4 {
   return value === 1 || value === 2 || value === 3 || value === 4;
-}
-
-function isDashboardMode(value: unknown): value is DashboardMode {
-  return value === 'home' || value === 'browse';
-}
-
-function isDashboardSearchField(
-  value: unknown,
-): value is DashboardSearchField {
-  return value === 'tags';
 }
 
 /**
