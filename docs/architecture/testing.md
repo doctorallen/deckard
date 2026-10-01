@@ -1,6 +1,6 @@
 # Testing
 
-**Status: current.** This page describes the suites as they stand after Phase 4 of [the refactor plan](../implementation/19-refactor.md); each later phase rewrites it to describe what then exists.
+**Status: current.** This page describes the suites as they stand after Phase 5 of [the refactor plan](../implementation/19-refactor.md); each later phase rewrites it to describe what then exists.
 
 Deckard has one suite per kind of failure. Each catches something no other suite can, so a change is verified by the set, not by one suite.
 
@@ -20,7 +20,7 @@ Deckard has one suite per kind of failure. Each catches something no other suite
 
 ## Which suites run where
 
-A suite runs under `test:unit` when none of the modules it imports reaches `vscode`. `test/harness/importGraph.js` reads that from dependency-cruiser each time, and `.vscode-test.mjs` asks it for the rest, so every test runs exactly once and a suite moves to the fast tier as soon as the refactor cuts its last path to `vscode`. After Phase 4, 88 suites run under plain mocha and 92 in the host; [the import-graph inventory](inventories/import-graph.md) says what keeps the rest there.
+A suite runs under `test:unit` when none of the modules it imports reaches `vscode`. `test/harness/importGraph.js` reads that from dependency-cruiser each time, and `.vscode-test.mjs` asks it for the rest, so every test runs exactly once and a suite moves to the fast tier as soon as the refactor cuts its last path to `vscode`. After Phase 5, 89 suites run under plain mocha and 94 in the host; [the import-graph inventory](inventories/import-graph.md) says what keeps the rest there.
 
 ## The shared harness
 
