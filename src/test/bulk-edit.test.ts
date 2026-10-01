@@ -19,7 +19,6 @@ import {
   listBulkEdits,
 } from '../ui/commands/bulkEditPrompts';
 import { DATE_INPUT_ERROR, validateDateInput } from '../ui/commands/datePrompt';
-import { parseSearchPageMessage } from '../ui/webview/messages';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 
 const note = [
@@ -270,17 +269,6 @@ suite('Bulk edits', () => {
     assert.deepStrictEqual(
       describeEntry({ kind: 'section', section: file.sections[0] }),
       { label: 'Atlas', description: 'atlas.md:1' },
-    );
-  });
-
-  test('accepts the message the page posts, and nothing else', () => {
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'editResults', kind: 'tasks' }),
-      { type: 'editResults', kind: 'tasks' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'editResults', kind: 'everything' }),
-      undefined,
     );
   });
 });

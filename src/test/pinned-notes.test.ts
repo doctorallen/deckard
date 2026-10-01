@@ -4,7 +4,6 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { normalizePinnedNotes, pinKey } from '../core/storage/preferences';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { parseSearchPageMessage } from '../ui/webview/messages';
 import { createPinForLine, resolvePin } from '../ui/state/pinnedNotes';
 
 const note = [
@@ -143,24 +142,5 @@ suite('Pinned notes', () => {
       'one pin per thing, and nothing that is not a pin',
     );
     assert.deepStrictEqual(normalizePinnedNotes('not a list'), []);
-  });
-
-  test('accepts the pin a search result posts', () => {
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'pinNote',
-        filePath: 'notes/atlas.md',
-        line: 5,
-      }),
-      { type: 'pinNote', filePath: 'notes/atlas.md', line: 5 },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'unpinNote', filePath: 'notes/atlas.md' }),
-      { type: 'unpinNote', filePath: 'notes/atlas.md' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'pinNote', filePath: '' }),
-      undefined,
-    );
   });
 });

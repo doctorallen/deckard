@@ -1,68 +1,36 @@
 import * as vscode from 'vscode';
 
-import { listedParkedTags } from '../../domain/index/parked';
 import { describeMissingTag, reportFailure } from '../commands/notify';
 import { onDidChangePageChrome } from './components';
-import { getDeckardTheme } from './themes';
 import { ThemePreview } from './themePreview';
-import { setZenMode } from './zenMode';
 
-import { formatEntityTitle } from '../../domain/markdown/parser';
-import { formatQuery } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
-import { measure } from '../../shared/timing';
-import type { IndexControl, IndexReader, IndexScanStatus, IndexSearch, IndexUpdates } from '../../core/workspace/indexReader';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
-import { PreferenceServices } from '../../core/storage/preferences';
-import {
-  SearchPageMessage,
-  SearchPageSnapshot,
-  SearchRefineState,
-  Section,
-  TagTitleDisplayMode,
-  Task,
-  WorkspaceIndex,
-} from '../../core/types';
-import {
-  createQueryViewState,
-  createSearchPageSnapshot,
-  evaluateSearchPage,
-  normalizeTagTitleDisplayMode,
-  resolveQueryTagIntersection,
-} from '../state/dashboardState';
+import { WorkspaceIndex } from '../../core/types';
+import { resolveQueryTagIntersection } from '../state/dashboardState';
 import { isWritten } from '../state/searchFacets';
-import { SearchHistory, SearchHistoryEntry } from '../state/searchHistory';
-import { editResults } from '../commands/bulkEditPrompts';
-import { presentExport } from '../commands/exportResults';
-import { formatQueryBlock } from '../state/queryBlockState';
-import { setPinned } from '../commands/pinNote';
-import { readQueryContext } from '../commands/queryContext';
-import { createHubNote } from '../commands/hubNote';
-import { openResultAt, ResultOpening } from '../commands/navigation';
-import { mergeIndexedTag, renameIndexedTag } from '../commands/renameTag';
-import { TaskWrites, toggleTask } from '../commands/taskActions';
+import { TaskWrites } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
-import { parseSearchPageMessage } from './messages';
-import { getSearchPageHtml } from './searchPageHtml';
-import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
-import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, whenPublished } from '../../core/workspace/publishing';
-import { panelPriority } from './panelPriority';
+import { whenPublished } from '../../core/workspace/publishing';
 import type { ExportService } from '../../services/exportService';
+import { NavigationService } from '../../services/navigationService';
+import type { SearchPagePageToHost, SearchPageState } from '../protocol/searchPage';
+import type { SearchRefineState } from '../protocol/shared';
+import { PanelSurface } from './host/surface';
+import { WebviewHost } from './host/webviewHost';
+import {
+  getSearchKey,
+  SearchIndexer,
+  SearchPageController,
+  SearchPreferences,
+} from './pages/searchPage/searchPageController';
 
-/**
- * The preference services a search page reads and writes: the blob it
- * draws, visits, saved and recent searches, its display choices, pins, the
- * offer of a saved search on Home, and the keys a renamed tag carries.
- */
-export type SearchPreferences = Pick<
-  PreferenceServices,
-  'reader' | 'usage' | 'savedSearches' | 'display' | 'pins' | 'homeWidgets' | 'tagRenames'
->;
+export { getSearchKey };
+export type { SearchPreferences };
 
 /** What the search pages are built from. */
 export interface SearchPanelsOptions {
-  indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
+  indexer: SearchIndexer;
   preferences: SearchPreferences;
   extensionUri: vscode.Uri;
   activeSearch: ActiveSearch;
@@ -86,7 +54,7 @@ export class SearchPanels implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly panels = new Set<SearchPanel>();
 
-  private readonly indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
+  private readonly indexer: SearchIndexer;
   private readonly preferences: SearchPreferences;
   private readonly extensionUri: vscode.Uri;
   private readonly activeSearch: ActiveSearch;
@@ -96,6 +64,8 @@ export class SearchPanels implements vscode.Disposable {
   private readonly themePreview: ThemePreview;
   /** What a page's Export plans its results with. */
   private readonly exports: ExportService;
+  /** What a tag a page names may open. */
+  private readonly navigation = new NavigationService();
 
   public constructor(options: SearchPanelsOptions) {
     this.indexer = options.indexer;
@@ -289,27 +259,12 @@ export class SearchPanels implements vscode.Disposable {
         writes: this.writes,
         themePreview: this.themePreview,
         exports: this.exports,
+        navigation: this.navigation,
       },
     });
     this.panels.add(panel);
     return panel;
   }
-}
-
-/**
- * What names a search, so the same search reached two ways finds one page:
- * a search of only tags is its set of tags, and any other search is its
- * canonical text.
- */
-export function getSearchKey(index: WorkspaceIndex, queryText: string): string {
-  const parsed = parseQuery(queryText.trim());
-  if (!parsed.node) {
-    return '';
-  }
-  const tagKeys = resolveQueryTagIntersection(index, parsed);
-  return tagKeys
-    ? `tags:${[...tagKeys].sort().join('\u0000')}`
-    : `query:${formatQuery(parsed.node)}`;
 }
 
 /**
@@ -368,6 +323,8 @@ interface SearchPanelHost {
   readonly themePreview: ThemePreview;
   /** What the page's Export plans its results with. */
   readonly exports: ExportService;
+  /** What a tag the page names may open. */
+  readonly navigation: NavigationService;
 }
 
 /** One search page's search, and what it reads, draws with, and tells. */
@@ -376,7 +333,7 @@ interface SearchPanelOptions {
   originQuery: string;
   /** The search the page shows first. */
   queryText: string;
-  indexer: IndexReader<vscode.Uri> & IndexSearch & IndexScanStatus & IndexUpdates & IndexControl;
+  indexer: SearchIndexer;
   preferences: SearchPreferences;
   extensionUri: vscode.Uri;
   activeSearch: ActiveSearch;
@@ -385,92 +342,66 @@ interface SearchPanelOptions {
 
 /**
  * One search page: its webview, its search, and the search it opened with.
+ *
+ * The page is a `SearchPageController`, run by a `WebviewHost` of its own,
+ * since there are as many pages as searches. It is attached to its panel
+ * directly rather than through a `PanelAdapter`: a page is drawn as soon as
+ * it is shown, and before the first scan it shows how far the scan has got.
+ * This is what `SearchPanels` and the Related Notes sidebar know a page by.
  */
 class SearchPanel implements SearchSource, vscode.Disposable {
-  private readonly originQuery: string;
-  private queryText: string;
-  private readonly indexer: SearchPanelOptions['indexer'];
-  private readonly preferences: SearchPreferences;
+  private readonly controller: SearchPageController;
+  private readonly host: WebviewHost<SearchPageState, SearchPagePageToHost>;
   private readonly extensionUri: vscode.Uri;
-  private readonly activeSearch: ActiveSearch;
-  private readonly host: SearchPanelHost;
-  private readonly disposables: vscode.Disposable[] = [];
-  private panel: vscode.WebviewPanel | undefined;
-  /**
-   * Which page of notes and of tasks the page is showing. A workspace-wide
-   * search used to send, and draw, every one of them on every save: several
-   * megabytes through the webview channel, and thousands of cards rebuilt,
-   * for the screenful anyone reads.
-   *
-   * Both are kept as the reader left them, and clamped by the snapshot when
-   * the results move under them, so they are read back from it rather than
-   * trusted.
-   */
-  private notePage = 1;
-  private taskPage = 1;
-  /**
-   * The words the reader is typing but has not committed. They narrow the
-   * whole search rather than the page of it on screen, so what the box
-   * promises while it is typed in is what Enter delivers.
-   */
-  private previewWords: string[] = [];
-  /**
-   * Search text that does not parse. The box shows it, with its error, while
-   * the page keeps the results of the last search that did.
-   */
-  private invalidQueryText: string | undefined;
-  /** The searches the page showed before this one, and after it. */
-  private readonly history = new SearchHistory();
-  /** Whether the index changed while the page was hidden. */
-  private isStale = false;
-  /** Whether the last state sent put Refine in the sidebar. */
-  private refineWasInSidebar = false;
-  private lastSnapshot: SearchPageSnapshot | undefined;
+  private readonly onDispose: () => void;
   private disposed = false;
 
   public constructor(options: SearchPanelOptions) {
-    const { indexer } = options;
-    this.originQuery = options.originQuery;
-    this.queryText = options.queryText;
-    this.indexer = indexer;
-    this.preferences = options.preferences;
     this.extensionUri = options.extensionUri;
-    this.activeSearch = options.activeSearch;
-    this.host = options.host;
-    this.disposables.push(
-      onIndexUpdateInTurn(
-        indexer,
-        { name: 'search page', priority: () => panelPriority(this.panel) },
-        () => this.refresh(),
-      ),
-    );
+    this.onDispose = () => options.host.onDispose();
+    this.controller = new SearchPageController({
+      originQuery: options.originQuery,
+      queryText: options.queryText,
+      indexer: options.indexer,
+      preferences: options.preferences,
+      activeSearch: options.activeSearch,
+      source: this,
+      writes: options.host.writes,
+      exports: options.host.exports,
+      navigation: options.host.navigation,
+      openTag: (tagKey) => options.host.openTag(tagKey),
+      setTitle: (title) => {
+        const panel = this.panel;
+        if (panel) {
+          panel.title = title;
+        }
+      },
+      onDidClose: () => this.dispose(),
+    });
+    this.host = new WebviewHost(this.controller, {
+      indexer: options.indexer,
+      themePreview: options.host.themePreview,
+    });
   }
 
   public key(): string {
-    return getSearchKey(this.indexer.getSnapshot(), this.queryText);
+    return this.controller.key();
   }
 
   /** The search the page shows, as typed. */
   public searchText(): string {
-    return this.queryText;
+    return this.controller.searchText();
   }
 
   /** Whether the page is about one tag the index no longer has. */
   public isForMissingTag(index: WorkspaceIndex): boolean {
-    const parsed = parseQuery(this.queryText);
-    const node = parsed.node;
-    return (
-      node?.type === 'condition' &&
-      node.field === 'tag' &&
-      node.operator === 'eq' &&
-      this.queryText === this.originQuery &&
-      resolveIndexedTagKey(index.tags, node.value) === undefined
-    );
+    return this.controller.isForMissingTag(index);
   }
 
   /** Creates or reveals the page, then sends its state. */
   public show(): void {
     if (!this.panel) {
+      const { retainContextWhenHidden, enableFindWidget } = this.controller.options;
       this.attachPanel(
         vscode.window.createWebviewPanel(
           'deckard.tagOverview',
@@ -478,8 +409,8 @@ class SearchPanel implements SearchSource, vscode.Disposable {
           vscode.ViewColumn.Active,
           {
             enableScripts: true,
-            retainContextWhenHidden: true,
-            enableFindWidget: true,
+            retainContextWhenHidden,
+            enableFindWidget,
           },
         ),
       );
@@ -494,70 +425,20 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   }
 
   public refresh(): void {
-    if (!this.panel) {
-      return;
-    }
-    // Before the first scan there is nothing to show but how far it has got.
-    if (this.indexer.hasIndexed === false) {
-      return;
-    }
-    // A hidden page keeps what it shows and catches up when shown again.
-    if (!this.panel.visible) {
-      this.isStale = true;
-      this.lastSnapshot = undefined;
-      this.activeSearch.notifyChanged(this);
-      return;
-    }
-    this.isStale = false;
-    const snapshot = measure('Search page', () => this.createSnapshot());
-    // The snapshot clamps a page number to the pages the search has, and a
-    // search shortens under an open page whenever a note is saved. Reading
-    // the clamped numbers back keeps the page the reader is on and the page
-    // the host asks for from drifting apart.
-    this.notePage = snapshot.notePaging.page;
-    this.taskPage = snapshot.taskPaging.page;
-    this.lastSnapshot = snapshot;
-    this.refineWasInSidebar = snapshot.refineInSidebar === true;
-    this.panel.title = getPageTitle(snapshot);
-    void this.panel.webview.postMessage({
-      type: 'state',
-      data: {
-        ...snapshot,
-        parkedTags: listedParkedTags(this.indexer),
-        // The Markdown view shows each note's source, which the page's
-        // search also reads, so only the HTML view is sent each note rendered.
-        sections:
-          snapshot.renderMode === 'html'
-            ? snapshot.sections
-            : snapshot.sections.map((card) => ({
-                ...card,
-                renderedHtml: '',
-                ...(card.snippet ? { snippet: { ...card.snippet, renderedHtml: '' } } : {}),
-              })),
-      },
-    });
-    this.activeSearch.notifyChanged(this);
+    this.controller.refresh(this.host);
   }
 
   /** Sends the state again when the sidebar took or gave back Refine. */
   public refreshIfRefineMoved(): void {
-    if (this.activeSearch.isRefineInSidebar(this) !== this.refineWasInSidebar) {
-      this.refresh();
-    }
+    this.controller.refreshIfRefineMoved(this.host);
   }
 
   public getRefineState(): SearchRefineState | undefined {
-    const snapshot = this.lastSnapshot ?? this.createSnapshot();
-    return {
-      page: 'search',
-      title: getPageTitle(snapshot),
-      query: snapshot.query,
-      resultKinds: ['notes', 'tasks'],
-    };
+    return this.controller.getRefineState();
   }
 
   public async applySearch(queryText: string): Promise<void> {
-    await this.applyQuery(queryText);
+    await this.controller.applySearch(this.host, queryText);
   }
 
   public dispose(): void {
@@ -565,498 +446,32 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       return;
     }
     this.disposed = true;
-    this.activeSearch.release(this);
-    this.disposables.splice(0).forEach((disposable) => disposable.dispose());
-    const panel = this.panel;
-    this.panel = undefined;
-    panel?.dispose();
-    this.host.onDispose();
+    this.host.dispose();
+    this.onDispose();
   }
 
   public renderHtml(): void {
-    if (this.panel) {
-      this.panel.webview.html = getSearchPageHtml(
-        this.panel.webview,
-        getDeckardTheme(this.host.themePreview),
-      );
-    }
+    this.host.renderHtml();
   }
 
-  private createSnapshot(): SearchPageSnapshot {
-    const index = this.indexer.getSnapshot();
-    const preferences = this.preferences.reader.value;
-    const queryContext = readQueryContext();
-    const snapshot = createSearchPageSnapshot(
-      index,
-      preferences,
-      this.queryText,
-      {
-        queryContext,
-        originQuery: this.originQuery,
-        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
-        notePage: this.notePage,
-        taskPage: this.taskPage,
-        previewWords: this.previewWords,
-        includeHubLinks: this.includesHubLinks(),
-        enableHeadingTagRelationships: vscode.workspace
-          .getConfiguration('deckard')
-          .get<boolean>('enableHeadingTagRelationships', true),
-        // Correcting a spelling needs the full-text cache. An indexer
-        // without one answers no search page any the worse for it, so the
-        // page asks only when there is something to ask.
-        ...(this.indexer.suggestWords
-          ? { suggestWords: (words: readonly string[]) => this.indexer.suggestWords(words) }
-          : {}),
-      },
-    );
-    return {
-      ...snapshot,
-      history: {
-        back: this.history.canGoBack,
-        forward: this.history.canGoForward,
-      },
-      ...(snapshot.hub
-        ? { hub: { ...snapshot.hub, expanded: this.isHubNoteExpanded() } }
-        : {}),
-      // The results come from the last search that parsed; only the box
-      // shows the text that did not.
-      ...(this.invalidQueryText !== undefined
-        ? {
-            query: createQueryViewState({
-              index,
-              parsed: parseQuery(this.queryText),
-              matchCounts: snapshot.query.matchCounts,
-              isAdvanced: true,
-              recentQueries: preferences.recentQueries ?? [],
-              facets: snapshot.query.facets,
-              pending: this.invalidQueryText,
-              queryContext,
-            }),
-          }
-        : {}),
-      refineInSidebar: this.activeSearch.isRefineInSidebar(this),
-    };
+  /** The page's panel, while it is open. */
+  private get panel(): vscode.WebviewPanel | undefined {
+    const surface = this.host.surface;
+    return surface instanceof PanelSurface ? surface.panel : undefined;
   }
 
-  private includesHubLinks(): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard')
-      .get<boolean>('tagOverview.includeHubLinks', true);
-  }
-
-  private isHubNoteExpanded(): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard')
-      .get<boolean>('tagOverview.hubNoteExpanded', true);
-  }
-
-  private getTagTitleDisplayMode(): TagTitleDisplayMode {
-    return normalizeTagTitleDisplayMode(
-      vscode.workspace
-        .getConfiguration('deckard')
-        .get<unknown>('tagTitleDisplayMode', 'inline'),
-    );
-  }
-
+  /**
+   * Gives a new or restored panel its icon and scripts, and the page. A
+   * panel restored after a reload keeps the options it was made with, so
+   * scripts are switched on here too.
+   */
   private attachPanel(panel: vscode.WebviewPanel): void {
-    this.panel = panel;
     panel.iconPath = vscode.Uri.joinPath(
       this.extensionUri,
       'resources',
       'deckard.svg',
     );
     panel.webview.options = { enableScripts: true };
-    this.renderHtml();
-    this.disposables.push(
-      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
-      panel.onDidDispose(() => {
-        this.panel = undefined;
-        this.dispose();
-      }),
-      panel.onDidChangeViewState(() => {
-        if (panel.visible && this.isStale) {
-          this.refresh();
-        }
-        this.updateActivity(panel.active);
-      }),
-      panel.webview.onDidReceiveMessage((message) => {
-        void this.handleMessage(message);
-      }),
-    );
-    this.updateActivity(panel.active);
+    this.host.attach(new PanelSurface(panel));
   }
-
-  private updateActivity(active: boolean): void {
-    if (active) {
-      this.activeSearch.setActive(this);
-    } else {
-      this.activeSearch.release(this);
-    }
-  }
-
-  /**
-   * Runs a search typed, built, or refined on the page. A search that does
-   * not parse is shown with its error, and the results stay as they were.
-   */
-  private async applyQuery(queryText: string, remember = true): Promise<void> {
-    const text = queryText.trim();
-    if (text && parseQuery(text).node === undefined) {
-      this.invalidQueryText = text;
-      this.refresh();
-      return;
-    }
-    if (text !== this.queryText) {
-      this.history.leave(this.historyEntry());
-    }
-    // A different search is a different list, read from its first page.
-    this.showSearch({ query: text, notePage: 1, taskPage: 1 });
-    if (remember && text) {
-      await this.preferences.savedSearches.recordRecentQuery(text);
-    }
-  }
-
-  /**
-   * Returns to the search before this one, or the one after it, at the
-   * pages of results the reader left it on. With nowhere to go, the page
-   * stays as it is.
-   */
-  private navigateHistory(direction: 'back' | 'forward'): void {
-    const current = this.historyEntry();
-    const entry =
-      direction === 'back'
-        ? this.history.back(current)
-        : this.history.forward(current);
-    if (entry) {
-      this.showSearch(entry);
-    }
-  }
-
-  private historyEntry(): SearchHistoryEntry {
-    return {
-      query: this.queryText,
-      notePage: this.notePage,
-      taskPage: this.taskPage,
-    };
-  }
-
-  private showSearch(entry: SearchHistoryEntry): void {
-    this.invalidQueryText = undefined;
-    this.queryText = entry.query;
-    // The draft has become the search, or been replaced by another, so it is
-    // no longer narrowing anything on its own.
-    this.previewWords = [];
-    this.notePage = entry.notePage;
-    this.taskPage = entry.taskPage;
-    this.refresh();
-  }
-
-  private async handleMessage(value: unknown): Promise<void> {
-    const message = parseSearchPageMessage(value);
-    if (message) {
-      await this.handleValidMessage(message);
-    }
-  }
-
-  /**
-   * Checks what a message names against the page's current results before
-   * acting, since the page may still show an entry that has since changed.
-   */
-  private async handleValidMessage(message: SearchPageMessage): Promise<void> {
-    switch (message.type) {
-      case 'setZenMode':
-        await setZenMode(message.enabled);
-        return;
-      case 'chooseTheme':
-        await vscode.commands.executeCommand('deckard.chooseTheme');
-        return;
-      case 'setOverviewQuery':
-        await this.applyQuery(message.query, message.remember !== false);
-        return;
-      case 'clearOverviewQuery':
-        await this.applyQuery(this.originQuery, false);
-        return;
-      case 'navigateSearchHistory':
-        this.navigateHistory(message.direction);
-        return;
-      case 'setResultPage':
-        if (message.kind === 'notes') {
-          this.notePage = message.page;
-        } else {
-          this.taskPage = message.page;
-        }
-        this.refresh();
-        return;
-      case 'previewSearch': {
-        const words = message.words
-          .map((word) => word.trim().toLowerCase())
-          .filter(Boolean);
-        if (
-          words.length === this.previewWords.length &&
-          words.every((word, index) => word === this.previewWords[index])
-        ) {
-          return;
-        }
-        this.previewWords = words;
-        // Narrowing is a different list, read from its first page.
-        this.notePage = 1;
-        this.taskPage = 1;
-        this.refresh();
-        return;
-      }
-      case 'setResultsPerPage':
-        // A different page size is a different set of pages, and the number
-        // the reader was on means nothing in it, so both lists start again.
-        this.notePage = 1;
-        this.taskPage = 1;
-        await this.preferences.display.setSearchPageSize(message.size);
-        return;
-      case 'setRenderMode':
-        await this.preferences.display.setRenderMode(message.mode);
-        return;
-      case 'setTagOverviewSort':
-        await this.preferences.display.setTagOverviewSortMode(message.mode);
-        return;
-      case 'setTagOverviewLayout':
-        await this.preferences.display.setTagOverviewLayout(message.layout);
-        return;
-      case 'setSearchPreview':
-        await this.preferences.display.setSearchPreview(message.preview);
-        return;
-      case 'setSearchColumns':
-        await this.preferences.display.setDashboardColumns(
-          message.section,
-          message.columns,
-        );
-        return;
-      case 'openHelp':
-        await vscode.commands.executeCommand('deckard.showHelp');
-        return;
-      case 'saveTagOverviewFilter':
-        await this.saveSearch();
-        return;
-      case 'mergeTags': {
-        // The merge the tag list and Stats run: confirmed, previewed, and
-        // undoable. A page whose tag was merged away follows the one kept.
-        const pageTag = this.currentSnapshot().tag?.key;
-        const kept = await mergeIndexedTag(
-          this.indexer,
-          message.sourceKey,
-          { history: this.host.writes.history, preferences: this.preferences },
-          message.targetKey,
-        );
-        if (kept && pageTag && pageTag !== kept.key) {
-          await this.host.openTag(kept.key);
-        }
-        return;
-      }
-      case 'excludeHubLinks':
-        // A preference about every tag's page, so it is the user's.
-        await vscode.workspace
-          .getConfiguration('deckard')
-          .update('tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global);
-        return;
-      case 'createHubNote': {
-        const tagKey = this.currentSnapshot().tag?.key;
-        if (tagKey) {
-          await createHubNote(this.indexer, tagKey);
-        }
-        return;
-      }
-      case 'openTag': {
-        const tagKey = resolveIndexedTagKey(
-          this.indexer.getSnapshot().tags,
-          message.tagKey,
-        );
-        if (tagKey) {
-          await this.host.openTag(tagKey);
-        }
-        return;
-      }
-      case 'parkTag':
-      case 'unparkTag':
-        await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
-        return;
-      case 'parkNote':
-      case 'unparkNote': {
-        const uri = this.indexer.getUri?.(message.filePath);
-        if (uri) {
-          await vscode.commands.executeCommand(`deckard.${message.type}`, uri);
-        }
-        return;
-      }
-      case 'renameTag': {
-        const replacement = await renameIndexedTag(this.indexer, message.tagKey, {
-          history: this.host.writes.history,
-          preferences: this.preferences,
-        });
-        if (replacement) {
-          await this.host.openTag(replacement.key);
-        }
-        return;
-      }
-      case 'toggleTask': {
-        const task = this.currentSnapshot().tasks.find(
-          (candidate) => candidate.task.id === message.taskId,
-        )?.task;
-        if (task) {
-          await toggleTask(this.host.writes, task, message.completed);
-        }
-        return;
-      }
-      case 'pinNote':
-      case 'unpinNote':
-        // A result is an entry, so pinning one pins that entry rather than
-        // the file it is written in.
-        await setPinned(
-          this.indexer.getSnapshot(),
-          this.preferences.pins,
-          { filePath: message.filePath, line: message.line ?? 1 },
-          message.type === 'pinNote',
-        );
-        return;
-      case 'editResults':
-        await editResults(this.host.writes.history, message.kind, this.currentResults());
-        return;
-      case 'exportResults': {
-        const plan = this.host.exports.fromResults(message.kind, this.currentResults());
-        // A page with a search can hand it on as a live query block, in the
-        // page's own sort; a page of every note has none to hand on.
-        const search = this.queryText.trim();
-        const sort = this.preferences.reader.value.tagOverviewSortMode;
-        const liveBlock = search
-          ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
-          : undefined;
-        await presentExport(plan, liveBlock);
-        return;
-      }
-      case 'openSource':
-        await this.openSource(message.filePath, message.line, message);
-        return;
-    }
-  }
-
-  /**
-   * Everything the page's search found, rather than the page of it on
-   * screen: an edit made to results means all of them.
-   *
-   * A page with no search of its own shows every note, which is not a set
-   * anyone means to edit at once, so there the results are the ones drawn.
-   */
-  private currentResults(): {
-    tasks: readonly Task[];
-    sections: readonly Section[];
-  } {
-    const index = this.indexer.getSnapshot();
-    const snapshot = this.currentSnapshot();
-    const node = this.queryText.trim()
-      ? parseQuery(this.queryText).node
-      : undefined;
-    if (!node) {
-      return {
-        tasks: snapshot.tasks.map((item) => item.task),
-        sections: snapshot.sections.flatMap((card) => {
-          const section = index.sections.get(card.id);
-          return section ? [section] : [];
-        }),
-      };
-    }
-    // The same list the page shows: on a tag's page, what links its hub too.
-    const { results } = evaluateSearchPage(index, this.queryText, {
-      includeHubLinks: this.includesHubLinks(),
-      queryContext: readQueryContext(),
-    });
-    return {
-      // The search is the filter: is:open, is:done, and the rest say which
-      // tasks, so the pane shows every task the search found.
-      tasks: results.tasks,
-      sections: results.sections,
-    };
-  }
-
-  private currentSnapshot(): SearchPageSnapshot {
-    return this.lastSnapshot ?? this.createSnapshot();
-  }
-
-  private async openSource(
-    filePath: string,
-    line: number,
-    how: ResultOpening = {},
-  ): Promise<void> {
-    const snapshot = this.currentSnapshot();
-    const hub = snapshot.hub;
-    if (
-      hub &&
-      (filePath === hub.filePath || hub.otherFilePaths.includes(filePath))
-    ) {
-      await openResultAt(filePath, line, how);
-      return;
-    }
-    const card = snapshot.sections.find(
-      (section) => section.filePath === filePath && section.startLine === line,
-    );
-    if (card) {
-      if (!card.id.startsWith('frontmatter:')) {
-        await this.preferences.usage.recordSectionAccess(card.id);
-      }
-      await openResultAt(card.filePath, card.startLine, how);
-      return;
-    }
-    const task = snapshot.tasks.find(
-      (candidate) =>
-        candidate.task.filePath === filePath &&
-        candidate.task.lineNumber === line,
-    );
-    if (task) {
-      await openResultAt(task.task.filePath, task.task.lineNumber, how);
-    }
-  }
-
-  /**
-   * Names the page's search and keeps it as a saved view: a search of two
-   * or more tags as that set of tags, and any other as its text.
-   */
-  private async saveSearch(): Promise<void> {
-    const index = this.indexer.getSnapshot();
-    const text = this.queryText.trim();
-    if (!text) {
-      return;
-    }
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
-    const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
-    const name = await vscode.window.showInputBox({
-      title: 'Save search',
-      prompt: 'Name this search',
-      value: isTagSet
-        ? tagKeys.map((tagKey) => index.tags.get(tagKey)?.label ?? tagKey).join(' + ')
-        : text,
-      validateInput: (value) =>
-        value.trim() ? undefined : 'A saved search needs a name.',
-    });
-    if (name === undefined) {
-      return;
-    }
-    const saved = isTagSet
-      ? await this.preferences.savedSearches.saveSavedFilter(name, tagKeys)
-      : await this.preferences.savedSearches.saveSavedQueryFilter(name, text);
-    if (saved) {
-      void offerSavedSearchOnHome(this.preferences, saved);
-    }
-  }
-}
-
-/**
- * A page's tab title: its entity or tag, or its search.
- */
-function getPageTitle(snapshot: SearchPageSnapshot): string {
-  if (snapshot.entity) {
-    return formatEntityTitle(snapshot.entity.kind, snapshot.entity.name);
-  }
-  if (snapshot.tag) {
-    return snapshot.tag.label;
-  }
-  const text = snapshot.query.text.trim();
-  if (!text) {
-    return 'Deckard Search';
-  }
-  return `Search: ${text.length > 40 ? `${text.slice(0, 39)}…` : text}`;
 }

@@ -171,12 +171,10 @@ export default {
       "parseCalendarMessage",
       "parseDashboardMessage",
       "parseNotesGraphMessage",
-      "parseSearchPageMessage",
       "parseSidebarMessage",
       "parseTaskBoardMessage"
     ],
     "src/ui/webview/searchPage.ts": [
-      "handleValidMessage",
       "readSerializedSearch"
     ],
     "src/ui/webview/sidebarNotes.ts": [
@@ -280,7 +278,6 @@ export default {
     "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/activeCalendar.ts": 5,
     "src/ui/webview/activeHome.ts": 6,
-    "src/ui/webview/activeSearch.ts": 3,
     "src/ui/webview/calendar.ts": 4,
     "src/ui/webview/calendarPage.ts": 5,
     "src/ui/webview/dashboard.ts": 2,
@@ -428,15 +425,11 @@ export default {
     ],
     "src/ui/webview/messages.ts": [
       "parseDashboardMessage",
-      "parseSearchPageMessage",
       "parseSidebarMessage",
       "parseTaskBoardMessage"
     ],
     "src/ui/webview/notesGraphHtml.ts": [
       "getNotesGraphHtml"
-    ],
-    "src/ui/webview/searchPage.ts": [
-      "handleValidMessage"
     ],
     "src/ui/webview/searchPageHtml.ts": [
       "getSearchPageHtml"
@@ -539,7 +532,6 @@ export default {
     "src/ui/state/tagGrouping.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/taskStatusBar.ts": 1,
-    "src/ui/webview/searchPage.ts": 1,
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
