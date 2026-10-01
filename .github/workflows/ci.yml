@@ -92,6 +92,11 @@ jobs:
       - name: Build VSIX
         run: npm run package:vsix
 
+      # The production build the VSIX was packaged from wrote what each
+      # bundle took in; only the packages listed for a bundle may ship in it.
+      - name: Check what the bundles take in
+        run: node scripts/check-bundle-inputs.js
+
       - name: Upload VSIX build artifact
         uses: actions/upload-artifact@v4
         with:

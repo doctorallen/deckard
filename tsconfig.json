@@ -20,5 +20,13 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitOverride": true
-    }
+    },
+    // The page code runs in the browser and is checked against the DOM by
+    // its own config, src/webview/tsconfig.json.
+    "exclude": [
+        "node_modules",
+        "out",
+        "dist",
+        "src/webview"
+    ]
 }

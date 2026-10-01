@@ -17,6 +17,16 @@
 const VSCODE = '^vscode$';
 /** Node modules that touch the disk, the network, or other processes. */
 const IO_MODULES = '^(node:)?(fs|fs/promises|child_process|net|http|https|worker_threads|sqlite|os)$';
+/**
+ * The pure domain modules page code may import, by name (decision D1 of
+ * docs/implementation/20-webviews.md): what a page computes for itself, the
+ * graph's communities, calendar date stepping, and the board's status
+ * columns, and the Home widget catalog both sides read. `domain-is-pure`
+ * already keeps them free of `vscode` and I/O. The catalog does not exist
+ * until the Dashboard moves, and takes this name when it does.
+ */
+const PAGE_DOMAIN_MODULES =
+  '^src/domain/(graph/communities|markdown/calendar|tasks/taskColumns|dashboard/widgetCatalog)\\.ts$';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -166,9 +176,18 @@ module.exports = {
       severity: 'error',
       comment:
         'Page code runs in the webview sandbox: it imports its own folder, webview/shared, ' +
-        'the protocol, and Preact, and never host code.',
+        'the protocol, the pure domain modules named for it, and Preact, and never host code.',
       from: { path: '^src/webview/' },
-      to: { pathNot: ['^src/webview/', '^src/ui/protocol/', '^node_modules/preact/'] },
+      to: { pathNot: ['^src/webview/', '^src/ui/protocol/', PAGE_DOMAIN_MODULES, '^node_modules/'] },
+    },
+    {
+      name: 'pages-ship-only-preact',
+      severity: 'error',
+      comment:
+        'Whatever a page imports from node_modules is bundled into it and ships: Preact is ' +
+        'the one package the pages may take in (decision 0011, scripts/check-bundle-inputs.js).',
+      from: { path: '^src/webview/' },
+      to: { path: '^node_modules/', pathNot: '^node_modules/preact/' },
     },
     {
       name: 'pages-not-to-other-pages',
@@ -187,6 +206,10 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
+    // A package is named by its path under node_modules, as the rules for
+    // the pages read it, even where node_modules is a link to a shared
+    // folder, as in a worktree.
+    preserveSymlinks: true,
     // `vscode` has no implementation on disk, only @types/vscode; naming it a
     // built-in keeps it one node the rules can point at.
     builtInModules: { add: ['vscode'] },

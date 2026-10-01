@@ -72,7 +72,7 @@ export default [
     ],
   },
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     plugins: {
       '@typescript-eslint': typescriptEslint.plugin,
       jsdoc,
@@ -127,12 +127,6 @@ export default [
     // every element a page's TSX can write. There is no .tsx file before
     // Phase 6 moves the first page.
     files: ['src/**/*.tsx'],
-    languageOptions: {
-      parser: typescriptEslint.parser,
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
     rules: {
       'no-restricted-syntax': ['error',
         {
@@ -144,6 +138,26 @@ export default [
           message: 'A focusable element says what it does with data-tip, which shows on keyboard focus; a native title does not.',
         },
       ],
+    },
+  },
+  {
+    // Page code renders with Preact's own API (decision 0002). Its React
+    // compatibility layer would ship React's API surface, and React itself
+    // is not a dependency; dependency-cruiser holds the pages to Preact as
+    // the one package they may import at all.
+    files: ['src/webview/**/*.ts', 'src/webview/**/*.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          { name: 'preact/compat', message: 'Use Preact\'s own API; preact/compat is never shipped (decision 0002).' },
+          { name: 'react', message: 'The pages render with Preact, not React (decision 0002).' },
+          { name: 'react-dom', message: 'The pages render with Preact, not React (decision 0002).' },
+        ],
+        patterns: [
+          { group: ['preact/compat/*'], message: 'Use Preact\'s own API; preact/compat is never shipped (decision 0002).' },
+          { group: ['react/*', 'react-dom/*'], message: 'The pages render with Preact, not React (decision 0002).' },
+        ],
+      }],
     },
   },
   {
