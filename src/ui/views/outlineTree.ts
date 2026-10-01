@@ -4,7 +4,7 @@ import { Debouncer } from '../../shared/debounce';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { measure } from '../../shared/timing';
 import { writeSetting } from '../commands/settings';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader';
 import {
   buildOutline,
   collectOutlineTags,
@@ -63,7 +63,7 @@ export class OutlineTreeProvider
    */
   private tagFilter: { key: string; label: string } | undefined;
 
-  public constructor(private readonly indexer: WorkspaceIndexer) {
+  public constructor(private readonly indexer: IndexReader & IndexUpdates) {
     this.disposables.push(this.changeEmitter);
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.rebuildNow()),

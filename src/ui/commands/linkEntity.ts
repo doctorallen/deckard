@@ -6,7 +6,7 @@ import {
   stripTags,
 } from '../../domain/markdown/parser';
 import { Entity, EntityKind } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
 interface EntityChoice extends vscode.QuickPickItem {
@@ -24,7 +24,7 @@ interface EntityKindChoice extends vscode.QuickPickItem {
 const HEADING_FIRST = 'Put the cursor on a heading in a note to tag it with a person or project.';
 
 export async function linkCurrentHeading(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
 ): Promise<void> {
   await indexer.ready;
   const editor = vscode.window.activeTextEditor;

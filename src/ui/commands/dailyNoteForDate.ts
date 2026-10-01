@@ -8,7 +8,7 @@ import {
   parseDatePhrase,
 } from '../../domain/markdown/dates';
 import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../domain/markdown/taskMetadata';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import {
   chooseWorkspaceFolder,
   DailyNoteEntry,
@@ -109,7 +109,7 @@ export function buildDailyNotePicks(
   return picks;
 }
 
-type DailyNoteIndexer = Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>;
+type DailyNoteIndexer = Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>;
 
 /**
  * Opens a day's note: the one the index has, today's through rollover, or a

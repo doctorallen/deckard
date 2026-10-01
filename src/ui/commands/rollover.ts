@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
 import { pluralize } from '../../shared/text';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import { readRolloverMode } from '../../domain/notes/carryForward';
 import {
   RolloverMode,
@@ -180,7 +180,7 @@ export async function applyRollover(
  * today's note when it is not there yet.
  */
 export async function rollTasksForward(
-  indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
   rollover: VscodeRolloverService,
   options: { mode?: Exclude<RolloverMode, 'off'>; silent?: boolean } = {},
 ): Promise<RolloverResult | undefined> {
@@ -234,7 +234,7 @@ async function offerRollover(
   message: string,
   todayUri: vscode.Uri,
   written: WriteHandle | undefined,
-  indexer: Pick<WorkspaceIndexer, 'refresh'>,
+  indexer: Pick<IndexControl, 'refresh'>,
 ): Promise<void> {
   if (!written) {
     void vscode.window.showInformationMessage(message);
@@ -359,7 +359,7 @@ export function getRolloverLookbackDays(uri?: vscode.Uri): number {
  * history gets one made from it.
  */
 export async function createDailyNoteWithRollover(
-  indexer: Pick<WorkspaceIndexer, 'ready' | 'getSnapshot' | 'refresh'>,
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
   history: WorkspaceWriteHistory,
   workspaceFolder?: vscode.WorkspaceFolder,
   rollover: VscodeRolloverService = createRolloverService(history, indexer),

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { reportNeedsFolder } from './notify';
 
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { Weekday } from '../../domain/markdown/dates';
 import {
   findAdjacentDailyNote,
@@ -39,7 +39,7 @@ export type {
  */
 export async function openAdjacentDailyNote(
   indexer: Pick<
-    WorkspaceIndexer,
+    IndexReader,
     'ready' | 'getSnapshot' | 'getFilePath' | 'isNotesFile'
   >,
   direction: 'previous' | 'next',

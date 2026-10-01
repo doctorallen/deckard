@@ -13,7 +13,7 @@ import { Section } from '../../core/types';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { pickDestination } from './destinationPicker';
 import { captureSeed, withSourceLink } from './selectionSeed';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
@@ -44,7 +44,7 @@ interface CaptureItem extends vscode.QuickPickItem {
 
 /** What the Capture commands ask and write through. */
 export interface CaptureContext {
-  indexer: WorkspaceIndexer;
+  indexer: IndexReader;
   captures: CaptureService<vscode.Uri>;
   drafts: CaptureDrafts;
   preferences: PreferencesStore;
@@ -55,7 +55,7 @@ export interface CaptureContext {
  * against the workspace folders, a note parsed as its editor holds it, and
  * a line added through the editor's copy and saved.
  */
-export function createCaptureNotes(indexer: Pick<WorkspaceIndexer, 'parse'>): CaptureNotes<vscode.Uri> {
+export function createCaptureNotes(indexer: Pick<IndexReader, 'parse'>): CaptureNotes<vscode.Uri> {
   return {
     uriOf: (filePath) => resolveSourceUri(filePath),
     sectionsOf: async (uri) =>

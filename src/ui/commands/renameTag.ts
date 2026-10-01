@@ -13,7 +13,7 @@ import {
   TagReference,
   WorkspaceIndex,
 } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import { TagMergeSummary } from '../../domain/index/tagMerge';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { RenameTagOptions } from '../../domain/markdown/tagRename';
@@ -51,7 +51,7 @@ export interface TagWrites {
  * exists is a merge, and is confirmed first.
  */
 export async function renameIndexedTag(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader & IndexControl,
   requestedTagKey: string | undefined,
   writes: TagWrites,
 ): Promise<TagReference | undefined> {
@@ -89,7 +89,7 @@ export async function renameIndexedTag(
  * look alike, names them and goes straight to the confirmation.
  */
 export async function mergeIndexedTag(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader & IndexControl,
   requestedTagKey: string | undefined,
   writes: TagWrites,
   requestedTargetKey?: string,
@@ -173,7 +173,7 @@ interface TagChoice {
  * separate the two tags again.
  */
 async function rewriteTag(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader & IndexControl,
   choice: TagChoice,
   writes: TagWrites,
 ): Promise<TagReference | undefined> {
