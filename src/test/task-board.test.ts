@@ -15,9 +15,6 @@ import {
   setTaskStatusTag,
   TaskBoardOptions,
 } from '../ui/state/taskBoardState';
-import {
-  parseSidebarMessage,
-} from '../ui/webview/messages';
 import { isAwaitingIndex } from '../ui/webview/pages/taskBoard/taskBoardController';
 import { createQueryContext } from '../domain/query/queryContext';
 
@@ -379,12 +376,6 @@ suite('Task board', () => {
     const plain = table?.rows.find((entry) => entry.taskId === 'call');
     assert.strictEqual(plain?.cells[0].html, plain?.cells[0].text);
     assert.doesNotMatch(plain?.cells[0].html ?? '', /</, 'no markup to insert');
-  });
-
-  test('opens from the sidebar toolbar', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openTaskBoard' }), {
-      type: 'openTaskBoard',
-    });
   });
 
   test('changes a status tag where it is written', () => {

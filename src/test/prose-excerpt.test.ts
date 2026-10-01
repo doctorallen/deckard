@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 
 import { formatExcerpt, readProseLines } from '../domain/markdown/proseExcerpt';
-import { parseSidebarMessage } from '../ui/webview/messages';
 
 suite('Prose excerpts', () => {
   test('reads only prose, with the Markdown taken off', () => {
@@ -47,16 +46,5 @@ suite('Prose excerpts', () => {
     const long = formatExcerpt(['word '.repeat(80).trim()]);
     assert.ok(long && long.length <= 240 && long.endsWith('…') && !long.includes('wo…'));
     assert.strictEqual(formatExcerpt([]), undefined);
-  });
-
-  test('the sidebar takes 0, 1, or 2 preview lines, and nothing else', () => {
-    [0, 1, 2].forEach((lines) =>
-      assert.deepStrictEqual(parseSidebarMessage({ type: 'setRelatedNotesPreviewLines', lines }), {
-        type: 'setRelatedNotesPreviewLines',
-        lines,
-      }),
-    );
-    assert.strictEqual(parseSidebarMessage({ type: 'setRelatedNotesPreviewLines', lines: 3 }), undefined);
-    assert.strictEqual(parseSidebarMessage({ type: 'setRelatedNotesPreviewLines', lines: '1' }), undefined);
   });
 });

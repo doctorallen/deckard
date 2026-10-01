@@ -160,26 +160,11 @@ export default {
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
     ],
-    "src/ui/webview/dashboard.ts": [
-      "handleValidMessage"
-    ],
-    "src/ui/webview/messages.ts": [
-      "parseDashboardMessage",
-      "parseNotesGraphMessage",
-      "parseSearchPageMessage",
-      "parseSidebarMessage"
-    ],
     "src/ui/webview/pages/calendar/calendarController.ts": [
       "handle"
     ],
     "src/ui/webview/searchPage.ts": [
-      "handleValidMessage",
       "readSerializedSearch"
-    ],
-    "src/ui/webview/sidebarNotes.ts": [
-      "createSnapshot",
-      "handleMessage",
-      "handleValidMessage"
     ],
     "src/ui/webview/themes.ts": [
       "getDeckardThemeCss"
@@ -271,16 +256,11 @@ export default {
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
     "src/ui/views/wordCountStatusBar.ts": 2,
-    "src/ui/webview/activeHome.ts": 6,
-    "src/ui/webview/activeSearch.ts": 3,
-    "src/ui/webview/dashboard.ts": 2,
     "src/ui/webview/guide.ts": 1,
     "src/ui/webview/helpHtml.ts": 1,
     "src/ui/webview/icons.ts": 1,
-    "src/ui/webview/notesGraph.ts": 6,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
-    "src/ui/webview/sidebarNotes.ts": 5,
     "test/e2e/vscodeStub.js": 17
   },
   "max-depth": {
@@ -404,33 +384,17 @@ export default {
       "getTaskBoardCss",
       "getTipScript"
     ],
-    "src/ui/webview/dashboard.ts": [
-      "handleValidMessage"
-    ],
     "src/ui/webview/dashboardHtml.ts": [
       "getDashboardHtml"
     ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],
-    "src/ui/webview/messages.ts": [
-      "parseDashboardMessage",
-      "parseSearchPageMessage",
-      "parseSidebarMessage"
-    ],
     "src/ui/webview/notesGraphHtml.ts": [
       "getNotesGraphHtml"
     ],
-    "src/ui/webview/searchPage.ts": [
-      "handleValidMessage"
-    ],
     "src/ui/webview/searchPageHtml.ts": [
       "getSearchPageHtml"
-    ],
-    "src/ui/webview/sidebarNotes.ts": [
-      "(function)",
-      "createSnapshot",
-      "handleValidMessage"
     ],
     "src/ui/webview/sidebarNotesHtml.ts": [
       "getSidebarNotesHtml"
@@ -462,9 +426,6 @@ export default {
       "(arrow function)"
     ]
   },
-  "no-case-declarations": {
-    "src/ui/webview/dashboard.ts": 3
-  },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
     "src/domain/index/indexState.ts": 2,
@@ -493,8 +454,7 @@ export default {
     "src/ui/state/taskBoardState.ts": 6,
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1,
-    "src/ui/webview/guide.ts": 1,
-    "src/ui/webview/sidebarNotes.ts": 1
+    "src/ui/webview/guide.ts": 1
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,
@@ -521,7 +481,6 @@ export default {
     "src/ui/state/tagGrouping.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/taskStatusBar.ts": 1,
-    "src/ui/webview/searchPage.ts": 1,
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
@@ -542,8 +501,6 @@ export default {
     "src/ui/state/entryScope.ts": 1,
     "src/ui/state/outlineState.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
-    "src/ui/views/outlineTree.ts": 1,
-    "src/ui/webview/activeHome.ts": 1,
-    "src/ui/webview/sidebarNotes.ts": 3
+    "src/ui/views/outlineTree.ts": 1
   }
 };

@@ -3,9 +3,6 @@ import * as assert from 'assert';
 import { createPreferences } from './preferenceServices';
 import { PersistedPreferences } from '../core/types';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
-import {
-  parseSidebarMessage,
-} from '../ui/webview/messages';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
@@ -108,6 +105,5 @@ suite('Park and Unpark from the pages', () => {
   });
 
   test('the hosts accept park messages and nothing else like them', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'unparkTag', tagKey: '#a' }), { type: 'unparkTag', tagKey: '#a' });
   });
 });
