@@ -13,7 +13,7 @@ import {
 } from '../core/types';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { aroundNoteScope, NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
-import { SidebarNotesPreferences, SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { SidebarNotesController, SidebarNotesPreferences } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 import { ThemePreview } from '../ui/webview/themePreview';
 
 const defaultPreferences: PersistedPreferences = {
@@ -241,12 +241,14 @@ suite('Notes graph navigation', () => {
       ]),
     );
     const sidebar = Object.create(
-      SidebarNotesView.prototype,
-    ) as SidebarNotesView;
+      SidebarNotesController.prototype,
+    ) as SidebarNotesController;
     Object.assign(sidebar, {
-      indexer: createIndexer(workspaceIndex),
-      preferences: { reader: { value: defaultPreferences } } as SidebarNotesPreferences,
-      activeSearch: { active: undefined },
+      sidebar: {
+        indexer: createIndexer(workspaceIndex),
+        preferences: { reader: { value: defaultPreferences } } as SidebarNotesPreferences,
+        activeSearch: { active: undefined },
+      },
     });
     const controller = sidebar as unknown as {
       graphContext: SidebarGraphContext | undefined;

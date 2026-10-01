@@ -8,10 +8,13 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { NavigationService } from '../services/navigationService';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { ActiveSearch } from '../ui/webview/activeSearch';
-import { SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { WebviewHost } from '../ui/webview/host/webviewHost';
+import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { FakeSurface } from './fakeWebview';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -59,17 +62,24 @@ suite('Adding a suggested tag', () => {
       },
     };
     const history = new WorkspaceWriteHistory();
-    const view = new SidebarNotesView({
+    const themePreview = new ThemePreview();
+    const controller = new SidebarNotesController({
       indexer: indexer as never,
       preferences: createPreferences(new MemoryMemento() as never),
       activeSearch: new ActiveSearch(),
       onOpenTag: () => undefined,
       extensionVersion: 'test',
       history,
-      themePreview: new ThemePreview(),
+      themePreview,
+      navigation: new NavigationService(),
     });
-    const send = (message: unknown) =>
-      (view as unknown as { handleMessage(value: unknown): Promise<void> }).handleMessage(message);
+    const view = new WebviewHost(controller, { indexer: indexer as never, themePreview });
+    // A hidden sidebar ranks nothing until it is shown, so only the
+    // messages sent here do anything.
+    const surface = new FakeSurface();
+    surface.visible = false;
+    view.attach(surface);
+    const send = (message: unknown) => surface.webview.send(message);
     const window = vscode.window as unknown as Record<string, unknown>;
     const info = window.showInformationMessage;
     const warning = window.showWarningMessage;

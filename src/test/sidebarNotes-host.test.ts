@@ -5,10 +5,17 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
+import { NavigationService } from '../services/navigationService';
+import type { CalendarMessage } from '../ui/protocol/calendar';
 import type { SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
+import { ActiveCalendar } from '../ui/webview/activeCalendar';
+import { ActiveHome } from '../ui/webview/activeHome';
 import { ActiveSearch } from '../ui/webview/activeSearch';
+import { WebviewHost } from '../ui/webview/host/webviewHost';
+import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 import { SidebarNotesView, SidebarNotesViewOptions } from '../ui/webview/sidebarNotes';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { FakeSurface } from './fakeWebview';
 import { createPreferences } from './preferenceServices';
 
 /** An in-memory store for the preferences. */
@@ -301,6 +308,266 @@ suite('Related Notes host', () => {
       assert.deepStrictEqual(insert, [['info', 'Open the note you want the link written in, then insert it.']]);
     } finally {
       sidebar.dispose();
+    }
+  });
+});
+
+/**
+ * Runs `run` with commands recorded rather than run, and returns them in
+ * order, each as its name and arguments.
+ */
+async function recordCommands(run: () => Promise<void>): Promise<unknown[][]> {
+  const commands = vscode.commands as unknown as Record<string, unknown>;
+  const original = commands.executeCommand;
+  const calls: unknown[][] = [];
+  commands.executeCommand = async (...call: unknown[]) => void calls.push(call);
+  try {
+    await run();
+  } finally {
+    commands.executeCommand = original;
+  }
+  return calls;
+}
+
+/**
+ * The sidebar's controller, run by a `WebviewHost` on a fake view, with
+ * Home and the calendar page able to come to the front: what it is sent,
+ * the tags it opens, and what Home and the calendar were asked.
+ */
+function openController() {
+  let index = createIndex(NOTES);
+  const updates = new vscode.EventEmitter<void>();
+  const indexer = {
+    ready: Promise.resolve(),
+    getSnapshot: () => index,
+    getFilePath: (uri: vscode.Uri) => uri.fsPath,
+    onDidUpdate: (listener: () => void) => updates.event(listener),
+    parse: (uri: vscode.Uri, text: string) => parseMarkdown(uri.fsPath, text),
+    refresh: async () => undefined,
+  } as unknown as SidebarNotesViewOptions['indexer'];
+  const preferences = createPreferences(createStore() as never);
+  const activeSearch = new ActiveSearch();
+  const activeHome = new ActiveHome();
+  const activeCalendar = new ActiveCalendar();
+  const openedTags: string[] = [];
+  const themePreview = new ThemePreview();
+  const controller = new SidebarNotesController({
+    indexer,
+    preferences,
+    activeSearch,
+    activeHome,
+    activeCalendar,
+    onOpenTag: (tagKey) => void openedTags.push(tagKey),
+    extensionVersion: 'test',
+    history: { write: async () => ({ applied: false, notes: [] }) } as never,
+    themePreview,
+    navigation: new NavigationService(),
+  });
+  const host = new WebviewHost(controller, { indexer, themePreview });
+  const surface = new FakeSurface();
+  const asked: unknown[][] = [];
+  const home = {
+    getWidgetChoices: () => [{ value: 'calendar', label: 'Calendar' }],
+    addWidget: (value: string) => void asked.push(['addWidget', value]),
+    resetWidgets: async () => void asked.push(['resetWidgets']),
+  };
+  const calendar = {
+    getDay: () => undefined,
+    handleDayMessage: async (message: CalendarMessage) => void asked.push(['day', message]),
+  };
+  const states = () => surface.webview.postedOf<{ type: 'state'; data: SidebarNotesSnapshot & { parkedTags: string[] } }>('state').map((message) => message.data);
+  return {
+    host,
+    surface,
+    preferences,
+    activeSearch,
+    activeHome,
+    activeCalendar,
+    home,
+    calendar,
+    asked,
+    openedTags,
+    states,
+    send: (message: unknown) => surface.webview.send(message),
+    updateIndex: (notes: Array<[string, string]>) => {
+      index = createIndex(notes);
+      updates.fire();
+    },
+    dispose: () => {
+      host.dispose();
+      activeSearch.dispose();
+      activeHome.dispose();
+      activeCalendar.dispose();
+      updates.dispose();
+    },
+  };
+}
+
+suite('Related Notes controller', () => {
+  test('is sent its state when attached and again once published, says the sidebar is open, and says when it goes', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      assert.strictEqual(page.states().length, 1, 'at once');
+      await settle();
+      assert.strictEqual(page.states().length, 2, 'and once the index is published');
+      assert.deepStrictEqual(page.states()[1].parkedTags, [], 'with the tags its menu may unpark');
+      const source = { getRefineState: () => undefined, applySearch: async () => undefined };
+      assert.strictEqual(page.activeSearch.isRefineInSidebar(source), false);
+      page.activeSearch.setActive(source);
+      assert.strictEqual(page.activeSearch.isRefineInSidebar(source), true, 'the sidebar is open');
+      page.surface.dispose();
+      assert.strictEqual(page.activeSearch.isRefineInSidebar(source), false, 'and is not once VS Code lets it go');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('a hidden sidebar is sent nothing, and is sent its state each time it is shown', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const sent = page.states().length;
+      page.surface.setVisible(false);
+      page.updateIndex(UPDATED);
+      await page.send({ type: 'ready' });
+      assert.strictEqual(page.states().length, sent, 'nothing while hidden');
+      page.surface.setVisible(true);
+      assert.strictEqual(page.states().length, sent + 1, 'once when shown');
+      page.surface.setVisible(false);
+      page.surface.setVisible(true);
+      assert.strictEqual(page.states().length, sent + 2, 'and again, though nothing changed');
+      await page.send({ type: 'ready' });
+      assert.strictEqual(page.states().length, sent + 3, 'and when the page asks');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('runs the command each button asks for, with what it names', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      const calls = await recordCommands(async () => {
+        await page.send({ type: 'openDashboard' });
+        await page.send({ type: 'openNotesGraph' });
+        await page.send({ type: 'openTaskBoard', query: '#a' });
+        await page.send({ type: 'createDailyNote' });
+        await page.send({ type: 'openHelp' });
+        await page.send({ type: 'activateNotesGraphNode', nodeId: 'note:a', open: true });
+        await page.send({ type: 'hoverNotesGraphNode', nodeId: 'note:a' });
+        await page.send({ type: 'hoverNotesGraphNode' });
+        await page.send({ type: 'parkTag', tagKey: '#a' });
+        await page.send({ type: 'unparkTag', tagKey: '#a' });
+      });
+      assert.deepStrictEqual(calls, [
+        ['deckard.showDashboard'],
+        ['deckard.showNotesGraph'],
+        ['deckard.showTaskBoard'],
+        ['deckard.createDailyNote'],
+        ['deckard.showHelp'],
+        ['deckard.activateNotesGraphNode', 'note:a', true],
+        ['deckard.highlightNotesGraphNode', 'note:a'],
+        ['deckard.highlightNotesGraphNode', undefined],
+        ['deckard.parkTag', '#a'],
+        ['deckard.unparkTag', '#a'],
+      ]);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('opens a tag the index has, as the reader may have written it', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      for (const tagKey of ['#project/relay', 'project/relay', '#Project/Relay', '#gone']) {
+        await page.send({ type: 'openTag', tagKey });
+      }
+      assert.deepStrictEqual(page.openedTags, ['#project/relay', '#project/relay', '#project/relay']);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('writes each display choice and redraws with it', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const sent = page.states().length;
+      await page.send({ type: 'setRelatedNotesSort', mode: 'newest' });
+      await page.send({ type: 'setHideDailyNotes', hide: true });
+      await page.send({ type: 'setRelatedNotesPreviewLines', lines: 2 });
+      await page.send({ type: 'clearEntryRelatedNotes' });
+      const value = page.preferences.reader.value;
+      assert.deepStrictEqual([value.relatedNotesSortMode, value.hideDailyNotes, value.relatedNotesPreviewLines], ['newest', true, 2]);
+      assert.strictEqual(page.states().length, sent + 4, 'each redraws the sidebar');
+      assert.deepStrictEqual(
+        [page.states()[sent + 2].relatedNotesSortMode, page.states()[sent + 2].hideDailyNotes, page.states()[sent + 2].previewLines],
+        ['newest', true, 2],
+      );
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('passes Home\'s Customize and the calendar\'s day to the page in front, and nothing while none is', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await page.send({ type: 'homeAddWidget', value: 'calendar' });
+      await page.send({ type: 'homeResetWidgets' });
+      await page.send({ type: 'calendarDay', message: { type: 'openDay', date: '2026-09-24' } });
+      assert.deepStrictEqual(page.asked, [], 'no page is in front');
+
+      page.activeHome.setActive(page.home);
+      assert.strictEqual(page.states().at(-1)?.state, 'customizeHome', 'Home in front redraws the sidebar');
+      await page.send({ type: 'homeAddWidget', value: 'calendar' });
+      await page.send({ type: 'homeAddWidget', value: 3 });
+      await page.send({ type: 'homeResetWidgets' });
+      page.activeCalendar.setActive(page.calendar);
+      await page.send({ type: 'calendarDay', message: { type: 'openDay', date: '2026-09-24', extra: 1 } });
+      await page.send({ type: 'calendarDay', message: { type: 'openDay', date: 'Thursday' } });
+      assert.deepStrictEqual(page.asked, [
+        ['addWidget', 'calendar'],
+        ['resetWidgets'],
+        ['day', { type: 'openDay', date: '2026-09-24' }],
+      ]);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('acts on nothing it does not accept', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const sent = page.surface.webview.posted.length;
+      const calls = await recordCommands(async () => {
+        await page.send({ type: 'openTaskBoard', extra: undefined, query: 1 });
+        await page.send({ type: 'setRelatedNotesSort', mode: 'random' });
+        await page.send({ type: 'parkTag', tagKey: '#a', extra: 1 });
+        await page.send({ type: 'activateNotesGraphNode', nodeId: '', open: true });
+        await page.send({ type: 'toggleTask', taskId: 'a', completed: true });
+        await page.send({ type: 'constructor' });
+        await page.send('ready');
+      });
+      // openTaskBoard takes no search from the sidebar, so it still opens.
+      assert.deepStrictEqual(calls, [['deckard.showTaskBoard']]);
+      assert.strictEqual(page.surface.webview.posted.length, sent);
+      assert.deepStrictEqual(page.openedTags, []);
+    } finally {
+      page.dispose();
     }
   });
 });
