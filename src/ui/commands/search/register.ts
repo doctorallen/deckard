@@ -10,11 +10,11 @@ import { registerCommand } from '../runCommand';
 type SearchPages = Services['pages']['search'];
 
 /**
- * Search and Find: a tag's page, a search page on a query, Insert Query
- * Block, and Find with its keys.
+ * Search pages: a tag's page, a search page on a query, given or asked for,
+ * and Insert Query Block.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
-  const { indexer, quickFind } = services;
+  const { indexer } = services;
   const searchPanels = services.pages.search;
   context.subscriptions.push(
     registerCommand(
@@ -26,23 +26,6 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     ),
     registerCommand('deckard.insertQueryBlock', () =>
       insertQueryBlock(services.preferences.repository),
-    ),
-    registerCommand(
-      'deckard.searchWorkspace',
-      (initialQuery?: unknown) =>
-        quickFind.show(getCommandTagArgument(initialQuery)),
-    ),
-    registerCommand('deckard.quickFind.complete', () =>
-      quickFind.complete(),
-    ),
-    registerCommand('deckard.quickFind.openBeside', () =>
-      quickFind.openBeside(),
-    ),
-    registerCommand('deckard.quickFind.insertLink', () =>
-      quickFind.insertLinkFromActive(),
-    ),
-    registerCommand('deckard.quickFind.actions', () =>
-      quickFind.showActions(),
     ),
     registerCommand(
       'deckard.searchNotes',

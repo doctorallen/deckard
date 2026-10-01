@@ -4,33 +4,17 @@ import type { Services } from '../../../composition/services';
 import type { IndexRoles } from '../../../core/workspace/indexReader';
 import { checkSetup } from '../checkSetup';
 import { chooseTheme, createChooseThemeDeps } from '../chooseTheme';
-import { exportPreferences, importPreferences, restorePreferences } from '../preferenceBackups';
 import { createSampleWorkspace } from '../sampleWorkspace';
-import { tidyPreferences } from '../tidyPreferences';
 import { registerCommand } from '../runCommand';
 
 /**
- * Preferences and setup: Show Log, tidying and backing up the preferences,
- * Check Setup, the sample workspace, Choose Theme…, the walkthrough, and
- * Reindex Workspace.
+ * Setup and diagnostics: Show Log, Check Setup, the sample workspace, Choose
+ * Theme…, the walkthrough, and Reindex Workspace.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { log, indexer, scanner, themePreview } = services;
-  const { repository: preferences, maintenance, snapshots } = services.preferences;
   context.subscriptions.push(
     registerCommand('deckard.showLog', () => log.show()),
-    registerCommand('deckard.tidyPreferences', () =>
-      tidyPreferences(indexer, maintenance),
-    ),
-    registerCommand('deckard.exportPreferences', () =>
-      exportPreferences({ reader: preferences, maintenance }),
-    ),
-    registerCommand('deckard.importPreferences', () =>
-      importPreferences({ reader: preferences, maintenance }),
-    ),
-    registerCommand('deckard.restorePreferences', () =>
-      restorePreferences({ reader: preferences, maintenance }, snapshots),
-    ),
     registerCommand('deckard.checkSetup', () =>
       checkSetup(indexer, scanner),
     ),
