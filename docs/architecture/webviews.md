@@ -130,7 +130,7 @@ Page-to-host messages are untrusted, so the host narrows each one before handlin
 
 The page context compiles JSX with the automatic runtime and `jsxImportSource: 'preact'`. Its output folder is emptied before each build, so a removed page leaves no bundle behind, and with no page entries it builds nothing and still succeeds. Each build writes its esbuild metafile to `out/extension-meta.json` or `out/webview-meta.json`, which never ship. `scripts/check-bundle-inputs.js` reads them: the host bundles may take in only the 23 packages they took in when the check arrived (`markdown-it`, `sanitize-html`, `picomatch`, and theirs; the list only shrinks), a page's script only Preact, and a page's sheet nothing. CI runs it after packaging the VSIX.
 
-`src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency; no page imports it yet. Whether the query-editor pages share one components bundle or each carry a copy is decided in Phase 6 by measuring both.
+`src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency, and each Preact page's bundle carries its own copy, with what it uses of the shared core; see [One bundle per page](#one-bundle-per-page).
 
 No page has a script entry yet: each still runs the inline script its builder writes. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body })`, which writes:
 
@@ -162,6 +162,34 @@ The built pages in development, and minified for the VSIX:
 Each page's sheet carries the base sheet, about 28 KB of it in development; a page loads its own sheet, one theme, and the tail. The development build writes a source map beside each sheet; `.vscodeignore` keeps every `.map` out of the VSIX.
 
 Each page will load `dist/webview/<page>.js` with `<script nonce src>` once its script moves. The official guide calls external files the best practice, and every surveyed extension loads its bundle this way; see [decision 0001](decisions/0001-load-page-bundles-through-aswebviewuri.md).
+
+### One bundle per page
+
+*Measured in Phase 6 step 4.2, on Stats, the first Preact page; interim until Search.* Open question 3 asked whether the pages share one bundle of Preact and the shared core, or each carry their own. Two variants of Stats were built by `scripts/measure-page-bundles.js`:
+
+- **A**, one bundle per page: `stats.js` holds Preact, what Stats uses of `src/webview/shared`, and the page.
+- **B**, a shared bundle: `shared.js` holds Preact and all of `src/webview/shared` as one `iife` global, and an esbuild plugin maps the page's imports to it, so `stats.js` holds only the page. The shell loads `shared.js` first.
+
+The rule was set before the numbers: B only if it saves more than 100 KB in the VSIX, or more than 10 ms of Chrome first render on a page; otherwise A, which is one request per page and needs nothing new in the loader.
+
+| Bundle | Raw | Minified | Gzip | Preact | Core | Page | esbuild's own |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A `stats.js` | 64.4 KB | 38.3 KB | 13.0 KB | 10.6 KB | 10.1 KB | 17.5 KB | 0.0 KB |
+| B `shared.js` | 57.2 KB | 34.5 KB | 13.5 KB | 13.2 KB | 20.9 KB | 0 | 0.5 KB |
+| B `stats.js` | 37.3 KB | 20.1 KB | 6.2 KB | 0 | 0 | 19.2 KB | 0.9 KB |
+
+The shares are of the minified bytes, from esbuild's metafile. B's shared bundle carries more of both Preact and the core than A's page does, because nothing in it can be left out: it exports everything for pages that are not built with it.
+
+| | A | B |
+| --- | --- | --- |
+| Page script, minified | 38.3 KB | 54.6 KB, in two files |
+| VSIX, the same files zipped again with `zip -9` | 1,464.5 KB | 1,471.1 KB |
+| First render in jsdom, median of 20 `openWebviewPage` loads | 50.9 ms | 49.6 ms |
+| First render in Chrome, median of 10 (`LAYOUT_TIMING=1`) | 54.9 ms | 58.6 ms |
+
+The VSIX `vsce` packed was 1,473.3 KB. A first render runs from the start of the page's document to its state drawn and laid out. Chrome's is timed in real time, since virtual time does not advance while a script runs. On macOS, Chrome 153.
+
+**Decision: A.** With one Preact page, B cannot save anything: it ships 6.6 KB more and draws 3.7 ms later, and jsdom's 1.3 ms is within its run-to-run spread. The build keeps one bundle per page. The question is measured again at Search, the first time two moved pages share the query editor, and then recorded as a decision.
 
 ## The Content Security Policy
 
