@@ -26,7 +26,7 @@ import { DisplayService } from './preferencesDisplay';
 import { FavoritesService } from './preferencesFavorites';
 import { HomeWidgetsService } from './preferencesHomeWidgets';
 import { PinsService } from './preferencesPins';
-import { PreferencesRepository } from './preferencesRepository';
+import { PreferencesRepository, type PreferencesReader } from './preferencesRepository';
 import { SavedSearchesService } from './preferencesSavedSearches';
 import { PreferencesMaintenance, type StalePreferences } from './preferencesMaintenance';
 import { TagRenames } from './preferencesTagRenames';
@@ -53,6 +53,36 @@ export {
 } from './preferencesSchema';
 
 export type { PruneIndex, PruneKeys, StalePreferences } from './preferencesMaintenance';
+export type { PreferencesReader } from './preferencesRepository';
+
+/**
+ * Every preference capability, one service each, as the extension builds
+ * them over one `PreferencesRepository`. A caller names the ones it uses,
+ * as `Pick<PreferenceServices, 'reader' | 'favorites'>`, and is handed
+ * those alone.
+ */
+export interface PreferenceServices {
+  /** The blob and its change events, for a caller that only reads. */
+  reader: PreferencesReader;
+  /** The favorite tags and entities, and the custom order of each. */
+  favorites: FavoritesService;
+  /** What was opened and chosen, and when. */
+  usage: UsageService;
+  /** The task rank order, the task sort, and the Task Board's layout. */
+  taskLayout: TaskLayoutService;
+  /** Home's widgets and the Dashboard's view state. */
+  homeWidgets: HomeWidgetsService;
+  /** The notes pinned to Home. */
+  pins: PinsService;
+  /** Saved searches and recent searches. */
+  savedSearches: SavedSearchesService;
+  /** Sort modes, column counts, and the other presentation choices. */
+  display: DisplayService;
+  /** The cascade that moves what a renamed tag held to its new key. */
+  tagRenames: TagRenames;
+  /** Pruning against the index, the stale-choice check, and restoring a copy. */
+  maintenance: PreferencesMaintenance;
+}
 
 /**
  * Persists UI-only state without adding metadata to Markdown notes, as one

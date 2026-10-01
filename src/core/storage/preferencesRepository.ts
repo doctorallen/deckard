@@ -17,6 +17,20 @@ const preferencesKey = 'deckard.preferences';
 const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
 
 /**
+ * What a caller that reads the preferences, and changes none of them,
+ * receives: the blob, and the events that say it changed. A caller that
+ * changes something takes the service that owns that capability instead.
+ */
+export interface PreferencesReader {
+  /** A defensive copy of the blob as it stands. */
+  readonly value: PersistedPreferences;
+  /** Fires after each change is kept, with a copy of the whole blob. */
+  readonly onDidChange: Event<PersistedPreferences>;
+  /** Fires when a visit or a carried view count was kept quietly. */
+  readonly onDidRecordVisit: Event<void>;
+}
+
+/**
  * Where the preferences are kept: the one blob, read once when the
  * repository is made, written through one queue to the two stores it is
  * split across, and announced after each write.
@@ -27,7 +41,7 @@ const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
  * state cannot leak unsupported sort modes, duplicate ids, or invalid
  * access counts.
  */
-export class PreferencesRepository implements Disposable {
+export class PreferencesRepository implements PreferencesReader, Disposable {
   private readonly changeEmitter = new Emitter<PersistedPreferences>();
   private readonly visitEmitter = new Emitter<void>();
   private preferences: PersistedPreferences;
@@ -119,6 +133,11 @@ export class PreferencesRepository implements Disposable {
    */
   public snapshot(): PersistedPreferences {
     return clonePreferences(this.preferences);
+  }
+
+  /** The same copy as `snapshot()`, as what a reader reads. */
+  public get value(): PersistedPreferences {
+    return this.snapshot();
   }
 
   /**

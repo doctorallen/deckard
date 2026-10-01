@@ -291,7 +291,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagWrites: TagWrites = {
     history,
     preferences,
-    tags: new TagService({ index: indexer, preferences }),
+    tags: new TagService({ index: indexer, preferences: preferences.tagRenames }),
   };
   // What the parking commands read, and the service that decides what they
   // may park and writes it.
@@ -328,7 +328,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri)).register();
   // Which entry a line of a note pins, and whether it is pinned, for the
   // hover and Find's rows alike.
-  const pins = new PinService({ index: indexer, store: preferences });
+  const pins = new PinService({ index: indexer, store: preferences.pins });
   // The hover on an entry offers to pin it, so it has to know which entries
   // are pinned; PinService answers, and a change redraws the hovers.
   const readPinned = (): void => {
@@ -573,7 +573,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       index: indexer,
       notes: createCaptureNotes(indexer),
       drafts: captureDrafts,
-      recentHeadings: preferences,
+      recentHeadings: preferences.usage,
     }),
   };
   activeServices = {
