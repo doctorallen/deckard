@@ -48,13 +48,14 @@ export interface QueryContextSettings {
  * A QueryContext for `now`, with every setting it is not given at the
  * settings' own default: nobody named, weeks from Sunday,
  * DEFAULT_TASK_POLICY, and the built-in namespace aliases. An identity of
- * only spaces names nobody.
+ * only spaces, or one that is not text (a setting written by hand), names
+ * nobody.
  */
 export function createQueryContext(
   now: number,
   settings: QueryContextSettings = {},
 ): QueryContext {
-  const identity = settings.identity?.trim();
+  const identity = typeof settings.identity === 'string' ? settings.identity.trim() : undefined;
   return {
     ...(identity ? { identity } : {}),
     weekStart: settings.weekStart ?? 0,

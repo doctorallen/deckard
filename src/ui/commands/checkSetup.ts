@@ -74,7 +74,8 @@ export async function collectSetupFacts(
   }
   const excludeSetting = configuration.get<Record<string, unknown>>('exclude', {});
   const personMarker = getPersonMarker(configuration.get<unknown>('personMarker'));
-  const me = configuration.get<string>('me', '').trim() || undefined;
+  const meSetting = configuration.get<unknown>('me', '');
+  const me = (typeof meSetting === 'string' ? meSetting.trim() : '') || undefined;
   const people = [...index.entities.values()].filter((entity) => entity.kind === 'person').length;
   const meIsKnown = Boolean(
     me && [...index.tags.keys()].some((tagKey) => matchesPerson(me, tagKey)),

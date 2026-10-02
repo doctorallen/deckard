@@ -21,7 +21,7 @@ import { readWeekStart } from './datePrompt';
 export function readQueryContext(now: number = Date.now()): QueryContext {
   const configuration = vscode.workspace.getConfiguration('deckard');
   return createQueryContext(now, {
-    identity: configuration.get<string>('me', ''),
+    identity: configuration.get<unknown>('me', '') as string,
     weekStart: readWeekStart(),
     taskPolicy: readTaskPolicy(),
     entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),

@@ -217,4 +217,11 @@ suite('Task assignees', () => {
       'a tag that is not a person names nobody to hand it to',
     );
   });
+
+  test('a deckard.me setting that is not text names nobody, rather than stopping every view', () => {
+    for (const identity of [42, null, true, ['@dana'], { name: 'dana' }]) {
+      const context = createQueryContext(Date.now(), { identity: identity as unknown as string });
+      assert.strictEqual(context.identity, undefined, JSON.stringify(identity));
+    }
+  });
 });
