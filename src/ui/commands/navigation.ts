@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { reindexAction, reportFailure } from './notify';
+import { findWorkspaceFolderByKey } from '../../shared/paths';
 
 /**
  * Resolves a stored source key across absolute paths, URI schemes, and roots.
@@ -25,19 +26,17 @@ export async function resolveSourceUri(
   }
 
   const normalizedPath = filePath.replaceAll('\\', '/').replace(/^\.\//, '');
-  const candidates: vscode.Uri[] = [];
-
+  const pathParts = normalizedPath.split('/');
+  // The folder a multi-root key names comes first, so it is also the
+  // fallback when no candidate exists yet.
+  const named =
+    workspaceFolders && workspaceFolders.length > 1
+      ? findWorkspaceFolderByKey(workspaceFolders, pathParts[0])
+      : undefined;
+  const candidates: vscode.Uri[] = named
+    ? [vscode.Uri.joinPath(named.uri, ...pathParts.slice(1))]
+    : [];
   for (const workspaceFolder of workspaceFolders ?? []) {
-    const pathParts = normalizedPath.split('/');
-    if (
-      workspaceFolders &&
-      workspaceFolders.length > 1 &&
-      pathParts[0] === workspaceFolder.name
-    ) {
-      candidates.push(
-        vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts.slice(1)),
-      );
-    }
     candidates.push(vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts));
   }
 
@@ -77,7 +76,7 @@ export function sourceScopeUri(
   const pathParts = filePath.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
   const folders = workspaceFolders ?? [];
   if (folders.length > 1) {
-    const folder = folders.find((candidate) => candidate.name === pathParts[0]);
+    const folder = findWorkspaceFolderByKey(folders, pathParts[0]);
     return folder ? vscode.Uri.joinPath(folder.uri, ...pathParts.slice(1)) : undefined;
   }
   return folders[0] ? vscode.Uri.joinPath(folders[0].uri, ...pathParts) : undefined;

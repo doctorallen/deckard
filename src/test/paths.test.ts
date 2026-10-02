@@ -1,6 +1,12 @@
 import * as assert from 'assert';
 
-import { getFileName, getFolder, readFolderSetting } from '../shared/paths';
+import {
+  findWorkspaceFolderByKey,
+  getFileName,
+  getFolder,
+  readFolderSetting,
+  workspaceFolderKey,
+} from '../shared/paths';
 
 suite('Index paths', () => {
   test('getFileName keeps the last segment and its extension', () => {
@@ -42,5 +48,24 @@ suite('Index paths', () => {
     assert.strictEqual(readFolderSetting(5, ''), '');
     assert.strictEqual(readFolderSetting(false, ''), '');
     assert.strictEqual(readFolderSetting(['notes'], ''), '');
+  });
+
+  test('workspaceFolderKey names a folder, and a later folder of the same name with a count', () => {
+    const folder = (name: string, path: string) => ({ name, uri: { toString: () => `file://${path}` } });
+    const folders = [
+      folder('notes', '/work/notes'),
+      folder('notes', '/personal/notes'),
+      folder('notes (2)', '/odd/notes (2)'),
+      folder('journal', '/journal'),
+    ];
+    assert.deepStrictEqual(
+      folders.map((each) => workspaceFolderKey(folders, each)),
+      ['notes', 'notes (2)', 'notes (2) (2)', 'journal'],
+    );
+    assert.strictEqual(workspaceFolderKey(folders, folder('notes', '/personal/notes')), 'notes (2)', 'found by its URI');
+    assert.strictEqual(workspaceFolderKey(folders, folder('notes', '/elsewhere')), undefined);
+    assert.strictEqual(findWorkspaceFolderByKey(folders, 'notes (2)'), folders[1]);
+    assert.strictEqual(findWorkspaceFolderByKey(folders, 'journal'), folders[3]);
+    assert.strictEqual(findWorkspaceFolderByKey(folders, 'archive'), undefined);
   });
 });

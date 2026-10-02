@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createDailyNote } from '../ui/commands/dailyNote';
 import { describeExtractFailure, extractHeadingNote } from '../ui/commands/extractHeading';
-import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
+import { openSourceAt, resolveSourceUri, sourceScopeUri } from '../ui/commands/navigation';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   applyHubTemplate,
@@ -395,6 +395,16 @@ suite('Source commands', () => {
     assert.strictEqual(editor.document.uri.toString(), fileUri.toString());
     assert.strictEqual(editor.selection.active.line, 1);
     await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('finds the second of two workspace folders with the same name by its numbered key', async () => {
+    const work = { uri: vscode.Uri.file('/home/me/work/notes'), name: 'notes', index: 0 } as vscode.WorkspaceFolder;
+    const personal = { uri: vscode.Uri.file('/home/me/personal/notes'), name: 'notes', index: 1 } as vscode.WorkspaceFolder;
+    const folders = [work, personal];
+    assert.strictEqual(sourceScopeUri('notes/plan.md', folders)?.path, '/home/me/work/notes/plan.md');
+    assert.strictEqual(sourceScopeUri('notes (2)/plan.md', folders)?.path, '/home/me/personal/notes/plan.md');
+    const resolved = await resolveSourceUri('notes (2)/plan.md', folders);
+    assert.strictEqual(resolved?.path, '/home/me/personal/notes/plan.md');
   });
 
   test('treats Windows drive paths as file paths', async () => {

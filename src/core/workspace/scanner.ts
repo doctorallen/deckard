@@ -15,7 +15,7 @@ import {
   parseMarkdown,
   PARSE_FORMAT,
 } from '../../domain/markdown/parser';
-import { readFolderSetting } from '../../shared/paths';
+import { findWorkspaceFolderByKey, readFolderSetting, workspaceFolderKey } from '../../shared/paths';
 import { reportError } from '../../shared/timing';
 import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
 import { ParsedFile, UnreadableNote } from '../../domain/model';
@@ -301,7 +301,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       this.getConfiguration(folder).get<unknown>('parked.folders', {}),
     );
     const matchers = folders.map((folder, index) => ({
-      prefix: multiRoot ? `${folder.name}/` : '',
+      prefix: multiRoot ? `${workspaceFolderKey(folders, folder) ?? folder.name}/` : '',
       isParked: createExcludeMatcher(folderSettings[index]),
     }));
     const hasFolders = folderSettings.some(
@@ -350,7 +350,9 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
   }
 
   /**
-   * Produces a stable index key and prefixes multi-root paths to avoid clashes.
+   * Produces a stable index key and prefixes multi-root paths to avoid
+   * clashes: with the folder's name, or, for a second folder of the same
+   * name, the name and a count, as `notes (2)`.
    */
   public getFilePath(
     uri: U,
@@ -366,7 +368,8 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       return relativePath.replaceAll('\\', '/');
     }
 
-    return `${folder.name}/${relativePath.replaceAll('\\', '/')}`;
+    const folders = this.access.workspaceFolders ?? [];
+    return `${workspaceFolderKey(folders, folder) ?? folder.name}/${relativePath.replaceAll('\\', '/')}`;
   }
 
   /**
@@ -379,7 +382,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       return this.access.joinPath(folders[0].uri, ...filePath.split('/'));
     }
     const [name, ...rest] = filePath.split('/');
-    const folder = folders.find((candidate) => candidate.name === name);
+    const folder = findWorkspaceFolderByKey(folders, name);
     return folder && rest.length > 0 ? this.access.joinPath(folder.uri, ...rest) : undefined;
   }
 

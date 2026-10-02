@@ -365,6 +365,29 @@ suite('Workspace scanner and index', () => {
     }
   });
 
+  test('keeps the notes of two workspace folders with the same name apart', async () => {
+    const work = fakeFolder('/home/me/work/notes', 'notes', 0);
+    const personal = fakeFolder('/home/me/personal/notes', 'notes', 1);
+    const workPlan = joinUri(work.uri, 'plan.md');
+    const personalPlan = joinUri(personal.uri, 'plan.md');
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: [work, personal],
+      findFiles: async (pattern) => [joinUri(pattern.folder.uri, 'plan.md')],
+      readFile: async (uri) =>
+        Buffer.from(uri.toString() === workPlan.toString() ? '# Work plan' : '# Holiday plan', 'utf8'),
+    }));
+
+    const files = await scanner.scan();
+
+    assert.deepStrictEqual(files.map((file) => [file.filePath, file.sections[0].heading]), [
+      ['notes/plan.md', 'Work plan'],
+      ['notes (2)/plan.md', 'Holiday plan'],
+    ]);
+    assert.strictEqual(scanner.getFilePath(personalPlan), 'notes (2)/plan.md');
+    assert.strictEqual(scanner.getUri('notes/plan.md')?.toString(), workPlan.toString());
+    assert.strictEqual(scanner.getUri('notes (2)/plan.md')?.toString(), personalPlan.toString());
+  });
+
   test('leaves the templates folder out of the notes', async () => {
     const workspaceUri = fileUri('/tmp/deckard-scanner');
     const noteUri = joinUri(workspaceUri, 'case.md');

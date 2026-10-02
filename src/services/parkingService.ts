@@ -8,6 +8,7 @@ import type { WorkspaceIndex } from '../domain/model';
 import { countTagMatches } from '../domain/query/queryEvaluator';
 import type { Configuration } from '../ports/configuration';
 import type { ResourceUri, WorkspaceFolder } from '../ports/uri';
+import { workspaceFolderKey } from '../shared/paths';
 
 /**
  * Park Note, Park Folder, and Park Tag, and their Unpark counterparts: which
@@ -510,8 +511,9 @@ export class ParkingService<U extends ResourceUri, Handle> {
       return undefined;
     }
     const name = readExcludeKey(key);
-    const multiRoot = (this.collaborators.workspace.workspaceFolders?.length ?? 0) > 1;
-    return { key, name, indexPath: multiRoot ? `${root.name}/${name}` : name, root };
+    const folders = this.collaborators.workspace.workspaceFolders ?? [];
+    const prefix = folders.length > 1 ? `${workspaceFolderKey(folders, root) ?? root.name}/` : '';
+    return { key, name, indexPath: `${prefix}${name}`, root };
   }
 }
 

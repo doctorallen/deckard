@@ -28,6 +28,8 @@ None of the modules in `src/core` imports `vscode`. The scanner reads folders, f
 
 The scanner, and the roles that hand back its URIs, are generic in the URI type they are given: `WorkspaceScanner<U>`, `NoteFiles<U>`, `IndexReader<U>`, and `IndexRoles<U>`. The extension gives them `vscode.Uri`, so every URI they hand back, such as `getUri` or `getNotesFolderUri`, is a `vscode.Uri` the UI passes to VS Code as it is. A UI function that does so names its parameter `IndexReader<vscode.Uri>`. A test gives them plain objects from `src/test/fakeWorkspace.ts`, so the scanner, index, and cache suites run under `test:unit`.
 
+A note's index path is relative to its workspace folder. With more than one folder open, it starts with the folder's key: the folder's name, or, for a later folder with a name an earlier one has, the name and a count, such as `notes (2)`. `workspaceFolderKey` and `findWorkspaceFolderByKey` in `src/shared/paths.ts` are the one rule for it, which the scanner, opening a note, and parking all read.
+
 ## The roles callers take
 
 No caller holds the pieces. Each is typed by the roles it uses, from `indexReader.ts`, and is handed the one value `createWorkspaceIndex` returns, or in a test a fake with only those members.
