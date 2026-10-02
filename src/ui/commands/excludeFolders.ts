@@ -81,6 +81,10 @@ function settingPlace(workspaceFolder: vscode.WorkspaceFolder): {
     : { configuration, target: vscode.ConfigurationTarget.Workspace, current: inspected?.workspaceValue };
 }
 
+/**
+ * Where a folder sits: its path beside its workspace folder's, notes folder's
+ * and templates folder's. Undefined for a folder outside the workspace.
+ */
 function describePlace(index: ExcludeIndex, uri: vscode.Uri): { place: FolderPlace; workspaceFolder: vscode.WorkspaceFolder } | undefined {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
   if (!workspaceFolder) {
@@ -175,6 +179,10 @@ export class ExcludedFoldersContext implements vscode.Disposable {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
+  /**
+   * Sets `deckard.excludedFolders` to the folders each workspace folder's
+   * `deckard.exclude` leaves out, which the Explorer menu reads.
+   */
   private publish(): void {
     const folders = (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
       root: folder.uri.fsPath,

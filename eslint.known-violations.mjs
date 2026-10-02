@@ -36,13 +36,6 @@ export default {
       "createTask",
       "overview"
     ],
-    "src/ui/preview/queryBlockHtml.ts": [
-      "(arrow function)",
-      "renderGroup"
-    ],
-    "src/ui/providers/linkSuggestions.ts": [
-      "completeBlockIds"
-    ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
     ],
@@ -61,20 +54,12 @@ export default {
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard"
-    ],
-    "src/ui/webview/helpHtml.ts": [
-      "buildHelpHtml"
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
     "src/domain/index/parked.ts": 1,
     "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/query/queryEvaluator.ts": 3,
-    "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/moveTagsToFrontmatter.ts": 1,
-    "src/ui/commands/quickFindActions.ts": 1,
-    "src/ui/commands/taskEditor.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
     "src/ui/state/quickFindState.ts": 1
   },
   complexity: {
@@ -112,23 +97,6 @@ export default {
       "createCondition",
       "tokenize"
     ],
-    "src/ui/commands/bulkEdit.ts": [
-      "describeBulkEditResult"
-    ],
-    "src/ui/commands/checkSetup.ts": [
-      "buildSetupReport"
-    ],
-    "src/ui/commands/quickFind.ts": [
-      "accept",
-      "toPickItems",
-      "triggerItemButton"
-    ],
-    "src/ui/commands/taskEditor.ts": [
-      "readField"
-    ],
-    "src/ui/preview/queryBlockHtml.ts": [
-      "renderTask"
-    ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
     ],
@@ -159,12 +127,6 @@ export default {
     ],
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
-    ],
-    "src/ui/webview/pages/calendar/calendarController.ts": [
-      "handle"
-    ],
-    "src/ui/webview/searchPage.ts": [
-      "readSerializedSearch"
     ],
     "test/ui/checkContrast.js": [
       "parseColor"
@@ -208,32 +170,6 @@ export default {
     "src/test/notes-graph-behavior.test.ts": 1,
     "src/test/relatedNotesFixture.ts": 1,
     "src/test/webviewPage.ts": 2,
-    "src/ui/commands/activeNoteContext.ts": 2,
-    "src/ui/commands/assistantTools.ts": 1,
-    "src/ui/commands/assistantWrites.ts": 2,
-    "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/checkSetup.ts": 4,
-    "src/ui/commands/chooseTheme.ts": 2,
-    "src/ui/commands/destinationPicker.ts": 2,
-    "src/ui/commands/firstIndex.ts": 2,
-    "src/ui/commands/linkEntity.ts": 1,
-    "src/ui/commands/mcpServer.ts": 4,
-    "src/ui/commands/moveTo.ts": 2,
-    "src/ui/commands/noteVisits.ts": 5,
-    "src/ui/commands/notify.ts": 2,
-    "src/ui/commands/pinNote.ts": 2,
-    "src/ui/commands/preferenceBackups.ts": 5,
-    "src/ui/commands/quickFindActions.ts": 4,
-    "src/ui/commands/sampleWorkspace.ts": 2,
-    "src/ui/commands/selectionSeed.ts": 2,
-    "src/ui/commands/taskEditor.ts": 5,
-    "src/ui/commands/taskSteps.ts": 3,
-    "src/ui/commands/tidyPreferences.ts": 1,
-    "src/ui/commands/tryNext.ts": 5,
-    "src/ui/commands/whatsNew.ts": 4,
-    "src/ui/commands/workspaceWrites.ts": 2,
-    "src/ui/preview/noteEmbeds.ts": 1,
-    "src/ui/preview/queryBlocks.ts": 3,
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 3,
     "src/ui/state/dashboardState.ts": 2,
@@ -249,13 +185,6 @@ export default {
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
-    "src/ui/views/agendaTree.ts": 3,
-    "src/ui/views/outlineTree.ts": 3,
-    "src/ui/views/taskStatusBar.ts": 3,
-    "src/ui/views/wordCountStatusBar.ts": 2,
-    "src/ui/webview/helpHtml.ts": 1,
-    "src/ui/webview/relatedNotesDebugHtml.ts": 1,
-    "src/ui/webview/searchPage.ts": 2,
     "test/e2e/vscodeStub.js": 17
   },
   "max-depth": {
@@ -309,31 +238,6 @@ export default {
     "src/test/webviewPage.ts": [
       "openWebviewPage"
     ],
-    "src/ui/commands/bulkEdit.ts": [
-      "applyBulkEdit"
-    ],
-    "src/ui/commands/checkSetup.ts": [
-      "buildSetupReport"
-    ],
-    "src/ui/commands/extractHeading.ts": [
-      "replaceSectionWithLink"
-    ],
-    "src/ui/commands/quickFind.ts": [
-      "toPickItems"
-    ],
-    "src/ui/commands/quickFindActions.ts": [
-      "buildRowActions"
-    ],
-    "src/ui/commands/taskEditor.ts": [
-      "readField"
-    ],
-    "src/ui/commands/taskSteps.ts": [
-      "(arrow function)",
-      "pickSteps"
-    ],
-    "src/ui/providers/tagSuggestions.ts": [
-      "provideCompletionItems"
-    ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
     ],
@@ -361,21 +265,6 @@ export default {
     "src/ui/state/reviewState.ts": [
       "formatReview",
       "summarizeReview"
-    ],
-    "src/ui/webview/helpHtml.ts": [
-      "buildHelpHtml"
-    ],
-    "src/ui/webview/searchPageHtml.ts": [
-      "getSearchPageHtml"
-    ],
-    "src/ui/webview/sidebarNotesHtml.ts": [
-      "getSidebarNotesHtml"
-    ],
-    "src/ui/webview/statsHtml.ts": [
-      "getStatsHtml"
-    ],
-    "src/ui/webview/taskBoardHtml.ts": [
-      "getTaskBoardHtml"
     ],
     "test/perf/indexSpeed.js": [
       "bench"
@@ -407,12 +296,6 @@ export default {
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/naming.test.ts": 1,
     "src/test/tag-grouping.test.ts": 1,
-    "src/ui/commands/assistantWrites.ts": 1,
-    "src/ui/commands/bulkEdit.ts": 2,
-    "src/ui/commands/moveTo.ts": 2,
-    "src/ui/preview/queryBlockHtml.ts": 2,
-    "src/ui/providers/editorReferences.ts": 1,
-    "src/ui/providers/tagSuggestions.ts": 1,
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
@@ -420,9 +303,7 @@ export default {
     "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/referenceState.ts": 2,
     "src/ui/state/resultTable.ts": 3,
-    "src/ui/state/taskBoardState.ts": 6,
-    "src/ui/views/agendaTree.ts": 3,
-    "src/ui/views/outlineTree.ts": 1
+    "src/ui/state/taskBoardState.ts": 6
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,
@@ -434,21 +315,12 @@ export default {
     "src/domain/markdown/taskSteps.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
-    "src/ui/commands/assistantWrites.ts": 2,
-    "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/notify.ts": 1,
-    "src/ui/commands/pinNote.ts": 1,
-    "src/ui/commands/settings.ts": 1,
-    "src/ui/commands/taskBoardActions.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/preview/queryBlockHtml.ts": 1,
     "src/ui/state/assistantTools.ts": 2,
     "src/ui/state/calendarState.ts": 2,
     "src/ui/state/noteLinks.ts": 1,
     "src/ui/state/referenceState.ts": 1,
     "src/ui/state/tagGrouping.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
-    "src/ui/views/taskStatusBar.ts": 1,
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
@@ -457,18 +329,9 @@ export default {
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
-    "src/ui/commands/chooseTheme.ts": 1,
-    "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/mcpServer.ts": 1,
-    "src/ui/commands/moveTagsToFrontmatter.ts": 1,
-    "src/ui/commands/noteVisits.ts": 1,
-    "src/ui/commands/savedSearchHome.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
     "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/taskBoardState.ts": 1,
-    "src/ui/views/outlineTree.ts": 1
+    "src/ui/state/taskBoardState.ts": 1
   }
 };

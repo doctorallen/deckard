@@ -9,20 +9,25 @@ import { Entity, EntityKind } from '../../core/types';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
+/** A picker row: an entity the index knows, or the row that makes a new one. */
 interface EntityChoice extends vscode.QuickPickItem {
   entity?: Entity;
   create?: boolean;
 }
 
+/** A picker row for the kind of entity being made. */
 interface EntityKindChoice extends vscode.QuickPickItem {
   value: EntityKind;
 }
 
-/**
- * Lets the user explicitly attach the current heading to a canonical entity.
- */
+/** What is said when the cursor is not on a heading in a note. */
 const HEADING_FIRST = 'Put the cursor on a heading in a note to tag it with a person or project.';
 
+/**
+ * Lets the user explicitly attach the current heading to a canonical entity:
+ * one the index knows, or a new one, written as a tag at the heading's end.
+ * Does nothing when the heading already carries that tag, and says so.
+ */
 export async function linkCurrentHeading(
   indexer: IndexReader,
 ): Promise<void> {
@@ -95,6 +100,10 @@ export async function linkCurrentHeading(
   });
 }
 
+/**
+ * Asks for a new entity's kind and name, and returns the tag it is written
+ * as; undefined when either prompt is dismissed or the name has no slug.
+ */
 async function createEntity(
   defaultName: string,
   personMarker: string,
@@ -138,6 +147,7 @@ async function createEntity(
   };
 }
 
+/** The name as a tag's slug: lowercase, with runs of other characters as hyphens; undefined when nothing is left. */
 function toSlug(value: string): string | undefined {
   const slug = value
     .trim()

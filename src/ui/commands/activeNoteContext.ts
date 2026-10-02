@@ -69,6 +69,10 @@ export class ActiveNoteContext implements vscode.Disposable {
   /** The re-read waiting for typing in the active note to pause. */
   private readonly pendingSync = new Debouncer(200);
 
+  /**
+   * Starts listening to the active editor, its typing, and Deckard's settings,
+   * and sets both keys for the editor already open.
+   */
   public constructor(
     private readonly index: ActiveNoteIndex,
     private readonly set: ContextSetter = setContext,
@@ -90,6 +94,7 @@ export class ActiveNoteContext implements vscode.Disposable {
     this.sync(vscode.window.activeTextEditor);
   }
 
+  /** Stops listening and drops any re-read still waiting on a pause in typing. */
   public dispose(): void {
     this.pendingSync.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
@@ -111,10 +116,12 @@ export class ActiveNoteContext implements vscode.Disposable {
     this.update('deckard.isDailyNote', isDaily);
   }
 
+  /** Re-reads the active note once typing in it pauses, not on every keystroke. */
   private schedule(): void {
     this.pendingSync.schedule(() => this.sync(vscode.window.activeTextEditor));
   }
 
+  /** Sets a key only when its value changed, so VS Code is not told the same thing twice. */
   private update(key: string, value: boolean): void {
     if (this.state.get(key) === value) {
       return;

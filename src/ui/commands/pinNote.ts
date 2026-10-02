@@ -124,9 +124,9 @@ export async function setNotePinnedCommand({
 }: SetNotePinnedOptions): Promise<PinnedNote | undefined> {
   await indexer.ready;
   const uri =
-    documentUri !== undefined
-      ? vscode.Uri.parse(documentUri)
-      : vscode.window.activeTextEditor?.document.uri;
+    documentUri === undefined
+      ? vscode.window.activeTextEditor?.document.uri
+      : vscode.Uri.parse(documentUri);
   if (!uri || !indexer.isNotesFile(uri)) {
     void vscode.window.showInformationMessage(
       'Open a note in the notes folder to pin it to Home.',
@@ -178,6 +178,7 @@ export class ActivePinContext implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private pinned: boolean | undefined;
 
+  /** Follows the cursor, the index, and the pins, and sets the key for the editor already active. */
   public constructor(
     private readonly indexer: PinContextIndex,
     private readonly preferences: PinContextStore,
@@ -194,6 +195,7 @@ export class ActivePinContext implements vscode.Disposable {
     sync();
   }
 
+  /** Stops following; the context key keeps the value it last had. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }

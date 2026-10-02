@@ -21,6 +21,22 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 const decorationDelayMs = 150;
 
 /**
+ * The settings that change what a note's tags look like or where they are
+ * drawn, so a change to any of them redraws every visible editor.
+ */
+const REDRAW_SETTINGS = [
+  'deckard.parseInlineTags',
+  'deckard.highlightNoteSections',
+  'deckard.zenMode',
+  'deckard.entityNamespaceAliases',
+  'deckard.personMarker',
+  'deckard.notesFolder',
+  'deckard.exclude',
+  'files.exclude',
+  'search.exclude',
+];
+
+/**
  * Keeps tag appearance and click behavior synchronized in visible editors.
  *
  * Decoration types provide the visual affordance but no click callback, so a
@@ -123,17 +139,7 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.parseInlineTags') ||
-          event.affectsConfiguration('deckard.highlightNoteSections') ||
-          event.affectsConfiguration('deckard.zenMode') ||
-          event.affectsConfiguration('deckard.entityNamespaceAliases') ||
-          event.affectsConfiguration('deckard.personMarker') ||
-          event.affectsConfiguration('deckard.notesFolder') ||
-          event.affectsConfiguration('deckard.exclude') ||
-          event.affectsConfiguration('files.exclude') ||
-          event.affectsConfiguration('search.exclude')
-        ) {
+        if (REDRAW_SETTINGS.some((section) => event.affectsConfiguration(section))) {
           vscode.window.visibleTextEditors.forEach((editor) =>
             this.updateEditor(editor),
           );
@@ -256,6 +262,10 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
   }
 
+  /**
+   * Draws a note's tag boxes, then, when section highlighting is on, every
+   * tagged entry's hover and, in the active editor, the band.
+   */
   private decorate(editor: vscode.TextEditor): void {
     const content = editor.document.getText();
     const { parseInlineTags, entityNamespaceAliases, personMarker } = readParseOptions(editor.document.uri);
@@ -315,6 +325,10 @@ export class EditorTagDecorations implements vscode.Disposable {
     return entries;
   }
 
+  /**
+   * An entry's lines, from its first character to the end of its last line,
+   * clamped to the document so a stale entry never reaches past its end.
+   */
   private entryRange(editor: vscode.TextEditor, entry: EditorEntry): vscode.Range {
     const endLine = Math.min(entry.endLine, editor.document.lineCount) - 1;
     return new vscode.Range(
@@ -356,6 +370,7 @@ export class EditorTagDecorations implements vscode.Disposable {
     this.band = { editor, key };
   }
 
+  /** Takes the band out of an editor, and forgets it if it was drawn there. */
   private clearBand(editor: vscode.TextEditor): void {
     editor.setDecorations(this.sectionBandType, []);
     if (this.band?.editor === editor) {
@@ -363,7 +378,7 @@ export class EditorTagDecorations implements vscode.Disposable {
     }
   }
 
-
+  /** Whether the band and entry hovers are on for a note's folder. */
   private shouldHighlightNoteSections(document: vscode.TextDocument): boolean {
     const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
     // Zen quiets the editor too: the band behind the section being edited goes.
@@ -372,9 +387,12 @@ export class EditorTagDecorations implements vscode.Disposable {
       !configuration.get<boolean>('zenMode', false)
     );
   }
-
 }
 
+/**
+ * The documents the tag links are offered for, by language or by extension,
+ * so a note opened in another language mode still gets them.
+ */
 const markdownDocumentSelector: vscode.DocumentSelector = [
   { language: 'markdown' },
   { pattern: '**/*.md' },
@@ -398,10 +416,12 @@ function createTagOverviewUri(tagKey: string): vscode.Uri {
   return createTagCommandUri('deckard.showTagOverview', tagKey);
 }
 
+/** The command link that renames a tag, its key encoded the same way. */
 function createTagRenameUri(tagKey: string): vscode.Uri {
   return createTagCommandUri('deckard.renameTag', tagKey);
 }
 
+/** The command link that opens Related Notes on the entry at a line. */
 function createEntryRelatedNotesUri(
   documentUri: string,
   lineNumber: number,
@@ -413,6 +433,7 @@ function createEntryRelatedNotesUri(
   );
 }
 
+/** The command link that opens the ranking breakdown for the entry at a line. */
 function createEntryRelatedNotesDebugUri(
   documentUri: string,
   lineNumber: number,
@@ -424,6 +445,7 @@ function createEntryRelatedNotesDebugUri(
   );
 }
 
+/** A command link whose one argument is a tag key, encoded as JSON. */
 function createTagCommandUri(command: string, tagKey: string): vscode.Uri {
   return vscode.Uri.parse(
     `command:${command}?${encodeURIComponent(JSON.stringify([tagKey]))}`,

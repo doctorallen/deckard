@@ -12,6 +12,12 @@ import { measure } from '../../shared/timing';
 const UNREADABLE_REPEAT = 'unreadable-repeat';
 /** How long typing must pause before a changed note is checked again. */
 const CHECK_DELAY_MS = 300;
+/** The settings a change to which checks every open document again. */
+const RECHECK_SETTINGS = [
+  'deckard.editor.repeatDiagnostics',
+  'deckard.notesFolder',
+  'deckard.exclude',
+];
 
 /**
  * Marks an open task's repeat rule that Deckard cannot read, as a warning,
@@ -54,11 +60,7 @@ export class RepeatRuleHealth implements vscode.Disposable {
         this.diagnostics.delete(document.uri);
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.editor.repeatDiagnostics') ||
-          event.affectsConfiguration('deckard.notesFolder') ||
-          event.affectsConfiguration('deckard.exclude')
-        ) {
+        if (RECHECK_SETTINGS.some((section) => event.affectsConfiguration(section))) {
           this.checkOpen();
         }
       }),
@@ -129,10 +131,12 @@ export class RepeatRuleHealth implements vscode.Disposable {
       });
   }
 
+  /** Checks every document VS Code has open. */
   private checkOpen(): void {
     vscode.workspace.textDocuments.forEach((document) => this.check(document));
   }
 
+  /** Checks a changed document again once typing pauses. */
   private schedule(document: vscode.TextDocument): void {
     this.pending.schedule(document.uri.toString(), () => this.check(document));
   }

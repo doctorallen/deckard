@@ -58,6 +58,7 @@ export type StepRow =
   | { kind: 'suggest' }
   | { kind: 'separator' };
 
+/** A row of the list, and what choosing it does. */
 export interface StepItem extends vscode.QuickPickItem {
   row: StepRow;
 }
@@ -70,7 +71,9 @@ function button(icon: string, tooltip: string): vscode.QuickInputButton {
   return { iconPath: new vscode.ThemeIcon(icon), tooltip };
 }
 
+/** The box's hint while steps are typed. */
 export const STEP_PLACEHOLDER = 'Type a step and press Enter. Add as many as you need.';
+/** The box's hint once a model's steps are in the list. */
 export const SUGGESTED_PLACEHOLDER = 'Remove any you do not want, then choose Write.';
 
 /**
@@ -82,6 +85,7 @@ export class StepList {
   /** The new step being changed, while its words are in the box. */
   public editing: number | undefined;
 
+  /** A list with no new steps yet, showing the steps already written under the task. */
   public constructor(
     public readonly written: readonly WrittenStep[],
     /** The model's name, when Suggest steps is offered. */
@@ -95,13 +99,13 @@ export class StepList {
     const items: StepItem[] = [];
     if (typed) {
       items.push(
-        this.editing !== undefined
-          ? {
+        this.editing === undefined
+          ? { label: `$(add) Add "${typed}"`, row: { kind: 'add' }, alwaysShow: true }
+          : {
               label: `$(edit) Change step ${this.editing + 1} to "${typed}"`,
               row: { kind: 'change', index: this.editing },
               alwaysShow: true,
-            }
-          : { label: `$(add) Add "${typed}"`, row: { kind: 'add' }, alwaysShow: true },
+            },
       );
     }
     if (this.written.length > 0) {
@@ -169,12 +173,14 @@ export class StepList {
 
   /** Swaps a new step with the one above it. */
   public moveUp(index: number): void {
-    if (index > 0 && index < this.steps.length) {
-      [this.steps[index - 1], this.steps[index]] = [this.steps[index], this.steps[index - 1]];
-      this.editing = undefined;
+    if (!(index > 0 && index < this.steps.length)) {
+      return;
     }
+    [this.steps[index - 1], this.steps[index]] = [this.steps[index], this.steps[index - 1]];
+    this.editing = undefined;
   }
 
+  /** Takes a new step out of the list, and stops any change to a step under way. */
   public remove(index: number): void {
     this.steps.splice(index, 1);
     this.editing = undefined;
@@ -189,6 +195,7 @@ export class StepList {
   }
 }
 
+/** A heading between the list's parts; choosing it does nothing. */
 function separator(label: string): StepItem {
   return { label, kind: vscode.QuickPickItemKind.Separator, row: { kind: 'separator' } };
 }
@@ -226,105 +233,158 @@ export async function pickSteps(
   pick.ignoreFocusOut = true;
   pick.matchOnDescription = false;
   pick.matchOnDetail = false;
-  let request: vscode.CancellationTokenSource | undefined;
 
-  const redraw = (): void => {
+  return new Promise<string[] | undefined>((resolve) => {
+    new StepPickSession({ pick, list, title: target.title, suggester, model, resolve }).start();
+  });
+}
+
+/** What one showing of the list runs on, and where its answer goes. */
+interface StepPickOptions {
+  pick: vscode.QuickPick<StepItem>;
+  list: StepList;
+  /** The task's words, which are all Suggest steps sends. */
+  title: string;
+  suggester: StepSuggester | undefined;
+  model: { label: string; vendor?: string } | undefined;
+  /** Called once: with the steps on Write, or undefined when the list closes. */
+  resolve: (steps: string[] | undefined) => void;
+}
+
+/**
+ * The list on screen, from show to hide: draws it, takes each Enter and row
+ * button, runs Suggest steps, and answers once. A suggestion still running
+ * when the list closes is cancelled, and its answer dropped.
+ */
+class StepPickSession {
+  private settled = false;
+  private request: vscode.CancellationTokenSource | undefined;
+
+  /** Nothing is shown until start. */
+  public constructor(private readonly options: StepPickOptions) {}
+
+  /** Listens to the pick, draws the list, and shows it. */
+  public start(): void {
+    const { pick } = this.options;
+    pick.onDidChangeValue(() => this.redraw());
+    pick.onDidAccept(() => this.accept());
+    pick.onDidTriggerItemButton((event) => this.triggerButton(event));
+    pick.onDidHide(() => {
+      this.finish(undefined);
+      pick.dispose();
+    });
+    this.redraw();
+    pick.show();
+  }
+
+  /** Draws the rows for what is typed, with the one Enter would pick highlighted. */
+  private redraw(): void {
+    const { pick, list } = this.options;
     const items = list.items(pick.value);
     pick.items = items;
     const chosen = list.defaultRow(items, pick.value);
     pick.activeItems = chosen ? [chosen] : [];
-  };
+  }
 
-  return new Promise<string[] | undefined>((resolve) => {
-    let settled = false;
-    const finish = (steps: string[] | undefined): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      request?.cancel();
-      resolve(steps);
-      pick.hide();
-    };
-    const suggest = async (): Promise<void> => {
-      if (!suggester || !model) {
-        return;
-      }
-      request = new vscode.CancellationTokenSource();
-      pick.busy = true;
-      pick.enabled = false;
-      pick.placeholder = `Asking ${model.label} for steps…`;
-      try {
-        const steps = await suggester.suggest(target.title, request.token);
-        if (settled) {
-          return;
-        }
-        if (steps.length === 0) {
-          void vscode.window.showWarningMessage(`${model.label} suggested no steps. Type them instead.`);
-          pick.placeholder = STEP_PLACEHOLDER;
-        } else {
-          list.suggestSteps(steps);
-          pick.placeholder = SUGGESTED_PLACEHOLDER;
-        }
-      } catch (error) {
-        if (!settled) {
-          void vscode.window.showWarningMessage(describeSuggestFailure(model.label, error));
-          pick.placeholder = STEP_PLACEHOLDER;
-        }
-      } finally {
-        request = undefined;
-        pick.busy = false;
-        pick.enabled = true;
-        if (!settled) {
-          redraw();
-        }
-      }
-    };
+  /** Answers, the first time only, cancels a suggestion under way, and closes the list. */
+  private finish(steps: string[] | undefined): void {
+    if (this.settled) {
+      return;
+    }
+    this.settled = true;
+    this.request?.cancel();
+    this.options.resolve(steps);
+    this.options.pick.hide();
+  }
 
-    pick.onDidChangeValue(redraw);
-    pick.onDidAccept(() => {
-      const [item] = pick.selectedItems.length > 0 ? pick.selectedItems : pick.activeItems;
-      const row = item?.row ?? (pick.value.trim() ? { kind: 'add' as const } : undefined);
-      switch (row?.kind) {
-        case 'add':
-        case 'change':
-          list.take(pick.value);
-          pick.value = '';
-          redraw();
-          return;
-        case 'new':
-          list.editing = row.index;
-          pick.value = list.steps[row.index].text;
-          redraw();
-          return;
-        case 'write':
-          finish(list.steps.map((step) => step.text));
-          return;
-        case 'suggest':
-          void suggest();
-          return;
-        default:
-          return;
-      }
-    });
-    pick.onDidTriggerItemButton(({ item, button }) => {
-      if (item.row.kind !== 'new') {
+  /**
+   * Enter: adds or changes a step, puts a new step back in the box to
+   * change it, writes, or asks for suggestions. Typing with no row
+   * highlighted adds what was typed.
+   */
+  private accept(): void {
+    const { pick, list } = this.options;
+    const [item] = pick.selectedItems.length > 0 ? pick.selectedItems : pick.activeItems;
+    const row = item?.row ?? (pick.value.trim() ? { kind: 'add' as const } : undefined);
+    switch (row?.kind) {
+      case 'add':
+      case 'change':
+        list.take(pick.value);
+        pick.value = '';
+        this.redraw();
+        return;
+      case 'new':
+        list.editing = row.index;
+        pick.value = list.steps[row.index].text;
+        this.redraw();
+        return;
+      case 'write':
+        this.finish(list.steps.map((step) => step.text));
+        return;
+      case 'suggest':
+        void this.suggest();
+        return;
+      case 'written':
+      case 'separator':
+      case undefined:
+        return;
+    }
+  }
+
+  /** A new step's Move up or Remove button. */
+  private triggerButton({ item, button }: vscode.QuickPickItemButtonEvent<StepItem>): void {
+    const { list } = this.options;
+    if (item.row.kind !== 'new') {
+      return;
+    }
+    if (button.tooltip === MOVE_UP) {
+      list.moveUp(item.row.index);
+    } else if (button.tooltip === REMOVE) {
+      list.remove(item.row.index);
+    }
+    this.redraw();
+  }
+
+  /**
+   * Suggest steps: the list is busy and disabled while the model answers,
+   * then shows its steps, or a warning when it gave none or failed. An
+   * answer that comes after the list closed is dropped.
+   */
+  private async suggest(): Promise<void> {
+    const { pick, list, suggester, model, title } = this.options;
+    if (!suggester || !model) {
+      return;
+    }
+    this.request = new vscode.CancellationTokenSource();
+    pick.busy = true;
+    pick.enabled = false;
+    pick.placeholder = `Asking ${model.label} for steps…`;
+    try {
+      const steps = await suggester.suggest(title, this.request.token);
+      if (this.settled) {
         return;
       }
-      if (button.tooltip === MOVE_UP) {
-        list.moveUp(item.row.index);
-      } else if (button.tooltip === REMOVE) {
-        list.remove(item.row.index);
+      if (steps.length === 0) {
+        void vscode.window.showWarningMessage(`${model.label} suggested no steps. Type them instead.`);
+        pick.placeholder = STEP_PLACEHOLDER;
+      } else {
+        list.suggestSteps(steps);
+        pick.placeholder = SUGGESTED_PLACEHOLDER;
       }
-      redraw();
-    });
-    pick.onDidHide(() => {
-      finish(undefined);
-      pick.dispose();
-    });
-    redraw();
-    pick.show();
-  });
+    } catch (error) {
+      if (!this.settled) {
+        void vscode.window.showWarningMessage(describeSuggestFailure(model.label, error));
+        pick.placeholder = STEP_PLACEHOLDER;
+      }
+    } finally {
+      this.request = undefined;
+      pick.busy = false;
+      pick.enabled = true;
+      if (!this.settled) {
+        this.redraw();
+      }
+    }
+  }
 }
 
 /** The one message Suggest steps sends: the task's words, and nothing else. */

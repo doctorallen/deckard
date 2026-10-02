@@ -14,14 +14,21 @@ import { settingTarget, writeSetting } from './settings';
  * kept; Escape puts back the theme that was in use.
  */
 
+/** A picker row: the theme's name, its description, and whether it is in use. */
 export interface ThemeItem extends vscode.QuickPickItem {
   theme: DeckardTheme;
 }
 
+/** The part of package.json the theme descriptions are read from. */
 interface ThemeManifest {
   configuration?: { properties?: Record<string, { enumDescriptions?: string[] }> }[];
 }
 
+/**
+ * What Choose Theme… acts through: the picker, the setting, and the preview.
+ * Injected so a test can drive the picker and read what was previewed and
+ * written, without VS Code.
+ */
 export interface ChooseThemeDeps {
   createQuickPick(): vscode.QuickPick<ThemeItem>;
   /** Writes the theme kept; false when it could not be written. */
@@ -98,29 +105,61 @@ export async function chooseTheme(
   pick.items = items;
   pick.activeItems = items.filter((item) => item.theme === original);
 
+  return runPick(pick, deps, original);
+}
+
+/**
+ * Shows a theme on the open pages once the picker's active row has rested
+ * for `deps.delay`, so moving quickly through the list does not redraw every
+ * page for each row passed. The theme in use is shown by clearing the preview.
+ */
+class RestingPreview {
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Previews through `deps`, treating `original` as no preview at all. */
+  public constructor(
+    private readonly deps: ChooseThemeDeps,
+    private readonly original: DeckardTheme,
+  ) {}
+
+  /** Previews `theme` after the rest, replacing any preview still waiting. */
+  public schedule(theme: DeckardTheme | undefined): void {
+    this.cancel();
+    if (!theme) {
+      return;
+    }
+    this.timer = setTimeout(() => {
+      this.timer = undefined;
+      this.deps.preview(theme === this.original ? undefined : theme);
+    }, this.deps.delay ?? 120);
+  }
+
+  /** Drops a preview still waiting for its rest; nothing when none is. */
+  public cancel(): void {
+    if (this.timer === undefined) {
+      return;
+    }
+    clearTimeout(this.timer);
+    this.timer = undefined;
+  }
+}
+
+/**
+ * Shows the picker and resolves when it is hidden: with the theme kept by
+ * Enter, or undefined when it was dismissed, after putting the original back.
+ */
+function runPick(
+  pick: vscode.QuickPick<ThemeItem>,
+  deps: ChooseThemeDeps,
+  original: DeckardTheme,
+): Promise<DeckardTheme | undefined> {
   return new Promise((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    const preview = new RestingPreview(deps, original);
     let kept: DeckardTheme | undefined;
-    const settle = () => {
-      if (timer !== undefined) {
-        clearTimeout(timer);
-        timer = undefined;
-      }
-    };
     const disposables = [
-      pick.onDidChangeActive((active) => {
-        const theme = active[0]?.theme;
-        settle();
-        if (!theme) {
-          return;
-        }
-        timer = setTimeout(() => {
-          timer = undefined;
-          deps.preview(theme === original ? undefined : theme);
-        }, deps.delay ?? 120);
-      }),
+      pick.onDidChangeActive((active) => preview.schedule(active[0]?.theme)),
       pick.onDidAccept(async () => {
-        settle();
+        preview.cancel();
         const theme = pick.activeItems[0]?.theme ?? pick.selectedItems[0]?.theme;
         kept = theme;
         pick.hide();
@@ -132,7 +171,7 @@ export async function chooseTheme(
         }
       }),
       pick.onDidHide(() => {
-        settle();
+        preview.cancel();
         if (kept === undefined) {
           deps.preview(undefined);
         }

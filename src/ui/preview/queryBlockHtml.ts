@@ -26,6 +26,7 @@ import type { InlineToken } from '../../domain/model/inline';
 
 export { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
 
+/** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
 
 /**
@@ -52,16 +53,19 @@ export function addQueryBlockRenderer(
   md: MarkdownIt,
   source: QueryBlockPreviewSource,
 ): MarkdownIt {
+  // markdown-it calls a rule with five arguments, so they are taken as one
+  // rest tuple and handed on unchanged.
   const fallback: FenceRule =
     md.renderer.rules.fence ??
-    ((tokens, index, options, _env, self) =>
+    ((...[tokens, index, options, , self]: Parameters<FenceRule>) =>
       self.renderToken(tokens, index, options));
 
-  md.renderer.rules.fence = (tokens, index, options, env, self) => {
+  md.renderer.rules.fence = (...args) => {
+    const [tokens, index] = args;
     const token = tokens[index];
     const blockOptions = parseQueryBlockInfo(token.info);
     if (!blockOptions) {
-      return fallback(tokens, index, options, env, self);
+      return fallback(...args);
     }
     source.onDidRender?.();
     return renderQueryBlockHtml(token.content, blockOptions, source.getIndex(), {
@@ -124,6 +128,7 @@ export function renderQueryBlockHtml(
   ].join('');
 }
 
+/** The block's label and query, and its counts when the query ran without error. */
 function renderHeader(query: string, counts?: string): string {
   return [
     '<div class="deckard-query-header">',
@@ -136,6 +141,7 @@ function renderHeader(query: string, counts?: string): string {
   ].join('');
 }
 
+/** A warning or error from evaluating the query; an error is marked so it reads as one. */
 function renderMessage(message: QueryBlockMessage): string {
   const className =
     message.severity === 'error'
@@ -144,6 +150,10 @@ function renderMessage(message: QueryBlockMessage): string {
   return `<p class="${className}">${escapeHtml(message.text)}</p>`;
 }
 
+/**
+ * The notes, then the tasks as a list or a table, or one line saying nothing
+ * matches when there are neither.
+ */
 function renderResults(
   snapshot: QueryBlockSnapshot,
   options: QueryBlockOptions,
@@ -153,11 +163,15 @@ function renderResults(
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
   }
   return [
-    ...renderGroup('notes', 'Notes', snapshot.notes, snapshot.noteCount, renderNote),
+    ...renderGroup(
+      { kind: 'notes', label: 'Notes', items: snapshot.notes, total: snapshot.noteCount },
+      renderNote,
+    ),
     ...(options.view === 'table'
       ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context)
-      : renderGroup('tasks', 'Tasks', snapshot.tasks, snapshot.taskCount, (item) =>
-          renderTask(item, context),
+      : renderGroup(
+          { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount },
+          (item) => renderTask(item, context),
         )),
   ];
 }
@@ -207,15 +221,20 @@ function renderTaskTable(
   ];
 }
 
+/** One list of results: its kind, its label, the items shown, and how many matched. */
+interface ResultGroup {
+  kind: 'notes' | 'tasks';
+  label: string;
+  items: QueryBlockItem[];
+  total: number;
+}
+
 /**
  * One labeled list. The label keeps notes and tasks apart, and the footer
  * says when `limit` has hidden some of them.
  */
 function renderGroup(
-  kind: 'notes' | 'tasks',
-  label: string,
-  items: QueryBlockItem[],
-  total: number,
+  { kind, label, items, total }: ResultGroup,
   renderItem: (item: QueryBlockItem) => string,
 ): string[] {
   if (items.length === 0) {
@@ -242,13 +261,13 @@ function renderNote(item: QueryBlockItem): string {
   return `<li class="deckard-query-item">${renderLink(item)}${renderMeta(item)}</li>`;
 }
 
-/**
- * Puts the checkbox in its own column so a wrapped title and its details line
- * up under the title rather than under the box.
- */
-
-/** A task's priority as the badge the pages draw: an arrow and the word. */
+/** The arrow each known priority is drawn with; medium has none. */
 const PRIORITY_MARKS: Record<string, string> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
+
+/**
+ * A task's priority as the badge the pages draw: an arrow and the word. A
+ * priority Deckard does not know is written out as text, without a badge.
+ */
 function renderPriority(priority: string): string {
   const key = priority.toLowerCase();
   if (!(key in PRIORITY_MARKS)) {
@@ -259,29 +278,18 @@ function renderPriority(priority: string): string {
   return `<span class="deckard-query-priority priority-${key}" title="${word} priority">${mark ? `<span aria-hidden="true">${mark}</span> ` : ''}${word}</span>`;
 }
 
-/** One task row, its due date worded against the context's today and policy. */
+/**
+ * One task row, its due date worded against the context's today and policy.
+ * The checkbox sits in its own column so a wrapped title and its details line
+ * up under the title rather than under the box.
+ */
 function renderTask(item: QueryBlockItem, context: QueryContext): string {
-  const { now, taskPolicy } = context;
   const done = item.completed === true;
-  const due =
-    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, taskPolicy, item.dueText) : undefined;
-  const overdue =
-    !done && item.dueAt !== undefined && item.dueAt < startOfDay(now) && !due?.stale;
-  // An open task's due date reads beside today, "overdue 12 days ·
-  // 2026-09-01", so the state is in the words and not the color alone.
-  const dueLabel =
-    item.dueAt !== undefined && !done
-      ? describeDueDate(item.dueAt, now, taskPolicy, item.dueText).label
-      : item.dueText
-        ? `due ${item.dueText}`
-        : '';
   const details = [
-    dueLabel
-      ? `<span class="deckard-query-due${overdue ? ' is-overdue' : due?.stale ? ' is-stale' : ''}">${escapeHtml(dueLabel)}</span>`
-      : '',
-    item.scheduledAt !== undefined
-      ? `scheduled ${formatIsoDate(item.scheduledAt)}`
-      : '',
+    renderTaskDue(item, context),
+    item.scheduledAt === undefined
+      ? ''
+      : `scheduled ${formatIsoDate(item.scheduledAt)}`,
     item.priority ? renderPriority(item.priority) : '',
     item.recurrence ? `repeats ${escapeHtml(item.recurrence)}` : '',
   ]
@@ -298,6 +306,35 @@ function renderTask(item: QueryBlockItem, context: QueryContext): string {
   ].join('');
 }
 
+/**
+ * A task's due date as its details' lead, or nothing when it has none. An
+ * open task's due date reads beside today, "overdue 12 days · 2026-09-01",
+ * so the state is in the words and not the color alone; a done task keeps
+ * the date as written.
+ */
+function renderTaskDue(item: QueryBlockItem, context: QueryContext): string {
+  const { now, taskPolicy } = context;
+  const done = item.completed === true;
+  if (item.dueAt === undefined || done) {
+    return item.dueText ? `<span class="deckard-query-due">${escapeHtml(`due ${item.dueText}`)}</span>` : '';
+  }
+  const due = describeDueDate(item.dueAt, now, taskPolicy, item.dueText);
+  if (!due.label) {
+    return '';
+  }
+  const overdue = item.dueAt < startOfDay(now) && !due.stale;
+  return `<span class="deckard-query-due${dueClass(overdue, due.stale)}">${escapeHtml(due.label)}</span>`;
+}
+
+/** The class a due date adds: overdue wins over stale, and neither adds none. */
+function dueClass(overdue: boolean, stale: boolean | undefined): string {
+  if (overdue) {
+    return ' is-overdue';
+  }
+  return stale ? ' is-stale' : '';
+}
+
+/** An item's title, linked to its line in the source so a click opens it there. */
 function renderLink(item: QueryBlockItem): string {
   const href = createPreviewSourceHref(item.filePath, item.line);
   return `<a class="deckard-query-title" href="${escapeHtml(href)}">${renderTitleHtml(item.title)}</a>`;
@@ -327,6 +364,7 @@ function writeInlineHtml(tokens: readonly InlineToken[]): string {
   return tokens.map(writeInlineToken).join('');
 }
 
+/** One token as HTML, by the rules writeInlineHtml lists. */
 function writeInlineToken(token: InlineToken): string {
   switch (token.kind) {
     case 'text':
@@ -372,6 +410,7 @@ function describeLocation(item: QueryBlockItem): string {
     .join(' · ');
 }
 
+/** Local midnight of the day a timestamp falls on. */
 function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);

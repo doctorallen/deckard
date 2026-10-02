@@ -22,8 +22,9 @@ export async function offerSavedSearchOnHome(
   if (choice === SHOW_RESULTS_ON_HOME) {
     await preferences.homeWidgets.addSavedSearchWidget(saved.id);
   }
-  if (choice === SHOW_RESULTS_ON_HOME || choice === OPEN_HOME) {
-    await preferences.homeWidgets.setDashboardMode('home');
-    await vscode.commands.executeCommand('deckard.showDashboard');
+  if (choice !== SHOW_RESULTS_ON_HOME && choice !== OPEN_HOME) {
+    return;
   }
+  await preferences.homeWidgets.setDashboardMode('home');
+  await vscode.commands.executeCommand('deckard.showDashboard');
 }

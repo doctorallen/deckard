@@ -22,17 +22,25 @@ import { findPeriodicNoteNames, listDailyNotes } from './dailyNote';
 export const TRY_NEXT_RETIRED = 'deckard.tryNext.retired';
 export const TRY_NEXT_SNOOZED = 'deckard.tryNext.snoozed';
 
+/**
+ * What Home's Try next has been told, read and written in the workspace's
+ * memento, so a suggestion taken up or put off stays that way across
+ * windows of the same workspace.
+ */
 export class TryNextLedger implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   /** Fires when a suggestion is retired or put off, so Home redraws. */
   public readonly onDidChange = this.changeEmitter.event;
 
+  /** Over the workspace's memento, under TRY_NEXT_RETIRED and TRY_NEXT_SNOOZED. */
   public constructor(private readonly state: vscode.Memento) {}
 
+  /** The suggestions never to offer again; a new set, so changing it writes nothing. */
   public retired(): Set<string> {
     return new Set(this.state.get<string[]>(TRY_NEXT_RETIRED, []));
   }
 
+  /** When each suggestion put off may be offered again, in epoch milliseconds. */
   public snoozed(): Record<string, number> {
     return this.state.get<Record<string, number>>(TRY_NEXT_SNOOZED, {});
   }
@@ -54,6 +62,7 @@ export class TryNextLedger implements vscode.Disposable {
     this.changeEmitter.fire();
   }
 
+  /** Stops onDidChange; what was stored stays. */
   public dispose(): void {
     this.changeEmitter.dispose();
   }

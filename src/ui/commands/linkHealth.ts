@@ -238,10 +238,12 @@ export class LinkHealth implements vscode.Disposable {
       });
   }
 
+  /** Checks every note open in an editor. */
   private checkOpenNotes(): void {
     vscode.workspace.textDocuments.forEach((document) => this.check(document));
   }
 
+  /** Checks a note once its typing has paused for CHECK_DELAY_MS, replacing a check still waiting. */
   private scheduleCheck(document: vscode.TextDocument): void {
     const key = document.uri.toString();
     clearTimeout(this.pendingChecks.get(key));
@@ -255,6 +257,7 @@ export class LinkHealth implements vscode.Disposable {
   }
 }
 
+/** A problem link as a diagnostic: information for a missing note, a warning for an ambiguous name. */
 function toDiagnostic(problem: LinkProblem): vscode.Diagnostic {
   const range = new vscode.Range(
     problem.line,

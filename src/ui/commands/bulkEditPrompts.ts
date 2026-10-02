@@ -76,6 +76,7 @@ export function describeEntry(entry: BulkEntry): {
   };
 }
 
+/** The last segment of a workspace-relative path. */
 function fileName(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;
 }

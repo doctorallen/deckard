@@ -387,6 +387,11 @@ function describeShared(sharedCount: number): string {
   return sharedCount === 1 ? '1 carries both' : `${sharedCount} carry both`;
 }
 
+/**
+ * The tag to rename or merge: the one a caller named, resolved through its
+ * aliases, or one picked from every indexed tag. A named tag the index does
+ * not have is reported; undefined then, with no tags, or on Escape.
+ */
 async function chooseIndexedTag(
   index: WorkspaceIndex,
   requestedTagKey: string | undefined,
@@ -430,6 +435,7 @@ async function chooseIndexedTag(
   return picked?.tag;
 }
 
+/** The tag to merge into, picked from every other indexed tag; undefined when there is none or on Escape. */
 async function chooseMergeTarget(
   index: WorkspaceIndex,
   sourceTag: TagInfo,
@@ -525,6 +531,11 @@ export function nameSelection(label: string): [number, number] {
   return [slash >= 0 ? slash + 1 : 1, label.length];
 }
 
+/**
+ * The Rename box: the tag's label with its name selected, judged as it is
+ * typed. An error refuses Enter; a warning or a note only informs. Undefined
+ * on Escape.
+ */
 async function chooseReplacementTag(
   index: WorkspaceIndex,
   sourceTag: TagInfo,
@@ -558,7 +569,7 @@ async function chooseReplacementTag(
   );
 }
 
-
+/** The tag settings for a note's folder, or the workspace's when none is given. */
 function getParseOptions(uri?: vscode.Uri): Required<RenameTagOptions> {
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
   return {
@@ -571,6 +582,7 @@ function getParseOptions(uri?: vscode.Uri): Required<RenameTagOptions> {
   };
 }
 
+/** Whether typed text starts with a tag marker: #, @, or the person marker set. */
 function hasTagMarker(value: string, personMarker?: string): boolean {
   const activePersonMarker = getPersonMarker(personMarker);
   return (
@@ -580,6 +592,11 @@ function hasTagMarker(value: string, personMarker?: string): boolean {
   );
 }
 
+/**
+ * A name typed without a marker, as a tag in the source tag's namespace: a
+ * person keeps its marker, and a #tag its namespace. Undefined for a source
+ * tag that is neither.
+ */
 function inferBareTag(
   value: string,
   sourceTag: TagReference,
@@ -600,6 +617,7 @@ function inferBareTag(
   return namespace ? `#${namespace}/${value}` : `#${value}`;
 }
 
+/** Sorts in place, by label then key, so a pick lists tags alphabetically. */
 function sortTags(tags: TagInfo[]): TagInfo[] {
   return tags.sort(
     (left, right) =>
@@ -608,6 +626,7 @@ function sortTags(tags: TagInfo[]): TagInfo[] {
   );
 }
 
+/** "1 entry" or "N entries". */
 function formatEntries(count: number): string {
   return pluralize(count, 'entry', 'entries');
 }

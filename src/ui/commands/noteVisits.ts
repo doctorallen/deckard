@@ -3,6 +3,31 @@ import * as vscode from 'vscode';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 
+/** What NoteVisits reads from the index: the notes it may count and the headings in them. */
+export interface NoteVisitSource {
+  getSnapshot(): WorkspaceIndex;
+  getFilePath(uri: vscode.Uri): string;
+  isNotesFile(uri: vscode.Uri): boolean;
+}
+
+/** The timings, clock, and editor events NoteVisits runs on; a test gives its own. */
+export interface NoteVisitOptions {
+  /** How long a note must stay active to count. */
+  dwellMs?: number;
+  /** How long before the same heading counts again. */
+  repeatMs?: number;
+  /** The clock a visit is stamped with. */
+  now?: () => number;
+  /** The editor events it follows; VS Code's own unless a test gives its own. */
+  window?: NoteVisitWindow;
+}
+
+/** The part of `vscode.window` NoteVisits listens to, so a test can stand in for it. */
+export type NoteVisitWindow = Pick<
+  typeof vscode.window,
+  'onDidChangeActiveTextEditor' | 'onDidChangeWindowState' | 'activeTextEditor' | 'state'
+>;
+
 /**
  * A note counts as opened when it stays open, however it was opened.
  *
@@ -14,27 +39,6 @@ import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
  * in, and again only after ten minutes, so flipping between two tabs is not
  * a dozen visits.
  */
-export interface NoteVisitSource {
-  getSnapshot(): WorkspaceIndex;
-  getFilePath(uri: vscode.Uri): string;
-  isNotesFile(uri: vscode.Uri): boolean;
-}
-
-export interface NoteVisitOptions {
-  /** How long a note must stay active to count. */
-  dwellMs?: number;
-  /** How long before the same heading counts again. */
-  repeatMs?: number;
-  now?: () => number;
-  /** The editor events it follows; VS Code's own unless a test gives its own. */
-  window?: NoteVisitWindow;
-}
-
-export type NoteVisitWindow = Pick<
-  typeof vscode.window,
-  'onDidChangeActiveTextEditor' | 'onDidChangeWindowState' | 'activeTextEditor' | 'state'
->;
-
 export class NoteVisits implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -43,6 +47,7 @@ export class NoteVisits implements vscode.Disposable {
   private readonly now: () => number;
   private readonly window: NoteVisitWindow;
 
+  /** Starts watching at once, and counts the editor already active if it stays. */
   public constructor(
     private readonly indexer: NoteVisitSource,
     private readonly preferences: Pick<PreferenceServices, 'reader' | 'usage'>,
@@ -65,18 +70,26 @@ export class NoteVisits implements vscode.Disposable {
     this.start(this.window.activeTextEditor);
   }
 
+  /** Stops watching; a visit still waiting out its dwell is not counted. */
   public dispose(): void {
     this.cancel();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
+  /** Drops the visit waiting out its dwell, if there is one. */
   private cancel(): void {
-    if (this.timer !== undefined) {
-      clearTimeout(this.timer);
-      this.timer = undefined;
+    if (this.timer === undefined) {
+      return;
     }
+    clearTimeout(this.timer);
+    this.timer = undefined;
   }
 
+  /**
+   * Waits out the dwell for a note in this editor, then counts it if it is
+   * still the active editor of a focused window. Anything that is not a note
+   * file only cancels the wait.
+   */
   private start(editor: vscode.TextEditor | undefined): void {
     this.cancel();
     const document = editor?.document;
@@ -93,6 +106,7 @@ export class NoteVisits implements vscode.Disposable {
     }, this.dwellMs);
   }
 
+  /** Counts a visit to the heading at this line, unless that heading was counted within repeatMs. */
   private async record(uri: vscode.Uri, line: number): Promise<void> {
     const file = this.indexer.getSnapshot().files.get(this.indexer.getFilePath(uri));
     const section = file ? sectionForVisit(file, line) : undefined;

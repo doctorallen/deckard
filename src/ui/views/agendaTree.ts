@@ -18,6 +18,7 @@ import {
 // name stays here for the modules that import it from the view.
 export { groupColumnId } from '../../domain/tasks/agendaGroups';
 
+/** What the Tasks view reads from the indexer, and when it redraws. */
 interface AgendaIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getTask(taskId: string): Task | undefined;
@@ -50,6 +51,10 @@ export interface AgendaTreeServices {
   contextKeys: { publish(keys: { filtered: boolean; querySet: boolean }): void };
 }
 
+/**
+ * A row of the Tasks view: a group, a task in it, the "Show N more" row
+ * under a group cut short, or one of a task's steps.
+ */
 export type AgendaNode =
   | { kind: 'group'; group: AgendaGroup; groupBy: AgendaGroupBy }
   | {
@@ -76,6 +81,7 @@ export type AgendaNode =
  */
 export const OVERDUE_ROWS = 5;
 
+/** The icon each date group is drawn with; every upcoming day shares one. */
 const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   overdue: new vscode.ThemeIcon(
     'warning',
@@ -88,6 +94,17 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   needsdate: new vscode.ThemeIcon('history'),
   donetoday: new vscode.ThemeIcon('pass'),
 };
+
+/**
+ * The menus a group offers beyond the default, by group id. Overdue, and
+ * what needs a new date, are told apart: they are the groups offered a date
+ * for all beside their name.
+ */
+const GROUP_CONTEXT_VALUES: ReadonlyMap<string, string> = new Map([
+  ['overdue', 'deckardAgendaGroup.overdue'],
+  ['needsdate', 'deckardAgendaGroup.needsDate'],
+  ['donetoday', 'deckardAgendaDoneGroup'],
+]);
 
 /** The groups that start folded: what can wait, out of the way of what cannot. */
 const FOLDED_GROUPS: ReadonlySet<string> = new Set(['later', 'nodate', 'needsdate', 'donetoday']);
@@ -190,6 +207,7 @@ export class AgendaTreeProvider
     );
   }
 
+  /** Draws a row: a group, a task, a step, or the row that shows the rest. */
   public getTreeItem(node: AgendaNode): vscode.TreeItem {
     if (node.kind === 'more') {
       return createMoreItem(node);
@@ -284,6 +302,7 @@ export class AgendaTreeProvider
     }));
   }
 
+  /** Stops listening to the index, the settings, the window, and the checkboxes. */
   public dispose(): void {
     this.disposables.forEach((disposable) => disposable.dispose());
   }
@@ -295,8 +314,7 @@ export class AgendaTreeProvider
    * line as it is now.
    */
   public tasksFor(node?: AgendaNode, selected?: readonly AgendaNode[]): Task[] {
-    const nodes =
-      node && selected?.includes(node) ? selected : node ? [node] : [];
+    const nodes = menuNodes(node, selected);
     const seen = new Set<string>();
     const tasks: Task[] = [];
     for (const each of nodes) {
@@ -439,10 +457,15 @@ export class AgendaTreeProvider
     this.refresh();
   }
 
+  /** Asks VS Code to draw the view again, which rebuilds the groups. */
   private refresh(): void {
     this.changeEmitter.fire();
   }
 
+  /**
+   * Sets the view's message and its badge of overdue and due-today tasks;
+   * nothing before the view is attached.
+   */
   private setStatus(message: string | undefined, urgent: number): void {
     if (!this.view) {
       return;
@@ -457,6 +480,10 @@ export class AgendaTreeProvider
         : undefined;
   }
 
+  /**
+   * Completes or reopens the tasks whose boxes were clicked, and redraws if
+   * any write failed, so its box shows the line as it still is.
+   */
   private async completeTasks(
     event: vscode.TreeCheckboxChangeEvent<AgendaNode>,
   ): Promise<void> {
@@ -517,6 +544,24 @@ export function createTaskTooltip(entry: AgendaEntry): vscode.MarkdownString {
   return tooltip;
 }
 
+/**
+ * The rows a menu command was run on: every selected row when the one
+ * right-clicked is among them, else that row, and none from the palette.
+ */
+function menuNodes(
+  node: AgendaNode | undefined,
+  selected: readonly AgendaNode[] | undefined,
+): readonly AgendaNode[] {
+  if (!node) {
+    return [];
+  }
+  return selected?.includes(node) ? selected : [node];
+}
+
+/**
+ * A group's row: its count, its icon, and the menus it offers. What can wait
+ * starts folded, and a tag group says what dropping a task on it writes.
+ */
 function createGroupItem(
   group: AgendaGroup,
   groupBy: AgendaGroupBy,
@@ -538,19 +583,11 @@ function createGroupItem(
   item.iconPath =
     GROUP_ICONS[group.id.startsWith('upcoming:') ? 'upcoming' : group.id] ??
     GROUPING_ICONS[groupBy];
-  // Overdue, and what needs a new date, are told apart: they are the groups
-  // offered a date for all beside their name.
-  item.contextValue =
-    group.id === 'overdue'
-      ? 'deckardAgendaGroup.overdue'
-      : group.id === 'needsdate'
-        ? 'deckardAgendaGroup.needsDate'
-        : group.id === 'donetoday'
-          ? 'deckardAgendaDoneGroup'
-          : 'deckardAgendaGroup';
+  item.contextValue = GROUP_CONTEXT_VALUES.get(group.id) ?? 'deckardAgendaGroup';
   return item;
 }
 
+/** The row under a group cut short, which shows the rest of it when chosen. */
 function createMoreItem(node: { groupId: string; hidden: number }): vscode.TreeItem {
   const item = new vscode.TreeItem(
     `Show ${node.hidden} more`,
@@ -566,6 +603,10 @@ function createMoreItem(node: { groupId: string; hidden: number }): vscode.TreeI
   return item;
 }
 
+/**
+ * A task's row: its checkbox, its details, its menus, and a click that
+ * opens its line; it folds open onto its steps when it has any.
+ */
 function createTaskItem(
   entry: AgendaEntry,
   uri: vscode.Uri | undefined,

@@ -8,14 +8,6 @@ import { WorkspaceIndex } from '../../core/types';
 import { readQueryContext } from '../commands/queryContext';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
-/**
- * What is due, in the status bar, and a reminder at an hour you choose.
- *
- * Everything else Deckard shows waits for a view to be opened. This is the
- * one count visible while you are writing code, and selecting it opens the
- * Tasks view, where the tasks themselves are.
- */
-
 /** Open tasks that want attention today: overdue ones, and today's. */
 export interface DueTaskCounts {
   overdue: number;
@@ -137,6 +129,7 @@ const CHECK_INTERVAL_MS = 60 * 1000;
 /** The longest a window waits before its first check, so windows opened together do not check at once. */
 const START_SPREAD_MS = 20 * 1000;
 
+/** What the count reads from the indexer, and when it redraws. */
 interface StatusBarIndexSource {
   readonly ready: Promise<void>;
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
@@ -146,14 +139,50 @@ interface StatusBarIndexSource {
 /** Where the day of the last reminder is kept: VS Code's global state. */
 type ReminderMemory = Pick<vscode.Memento, 'get' | 'update'>;
 
+/** `deckard.agenda.query`, so the count is of what the Tasks view lists. */
 function readAgendaQuery(): string {
   return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
 }
 
 /** The command that opens the Tasks view, contributed by VS Code per view. */
 const SHOW_AGENDA = 'deckard.agenda.focus';
+/** The command that moves every overdue task to a new date. */
 const RESCHEDULE_OVERDUE = 'deckard.rescheduleOverdue';
 
+/**
+ * What a reminder's buttons do, by label. What is overdue can be moved on
+ * from the reminder, and a reminder that is no longer wanted can be turned
+ * off where it is heard, not in Settings.
+ */
+const REMINDER_ACTIONS: Record<string, () => Thenable<unknown>> = {
+  'Open Tasks View': () => vscode.commands.executeCommand(SHOW_AGENDA),
+  'Reschedule Overdue…': () => vscode.commands.executeCommand(RESCHEDULE_OVERDUE),
+  'Turn Off Reminders': turnOffReminders,
+};
+
+/**
+ * Clears `deckard.taskReminderTime` where it was set, so a workspace's own
+ * hour is the one undone.
+ */
+function turnOffReminders(): Thenable<void> {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  const setting = configuration.inspect<string>('taskReminderTime');
+  return configuration.update(
+    'taskReminderTime',
+    undefined,
+    setting?.workspaceValue === undefined
+      ? vscode.ConfigurationTarget.Global
+      : vscode.ConfigurationTarget.Workspace,
+  );
+}
+
+/**
+ * What is due, in the status bar, and a reminder at an hour you choose.
+ *
+ * Everything else Deckard shows waits for a view to be opened. This is the
+ * one count visible while you are writing code, and selecting it opens the
+ * Tasks view, where the tasks themselves are.
+ */
 export class TaskStatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly disposables: vscode.Disposable[] = [];
@@ -163,6 +192,11 @@ export class TaskStatusBar implements vscode.Disposable {
   private lastRefreshDate: string | undefined;
   private disposed = false;
 
+  /**
+   * Creates the item and starts listening at once. The first check waits
+   * for the index, then up to `START_SPREAD_MS` more unless
+   * `options.startDelayMs` says otherwise, and checks repeat every minute.
+   */
   public constructor(
     private readonly indexer: StatusBarIndexSource,
     private readonly memory: ReminderMemory,
@@ -214,6 +248,7 @@ export class TaskStatusBar implements vscode.Disposable {
     });
   }
 
+  /** Stops the checks, including one still waiting for the index, and removes the item. */
   public dispose(): void {
     this.disposed = true;
     clearTimeout(this.startDelay);
@@ -320,8 +355,6 @@ export class TaskStatusBar implements vscode.Disposable {
     if (counts.overdue + counts.today === 0) {
       return;
     }
-    // What is overdue can be moved on from here, and a reminder that is no
-    // longer wanted can be turned off where it is heard, not in Settings.
     const choices = counts.overdue > 0
       ? ['Open Tasks View', 'Reschedule Overdue…', 'Turn Off Reminders']
       : ['Open Tasks View', 'Turn Off Reminders'];
@@ -329,21 +362,8 @@ export class TaskStatusBar implements vscode.Disposable {
       `Deckard: ${describeDueTasksAtLength(counts)}`,
       ...choices,
     );
-    if (choice === 'Open Tasks View') {
-      await vscode.commands.executeCommand(SHOW_AGENDA);
-    } else if (choice === 'Reschedule Overdue…') {
-      await vscode.commands.executeCommand(RESCHEDULE_OVERDUE);
-    } else if (choice === 'Turn Off Reminders') {
-      // Cleared where it was set, so a workspace's own hour is the one undone.
-      const configuration = vscode.workspace.getConfiguration('deckard');
-      const setting = configuration.inspect<string>('taskReminderTime');
-      await configuration.update(
-        'taskReminderTime',
-        undefined,
-        setting?.workspaceValue !== undefined
-          ? vscode.ConfigurationTarget.Workspace
-          : vscode.ConfigurationTarget.Global,
-      );
+    if (choice) {
+      await REMINDER_ACTIONS[choice]();
     }
   }
 }

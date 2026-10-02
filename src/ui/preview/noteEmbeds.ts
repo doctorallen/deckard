@@ -18,20 +18,13 @@ export {
 } from '../../domain/notes/embeds';
 export type { ResolvedEmbed, SourceParser } from '../../domain/notes/embeds';
 
-/**
- * Draws `![[Note]]`, `![[Note#Heading]]`, and `![[Note#^id]]` in VS Code's
- * Markdown preview as the note, section, or line they name.
- *
- * Links to a heading or a marked line already resolve, complete, preview on
- * hover, and count as backlinks; an embed is the same reference read in
- * place. It needs no minted ids, which is the part Deckard deliberately
- * leaves out: what a heading or a `^marker` names is already enough.
- */
-
 /** How deep an embed inside an embed is drawn before it becomes a link. */
 const MAX_DEPTH = 3;
 
-
+/**
+ * What the embed rule needs from the extension host: the index to resolve a
+ * target against, and a way to say a preview has drawn one.
+ */
 export interface NoteEmbedSource {
   /** Undefined until the first workspace scan finishes. */
   getIndex(): WorkspaceIndex | undefined;
@@ -48,9 +41,15 @@ interface EmbedToken {
 }
 
 /**
- * Adds the embed rule to one preview engine. An embed sits alone on its line,
- * the way a block quote or a fence does; `![[…]]` written inside a sentence
- * stays the text its author typed.
+ * Adds the embed rule to one preview engine, which draws `![[Note]]`,
+ * `![[Note#Heading]]`, and `![[Note#^id]]` as the note, section, or line they
+ * name. An embed sits alone on its line, the way a block quote or a fence
+ * does; `![[…]]` written inside a sentence stays the text its author typed.
+ *
+ * Links to a heading or a marked line already resolve, complete, preview on
+ * hover, and count as backlinks; an embed is the same reference read in
+ * place. It needs no minted ids, which is the part Deckard deliberately
+ * leaves out: what a heading or a `^marker` names is already enough.
  */
 export function addNoteEmbedRenderer(
   md: MarkdownIt,
@@ -129,6 +128,10 @@ export function addNoteEmbedRenderer(
   return md;
 }
 
+/**
+ * The line above an embed that names what it shows, linked to its source
+ * when there is one to open.
+ */
 function renderHeader(title: string, href?: string): string {
   const label = escapeHtml(title);
   return [

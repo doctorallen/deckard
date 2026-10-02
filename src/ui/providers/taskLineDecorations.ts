@@ -8,6 +8,15 @@ import { readQueryContext } from '../commands/queryContext';
 /** How long typing must pause before a changed note is redrawn. */
 const DELAY_MS = 150;
 
+/** The settings a change to which redraws every visible note's marks. */
+const REDRAW_SETTINGS = [
+  'deckard.editor',
+  'deckard.zenMode',
+  'deckard.tasks.needsNewDateAfterDays',
+  'deckard.notesFolder',
+  'deckard.exclude',
+];
+
 /** Reads the three settings the marks answer to, for one note. */
 function readOptions(uri: vscode.Uri): { dim: boolean; hints: boolean } {
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
@@ -66,13 +75,7 @@ export class TaskLineDecorations implements vscode.Disposable {
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.editor') ||
-          event.affectsConfiguration('deckard.zenMode') ||
-          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays') ||
-          event.affectsConfiguration('deckard.notesFolder') ||
-          event.affectsConfiguration('deckard.exclude')
-        ) {
+        if (REDRAW_SETTINGS.some((section) => event.affectsConfiguration(section))) {
           this.updateAll();
         }
       }),
@@ -145,6 +148,7 @@ export class TaskLineDecorations implements vscode.Disposable {
     );
   }
 
+  /** Redraws a changed note's visible editors once typing pauses. */
   private schedule(document: vscode.TextDocument): void {
     const key = document.uri.toString();
     this.pending.schedule(key, () => {

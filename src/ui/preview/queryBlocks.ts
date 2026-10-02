@@ -19,6 +19,7 @@ import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
 
+/** The one thing the blocks need from the indexer: its published snapshots. */
 interface IndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
 }
@@ -41,6 +42,10 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
 
   public readonly onDidChangeCodeLenses = this.changeEmitter.event;
 
+  /**
+   * Starts listening at once: each published index is kept for the lenses
+   * and, once a preview has drawn a block, refreshes the open previews.
+   */
   public constructor(indexer: IndexSource) {
     this.disposables = [
       this.changeEmitter,
@@ -82,6 +87,11 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);
   }
 
+  /**
+   * The lenses above each query block in a Markdown note: its counts, or the
+   * error that stops it, and the action that opens it on a search page. Any
+   * other file gets none.
+   */
   public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
     if (!isMarkdownFile(document.uri)) {
       return [];
@@ -97,6 +107,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     );
   }
 
+  /** Stops listening to the indexer and unregisters the lens provider. */
   public dispose(): void {
     this.disposables.forEach((disposable) => disposable.dispose());
   }

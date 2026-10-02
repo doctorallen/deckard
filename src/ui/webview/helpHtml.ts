@@ -161,7 +161,6 @@ function renderSettingsTables(manifest: HelpManifest): string {
     : '';
 }
 
-/** The escaping the page's own markup uses; nothing here is user content. */
 /** A Help section's way into the guide page that goes into detail. */
 function renderReadMore(section: string): string {
   const target = HELP_READ_MORE[section];
@@ -171,10 +170,9 @@ function renderReadMore(section: string): string {
   return `<p class="read-more"><a href="#" data-guide-page="${target.page}"${target.anchor ? ` data-guide-anchor="${target.anchor}"` : ''}>Read more: ${escapeHtml(GUIDE_PAGES[target.page])} →</a></p>`;
 }
 
-/**
- * Builds a static, navigable Help page so guidance is available offline.
- */
+/** What a Help page is drawn for, beyond the manifest; each is optional. */
 export interface HelpOptions {
+  /** The platform whose key bindings the command table shows; the running one without. */
   platform?: NodeJS.Platform;
   /** The shipped changelog's releases, for What's new. */
   releases?: readonly Release[];
@@ -186,6 +184,11 @@ export interface HelpOptions {
   theme?: DeckardTheme;
 }
 
+/**
+ * Builds a static, navigable Help page so guidance is available offline:
+ * every section is written into the page, and the command names in it are
+ * linked to what the manifest says they do.
+ */
 export function getHelpHtml(
   webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
   extensionUri: vscode.Uri,
@@ -194,7 +197,7 @@ export function getHelpHtml(
 ): string {
   const platform = options.platform ?? process.platform;
   return linkCommandNames(
-    buildHelpHtml(webview, extensionUri, manifest, platform, options),
+    buildHelpHtml({ webview, extensionUri, manifest, platform, options }),
     describeHelpCommands(manifest),
     platform,
   );
@@ -223,13 +226,18 @@ export function renderWhatsNew(releases: readonly Release[], newSince?: string):
     .join('')}${changelog}`;
 }
 
-function buildHelpHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
-  extensionUri: vscode.Uri,
-  manifest: HelpManifest,
-  platform: NodeJS.Platform,
-  options: HelpOptions,
-): string {
+/** What buildHelpHtml draws the page from. */
+interface HelpPageInputs {
+  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>;
+  extensionUri: vscode.Uri;
+  manifest: HelpManifest;
+  /** The platform already resolved from the options, so both tables agree on it. */
+  platform: NodeJS.Platform;
+  options: HelpOptions;
+}
+
+/** The Help page's shell around its sections, before command names are linked. */
+function buildHelpHtml({ webview, extensionUri, manifest, platform, options }: HelpPageInputs): string {
   const nonce = createNonce();
   const logoUri = webview
     .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
@@ -249,7 +257,16 @@ function buildHelpHtml(
     bundle: true,
     body: `
 <main>
-  <nav aria-label="Help sections">
+${HELP_NAV}  <article>
+${HELP_HEADER}${renderStartSections(logoUri, options)}${renderWritingSections()}${renderTaskSections()}${renderFindingSections()}${renderKeepingSections()}${renderReferenceSections(manifest, platform)}    </article>
+  <div id="guide-view" hidden></div>
+</main>
+`,
+  });
+}
+
+/** The rail of section links down the side of Help, grouped as the sections are. */
+const HELP_NAV = `  <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
     <a href="#quick-start">Quick start</a>
     <a href="#whats-new">What's new</a>
@@ -278,15 +295,21 @@ function buildHelpHtml(
     <a class="nav-sub" href="#assistants">AI assistants</a>
     <a class="nav-sub" href="#privacy">Privacy and safety</a>
   </nav>
-  <article>
-    <header>
+`;
+
+/** The page's title and lead, above the first section. */
+const HELP_HEADER = `    <header>
       <p class="eyebrow">DECKARD / FIELD GUIDE</p>
       <h1>Help</h1>
       <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
       <p class="read-more">This page is the quick glance; each section's <strong>Read more</strong> opens the <a href="#" data-guide-page="README">full guide</a>.</p>
     </header>
 
-    <section id="quick-start">
+`;
+
+/** The sections a first visit reads: Quick start, and What's new from the shipped changelog. */
+function renderStartSections(logoUri: string, options: HelpOptions): string {
+  return `    <section id="quick-start">
       <h2>Quick start</h2>
       <p><strong>New to Deckard?</strong> <code>Deckard: Get Started</code> opens the walkthrough: six steps, each checked off as you do it.</p>
       <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> writes a tour of Deckard, dated from the day you make it, and opens it. Its README leads through ten notes, one a topic, each holding what it explains and ending with what to try.</p>
@@ -304,7 +327,12 @@ function buildHelpHtml(
       ${renderWhatsNew(options.releases ?? [], options.newSince)}
     </section>
 
-    <section id="tags">
+`;
+}
+
+/** The Writing group of the rail: tags and people, front matter, links, and what counts as a note. */
+function renderWritingSections(): string {
+  return `    <section id="tags">
       <h2>Tags and people</h2>
       <div class="cards">
         <div class="card"><h3>Lightweight tags</h3><p>A plain <code>#tag</code> on a heading, a task, or a line of prose is indexed with no setup. Tag names take letters, numbers, <code>_</code>, <code>-</code>, and <code>/</code> namespace segments; a number alone is not a tag, so a date such as <code>#2026</code> stays text.</p></div>
@@ -358,7 +386,12 @@ updated: 2026-09-20
       ${renderReadMore('boundaries')}
     </section>
 
-    <section id="tasks">
+`;
+}
+
+/** The Tasks group of the rail: writing tasks, their metadata, and the views that list them. */
+function renderTaskSections(): string {
+  return `    <section id="tasks">
       <h2>Writing tasks</h2>
       <div class="cards">
         <div class="card"><h3>Checklist tasks</h3><p>A task is an unordered checklist item: <code>- [ ] Send the proposal</code>, with <code>-</code>, <code>*</code>, or <code>+</code>, and <code>[x]</code> when it is done. Checking a box anywhere in Deckard writes the same checked edit into the note, including the ✅ date and the next occurrence of a repeating task, from the task editor as well.</p></div>
@@ -403,7 +436,12 @@ updated: 2026-09-20
       ${renderReadMore('task-views')}
     </section>
 
-    <section id="search">
+`;
+}
+
+/** The Finding group of the rail: search, the query language, query blocks, and the connections between notes. */
+function renderFindingSections(): string {
+  return `    <section id="search">
       <h2>Search</h2>
       <div class="cards">
         <div class="card"><h3>Find</h3><p><code>Deckard: Find in Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page. With nothing typed it starts with your pinned notes, then the five you opened last. Cmd+Enter opens the highlighted result beside the editor and keeps Find open; Alt+Enter links it where the cursor was; Cmd+. lists everything it can do. A task can be completed or dated without leaving Find. Find learns which result you choose for what you type, and offers it first next time, never above an exact title. When nothing has every word, it offers to capture what you typed to today’s note. A note counts as opened when it stays in the editor a moment, however it was opened, so Find and Recently opened rank what you really read.</p></div>
@@ -476,7 +514,12 @@ tag = #project/atlas AND task = open
       ${renderReadMore('connections')}
     </section>
 
-    <section id="home">
+`;
+}
+
+/** The Keeping notes group of the rail: Home and pins, renaming and tidying, and the periodic notes. */
+function renderKeepingSections(): string {
+  return `    <section id="home">
       <h2>Home and pins</h2>
       <p>Three figures at the top say what is <strong>Overdue</strong>, <strong>Due today</strong>, and <strong>Open</strong>; each opens its search. The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, what has gone quiet — people, projects, or any namespace, with a next action for a project with nothing open — and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages. While Home is in front, the Context sidebar lists every widget it can add: a click adds it at the top of Home, outlined for a moment. <strong>Reset widgets…</strong> asks before it puts back the widgets Home starts with.</p>
       <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
@@ -508,7 +551,12 @@ tag = #project/atlas AND task = open
       ${renderReadMore('periodic')}
     </section>
 
-    <section id="zen">
+`;
+}
+
+/** The Reference group of the rail: zen mode, the commands and settings tables built from the manifest, assistants, and privacy. */
+function renderReferenceSections(manifest: HelpManifest, platform: NodeJS.Platform): string {
+  return `    <section id="zen">
       <h2>Zen mode</h2>
       <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
       <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from the zen button in the title bar of any Deckard page, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> above Zen in the same gear, shows each of the eight themes on the open pages as you move through them, and keeps the one you choose.</p>
@@ -549,10 +597,5 @@ tag = #project/atlas AND task = open
       <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export Favorites, Pins, and Searches</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import Favorites, Pins, and Searches</code> reads one back; each says what it holds and asks before replacing anything.</p>
       ${renderReadMore('privacy')}
     </section>
-    </article>
-  <div id="guide-view" hidden></div>
-</main>
-`,
-  });
+`;
 }
-

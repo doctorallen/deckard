@@ -7,13 +7,15 @@ import { WorkspaceIndex } from '../../core/types';
 import { createPinForLine, findPinnedSection } from '../state/pinnedNotes';
 import { createWikiLink } from './insertLink';
 
+/** The longest selection, in characters, that Find and Capture start from. */
+export const SHORT_SELECTION_LIMIT = 120;
+
 /**
  * Find and Capture start from the words selected in the editor, when they
  * are a few words on one line: something to search for or write down, not
- * a passage, which Move to… is for.
+ * a passage, which Move to… is for. Undefined for no selection, one over
+ * more than a line or SHORT_SELECTION_LIMIT, or only whitespace.
  */
-export const SHORT_SELECTION_LIMIT = 120;
-
 export function shortSelection(
   editor: Pick<vscode.TextEditor, 'document' | 'selection'> | undefined,
 ): string | undefined {
@@ -32,6 +34,11 @@ export interface CaptureSeed {
   link?: string;
 }
 
+/**
+ * What Capture starts from in this editor: the short selection, with a link
+ * to the heading it was selected under when the editor holds an indexed
+ * note. Undefined when there is no short selection.
+ */
 export function captureSeed(
   editor: Pick<vscode.TextEditor, 'document' | 'selection'> | undefined,
   index: WorkspaceIndex,
