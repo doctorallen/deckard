@@ -5,25 +5,24 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
 import type { ParsedFile } from '../core/types';
-import type { SearchPageSnapshot } from '../ui/protocol/searchPage';
-import type { TagOverviewCard } from '../ui/protocol/shared';
 import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/dashboardState';
 import { getComponentScript } from '../ui/webview/components';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import * as corpus from './indexCorpus';
-import { renderPage } from './pages';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { bundleShared } from './sharedBundle';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /**
  * The search page's shared parts (src/webview/shared: blockExcerpt and
- * searchCard) against what they replace: a note excerpt drawn from its block
+ * tagMenu) against what they replace: a note excerpt drawn from its block
  * tokens must be the DOM markdown-it and the sanitizer made of it, over every
  * excerpt the sample workspace, the development notes, and the fixtures
- * hold; and a card must be the DOM the search page's template drew, as
- * test:dom normalizes both.
+ * hold, and the tag menu the one the template script opened, as test:dom
+ * normalizes both. The cards were held to the search page's template here
+ * until the page moved; the page itself is now held by test:dom and the
+ * recorded suites.
  *
  * Three differences are decided (Q8 of docs/implementation/20-webviews.md):
  * a link to anything but http, https, or mailto draws as its words;
@@ -240,86 +239,18 @@ suite('The search page\'s shared parts draw what its template drew', () => {
     }
   });
 
-  suite('cards', () => {
-    let store: TestPreferences | undefined;
-    let legacy: WebviewPage | undefined;
-    teardown(() => {
-      legacy?.dispose();
-      legacy = undefined;
-      store?.repository.dispose();
-      store = undefined;
-    });
-
-    const NOTES: Record<string, string> = {
-      'notes/atlas.md': '---\ndescribes: project/atlas\nowner: "@dana"\n---\n# Atlas\nThe hub note **body**, with a [link](https://example.com).',
-      'notes/one.md': '# One #project/atlas #risk/vendor\nThe lift is stuck.\n\n- [ ] Chase it #project/atlas',
-      'notes/two.md': '# Plan\n## Two #project/atlas\nLine one.\nLine two.\nLine three.\nLine four.\n\nThe vendor paragraph, `code` and ~~struck~~.',
-      'notes/three.md': '# Three #project/atlas\n',
-      'notes/2026-09-22.md': '# 2026-09-22 #project/atlas\n> quoted\n\n| a | b |\n| - | - |\n| c | d |',
-    };
-
-    /** The search page's snapshot of a one-tag search, with what a test gives it. */
-    const snapshotOf = (preferences: Record<string, unknown>, options: Record<string, unknown> = {}): SearchPageSnapshot => {
-      const index = buildWorkspaceIndex(new Map(Object.entries(NOTES).map(([path, content]) => [path, parseMarkdown(path, content)])));
-      store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
-      return createSearchPageSnapshot(index, { ...store.reader.value, ...preferences }, '#project/atlas', {
-        queryContext: createQueryContext(Date.parse('2026-09-22T12:00:00Z')),
-        ...options,
-      });
-    };
-
-    /** Each card in turn as it can be: parked, pinned, listed for its hub, long, and led by a snippet. */
-    const varied = (cards: readonly TagOverviewCard[]): TagOverviewCard[] => {
-      const snippet = { rawContent: 'The vendor paragraph.', bodyTokens: buildBlockExcerpt('The vendor paragraph.'), renderedHtml: renderMarkdown('The vendor paragraph.'), line: 9 };
-      const changes: Array<Partial<TagOverviewCard>> = [
-        {},
-        { parked: true, pinned: true },
-        { via: 'hubLink', long: true },
-        { snippet, long: true },
-        { snippet: { ...snippet, rawContent: '', bodyTokens: [], renderedHtml: '' } },
-        { rawContent: '', bodyTokens: [], renderedHtml: '' },
-      ];
-      return cards.flatMap((card) => changes.map((change) => JSON.parse(JSON.stringify({ ...card, ...change })) as TagOverviewCard));
-    };
-
-    const compareCards = (snapshot: SearchPageSnapshot, what: string): void => {
-      const sections = varied(snapshot.sections);
-      // A search of a tag alone marks no words, so the template's cards
-      // are compared as it drew them.
-      legacy = openWebviewPage(renderPage('searchPage'), { ...snapshot, sections, notePaging: { ...snapshot.notePaging, size: 500 } });
-      const before = legacy.findAll('.card');
-      assert.strictEqual(before.length, sections.length, what);
-      sections.forEach((card, position) => {
-        const now = core.document.createElement('div');
-        const display = { renderMode: snapshot.renderMode, preview: snapshot.preview, titleDisplay: snapshot.tagTitleDisplayMode };
-        shared().render(shared().h(shared().SearchCard, { card, position, display, opened: false }), now);
-        now.querySelectorAll('del').forEach(unwrap);
-        assert.strictEqual(normalizeBody(now.firstElementChild as Element), normalizeBody(before[position]), `${what}: card ${position}`);
-      });
-      legacy.dispose();
-      legacy = undefined;
-    };
-
-    test('in every format, preview, and way of drawing tags', () => {
-      for (const renderMode of ['html', 'markdown']) {
-        for (const searchPreview of ['lines', 'full', 'none']) {
-          for (const tagTitleDisplayMode of ['inline', 'separate']) {
-            compareCards(snapshotOf({ renderMode, renderModeChosen: true, searchPreview }, { tagTitleDisplayMode }), `${renderMode}, ${searchPreview}, ${tagTitleDisplayMode}`);
-          }
-        }
-      }
-    });
-
-    test('a hub note\'s body reaches the page as tokens too, and draws as its HTML did', () => {
-      const snapshot = snapshotOf({});
-      const hub = snapshot.hub;
+  test('a hub note\'s body reaches the page as tokens too', () => {
+    const index = buildWorkspaceIndex(new Map([
+      ['notes/atlas.md', parseMarkdown('notes/atlas.md', '---\ndescribes: project/atlas\n---\n# Atlas\nThe hub note **body**, with a [link](https://example.com).')],
+      ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas\nProse.')],
+    ]));
+    const store: TestPreferences = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    try {
+      const hub = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }).hub;
       assert.ok(hub, 'the tag has a hub note');
       assert.deepStrictEqual(hub.bodyTokens, buildBlockExcerpt(hub.rawContent));
-      legacy = openWebviewPage(renderPage('searchPage'), snapshot);
-      const before = legacy.find('.hub .rendered');
-      const now = core.document.createElement('div');
-      shared().render(shared().h(shared().NoteBody, { rawContent: hub.rawContent, blocks: JSON.parse(JSON.stringify(hub.bodyTokens)), renderMode: 'html' }), now);
-      assert.strictEqual(normalizeBody(now.firstElementChild as Element), normalizeBody(before));
-    });
+    } finally {
+      store.repository.dispose();
+    }
   });
 });

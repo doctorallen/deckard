@@ -111,6 +111,10 @@ export interface TaskListRowProps {
   readonly leading?: ComponentChildren;
   /** What follows the row's text, such as its menu. */
   readonly trailing?: ComponentChildren;
+  /** The kind of result the row is in a search, in `data-search-entry`, which plain words being typed match against. */
+  readonly entry?: string;
+  /** What follows where the task is written, before the headings above it, such as why a search listed it. */
+  readonly afterSource?: ComponentChildren;
 }
 
 /** The facts under a task's title: parked, its date, when it is scheduled, its priority, repeat, and steps. */
@@ -149,7 +153,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
  * The headings above the task, tags stripped, go under the file and line:
  * the same two lines a note card and the sidebar show.
  */
-export function TaskListRow({ item, draggable, titleDisplay, leading, trailing }: TaskListRowProps) {
+export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, entry, afterSource }: TaskListRowProps) {
   const task = item.task;
   let rowClass = 'row task-row';
   if (task.completed) {
@@ -160,7 +164,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing }
   }
   const steps = trimHeadingPath(item.headingPath, item.fileName, '');
   return (
-    <div class={rowClass} draggable={false} tabIndex={0} data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
+    <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
       {leading === undefined
         ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${task.title}`} />
         : leading}
@@ -171,6 +175,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing }
         <div class="task-meta">
           <TaskFacts item={item} />
           <span class="task-source">{formatSourceLocation(item.fileName, task.lineNumber)}</span>
+          {afterSource ?? null}
           {steps.length ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
         </div>
       </div>

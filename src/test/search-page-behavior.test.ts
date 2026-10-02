@@ -660,6 +660,26 @@ suite('Search page behavior', () => {
     });
   });
 
+  test('marks the searched words in the results, until the page draws itself again', () => {
+    const { page, snapshot } = open(
+      { 'notes/a.md': '# Lift #work\nThe lift is stuck.\n- [ ] Fix the lift #work' },
+      'lift',
+    );
+    const marked = (): string[] => page.findAll('#app mark').map((mark) => String(mark.textContent));
+    assert.ok(marked().length > 0, 'the word is marked where it is written');
+    assert.ok(marked().every((word) => word.toLowerCase() === 'lift'));
+    assert.strictEqual(page.findAll('button mark, [data-tag-key] mark, code mark').length, 0, 'never in a control or a tag');
+
+    // A draw of the page's own, such as another tab, draws the results
+    // afresh, without the marks; the next state from the host marks them
+    // again.
+    page.click('[data-action="set-result-tab"][data-tab="tasks"]');
+    assert.deepStrictEqual(marked(), []);
+    page.send(snapshot);
+    assert.ok(marked().length > 0);
+    assert.match(page.text('.card') ?? '', /The lift is stuck\./, 'the text reads as before');
+  });
+
   test('opens the page of a tag written on a card, not the note', () => {
     const { page } = open(
       { 'notes/atlas.md': '# Atlas #project/atlas #risk/vendor\nProse.' },
