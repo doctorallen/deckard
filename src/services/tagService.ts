@@ -199,8 +199,13 @@ export class TagService {
       sourceLabel: source.label,
       replacementLabel: replacement.label,
       restore: async () => {
-        await putBack?.();
-        await this.collaborators.index.refresh();
+        // The notes are already back by now, so the index reads them again
+        // even when the preferences cannot be put back.
+        try {
+          await putBack?.();
+        } finally {
+          await this.collaborators.index.refresh();
+        }
       },
     });
     if (!written.applied) {
