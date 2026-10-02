@@ -132,11 +132,14 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
 
     await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
+    // Every item writes its own `]]`. VS Code closes the brackets as `[[` is
+    // typed, so the ones already after the cursor are replaced, not doubled.
+    const closing = /^\]{1,2}/.exec(line.slice(position.character))?.[0].length ?? 0;
     const range = new vscode.Range(
       position.line,
       context.startColumn,
       position.line,
-      position.character,
+      position.character + closing,
     );
     // Past a `#^`, the note's own line markers are what can be completed,
     // not another note's name.
