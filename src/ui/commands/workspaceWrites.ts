@@ -143,9 +143,12 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
   /**
    * Undo Last Change: takes back the last write, whatever wrote it, after
    * saying what it will put back, then reads the notes again with `refresh`.
+   * Given `mine`, the write a message's Undo is for, it takes back nothing
+   * once Deckard has written since, even while the question was open.
    */
   public async undoLast(
     refresh: () => Promise<void>,
+    mine?: WriteMark,
   ): Promise<UndoResult | undefined> {
     const write = this.lastWrite;
     if (!write) {
@@ -166,6 +169,10 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       'Undo',
     );
     if (choice !== 'Undo') {
+      return undefined;
+    }
+    if (mine && !mine.isLatest()) {
+      reportWrittenSince();
       return undefined;
     }
 
@@ -192,25 +199,22 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
 export type UndoDone = string | ((result: UndoResult | undefined) => string);
 
 /**
- * How an Undo button takes a write back once pressed. Each command keeps the
- * rule it has always had, so the choice is the command's, not the history's.
+ * How an Undo button takes a write back once pressed. Either way it takes
+ * the write back only while it is still the last: once Deckard has written
+ * since, it says to use Undo Last Change and writes nothing, since the
+ * write it would take back is no longer the one the message named.
  */
 export type UndoOffer =
   /**
-   * Only while the write is still the last: once Deckard has written since,
-   * it says to use Undo Last Change and writes nothing. Then says `done`.
+   * Takes the write back, then reads the notes again with `refresh` when
+   * given, whose failure is ignored, and says `done`. A rollover and a
+   * review read them again; the rest leave it to the watcher.
    */
-  | { guard: 'latest'; done: UndoDone }
+  | { guard: 'latest'; done: UndoDone; refresh?: () => Promise<void> }
   /**
-   * Whatever Deckard wrote last, unchecked, then the notes are read again
-   * with `refresh`, whose failure is ignored, and `done` is said: the Undo
-   * of a rollover and of a review, which have never checked.
-   */
-  | { guard: 'none'; refresh: () => Promise<void>; done: UndoDone }
-  /**
-   * As Undo Last Change does: it asks first, takes back whatever is last,
-   * and reads the notes again with `refresh`. Park Note's Undo, which ran
-   * that command.
+   * As Undo Last Change does: it asks first, takes the write back, and
+   * reads the notes again with `refresh`. Park Note's Undo, which ran that
+   * command.
    */
   | { guard: 'ask'; refresh: () => Promise<void> };
 
@@ -265,28 +269,23 @@ class Handle implements WriteHandle {
 
   /** The Undo button, pressed: takes the write back the way `offer.guard` says. */
   public async takeBack(offer: UndoOffer): Promise<void> {
+    if (!this.isLatest()) {
+      reportWrittenSince();
+      return;
+    }
     if (offer.guard === 'ask') {
-      await this.history.undoLast(offer.refresh);
+      await this.history.undoLast(offer.refresh, this);
       return;
     }
-    if (offer.guard === 'latest') {
-      if (!this.isLatest()) {
-        void vscode.window.showInformationMessage(
-          'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
-        );
-        return;
+    const result = await this.undo();
+    if (offer.refresh) {
+      try {
+        await offer.refresh();
+      } catch {
+        // The watcher picks the notes up; the notes themselves are back.
       }
-      const result = await this.undo();
-      reportUndo(result, typeof offer.done === 'string' ? offer.done : offer.done(result));
-      return;
     }
-    const undone = await this.history.undo();
-    try {
-      await offer.refresh();
-    } catch {
-      // The watcher picks the notes up; the notes themselves are back.
-    }
-    reportUndo(undone, typeof offer.done === 'string' ? offer.done : offer.done(undone));
+    reportUndo(result, typeof offer.done === 'string' ? offer.done : offer.done(result));
   }
 
   /** Shows `message` with `also`'s button, then Undo; neither is waited for. */
@@ -431,6 +430,16 @@ function withConfirmation(
     );
   });
   return confirmed;
+}
+
+/**
+ * Says that a message's Undo took nothing back, because Deckard has written
+ * since and the last write is no longer the one the message named.
+ */
+function reportWrittenSince(): void {
+  void vscode.window.showInformationMessage(
+    'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
+  );
 }
 
 /**

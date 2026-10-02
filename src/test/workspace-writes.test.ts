@@ -6,7 +6,9 @@ import * as vscode from 'vscode';
 
 import {
   shouldPreview,
+  WorkspaceWrite,
   WorkspaceWriteHistory,
+  WriteHandle,
 } from '../ui/commands/workspaceWrites';
 
 suite('Workspace writes', () => {
@@ -180,6 +182,127 @@ suite('Workspace writes', () => {
     assert.strictEqual(history.ownWrites.take(note.toString()), true);
     assert.strictEqual(new WorkspaceWriteHistory().ownWrites.take(note.toString()), false);
     await deleteTemporaryRoot(root);
+  });
+});
+
+suite('An Undo offered on a message', () => {
+  const WRITTEN_SINCE = 'Deckard has changed your notes again since, so use Deckard: Undo Last Change.';
+
+  /** A write to one note, as the history keeps it; nothing on disk. */
+  function writeOf(label: string): WorkspaceWrite {
+    return { label, at: 0, notes: [{ uri: vscode.Uri.file(`/notes/${label}.md`), before: 'a', after: 'b' }] };
+  }
+
+  /**
+   * The handle of `label`'s write, as its command holds it once it lands:
+   * the write is kept as the last, and the handle marks it so.
+   */
+  async function writeWithHandle(history: WorkspaceWriteHistory, label: string): Promise<WriteHandle> {
+    history.remember(writeOf(label));
+    // An edit with no entries leaves the last write as it is, and hands
+    // back the handle that marks it.
+    const empty = { entries: () => [] } as unknown as vscode.WorkspaceEdit;
+    const written = await history.write(empty, { label, preview: 'never' });
+    assert.ok(written.applied);
+    return written.handle;
+  }
+
+  /** Every message said, answered by `answer`, until `restore`. */
+  function listen(answer: (text: string) => string | undefined = () => undefined) {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const names = ['showInformationMessage', 'showWarningMessage', 'showErrorMessage'];
+    const originals = names.map((name) => window[name]);
+    const said: string[] = [];
+    names.forEach((name) => {
+      window[name] = async (text: string) => {
+        said.push(text);
+        return answer(text);
+      };
+    });
+    return { said, restore: () => names.forEach((name, at) => (window[name] = originals[at])) };
+  }
+
+  test("a rollover's or a review's Undo takes nothing back once Deckard has written since", async () => {
+    const history = new WorkspaceWriteHistory();
+    const rollover = await writeWithHandle(history, 'carrying 2 tasks forward');
+    history.remember(writeOf('the rename of #a'));
+    let refreshed = 0;
+    const messages = listen();
+    try {
+      await rollover.takeBack({
+        guard: 'latest',
+        refresh: async () => {
+          refreshed += 1;
+        },
+        done: 'Put 2 notes back.',
+      });
+      assert.deepStrictEqual(messages.said, [WRITTEN_SINCE]);
+      assert.strictEqual(history.lastWrite?.label, 'the rename of #a', 'the later write is still there to take back');
+      assert.strictEqual(refreshed, 0);
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test("a rollover's or a review's Undo takes it back while it is the last, and reads the notes again", async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.joinPath(root, 'week.md');
+    await write(note, '# Week 40\n');
+    const history = new WorkspaceWriteHistory();
+    const edit = new vscode.WorkspaceEdit();
+    edit.insert(note, new vscode.Position(1, 0), '\n## Review\n');
+    const written = await history.write(edit, { label: 'the review of Week 40', preview: 'never' });
+    assert.ok(written.applied);
+    let refreshed = 0;
+    const messages = listen();
+    try {
+      await written.handle.takeBack({
+        guard: 'latest',
+        refresh: async () => {
+          refreshed += 1;
+        },
+        done: 'Took the review back out of the note.',
+      });
+      assert.strictEqual(await read(note), '# Week 40\n');
+      assert.strictEqual(refreshed, 1);
+      assert.deepStrictEqual(messages.said, ['Took the review back out of the note.']);
+    } finally {
+      messages.restore();
+      await deleteTemporaryRoot(root);
+    }
+  });
+
+  test("Park Note's Undo refuses before it asks once Deckard has written since", async () => {
+    const history = new WorkspaceWriteHistory();
+    const park = await writeWithHandle(history, 'parking a.md');
+    history.remember(writeOf('the rename of #a'));
+    const messages = listen((text) => (text.startsWith('Undo ') ? 'Undo' : undefined));
+    try {
+      await park.takeBack({ guard: 'ask', refresh: async () => undefined });
+      assert.deepStrictEqual(messages.said, [WRITTEN_SINCE], 'nothing is asked');
+      assert.strictEqual(history.lastWrite?.label, 'the rename of #a');
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test("Park Note's Undo takes nothing back when Deckard writes while it asks", async () => {
+    const history = new WorkspaceWriteHistory();
+    const park = await writeWithHandle(history, 'parking a.md');
+    const messages = listen((text) => {
+      if (!text.startsWith('Undo ')) {
+        return undefined;
+      }
+      history.remember(writeOf('the rename of #a'));
+      return 'Undo';
+    });
+    try {
+      await park.takeBack({ guard: 'ask', refresh: async () => undefined });
+      assert.deepStrictEqual(messages.said, ['Undo parking a.md?', WRITTEN_SINCE]);
+      assert.strictEqual(history.lastWrite?.label, 'the rename of #a');
+    } finally {
+      messages.restore();
+    }
   });
 });
 

@@ -240,7 +240,7 @@ async function offerRollover(
   written.offerUndo(
     message,
     {
-      guard: 'none',
+      guard: 'latest',
       refresh: () => indexer.refresh(),
       done: (undone) => `Put ${pluralize(undone?.restored ?? 0, 'note')} back.`,
     },
