@@ -499,10 +499,7 @@ export async function addTaskSteps(
       void reportFailure(describeRejectedEdit(noteName(result.uri)));
       return false;
     case 'failed':
-      void reportFailure({
-        outcome: `Deckard could not write the steps in ${noteName(result.uri)}, so nothing was written.`,
-        error: result.error,
-      });
+      reportStepsFailure(result.uri, result.error);
       return false;
     case 'written':
       result.handle.offerUndo(`Wrote ${countSteps(result.count)} under ${quoteTitle(target.title)}.`, {
@@ -511,6 +508,14 @@ export async function addTaskSteps(
       });
       return true;
   }
+}
+
+/** Says that the steps could not be written in a note, with the error in Deckard's log. */
+function reportStepsFailure(uri: vscode.Uri, error: unknown): void {
+  void reportFailure({
+    outcome: `Deckard could not write the steps in ${noteName(uri)}, so nothing was written.`,
+    error,
+  });
 }
 
 /** Says that no folder holds a task's note, so nothing was written. */
@@ -583,7 +588,8 @@ export async function breakIntoStepsCommand(
 /**
  * A task the index knows, with its note's lines, once its line is proved to
  * read as the index read it; undefined, having said why, when it cannot be.
- * A note that cannot be read at all rejects, as opening it always has.
+ * A note that cannot be read at all is said as Write would say it, since
+ * the steps could not be written there either.
  */
 async function readIndexedTask(
   writes: TaskWrites,
@@ -595,7 +601,8 @@ async function readIndexedTask(
     return undefined;
   }
   if (opened.kind === 'unreadable') {
-    throw opened.error;
+    reportStepsFailure(opened.uri, opened.error);
+    return undefined;
   }
   if (opened.kind === 'stale') {
     void reportStale([opened.uri]);

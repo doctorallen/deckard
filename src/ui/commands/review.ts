@@ -233,7 +233,7 @@ function offerReview(
   written.offerUndo(
     message,
     {
-      guard: 'none',
+      guard: 'latest',
       refresh: () => indexer.refresh(),
       done: 'Took the review back out of the note.',
     },

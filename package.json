@@ -1530,7 +1530,8 @@
           "required": [
             "text"
           ]
-        }
+        },
+        "when": "config.deckard.assistantTools"
       },
       {
         "name": "deckard_change_task",
@@ -1598,7 +1599,8 @@
             "note",
             "line"
           ]
-        }
+        },
+        "when": "config.deckard.assistantTools"
       }
     ],
     "configuration": [

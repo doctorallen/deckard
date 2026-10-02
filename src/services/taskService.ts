@@ -140,7 +140,7 @@ export interface Completion {
 export type LineRevert<U> =
   | { kind: 'reverted' }
   | { kind: 'stale'; uri: U }
-  | { kind: 'rejected' }
+  | { kind: 'rejected'; uri: U }
   | { kind: 'failed'; uri: U; error: unknown };
 
 /** What a write kept in the history did, with the handle its Undo works through. */
@@ -264,7 +264,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
         return { kind: 'stale', uri };
       }
       if (!(await this.options.notes.apply([{ uri, replacements: [{ range, text: original }] }]))) {
-        return { kind: 'rejected' };
+        return { kind: 'rejected', uri };
       }
       await this.options.notes.save(uri);
       // The line is the one it was, so the task is too: give it back the
@@ -294,9 +294,18 @@ export class TaskService<U extends ResourceUri, H = unknown> {
   /**
    * Completes the open steps written directly under the task on a zero-based
    * line, in one write that Undo takes back. `stale` when none is open any
-   * more. Rejects when the note cannot be read.
+   * more; `failed` when the note cannot be read or written.
    */
   public async completeSteps(uri: U, taskLine: number, title: string): Promise<StepsWrite<U, H>> {
+    try {
+      return await this.writeCompletedSteps(uri, taskLine, title);
+    } catch (error) {
+      return { kind: 'failed', uri, error };
+    }
+  }
+
+  /** {@link completeSteps}, rejecting when the note cannot be read or written. */
+  private async writeCompletedSteps(uri: U, taskLine: number, title: string): Promise<StepsWrite<U, H>> {
     const note = await this.options.notes.open(uri);
     const lines = note.getText().split(/\r?\n/);
     const open = findStepFamily(lines, taskLine).steps.filter((line) => !isCheckedTaskLine(lines[line]));

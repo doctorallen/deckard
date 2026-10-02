@@ -121,12 +121,17 @@ function reportLineFailure<T>(
       );
       return;
     case 'failed':
-      void reportFailure({
-        outcome: `Deckard could not update the task in ${noteName(result.uri)}, so nothing was written.`,
-        error: result.error,
-      });
+      reportTaskFailure(result.uri, result.error);
       return;
   }
+}
+
+/** Says that a task in a note could not be updated, with the error in Deckard's log. */
+function reportTaskFailure(uri: vscode.Uri, error: unknown): void {
+  void reportFailure({
+    outcome: `Deckard could not update the task in ${noteName(uri)}, so nothing was written.`,
+    error,
+  });
 }
 
 /** The task changed in the editor, but the note on disk did not. */
@@ -170,7 +175,8 @@ function offerUndo(
 
 /**
  * Puts a task line back the way it was, through the task service, and says
- * so only when it could not: the range changed since, or the undo failed.
+ * so only when it could not: the range changed since, VS Code refused the
+ * undo, or the undo failed.
  */
 async function revertTaskLine(
   writes: TaskWrites,
@@ -179,6 +185,13 @@ async function revertTaskLine(
   const result: LineRevert<vscode.Uri> = await writes.tasks.revertLine(written);
   if (result.kind === 'stale') {
     void reportStale([result.uri]);
+    return;
+  }
+  if (result.kind === 'rejected') {
+    void reportFailure({
+      ...describeRejectedEdit(noteName(result.uri)),
+      outcome: `VS Code did not accept the undo in ${noteName(result.uri)}, so the note keeps the edit.`,
+    });
     return;
   }
   if (result.kind === 'failed') {
@@ -268,14 +281,23 @@ export function describeStepsCompletion(
   return said;
 }
 
-/** Completes the task written on a line, through the usual completion. */
+/**
+ * Completes the task written on a line, through the usual completion. A
+ * note that cannot be read is said as the completion itself would say it.
+ */
 async function completeTaskAtLine(
   writes: TaskWrites,
   uri: vscode.Uri,
   filePath: string,
   line: number,
 ): Promise<void> {
-  const task = await writes.tasks.findOpenTaskAt(uri, filePath, line);
+  let task: Task | undefined;
+  try {
+    task = await writes.tasks.findOpenTaskAt(uri, filePath, line);
+  } catch (error) {
+    reportTaskFailure(uri, error);
+    return;
+  }
   if (!task) {
     void reportStale([uri]);
     return;
@@ -296,6 +318,13 @@ async function completeOpenSteps(
   const result = await writes.tasks.completeSteps(uri, taskLine, title);
   if (result.kind === 'stale') {
     void reportStale([uri]);
+    return;
+  }
+  if (result.kind === 'failed') {
+    void reportFailure({
+      outcome: `Deckard could not complete the steps in ${noteName(uri)}, so nothing was written.`,
+      error: result.error,
+    });
     return;
   }
   if (result.kind !== 'written') {
