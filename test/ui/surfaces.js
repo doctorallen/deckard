@@ -240,14 +240,14 @@ function createReferenceSurfaces(index, files) {
       hovered: ['button'],
     },
     {
-      // The debug page's tables are as wide as their evidence: with this
-      // entry's candidates the page scrolls sideways even at 1400px. It is a
-      // diagnostic for whoever tunes the ranking, and promises no width, so
-      // nothing is measured for overflow; it is here for its DOM and pixels.
+      // The debug page's tables wrap their headers to fit the page, and a
+      // table still too wide, as a candidate's eight columns of evidence are
+      // in Tomcat's spaced capitals, scrolls in its own box: the page itself
+      // never scrolls sideways.
       page: 'relatedNotesDebug',
       viewport: [1100, 900],
       pageOptions: () => ({ diagnostic: createDiagnostic(index, files) }),
-      scrollers: [],
+      scrollers: ['html'],
       clippers: [],
       hovered: ['tbody tr'],
     },
