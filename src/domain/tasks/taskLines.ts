@@ -48,12 +48,17 @@ export function readIndexedTaskLine(
  * its own steps are still open.
  */
 export interface CompletionFamily {
-  /** The task this was the last open step of: its line, 0-based, and words. */
-  lastStepOf?: { line: number; title: string };
+  /**
+   * The task this was the last open step of: its line, 0-based, its text,
+   * which a later edit is checked against, and its words.
+   */
+  lastStepOf?: { line: number; text: string; title: string };
   /** The task's own open steps. */
   openSteps: number;
   /** The completed task's line once the edit is written, 0-based. */
   writtenLine: number;
+  /** The completed task's line as written, which a later edit is checked against. */
+  writtenText: string;
 }
 
 /**
@@ -73,13 +78,16 @@ export function readCompletionFamily(
       (line) => line !== lineIndex && !isCheckedTaskLine(lines[line]),
     );
     if (stillOpen.length === 0) {
-      lastStepOf = { line: family.parent, title: readTaskWords(lines[family.parent]) };
+      const text = lines[family.parent];
+      lastStepOf = { line: family.parent, text, title: readTaskWords(text) };
     }
   }
+  const writtenLines = written.split(/\r?\n/);
   return {
     openSteps,
     // A next occurrence written above moves the completed line down.
-    writtenLine: lineIndex + written.split(/\r?\n/).length - 1,
+    writtenLine: lineIndex + writtenLines.length - 1,
+    writtenText: writtenLines[writtenLines.length - 1],
     ...(lastStepOf ? { lastStepOf } : {}),
   };
 }

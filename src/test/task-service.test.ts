@@ -128,7 +128,11 @@ suite('Task service', () => {
     const outcome = result.kind === 'updated' ? result.outcome : undefined;
     assert.strictEqual(outcome?.next, '- [ ] Water plants 🔁 every week 📅 2026-10-02');
     assert.strictEqual(outcome?.unreadRule, undefined);
-    assert.deepStrictEqual(outcome?.family, { openSteps: 0, writtenLine: 1 });
+    assert.deepStrictEqual(outcome?.family, {
+      openSteps: 0,
+      writtenLine: 1,
+      writtenText: '- [x] Water plants 🔁 every week 📅 2026-09-25 ✅ 2026-09-25',
+    });
   });
 
   test('reopens a task, and leaves the done date off when the settings say so', async () => {
@@ -198,37 +202,67 @@ suite('Task service', () => {
   test('finds the open task on a line, and nothing on a done one', async () => {
     const text = '- [ ] Open\n- [x] Done\n';
     const { fake, service } = setup({ 'plan.md': text });
-    assert.strictEqual((await service.findOpenTaskAt(fake.uri('plan.md'), 'plan.md', 0))?.title, 'Open');
-    assert.strictEqual(await service.findOpenTaskAt(fake.uri('plan.md'), 'plan.md', 1), undefined);
+    assert.strictEqual((await service.findOpenTaskAt(fake.uri('plan.md'), 'plan.md', 0, '- [ ] Open'))?.title, 'Open');
+    assert.strictEqual(await service.findOpenTaskAt(fake.uri('plan.md'), 'plan.md', 1, '- [x] Done'), undefined);
+  });
+
+  test('finds no task on a line that no longer reads as it did', async () => {
+    const text = 'x\n- [ ] Parent\n  - [ ] Only step\n- [ ] Other\n';
+    const { fake, service } = setup({ 'plan.md': text });
+    const step = tasksOf('plan.md', text)[1];
+    const done = await service.toggle(step, true);
+    const parent = done.kind === 'updated' ? done.outcome?.family?.lastStepOf : undefined;
+    assert.deepStrictEqual(parent, { line: 1, text: '- [ ] Parent', title: 'Parent' });
+    // A line typed above moves the parent down before Complete Task is pressed.
+    fake.texts.set(fake.uri('plan.md').toString(), `x\n- [ ] Typed since\n${fake.text('plan.md')?.slice(2)}`);
+    assert.strictEqual(await service.findOpenTaskAt(fake.uri('plan.md'), 'plan.md', parent?.line ?? -1, parent?.text ?? ''), undefined);
   });
 
   test('completes the open steps under a task in one write', async () => {
     const text = '- [ ] Trip\n  - [ ] Book\n  - [x] Pack\n  - [ ] Go\n';
+    const trip = { line: 0, lineText: '- [ ] Trip', title: 'Trip' };
     const { fake, history, service } = setup({ 'plan.md': text });
-    const result = await service.completeSteps(fake.uri('plan.md'), 0, 'Trip');
+    const result = await service.completeSteps(fake.uri('plan.md'), trip);
     assert.deepStrictEqual(result, { kind: 'written', count: 2, handle: 1 });
     assert.strictEqual(
       fake.text('plan.md'),
       '- [ ] Trip\n  - [x] Book ✅ 2026-09-25\n  - [x] Pack\n  - [x] Go ✅ 2026-09-25\n',
     );
     assert.strictEqual(history.writes[0].options.label, 'completing 2 steps of "Trip"');
-    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), 0, 'Trip'), {
+    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), trip), {
       kind: 'stale',
       uri: fake.uri('plan.md'),
     });
     fake.texts.set(fake.uri('plan.md').toString(), text);
     history.refuse = true;
-    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), 0, 'Trip'), {
+    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), trip), {
       kind: 'rejected',
       uri: fake.uri('plan.md'),
     });
     const error = new Error('unreadable');
     fake.failOpen = error;
-    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), 0, 'Trip'), {
+    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), trip), {
       kind: 'failed',
       uri: fake.uri('plan.md'),
       error,
     });
+  });
+
+  test('completes no steps when the task\'s line no longer reads as it did', async () => {
+    const text = '- [ ] A\n  - [ ] a1\n- [ ] B\n  - [ ] b1\n';
+    const { fake, history, service } = setup({ 'plan.md': text });
+    const done = await service.toggle(tasksOf('plan.md', text)[0], true);
+    const family = done.kind === 'updated' ? done.outcome?.family : undefined;
+    assert.deepStrictEqual(family, { openSteps: 1, writtenLine: 0, writtenText: '- [x] A ✅ 2026-09-25' });
+    // A is moved away before Complete Steps is pressed, and B takes its line.
+    const moved = '- [ ] B\n  - [ ] b1\n';
+    fake.texts.set(fake.uri('plan.md').toString(), moved);
+    assert.deepStrictEqual(
+      await service.completeSteps(fake.uri('plan.md'), { line: family?.writtenLine ?? -1, lineText: family?.writtenText ?? '', title: 'A' }),
+      { kind: 'stale', uri: fake.uri('plan.md') },
+    );
+    assert.strictEqual(fake.text('plan.md'), moved);
+    assert.strictEqual(history.writes.length, 0, 'no steps were written');
   });
 
   test('writes steps under a task, after the ones it has', async () => {
