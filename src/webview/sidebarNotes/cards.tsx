@@ -109,7 +109,7 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
       className=""
       attributes={cardAttributes(note)}
       title={display.titleDisplay === 'inline' ? <TitleWithTags title={title} tags={note.titleTags || []} /> : title}
-      trailing={<div class="note-actions"><InsertLink title={note.title} /><RelevanceScore note={note} reasons={reasons} /></div>}
+      trailing={<div class="note-actions"><InsertLink title={title} /><RelevanceScore note={note} reasons={reasons} /></div>}
       source={<div class="source">{formatSourceLocation(fileName, note.sourceLine)}</div>}
       body={[
         steps.length ? <div class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null,

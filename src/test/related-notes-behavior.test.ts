@@ -219,6 +219,12 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(active.closest<HTMLElement>('.note')?.dataset.filePath, 'notes/gamma.md', 'Enter again would link the result chosen, not the one now in its place');
   });
 
+  test('Insert link names a result with no title by the name its card shows', () => {
+    const page = open({ notes: [note({ title: '' })] });
+    assert.match(String(page.text('.note-title')), /atlas\.md/);
+    assert.strictEqual(page.find('.note [data-action="insert-link"]').getAttribute('aria-label'), 'Insert a link to atlas.md at the cursor');
+  });
+
   test('opens a matching tag rather than the result carrying it', () => {
     // Matching tags are listed beneath a result only when titles are drawn
     // without their tags; inline, the title already carries them.
