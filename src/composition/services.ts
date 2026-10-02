@@ -78,7 +78,7 @@ import { StatsPanel } from '../ui/webview/stats';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
-import { setZenMode, syncZenModeContext } from '../ui/webview/zenMode';
+import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
@@ -1082,7 +1082,7 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  */
 function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
   void syncOutlineFollowCursorContext();
-  void syncZenModeContext();
+  context.subscriptions.push(watchZenModeContext());
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

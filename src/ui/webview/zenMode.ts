@@ -55,6 +55,22 @@ export async function syncZenModeContext(): Promise<void> {
 }
 
 /**
+ * Keeps the context key in step with the setting however it changes: from
+ * Deckard's own commands and gear, or from an edit to settings.json, the
+ * Settings editor, or another window. Only the first two used to set it, so
+ * after an edit the palette offered the command that changed nothing, and
+ * hid the one that would. Sets it once now, as activation always did.
+ */
+export function watchZenModeContext(): vscode.Disposable {
+  void syncZenModeContext();
+  return vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('deckard.zenMode')) {
+      void syncZenModeContext();
+    }
+  });
+}
+
+/**
  * Turns zen on or off for every window, matching how the setting reads. Each
  * page redraws from its own configuration listener, so there is nothing to
  * refresh here.

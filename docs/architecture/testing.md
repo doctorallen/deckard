@@ -25,6 +25,8 @@ Every page links its style sheets from `dist/webview/`, and every page that runs
 
 A suite runs under `test:unit` when none of the modules it imports reaches `vscode`. `test/harness/importGraph.js` reads that from dependency-cruiser each time, and `.vscode-test.mjs` asks it for the rest, so every test runs exactly once and a suite moves to the fast tier as soon as the refactor cuts its last path to `vscode`. After Phase 7, 126 suites run under plain mocha and 95 in the host; [the import-graph inventory](inventories/import-graph.md) says what keeps the rest there.
 
+Those host suites run with no workspace open, so a write to the workspace's or a folder's settings has nowhere to go. The suites in `src/test/scopes/` test where a setting is written and which level's value wins, so `.vscode-test.mjs` runs them twice more, labeled `single-folder` and `multi-root`, each in a workspace it makes empty in the temporary directory at the start of the run. `listHostSuites` lists only `src/test/*.test.ts`, so the run without a workspace never reaches them, and `npx vscode-test --label multi-root` runs one of the three alone. `src/test/scopes/scopes.ts` sets a value at the user, workspace, or folder level as a reader would, and records the context keys Deckard sets.
+
 ## The shared harness
 
 The Node harnesses share three modules in `test/harness/`, so a page or a file can move without each harness changing:
