@@ -375,9 +375,6 @@ export default {
     "src/ui/webview/taskBoardHtml.ts": [
       "getTaskBoardHtml"
     ],
-    "test/perf/indexSpeed.js": [
-      "bench"
-    ],
     "test/ui/checkLayout.js": [
       "probeScript"
     ],
