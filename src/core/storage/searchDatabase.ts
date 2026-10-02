@@ -37,8 +37,11 @@ export function openSearchDatabase(databasePath: string): DatabaseSync {
     mkdirSync(dirname(databasePath), { recursive: true });
   }
   const database = new DatabaseSync(databasePath);
-  database.exec('PRAGMA journal_mode = WAL;');
+  // The wait comes first: a connection that is closing, such as the worker
+  // of the session before, holds the file for a moment, and switching the
+  // journal must wait it out rather than fail.
   database.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS};`);
+  database.exec('PRAGMA journal_mode = WAL;');
   const version = Number(
     database.prepare('PRAGMA user_version').get()?.user_version,
   );

@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { spawn } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -142,6 +143,48 @@ suite('Opening a search cache that cannot be used', () => {
       );
     } finally {
       reopened.dispose();
+    }
+  });
+
+  test('a cache another connection holds for a moment is waited for, not given up for memory', async () => {
+    const first = new SearchStore(base);
+    first.replace([parseMarkdown('atlas.md', '# Atlas\nStaffing plan.', { updatedAt: 1 })]);
+    await first.whenIdle();
+    first.dispose();
+    // Another connection, such as the worker of a session that is closing,
+    // holds the cache file's lock for a moment, as closing it does.
+    const holder = spawn(
+      process.execPath,
+      [
+        '-e',
+        `const { DatabaseSync } = require('node:sqlite');
+        const database = new DatabaseSync(process.argv[1]);
+        database.exec('PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE; COMMIT;');
+        process.stdout.write('held');
+        setTimeout(() => { database.exec('COMMIT'); database.close(); }, 300);`,
+        join(base, 'deckard-search.sqlite'),
+      ],
+      { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } },
+    );
+    const exited = new Promise((resolve) => holder.on('exit', resolve));
+    await new Promise<void>((resolve, reject) => {
+      holder.stdout.once('data', () => resolve());
+      holder.once('error', reject);
+    });
+    const log = captureLog();
+    let store: SearchStore | undefined;
+    try {
+      store = new SearchStore(base);
+      assert.ok(!log.lines.some((line) => line.includes('kept in memory')), log.lines.join('\n'));
+      assert.deepStrictEqual(
+        store.search('staffing').map((match) => match.filePath),
+        ['atlas.md'],
+        'the notes the last session cached are there',
+      );
+    } finally {
+      store?.dispose();
+      log.dispose();
+      await exited;
     }
   });
 
