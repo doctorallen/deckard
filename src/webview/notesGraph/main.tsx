@@ -242,8 +242,11 @@ function controlHandlers(page: GraphPage): ControlHandlers {
         fitToView(page);
         return;
       }
+      // About the canvas's middle, as a point on the page, which is what
+      // the zoom takes: the canvas need not sit at the page's corner.
       const { canvas } = page;
-      zoomAt(page, { clientX: canvas.clientWidth / 2, clientY: canvas.clientHeight / 2 }, button === 'in' ? 1.3 : 1 / 1.3);
+      const rect = canvas.getBoundingClientRect();
+      zoomAt(page, { clientX: rect.left + canvas.clientWidth / 2, clientY: rect.top + canvas.clientHeight / 2 }, button === 'in' ? 1.3 : 1 / 1.3);
     },
     reset: () => resetGraphSettings(page),
     resetUndoClick: (event) => {

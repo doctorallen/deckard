@@ -547,6 +547,33 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual((page.find('#sim-note') as HTMLElement).hidden, true);
     });
 
+    test('the zoom buttons zoom about the middle of the canvas, wherever it sits on the page', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const canvas = page.find('#graph');
+      // The canvas as if it sat below and to the right of the page's corner.
+      Object.defineProperty(canvas, 'getBoundingClientRect', {
+        value: () => ({ left: 100, top: 50, right: 900, bottom: 650, width: 800, height: 600, x: 100, y: 50 }),
+      });
+      const camera = () => (page.savedState() as { camera: { x: number; y: number; k: number } }).camera;
+      /** The world under the middle of the canvas, 400 by 300 into it. */
+      const middle = () => {
+        const { x, y, k } = camera();
+        return { x: (400 - x) / k, y: (300 - y) / k };
+      };
+      const before = middle();
+      const k = camera().k;
+      const stays = (what: string) => assert.ok(Math.abs(middle().x - before.x) < 1e-9 && Math.abs(middle().y - before.y) < 1e-9, what);
+
+      page.click('#zoom-out');
+      assert.ok(Math.abs(camera().k - k / 1.3) < 1e-9, 'zoomed out');
+      stays('the middle stays where it was');
+      page.click('#zoom-in');
+      assert.ok(Math.abs(camera().k - k) < 1e-9, 'and in again');
+      stays('and stays there');
+    });
+
     test('Reset lays the graph out afresh and heats it, then frames it again', () => {
       // On the stepped clock a frame runs seven ticks, so the heat shows.
       page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true, clockStep: 1 });
