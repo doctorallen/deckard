@@ -119,6 +119,10 @@ async function bench(size) {
   row('Calendar snapshot, sidebar (median of 5)', ms(timeCalendarSnapshot(index, now, {})));
   row('Calendar snapshot, page (median of 5)', ms(timeCalendarSnapshot(index, now, { layout: 'page', dayPanel: true })));
   row('Task Board snapshot (median of 5)', ms(timeTaskBoardSnapshot(index, now)));
+  // A search page's snapshot, on the page a tag opens and on a search of
+  // every note, timed by the line its host writes ("Search page").
+  row('Search page snapshot, one tag (median of 5)', ms(timeSearchPageSnapshot(index, now, '#project/t0')));
+  row('Search page snapshot, every note (median of 5)', ms(timeSearchPageSnapshot(index, now, '')));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -379,6 +383,47 @@ function timeTaskBoardSnapshot(index, now) {
     log.lines.length = 0;
     measure('Task board', () => createTaskBoard({ index, preferences, search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' }));
     return readTiming(log.lines, ['Task board']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
+}
+
+/**
+ * A search page's snapshot for `query`, as its host builds it with nothing
+ * configured, timed by the line the host writes ("Search page"), which
+ * decides whether the page's HTML carries it (docs/implementation/
+ * 20-webviews.md, Q3: under 50 ms, it is embedded).
+ */
+function timeSearchPageSnapshot(index, now, query) {
+  const { createSearchPageSnapshot } = load('dashboardState');
+  const { createQueryContext } = load('queryContext');
+  const { createPreferences } = load('preferenceServices');
+  if (!createSearchPageSnapshot || !createQueryContext || !createPreferences || !measure) {
+    return NaN;
+  }
+  const values = new Map();
+  const preferences = createPreferences({
+    get: (key, fallback) => (values.has(key) ? values.get(key) : fallback),
+    keys: () => [...values.keys()],
+    update: async (key, value) => void values.set(key, value),
+  }).reader.value;
+  // The host's options when nothing is configured.
+  const options = {
+    queryContext: createQueryContext(now),
+    originQuery: query,
+    tagTitleDisplayMode: 'inline',
+    notePage: 1,
+    taskPage: 1,
+    previewWords: [],
+    includeHubLinks: true,
+    enableHeadingTagRelationships: true,
+  };
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Search page', () => createSearchPageSnapshot(index, preferences, query, options));
+    return readTiming(log.lines, ['Search page']);
   });
   setTimingLog(undefined);
   return median(timings.filter((value) => value !== undefined));

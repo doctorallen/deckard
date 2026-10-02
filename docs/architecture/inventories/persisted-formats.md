@@ -240,11 +240,11 @@ No test restores a page from saved state. The harness starts its kept state as `
 ### 20. Search page
 
 - **Shape:** `{ query: string; origin: string; tab?: 'notes' | 'tasks'; scrollY?: number }`.
-- **Written:** `saveState`, `src/ui/webview/searchPageHtml.ts:550` to `:560`, and the scroll helper at `:564`.
-- **Read by the page:** `tab` at `:161`, `scrollY` at `:715`.
+- **Written:** `saveState` in `src/webview/searchPage/main.tsx`, after each state, and `rememberScroll` (`src/webview/shared/scroll.ts`) as the page scrolls. Since Phase 6 step 4.5 the page is a Preact page, and the shape is unchanged.
+- **Read by the page:** `tab` when its script starts (`savedPageState` in `main.tsx`), and `scrollY` on its first state (`restoreScroll`).
 - **Read by the host:** `readSerializedSearch` (`src/ui/webview/searchPage.ts:272` to `:314`), called from `restore` (`:156`).
 - **Migration:** a page saved before search pages kept one string is read from `tagKey`, `filterTagKeys`, and `refinement` or `query` (`src/ui/webview/searchPage.ts:287` to `:313`). A page whose tag no longer exists is closed.
-- **Pinned by:** `search-page-behavior.test.ts:650` asserts the written `{ query, origin }`. `searchPage.e2e.js` restores a page from each saved shape, current and legacy, through `readSerializedSearch`, and asserts the search it reopens on or that it closes. `webview-saved-state.test.ts` asserts the page's reads of `tab` and `scrollY`.
+- **Pinned by:** `search-page-behavior.test.ts:650` asserts the written `{ query, origin }`. `searchPage.e2e.js` restores a page from each saved shape, current and legacy, through `readSerializedSearch`, and asserts the search it reopens on or that it closes. `webview-saved-state.test.ts` asserts the page's reads of `tab` and `scrollY`, that any other value it was left with is not read, and that it keeps where it was scrolled.
 
 ### 21. Task Board
 
