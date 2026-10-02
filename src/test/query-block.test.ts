@@ -125,6 +125,89 @@ suite('Deckard query blocks', () => {
     assert.ok(html.includes('href="/notes/Atlas%20plan.md#L'), 'the row still links to its line');
   });
 
+  /** The HTML a query block writes inside one task's title link, for a task titled `title`. */
+  const titleHtml = (title: string): string => {
+    const index = createIndex();
+    const task = [...index.tasks.values()][0];
+    index.tasks.set(task.id, { ...task, title, lineNumber: 77 });
+    const html = renderQueryBlockHtml('tag = #project/atlas', parseQueryBlockInfo('deckard')!, index, {
+      queryContext: createQueryContext(new Date(2026, 8, 13).getTime()),
+    });
+    return /#L77">([\s\S]*?)<\/a>/.exec(html)?.[1] ?? 'no title link';
+  };
+
+  // What markdown-it and sanitize-html wrote for each title, recorded from
+  // rendering.ts before it was retired, links flattened to their words. The
+  // preview is given exactly these bytes: quotes in text unescaped, `<br />`,
+  // strikethrough as its words, an image as nothing, and a wiki link read
+  // as markdown-it read it, the Markdown between its brackets included. A
+  // block's titles are one line (white space is folded before they reach
+  // it), so no title here breaks.
+  const TITLE_HTML: ReadonlyArray<readonly [string, string]> = [
+    ["Plain words", "Plain words"],
+    ["Don't \"quote\" me", "Don't \"quote\" me"],
+    ["Tom & Jerry <b>bold?</b> a > b", "Tom &amp; Jerry &lt;b&gt;bold?&lt;/b&gt; a &gt; b"],
+    ["**Bold** and *em* and _under_ and ***both***", "<strong>Bold</strong> and <em>em</em> and <em>under</em> and <em><strong>both</strong></em>"],
+    ["Nested **bold *and em* here**", "Nested <strong>bold <em>and em</em> here</strong>"],
+    ["Code `x < y && \"z\"` here", "Code <code>x &lt; y &amp;&amp; \"z\"</code> here"],
+    ["Two `code` spans `with ``ticks`` inside`", "Two <code>code</code> spans <code>with ``ticks`` inside</code>"],
+    ["~~struck~~ and ~~**struck bold**~~", "struck and <strong>struck bold</strong>"],
+    ["[Site](https://example.com \"Example\")", "Site"],
+    ["[Mail](mailto:a@example.com)", "Mail"],
+    ["[Note](notes/other.md) and [ftp](ftp://x.example) and [js](javascript:alert(1))", "Note and ftp and [js](javascript:alert(1))"],
+    ["<https://example.com/a?b=1&c=2> and <a@example.com>", "https://example.com/a?b=1&amp;c=2 and a@example.com"],
+    ["Link [**strong** `code`](https://x.example/a b)", "Link [<strong>strong</strong> <code>code</code>](https://x.example/a b)"],
+    ["![image](pic.png) after an image", " after an image"],
+    ["![image](pic.png)", ""],
+    ["[![badge](b.svg)](https://example.com)", ""],
+    ["A [[Wiki link]] stays", "A [[Wiki link]] stays"],
+    ["An ![[embed]] too", "An ![[embed]] too"],
+    ["[[Wiki|alias]] and [[a\\|b]]", "[[Wiki|alias]] and [[a|b]]"],
+    ["[[a *b* `c`]] inside", "[[a <em>b</em> <code>c</code>]] inside"],
+    ["[[x & y]] [[&amp;]]", "[[x &amp; y]] [[&amp;]]"],
+    ["[[a]](https://example.com)", "[a]"],
+    ["Escapes \\*not em\\* \\[not link\\] \\` and \\\\", "Escapes *not em* [not link] ` and \\"],
+    ["Entities &amp; &copy; &#35; &#x1F600; &nbsp; &quot; &#39; &lt;tag&gt; &notanentity;", "Entities &amp; © # 😀 \u00a0 \" ' &lt;tag&gt; &amp;notanentity;"],
+    ["Trailing backslash \\", "Trailing backslash \\"],
+    ["<span>html</span> <!-- comment --> <script>x</script>", "&lt;span&gt;html&lt;/span&gt; &lt;!-- comment --&gt; &lt;script&gt;x&lt;/script&gt;"],
+    ["* not a list", "* not a list"],
+    ["1. not a list either", "1. not a list either"],
+    ["# not a heading", "# not a heading"],
+    ["> not a quote", "&gt; not a quote"],
+    ["Unclosed **bold and *em", "Unclosed **bold and *em"],
+    ["snake_case_word and 2*3*4", "snake_case_word and 2<em>3</em>4"],
+    ["Emoji 🎉 and ✅ #tag/inside words", "Emoji 🎉 and ✅ #tag/inside words"],
+    ["Pay @dana 📅 2026-09-21", "Pay @dana 📅 2026-09-21"],
+    ["[ref][1] and [1]: https://example.com", "[ref][1] and [1]: https://example.com"],
+    ["Visit www.example.com or https://example.com bare", "Visit www.example.com or https://example.com bare"],
+    ["Smart 'quotes' -- and ... dashes", "Smart 'quotes' -- and ... dashes"],
+    ["A | table | row", "A | table | row"],
+    ["[unclosed link](https://example.com", "[unclosed link](https://example.com"],
+    ["`unclosed code", "`unclosed code"],
+    ["Empty ** ** emphasis and __ __", "Empty ** ** emphasis and __ __"],
+    ["Percent [link](https://example.com/%7Euser) and [uni](https://bücher.example/ä)", "Percent link and uni"],
+    ["[[a `code`]]` after", "[[a <code>code</code>]]` after"],
+    ["*[[a*]]", "<em>[[a</em>]]"],
+    ["[[x [[y]] z]]", "[[x [[y]] z]]"],
+    ["[see [[doc]]](https://example.com)", "see [[doc]]"],
+    ["![[embed *x*]] and ![[a]](b.png)", "![[embed <em>x</em>]] and "],
+    ["[[]] empty", "[[]] empty"],
+  ];
+
+  test('writes a title\'s Markdown as markdown-it and the sanitizer wrote it, byte for byte', () => {
+    for (const [title, html] of TITLE_HTML) {
+      assert.strictEqual(titleHtml(title), html, JSON.stringify(title));
+    }
+  });
+
+  test('a title\'s HTML is text, and its links run nothing', () => {
+    const html = titleHtml('<script>alert(1)</script> [js](javascript:alert(1)) <img src=x onerror=y>');
+    assert.ok(!html.includes('<script'), html);
+    assert.ok(!html.includes('<img'), html);
+    assert.ok(!html.includes('href'), html);
+    assert.ok(html.includes('&lt;script&gt;'), html);
+  });
+
   test('finds blocks with CommonMark fence rules', () => {
     const text = [
       '# Note',

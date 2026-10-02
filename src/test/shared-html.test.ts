@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { JSDOM } from 'jsdom';
 
-import { escapeHtml } from '../shared/html';
+import { escapeHtml, escapeHtmlText } from '../shared/html';
 
 suite('Host-side HTML escaping', () => {
   test('the five characters HTML reads as markup become entities', () => {
@@ -30,5 +30,9 @@ suite('Host-side HTML escaping', () => {
     assert.strictEqual(document.getElementById('text')?.textContent, text);
     assert.strictEqual(document.getElementById('double')?.getAttribute('title'), text);
     assert.strictEqual(document.getElementById('single')?.getAttribute('title'), text);
+  });
+
+  test('text alone escapes the three characters that start markup, and leaves quotes as written', () => {
+    assert.strictEqual(escapeHtmlText(`It's "quoted" <b>&amp;</b>`), `It's "quoted" &lt;b&gt;&amp;amp;&lt;/b&gt;`);
   });
 });

@@ -35,6 +35,17 @@ export function tokenizeInline(source: string): InlineToken[] {
   return mapInlineTokens(parseInlineMarkdown(source));
 }
 
+/**
+ * Reads a line of inline Markdown as markdown-it alone reads it, with no
+ * wiki-link rule: `[[a *b*]]` is brackets around an emphasis, and
+ * `[[a]](https://…)` a link. The Markdown preview's query blocks write
+ * titles from these, since the preview's HTML has always been
+ * markdown-it's reading; the pages draw `tokenizeInline`'s.
+ */
+export function tokenizeInlineWithoutWikiLinks(source: string): InlineToken[] {
+  return mapInlineTokens(parseInlineMarkdown(source, { withoutWikiLinks: true }));
+}
+
 /** The schemes a link token may carry: the web and mail, nothing that runs or reads a file. */
 const SAFE_SCHEME = /^(?:https?|mailto):/i;
 

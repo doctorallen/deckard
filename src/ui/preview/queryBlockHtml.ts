@@ -14,14 +14,15 @@ import {
   QueryBlockSnapshot,
   toTableTask,
 } from '../state/queryBlockState';
-import { renderMarkdownInline } from '../webview/rendering';
 import {
   createTaskCells,
   DEFAULT_TASK_COLUMNS,
   getTaskColumn,
   TaskColumnId,
 } from '../state/resultTable';
-import { escapeHtml } from '../../shared/html';
+import { escapeHtml, escapeHtmlText } from '../../shared/html';
+import { tokenizeInlineWithoutWikiLinks } from '../../domain/markdown/inline';
+import type { InlineToken } from '../../domain/model/inline';
 
 export { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
 
@@ -303,13 +304,46 @@ function renderLink(item: QueryBlockItem): string {
 }
 
 /**
- * A title as rendered inline Markdown, with any link inside it flattened to
- * its words. The whole title is already one link to the task's source, and an
- * anchor inside an anchor is not valid HTML: the browser closes the outer one
- * early and the rest of the row's title stops opening anything.
+ * A title as inline Markdown, written from its tokens, with any link inside
+ * it flattened to its words. The whole title is already one link to the
+ * task's source, and an anchor inside an anchor is not valid HTML: the
+ * browser closes the outer one early and the rest of the row's title stops
+ * opening anything.
  */
 function renderTitleHtml(title: string): string {
-  return renderMarkdownInline(title).replace(/<a\b[^>]*>|<\/a>/g, '');
+  return writeInlineHtml(tokenizeInlineWithoutWikiLinks(title));
+}
+
+/**
+ * Tokens as the HTML the preview has always been given for them: what
+ * markdown-it wrote and sanitize-html kept, byte for byte. Text is escaped
+ * as the sanitizer escaped it, quotes left as written; a line break is
+ * `<br />` and the line's end; strikethrough, which the sanitizer stripped,
+ * is its words; and a link is its words, flattened as above. The tokens are
+ * read without wiki links, as markdown-it read them, so a wiki link token
+ * never comes; were one to, it would be its words.
+ */
+function writeInlineHtml(tokens: readonly InlineToken[]): string {
+  return tokens.map(writeInlineToken).join('');
+}
+
+function writeInlineToken(token: InlineToken): string {
+  switch (token.kind) {
+    case 'text':
+    case 'wikiLink':
+      return escapeHtmlText(token.text);
+    case 'code':
+      return `<code>${escapeHtmlText(token.text)}</code>`;
+    case 'break':
+      return '<br />\n';
+    case 'strong':
+      return `<strong>${writeInlineHtml(token.children)}</strong>`;
+    case 'em':
+      return `<em>${writeInlineHtml(token.children)}</em>`;
+    case 'del':
+    case 'link':
+      return writeInlineHtml(token.children);
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { InlineToken, tokenizeInline } from '../domain/markdown/inline';
+import { InlineToken, tokenizeInline, tokenizeInlineWithoutWikiLinks } from '../domain/markdown/inline';
 
 /**
  * Tokens in a compact notation a test can state in one line: text as a JSON
@@ -211,6 +211,12 @@ suite('Inline tokens: autolinks, images, and wiki links', () => {
 
   test('brackets not closed on the line are text', () => {
     assert.strictEqual(describe(tokenizeInline('[[open\nclose]]')), '"[[open" br "close]]"');
+  });
+
+  test('without wiki links, brackets are read as markdown-it alone reads them', () => {
+    assert.strictEqual(describe(tokenizeInlineWithoutWikiLinks('[[a *b*]] [[Note]]')), '"[[a " em("b") "]] [[Note]]"');
+    assert.strictEqual(describe(tokenizeInlineWithoutWikiLinks('[[a]](https://x)')), 'link(https://x "[a]")');
+    assert.strictEqual(describe(tokenizeInline('[[a]](https://x)')), 'wiki(a "[[a]]") "(https://x)"');
   });
 });
 

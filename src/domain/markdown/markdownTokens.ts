@@ -42,7 +42,7 @@ function wikiLinkRule(state: MarkdownIt.StateInline, silent: boolean): boolean {
   const { src, pos } = state;
   const embed = src[pos] === '!';
   const open = embed ? pos + 1 : pos;
-  if (silent || !src.startsWith('[[', open)) {
+  if (silent || (state.env as ParseEnv).withoutWikiLinks || !src.startsWith('[[', open)) {
     return false;
   }
   const close = src.indexOf(']]', open + 2);
@@ -57,9 +57,19 @@ function wikiLinkRule(state: MarkdownIt.StateInline, silent: boolean): boolean {
   return true;
 }
 
-/** A line of inline Markdown's tokens, as `renderInline` read them. */
-export function parseInlineMarkdown(source: string): MarkdownToken[] {
-  return markdown.parseInline(source, {})[0]?.children ?? [];
+/** What a parse is told: whether to leave `[[wiki links]]` to markdown-it's own rules. */
+interface ParseEnv {
+  withoutWikiLinks?: boolean;
+}
+
+/**
+ * A line of inline Markdown's tokens, as `renderInline` read them. Without
+ * wiki links, `[[` is read as markdown-it alone reads it: brackets, with
+ * the Markdown between them read as Markdown.
+ */
+export function parseInlineMarkdown(source: string, { withoutWikiLinks = false } = {}): MarkdownToken[] {
+  const env: ParseEnv = withoutWikiLinks ? { withoutWikiLinks } : {};
+  return markdown.parseInline(source, env)[0]?.children ?? [];
 }
 
 /** A Markdown text's block tokens, as `render` read them, link reference definitions applied. */
