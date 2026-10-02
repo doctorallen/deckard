@@ -40,11 +40,13 @@ const KNOWN = new Set([]);
 /**
  * Controls whose only content is an icon, by selector. WCAG asks 3:1 of
  * the icon against what it is drawn on (1.4.11), and the text check never
- * sees it. Each is measured at rest and hovered. Only these are checked
- * so far: the calendar's week mark, whose icon LCARS once drew in its
- * buttons' black on the calendar's own black.
+ * sees it. Each is measured at rest and hovered: the calendar's week mark,
+ * whose icon LCARS once drew in its buttons' black on the calendar's own
+ * black; the Task Board's move menu, which takes the hover ink while its
+ * menu is open; Related Notes' link button, shown when its row is hovered;
+ * and the Notes Graph's zoom buttons.
  */
-const ICON_CONTROLS = ['.week-label'];
+const ICON_CONTROLS = ['.week-label', '.board-move', '.insert-link', '.zoom-controls button'];
 
 /**
  * Controls whose words are measured hovered as well as at rest, by
@@ -141,10 +143,13 @@ const PROBE = `
     }
   }
   // An icon that is a control's only content: what draws its shape, its
-  // stroke or else its fill, against the ground under the control.
+  // stroke or else its fill, against the ground under the control. A
+  // control drawn at no opacity is not shown yet, as a row's link button is
+  // until its row is hovered, so it is measured where it shows.
   function checkIcon(el, state) {
     const shape = el.querySelector('svg');
     if (!shape || !shown(el) || el.closest('[aria-hidden="true"], [hidden]')) return;
+    if (opacity(shape) === 0) return;
     const style = getComputedStyle(shape);
     const paint = parse(style.stroke) || parse(style.fill);
     if (!paint) return;

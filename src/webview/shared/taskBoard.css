@@ -105,9 +105,12 @@
   color: var(--muted);
 }
 /* The menu sits on the control ground once it is hovered, so it takes the
-   shared hover text rather than the amber it carries over the card. Open, it
-   keeps that look until the menu closes. */
+   shared hover text rather than the amber it carries over the card. Open or
+   focused, it keeps that look until the menu closes, the hover ground with
+   it: the hover ink alone, on the card, was dark on dark, or light on
+   light, in a theme whose hover ground is a fill. */
 .board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
+.board-move:focus-visible, .board-move[aria-expanded="true"] { background: var(--hover-bg); }
 /* The same ⋯ on a list row, clear of the title, and in a table's last cell. */
 .task-row:has(> .row-menu) { padding-right: var(--space-6); }
 .result-table .row-menu { position: static; }
