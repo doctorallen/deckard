@@ -7,6 +7,7 @@
  * format can be tested without a store. `PreferencesRepository` reads and
  * writes through it, and every write passes through `normalizePreferences`.
  */
+import { isWidgetKind, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import { legacyIdOf } from '../../domain/markdown/parser';
 import { isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
@@ -117,51 +118,6 @@ export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
   { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
   { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
 ];
-
-/**
- * The widgets Home can show, and what each kind can do: whether a page may
- * hold more than one, and whether it is `listed`, showing a number of
- * entries and offering a count. Of the listed widgets, all but two can be
- * paged through — the Agenda counts each of its groups separately, and a
- * saved search lists notes beside tasks, so neither is one list for a page
- * number to walk.
- */
-export const DASHBOARD_WIDGET_KINDS: Readonly<
-  Record<
-    DashboardWidgetKind,
-    { repeatable: boolean; listed: boolean; pageable?: false }
-  >
-> = {
-  search: { repeatable: false, listed: false },
-  tasks: { repeatable: true, listed: true },
-  agenda: { repeatable: false, listed: true, pageable: false },
-  favoriteTags: { repeatable: false, listed: true },
-  topTags: { repeatable: false, listed: true },
-  savedSearches: { repeatable: false, listed: false },
-  recentSearches: { repeatable: false, listed: true },
-  recentNotes: { repeatable: false, listed: true },
-  stats: { repeatable: false, listed: false },
-  savedQuery: { repeatable: true, listed: true, pageable: false },
-  todayNote: { repeatable: false, listed: true },
-  quickAdd: { repeatable: false, listed: false },
-  staleTasks: { repeatable: false, listed: true },
-  relatedNotes: { repeatable: false, listed: true },
-  tagPairs: { repeatable: false, listed: true },
-  unhubbedTags: { repeatable: false, listed: true },
-  newTags: { repeatable: false, listed: true },
-  quietPeople: { repeatable: false, listed: true },
-  pinnedNotes: { repeatable: false, listed: true },
-  tryNext: { repeatable: false, listed: false },
-};
-
-/** How many days back each widget that looks back starts at. */
-export const DASHBOARD_WIDGET_DEFAULT_DAYS: Readonly<
-  Partial<Record<DashboardWidgetKind, number>>
-> = {
-  staleTasks: 30,
-  newTags: 14,
-  quietPeople: 90,
-};
 
 /** The furthest back a widget can look, in days. */
 export const DASHBOARD_WIDGET_DAYS_LIMIT = 365;
@@ -526,11 +482,7 @@ export function normalizeDashboardWidgets(
 
 /** A stored widget's kind, when it is one Home knows. */
 function readWidgetKind(candidate: WidgetCandidate): DashboardWidgetKind | undefined {
-  const kind = candidate.kind;
-  if (typeof kind !== 'string' || !Object.hasOwn(DASHBOARD_WIDGET_KINDS, kind)) {
-    return undefined;
-  }
-  return kind as DashboardWidgetKind;
+  return isWidgetKind(candidate.kind) ? candidate.kind : undefined;
 }
 
 /**
@@ -552,7 +504,7 @@ function readWidget(
     return undefined;
   }
   const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
-  const traits = DASHBOARD_WIDGET_KINDS[kind];
+  const traits = WIDGET_KINDS[kind];
   if (!id || id.length > 64 || ids.has(id) || (!traits.repeatable && kinds.has(kind))) {
     return undefined;
   }
@@ -565,7 +517,7 @@ function readWidget(
 
 /** A listed widget's count, and its page when it can be paged and is. */
 function applyListing(candidate: WidgetCandidate, widget: DashboardWidgetConfig): void {
-  const traits = DASHBOARD_WIDGET_KINDS[widget.kind];
+  const traits = WIDGET_KINDS[widget.kind];
   if (!traits.listed) {
     return;
   }
@@ -590,7 +542,7 @@ function applyListing(candidate: WidgetCandidate, widget: DashboardWidgetConfig)
 
 /** How far back a widget that looks back looks, within a year. */
 function applyDays(candidate: WidgetCandidate, widget: DashboardWidgetConfig): void {
-  const defaultDays = DASHBOARD_WIDGET_DEFAULT_DAYS[widget.kind];
+  const defaultDays = WIDGET_KINDS[widget.kind].defaultDays;
   if (defaultDays === undefined) {
     return;
   }
@@ -644,8 +596,8 @@ function applySavedQuery(candidate: WidgetCandidate, widget: DashboardWidgetConf
 }
 
 /**
- * The per-kind option rules, beside the traits in `DASHBOARD_WIDGET_KINDS`
- * and the look-back defaults in `DASHBOARD_WIDGET_DEFAULT_DAYS`: a kind with
+ * The per-kind option rules, beside the traits and look-back defaults in
+ * the widget catalog's `WIDGET_KINDS`: a kind with
  * options of its own adds a rule here rather than a branch in the loop.
  */
 const WIDGET_OPTION_RULES: Readonly<Partial<Record<DashboardWidgetKind, WidgetOptionRule>>> = {

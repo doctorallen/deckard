@@ -20,13 +20,12 @@ const IO_MODULES = '^(node:)?(fs|fs/promises|child_process|net|http|https|worker
 /**
  * The pure domain modules page code may import, by name (decision D1 of
  * docs/implementation/20-webviews.md): what a page computes for itself, the
- * graph's communities, calendar date stepping, and the board's status
- * columns, and the Home widget catalog both sides read. `domain-is-pure`
- * already keeps them free of `vscode` and I/O. The catalog does not exist
- * until the Dashboard moves, and takes this name when it does.
+ * graph's communities, calendar date stepping, the board's status columns,
+ * and the Home widget catalog and the tag-key reader both sides read.
+ * `domain-is-pure` already keeps them free of `vscode` and I/O.
  */
 const PAGE_DOMAIN_MODULES =
-  '^src/domain/(graph/communities|markdown/calendar|tasks/taskColumns|dashboard/widgetCatalog)\\.ts$';
+  '^src/domain/(graph/communities|markdown/calendar|markdown/tagKeys|tasks/taskColumns|dashboard/widgetCatalog)\\.ts$';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {

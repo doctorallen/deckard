@@ -18,6 +18,7 @@ import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatt
 import { findListParents, findParentTaskLine } from './listNesting';
 import { findFencedLines, isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
+import { formatKeyWords, readTagNamespace } from './tagKeys';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
 export { findFencedLines } from './lineShapes';
@@ -397,17 +398,7 @@ export function getEntityNamespace(
   tag: TagReference,
   entityNamespaceAliases?: EntityNamespaceAliases,
 ): string | undefined {
-  const key = normalizeTagKey(tag.key, entityNamespaceAliases);
-  if (!key.startsWith('#')) {
-    return undefined;
-  }
-
-  const [namespace, ...name] = key.slice(1).split('/');
-  if (!namespace || name.length === 0 || namespace.toLowerCase() === 'tag-at') {
-    return undefined;
-  }
-
-  return namespace.toLowerCase();
+  return readTagNamespace(normalizeTagKey(tag.key, entityNamespaceAliases))?.toLowerCase();
 }
 
 /**
@@ -430,13 +421,7 @@ export function isBuiltInEntityKind(
  * Formats an entity title for overview tabs and panel titles.
  */
 export function formatEntityTitle(kind: string, name: string): string {
-  return `${formatTitlePart(kind)}: ${formatTitlePart(name)}`;
-}
-
-function formatTitlePart(value: string): string {
-  return value
-    .replace(/[-_]+/g, ' ')
-    .replace(/\b[a-z]/g, (character) => character.toUpperCase());
+  return `${formatKeyWords(kind)}: ${formatKeyWords(name)}`;
 }
 
   /**

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import {
   createNonce,
   getComponentScript,
@@ -85,28 +86,7 @@ ${getQueryEditorScript()}
   let quickAddStatus = '';
 
   /** The widgets Home can add, and what each shows. */
-  const WIDGET_KINDS = {
-    search: { label: 'Search', description: 'A search box that opens a search page', repeatable: false, listed: false },
-    tasks: { label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board', repeatable: true, listed: true },
-    agenda: { label: 'Tasks view', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
-    favoriteTags: { label: 'Favorite tags', description: 'The tags you favorited', repeatable: false, listed: true },
-    topTags: { label: 'Frequent tags', description: 'The tags you open most, lately', repeatable: false, listed: true },
-    savedSearches: { label: 'Saved searches', description: 'Your saved searches', repeatable: false, listed: false },
-    recentSearches: { label: 'Recent searches', description: 'The searches you ran lately', repeatable: false, listed: true },
-    recentNotes: { label: 'Recently opened', description: 'The notes you opened lately', repeatable: false, listed: true },
-    stats: { label: 'Workspace', description: 'How many notes, tasks, and tags there are', repeatable: false, listed: false },
-    savedQuery: { label: 'Saved search results', description: 'What one saved search finds', repeatable: true, listed: true, pageable: false },
-    todayNote: { label: 'Today', description: "Today's daily note and its open tasks", repeatable: false, listed: true },
-    quickAdd: { label: 'Quick add', description: "Add a task to today's daily note", repeatable: false, listed: false },
-    staleTasks: { label: 'Stale tasks', description: 'Open tasks in notes left unchanged for a while', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 30 },
-    relatedNotes: { label: 'Related notes', description: 'Notes related to the note you had open last', repeatable: false, listed: true },
-    tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
-    unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
-    newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
-    quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
-    pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
-    tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
-  };
+  const WIDGET_KINDS = ${JSON.stringify(WIDGET_KINDS)};
 
   /**
    * Home's search box opens a search page. It is the box every search page
