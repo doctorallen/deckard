@@ -226,36 +226,121 @@ export function stripClosingHeadingHashes(text: string): string {
   return text.replace(/[ \t]+#+[ \t]*$/, '').trim();
 }
 
-const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+/** A fence's run of three or more backticks or tildes, and what follows it on the line. */
+const FENCE_RUN = /^(`{3,}|~{3,})(.*)$/;
+/** A list item's marker: its indent, the bullet or number, and the spaces after it. */
+const LIST_ITEM = /^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+|$)/;
+
+/** A fenced code block being read: its character, how long its fence is, and the column it is indented from. */
+interface OpenFence {
+  character: string;
+  length: number;
+  base: number;
+}
 
 /**
  * The lines of fenced code blocks, fences included, 0-based: marked in one
  * pass so every Markdown feature can ignore examples without keeping a
- * second parser. A fence closes only on the character that opened it, so a
- * `~~~` line inside a backtick block is part of the block. An unclosed fence
- * runs to the end of the note.
+ * second parser. As CommonMark reads them:
+ *
+ * - a fence is three or more backticks or tildes, indented up to three
+ *   spaces past the list item it sits in, or past the margin outside one;
+ *   a backtick fence whose info string holds a backtick is not one;
+ * - a block closes only on a fence of its own character at least as long
+ *   as the one that opened it, with nothing after it, so a ```` fence can
+ *   hold a ``` example;
+ * - a block inside a list item closes when the item does, at a line less
+ *   indented than the item's text; otherwise an unclosed block runs to the
+ *   end of the note.
  */
 export function findFencedLines(lines: readonly string[]): Set<number> {
   const fencedLines = new Set<number>();
-  let fenceCharacter: '`' | '~' | undefined;
+  // The column each open list item's text starts at, innermost last.
+  const items: number[] = [];
+  let fence: OpenFence | undefined;
 
   lines.forEach((line, lineIndex) => {
-    const fence = line.match(FENCE);
+    const indent = indentWidth(line);
+    const blank = line.trim() === '';
+    if (!blank) {
+      while (items.length > 0 && indent < items[items.length - 1]) {
+        items.pop();
+      }
+    }
+    if (fence && !blank && indent < fence.base) {
+      // The list item the block sat in has ended, and the block with it.
+      fence = undefined;
+    }
     if (fence) {
       fencedLines.add(lineIndex);
-      const nextFenceCharacter = fence[1][0] as '`' | '~';
-      if (fenceCharacter === undefined) {
-        fenceCharacter = nextFenceCharacter;
-      } else if (fenceCharacter === nextFenceCharacter) {
-        fenceCharacter = undefined;
+      if (closesFence(line, indent, fence)) {
+        fence = undefined;
       }
       return;
     }
-
-    if (fenceCharacter !== undefined) {
+    if (blank) {
+      return;
+    }
+    fence = openFenceIn(line, indent, items);
+    if (fence) {
       fencedLines.add(lineIndex);
     }
   });
 
   return fencedLines;
+}
+
+/**
+ * The fence a line outside any block opens, if it opens one, either on its
+ * own or right after a list item's marker; records the list item the line
+ * starts in `items`.
+ */
+function openFenceIn(line: string, indent: number, items: number[]): OpenFence | undefined {
+  const base = items.length > 0 ? items[items.length - 1] : 0;
+  if (indent - base > 3) {
+    return undefined;
+  }
+  const item = LIST_ITEM.exec(line);
+  if (item) {
+    const markerEnd = indentWidth(item[1]) + item[2].length;
+    const spaces = indentWidth(`${item[1]}${' '.repeat(item[2].length)}${item[3]}`) - markerEnd;
+    // Five or more spaces after the marker start indented code in the item.
+    const text = item[3] === '' || spaces > 4 ? markerEnd + 1 : markerEnd + spaces;
+    items.push(text);
+    return readFenceOpening(line.slice(item[0].length), text);
+  }
+  return readFenceOpening(line.replace(/^[ \t]*/, ''), base);
+}
+
+/** The fence `text`, a line with its indent off, opens, indented from `base`. */
+function readFenceOpening(text: string, base: number): OpenFence | undefined {
+  const run = FENCE_RUN.exec(text);
+  if (!run || (run[1][0] === '`' && run[2].includes('`'))) {
+    return undefined;
+  }
+  return { character: run[1][0], length: run[1].length, base };
+}
+
+/** Whether a line inside `fence` closes it. */
+function closesFence(line: string, indent: number, fence: OpenFence): boolean {
+  if (indent - fence.base > 3) {
+    return false;
+  }
+  const run = /^(`{3,}|~{3,})[ \t]*$/.exec(line.replace(/^[ \t]*/, ''));
+  return run !== null && run[1][0] === fence.character && run[1].length >= fence.length;
+}
+
+/** How far a line's leading spaces and tabs reach, a tab to the next multiple of four. */
+function indentWidth(line: string): number {
+  let width = 0;
+  for (const character of line) {
+    if (character === ' ') {
+      width += 1;
+    } else if (character === '\t') {
+      width += 4 - (width % 4);
+    } else {
+      break;
+    }
+  }
+  return width;
 }

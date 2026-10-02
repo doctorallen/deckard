@@ -170,4 +170,29 @@ suite('Line shapes: fences', () => {
     assert.deepStrictEqual([...findFencedLines(['    ```', 'prose'])], []);
     assert.deepStrictEqual([...findFencedLines(['prose', '``` open', 'a', 'b'])], [1, 2, 3]);
   });
+
+  test('a fence closes only on a fence at least as long, with nothing after it', () => {
+    const lines = ['````markdown', '```js', '# Example', '```', '````', 'prose'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [0, 1, 2, 3, 4]);
+    assert.deepStrictEqual([...findFencedLines(['```', '``` js', 'still code', '```', 'prose'])], [0, 1, 2, 3]);
+  });
+
+  test('a backtick fence with a backtick in its info string is not a fence', () => {
+    assert.deepStrictEqual([...findFencedLines(['``` `code` here', '# Heading'])], []);
+    assert.deepStrictEqual([...findFencedLines(['~~~ `tilde` info', 'code', '~~~'])], [0, 1, 2]);
+  });
+
+  test('a fence inside a list item is indented to the item, and closes when the item ends', () => {
+    const lines = ['- Steps', '    ```', '    - [ ] not a task', '    ```', '- [ ] a task'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [1, 2, 3]);
+    const nested = ['1. One', '   - Two', '       ```', '       code', '       ```', 'prose'];
+    assert.deepStrictEqual([...findFencedLines(nested)], [2, 3, 4]);
+    const unclosed = ['- Item', '  ```', '  code', '', 'Prose after the list'];
+    assert.deepStrictEqual([...findFencedLines(unclosed)], [1, 2, 3], 'the list ends, and the fence with it');
+    assert.deepStrictEqual(
+      [...findFencedLines(['- Item', '', '        ```', 'prose'])],
+      [],
+      'four spaces past the item is indented code, not a fence',
+    );
+  });
 });

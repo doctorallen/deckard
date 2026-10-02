@@ -88,4 +88,11 @@ suite('Active note context', () => {
       ['Plan'],
     );
   });
+
+  test('reads a fence as the parser does: a ``` example inside a ```` fence is still code', () => {
+    assert.deepStrictEqual(
+      readTopHeadings(['# Guide', '````', '```', '# 2026-09-25', '```', '````', '# After']),
+      ['Guide', 'After'],
+    );
+  });
 });

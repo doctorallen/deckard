@@ -748,6 +748,29 @@ suite('Markdown parser', () => {
     assert.strictEqual(parsed.tasks[0].title, 'Real task');
   });
 
+  test('ignores an example fence inside a longer fence, and a fence inside a list item', () => {
+    const parsed = parseMarkdown(
+      'notes/guide.md',
+      [
+        '# How to write tasks',
+        '````markdown',
+        '```js',
+        '# Example heading #example',
+        '- [ ] Example task',
+        '```',
+        '````',
+        '- Steps',
+        '    ```',
+        '    - [ ] Not a task either',
+        '    ```',
+        '- [ ] Real task',
+      ].join('\n'),
+    );
+
+    assert.deepStrictEqual(parsed.sections.map((section) => section.heading), ['How to write tasks']);
+    assert.deepStrictEqual(parsed.tasks.map((task) => task.title), ['Real task']);
+  });
+
   test('returns clickable tag spans for real headings only', () => {
     const spans = extractHeadingTagSpans(
       ['# Case @Work #urgent', '```', '# Fake @ignored', '```'].join('\n'),
