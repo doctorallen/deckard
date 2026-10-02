@@ -1239,19 +1239,27 @@ function compileTagPattern(personMarker: string): RegExp {
 const PERSON_MARKERS = '!$%&*+,.?:;=@^|~';
 
 /**
- * One compiled pattern per people marker, made once when the parser loads:
- * getPersonMarker accepts only these, so the table never grows. Building a
- * RegExp is costly and `stripTags` runs for every heading ranking shows.
- * Sharing a global pattern is safe here because `replace` and `matchAll`,
- * its only users, never carry `lastIndex` from one call to the next.
+ * One compiled pattern per people marker, each made the first time it is
+ * asked for: getPersonMarker accepts only these, so the table never grows
+ * past them. Building one of these Unicode patterns is costly, too costly
+ * to build all of them when the parser loads, where a session uses one,
+ * and `stripTags` runs for every heading ranking shows. Sharing a global
+ * pattern is safe here because `replace`, its only user, never carries
+ * `lastIndex` from one call to the next.
  */
-const TAG_PATTERNS: ReadonlyMap<string, RegExp> = new Map(
-  [...PERSON_MARKERS].map((marker) => [marker, compileTagPattern(marker)]),
-);
+const TAG_PATTERNS = new Map<string, RegExp>();
 
 /** The tag pattern for a people marker getPersonMarker has read. */
 function getTagPattern(personMarker: string): RegExp {
-  return TAG_PATTERNS.get(personMarker) ?? compileTagPattern(personMarker);
+  const compiled = TAG_PATTERNS.get(personMarker);
+  if (compiled) {
+    return compiled;
+  }
+  const pattern = compileTagPattern(personMarker);
+  if (PERSON_MARKERS.includes(personMarker)) {
+    TAG_PATTERNS.set(personMarker, pattern);
+  }
+  return pattern;
 }
 
 /**
