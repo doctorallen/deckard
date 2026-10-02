@@ -14,7 +14,7 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
 /**
  * What each page reads back from the state VS Code kept for it across a
  * reload, pinned before Phase 6 rewrites the pages' state code
- * (docs/architecture/inventories/persisted-formats.md, rows 20 to 24; the
+ * (docs/architecture/inventories/persisted-formats.md, rows 20 to 24b; the
  * host's reads of rows 20 and 21 are pinned in searchPage.e2e.js and
  * taskBoard.e2e.js). A release's saved state must keep reopening the page
  * it was saved from, so these hold the pages to what they draw from each
@@ -334,6 +334,127 @@ suite('Webview saved state', () => {
         'linkStrength', 'linkDistance', 'camera',
       ]);
       assert.strictEqual(kept.linkDistance, 50);
+    });
+  });
+
+  suite('Related Notes (row 24b)', () => {
+    /** One of 120 results, each its own note. */
+    const result = (number: number) => ({
+      sectionId: `section-${number}`, filePath: `notes/n${number}.md`, title: `Note ${number}`, fileName: `n${number}.md`, sourceLine: 1,
+      headingPath: [], titleTags: [], matchedTags: [], matchCount: 1, totalTagCount: 1, overlap: 1, relevanceScore: 50,
+    });
+    const entry = { filePath: 'notes/standup.md', title: 'standup', line: 2, text: '[[atlas]] depends on sign-off.', headingPath: ['Risks'], sectionText: 'The vendor is late.' };
+    /** A note with six tags, 120 related results, a line that links here, and a mention. */
+    const SNAPSHOT = {
+      activeFileName: 'today.md',
+      activeTags: ['#a', '#b', '#c', '#d', '#e', '#f'].map((key) => ({ key, label: key, weight: 1 })),
+      notes: Array.from({ length: 120 }, (_, number) => result(number)),
+      relatedNotesSortMode: 'tags',
+      tagTitleDisplayMode: 'inline',
+      state: 'ready',
+      links: {
+        linkedFromNotes: [{ filePath: entry.filePath, title: entry.title, entries: [entry], linkCount: 1 }],
+        linkedFromCount: 1,
+        linkedFromNoteCount: 1,
+        mentions: [{ ...entry, filePath: 'notes/old.md', line: 3, startColumn: 4, endColumn: 9, name: 'atlas' }],
+        mentionCount: 1,
+      },
+      parkedTags: [],
+    };
+    /** The list SNAPSHOT shows, as the view names it for Show more. */
+    const LIST = JSON.stringify(['ready', 'today.md', null, 'tags', null, false]);
+    const open = (savedState: unknown, snapshot: unknown = SNAPSHOT): WebviewPage => {
+      page = openWebviewPage(renderPage('sidebarNotes'), snapshot, { savedState });
+      return page;
+    };
+    /** What the view shows of the reader's choices. */
+    const shown = (target: WebviewPage) => ({
+      contextOpen: (target.find('details.active-file') as HTMLDetailsElement).open,
+      linked: (target.find('[data-links-group="linked"]') as HTMLDetailsElement).open,
+      mentions: (target.find('[data-links-group="mentions"]') as HTMLDetailsElement).open,
+      tags: target.findAll('.active-tag-open').length,
+      sections: target.findAll('.link-section').map((section) => section.textContent),
+      cards: target.findAll('.note-list > .note').length,
+    });
+    const FRESH = { contextOpen: false, linked: true, mentions: false, tags: 4, sections: [], cards: 50 };
+
+    test('comes back as the reader left it', () => {
+      const back = open({
+        scrollY: 120,
+        noteLimit: 100,
+        noteListKey: LIST,
+        showEveryActiveTag: true,
+        contextOpen: true,
+        linksOpen: { linked: false, mentions: true },
+        openLinkSections: ['notes/standup.md:2'],
+      });
+      assert.deepStrictEqual(shown(back), { contextOpen: true, linked: false, mentions: true, tags: 6, sections: ['The vendor is late.'], cards: 100 });
+    });
+
+    test('a list it did not count Show more for starts over', () => {
+      assert.strictEqual(shown(open({ noteLimit: 100, noteListKey: '["ready","other.md",null,"tags",null,false]' })).cards, 50);
+    });
+
+    test('opens Refine\'s facets and the day\'s groups it left open', () => {
+      const values = Array.from({ length: 8 }, (_, number) => ({ label: `#t${number}`, count: 1, clause: `#t${number}` }));
+      const refine = open({ expandedRefine: ['tags'] }, {
+        activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'refine', parkedTags: [],
+        refine: {
+          page: 'search', title: 'Atlas', resultKinds: ['notes'],
+          query: {
+            text: '#project/atlas', terms: [], canAppend: true, isAdvanced: false, diagnostics: [], builder: { join: 'and', items: [] }, tags: [],
+            suggestions: { fields: [], values: {}, operators: {}, conditions: [], recent: [], aliases: {} }, matchCounts: { notes: 8, tasks: 0 },
+            facets: [{ id: 'tags', label: 'Tags', applied: [], values }],
+          },
+        },
+      });
+      assert.strictEqual(refine.findAll('.refine-value').length, 8);
+      refine.dispose();
+      // Seven tasks due on one day, two more than its group shows folded.
+      const busy = buildWorkspaceIndex(new Map([['notes/busy.md', parseMarkdown('notes/busy.md', Array.from({ length: 7 }, (_, number) => `- [ ] Task ${number} 📅 2026-09-21`).join('\n'))]]));
+      const daySnapshot = {
+        activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'calendarDay', parkedTags: [],
+        calendarDay: createCalendar(busy, '2026-09', createQueryContext(NOW), { dayPanel: true, selectedDate: '2026-09-21' }).selected,
+      };
+      const folded = open({}, daySnapshot);
+      assert.strictEqual(folded.findAll('[data-action="show-group"][data-group="due"]').length, 1);
+      folded.dispose();
+      const day = open({ shownGroups: ['due'] }, daySnapshot);
+      assert.strictEqual(day.findAll('[data-action="show-group"]').length, 0, 'the due group is whole');
+      assert.strictEqual(day.findAll('.day-group[aria-label="Due"] .task-row').length, 7);
+    });
+
+    test('a value of the wrong kind reads as the choice a new view starts with', () => {
+      const odd = [
+        undefined,
+        'state',
+        [],
+        { noteLimit: '100', noteListKey: LIST, showEveryActiveTag: 1, contextOpen: 'yes', linksOpen: 3, openLinkSections: 'notes/standup.md:2' },
+        { noteLimit: Number.NaN, noteListKey: LIST, linksOpen: { linked: 'no', mentions: null }, openLinkSections: [2] },
+      ];
+      for (const saved of odd) {
+        assert.deepStrictEqual(shown(open(saved)), FRESH, JSON.stringify(saved));
+        page?.dispose();
+        page = undefined;
+      }
+    });
+
+    test('keeps what the reader chose, and where it was scrolled', async () => {
+      const view = open({ scrollY: 40 });
+      assert.deepStrictEqual(view.savedState(), {
+        scrollY: 40, noteLimit: 50, noteListKey: LIST, showEveryActiveTag: false, contextOpen: false,
+        linksOpen: { linked: true, mentions: false }, openLinkSections: [], expandedRefine: [], shownGroups: [],
+      });
+      view.click('[data-action="show-more-notes"]');
+      view.click('[data-action="show-every-active-tag"]');
+      view.click('[data-action="toggle-link-section"]');
+      assert.deepStrictEqual(view.savedState(), {
+        scrollY: 40, noteLimit: 100, noteListKey: LIST, showEveryActiveTag: true, contextOpen: false,
+        linksOpen: { linked: true, mentions: false }, openLinkSections: ['notes/standup.md:2'], expandedRefine: [], shownGroups: [],
+      });
+      (view.find('details.active-file') as HTMLDetailsElement).open = true;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.strictEqual((view.savedState() as { contextOpen: boolean }).contextOpen, true, 'a fold is kept as the reader leaves it');
     });
   });
 

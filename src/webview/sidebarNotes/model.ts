@@ -11,7 +11,9 @@ export interface SidebarStore {
 
 /**
  * What the reader chose in the sidebar, kept across the host's states as
- * the template's script kept it.
+ * the template's script kept it, and, since the view is not kept running
+ * while hidden (Q1), kept with setState too, so a view VS Code loads again
+ * when it is shown, or after a reload, comes back as the reader left it.
  */
 export interface SidebarChoices {
   /** How many results the list draws; Show more adds a page. */
@@ -61,4 +63,48 @@ export function noteListKey(snapshot: SidebarNotesSnapshot): string {
 /** How many lines of each excerpt to show: 0, 1, or 2. */
 export function previewLines(snapshot: SidebarNotesSnapshot): 0 | 1 | 2 {
   return snapshot.previewLines === 0 || snapshot.previewLines === 2 ? snapshot.previewLines : 1;
+}
+
+/** The strings of a kept list, or none when what was kept is not a list. */
+function keptStrings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+/** A kept flag, or `fallback` when what was kept is not one. */
+function keptFlag(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+/**
+ * What the reader chose, read back from what the view kept with setState
+ * the last time it was drawn: a value of the wrong kind reads as the
+ * choice a new view starts with.
+ */
+export function readChoices(kept: Readonly<Record<string, unknown>>): SidebarChoices {
+  const limit = kept.noteLimit;
+  const links = kept.linksOpen && typeof kept.linksOpen === 'object' ? (kept.linksOpen as Record<string, unknown>) : {};
+  return {
+    noteLimit: typeof limit === 'number' && Number.isFinite(limit) && limit > NOTE_PAGE_SIZE ? limit : NOTE_PAGE_SIZE,
+    noteListKey: typeof kept.noteListKey === 'string' ? kept.noteListKey : '',
+    showEveryActiveTag: kept.showEveryActiveTag === true,
+    contextOpen: kept.contextOpen === true,
+    linksOpen: { linked: keptFlag(links.linked, true), mentions: keptFlag(links.mentions, false) },
+    openLinkSections: new Set(keptStrings(kept.openLinkSections)),
+    expandedRefine: new Set(keptStrings(kept.expandedRefine)),
+    shownGroups: keptStrings(kept.shownGroups),
+  };
+}
+
+/** The reader's choices as the view keeps them with setState: the sets as lists. */
+export function choicesToKeep(choices: SidebarChoices): Record<string, unknown> {
+  return {
+    noteLimit: choices.noteLimit,
+    noteListKey: choices.noteListKey,
+    showEveryActiveTag: choices.showEveryActiveTag,
+    contextOpen: choices.contextOpen,
+    linksOpen: { ...choices.linksOpen },
+    openLinkSections: [...choices.openLinkSections],
+    expandedRefine: [...choices.expandedRefine],
+    shownGroups: [...choices.shownGroups],
+  };
 }

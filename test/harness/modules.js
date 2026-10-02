@@ -32,6 +32,7 @@ const MODULES = {
   calendarState: 'ui/state/calendarState.js',
   dashboardState: 'ui/state/dashboardState.js',
   dashboardWidgets: 'ui/state/dashboardWidgets.js',
+  noteLinks: 'ui/state/noteLinks.js',
   notesGraphState: 'ui/state/notesGraphState.js',
   relatedNotesRanking: 'ui/state/relatedNotesRanking.js',
   taskBoardState: 'ui/state/taskBoardState.js',

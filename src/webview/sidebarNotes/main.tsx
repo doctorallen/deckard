@@ -18,11 +18,12 @@ import { onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { describeIndexing } from '../shared/status';
 import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openTagContextMenu, setParkedTags, tagContextKey } from '../shared/tagMenu';
 import { installViewOptions } from '../shared/viewOptions';
-import { post } from '../shared/vscode';
+import { rememberScroll, restoreScroll } from '../shared/scroll';
+import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCard, Similar } from './cards';
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
-import { isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, type SidebarChoices, type SidebarStore } from './model';
+import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
 import { Refine } from './refine';
 
 console.log('[Deckard Related Notes] Webview script started.');
@@ -32,17 +33,16 @@ function send(message: SidebarMessage): void {
   post(message);
 }
 
-/** What the reader chose in the sidebar, which every draw reads. */
-const choices: SidebarChoices = {
-  noteLimit: NOTE_PAGE_SIZE,
-  noteListKey: '',
-  showEveryActiveTag: false,
-  contextOpen: false,
-  linksOpen: { linked: true, mentions: false },
-  openLinkSections: new Set(),
-  expandedRefine: new Set(),
-  shownGroups: [],
-};
+/**
+ * What the reader chose in the sidebar, which every draw reads: what the
+ * view kept before VS Code loaded it again, or what a new view starts with.
+ */
+const choices: SidebarChoices = readChoices(keptState());
+
+/** Keeps the reader's choices with setState, beside where the view was scrolled. */
+function keepChoices(): void {
+  keepState(choicesToKeep(choices));
+}
 
 /** The related notes a page at a time, then Show more, then the similar entries. */
 function NoteList({ snapshot, display }: { readonly snapshot: SidebarNotesSnapshot; readonly display: CardDisplay }) {
@@ -172,6 +172,23 @@ function closeRelevance(): void {
   });
 }
 
+/** Whether the view has been scrolled back to where the reader left it. */
+let scrolled = false;
+
+/**
+ * After each draw: the shared words are marked, the first draw goes back
+ * to where the reader left the view, and the choices are kept, since a
+ * draw is how each of them is made, and a new list starts Show more over.
+ */
+function afterDraw(): void {
+  markSharedWords();
+  if (!scrolled) {
+    scrolled = true;
+    restoreScroll(keptState());
+  }
+  keepChoices();
+}
+
 const initial = readEmbeddedState<SidebarNotesPageState>();
 if (initial) {
   setParkedTags(initial.parkedTags);
@@ -181,7 +198,7 @@ const store = startPage<SidebarStore>({
   initial: { snapshot: initial },
   ready: (state) => Boolean(state.snapshot),
   view: (state) => <SidebarPage snapshot={state.snapshot as SidebarNotesPageState} />,
-  afterDraw: markSharedWords,
+  afterDraw,
 });
 installMenuKeys();
 
@@ -240,6 +257,7 @@ document.addEventListener('toggle', (event) => {
   if (group === 'linked' || group === 'mentions') {
     choices.linksOpen[group] = target ? target.open : false;
   }
+  keepChoices();
 }, true);
 
 /** Unfolds a link row onto its section, or folds it, keeping focus on its button. */
@@ -494,5 +512,6 @@ onHostMessage<StateMessage<SidebarNotesPageState>>('state', (message) => {
   setParkedTags(message.data.parkedTags);
   redraw({ snapshot: message.data });
 });
+rememberScroll(keptState, (value) => vscodeApi().setState(value));
 console.log('[Deckard Related Notes] Requesting initial state.');
 send({ type: 'ready' });

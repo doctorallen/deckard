@@ -126,6 +126,10 @@ async function bench(size) {
   // every note, timed by the line its host writes ("Search page").
   row('Search page snapshot, one tag (median of 5)', ms(timeSearchPageSnapshot(index, now, '#project/t0')));
   row('Search page snapshot, every note (median of 5)', ms(timeSearchPageSnapshot(index, now, '')));
+  // Related Notes' snapshot for a note, timed by the line its host writes
+  // ("Related Notes"): the note's related entries ranked over the whole
+  // workspace, and what links to it.
+  row('Related Notes snapshot (median of 5)', ms(timeRelatedNotesSnapshot(index, now, 'notes/n0.md')));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -448,6 +452,42 @@ function timeSearchPageSnapshot(index, now, query) {
     log.lines.length = 0;
     measure('Search page', () => createSearchPageSnapshot(index, preferences, query, options));
     return readTiming(log.lines, ['Search page']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
+}
+
+/**
+ * Related Notes' snapshot for the note at `filePath`, as its host builds it
+ * for the note in the editor with nothing configured: the ranking, and what
+ * links to the note. Timed by the line the host writes ("Related Notes"),
+ * which decides whether the view's HTML carries it (docs/implementation/
+ * 20-webviews.md, Q3: under 50 ms, it is embedded).
+ */
+function timeRelatedNotesSnapshot(index, now, filePath) {
+  const { createSidebarSnapshot } = load('relatedNotesRanking');
+  const { collectNoteLinks } = load('noteLinks');
+  const file = index.files.get(filePath);
+  if (!createSidebarSnapshot || !collectNoteLinks || !file || !measure) {
+    return NaN;
+  }
+  const options = {
+    now,
+    enableKeywordLinks: true,
+    relatedNotesSortMode: 'tags',
+    sectionAccessCounts: {},
+    tagTitleDisplayMode: 'inline',
+    rankingOptions: { associationMinimumSupport: 1, recencyHalfLifeDays: 0, hidePeriodicNotes: false, excludedTagNamespaces: ['status'] },
+  };
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Related Notes', () => ({
+      ...createSidebarSnapshot(index, filePath, file, options),
+      links: collectNoteLinks(index, file, { now, hideDailyNotes: false }),
+    }), (snapshot) => `${snapshot.notes.length} results`);
+    return readTiming(log.lines, ['Related Notes']);
   });
   setTimingLog(undefined);
   return median(timings.filter((value) => value !== undefined));

@@ -19,7 +19,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
-import { pageExtensionUri } from './pageWebview';
+import { pageExtensionUri, pageWebview } from './pageWebview';
 
 /** An in-memory store for the preferences. */
 function createStore() {
@@ -494,6 +494,31 @@ suite('Related Notes controller', () => {
       assert.strictEqual(page.states().length, sent + 2, 'and again, though nothing changed');
       await page.send({ type: 'ready' });
       assert.strictEqual(page.states().length, sent + 3, 'and when the page asks');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('is not kept running while hidden: hidden, its HTML carries the state it last posted, not ranked again', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      assert.strictEqual(page.host.controller.options.retainContextWhenHidden, false);
+      assert.strictEqual(page.host.controller.options.readsInertState, true);
+      assert.strictEqual(page.host.controller.options.embedsSnapshot, undefined, 'ranking costs far more than Q3\'s 50 ms, so a shown view is posted its state');
+      page.surface.htmlWebview = pageWebview as vscode.Webview;
+      page.host.attach(page.surface);
+      await settle();
+      assert.ok(!String(page.surface.html).includes('id="state"'), 'shown, it opens on its loading line');
+      const sent = page.states().length;
+      const lines = captureTimingLog(() => page.surface.setVisible(false));
+      assert.deepStrictEqual(lines, [], 'nothing is ranked for it');
+      assert.strictEqual(page.states().length, sent);
+      const carried = /<script type="application\/json" id="state">([^<]*)<\/script>/.exec(String(page.surface.html));
+      assert.ok(carried, 'the hidden view\'s HTML carries a state');
+      assert.deepStrictEqual(JSON.parse(carried[1]), page.states()[sent - 1], 'the last it posted');
+      page.surface.setVisible(true);
+      assert.strictEqual(page.states().length, sent + 1, 'shown, it is posted its state, as before');
     } finally {
       page.dispose();
     }

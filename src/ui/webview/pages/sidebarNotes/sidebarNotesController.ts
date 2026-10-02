@@ -91,16 +91,26 @@ export function logRelatedNotes(message: string): void {
  */
 export class SidebarNotesController implements PageController<SidebarNotesPageState, SidebarNotesPageToHost> {
   public readonly name = 'Related Notes';
+  /**
+   * The view is not kept running while hidden (Q1 of
+   * docs/implementation/20-webviews.md): hidden, its HTML is set again with
+   * the last state it posted, which it draws when shown, and what the reader
+   * chose in it comes back from its own setState. Its HTML carries no state
+   * built when it is set: ranking for a note takes 1,924 ms median on the
+   * 5,000-note bench (185 ms on 1,000), far over Q3's 50 ms, so it opens on
+   * its loading line and is posted its state, as before.
+   */
   public readonly options: PageOptions = {
-    retainContextWhenHidden: true,
+    retainContextWhenHidden: false,
     enableFindWidget: false,
     followIndexing: false,
     refreshWhenShown: 'never',
     onChromeChange: 'none',
+    readsInertState: true,
   };
   public readonly handlers: MessageHandlers<SidebarNotesPageToHost>;
   /** The host the sidebar is run by, from when it subscribes. */
-  private page: PageContext | undefined;
+  private page: PageContext<SidebarNotesPageState> | undefined;
   private entryContext: EntryContext | undefined;
   private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
@@ -113,10 +123,10 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     this.handlers = { ...this.createNavigationHandlers(), ...this.createWriteHandlers(), ...this.createSettingHandlers() };
   }
 
-  /** The sidebar's HTML, which is logged each time it is set. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
+  /** The sidebar's HTML, carrying `state` when the host hands it one, which is logged each time it is set. */
+  public html(webview: vscode.Webview, theme: DeckardTheme, state?: SidebarNotesPageState): string {
     logRelatedNotes('Rendering Related Notes webview HTML.');
-    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, { theme });
+    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, { theme, snapshot: state });
   }
 
   /** Narrows a message the page sent, after logging that it came. */
@@ -144,7 +154,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * progress, the active search, the editor and its cursor, the theme and
    * zen, and the settings ranking reads.
    */
-  public subscribe(page: PageContext): vscode.Disposable[] {
+  public subscribe(page: PageContext<SidebarNotesPageState>): vscode.Disposable[] {
     this.page = page;
     const { indexer, activeSearch, activeCalendar, activeHome } = this.sidebar;
     const disposables: vscode.Disposable[] = [];
@@ -325,8 +335,9 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   private refresh(): void {
     clearTimeout(this.refreshHandle);
     this.refreshHandle = undefined;
-    const surface = this.surface;
-    if (!surface) {
+    const page = this.page;
+    const surface = page?.surface;
+    if (!page || !surface) {
       logRelatedNotes('Skipped Related Notes refresh because no webview is attached.');
       return;
     }
@@ -344,7 +355,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       `Sending Related Notes state: ${snapshot.state}${describeSource(snapshot)}, ${snapshot.notes.length} note entries.`,
     );
     const state: SidebarNotesPageState = { ...snapshot, parkedTags: listedParkedTags(this.sidebar.indexer) };
-    void surface.webview.postMessage({ type: 'state', data: state }).then(
+    // Posted through the host, which keeps it to draw a hidden view again from.
+    void page.postState(state)?.then(
       (delivered) =>
         logRelatedNotes(
           `Related Notes state delivery ${delivered ? 'succeeded' : 'was skipped because the webview is not live'}.`,
