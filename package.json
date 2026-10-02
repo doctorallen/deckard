@@ -1610,6 +1610,7 @@
           "deckard.notesFolder": {
             "type": "string",
             "default": "",
+            "scope": "resource",
             "description": "Optional workspace-relative folder containing Markdown notes. Leave empty to index all Markdown files in the workspace.",
             "order": 0
           },
@@ -2105,6 +2106,7 @@
           "deckard.tasks.assigneeFromPersonTag": {
             "type": "boolean",
             "default": false,
+            "scope": "resource",
             "description": "Treat the first person named in a task's words as the person it is for, the way Deckard read tasks before the 👤 field existed. Off, only 👤 (or [assignee:: …]) says who a task is for, and a name in the sentence is a mention.",
             "order": 2
           },
