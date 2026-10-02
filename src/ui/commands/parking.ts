@@ -73,13 +73,26 @@ export function createParkingService(indexer: ParkingIndex, history: WorkspaceWr
 const STAYS = 'It stays searchable with is:parked.';
 const STAY = 'They stay searchable with is:parked.';
 
-/** The notes a command was given: the Explorer's selection, a URI, or the note in front. */
-function chosenNotes(uri?: unknown, uris?: unknown): vscode.Uri[] {
+/**
+ * What a command was given: the Explorer's selection, or one URI. Anything
+ * else, such as a tree item another view passes, is not taken for a file,
+ * so undefined, and the command chooses as if it were given nothing.
+ */
+function givenUris(uri?: unknown, uris?: unknown): vscode.Uri[] | undefined {
   if (Array.isArray(uris) && uris.length > 0 && uris.every((item) => item instanceof vscode.Uri)) {
     return uris as vscode.Uri[];
   }
   if (uri instanceof vscode.Uri) {
     return [uri];
+  }
+  return undefined;
+}
+
+/** The notes a command was given: the Explorer's selection, a URI, or the note in front. */
+function chosenNotes(uri?: unknown, uris?: unknown): vscode.Uri[] {
+  const given = givenUris(uri, uris);
+  if (given) {
+    return given;
   }
   const active = vscode.window.activeTextEditor?.document.uri;
   return active ? [active] : [];
@@ -357,11 +370,9 @@ export async function parkFolders(commands: ParkingCommands, uri?: unknown, uris
 
 /** The folders Park Folder was given: the Explorer's selection, a URI, or one picked from those that hold notes. */
 async function chosenFolders(index: WorkspaceIndex, uri?: unknown, uris?: unknown): Promise<vscode.Uri[]> {
-  if (Array.isArray(uris) && uris.length > 0) {
-    return uris as vscode.Uri[];
-  }
-  if (uri instanceof vscode.Uri) {
-    return [uri];
+  const given = givenUris(uri, uris);
+  if (given) {
+    return given;
   }
   return [await pickFolder(index, 'Choose a folder to park')].filter((item): item is vscode.Uri => item !== undefined);
 }
@@ -436,11 +447,9 @@ export async function unparkFolders(commands: ParkingCommands, uri?: unknown, ur
  * none to pick from.
  */
 async function chosenParkedFolders(uri?: unknown, uris?: unknown): Promise<vscode.Uri[] | undefined> {
-  if (Array.isArray(uris) && uris.length > 0) {
-    return uris as vscode.Uri[];
-  }
-  if (uri instanceof vscode.Uri) {
-    return [uri];
+  const given = givenUris(uri, uris);
+  if (given) {
+    return given;
   }
   const listed = (vscode.workspace.workspaceFolders ?? []).flatMap((folder) =>
     listExcludedFolders(
