@@ -11,6 +11,7 @@ import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { planRollover } from '../domain/notes/rolloverPlan';
 import { markMigrated } from '../domain/markdown/taskLineEdits';
 import { WorkspaceIndex } from '../domain/model';
+import { useDiskWorkspace } from './diskWorkspace';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -37,6 +38,14 @@ const yesterday = [
 ].join('\n');
 
 suite('Task rollover', () => {
+  // In the extension host the suite runs against VS Code; under the e2e
+  // stand-in, against a workspace on disk modeled on it.
+  let putBack: () => void = () => undefined;
+  suiteSetup(() => {
+    putBack = useDiskWorkspace();
+  });
+  suiteTeardown(() => putBack());
+
   // Each test writes to a history of its own, so one test's Undo never
   // reaches another's write.
   let history: WorkspaceWriteHistory;
@@ -308,6 +317,25 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('an Undo puts a moved task back in both notes or neither', async () => {
+    const root = await createTemporaryRoot();
+    const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-09-19.md');
+    await write(fromUri, yesterday);
+    await write(todayUri, '# 2026-09-19\n\n');
+    const plan = planRollover(indexOf({ [fromUri.fsPath]: yesterday }), '2026-09-19');
+    assert.ok(plan);
+    assert.strictEqual((await applyRollover(plan, todayUri, 'move', { history }))?.carried, 2);
+    const carried = await read(todayUri);
+    await editByHand(fromUri, '# 2026-09-18\n\nWritten since.\n');
+
+    const undone = await history.undo();
+    assert.strictEqual(undone?.restored, 0, 'putting back only today would lose the task from both');
+    assert.strictEqual(await read(todayUri), carried, 'the task is still where it went');
+    assert.strictEqual(await read(fromUri), '# 2026-09-18\n\nWritten since.\n');
+    await deleteTemporaryRoot(root);
+  });
+
   test('migrates, marking the line left behind, and never carries twice', async () => {
     const root = await createTemporaryRoot();
     const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
@@ -485,6 +513,15 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 });
+
+/** Changes a note as a reader would, in its editor, and saves it. */
+async function editByHand(uri: vscode.Uri, content: string): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(uri, new vscode.Range(new vscode.Position(0, 0), document.lineAt(document.lineCount - 1).range.end), content);
+  assert.ok(await vscode.workspace.applyEdit(edit));
+  assert.ok(await document.save());
+}
 
 async function write(uri: vscode.Uri, content: string): Promise<void> {
   await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
