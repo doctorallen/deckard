@@ -85,6 +85,21 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   private readonly version: string;
   private readonly readCache: boolean;
   private readonly progress: Progress;
+  /** Counts the refreshes begun, so one a newer refresh has begun since drops what it found. */
+  private scanGeneration = 0;
+  /** The newest refresh begun, which a superseded one waits for before it resolves. */
+  private latestRefresh: Promise<void> = Promise.resolve();
+  /** The scan counts the last applied scan found, kept apart from a scan still under way. */
+  private lastScan: ScanCounts = { found: 0, templates: 0, excluded: 0, read: 0 };
+  /**
+   * Counts the scans and change batches begun, in the order they began, so
+   * what each read can be told from what began reading after it.
+   */
+  private changeClock = 0;
+  /** For each note a change batch has applied, when that batch began. */
+  private readonly changedAt = new Map<string, number>();
+  /** How many scans and change batches are under way; at none, `changedAt` is forgotten. */
+  private underWay = 0;
 
   /** `searchStore` is the full-text cache, absent in a test that needs none. */
   public constructor(
@@ -143,7 +158,7 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   /** What the last full scan found, kept out, and read. */
   public getLastScan(): { found: number; templates: number; excluded: number; read: number } {
     // Until the check at a warm start finishes, the last session's counts.
-    return { ...(this.cachedScan ?? this.scanner.lastScan) };
+    return { ...(this.cachedScan ?? this.lastScan) };
   }
 
   /**
@@ -209,8 +224,19 @@ export class IndexService<U extends ResourceUri = ResourceUri>
    * `reuse: 'none'` rereads and reparses every note: Reindex Workspace.
    * `reuse: 'cache'` is a warm start's check, which applies only what
    * differs from the notes on screen and publishes nothing if nothing does.
+   *
+   * A refresh begun while another runs supersedes it: the older one drops
+   * what it found, since it read under settings or folders that have since
+   * changed, and resolves when the newer one does.
    */
-  public async refresh(options: RefreshOptions = {}): Promise<void> {
+  public refresh(options: RefreshOptions = {}): Promise<void> {
+    const generation = ++this.scanGeneration;
+    this.latestRefresh = this.runRefresh(options, generation);
+    return this.latestRefresh;
+  }
+
+  /** Carries out one refresh, numbered `generation`, as {@link refresh} describes. */
+  private async runRefresh(options: RefreshOptions, generation: number): Promise<void> {
     if (this.disposed) {
       return;
     }
@@ -221,27 +247,39 @@ export class IndexService<U extends ResourceUri = ResourceUri>
       options.reuse !== 'none' && this.parsedUnder === fingerprint
         ? this.state.files
         : undefined;
-
-    await this.progress.withProgress(
-      checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
-      async (progress) => {
-        const parsedFiles = await this.scanWorkspace(progress, reusable);
-        this.scanState = undefined;
-        if (this.disposed) {
-          return;
-        }
-        let changed = true;
-        if (checking) {
-          changed = this.applyCheck(parsedFiles);
-        } else {
-          this.applyRebuild(parsedFiles, reusable !== undefined);
-        }
-        this.finishScan(fingerprint);
-        if (changed) {
-          this.emitUpdate();
-        }
-      },
-    );
+    const begunAt = this.begin();
+    let superseded = false;
+    try {
+      await this.progress.withProgress(
+        checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
+        async (progress) => {
+          const scan = await this.scanWorkspace(progress, reusable, generation);
+          superseded = generation !== this.scanGeneration;
+          if (this.disposed || superseded) {
+            return;
+          }
+          this.scanState = undefined;
+          // A save, creation, or deletion applied after this scan began
+          // reading is newer than what the scan read, so it stands.
+          const parsedFiles = this.keepNewerChanges(scan.files, begunAt);
+          let changed = true;
+          if (checking) {
+            changed = this.applyCheck(parsedFiles);
+          } else {
+            this.applyRebuild(parsedFiles, reusable !== undefined);
+          }
+          this.finishScan(fingerprint, scan, begunAt);
+          if (changed) {
+            this.emitUpdate();
+          }
+        },
+      );
+    } finally {
+      this.end();
+    }
+    if (superseded) {
+      await this.latestRefresh;
+    }
   }
 
   /** Forgets the parked rules read, so the next index reads `deckard.parked` again. */
@@ -273,18 +311,90 @@ export class IndexService<U extends ResourceUri = ResourceUri>
    * because unsaved editor content cannot provide a trustworthy file stat.
    */
   public async applyQueued(updates: ReadonlyArray<QueuedChange<U>>): Promise<void> {
-    const changes = await measureAsync(
-      'Read changed notes',
-      () => this.readUpdates(updates),
-      () => `${updates.length} ${updates.length === 1 ? 'note' : 'notes'}`,
-    );
-    if (this.disposed) {
-      return;
+    const begunAt = this.begin();
+    try {
+      const read = await measureAsync(
+        'Read changed notes',
+        () => this.readUpdates(updates),
+        () => `${updates.length} ${updates.length === 1 ? 'note' : 'notes'}`,
+      );
+      if (this.disposed) {
+        return;
+      }
+      // A batch that began after this one may have finished reading first;
+      // its read of a note is the newer one, so this batch's is dropped.
+      const changes = read.filter((change) => (this.changedAt.get(change.filePath) ?? 0) < begunAt);
+      changes.forEach((change) => {
+        this.changedAt.set(change.filePath, begunAt);
+        this.unreadable.delete(change.filePath);
+      });
+      this.applyChanges(changes);
+    } finally {
+      this.end();
     }
+  }
+
+  /** Folds a batch's changes into the index and the full-text cache, and publishes them. */
+  private applyChanges(changes: readonly NoteChange[]): void {
+    changes.forEach((change) => {
+      if (change.file) {
+        this.searchStore?.upsert(change.file);
+      } else {
+        this.searchStore?.remove(change.filePath);
+      }
+    });
     // Only the changed notes' parts of the index are worked out again; the
     // rest is reused from the index before.
     this.publishState('Update index', () => this.state.apply(changes), describeUpdate(changes));
     this.emitUpdate();
+  }
+
+  /** Marks a scan or batch begun, and answers when, on the change clock. */
+  private begin(): number {
+    this.underWay += 1;
+    this.changeClock += 1;
+    return this.changeClock;
+  }
+
+  /**
+   * Marks a scan or batch finished. With none under way, no later read can
+   * be older than a change applied, so what was applied when is forgotten.
+   */
+  private end(): void {
+    this.underWay -= 1;
+    if (this.underWay === 0) {
+      this.changedAt.clear();
+    }
+  }
+
+  /**
+   * The notes a scan read, with each note a change batch applied after the
+   * scan began taken as the index holds it now: the saved note in place of
+   * the scan's older read, a note created since added, and one deleted since
+   * left out.
+   */
+  private keepNewerChanges(scanned: readonly ParsedFile[], begunAt: number): readonly ParsedFile[] {
+    const newer = new Set(
+      [...this.changedAt].filter(([, at]) => at > begunAt).map(([filePath]) => filePath),
+    );
+    if (newer.size === 0) {
+      return scanned;
+    }
+    const kept: ParsedFile[] = [];
+    scanned.forEach((file) => {
+      const current = newer.has(file.filePath) ? this.state.files.get(file.filePath) : file;
+      if (current) {
+        kept.push(current);
+      }
+    });
+    const seen = new Set(scanned.map((file) => file.filePath));
+    newer.forEach((filePath) => {
+      const current = this.state.files.get(filePath);
+      if (current && !seen.has(filePath)) {
+        kept.push(current);
+      }
+    });
+    return kept;
   }
 
   /**
@@ -359,18 +469,27 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   private scanWorkspace(
     progress: ProgressReport,
     reusable: ReadonlyMap<string, ParsedFile> | undefined,
-  ): Promise<ParsedFile[]> {
+    generation: number,
+  ): Promise<ScanResult> {
     return measureAsync(
       'Scan workspace',
-      () =>
-        this.scanner.scan(
-          (completed, total): void => this.reportScan(progress, completed, total),
+      async () => {
+        const files = await this.scanner.scan(
+          (completed, total): void => {
+            // A superseded scan still reading says nothing; the newer one reports.
+            if (generation === this.scanGeneration) {
+              this.reportScan(progress, completed, total);
+            }
+          },
           reusable && ((filePath, stamp) => reuseUnchanged(reusable.get(filePath), stamp)),
           // Each note is encoded for the cache as it is read, rather
           // than all of them in one turn when the cache is written.
           this.searchStore && ((file) => this.searchStore?.prepare(file)),
-        ),
-      (files) => `${files.length} notes`,
+        );
+        // Taken at once, before another scan can finish and replace them.
+        return { files, failures: this.scanner.failures, counts: this.scanner.lastScan };
+      },
+      (scan) => `${scan.files.length} notes`,
     );
   }
 
@@ -427,12 +546,16 @@ export class IndexService<U extends ResourceUri = ResourceUri>
    * What every finished scan records: the parse settings it read under, the
    * notes it could not read, and the full-text cache written from it.
    */
-  private finishScan(fingerprint: string): void {
+  private finishScan(fingerprint: string, scan: ScanResult, begunAt: number): void {
     this.parsedUnder = fingerprint;
+    this.lastScan = scan.counts;
     this.unreadable.clear();
-    this.scanner.failures.forEach((failure) =>
-      this.unreadable.set(failure.filePath, failure.reason),
-    );
+    scan.failures.forEach((failure) => {
+      // A note a batch has read since the scan began is as that batch left it.
+      if ((this.changedAt.get(failure.filePath) ?? 0) <= begunAt) {
+        this.unreadable.set(failure.filePath, failure.reason);
+      }
+    });
     this.persistToCache(fingerprint);
     this.indexedOnce = true;
     this.staleFromCache = false;
@@ -445,7 +568,7 @@ export class IndexService<U extends ResourceUri = ResourceUri>
       'Rebuild search index',
       () => {
         this.searchStore?.replace(this.state.files.values(), this.cacheFingerprint(fingerprint));
-        this.searchStore?.writeLastScan(this.scanner.lastScan);
+        this.searchStore?.writeLastScan(this.lastScan);
       },
       () => `${this.state.files.size} notes`,
     );
@@ -533,8 +656,6 @@ export class IndexService<U extends ResourceUri = ResourceUri>
       const filePath = this.scanner.getFilePath(update.uri);
       if (update.deleted) {
         changes.push({ filePath });
-        this.unreadable.delete(filePath);
-        this.searchStore?.remove(filePath);
         continue;
       }
 
@@ -545,8 +666,6 @@ export class IndexService<U extends ResourceUri = ResourceUri>
             ? await this.scanner.read(update.uri)
             : this.scanner.parse(update.uri, update.content, previous?.fileTimes);
         changes.push({ filePath, file: parsedFile });
-        this.unreadable.delete(filePath);
-        this.searchStore?.upsert(parsedFile);
       } catch (error) {
         reportError(`Could not update ${filePath}`, error);
         this.unreadable.set(filePath, describeError(error));
@@ -563,6 +682,13 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   private emitUpdate(): void {
     this.publisher.publish(() => this.getSnapshot());
   }
+}
+
+/** What a scan read, could not read, and counted, taken together as it finished. */
+interface ScanResult {
+  files: ParsedFile[];
+  failures: readonly UnreadableNote[];
+  counts: ScanCounts;
 }
 
 /** What the log says of a full build: "3 notes, 12 entries". */

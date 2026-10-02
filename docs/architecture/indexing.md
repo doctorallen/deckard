@@ -85,6 +85,8 @@ What each change requires is decided by `reactionsTo(change)`, a pure function w
 
 The queue is keyed by URI and keeps only the newest change for each. It flushes 200 ms after the first change it holds, since a later change joins the batch without putting the flush off, and applies the whole batch at once, so no listener sees half a batch.
 
+Scans and batches can overlap, and the one that finishes last is not always the newest. So the `IndexService` numbers each as it begins. A scan that a newer scan has begun since drops what it found and resolves when the newer one does, since it read under settings or folders that have changed. A note a batch applied after a scan began stays as the batch left it when the scan finishes, whether saved, created, or deleted. A batch that finishes reading after a newer batch has applied the same note drops its older read.
+
 ## The cache and its fingerprint
 
 The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. On a warm start the `IndexService` reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
