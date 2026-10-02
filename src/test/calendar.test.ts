@@ -491,4 +491,27 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('on the page, Next month keeps the focus on the button, and ] on a day takes it to the day stepped to', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const month = (name: string, selectedDate: string) =>
+      createCalendar(index, name, createQueryContext(now), { dayPanel: true, layout: 'page', selectedDate });
+    const page = openWebviewPage(renderPage('calendarPage'), month('2026-09', '2026-09-14'));
+    try {
+      const next = () => page.find('[data-action="step-calendar"][data-by="1"]') as HTMLElement;
+      next().focus();
+      next().click();
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-14' });
+      page.send(month('2026-10', '2026-10-14'));
+      assert.strictEqual(page.document.activeElement, next(), 'Enter steps again');
+      const tabStop = page.find('.calendar-grid .day[tabindex="0"]') as HTMLElement;
+      assert.strictEqual(tabStop.dataset.date, '2026-10-14', 'the day stepped to takes Tab');
+      tabStop.focus();
+      tabStop.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: ']', bubbles: true, cancelable: true }));
+      page.send(month('2026-11', '2026-11-14'));
+      assert.strictEqual((page.document.activeElement as HTMLElement).dataset.date, '2026-11-14', 'the focus follows a step from the grid');
+    } finally {
+      page.dispose();
+    }
+  });
 });

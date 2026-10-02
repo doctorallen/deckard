@@ -75,7 +75,12 @@ function stepFrom(state: CalendarPageState): string {
   return (week.days.find((day) => day.inMonth && isDrawn(snapshot, day)) ?? week.days[0]).date;
 }
 
-/** Steps the page a month or a week, keeping the chosen day's place. */
+/**
+ * Steps the page a month or a week, keeping the chosen day's place. The
+ * day stepped to takes the grid's tab stop, and the focus too when a day
+ * had it; from the ‹ and › buttons the focus stays on the button, so Enter
+ * steps again rather than opening a day's note.
+ */
 function step(by: number): void {
   const state = session.store.state;
   const snapshot = state.snapshot as CalendarSnapshot;
@@ -85,7 +90,11 @@ function step(by: number): void {
     nextMonth: snapshot.nextMonth,
     hideWeekends: Boolean(snapshot.hideWeekends),
   });
-  session.focusWhenDrawn(next.date);
+  if (document.activeElement?.closest('.calendar-grid')) {
+    session.focusWhenDrawn(next.date);
+  } else {
+    session.setFocusDate(next.date);
+  }
   session.sendStep(next.month ? { type: 'showMonth', month: next.month, date: next.date } : { type: 'selectDay', date: next.date });
 }
 
