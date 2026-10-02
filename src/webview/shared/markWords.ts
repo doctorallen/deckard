@@ -29,13 +29,18 @@ interface Marked {
 export type Unmark = () => void;
 
 /**
- * The words as one pattern. The words go in as written: the template meant
- * to escape what a pattern reads specially, but the escape it wrote was
- * lost to its own template literal, so `a.b` matches `axb`, and a word such
- * as `c++` throws, as it always has.
+ * A word as a pattern that matches it as written. Every character a pattern
+ * reads specially is escaped, so `a.b` matches only `a.b`, and `c++` is a
+ * word rather than a pattern that throws. Each is a syntax character, which
+ * may be escaped under the `u` flag as well.
  */
+function literal(word: string): string {
+  return word.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
+/** The words as one pattern, each matched as written. */
 function patternOf(words: readonly string[], wordStart: boolean): RegExp {
-  return new RegExp(`${wordStart ? '(?<![\\p{L}\\p{N}])' : ''}(${words.join('|')})`, wordStart ? 'giu' : 'gi');
+  return new RegExp(`${wordStart ? '(?<![\\p{L}\\p{N}])' : ''}(${words.map(literal).join('|')})`, wordStart ? 'giu' : 'gi');
 }
 
 /** The text nodes under `root` that a pattern finds, outside controls, tags, code, and marks. */
