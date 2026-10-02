@@ -32,6 +32,8 @@ export interface ControlsState {
   readonly status: { readonly text: string; readonly joinedShown: boolean };
   /** The empty-state line's display, once a graph has said. */
   readonly emptyDisplay?: string;
+  /** What the empty-state line says, when it is not that the workspace has no notes. */
+  readonly emptyNote?: string;
   /** Reset's offer of Undo, or the word that it was taken. */
   readonly resetUndo: 'none' | 'offer' | 'restored';
 }
@@ -105,7 +107,7 @@ export function GraphBody(props: ControlsProps) {
       />
       {' '}
       <div class="empty-state" id="empty-state" style={ui.emptyDisplay === undefined ? undefined : { display: ui.emptyDisplay }}>
-        No indexed notes yet — save a Markdown file with tags or links.
+        {ui.emptyNote ?? 'No indexed notes yet — save a Markdown file with tags or links.'}
       </div>
       {' '}
       <div class="overlay" role="group" aria-label="Graph controls">

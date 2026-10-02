@@ -902,6 +902,19 @@ suite('Notes Graph behavior', () => {
       assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'a is still selected');
     });
 
+    test('drawn around a note with nothing in the graph, it says so, not that the workspace has no notes', () => {
+      const page = openCanvas();
+      const empty = page.find('#empty-state') as HTMLElement;
+      const around = (workspaceNodeCount: number) => graphState([], [], {
+        focus: { local: true, depth: 1, skipPeriodic: true, workspaceNodeCount, filePath: 'notes/new.md', title: 'new' },
+      });
+      page.send(around(3));
+      assert.strictEqual(empty.style.display, 'grid');
+      assert.strictEqual(empty.textContent?.trim(), 'Nothing in new to draw yet — write in it and save, or turn off Around this note to see the whole workspace.');
+      page.send(around(0));
+      assert.strictEqual(empty.textContent?.trim(), 'No indexed notes yet — save a Markdown file with tags or links.');
+    });
+
     test('a selection a filter hides is let go, and the host is told so Related Notes lets it go too', () => {
       const page = openCanvas();
       const toggle = (id: string, checked: boolean) => {

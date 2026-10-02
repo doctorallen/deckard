@@ -245,7 +245,7 @@ export function rebuildView(page: GraphPage, repositionCommunities?: boolean): v
   restoreSelection(state, rebuilt.previousFoldMembers);
   state.alpha = rebuilt.reusedAny && state.hasFramed ? 0.3 : 1;
   updateStatus(page);
-  page.ui = { ...page.ui, emptyDisplay: snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none' };
+  page.ui = { ...page.ui, emptyDisplay: snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none', emptyNote: describeEmpty(snapshot) };
   if (!state.hasFramed && state.nodes.length > 0) {
     fitToView(page);
     state.hasFramed = true;
@@ -269,6 +269,19 @@ function restoreSelection(state: GraphState, previousFoldMembers: Record<string,
   if (selectedId !== null && restored < 0) {
     send({ type: 'clearSelection' });
   }
+}
+
+/**
+ * What the empty graph says when it is drawn around a note the graph holds
+ * nothing of, such as a new, empty one, in a workspace that has notes;
+ * otherwise undefined, and it says the workspace has none.
+ */
+function describeEmpty(snapshot: NonNullable<GraphState['snapshot']>): string | undefined {
+  const focus = snapshot.focus;
+  if (!focus || !focus.local || !focus.title || !focus.workspaceNodeCount) {
+    return undefined;
+  }
+  return 'Nothing in ' + focus.title + ' to draw yet — write in it and save, or turn off Around this note to see the whole workspace.';
 }
 
 /** The Group list takes the group picked; its options are the groups named now. */
