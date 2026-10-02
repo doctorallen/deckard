@@ -40,6 +40,7 @@ import {
   setGroup,
   undoGraphReset,
   updateFocus,
+  updateStatus,
   zoomAt,
 } from './graphPage';
 import { emptyGraphState, type GraphSettings } from './model';
@@ -195,6 +196,10 @@ function filterHandlers(page: GraphPage): Pick<ControlHandlers, 'searchInput' | 
         page.settings.search = (page.refs.search.current as HTMLInputElement).value;
         keep(page);
         recomputeSearchMatches(page.state, page.settings);
+        // The status line counts the matches, and this runs after the
+        // input's own draw, so it draws the line again itself.
+        updateStatus(page);
+        page.redraw();
         scheduleFrame(page);
       }, TYPING_MS);
     },

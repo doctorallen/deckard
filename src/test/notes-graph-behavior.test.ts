@@ -447,6 +447,28 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
     });
 
+    test('the status line counts the search\'s matches as the search is typed', async () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const status = () => page.text('#status-counts') ?? '';
+      assert.match(status(), /^3 notes · /, 'no count before a search');
+      const box = page.find('#search') as HTMLInputElement;
+      const type = async (text: string) => {
+        box.value = text;
+        box.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+        // The graph follows typing once it pauses for 150 ms.
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      };
+
+      await type('call');
+      assert.match(status(), /^1 match · 3 notes · /);
+      await type('c');
+      assert.match(status(), /^2 matches · 3 notes · /, 'c and call');
+      await type('');
+      assert.match(status(), /^3 notes · /, 'and none once the box is empty');
+    });
+
     test('a node Related Notes hovers is ringed with its neighbors bright, until the hover ends', () => {
       const page = openCanvas();
       page.send(chain());
