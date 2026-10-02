@@ -128,6 +128,25 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   );
 }
 
+/** The search and its counts last said, so a draw that changes neither says nothing. */
+let announcedCounts: string | undefined;
+
+/**
+ * Says how many notes and tasks match, when the search or what it matches
+ * has changed. Most draws change neither, such as a tab, Show all, or a
+ * completed task's answer, and saying it again would talk over what the
+ * reader just did.
+ */
+function announceCounts(snapshot: SearchPageState): void {
+  const counts = resultCounts(snapshot);
+  const said = [(snapshot.query && snapshot.query.text) || '', counts.notes, counts.tasks].join('\u0000');
+  if (said === announcedCounts) {
+    return;
+  }
+  announcedCounts = said;
+  announce(`${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
+}
+
 const store = startPage<SearchStore>({
   initial: { snapshot: undefined },
   ready: (state) => Boolean(state.snapshot),
@@ -141,8 +160,7 @@ const store = startPage<SearchStore>({
     // Every draw is unmarked first, the page's own redraws included, such
     // as a tab or Show all, so every draw is marked again.
     unmark = markWords(document.getElementById('app'), editor.previewWords((snapshot.query && snapshot.query.text) || ''));
-    const counts = resultCounts(snapshot);
-    announce(`${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
+    announceCounts(snapshot);
   },
 });
 installMenuKeys();

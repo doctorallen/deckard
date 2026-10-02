@@ -379,6 +379,22 @@ test('the searched words stay marked through the page\'s own redraws', async () 
   assert.deepStrictEqual(marks(), ['sequencing'], 'marked again after a tab and back');
 });
 
+test('the match count is said when the search changes, and not on every redraw', async () => {
+  const { view, panel } = await openOverview();
+  const status = view.find('#live-status');
+  assert.strictEqual(status.textContent, '2 notes and 1 task match this search.');
+  status.textContent = '';
+  view.click(view.find('[data-action="set-result-tab"][data-tab="tasks"]'));
+  // The host sends the same state again, as an index update does.
+  const states = panel._toWebview.filter((message) => message.type === 'state');
+  panel._deliver(states[states.length - 1]);
+  assert.strictEqual(status.textContent, '', 'nothing changed, so nothing is said');
+
+  search(view, 'planning');
+  await settle();
+  assert.strictEqual(status.textContent, '1 note and 0 tasks match this search.');
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
