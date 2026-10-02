@@ -74,8 +74,9 @@ export interface SuggestedTagRow {
 
 /**
  * What Related Notes lists, as its snapshot holds it: the related notes,
- * the lines that link to or name the note, and the tags offered to a note
- * with none. Only what a click is checked against is read.
+ * the lines that link to or name the note, and, for a note with no tags,
+ * the entries worded like it and the tags they use. Only what a click is
+ * checked against is read.
  *
  * The `related` policy reads these rows rather than the index, since what
  * the sidebar lists is the ranking's choice: the rows must be built afresh
@@ -88,7 +89,7 @@ export interface RelatedNotesRows {
     linkedFromNotes: readonly { entries: readonly NoteLinkRow[] }[];
     mentions: readonly NoteMentionRow[];
   };
-  similar?: { tags: readonly SuggestedTagRow[] };
+  similar?: { notes: readonly RelatedNoteRow[]; tags: readonly SuggestedTagRow[] };
 }
 
 /** One policy's rule: where the line opens, if it may. */
@@ -185,9 +186,9 @@ export class NavigationService {
   /**
    * Where a Related Notes row opens, under the `related` policy: a line
    * that links to or names the note opens where it is, and otherwise a
-   * related note opens at its first line, counting a visit to its entry.
-   * Anything the rows do not list is `unknown`, including an entry listed
-   * only as similar wording.
+   * related note, or an entry listed as similar wording, opens at its first
+   * line, counting a visit to its entry. Anything the rows do not list is
+   * `unknown`.
    */
   public resolveRelatedSource(rows: RelatedNotesRows, filePath: string, line: number): SourceLocation {
     const link = [
@@ -207,10 +208,15 @@ export class NavigationService {
   /**
    * The related note a row names by its note and first line, under the
    * `related` policy, as Insert link writes a link to it; undefined when
-   * the rows do not list it among the related notes.
+   * the rows list it neither among the related notes nor as similar
+   * wording. A note with no tags lists entries worded like it under their
+   * own heading, with the same cards, so a click on one is accepted as on
+   * a related note.
    */
   public findRelatedNote(rows: RelatedNotesRows, filePath: string, line: number): RelatedNoteRow | undefined {
-    return rows.notes.find((candidate) => candidate.filePath === filePath && candidate.sourceLine === line);
+    return [...rows.notes, ...(rows.similar?.notes ?? [])].find(
+      (candidate) => candidate.filePath === filePath && candidate.sourceLine === line,
+    );
   }
 
   /**
