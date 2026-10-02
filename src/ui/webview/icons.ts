@@ -84,17 +84,6 @@ export const layoutTabsIcon = strokeIcon(ICON_PATHS.layoutTabs);
 export const layoutSplitIcon = strokeIcon(ICON_PATHS.layoutSplit);
 export const renderedIcon = strokeIcon(ICON_PATHS.rendered);
 export const sourceIcon = strokeIcon(ICON_PATHS.source);
-export const zoomInIcon = strokeIcon(ICON_PATHS.zoomIn);
-export const zoomOutIcon = strokeIcon(ICON_PATHS.zoomOut);
 export const fitIcon = strokeIcon(ICON_PATHS.fit);
 export const ellipsisIcon = strokeIcon(ICON_PATHS.ellipsis);
 
-/**
- * A 16×8 line sample for the Notes Graph's legend, dashed as the canvas
- * dashes that kind of edge. Hidden to assistive technology: the word after it says the kind.
- */
-export function edgeLegendLine(kind: string, dash: string, hidden = false): string {
-  const dashes = dash ? ` stroke-dasharray="${dash}"` : '';
-  const cap = kind === 'tag' ? ' stroke-linecap="round"' : '';
-  return `<svg class="legend-line" data-legend="${kind}" viewBox="0 0 16 8" aria-hidden="true" focusable="false"${hidden ? ' hidden' : ''}><line x1="1" y1="4" x2="15" y2="4"${dashes}${cap}/></svg>`;
-}

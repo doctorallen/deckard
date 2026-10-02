@@ -376,9 +376,6 @@ export default {
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],
-    "src/ui/webview/notesGraphHtml.ts": [
-      "getNotesGraphHtml"
-    ],
     "src/ui/webview/searchPageHtml.ts": [
       "getSearchPageHtml"
     ],

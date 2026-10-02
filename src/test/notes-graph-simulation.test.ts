@@ -245,6 +245,18 @@ suite('Notes Graph simulation', () => {
     assert.ok(run(true) > 0, 'pulled toward its tag');
   });
 
+  test('with tags shown, a note is pulled hard and close by its primary tag, and faintly by another', () => {
+    const pulled = (primary: boolean): number => {
+      const state = layout([node('a', 'note', ['#x']), node('#x', 'tag')], [link(0, 1, ['tag-membership'], 2)], [[0, 0], [200, 0]]);
+      state.primaryTag[0] = primary ? 1 : -1;
+      graph.tick(state, { ...DEFAULTS, showTags: true });
+      return state.px[0];
+    };
+    // 3 times the strength toward 0.8 of Link distance, against 0.08 toward 1.6 of it.
+    assert.strictEqual(pulled(true), Math.fround(200 * ((200 - 32 * 0.8) / 200 * 1 * 3) * 0.5 * 0.6));
+    assert.ok(pulled(true) > pulled(false) * 40 && pulled(false) > 0);
+  });
+
   test('a tag sits at its group anchor and offset, and an untagged note drifts to the middle', () => {
     const state = inGroups(layout([node('#x', 'tag'), node('loose')], [], [[0, 0], [400, 0]]), [0, -1], [[100, 50]]);
     state.tagOffsetX[0] = 5;
