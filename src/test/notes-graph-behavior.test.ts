@@ -447,6 +447,27 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
     });
 
+    test('Enter opens the selected node, and Alt+Enter opens it beside the graph, as Alt-click does', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const canvas = page.find('#graph');
+      const key = (init: KeyboardEventInit) => canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+      key({ key: 'ArrowRight' });
+      const at = { type: 'openSource', filePath: 'notes/a.md', line: 1 };
+
+      key({ key: 'Enter' });
+      assert.deepStrictEqual(page.lastPosted('openSource'), at);
+      key({ key: 'Enter', altKey: true });
+      assert.deepStrictEqual(page.lastPosted('openSource'), { ...at, beside: true });
+      key({ key: ' ', altKey: true });
+      assert.deepStrictEqual(page.lastPosted('openSource'), { ...at, beside: true });
+      for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+        key({ key: 'Enter', ...modifier });
+        assert.deepStrictEqual(page.lastPosted('openSource'), at, 'Cmd/Ctrl opens it, as Cmd/Ctrl-click does');
+      }
+    });
+
     test('the status line counts the search\'s matches as the search is typed', async () => {
       const page = openCanvas();
       page.send(chain());

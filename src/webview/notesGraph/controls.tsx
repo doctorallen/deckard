@@ -99,7 +99,7 @@ export function GraphBody(props: ControlsProps) {
         id="graph"
         tabIndex={0}
         role="application"
-        aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Escape to clear."
+        aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear."
         aria-describedby="graph-legend"
         ref={refs.canvas}
       />

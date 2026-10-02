@@ -222,7 +222,8 @@ function clickCanvas(page: GraphPage, click: CanvasClick): void {
  * without this the whole view could be looked at but never used from the
  * keyboard. Nodes are visited in the order they are drawn, and the camera
  * follows the selection so it is never off screen. Escape clears the
- * selection, and Enter or Space opens it.
+ * selection, and Enter or Space opens it, with Alt beside the graph, as
+ * Alt does on a click.
  */
 function onKey(page: GraphPage, event: KeyboardEvent): void {
   const { state } = page;
@@ -237,7 +238,7 @@ function onKey(page: GraphPage, event: KeyboardEvent): void {
   if (event.key === 'Enter' || event.key === ' ') {
     if (state.selectedIndex >= 0) {
       event.preventDefault();
-      openNode(page, state.selectedIndex, event.metaKey || event.ctrlKey);
+      openNode(page, state.selectedIndex, event.altKey);
     }
     return;
   }
