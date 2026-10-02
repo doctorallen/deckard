@@ -462,7 +462,9 @@ document.addEventListener('keydown', (event) => {
   if (editor.handleKeydown(event)) {
     return;
   }
-  if (event.key !== 'Enter' && event.key !== ' ') {
+  // Alt+Enter asks for the row's menu, which the menu keys opened already;
+  // it does not open the note as well.
+  if ((event.key !== 'Enter' && event.key !== ' ') || event.altKey || event.defaultPrevented) {
     return;
   }
   const element = event.target instanceof Element ? event.target : null;

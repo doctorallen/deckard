@@ -438,4 +438,13 @@ suite('Task Board page', () => {
     assert.strictEqual(cards().scrollTop, 300, 'the Doing column is where it was, not back at its top');
     assert.strictEqual(shown.find('.task-board').scrollLeft, 120);
   });
+
+  test('Alt+Enter on a list row opens its menu and leaves its note closed', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'created' }));
+    const row = shown.find('.task-list .task-row') as HTMLElement;
+    row.focus();
+    press(shown, row, 'Enter', { altKey: true });
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'the menu opens');
+    assert.strictEqual(shown.lastPosted('openSource'), undefined, 'and the note does not');
+  });
 });
