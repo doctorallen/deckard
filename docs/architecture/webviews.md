@@ -1,12 +1,14 @@
 # Webview pages
 
-**Status: target.** This page describes the design of [the refactor plan](../implementation/19-refactor.md), not the code as it stands; each phase rewrites it to describe what then exists.
+**Status: current.** This page describes the webview pages as they stand after Phase 6 of [the refactor plan](../implementation/19-refactor.md), which moved every page to a bundle; each later phase rewrites it to describe what then exists.
 
-## How pages are built today
+## How pages are built
 
-*Since Phase 6 step 4.2, Stats is a Preact page on the shared core ([Rendering with Preact](#rendering-with-preact)), since step 4.4 the Task Board is too, since step 4.5 the search page, and since step 4.7 the Dashboard;page, and since step 4.6 Related Notes; the rest of this section describes the pages not yet moved.* Each such page's host function still writes its page's script as one template literal. Since Phase 6 step 3 it hands that body to `buildPageShell`, which writes the CSP `<meta>` and links the page's style sheets from `dist/webview/` (see [Bundling and loading](#bundling-and-loading)); the body keeps one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
+Every page is a shell its host writes and a bundle that draws it. Eight pages draw with Preact on the shared core: Stats, the Task Board, the search page, Related Notes, both calendars, the Notes Graph, and the Dashboard. Help's script is a typed module with no Preact that moves around the body its host builds from the manifest, and the Related Notes debug page is HTML its host builds, with no script at all. Each bundle is built from `src/webview/<page>/` and loaded by URI under the page's nonce ([Bundling and loading](#bundling-and-loading)); its code is type-checked against the DOM, and imports only its own folder, `webview/shared`, the protocol, the domain modules D1 names, and Preact ([layers.md](layers.md)). [docs/components.md](../components.md) documents the components a page draws with.
 
-This has costs. The compiler never sees page code, so `test/ui/checkWebviewScripts.js` extracts it by regex and runs `tsc` with `strict: false`. Every redraw assigns `app.innerHTML`, and `renderKeepingPlace` exists to restore the focus and scroll that each redraw loses. Until step 3, seven of nine builders hand-wrote their CSP, and the copies had drifted. Everything below replaces this model. [docs/components.md](../components.md) documents the current mechanism until Phase 6 rewrites it.
+The nine scripts come to 586.2 KB minified, 195.2 KB with gzip ([the table](#the-pages-scripts)); the host's `dist/extension.js` is 944.3 KB.
+
+Before Phase 6, each host function wrote its page's script as one template literal, which interpolated a shared component script of 105.9 KB, and on three pages a 67.8 KB query editor script, as untyped text; the Dashboard rendered to 339.8 KB. The compiler never saw page code, so `test/ui/checkWebviewScripts.js` extracted it by regex and type-checked it with `strict: false`. Every redraw assigned `app.innerHTML`, and `renderKeepingPlace` put back the focus and scroll each redraw lost. Until step 3, seven of nine builders hand-wrote their CSP, and the copies had drifted. Step 7 deleted what was left of that model: the template builders in `src/ui/webview/components.ts` and `checkWebviewScripts.js`. The suites that held the shared components to the template now hold them to recordings of it ([The shared core](#the-shared-core)).
 
 ## The shape every well-made extension shares
 
@@ -68,7 +70,7 @@ A message handler is an adapter under the rules in [services.md](services.md). A
 
 ## Moving a host onto WebviewHost
 
-This is the recipe Stats followed in 2.1, and steps 2.2 to 2.10 after it, each moving one host on its own branch while the others moved theirs. A move changes nothing a page receives, nothing any message does, and no line the log writes. The pages still serve today's template HTML, so `npm run test:dom` stays identical.
+This is the recipe Stats followed in 2.1, and steps 2.2 to 2.10 after it, each moving one host on its own branch while the others moved theirs. A move changes nothing a page receives, nothing any message does, and no line the log writes. In step 2 the pages still served their template HTML, so `npm run test:dom` stayed identical.
 
 ### What a page owns
 
@@ -134,7 +136,7 @@ The page context compiles JSX with the automatic runtime and `jsxImportSource: '
 
 `src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency, and each Preact page's bundle carries its own copy, with what it uses of the shared core; see [One bundle per page](#one-bundle-per-page).
 
-Stats (`src/webview/stats/main.tsx`), the Task Board (`src/webview/taskBoard/main.tsx`), the search page (`src/webview/searchPage/main.tsx`), Related Notes (`src/webview/sidebarNotes/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), the calendar page (`src/webview/calendarPage/main.tsx`), the Notes Graph (`src/webview/notesGraph/main.tsx`), the Dashboard (`src/webview/dashboard/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `taskBoard.js`, `searchPage.js`, `sidebarNotes.js`, `calendar.js`, `calendarPage.js`, `notesGraph.js`, `dashboard.js`, and `help.js`; every other page still runs the inline script its builder writes. The two calendars are two entries over `src/webview/shared/calendar/`. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
+Stats (`src/webview/stats/main.tsx`), the Task Board (`src/webview/taskBoard/main.tsx`), the search page (`src/webview/searchPage/main.tsx`), Related Notes (`src/webview/sidebarNotes/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), the calendar page (`src/webview/calendarPage/main.tsx`), the Notes Graph (`src/webview/notesGraph/main.tsx`), the Dashboard (`src/webview/dashboard/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `taskBoard.js`, `searchPage.js`, `sidebarNotes.js`, `calendar.js`, `calendarPage.js`, `notesGraph.js`, `dashboard.js`, and `help.js`. The Related Notes debug page has no entry, since it runs no script. The two calendars are two entries over `src/webview/shared/calendar/`. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
 
 1. the policy `getContentSecurityPolicy` builds (next section);
 2. for a page with `bundle`, `<meta name="deckard-theme" content="…">`, the theme's name, which a gear's theme row reads (`readThemeName`);
@@ -167,7 +169,26 @@ The built pages in development, and minified for the VSIX:
 
 Each page's sheet carries the base sheet, about 28 KB of it in development; a page loads its own sheet, one theme, and the tail. The development build writes a source map beside each sheet; `.vscodeignore` keeps every `.map` out of the VSIX.
 
-A page with a script entry passes `bundle: true`, and the shell writes `<script nonce src>` for `dist/webview/<page>.js` last in the body, after the page's inert state when it has one; each page will once its script moves.
+A page with a script entry passes `bundle: true`, and the shell writes `<script nonce src>` for `dist/webview/<page>.js` last in the body, after the page's inert state when it has one.
+
+### The pages' scripts
+
+*Measured at the end of Phase 6*, from `node esbuild.js --production`, the build the VSIX ships, with gzip at level 9:
+
+| Script | Production | Gzip |
+| --- | --- | --- |
+| `dashboard.js` | 117.0 KB | 36.9 KB |
+| `taskBoard.js` | 110.1 KB | 35.2 KB |
+| `searchPage.js` | 94.5 KB | 31.1 KB |
+| `notesGraph.js` | 71.6 KB | 25.4 KB |
+| `sidebarNotes.js` | 62.9 KB | 20.9 KB |
+| `calendarPage.js` | 50.8 KB | 18.1 KB |
+| `stats.js` | 38.3 KB | 13.0 KB |
+| `calendar.js` | 37.5 KB | 13.1 KB |
+| `help.js` | 3.7 KB | 1.6 KB |
+| All nine | 586.2 KB | 195.2 KB |
+
+Each Preact page's script carries Preact and what it uses of the shared core ([One bundle per page](#one-bundle-per-page)); Help's carries neither. `scripts/check-bundle-inputs.js` holds every page's script to Preact alone.
 
 **Help** is the one page with no Preact (Q6 of the [Phase 6 plan](../implementation/20-webviews.md)). Its body stays the HTML the host builds from the manifest, and its script, `src/webview/help/main.ts`, is a typed module that only moves around in it: the rail, the guide view, and the way back. The guide view sets the HTML of a guide page, rendered by the host through `markdown.api.render` from the guide the VSIX ships, in one documented assignment. Help is not retained when hidden; it saves `{ guide?: { page, anchor? }, scrollY, drawn }` with `setState`, and a page shown again asks for its guide page and scrolls back. `drawn` is a hash of the nonce the HTML was drawn with, so a state saved by an earlier drawing (a theme change, a section asked for while hidden, a window reload) is not read, and those open where they always have. The official guide calls external files the best practice, and every surveyed extension loads its bundle this way; see [decision 0001](decisions/0001-load-page-bundles-through-aswebviewuri.md).
 
@@ -255,7 +276,7 @@ VS Code hands a page's saved `setState` back after a restart, so a page restored
 
 ## Rendering with Preact
 
-Each page is a tree of TSX components that render from the snapshot. Preact diffs and patches only what changed. That removes the full-page `innerHTML` redraw, `renderKeepingPlace`, and the in-page `escapeHtml`, since text becomes text nodes by construction. esbuild compiles TSX natively, so `tsc` type-checks the markup with no plugin. See [decision 0002](decisions/0002-preact-in-the-light-dom.md).
+Each page is a tree of TSX components that render from the snapshot. Preact diffs and patches only what changed. That removed the full-page `innerHTML` redraw, `renderKeepingPlace`, and the in-page `escapeHtml`, since text becomes text nodes by construction. esbuild compiles TSX natively, so `tsc` type-checks the markup with no plugin. See [decision 0002](decisions/0002-preact-in-the-light-dom.md).
 
 Two guards apply:
 
@@ -264,11 +285,11 @@ Two guards apply:
 
 Preact renders into the light DOM, not a shadow root. Document-level theme CSS does not cross a shadow root except through inherited and custom properties. jsdom has never implemented `adoptedStyleSheets`. The light DOM keeps the eight themes, the high-contrast sheets, and the layout, contrast, and visual tests working unchanged.
 
-Domain logic leaves page script. The graph's clustering and salience, the Home widget catalog, calendar arithmetic, board status validation, tag-key parsing, and the Help manifest interpreter become typed modules. They go host-side where the host owns the decision, and into shared modules where the page must compute locally. Click handlers become one `dispatchAction` over a `Record<string, handler>`.
+Domain logic left page script. The graph's clustering and salience, the Home widget catalog, calendar arithmetic, board status validation, tag-key parsing, and the Help manifest interpreter are typed modules: host-side where the host owns the decision, and among the domain modules D1 names where the page computes for itself. Click handlers go through one `dispatchAction` over a `Record<string, handler>`.
 
 ### The shared core
 
-*As built in Phase 6 step 4.2.* Every Preact page starts from `src/webview/shared`, written with Stats and held, component by component, to the template script it replaces: `src/test/webview-shared.test.ts` draws each one both ways, through `getComponentScript` and through the core bundled as esbuild builds a page, and requires the same DOM node for node.
+*As built in Phase 6 step 4.2.* Every Preact page starts from `src/webview/shared`, written with Stats and held, component by component, to the template script it replaced: `src/test/webview-shared.test.ts` draws each one through the core bundled as esbuild builds a page, and requires the DOM the template's helper drew, node for node. Since step 7 deleted the template, the helper's side is a recording of it, taken before the deletion (`src/test/templateRecords.ts`).
 
 | Module | What a page uses |
 | --- | --- |
@@ -284,7 +305,7 @@ Domain logic leaves page script. The graph's clustering and salience, the Home w
 
 The token types live in `domain/model/inline.ts`, since the protocol imports only the domain model; `ui/protocol/inline.ts` re-exports them for the pages.
 
-Lane B's shared components are in `src/webview/shared/calendar/`, written with the Calendar view and held to the template script they replace:
+Lane B's shared components are in `src/webview/shared/calendar/`, written with the Calendar view and held to the template script they replaced:
 
 | Module | What a page uses |
 | --- | --- |
@@ -298,7 +319,7 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 
 ### The task and search parts
 
-*As built in Phase 6 steps 4.4 and 4.5, with the Task Board and the search page.* Lane A's pages share these, each held to the template it replaces: `src/test/webview-tasks.test.ts` draws the task parts both ways; `src/test/webview-query-editor.test.ts` runs the search box and the template side by side through the same clicks, keys, and typing, and requires the same DOM, the same searches, and focus in the same place; and `src/test/webview-search.test.ts` draws every note excerpt of the sample workspace, the development notes, and the fixtures from its tokens and through `markdown-it`, and opens the tag menu beside the template's.
+*As built in Phase 6 steps 4.4 and 4.5, with the Task Board and the search page.* Lane A's pages share these, each held to the template it replaced, through the recording step 7 kept of it: `src/test/webview-tasks.test.ts` draws the task parts; `src/test/webview-query-editor.test.ts` runs the search box through the clicks, keys, and typing the template was driven through, and requires at each step the DOM, the searches, and the focus the template's recording holds; and `src/test/webview-search.test.ts` draws every note excerpt of the sample workspace, the development notes, and the fixtures from its tokens and through `markdown-it`, and opens the tag menu the template opened.
 
 | Module | What a page uses |
 | --- | --- |
@@ -398,6 +419,6 @@ A sheet names a file of the extension in `url()` by its path from `dist/webview/
 
 ## What ships
 
-*Current since Phase 6 step 6.* Preact is the one package the pages ship, and it runs in the sandbox, which has no file system and no network. The host bundle inlines `markdown-it` and its five packages, as the parser of note Markdown ([decision 0015](decisions/0015-note-markdown-tokenized-by-markdown-it.md)), and `picomatch`, which the Phase 0 exclude check kept: seven packages. Before step 6 it also inlined `sanitize-html` and the 15 packages it brought, `postcss` and `htmlparser2` among them; the production `dist/extension.js` went from 1,169,906 bytes to 969,343 when they left.
+*Current since Phase 6 step 6.* Preact is the one package the pages ship, and it runs in the sandbox, which has no file system and no network. The host bundle inlines `markdown-it` and its five packages, as the parser of note Markdown ([decision 0015](decisions/0015-note-markdown-tokenized-by-markdown-it.md)), and `picomatch`, which the Phase 0 exclude check kept: seven packages. Before step 6 it also inlined `sanitize-html` and the 15 packages it brought, `postcss` and `htmlparser2` among them; the production `dist/extension.js` went from 1,169,906 bytes to 969,343 when they left, and to 966,943 when step 7 deleted the glyphs and the icon button only the template pages wrote. The pages' scripts are in [the table above](#the-pages-scripts).
 
 Note Markdown in a card or title reaches the page as a token tree, drawn by an `<Inline tokens>` component as elements and text nodes. The host builds the tree in `domain/markdown/inline.ts` and `blockExcerpt.ts` by mapping the tokens of one `markdown-it` instance, configured as the retired `rendering.ts` configured its own, and never asks `markdown-it` for HTML. Nothing is parsed as HTML, so there is nothing to sanitize, and no snapshot carries HTML: `renderedHtml`, `renderedTitle`, and `TableCell.html` are gone. The Markdown preview's query blocks write a title's HTML themselves, from `tokenizeInlineWithoutWikiLinks` (the same instance, without the wiki-link rule, since the preview's HTML has always been `markdown-it`'s reading), byte for byte what `markdown-it` and the sanitizer wrote. The Markdown previews and the debug page share one `escapeHtml` in `src/shared/html.ts`, with `escapeHtmlText` beside it for the query block's text, which leaves quotes as written as the sanitizer did. See [decision 0011](decisions/0011-host-bundle-ships-no-third-party-code.md).

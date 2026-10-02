@@ -1,18 +1,19 @@
 // Renders every webview and checks the document it produces.
 //
-// The webviews are HTML built from template literals, so a typo in a style
-// sheet or an inline script is invisible to the compiler. This renders each
-// page for real and asserts the things the shared component layer guarantees:
-// the script parses, the design tokens are present, the page's nonce gates
-// every inline style and script, and no page redeclares a shared helper.
+// Each page is a shell its host writes, which links its bundle and its style
+// sheets from dist/webview. The compiler checks the bundle's source, but not
+// what the shell links, in what order, or under what policy. This renders
+// each page for real, with everything it links inlined by the page loader,
+// and asserts what every page must have: its script parses, the design
+// tokens are present, the page's layout survives the cascade, zen is the
+// last layer, and the page's nonce gates every style and script.
 //
 // Every row a reader can open carries a shared surface. That rule reads the
-// page text, where a template page writes its markup as string literals, and
-// the DOM each surface draws (the test:dom goldens), which is all a compiled
-// page leaves to read. A page's state in an application/json block is data,
-// not script, so it is neither parsed nor held to the nonce, and a bundle the
-// page loader inlined (data-inlined-from) is not searched for redeclared
-// helpers, which only a template page can redeclare.
+// page text, which holds the body of a page whose host builds it (Help and
+// the debug page), and the DOM each surface draws (the test:dom goldens),
+// which is all a compiled page leaves to read. A page's state in an
+// application/json block is data, not script, so it is neither parsed nor
+// held to the nonce.
 //
 //   npm run test:ui
 const { pages } = require('./pages.js');
@@ -107,13 +108,6 @@ const CONTENT_ROWS = [
   'tag-row', 'entity-row', 'note-row', 'task-row', 'saved-filter-row',
   'board-card', 'stat-row',
 ];
-const SHARED_HELPERS = [
-  'escapeHtml', 'renderTagLabel', 'renderTagButton', 'renderInlineTitle',
-  'renderTaskTitle', 'formatEntityTitle',
-  'closeTagContextMenu', 'openTagContextMenu', 'installTagContextMenu',
-  'renderTaskBoard', 'renderTaskBoardCard', 'renderTaskBoardGroupSwitch',
-  'installTaskBoard', 'renderZenOption',
-];
 /** Whether a row's classes include the shared surface every content row needs. */
 function hasSharedSurface(classes) {
   return classes.includes('row') || classes.includes('card') || classes.includes('task');
@@ -150,13 +144,6 @@ for (const [name, render] of pages) {
   }
   if (!/--amber\s*:/.test(html)) problems.push('missing design tokens');
   if (!/--panel-raised\s*:/.test(html)) problems.push('missing the full token set');
-  // A helper the shared script owns must not be redeclared by a page.
-  for (const script of blocks.filter((block) => !/\bdata-inlined-from=/.test(block.attributes)).map((block) => block.text)) {
-    for (const helper of SHARED_HELPERS) {
-      const count = (script.match(new RegExp('function ' + helper + '\\s*\\(', 'g')) || []).length;
-      if (count > 1) problems.push(`${helper} is declared ${count} times`);
-    }
-  }
   // Every row a reader can open must carry a shared surface component, so it
   // gets the same border, hover and focus as every other one. Layout rows
   // such as .control-row are not content and are not listed here.

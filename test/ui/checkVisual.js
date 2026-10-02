@@ -51,14 +51,17 @@ const FAIL_ABOVE = 0.0001;
  * Synthwave's Task Board, by status and by tag, sometimes settles with the
  * top of the next card showing at the foot of a column and sometimes
  * without it: 198 to 517 pixels, about 0.04% of the page, on dev as on
- * every branch, with transitions and the caret already settled. Until the
- * column's scroll settles the same way every time, these two may differ by
- * a tenth of a percent, which still fails any change to how the board looks
- * that is larger than a strip of one card.
+ * every branch, with transitions and the caret already settled. The board
+ * with a card's menu open draws the same columns, and has been seen to
+ * differ by the same 0.04% for the same reason. Until the column's scroll
+ * settles the same way every time, these three may differ by a tenth of a
+ * percent, which still fails any change to how the board looks that is
+ * larger than a strip of one card.
  */
 const UNSETTLED = new Map([
   ['synthwave-taskBoard', 0.001],
   ['synthwave-taskBoardByTag', 0.001],
+  ['synthwave-taskBoardCardMenu', 0.001],
 ]);
 
 /**

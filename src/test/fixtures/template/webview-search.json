@@ -1,0 +1,35 @@
+{
+  "a tag, with [] parked": {
+    "menu": "<div\n  class=\"popover tag-context-menu\"\n  id=\"tag-context-menu\"\n  role=\"menu\"\n  style=\"left: 40px; top: 30px\"\n><button\n    class=\"menu-item\"\n    data-context-action=\"rename-tag\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Rename tag</span\n    ></button\n  ><button\n    class=\"menu-item\"\n    data-context-action=\"park-tag\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Park tag</span\n    ></button\n  ></div\n>\n",
+    "tag": "#project/atlas",
+    "focus": "Rename tag"
+  },
+  "the park item, with [] parked": "{\"action\":\"park-tag\",\"label\":\"Park tag\"}",
+  "a tag, with [\"#PROJECT/atlas\"] parked": {
+    "menu": "<div\n  class=\"popover tag-context-menu\"\n  id=\"tag-context-menu\"\n  role=\"menu\"\n  style=\"left: 40px; top: 30px\"\n><button\n    class=\"menu-item\"\n    data-context-action=\"rename-tag\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Rename tag</span\n    ></button\n  ><button\n    class=\"menu-item\"\n    data-context-action=\"unpark-tag\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Unpark tag</span\n    ></button\n  ></div\n>\n",
+    "tag": "#project/atlas",
+    "focus": "Rename tag"
+  },
+  "the park item, with [\"#PROJECT/atlas\"] parked": "{\"action\":\"unpark-tag\",\"label\":\"Unpark tag\"}",
+  "a tag, with [\"#other\"] parked": {
+    "menu": "<div\n  class=\"popover tag-context-menu\"\n  id=\"tag-context-menu\"\n  role=\"menu\"\n  style=\"left: 40px; top: 30px\"\n><button\n    class=\"menu-item\"\n    data-context-action=\"rename-tag\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Rename tag</span\n    ></button\n  ><button\n    class=\"menu-item\"\n    data-context-action=\"park-tag\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Park tag</span\n    ></button\n  ></div\n>\n",
+    "tag": "#project/atlas",
+    "focus": "Rename tag"
+  },
+  "the park item, with [\"#other\"] parked": "{\"action\":\"park-tag\",\"label\":\"Park tag\"}",
+  "a card's menu": {
+    "menu": "<div\n  class=\"popover tag-context-menu\"\n  id=\"tag-context-menu\"\n  role=\"menu\"\n  style=\"left: 40px; top: 30px\"\n><button\n    class=\"menu-item\"\n    data-context-action=\"pin-note\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Pin to Home</span\n    ></button\n  ><button\n    class=\"menu-item\"\n    data-context-action=\"park-note\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Park note</span\n    ></button\n  ></div\n>\n",
+    "tag": "undefined",
+    "focus": "Pin to Home"
+  },
+  "closed": {
+    "menu": "<div\n  class=\"popover tag-context-menu\"\n  hidden=\"\"\n  id=\"tag-context-menu\"\n  role=\"menu\"\n  style=\"left: 40px; top: 30px\"\n><button\n    class=\"menu-item\"\n    data-context-action=\"pin-note\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Pin to Home</span\n    ></button\n  ><button\n    class=\"menu-item\"\n    data-context-action=\"park-note\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Park note</span\n    ></button\n  ></div\n>\n",
+    "tag": "undefined",
+    "focus": "Pin to Home"
+  },
+  "no items opens nothing": {
+    "menu": "<div\n  class=\"popover tag-context-menu\"\n  hidden=\"\"\n  id=\"tag-context-menu\"\n  role=\"menu\"\n  style=\"left: 40px; top: 30px\"\n><button\n    class=\"menu-item\"\n    data-context-action=\"pin-note\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Pin to Home</span\n    ></button\n  ><button\n    class=\"menu-item\"\n    data-context-action=\"park-note\"\n    role=\"menuitem\"\n    type=\"button\"\n  ><span\n      class=\"menu-label\"\n    >Park note</span\n    ></button\n  ></div\n>\n",
+    "tag": "undefined",
+    "focus": "Pin to Home"
+  }
+}

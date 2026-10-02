@@ -2325,7 +2325,7 @@
     "test": "vscode-test",
     "test:unit": "npm run compile-tests && npm run build:webview && node test/harness/runUnitSuites.js",
     "test:e2e": "npm run compile-tests && npm run build:webview && node test/e2e/run.js",
-    "test:ui": "npm run compile-tests && npm run build:webview && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js && node test/ui/checkContrast.js",
+    "test:ui": "npm run compile-tests && npm run build:webview && node test/ui/verifyWebviews.js && node test/ui/checkContrast.js",
     "test:layout": "npm run compile-tests && npm run build:webview && node test/ui/checkLayout.js && node test/ui/checkRenderedContrast.js",
     "test:contrast": "npm run compile-tests && npm run build:webview && node test/ui/checkContrast.js",
     "test:visual": "npm run compile-tests && npm run build:webview && node test/ui/checkVisual.js",

@@ -7,7 +7,7 @@ import { createDeckardStatsSnapshot, createSearchPageSnapshot } from '../ui/stat
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { createCalendar } from '../ui/state/calendarState';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
-import { ENABLED } from '../ui/webview/components';
+import { ENABLED } from '../ui/webview/selectors';
 import { deckardThemes } from '../ui/webview/themes';
 import { PAGES, renderablePages, renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';

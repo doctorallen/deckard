@@ -7,15 +7,11 @@ import { loadPage } from '../../test/harness/loadPage';
  * Runs a Deckard webview the way VS Code runs it, so a page can be tested by
  * what it does rather than by what its source says.
  *
- * The pages are JavaScript assembled in template literals, which the compiler
- * never sees, so they have been held to their source text: about 400 checks
- * asserting that a rendered page contains a particular line of script. Those
- * checks pass for a line that never runs, fail for a line that was only
- * reformatted, and stand in the way of moving the scripts into modules,
- * because a bundler rewrites the text they match.
- *
- * Here the page is loaded, given the state the host would send it, and asked
- * what it drew and what it posted back. That survives the move.
+ * Here the page is loaded, its bundle from dist/webview included, given the
+ * state the host would send it, and asked what it drew and what it posted
+ * back. A check of a page's source text would pass for a line that never
+ * runs and fail for a line a bundler only rewrote; a driven page does
+ * neither.
  */
 export interface WebviewPage {
   window: Window & typeof globalThis;
