@@ -128,6 +128,22 @@ suite('RolloverService', () => {
     );
   });
 
+  test('takes tasks that end a note with no final line break out as one stretch', async () => {
+    const ending = '# 2026-09-18\n\n- [ ] Call Ren\n- [ ] Pay rent';
+    const notes = new FakeNotes(new Map([[FROM, ending]]), '# 2026-09-19\n');
+    const { service } = rolloverWith(notes);
+
+    const result = await service.apply({ plan: planOf(ending), todayUri: TODAY, mode: 'move' });
+
+    assert.strictEqual(result.kind, 'carried');
+    // Two stretches would overlap on the break between the tasks, which the
+    // first takes after it and the last, ending the note, before it.
+    assert.deepStrictEqual(
+      notes.writes[0].edits.slice(1).map((edit) => [edit.uri.path, edit.range, edit.text]),
+      [['/ws/notes/2026-09-18.md', { start: { line: 1, character: 0 }, end: { line: 3, character: 14 } }, '']],
+    );
+  });
+
   test('migrates the open steps, and marks each line it leaves behind with a link to today', async () => {
     const notes = new FakeNotes(new Map([[FROM, yesterday]]), '# 2026-09-19\n');
     const { service } = rolloverWith(notes);
