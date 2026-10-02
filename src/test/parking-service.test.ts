@@ -67,7 +67,6 @@ class FakeEdit implements ParkingEdit<ResourceUri, string> {
 interface PlaceRecord {
   key: string;
   scope: ResourceUri | undefined;
-  unset: 'default' | 'global' | undefined;
   writes: unknown[];
 }
 
@@ -77,6 +76,8 @@ function parkingWith(options: {
   rules?: ParkedRules;
   /** Each setting's value at the place it is written, by key. */
   places?: Record<string, unknown>;
+  /** A setting's value at each level, most specific first, by key; one level, the place's, when not given. */
+  levels?: Record<string, unknown[]>;
   /** The effective settings, by full name. */
   settings?: Record<string, unknown>;
   writesLand?: boolean;
@@ -86,6 +87,17 @@ function parkingWith(options: {
   const edits: FakeEdit[] = [];
   const places: PlaceRecord[] = [];
   let rules = options.rules ?? rulesOf(['#parked']);
+  const place = (key: string, scope?: ResourceUri, current = options.places?.[key]): SettingPlace => {
+    const record: PlaceRecord = { key, scope, writes: [] };
+    places.push(record);
+    return {
+      current,
+      write: (value) => {
+        record.writes.push(value);
+        return Promise.resolve(options.settingsSave ?? true);
+      },
+    };
+  };
   const service = new ParkingService<ResourceUri, string>({
     index: {
       getFilePath: (uri) => uri.path.replace(/^\/ws\//, ''),
@@ -98,17 +110,8 @@ function parkingWith(options: {
     },
     configuration: new FakeSettings(options.settings ?? {}),
     settings: {
-      place: (key, scope, unset): SettingPlace => {
-        const record: PlaceRecord = { key, scope, unset, writes: [] };
-        places.push(record);
-        return {
-          current: options.places?.[key],
-          write: (value) => {
-            record.writes.push(value);
-            return Promise.resolve(options.settingsSave ?? true);
-          },
-        };
-      },
+      place,
+      levels: (key, scope) => (options.levels?.[key] ?? [options.places?.[key]]).map((value) => place(key, scope, value)),
     },
     edits: () => {
       const edit = new FakeEdit(texts, options.writesLand ?? true);
@@ -321,10 +324,10 @@ suite('ParkingService', () => {
       const parked = await (result.kind === 'excluded' ? result.parkInstead?.() : undefined);
       assert.strictEqual(parked?.kind, 'parked');
       assert.deepStrictEqual(
-        places.map((place) => [place.key, place.unset, place.writes]),
+        places.map((place) => [place.key, place.writes]),
         [
-          ['exclude', 'global', [{ other: true }]],
-          ['parked.folders', undefined, [{ drafts: true }]],
+          ['exclude', [{ other: true }]],
+          ['parked.folders', [{ drafts: true }]],
         ],
       );
     });
@@ -354,6 +357,16 @@ suite('ParkingService', () => {
         notes: 1,
       });
       assert.deepStrictEqual(places[0].writes, [{ old: true }]);
+    });
+
+    test('takes the key out where it is in force, and overrides it where a less specific level holds it too', async () => {
+      const userOnly = parkingWith({ notes, levels: { 'parked.folders': [undefined, { other: true }, { drafts: true }] } });
+      assert.strictEqual((await userOnly.service.unparkFolder(indexOf(notes), noteUri('drafts'))).kind, 'unparked');
+      assert.deepStrictEqual(userOnly.places.map((level) => level.writes), [[], [], [{}]], "the user's key, beside the workspace's other");
+
+      const both = parkingWith({ notes, levels: { 'parked.folders': [undefined, { drafts: true }, { drafts: true }] } });
+      assert.strictEqual((await both.service.unparkFolder(indexOf(notes), noteUri('drafts'))).kind, 'unparked');
+      assert.deepStrictEqual(both.places.map((level) => level.writes), [[], [{ drafts: false }], []], "the user's would come into force");
     });
 
     test('names the pattern that parks a folder with no key of its own', async () => {
