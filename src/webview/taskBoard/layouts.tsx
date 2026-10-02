@@ -98,7 +98,7 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
                 const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === 0 ? 'result-title' : ''].filter(Boolean).join(' ');
                 // A cell's Markdown is drawn from its tokens, as a board
                 // card's title is; everything else is data.
-                return <td class={classes || undefined}>{cell.html && cell.tokens ? <Inline tokens={cell.tokens} /> : cell.text}</td>;
+                return <td class={classes || undefined}>{cell.tokens ? <Inline tokens={cell.tokens} /> : cell.text}</td>;
               })}
               <td class="result-menu"><RowMenuButton taskId={row.taskId} title={title} /></td>
             </tr>

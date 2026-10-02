@@ -13,7 +13,7 @@ import type { DashboardTask } from '../../../ui/protocol/shared';
 import { announce } from '../status';
 import { CalendarIcon } from './calendarIcon';
 import { eventElement } from './events';
-import { DayTaskRow } from './taskRow';
+import { TaskListRow } from '../taskRow';
 
 /** How many of a group's tasks are listed before Show more. */
 const DAY_ROWS = 5;
@@ -26,7 +26,7 @@ function DayTask({ item, field, move }: { readonly item: DashboardTask; readonly
   // A repeat's later date is opened from here, and completed where it is
   // written, on its current date.
   if (field === 'repeat') {
-    return <DayTaskRow item={item} leading={<span class="repeat-mark" aria-hidden="true">↻</span>} />;
+    return <TaskListRow item={item} leading={<span class="repeat-mark" aria-hidden="true">↻</span>} />;
   }
   const trailing = field && move
     ? (
@@ -43,7 +43,7 @@ function DayTask({ item, field, move }: { readonly item: DashboardTask; readonly
       </button>
     )
     : null;
-  return <DayTaskRow item={item} trailing={trailing} />;
+  return <TaskListRow item={item} trailing={trailing} />;
 }
 
 /** What a group of the day's tasks is drawn with. */

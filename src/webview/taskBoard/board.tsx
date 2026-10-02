@@ -158,7 +158,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
     >
       <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${plainTitle}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
       <div class="task-summary">
-        <div key={card.renderedTitle} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
+        <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
         <CardDetails card={card} />
         {card.steps
           ? (

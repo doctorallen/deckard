@@ -169,7 +169,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
         ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${task.title}`} />
         : leading}
       <div>
-        <div key={item.renderedTitle} class="task-title">
+        <div key={item.task.title} class="task-title">
           <TaskTitle tokens={item.titleTokens} tags={titleDisplay === 'separate' ? undefined : item.titleTags} />
         </div>
         <div class="task-meta">
