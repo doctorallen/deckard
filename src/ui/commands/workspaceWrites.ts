@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { pluralize } from '../../shared/text';
 import { WriteHistory, WriteMark } from '../../core/workspace/writeHistory';
-import { reportStale } from './notify';
+import { Failure, noteName, reportFailure, reportStale } from './notify';
 
 /**
  * The few Deckard commands that rewrite many notes at once, and the way back
@@ -34,10 +34,18 @@ export interface WorkspaceWrite {
 export interface UndoResult {
   label: string;
   restored: number;
-  /** Notes changed since the write, which Undo leaves as they are. */
+  /**
+   * Notes Undo left as they are: those changed since the write, or every
+   * note when VS Code refused the Undo's edit.
+   */
   skipped: number;
   /** Which notes those are, so a message can name them. */
   skippedUris: vscode.Uri[];
+  /**
+   * The notes whose edit VS Code refused, when it refused it. Nothing was
+   * written then, and the write is kept, so the Undo can be tried again.
+   */
+  refused?: vscode.Uri[];
 }
 
 /**
@@ -67,6 +75,7 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
         restored: 0,
         skipped: write.notes.length,
         skippedUris: write.notes.map((note) => note.uri),
+        refused: plan.documents.map((document) => document.uri),
       };
     }
     const restored = plan.documents.length + plan.quiet.length;
@@ -444,13 +453,17 @@ function reportWrittenSince(): void {
 
 /**
  * Says what an Undo did: done, done but for notes changed since, or nothing,
- * because every note changed since.
+ * because VS Code refused it or every note changed since.
  */
 export function reportUndo(result: UndoResult | undefined, done: string): void {
   if (!result) {
     void vscode.window.showInformationMessage(
       'There is nothing to undo: Deckard has written something else since.',
     );
+    return;
+  }
+  if (result.refused) {
+    void reportFailure(describeRefusedUndo(result.refused, result.skipped));
     return;
   }
   if (result.restored === 0) {
@@ -466,6 +479,21 @@ export function reportUndo(result: UndoResult | undefined, done: string): void {
       result.skipped === 1 ? 'it and was' : 'them and were'
     } left as ${result.skipped === 1 ? 'it is' : 'they are'}.`,
   );
+}
+
+/**
+ * VS Code refused an Undo's edit to the notes in `refused`, so none of the
+ * write's `kept` notes was put back. Worded as a task edit's refused Undo
+ * is, since the reader can do the same about it.
+ */
+function describeRefusedUndo(refused: readonly vscode.Uri[], kept: number): Failure {
+  const where = refused.length === 1 ? noteName(refused[0]) : pluralize(refused.length, 'note');
+  return {
+    outcome: `VS Code did not accept the undo in ${where}, so ${
+      kept === 1 ? 'the note keeps' : 'the notes keep'
+    } the edit.`,
+    fix: `Check that ${refused.length === 1 ? 'the note is' : 'the notes are'} not read-only, then try again.`,
+  };
 }
 
 /** Whether a note is on screen, and so has to be written through its editor. */
