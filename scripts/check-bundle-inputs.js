@@ -11,8 +11,8 @@
 //
 // - The host bundles may take in only the packages they took in when this
 //   check arrived, in Phase 6 step 3. The list only shrinks: step 6 removes
-//   markdown-it and sanitize-html and the packages they bring, which leaves
-//   picomatch.
+//   sanitize-html and the packages it brings, which leaves markdown-it's
+//   packages, the parser of note Markdown (decision 0015), and picomatch.
 // - A page's script may take in only Preact, and a page's style sheet nothing.
 const path = require('node:path');
 const { existsSync, readFileSync } = require('node:fs');

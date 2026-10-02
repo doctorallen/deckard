@@ -32,7 +32,8 @@ A record is not edited to change its decision. A new record supersedes it instea
 | [0008](0008-architecture-docs-as-a-separate-folder.md) | Architecture docs as a separate folder, not guide pages | Accepted |
 | [0009](0009-constructor-injection-and-result-objects.md) | Constructor injection into a plain `Services` object, and result objects | Accepted |
 | [0010](0010-feature-modules-with-promise-allsettled.md) | Feature modules run with `Promise.allSettled` | Accepted |
-| [0011](0011-host-bundle-ships-no-third-party-code.md) | The host bundle ships no third-party code | Accepted |
+| [0011](0011-host-bundle-ships-no-third-party-code.md) | The host bundle ships no third-party code | Accepted: amended by 0015 |
 | [0012](0012-help-renders-through-markdown-api.md) | Help renders the guide through VS Code's `markdown.api.render` | Accepted: the Phase 0 check passed |
 | [0013](0013-exclude-globs-and-path-matchesglob.md) | Exclude globs stay on `picomatch` | Accepted: `path.matchesGlob` failed the check |
 | [0014](0014-pages-render-synchronously-from-one-store.md) | Pages render synchronously from one store | Accepted |
+| [0015](0015-note-markdown-tokenized-by-markdown-it.md) | Note Markdown is tokenized by `markdown-it`, not by our own parser | Accepted: amends 0011 |

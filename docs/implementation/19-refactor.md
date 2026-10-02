@@ -276,6 +276,8 @@ Deckard adopts all seven, with these choices:
 
 ### 2.7 What ships: the dependency surface
 
+> **Amended by [0015](../architecture/decisions/0015-note-markdown-tokenized-by-markdown-it.md) (2026-10-01).** The token tree is mapped from `markdown-it`'s own tokens, so `markdown-it` stays as a parser; `sanitize-html` still goes.
+
 `vsce package --no-dependencies` and `.vscodeignore` mean no `node_modules` file reaches the VSIX; esbuild inlines whatever the source imports. What ships today is therefore three direct dependencies and their 21 transitive packages (`htmlparser2`, `postcss`, `entities`, `linkify-it`, `argparse`, `dayjs`, …), all inlined into `dist/extension.js` (2.7 MB), all running in the extension host with file-system and network access. The webview pages ship no third-party code at all. Reducing that surface is a goal of this refactor alongside the structural ones, because third-party code in the host is the largest attack surface the extension has, and the one an update to Deckard can shrink.
 
 | Dependency | Where it runs | What for | Target |

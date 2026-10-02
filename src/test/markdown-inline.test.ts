@@ -130,6 +130,13 @@ suite('Inline tokens: links', () => {
     ]);
   });
 
+  test('a host outside ASCII is written in punycode, as markdown-it normalizes it', () => {
+    assert.deepStrictEqual(linkUrls(tokenizeInline('[a](https://bücher.example/ü) <https://bücher.example>')), [
+      'https://xn--bcher-kva.example/%C3%BC',
+      'https://xn--bcher-kva.example',
+    ]);
+  });
+
   test('a label holds inline tokens', () => {
     assert.strictEqual(describe(tokenizeInline('[**bold** `c]`](https://x)')), 'link(https://x strong("bold") " " code("c]"))');
   });
@@ -218,6 +225,10 @@ suite('Inline tokens: escapes, references, and breaks', () => {
 
   test('named and numeric references are decoded', () => {
     assert.strictEqual(describe(tokenizeInline('&copy; &amp; &#169; &#xA9; &nbsp;|')), JSON.stringify('© & © © \u00a0|'));
+  });
+
+  test('every HTML5 name is decoded, as markdown-it decodes it', () => {
+    assert.strictEqual(describe(tokenizeInline('&rarrw; &NotEqualTilde;')), JSON.stringify('\u219d \u2242\u0338'));
   });
 
   test('a reference that names nothing stays as written, and code 0 is U+FFFD', () => {
