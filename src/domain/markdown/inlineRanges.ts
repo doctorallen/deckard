@@ -29,9 +29,10 @@ export interface InlineRange {
  */
 export function findCodeAndLinkRanges(text: string): InlineRange[] {
   const ranges: InlineRange[] = [];
-  if (!/[`\]:]/.test(text)) {
+  if (!/[`\]]|:\/\//.test(text)) {
     return ranges;
   }
+  const readAddress = createAddressReader(text);
   let index = 0;
   while (index < text.length) {
     const character = text[index];
@@ -59,7 +60,7 @@ export function findCodeAndLinkRanges(text: string): InlineRange[] {
         continue;
       }
     }
-    const address = readBareAddress(text, index);
+    const address = readAddress(index);
     if (address > 0) {
       ranges.push({ start: index, end: index + address });
       index += address;
@@ -82,15 +83,41 @@ export function findCodeAndLinkRanges(text: string): InlineRange[] {
 const BARE_ADDRESS = /[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s<>`]*/y;
 
 /**
+ * Reads the bare web addresses of `text` at columns asked in increasing
+ * order, as readBareAddress does. A web address holds `://`, so a column is
+ * tried only when one follows it: the words before it are not each tried
+ * as an address's scheme, nor is any word past the last one.
+ */
+function createAddressReader(text: string): (start: number) => number {
+  let separator = text.indexOf('://');
+  return (start) => {
+    if (separator >= 0 && separator < start) {
+      separator = text.indexOf('://', start);
+    }
+    return separator > start ? readBareAddress(text, start) : 0;
+  };
+}
+
+/**
  * How long the bare web address starting at `start` is, or 0 when none
  * starts there. A scheme starts a word, so the `s://` inside `xs://` is none.
  */
 function readBareAddress(text: string, start: number): number {
-  if (!/[A-Za-z]/.test(text[start]) || (start > 0 && /[A-Za-z0-9+.-]/.test(text[start - 1]))) {
+  if (!isAsciiLetter(text.charCodeAt(start)) || (start > 0 && isSchemeCharacter(text.charCodeAt(start - 1)))) {
     return 0;
   }
   BARE_ADDRESS.lastIndex = start;
   return BARE_ADDRESS.exec(text)?.[0].length ?? 0;
+}
+
+/** Whether a UTF-16 code is A to Z or a to z. */
+function isAsciiLetter(code: number): boolean {
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+/** Whether a UTF-16 code is one a scheme is written with: a letter, a digit, `+`, `.`, or `-`. */
+function isSchemeCharacter(code: number): boolean {
+  return isAsciiLetter(code) || (code >= 48 && code <= 57) || code === 43 || code === 46 || code === 45;
 }
 
 /** Whether a column falls inside one of the ranges. */
