@@ -419,17 +419,22 @@ function appendCustomSection(lines: string[], section: ReviewCustomSection): voi
  *
  * Everything the note's author wrote is left where it is, which is what lets
  * a review be written again without spending what was written around it.
+ * The review is written in the note's own line endings, since VS Code
+ * writes it into a CRLF note in CRLF: in LF, a note already holding it
+ * would never read as holding it.
  */
 export function writeReviewInto(content: string, review: string): string {
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  const written = review.replace(/\r?\n/g, eol);
   const start = content.indexOf(REVIEW_START);
   const end = content.indexOf(REVIEW_END);
   if (start >= 0 && end > start) {
     return (
-      content.slice(0, start) + review + content.slice(end + REVIEW_END.length)
+      content.slice(0, start) + written + content.slice(end + REVIEW_END.length)
     );
   }
   const body = content.replace(/\s+$/, '');
-  return body ? `${body}\n\n${review}\n` : `${review}\n`;
+  return body ? `${body}${eol}${eol}${written}${eol}` : `${written}${eol}`;
 }
 
 /** A task or note title as a review names it: its words, without its tags. */

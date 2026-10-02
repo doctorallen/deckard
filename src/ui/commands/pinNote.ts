@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { reportFailure } from './notify';
 
+import { parseMarkdown } from '../../domain/markdown/parser';
 import { createPinForLine, resolvePin } from '../../domain/notes/pins';
 import { PinnedNote, WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
+import { readParseOptions } from './parseSettings';
 
 /**
  * Pinning the note you are in, wherever you are in it.
@@ -135,12 +137,53 @@ export async function setNotePinnedCommand({
   }
   const at =
     line ?? (vscode.window.activeTextEditor?.selection.active.line ?? 0) + 1;
-  return setPinned(
-    indexer.getSnapshot(),
-    preferences,
-    { filePath: indexer.getFilePath(uri), line: at },
-    pinned,
+  const filePath = indexer.getFilePath(uri);
+  // The line is the editor's, from the cursor or from a hover drawn on the
+  // editor's text, so the note is read as the editor shows it.
+  const document =
+    documentUri === undefined
+      ? vscode.window.activeTextEditor?.document
+      : vscode.workspace.textDocuments.find((open) => open.uri.toString() === uri.toString());
+  const index = document
+    ? readIndexAsEdited(indexer.getSnapshot(), filePath, document)
+    : indexer.getSnapshot();
+  return setPinned(index, preferences, { filePath, line: at }, pinned);
+}
+
+/** The editor's text of a note, and which edit of it that is. */
+type EditedDocument = Pick<vscode.TextDocument, 'uri' | 'isDirty' | 'version' | 'getText'>;
+
+/** The last note read as edited, kept while the cursor moves through one edit. */
+let lastEdited: { index: WorkspaceIndex; key: string; read: WorkspaceIndex } | undefined;
+
+/**
+ * The index with a note read as its editor shows it. The index holds a
+ * note as it was last saved, so with unsaved lines added or taken away a
+ * line in the editor falls under another heading there, and the wrong
+ * heading would be pinned or named. A saved note is the index's own.
+ */
+export function readIndexAsEdited(
+  index: WorkspaceIndex,
+  filePath: string,
+  document: EditedDocument,
+): WorkspaceIndex {
+  if (!document.isDirty) {
+    return index;
+  }
+  // The cursor moves far more often than the text changes, so one reading
+  // is kept for each edit of each note.
+  const key = `${document.uri.toString()}#${document.version}`;
+  if (lastEdited?.index === index && lastEdited.key === key) {
+    return lastEdited.read;
+  }
+  const files = new Map(index.files);
+  files.set(
+    filePath,
+    parseMarkdown(filePath, document.getText(), undefined, readParseOptions(document.uri)),
   );
+  const read: WorkspaceIndex = { ...index, files };
+  lastEdited = { index, key, read };
+  return read;
 }
 
 /** The hover link that pins the entry it is shown on. */
@@ -204,9 +247,10 @@ export class ActivePinContext implements vscode.Disposable {
   public sync(editor: vscode.TextEditor | undefined): void {
     let next = false;
     if (editor && this.indexer.isNotesFile(editor.document.uri)) {
+      const filePath = this.indexer.getFilePath(editor.document.uri);
       const pin = createPinForLine(
-        this.indexer.getSnapshot(),
-        this.indexer.getFilePath(editor.document.uri),
+        readIndexAsEdited(this.indexer.getSnapshot(), filePath, editor.document),
+        filePath,
         editor.selection.active.line + 1,
       );
       next = pin !== undefined && this.preferences.pins.isPinned(pinKey(pin));

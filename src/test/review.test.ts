@@ -341,6 +341,38 @@ suite('Periodic review', () => {
     }
   });
 
+  test('a month note in the editor is the note its review is written into, under either name', async () => {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const kept = Object.getOwnPropertyDescriptor(window, 'activeTextEditor');
+    const reviewed: string[] = [];
+    const writes = {
+      reviews: {
+        write: async (request: { note: () => Promise<vscode.Uri> }) => {
+          reviewed.push((await request.note()).path);
+          return { kind: 'not-applied' };
+        },
+      },
+    } as unknown as ReviewWrites;
+    const notes = ['/notes/journal/month-september-2026.md', '/notes/journal/2026-09.md'];
+    try {
+      for (const note of notes) {
+        const editor = { document: { uri: vscode.Uri.file(note) } };
+        Object.defineProperty(window, 'activeTextEditor', { configurable: true, get: () => editor });
+        await writeReviewCommand(
+          { ready: Promise.resolve(), getSnapshot: () => index, refresh: async () => undefined },
+          writes,
+        );
+      }
+    } finally {
+      if (kept) {
+        Object.defineProperty(window, 'activeTextEditor', kept);
+      } else {
+        delete window.activeTextEditor;
+      }
+    }
+    assert.deepStrictEqual(reviewed, notes);
+  });
+
   test('writes the review into the note on disk', async () => {
     const directoryName = `deckard-review-${Date.now()}`;
     const root = vscode.Uri.file(path.join(os.tmpdir(), directoryName));

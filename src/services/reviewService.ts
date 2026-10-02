@@ -126,8 +126,7 @@ export class ReviewService<U extends ResourceUri, Handle, Summary extends Review
     const range = request.range ?? getReviewRange(period, request.day, weekStart);
     const summary = report.summarize(request.index, range, {
       tagFirstSeen: request.tagFirstSeen,
-      // The period after this one, which the review looks ahead at.
-      next: getReviewRange(period, new Date(range.end), weekStart),
+      next: getNextRange(period, range, weekStart),
       nextLabel: period === 'week' ? 'next week' : 'next month',
       sections: request.sections,
       queryContext: request.queryContext,
@@ -151,4 +150,19 @@ export class ReviewService<U extends ResourceUri, Handle, Summary extends Review
     }
     return { kind: 'written', title: range.title, noteUri, summary, handle: written.handle };
   }
+}
+
+/**
+ * The period after the one reviewed, which the review looks ahead at. A
+ * week starts the day after the reviewed week's last: a note made under
+ * another week start, such as `2026-W38` read with weeks starting on
+ * Sunday, would otherwise look ahead at a week that holds its own last day.
+ */
+function getNextRange(
+  period: Exclude<NotePeriod, 'day'>,
+  range: ReviewPeriod,
+  weekStart: Weekday,
+): ReviewPeriod {
+  const after = new Date(range.end);
+  return getReviewRange(period, after, period === 'week' ? (after.getDay() as Weekday) : weekStart);
 }

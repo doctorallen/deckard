@@ -55,6 +55,20 @@ suite('Daily notes', () => {
     assert.strictEqual(findAdjacentDailyNote(notes, '2026-09-08', 'previous'), undefined);
     assert.strictEqual(findAdjacentDailyNote(notes, '2026-09-13', 'next'), undefined);
   });
+
+  test('a note named for a day comes before one whose heading only mentions it', () => {
+    const sameDay = listDailyNotes(
+      indexOf({
+        'notes/2026-09-30.md': '# 2026-09-30\n- [ ] the day',
+        'Meetings/Acme kickoff.md': '# Acme kickoff 2026-09-30\nAgenda.',
+        'notes/2026-10-01.md': '# 2026-10-01',
+        'Meetings/Atlas review.md': '# Atlas review 2026-09-29',
+      }),
+    );
+    assert.strictEqual(sameDay.find((note) => note.date === '2026-09-30')?.filePath, 'notes/2026-09-30.md');
+    assert.strictEqual(findAdjacentDailyNote(sameDay, '2026-10-01', 'previous')?.filePath, 'notes/2026-09-30.md');
+    assert.strictEqual(findAdjacentDailyNote(sameDay, '2026-09-29', 'next')?.filePath, 'notes/2026-09-30.md');
+  });
 });
 
 suite('Weekly and monthly notes', () => {

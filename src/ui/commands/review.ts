@@ -278,14 +278,16 @@ export async function writeReviewCommand(
   if (!period) {
     return undefined;
   }
-  // A note already open is reviewed for the days its own name holds, and
-  // written into, whatever week start was set when it was made.
+  // A periodic note already open is the note the review goes into, under
+  // whichever name it has. A week note is reviewed for the days its own
+  // name holds, whatever week start was set when it was made; a month
+  // note's name gives only its month, which is the range of its first day.
   const noteUri = vscode.window.activeTextEditor?.document.uri;
-  const range = open && noteUri ? reviewPeriodOfNote(open, noteFileName(noteUri)) : undefined;
-  if (open && range && noteUri) {
+  if (open && noteUri) {
+    const range = reviewPeriodOfNote(open, noteFileName(noteUri));
     return writeReview(indexer, writes, { period, day: open.day, range, noteUri });
   }
-  return writeReview(indexer, writes, { period, day: open?.day ?? new Date() });
+  return writeReview(indexer, writes, { period, day: new Date() });
 }
 
 /** This week or this month, as the reader picks; undefined when they dismiss the pick. */

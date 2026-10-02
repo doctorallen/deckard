@@ -1,6 +1,5 @@
 import { findSameSection } from '../domain/capture/captureLines';
 import type { PinnedNote, Section, WorkspaceIndex } from '../domain/model';
-import { createPinForLine } from '../domain/notes/pins';
 import type { KeyValueStore } from '../ports/keyValueStore';
 
 /**
@@ -135,10 +134,20 @@ export class CaptureService<U> {
       return { kind: 'refused', uri };
     }
     await this.options.drafts.clear();
-    const pin = createPinForLine(index.getSnapshot(), chosen.filePath, chosen.startLine);
-    if (pin?.heading) {
-      await this.options.recentHeadings.recordRecentHeading(pin);
-    }
+    // Remembered as the note held it when written to, since the index may
+    // have read the note again since the heading was chosen.
+    await this.options.recentHeadings.recordRecentHeading({
+      filePath: chosen.filePath,
+      heading: section.heading,
+      headingLevel: section.headingLevel,
+      occurrence: live.filter(
+        (other) =>
+          !other.isInline &&
+          other.heading === section.heading &&
+          other.headingLevel === section.headingLevel &&
+          other.startLine < section.startLine,
+      ).length,
+    });
     return { kind: 'added', uri, taskLine };
   }
 }

@@ -24,22 +24,19 @@ export async function resolveSourceUri(
     return vscode.Uri.parse(filePath);
   }
 
-  const normalizedPath = filePath.replaceAll('\\', '/').replace(/^\.\//, '');
-  const candidates: vscode.Uri[] = [];
-
-  for (const workspaceFolder of workspaceFolders ?? []) {
-    const pathParts = normalizedPath.split('/');
-    if (
-      workspaceFolders &&
-      workspaceFolders.length > 1 &&
-      pathParts[0] === workspaceFolder.name
-    ) {
-      candidates.push(
-        vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts.slice(1)),
-      );
-    }
-    candidates.push(vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts));
-  }
+  const pathParts = filePath.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
+  const folders = workspaceFolders ?? [];
+  // A multi-root key names its folder first, so that folder is tried, and
+  // is the fallback, before the path is read inside each folder in turn,
+  // as sourceScopeUri reads it.
+  const candidates: vscode.Uri[] = [
+    ...(folders.length > 1
+      ? folders
+          .filter((workspaceFolder) => pathParts[0] === workspaceFolder.name)
+          .map((workspaceFolder) => vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts.slice(1)))
+      : []),
+    ...folders.map((workspaceFolder) => vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts)),
+  ];
 
   for (const candidate of candidates) {
     try {
@@ -186,10 +183,13 @@ export function revealLine(editor: vscode.TextEditor, line: number): void {
 }
 
 /**
- * Recognizes URI-like source keys before treating them as workspace paths.
+ * Recognizes a source key that is a whole URI before treating it as a
+ * workspace path. It takes the `//` after the scheme: a note named
+ * "Meeting: Q3.md", or a folder named "Work: 2026", also starts with what
+ * reads as a scheme, but a path the index keys never holds `//`.
  */
 function hasUriScheme(value: string): boolean {
-  return /^[a-z][a-z\d+.-]*:/i.test(value);
+  return /^[a-z][a-z\d+.-]*:\/\//i.test(value);
 }
 
 /**
