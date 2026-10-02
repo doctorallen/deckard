@@ -116,9 +116,8 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
   }
 
   /**
-   * Closes the dashboard, if it is open, and stops every listener. Home
-   * stays the active source if it was, since the panel's close listener is
-   * gone before the panel closes.
+   * Closes the dashboard, if it is open, and stops every listener. Home is
+   * no longer the active source.
    */
   public dispose(): void {
     this.page.dispose();
