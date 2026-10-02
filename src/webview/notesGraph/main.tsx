@@ -24,6 +24,7 @@ import { type ControlHandlers, type ControlRefs, GraphBody, type SliderKey, type
 import {
   clearResetUndo,
   dismissResetUndo,
+  dropMissingTags,
   fitToView,
   type GraphLook,
   type GraphPage,
@@ -216,12 +217,14 @@ function filterHandlers(page: GraphPage): Pick<ControlHandlers, 'searchInput' | 
         next.push(key);
       }
       page.settings.selectedTags = next;
+      page.state.tagNotice = '';
       keep(page);
       recomputeTagMatches(page.state, page.settings);
       scheduleFrame(page);
     },
     clearTags: () => {
       page.settings.selectedTags = [];
+      page.state.tagNotice = '';
       keep(page);
       recomputeTagMatches(page.state, page.settings);
       renderTagList(page);
@@ -277,6 +280,7 @@ function createPage(): GraphPage {
     simNote: createRef(),
     tooltip: createRef(),
     resetUndo: createRef(),
+    announce: createRef(),
   };
   return {
     state: emptyGraphState(),
@@ -309,41 +313,58 @@ type HostMessage = MessageOf<NotesGraphHostToPage>;
 
 /**
  * A graph from the host: its tag labels and its edge ids put back, then the
- * graph, the tag list, and the focus drawn. A filter the host turns on for
- * a reader who came to see it, such as Stats' Wiki links total. A node
- * Related Notes is hovering, or selected there or by the host.
+ * graph, the tag list, and the focus drawn.
+ */
+function receiveGraph(page: GraphPage, snapshot: NotesGraphWireSnapshot): void {
+  const { state } = page;
+  state.snapshot = snapshot;
+  dropMissingTags(page, snapshot, state.tagLabelByKey);
+  state.tagLabelByKey = {};
+  (snapshot.tags || []).forEach((entry) => {
+    state.tagLabelByKey[entry[0]] = entry[1];
+  });
+  // Edge ids are left out of the message; each is its two ends.
+  snapshot.edges.forEach((edge) => {
+    if (!edge.id) {
+      edge.id = edge.source + '::' + edge.target;
+    }
+  });
+  rebuildView(page);
+  renderTagList(page);
+  updateFocus(page);
+}
+
+/**
+ * A graph from the host, drawn by `receiveGraph`. A new focus alone, drawn in
+ * the focus line. A filter the host turns on for a reader who came to see
+ * it, such as Stats' Wiki links total. A node Related Notes is hovering,
+ * or selected there or by the host.
  */
 function receive(page: GraphPage, message: HostMessage | undefined): void {
   const { state } = page;
-  if (message && message.type === 'state' && message.data) {
-    const snapshot: NotesGraphWireSnapshot = message.data;
-    state.snapshot = snapshot;
-    state.tagLabelByKey = {};
-    (snapshot.tags || []).forEach((entry) => {
-      state.tagLabelByKey[entry[0]] = entry[1];
-    });
-    // Edge ids are left out of the message; each is its two ends.
-    snapshot.edges.forEach((edge) => {
-      if (!edge.id) {
-        edge.id = edge.source + '::' + edge.target;
-      }
-    });
-    rebuildView(page);
-    renderTagList(page);
+  if (!message) {
+    page.redraw();
+    return;
+  }
+  if (message.type === 'state' && message.data) {
+    receiveGraph(page, message.data);
+  }
+  if (message.type === 'focus' && state.snapshot) {
+    state.snapshot.focus = message.focus;
     updateFocus(page);
   }
-  if (message && message.type === 'applyFilters' && typeof message.onlyWrittenLinks === 'boolean') {
+  if (message.type === 'applyFilters' && typeof message.onlyWrittenLinks === 'boolean') {
     page.settings.onlyWrittenLinks = message.onlyWrittenLinks;
     keep(page);
     rebuildView(page);
   }
-  if (message && message.type === 'highlightNode') {
+  if (message.type === 'highlightNode') {
     state.externalHoverNodeId = message.nodeId || null;
     setHoverIndex(state, findNodeIndex(state, state.externalHoverNodeId));
     hideTooltip(page);
     scheduleFrame(page);
   }
-  if (message && message.type === 'selectNode' && message.nodeId) {
+  if (message.type === 'selectNode' && message.nodeId) {
     const selectedNodeIndex = findNodeIndex(state, message.nodeId);
     if (selectedNodeIndex >= 0) {
       setSelectedIndex(state, selectedNodeIndex);

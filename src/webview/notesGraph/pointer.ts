@@ -30,6 +30,8 @@ interface PointerPress {
   downAt: { x: number; y: number } | null;
   moved: boolean;
   panning: boolean;
+  /** Whether it was pressed on a node, which a new graph may since have left out. */
+  onNode: boolean;
   /** The group whose name it was pressed on, which a click picks out. */
   label: string;
 }
@@ -37,7 +39,7 @@ interface PointerPress {
 /** Listens to the canvas for the pointer, the wheel, and the keyboard. */
 export function listenToCanvas(page: GraphPage): void {
   const { canvas } = page;
-  const press: PointerPress = { id: -1, downAt: null, moved: false, panning: false, label: '' };
+  const press: PointerPress = { id: -1, downAt: null, moved: false, panning: false, onNode: false, label: '' };
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
     zoomAt(page, event, Math.exp(-event.deltaY * 0.002));
@@ -74,6 +76,7 @@ function pressPointer(page: GraphPage, press: PointerPress, event: PointerEvent)
   press.label = groupLabelAt(page, event);
   const world = toWorld(canvas, page.camera, event);
   const hit = press.label ? -1 : nodeAt(page, world.x, world.y);
+  press.onNode = hit >= 0;
   if (hit >= 0) {
     state.dragIndex = hit;
     state.vx[hit] = 0;
@@ -160,7 +163,9 @@ function endPointer(page: GraphPage, press: PointerPress, event: PointerEvent): 
   const wasDrag = state.dragIndex;
   const clicked = !press.moved;
   const label = press.label;
+  const lostNode = press.onNode && wasDrag < 0;
   press.label = '';
+  press.onNode = false;
   state.dragIndex = -1;
   press.panning = false;
   press.id = -1;
@@ -175,7 +180,9 @@ function endPointer(page: GraphPage, press: PointerPress, event: PointerEvent): 
     return;
   }
   keep(page);
-  if (!clicked) {
+  // A click on a node the graph has since left out is on nothing the
+  // reader meant, so it does not clear the selection either.
+  if (!clicked || lostNode) {
     return;
   }
   clickCanvas(page, { label, node: wasDrag, event });
@@ -251,7 +258,10 @@ function onKey(page: GraphPage, event: KeyboardEvent): void {
   stepSelection(page, forward);
 }
 
-/** Selects the next node drawn, or the one before, from the selection or from either end, and brings it into view. */
+/**
+ * Selects the next node drawn, or the one before, from the selection or
+ * from either end, brings it into view, and says it.
+ */
 function stepSelection(page: GraphPage, forward: boolean): void {
   const { state, settings } = page;
   const visible: number[] = [];
@@ -270,6 +280,10 @@ function stepSelection(page: GraphPage, forward: boolean): void {
   }
   selectNode(page, visible[next]);
   centerOnNode(page, visible[next]);
+  // The canvas draws the selection, which a screen reader cannot read, so
+  // the node is said as its tooltip says it.
+  const node = state.nodes[visible[next]];
+  (page.refs.announce.current as HTMLElement).textContent = node.title + ' · ' + describeNode(node);
 }
 
 /** Shows a node's title and what it is joined by beside the pointer, kept inside the window. */

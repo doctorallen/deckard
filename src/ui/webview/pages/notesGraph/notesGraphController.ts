@@ -4,7 +4,7 @@ import type { IndexReader, IndexUpdates } from '../../../../core/workspace/index
 import { isMarkdownFile } from '../../../../core/workspace/scanner';
 import { noteTitle } from '../../../../domain/index/backlinks';
 import { findDailyNoteDate, isPeriodicNoteFile, isPeriodicNotePath } from '../../../../domain/markdown/parser';
-import type { WorkspaceIndex, NotesGraphSnapshot } from '../../../../domain/model';
+import type { WorkspaceIndex, NotesGraphFocus, NotesGraphSnapshot } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
 import { logTrace, measure } from '../../../../shared/timing';
 import type { MessageOf } from '../../../protocol/messaging';
@@ -119,11 +119,18 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
       },
       setGraphScope: (message, page) => {
         this.scopeChosen = true;
+        const drawn = this.drawnScope();
         this.scope = {
           skipPeriodic: message.skipPeriodic ?? this.scope.skipPeriodic,
           local: message.local,
           depth: Math.max(1, Math.min(MAXIMUM_LOCAL_GRAPH_DEPTH, message.depth)),
         };
+        // Hops out with the whole workspace drawn changes nothing drawn, and
+        // the whole graph is many megabytes at thousands of notes.
+        if (this.snapshot && this.drawnScope() === drawn) {
+          this.postFocus(page);
+          return;
+        }
         page.refresh();
       },
     };
@@ -136,9 +143,10 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
 
   /**
    * The graph in its scope, with only the kinds of node the page shows. A
-   * selection the graph no longer holds is let go. The log times the graph
-   * alone, and counts every node it holds, before the kinds hidden are left
-   * out, as it always has.
+   * selection the page is not sent, because the graph no longer holds it or
+   * the page hides its kind, is let go, so Related Notes stops listing what
+   * it is joined to. The log times the graph alone, and counts every node it
+   * holds, before the kinds hidden are left out, as it always has.
    */
   public buildSnapshot(): NotesGraphWireSnapshot {
     const snapshot = measure(
@@ -146,10 +154,11 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
       () => this.getSnapshot(),
       (graph) => `${graph.nodes.length} nodes`,
     );
-    if (this.selectedNodeId && !snapshot.nodes.some((node) => node.id === this.selectedNodeId)) {
+    const wire = toWire(snapshot, this.kinds);
+    if (this.selectedNodeId && !wire.nodes.some((node) => node.id === this.selectedNodeId)) {
       this.selectedNodeId = undefined;
     }
-    return toWire(snapshot, this.kinds);
+    return wire;
   }
 
   /** A local graph follows the note being written. */
@@ -274,7 +283,48 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
     this.focusPath = filePath;
     if (this.scope.local) {
       page.refresh();
+      return;
     }
+    // The whole workspace is drawn, and stays as it is; only the line
+    // naming the note it would be drawn around changes.
+    this.postFocus(page);
+  }
+
+  /**
+   * What the scope draws: the whole workspace, or the neighborhood of one
+   * note so far out, passing daily notes through or not. Two scopes that
+   * say the same draw the same graph.
+   */
+  private drawnScope(): string {
+    if (!this.scope.local || !this.focusPath) {
+      return 'workspace';
+    }
+    return `${this.focusPath}|${this.scope.depth}|${this.scope.skipPeriodic}`;
+  }
+
+  /**
+   * Tells the page the focus as it is now, without the graph. Before a
+   * graph is built, or after a change it has yet to redraw for, the next
+   * graph carries the focus, so nothing is sent.
+   */
+  private postFocus(page: PageContext): void {
+    if (!this.snapshot) {
+      return;
+    }
+    postToGraph(page, { type: 'focus', focus: this.describeFocus(this.snapshot) });
+  }
+
+  /** The note the graph is drawn around, or would be, and its scope, over the workspace's graph. */
+  private describeFocus(workspace: NotesGraphSnapshot): NotesGraphFocus {
+    return {
+      local: this.scope.local,
+      depth: this.scope.depth,
+      skipPeriodic: this.scope.skipPeriodic,
+      workspaceNodeCount: workspace.nodes.length,
+      ...(this.focusPath
+        ? { filePath: this.focusPath, title: noteTitle(this.focusPath) }
+        : {}),
+    };
   }
 
   /** A node the graph in its scope holds now, by id. */
@@ -330,15 +380,7 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
    */
   private getSnapshot(): NotesGraphSnapshot {
     const workspace = this.getWorkspaceSnapshot();
-    const focus = {
-      local: this.scope.local,
-      depth: this.scope.depth,
-      skipPeriodic: this.scope.skipPeriodic,
-      workspaceNodeCount: workspace.nodes.length,
-      ...(this.focusPath
-        ? { filePath: this.focusPath, title: noteTitle(this.focusPath) }
-        : {}),
-    };
+    const focus = this.describeFocus(workspace);
     if (!this.scope.local || !this.focusPath) {
       return { ...workspace, focus };
     }

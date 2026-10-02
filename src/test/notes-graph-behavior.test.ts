@@ -5,7 +5,7 @@ import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { readSheet } from './sheets';
 
-type GraphNode = { id: string; kind: string; title: string; tagKeys: string[]; degree: number; filePath?: string; line?: number; links?: Record<string, number> };
+type GraphNode = { id: string; kind: string; title: string; tagKeys: string[]; degree: number; filePath?: string; line?: number; links?: Record<string, number>; parked?: boolean };
 type GraphEdge = { source: string; target: string; weight: number; types: string[] };
 
 /** A graph as the host sends it, with every count filled in from the nodes. */
@@ -315,6 +315,26 @@ suite('Notes Graph behavior', () => {
     );
   });
 
+  test('taking Undo, or the offer running out while Undo has focus, puts the focus back on Reset graph', () => {
+    const page = open();
+    // The page's timers, run when the test says.
+    const timers: Array<() => void> = [];
+    (page.window as unknown as { setTimeout: (run: () => void) => number }).setTimeout = (run) => timers.push(run);
+    /** What has the focus, by its id or its words: elements themselves are too big for an assertion to print. */
+    const focused = () => page.document.activeElement?.id || page.document.activeElement?.textContent;
+    (page.find('#reset-graph-settings') as HTMLElement).focus();
+    page.click('#reset-graph-settings');
+    assert.strictEqual(focused(), 'Undo');
+    page.click('[data-action="undo-graph-reset"]');
+    assert.strictEqual(focused(), 'reset-graph-settings', 'Undo taken');
+
+    page.click('#reset-graph-settings');
+    assert.strictEqual(focused(), 'Undo');
+    timers.splice(0).forEach((run) => run());
+    assert.strictEqual(page.document.querySelector('[data-action="undo-graph-reset"]'), null, 'the offer ran out');
+    assert.strictEqual(focused(), 'reset-graph-settings', 'the offer ran out');
+  });
+
   suite('edge kinds', () => {
     const openCanvas = (): WebviewPage => {
       page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
@@ -462,6 +482,33 @@ suite('Notes Graph behavior', () => {
       assert.deepStrictEqual(cleared, { type: 'clearSelection' });
       assert.deepStrictEqual(narrowNotesGraphMessage(cleared), { type: 'clearSelection' }, 'a message the host takes');
       assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
+    });
+
+    test('the canvas names the keys that move between nodes, and Tab is not one: it leaves the canvas', () => {
+      const page = openCanvas();
+      page.send(chain());
+      const canvas = page.find('#graph');
+      assert.strictEqual(
+        canvas.getAttribute('aria-label'),
+        'Notes graph. Press the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear.',
+      );
+      const tab = new page.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+      canvas.dispatchEvent(tab);
+      assert.strictEqual(page.lastPosted('selectNode'), undefined);
+      assert.strictEqual(tab.defaultPrevented, false, 'Tab moves on to the controls');
+    });
+
+    test('a node chosen with the arrow keys is said, with what it is joined by', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const canvas = page.find('#graph');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      const said = page.find('#graph-announce');
+      assert.strictEqual(said.getAttribute('role'), 'status');
+      assert.strictEqual(said.textContent, 'a · a.md:1 · No links');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      assert.strictEqual(said.textContent, 'call · Task · call.md:1 · No links');
     });
 
     test('Enter opens the selected node, and Alt+Enter opens it beside the graph, as Alt-click does', () => {
@@ -725,6 +772,24 @@ suite('Notes Graph behavior', () => {
       assert.match(page.text('#status-counts') ?? '', / 3 groups$/);
     });
 
+    test('a long name is cut between characters, never through an emoji', () => {
+      const page = openCanvas();
+      const long = 'x'.repeat(26) + '😀trip';
+      page.send(grouped({ [long]: 5, relay: 4 }));
+      const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+      const options = page.findAll('#group-filter option').map((option) => option.textContent ?? '');
+      assert.ok(options.includes('x'.repeat(26) + '😀… (5)'), options.join(', '));
+      const drawn = () => page.canvasCalls.filter((call) => call.op === 'fillText' || call.op === 'strokeText').map((call) => String(call.args[0]));
+      atRest(page);
+      assert.ok(drawn().includes('x'.repeat(26) + '😀…'), 'the group is named on the canvas');
+      for (let step = 0; step < 6; step += 1) {
+        page.click('#zoom-in');
+        page.flushFrames(1);
+      }
+      assert.ok(drawn().some((text) => text.startsWith('x'.repeat(26) + '😀…')), 'zoomed in, each note is labeled');
+      assert.deepStrictEqual(drawn().filter((text) => lone.test(text)), [], 'no label ends in half an emoji');
+    });
+
     test('a click on a name picks the group out; the list says it; a rebuild without it lets go', () => {
       const page = openCanvas();
       page.send(grouped({ atlas: 5, relay: 4, design: 4 }));
@@ -843,6 +908,129 @@ suite('Notes Graph behavior', () => {
       post(page, { type: 'selectNode', nodeId: 'section:relay' });
       canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
       assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:a1' }, 'the host is told its first heading');
+    });
+  });
+
+  suite('a graph that changes under the reader', () => {
+    const openCanvas = (): WebviewPage => {
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
+      return page;
+    };
+    /** Where each node of the last frame is on the page, in the order the frame filled them. */
+    const nodePoints = (page: WebviewPage): Array<{ x: number; y: number }> => {
+      const camera = (page.savedState() as { camera: { x: number; y: number; k: number } }).camera;
+      return lastFrame(page).filter((call) => call.op === 'arc').map((call) => {
+        const [x, y] = call.args as number[];
+        return { x: x * camera.k + camera.x, y: y * camera.k + camera.y };
+      });
+    };
+    const pointer = (page: WebviewPage, type: string, at: { x: number; y: number }) =>
+      page.find('#graph').dispatchEvent(new page.window.MouseEvent(type, { clientX: at.x, clientY: at.y, button: 0, bubbles: true }));
+
+    test('a click on a node across a new graph selects that node, not the one that took its place', () => {
+      const page = openCanvas();
+      page.send(graphState([note('m')], []));
+      settle(page);
+      const [at] = nodePoints(page);
+      pointer(page, 'pointerdown', at);
+      // A note sorted before it arrives while the button is down.
+      page.send(graphState([note('a'), note('m')], []));
+      pointer(page, 'pointerup', at);
+      assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:m' });
+    });
+
+    test('a click on a node the new graph no longer holds does nothing, and the graph still draws', () => {
+      const page = openCanvas();
+      page.send(graphState([note('a'), note('z')], []));
+      settle(page);
+      const z = nodePoints(page).find((at) => {
+        pointer(page, 'pointerdown', at);
+        pointer(page, 'pointerup', at);
+        return page.lastPosted('selectNode')?.nodeId === 'section:z';
+      });
+      assert.ok(z, 'z is on screen');
+      post(page, { type: 'selectNode', nodeId: 'section:a' });
+      const errors: string[] = [];
+      page.window.addEventListener('error', (event) => errors.push(event.message));
+      const posted = page.posted.length;
+      pointer(page, 'pointerdown', z);
+      page.send(graphState([note('a')], []));
+      pointer(page, 'pointerup', z);
+      assert.deepStrictEqual(page.posted.slice(posted), [], 'nothing selected, and the selection of a kept');
+      page.canvasCalls.length = 0;
+      page.flushFrames(5);
+      page.click('#zoom-in');
+      page.flushFrames(1);
+      assert.ok(lastFrame(page).some((call) => call.op === 'arc'), 'a is drawn');
+      assert.deepStrictEqual(errors, []);
+      page.find('#graph').dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'a is still selected');
+    });
+
+    test('drawn around a note with nothing in the graph, it says so, not that the workspace has no notes', () => {
+      const page = openCanvas();
+      const empty = page.find('#empty-state') as HTMLElement;
+      const around = (workspaceNodeCount: number) => graphState([], [], {
+        focus: { local: true, depth: 1, skipPeriodic: true, workspaceNodeCount, filePath: 'notes/new.md', title: 'new' },
+      });
+      page.send(around(3));
+      assert.strictEqual(empty.style.display, 'grid');
+      assert.strictEqual(empty.textContent?.trim(), 'Nothing in new to draw yet — write in it and save, or turn off Around this note to see the whole workspace.');
+      page.send(around(0));
+      assert.strictEqual(empty.textContent?.trim(), 'No indexed notes yet — save a Markdown file with tags or links.');
+    });
+
+    test('a picked tag a new graph does not hold is let go, and the status line says so', () => {
+      const page = openCanvas();
+      const tag = (key: string): GraphNode => ({ id: `tag:${key}`, kind: 'tag', title: key, tagKeys: [], degree: 1 });
+      page.send(graphState(
+        [note('Alpha', { tagKeys: ['#alpha'] }), note('Beta'), tag('#alpha')],
+        [
+          { source: 'section:Alpha', target: 'tag:#alpha', weight: 1, types: ['tag-membership'] },
+          { source: 'section:Alpha', target: 'section:Beta', weight: 1, types: ['wiki-link'] },
+        ],
+      ));
+      const box = page.find('#tag-list input') as HTMLInputElement;
+      box.checked = true;
+      box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      assert.deepStrictEqual((page.savedState() as { selectedTags: string[] }).selectedTags, ['#alpha']);
+
+      // Around another note, whose neighborhood holds no #alpha.
+      page.send(graphState([note('Beta'), note('Gamma')], [{ source: 'section:Beta', target: 'section:Gamma', weight: 1, types: ['wiki-link'] }]));
+      assert.deepStrictEqual((page.savedState() as { selectedTags: string[] }).selectedTags, [], 'let go, and kept so');
+      assert.match(page.text('#status-counts') ?? '', /^Tag #alpha no longer there — let go · 2 notes · /);
+      settle(page);
+      assert.ok(lastFrame(page).filter((call) => call.op === 'arc').every((call) => call.globalAlpha === 1), 'nothing is dimmed');
+
+      page.send(graphState([note('Beta'), note('Gamma')], []));
+      assert.match(page.text('#status-counts') ?? '', /^2 notes · /, 'said once');
+    });
+
+    test('a new focus from the host changes the focus line without a new graph', () => {
+      const page = openCanvas();
+      const focus = (title: string) => ({ local: false, depth: 2, skipPeriodic: true, workspaceNodeCount: 2, filePath: `notes/${title}.md`, title });
+      page.send(graphState([note('atlas'), note('linking')], [], { focus: focus('atlas') }));
+      assert.strictEqual(page.text('#focus-note'), 'Around atlas, when this is on.');
+      post(page, { type: 'focus', focus: focus('linking') });
+      assert.strictEqual(page.text('#focus-note'), 'Around linking, when this is on.');
+      assert.strictEqual((page.find('#local-depth') as HTMLInputElement).value, '2');
+    });
+
+    test('a selection a filter hides is let go, and the host is told so Related Notes lets it go too', () => {
+      const page = openCanvas();
+      const toggle = (id: string, checked: boolean) => {
+        const box = page.find(`#${id}`) as HTMLInputElement;
+        box.checked = checked;
+        box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      };
+      toggle('show-parked', true);
+      page.send(graphState([note('a', { parked: true }), note('b')], [{ source: 'section:a', target: 'section:b', weight: 1, types: ['wiki-link'] }]));
+      post(page, { type: 'selectNode', nodeId: 'section:a' });
+      toggle('show-parked', false);
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'clearSelection' });
+      const posted = page.posted.length;
+      toggle('show-parked', true);
+      assert.deepStrictEqual(page.posted.slice(posted), [], 'nothing is let go when nothing is selected');
     });
   });
 });

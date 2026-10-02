@@ -32,6 +32,8 @@ export interface ControlsState {
   readonly status: { readonly text: string; readonly joinedShown: boolean };
   /** The empty-state line's display, once a graph has said. */
   readonly emptyDisplay?: string;
+  /** What the empty-state line says, when it is not that the workspace has no notes. */
+  readonly emptyNote?: string;
   /** Reset's offer of Undo, or the word that it was taken. */
   readonly resetUndo: 'none' | 'offer' | 'restored';
 }
@@ -45,6 +47,8 @@ export interface ControlRefs {
   readonly simNote: RefObject<HTMLSpanElement>;
   readonly tooltip: RefObject<HTMLDivElement>;
   readonly resetUndo: RefObject<HTMLSpanElement>;
+  /** Where a node chosen from the keyboard is said, since the canvas cannot say it. */
+  readonly announce: RefObject<HTMLSpanElement>;
 }
 
 /** A setting a checkbox turns on and off. */
@@ -99,13 +103,15 @@ export function GraphBody(props: ControlsProps) {
         id="graph"
         tabIndex={0}
         role="application"
-        aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear."
+        aria-label="Notes graph. Press the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear."
         aria-describedby="graph-legend"
         ref={refs.canvas}
       />
       {' '}
+      <span class="visually-hidden" id="graph-announce" role="status" ref={refs.announce} />
+      {' '}
       <div class="empty-state" id="empty-state" style={ui.emptyDisplay === undefined ? undefined : { display: ui.emptyDisplay }}>
-        No indexed notes yet — save a Markdown file with tags or links.
+        {ui.emptyNote ?? 'No indexed notes yet — save a Markdown file with tags or links.'}
       </div>
       {' '}
       <div class="overlay" role="group" aria-label="Graph controls">

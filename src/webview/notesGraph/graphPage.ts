@@ -219,7 +219,7 @@ export function resizeCanvas(page: GraphPage): void {
 /**
  * Rebuilds the graph drawn from the last snapshot, then finds the hover
  * and the selection again, a file's selection moving to its first heading
- * when it unfolds; heats the simulation, gently when nodes kept their
+ * when it unfolds, and the host told when the selection is gone; heats the simulation, gently when nodes kept their
  * places; says the status; and frames the graph the first time.
  */
 export function rebuildView(page: GraphPage, repositionCommunities?: boolean): void {
@@ -228,7 +228,11 @@ export function rebuildView(page: GraphPage, repositionCommunities?: boolean): v
   if (!snapshot) {
     return;
   }
+  // A node held under the pointer is held by id: the new graph may number
+  // it differently, or no longer hold it.
+  const draggedId = state.dragIndex >= 0 && state.nodes[state.dragIndex] ? state.nodes[state.dragIndex].id : null;
   const rebuilt = buildView(state, settings, page.camera, repositionCommunities);
+  state.dragIndex = findNodeIndex(state, draggedId);
   if (rebuilt.groupGone) {
     keep(page);
   }
@@ -238,20 +242,66 @@ export function rebuildView(page: GraphPage, repositionCommunities?: boolean): v
   renderGroupList(page);
   setHoverIndex(state, findNodeIndex(state, state.externalHoverNodeId));
   hideTooltip(page);
-  let restoredSelection = findNodeIndex(state, state.selectedId);
-  if (restoredSelection < 0 && state.selectedId && rebuilt.previousFoldMembers[state.selectedId]) {
-    // Unfolded: the file's selection moves to its first heading.
-    restoredSelection = findNodeIndex(state, rebuilt.previousFoldMembers[state.selectedId][0]);
-  }
-  setSelectedIndex(state, restoredSelection);
+  restoreSelection(state, rebuilt.previousFoldMembers);
   state.alpha = rebuilt.reusedAny && state.hasFramed ? 0.3 : 1;
   updateStatus(page);
-  page.ui = { ...page.ui, emptyDisplay: snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none' };
+  page.ui = { ...page.ui, emptyDisplay: snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none', emptyNote: describeEmpty(snapshot) };
   if (!state.hasFramed && state.nodes.length > 0) {
     fitToView(page);
     state.hasFramed = true;
   }
   scheduleFrame(page);
+}
+
+/**
+ * Finds the selection again in a rebuilt graph, a file's selection moving
+ * to its first heading when it unfolds. A selection the graph left out,
+ * by a filter or a new graph, is let go, and the host is told, so Related
+ * Notes, which lists what it is joined to, lets it go too.
+ */
+function restoreSelection(state: GraphState, previousFoldMembers: Record<string, string[]>): void {
+  const selectedId = state.selectedId;
+  let restored = findNodeIndex(state, selectedId);
+  if (restored < 0 && selectedId && previousFoldMembers[selectedId]) {
+    restored = findNodeIndex(state, previousFoldMembers[selectedId][0]);
+  }
+  setSelectedIndex(state, restored);
+  if (selectedId !== null && restored < 0) {
+    send({ type: 'clearSelection' });
+  }
+}
+
+/**
+ * What the empty graph says when it is drawn around a note the graph holds
+ * nothing of, such as a new, empty one, in a workspace that has notes;
+ * otherwise undefined, and it says the workspace has none.
+ */
+function describeEmpty(snapshot: NonNullable<GraphState['snapshot']>): string | undefined {
+  const focus = snapshot.focus;
+  if (!focus || !focus.local || !focus.title || !focus.workspaceNodeCount) {
+    return undefined;
+  }
+  return 'Nothing in ' + focus.title + ' to draw yet — write in it and save, or turn off Around this note to see the whole workspace.';
+}
+
+/**
+ * Lets go of the tags picked that a new graph's checklist does not offer,
+ * such as a neighborhood without them: kept, they would dim every node,
+ * with no box in the list to uncheck. The status line names them, by the
+ * labels the last graph gave them.
+ */
+export function dropMissingTags(page: GraphPage, snapshot: { readonly tags: readonly (readonly [string, string, number])[] }, labels: Record<string, string>): void {
+  const offered = new Set(snapshot.tags.map(([key]) => key));
+  const { settings, state } = page;
+  const gone = settings.selectedTags.filter((key) => !offered.has(key));
+  if (!gone.length) {
+    state.tagNotice = '';
+    return;
+  }
+  settings.selectedTags = settings.selectedTags.filter((key) => offered.has(key));
+  keep(page);
+  state.tagNotice = (gone.length === 1 ? 'Tag ' : 'Tags ') + gone.map((key) => labels[key] || key).join(', ') +
+    ' no longer there — let go';
 }
 
 /** The Group list takes the group picked; its options are the groups named now. */
@@ -432,14 +482,21 @@ const RESTORED_MS = 3000;
 
 /**
  * Withdraws Reset's offer of Undo, or the word that it was taken, and draws
- * the controls without it unless `draw` is false.
+ * the controls without it unless `draw` is false. Undo, taken or run out
+ * while it has the focus, would leave the focus nowhere when it goes, so
+ * the focus goes back to Reset graph, where the reset was asked for.
  */
 export function clearResetUndo(page: GraphPage, draw = true): void {
   window.clearTimeout(page.resetUndoTimer);
   page.resetSnapshot = null;
   page.ui = { ...page.ui, resetUndo: 'none' };
-  if (draw) {
-    page.redraw();
+  if (!draw) {
+    return;
+  }
+  const hadFocus = (page.refs.resetUndo.current as HTMLElement).contains(document.activeElement);
+  page.redraw();
+  if (hadFocus) {
+    (document.getElementById('reset-graph-settings') as HTMLElement).focus();
   }
 }
 
