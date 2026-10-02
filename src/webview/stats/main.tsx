@@ -230,8 +230,10 @@ app.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' && event.key !== ' ') {
     return;
   }
+  // Only a row itself: a button in a row, such as Create or Merge, takes
+  // its own keys, which the row would otherwise swallow and act on instead.
   const row = findRow(event);
-  if (!row) {
+  if (!row || row !== event.target) {
     return;
   }
   event.preventDefault();
