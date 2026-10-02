@@ -757,6 +757,20 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
   }
 });
 
+test('Quick add takes no longer a task than the host adds', async () => {
+  const { view, navigation } = await openDashboard(createIndex(), async (store) => {
+    await store.homeWidgets.setDashboardWidgets([{ id: 'add', kind: 'quickAdd', width: 'full' }]);
+  });
+  const field = () => view.find('[data-action="quick-add-draft"]');
+  assert.ok(field().maxLength > 0, 'the field says how long a task may be');
+  const longest = 'x'.repeat(field().maxLength);
+  view.type(field(), longest);
+  view.submit(view.find('form[data-form="quick-add"]'));
+  await delay(20);
+  assert.deepStrictEqual(navigation.opened, [`add ${longest}`], 'the longest task the field takes is added');
+  assert.match(view.find('.home-quick-add-status').textContent, /Added/);
+});
+
 test('the gear turns zen on through the host, and the page carries the marker', async () => {
   const { view, panel } = await openDashboard();
   try {

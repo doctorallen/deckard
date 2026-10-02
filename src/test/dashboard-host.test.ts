@@ -40,7 +40,10 @@ function createIndex(): WorkspaceIndex {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
-/** Where Home sent the reader, in order; a quick add containing "refused" is not added. */
+/**
+ * Where Home sent the reader, in order; a quick add containing "refused" is
+ * not added, and one containing "read-only" fails as a read-only disk would.
+ */
 function createNavigation(): DashboardNavigation & { opened: string[] } {
   const opened: string[] = [];
   return {
@@ -51,6 +54,9 @@ function createNavigation(): DashboardNavigation & { opened: string[] } {
     openDailyNote: () => void opened.push('today'),
     quickAdd: (text) => {
       opened.push(`add ${text}`);
+      if (text.includes('read-only')) {
+        throw new Error('EROFS: read-only file system');
+      }
       return !text.includes('refused');
     },
     createHubNote: (tagKey) => void opened.push(`hub ${tagKey}`),
@@ -247,6 +253,19 @@ suite('Dashboard host', () => {
       assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
         { type: 'quickAddResult', text: ' Call Ren ', added: true },
         { type: 'quickAddResult', text: 'refused task', added: false },
+      ]);
+    } finally {
+      home.dispose();
+    }
+  });
+
+  test('answers a quick add that fails, so the page gives the task back', async () => {
+    const home = openHome();
+    try {
+      // The failure still reaches the log, as any handler's does.
+      await assert.rejects(home.send({ type: 'quickAdd', text: 'read-only task' }), /read-only/);
+      assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
+        { type: 'quickAddResult', text: 'read-only task', added: false },
       ]);
     } finally {
       home.dispose();

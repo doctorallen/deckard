@@ -483,10 +483,17 @@ export class DashboardController implements PageController<DashboardPageState, D
           }[message.view],
         ),
       openDailyNote: () => navigation.openDailyNote(),
+      // The page holds the task as "Adding…" until it is answered, so a
+      // capture that fails, such as on a read-only disk, still answers, and
+      // the page gives the text back.
       quickAdd: async (message, page) => {
-        const added = await navigation.quickAdd(message.text.trim());
-        const result: DashboardHostToPage['quickAddResult'] = { type: 'quickAddResult', text: message.text, added };
-        page.post(result);
+        let added = false;
+        try {
+          added = await navigation.quickAdd(message.text.trim());
+        } finally {
+          const result: DashboardHostToPage['quickAddResult'] = { type: 'quickAddResult', text: message.text, added };
+          page.post(result);
+        }
       },
       openNote: async (message) => {
         if (indexer.getSnapshot().files.has(message.filePath)) {

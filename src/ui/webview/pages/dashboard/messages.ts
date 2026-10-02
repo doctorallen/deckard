@@ -4,6 +4,7 @@
  * a message names against the index and preferences as they are now.
  */
 import type { DashboardMode, DashboardSearchField, TagSortMode } from '../../../../domain/model/preferences';
+import { QUICK_ADD_MAX_LENGTH } from '../../../../domain/dashboard/widgetCatalog';
 import { isObject } from '../../../../shared/guards';
 import type {
   AddNextActionMessage,
@@ -45,9 +46,6 @@ import {
   onlyType,
 } from '../../host/narrowing';
 import { normalizeDashboardWidgets } from '../../../../core/storage/preferencesSchema';
-
-/** A quick-add task is one line. */
-const MAX_QUICK_ADD_LENGTH = 1000;
 
 /** More widgets than Home keeps are refused rather than cut short. */
 const MAX_DASHBOARD_WIDGETS = 60;
@@ -196,11 +194,11 @@ const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
     ? { type: 'openView', view: value.view }
     : undefined;
 
-/** A task to add to today's note: one line, with something on it. */
+/** A task to add to today's note: one line, with something on it, no longer than its field takes. */
 const narrowQuickAdd: Narrower<QuickAddMessage> = (value) =>
   typeof value.text === 'string' &&
   value.text.trim().length > 0 &&
-  value.text.length <= MAX_QUICK_ADD_LENGTH &&
+  value.text.length <= QUICK_ADD_MAX_LENGTH &&
   !/[\r\n]/.test(value.text)
     ? { type: 'quickAdd', text: value.text }
     : undefined;

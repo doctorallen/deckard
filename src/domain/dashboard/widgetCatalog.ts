@@ -67,6 +67,12 @@ export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
   tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
 };
 
+/**
+ * The longest task Quick add sends, which the host accepts: its field takes
+ * no more, so a task the host would refuse is never typed.
+ */
+export const QUICK_ADD_MAX_LENGTH = 1000;
+
 /** Whether a value, read from storage or from a choice, names a kind of widget. */
 export function isWidgetKind(value: unknown): value is DashboardWidgetKind {
   return typeof value === 'string' && Object.hasOwn(WIDGET_KINDS, value);
