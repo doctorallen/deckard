@@ -37,6 +37,7 @@ export const DEFAULT_TASK_COLUMNS: readonly TaskColumnId[] = [
   'note',
 ];
 
+/** Each column's id and aliases, lowercased, to the column they name. */
 const COLUMN_BY_NAME = new Map<string, TaskColumnId>(
   TASK_COLUMNS.flatMap((column) =>
     [column.id, ...(column.aliases ?? [])].map(
@@ -68,6 +69,7 @@ export function parseTaskColumns(text: string): {
   return { columns, unknown };
 }
 
+/** A column's label and alignment; an id no column has falls back to the title column. */
 export function getTaskColumn(id: TaskColumnId): TaskColumn {
   return TASK_COLUMNS.find((column) => column.id === id) ?? TASK_COLUMNS[0];
 }
@@ -108,8 +110,7 @@ export function createTaskCells(
   columns: readonly TaskColumnId[],
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): TableCell[] {
-  const { now } = context;
-  const today = startOfDay(now);
+  const today = startOfDay(context.now);
   const date = (at: number | undefined): TableCell =>
     at === undefined ? { text: '' } : { text: formatIsoDate(at) };
   return columns.map((column): TableCell => {
@@ -120,18 +121,7 @@ export function createTaskCells(
           ...(task.titleTokens?.length ? { tokens: task.titleTokens } : {}),
         };
       case 'due':
-        // An open task's due date reads beside today; a done one keeps its date.
-        return task.dueAt === undefined
-          ? { text: task.dueText ?? '' }
-          : task.completed
-            ? { text: task.dueText ?? formatIsoDate(task.dueAt) }
-            : (() => {
-                const due = describeDueDate(task.dueAt, now, context.taskPolicy, task.dueText);
-                return {
-                  text: due.label,
-                  ...(due.stale ? { kind: 'muted' as const } : task.dueAt < today ? { kind: 'overdue' as const } : {}),
-                };
-              })();
+        return dueCell(task, context, today);
       case 'scheduled':
         return date(task.scheduledAt);
       case 'start':
@@ -160,6 +150,32 @@ export function createTaskCells(
         return { text: '' };
     }
   });
+}
+
+/**
+ * The due cell. An open task's due date reads beside today, muted once it
+ * needs a new date and marked overdue once it has passed; a done one keeps
+ * its date as written.
+ */
+function dueCell(
+  task: TableTask,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  today: number,
+): TableCell {
+  if (task.dueAt === undefined) {
+    return { text: task.dueText ?? '' };
+  }
+  if (task.completed) {
+    return { text: task.dueText ?? formatIsoDate(task.dueAt) };
+  }
+  const due = describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText);
+  if (due.stale) {
+    return { text: due.label, kind: 'muted' };
+  }
+  if (task.dueAt < today) {
+    return { text: due.label, kind: 'overdue' };
+  }
+  return { text: due.label };
 }
 
 /**
@@ -215,6 +231,17 @@ export function compareTasksByColumn(
     if (b === undefined || b === '') {
       return -1;
     }
-    return sign * (a < b ? -1 : a > b ? 1 : 0);
+    return sign * compareKeys(a, b);
   };
+}
+
+/** -1, 0, or 1 as `a` sorts before, with, or after `b`. */
+function compareKeys(a: number | string, b: number | string): number {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
 }

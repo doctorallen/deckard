@@ -14,6 +14,7 @@ export interface SearchHistoryEntry {
 /** A page stepped through a hundred searches remembers the last hundred. */
 const MAX_ENTRIES = 100;
 
+/** One search page's back and forward stacks; each page keeps its own. */
 export class SearchHistory {
   private readonly backEntries: SearchHistoryEntry[] = [];
   private forwardEntries: SearchHistoryEntry[] = [];
@@ -30,11 +31,12 @@ export class SearchHistory {
     this.forwardEntries = [];
   }
 
-  /** Whether there is a search to go back to, and one to go forward to. */
+  /** Whether there is a search to go back to. */
   public get canGoBack(): boolean {
     return this.backEntries.length > 0;
   }
 
+  /** Whether there is a search that going back left ahead of this one. */
   public get canGoForward(): boolean {
     return this.forwardEntries.length > 0;
   }

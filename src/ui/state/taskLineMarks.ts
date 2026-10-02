@@ -21,6 +21,7 @@ export interface TaskLineHint {
   tone: 'overdue' | 'hint';
 }
 
+/** What a note's editor draws over its task lines, as findTaskLineMarks finds it. */
 export interface TaskLineMarks {
   /** Metadata drawn fainter than the words. */
   dim: LineSpan[];
@@ -64,38 +65,79 @@ export function findTaskLineMarks(
       return;
     }
     const task = matchTaskLine(text, TASK_LINE);
-    if (!task) {
-      const blockId = BLOCK_ID.exec(text);
-      if (options.dim && blockId) {
-        const start = text.lastIndexOf(blockId[1]);
-        marks.dim.push({ line, start, end: start + blockId[1].length });
-      }
+    if (task) {
+      markTaskLine(marks, { text, line, task }, context, options);
       return;
     }
-    const offset = task.head.length + task.gap.length;
-    const open = task.mark === ' ';
-    const spans = findTaskMetadataSpans(text.slice(offset));
-    const due = spans.find((span) => span.field === 'due');
-    const dueAt = open && due ? parseIsoDate(due.value) : undefined;
-    const described = dueAt === undefined ? undefined : describeDueDate(dueAt, context.now, context.taskPolicy);
-    for (const span of spans) {
-      const at = { line, start: offset + span.start, end: offset + span.end };
-      if (span === due && described?.overdue) {
-        marks.overdue.push(at);
-      } else if (options.dim) {
-        marks.dim.push(at);
-      }
-    }
-    if (!options.hints || !described) {
-      return;
-    }
-    if (described.overdue) {
-      marks.hints.push({ line, text: described.relative, tone: 'overdue' });
-    } else if (described.stale) {
-      marks.hints.push({ line, text: 'needs a new date', tone: 'hint' });
-    } else if (described.days === 0) {
-      marks.hints.push({ line, text: 'due today', tone: 'hint' });
+    if (options.dim) {
+      markBlockId(marks, text, line);
     }
   });
   return marks;
+}
+
+/** One line the editor shows, matched as a task line. */
+interface TaskLineAt {
+  text: string;
+  line: number;
+  task: NonNullable<ReturnType<typeof matchTaskLine>>;
+}
+
+/** Steps back the block id at the end of a line that is not a task, when it has one. */
+function markBlockId(marks: TaskLineMarks, text: string, line: number): void {
+  const blockId = BLOCK_ID.exec(text);
+  if (!blockId) {
+    return;
+  }
+  const start = text.lastIndexOf(blockId[1]);
+  marks.dim.push({ line, start, end: start + blockId[1].length });
+}
+
+/**
+ * Marks one task line: its metadata dimmed, an open task's overdue date in
+ * the overdue color, and the hint after an open task with a due date.
+ */
+function markTaskLine(
+  marks: TaskLineMarks,
+  { text, line, task }: TaskLineAt,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  options: { dim: boolean; hints: boolean },
+): void {
+  const offset = task.head.length + task.gap.length;
+  const open = task.mark === ' ';
+  const spans = findTaskMetadataSpans(text.slice(offset));
+  const due = spans.find((span) => span.field === 'due');
+  const dueAt = open && due ? parseIsoDate(due.value) : undefined;
+  const described = dueAt === undefined ? undefined : describeDueDate(dueAt, context.now, context.taskPolicy);
+  for (const span of spans) {
+    const at = { line, start: offset + span.start, end: offset + span.end };
+    if (span === due && described?.overdue) {
+      marks.overdue.push(at);
+    } else if (options.dim) {
+      marks.dim.push(at);
+    }
+  }
+  if (!options.hints || !described) {
+    return;
+  }
+  const hint = hintFor(described);
+  if (hint) {
+    marks.hints.push({ line, ...hint });
+  }
+}
+
+/** What an open task says after its line: overdue, needs a new date, or due today; nothing otherwise. */
+function hintFor(
+  described: ReturnType<typeof describeDueDate>,
+): Omit<TaskLineHint, 'line'> | undefined {
+  if (described.overdue) {
+    return { text: described.relative, tone: 'overdue' };
+  }
+  if (described.stale) {
+    return { text: 'needs a new date', tone: 'hint' };
+  }
+  if (described.days === 0) {
+    return { text: 'due today', tone: 'hint' };
+  }
+  return undefined;
 }

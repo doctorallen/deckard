@@ -17,6 +17,7 @@ export type { UnlinkedMention } from '../../domain/search/mentions';
  * returns only what is worth a lens, so an empty result means no lens at all.
  */
 
+/** One task's dependency lens: what it waits on, what it names that nothing carries, and what waits on it. */
 export interface TaskDependencies {
   /** Zero-based line of the task. */
   line: number;
@@ -90,6 +91,7 @@ export function findTaskDependencies(
   });
 }
 
+/** A daily note's lenses: the notes either side of it, and what a rollover would carry in. */
 export interface DailyNoteActions {
   /** The nearest daily notes before and after this one, by date. */
   previous?: string;
@@ -164,6 +166,7 @@ export function findDailyNoteActions({
   };
 }
 
+/** An embed the preview cannot draw, with why. */
 export interface EmbedProblem {
   /** Zero-based line of the embed. */
   line: number;

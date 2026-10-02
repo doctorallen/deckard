@@ -129,9 +129,6 @@ export default {
     "src/ui/state/agendaState.ts": [
       "createAgenda"
     ],
-    "src/ui/state/assistantWriteInput.ts": [
-      "readChangeTaskInput"
-    ],
     "src/ui/state/calendarState.ts": [
       "createCalendar"
     ],
@@ -141,21 +138,12 @@ export default {
     "src/ui/state/dashboardWidgets.ts": [
       "createWidget"
     ],
-    "src/ui/state/queryBlockState.ts": [
-      "parseQueryBlockInfo"
-    ],
     "src/ui/state/quickFindState.ts": [
       "buildQuickFindResults"
-    ],
-    "src/ui/state/referenceState.ts": [
-      "createLinkPreview"
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard",
       "resolveTagMove"
-    ],
-    "src/ui/state/taskLineMarks.ts": [
-      "(arrow function)"
     ],
     "src/ui/webview/pages/calendar/calendarController.ts": [
       "handle"
@@ -224,20 +212,9 @@ export default {
     "src/ui/preview/noteEmbeds.ts": 1,
     "src/ui/preview/queryBlocks.ts": 3,
     "src/ui/state/agendaState.ts": 3,
-    "src/ui/state/assistantTools.ts": 3,
     "src/ui/state/dashboardState.ts": 2,
-    "src/ui/state/editorLensState.ts": 3,
-    "src/ui/state/noteLinks.ts": 2,
-    "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/queryBlockState.ts": 3,
     "src/ui/state/quickFindState.ts": 4,
-    "src/ui/state/referenceState.ts": 5,
-    "src/ui/state/resultTable.ts": 1,
-    "src/ui/state/reviewState.ts": 1,
-    "src/ui/state/searchHistory.ts": 2,
     "src/ui/state/taskBoardState.ts": 2,
-    "src/ui/state/taskLineMarks.ts": 1,
-    "src/ui/state/tryNext.ts": 3,
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
@@ -340,16 +317,9 @@ export default {
     "src/ui/state/entryScope.ts": [
       "createEntryScope"
     ],
-    "src/ui/state/noteLinks.ts": [
-      "collectNoteLinks"
-    ],
     "src/ui/state/quickFindState.ts": [
       "buildEmptyResults",
       "rankEntries"
-    ],
-    "src/ui/state/reviewState.ts": [
-      "formatReview",
-      "summarizeReview"
     ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
@@ -402,12 +372,8 @@ export default {
     "src/ui/providers/editorReferences.ts": 1,
     "src/ui/providers/tagSuggestions.ts": 1,
     "src/ui/state/agendaState.ts": 3,
-    "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
     "src/ui/state/dashboardWidgets.ts": 1,
-    "src/ui/state/notesGraphState.ts": 1,
-    "src/ui/state/referenceState.ts": 2,
-    "src/ui/state/resultTable.ts": 3,
     "src/ui/state/taskBoardState.ts": 6,
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1
@@ -430,11 +396,7 @@ export default {
     "src/ui/commands/taskBoardActions.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 1,
-    "src/ui/state/assistantTools.ts": 2,
     "src/ui/state/calendarState.ts": 2,
-    "src/ui/state/noteLinks.ts": 1,
-    "src/ui/state/referenceState.ts": 1,
-    "src/ui/state/tagGrouping.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/taskStatusBar.ts": 1,
     "test/ui/checkContrast.js": 1
@@ -455,7 +417,6 @@ export default {
     "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
-    "src/ui/state/outlineState.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1
   }

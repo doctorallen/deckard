@@ -34,8 +34,15 @@ export function toWire(
   snapshot: NotesGraphSnapshot,
   kinds: NotesGraphKinds,
 ): NotesGraphWireSnapshot {
-  const shown = (kind: NotesGraphNode['kind']) =>
-    kind === 'note' ? kinds.notes : kind === 'task' ? kinds.tasks : true;
+  const shown = (kind: NotesGraphNode['kind']): boolean => {
+    if (kind === 'note') {
+      return kinds.notes;
+    }
+    if (kind === 'task') {
+      return kinds.tasks;
+    }
+    return true;
+  };
   const nodes = snapshot.nodes.filter((node) => shown(node.kind));
   const hiddenNodeCount = snapshot.nodes.length - nodes.length;
   const kept = hiddenNodeCount > 0 ? new Set(nodes.map((node) => node.id)) : undefined;

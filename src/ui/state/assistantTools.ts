@@ -26,12 +26,18 @@ import {
  * asked decides what happens to the answer.
  */
 
+/** The query tool's name, as the manifest declares it. */
 export const QUERY_TOOL_NAME = 'deckard_query';
+/** The tag-list tool's name, as the manifest declares it. */
 export const TAGS_TOOL_NAME = 'deckard_list_tags';
 
+/** How many query results an answer lists when the call does not say. */
 const DEFAULT_QUERY_LIMIT = 25;
+/** The most query results an answer lists, whatever the call asks for. */
 const MAX_QUERY_LIMIT = 200;
+/** How many tags an answer lists when the call does not say. */
 const DEFAULT_TAG_LIMIT = 50;
+/** The most tags an answer lists, whatever the call asks for. */
 const MAX_TAG_LIMIT = 500;
 
 /** How to write a query, sent back with a query that could not run. */
@@ -49,12 +55,14 @@ export const QUERY_SYNTAX_GUIDE = [
   'Operators are = != ~ !~ > >= < <=.',
 ].join(' ');
 
+/** A query tool call, read: the query, and how many results in what order. */
 export interface QueryToolInput {
   query: string;
   limit?: number;
   sort?: QueryBlockSort;
 }
 
+/** A tag-list call, read: words the tags must contain, and how many to list. */
 export interface TagsToolInput {
   search?: string;
   limit?: number;
@@ -79,6 +87,10 @@ export function readQueryToolInput(value: unknown): QueryToolInput | undefined {
   };
 }
 
+/**
+ * Reads a tag-list call. It never refuses: input that is not an object, or
+ * fields of the wrong type, are left out, which lists every tag.
+ */
 export function readTagsToolInput(value: unknown): TagsToolInput {
   if (!isObject(value)) {
     return {};
@@ -215,16 +227,13 @@ export function answerTags(
   return lines.join('\n');
 }
 
+/** A task result as a checklist line: its box, title, dates and priority, and where it is. */
 function formatTask(item: QueryBlockItem): string {
   const details = [
-    item.dueAt !== undefined
-      ? `due ${formatIsoDate(item.dueAt)}`
-      : item.dueText
-        ? `due ${item.dueText}`
-        : '',
-    item.scheduledAt !== undefined
-      ? `scheduled ${formatIsoDate(item.scheduledAt)}`
-      : '',
+    formatDue(item),
+    item.scheduledAt === undefined
+      ? ''
+      : `scheduled ${formatIsoDate(item.scheduledAt)}`,
     item.priority ? `${item.priority} priority` : '',
     item.recurrence ? `repeats ${item.recurrence}` : '',
   ].filter(Boolean);
@@ -233,16 +242,30 @@ function formatTask(item: QueryBlockItem): string {
   } — ${formatLocation(item)}`;
 }
 
+/**
+ * A task's due date as an answer words it: the date when it parses, the
+ * words as written when they do not, and nothing when it has none.
+ */
+function formatDue(item: QueryBlockItem): string {
+  if (item.dueAt !== undefined) {
+    return `due ${formatIsoDate(item.dueAt)}`;
+  }
+  return item.dueText ? `due ${item.dueText}` : '';
+}
+
+/** A note section result as a list line: its title and where it is. */
 function formatNote(item: QueryBlockItem): string {
   return `- ${item.title} — ${formatLocation(item)}`;
 }
 
+/** Where a result is, as `path:line`, with the headings it sits under, so the assistant can open or cite it. */
 function formatLocation(item: QueryBlockItem): string {
   const headings =
     item.context.length > 0 ? ` (under ${item.context.join(' > ')})` : '';
   return `${item.filePath}:${item.line}${headings}`;
 }
 
+/** A tag as a list line: its label, how many entries carry it, and the note that describes it, when one does. */
 function formatTag(tag: TagInfo): string {
   const hub = tag.hubFilePaths?.[0];
   return `- ${tag.label} — ${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}${
@@ -250,6 +273,10 @@ function formatTag(tag: TagInfo): string {
   }`;
 }
 
+/**
+ * A requested limit as a whole number from 1 to `max`; the fallback when the
+ * call gave none, or a number that is not finite.
+ */
 function clampLimit(
   value: number | undefined,
   fallback: number,
