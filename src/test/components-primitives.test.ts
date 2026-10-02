@@ -5,6 +5,7 @@ import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDeckardStatsSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
+import { createCalendar } from '../ui/state/calendarState';
 import { ENABLED } from '../ui/webview/components';
 import { deckardThemes } from '../ui/webview/themes';
 import { PAGES, renderablePages, renderPage } from './pages';
@@ -199,7 +200,11 @@ suite('Component primitives', () => {
       store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
       const snapshots: Partial<Record<string, unknown>> = {
         stats: createDeckardStatsSnapshot(index, store.reader.value, [], Date.now()),
+        calendar: createCalendar(index, '2026-09', createQueryContext(Date.now())),
       };
+      // A calendar still says it is ready when it loads, as it always has, so
+      // its host sends a snapshot newer than the one its HTML carried.
+      const asks: Partial<Record<string, unknown[]>> = { calendar: [{ type: 'ready' }] };
       const embedding = PAGES.filter((entry) => entry.readsInertState);
       assert.ok(embedding.length >= 1, 'at least Stats reads its first snapshot from its shell');
       for (const entry of embedding) {
@@ -211,7 +216,7 @@ suite('Component primitives', () => {
         assert.strictEqual(app.getAttribute('aria-busy'), null, `${entry.title} is not busy`);
         assert.strictEqual(page.findAll('#app .loading').length, 0, `${entry.title}: no loading line`);
         assert.ok(app.firstElementChild, `${entry.title} drew its snapshot`);
-        assert.strictEqual(page.posted.length, 0, `${entry.title} asked for nothing`);
+        assert.deepStrictEqual(page.posted, asks[entry.id] ?? [], `${entry.title} asked for nothing`);
         page.dispose();
         page = undefined;
       }

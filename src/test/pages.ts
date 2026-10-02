@@ -1,5 +1,6 @@
 import type * as vscode from 'vscode';
 
+import type { CalendarSnapshot } from '../ui/protocol/calendar';
 import type { DeckardStatsSnapshot } from '../ui/protocol/stats';
 import type { EntryRelatedNotesDiagnostic } from '../ui/webview/sidebarNotes';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
@@ -96,7 +97,12 @@ export const PAGES: readonly CatalogPage[] = [
     readsInertState: true,
   },
   { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as vscode.Webview, context.extensionUri) },
-  { id: 'calendar', title: 'Calendar', render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri) },
+  {
+    id: 'calendar',
+    title: 'Calendar',
+    render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri, { state: context.state as CalendarSnapshot | undefined }),
+    readsInertState: true,
+  },
   {
     id: 'calendarPage',
     title: 'Calendar page',

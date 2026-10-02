@@ -2,6 +2,8 @@ import { getCalendarDayScript } from './calendarDay';
 import { calendarIcon } from './icons';
 import * as vscode from 'vscode';
 
+import type { CalendarSnapshot } from '../protocol/calendar';
+
 import {
   createNonce,
   getComponentScript,
@@ -12,9 +14,13 @@ import { isZenModeEnabled } from './zenMode';
 import { type DeckardTheme, getDeckardTheme } from './themes';
 
 /**
- * Draws the sidebar calendar: a month of weeks from Sunday to Saturday.
- * Every day, every week, and the month title is a button that asks the host
- * to open its note; the host decides what exists and what to create.
+ * A calendar's page: the sidebar Calendar, whose bundle,
+ * `dist/webview/calendar.js`, draws a month of weeks (src/webview/calendar),
+ * or the calendar page. Every day, every week, and the month title is a
+ * button that asks the host to open its note; the host decides what exists
+ * and what to create. With a snapshot, the sidebar's shell carries it as
+ * inert JSON and the calendar draws it on its first frame; without one, it
+ * shows its loading line until the host posts one.
  */
 export function getCalendarHtml(
   webview: vscode.Webview,
@@ -28,9 +34,41 @@ export function getCalendarHtml(
     page?: boolean;
     /** The theme its host read, preview and all; the configured one without. */
     theme?: DeckardTheme;
+    /** The snapshot to draw at once, if the shell is to carry one. */
+    state?: CalendarSnapshot;
   } = {},
 ): string {
   const { theme } = options;
+  if (!options.page) {
+    return buildPageShell({
+      webview,
+      extensionUri,
+      page: 'calendar',
+      title: 'Deckard Calendar',
+      nonce: createNonce(),
+      theme: theme ?? getDeckardTheme(),
+      zen: isZenModeEnabled(),
+      bundle: true,
+      state: options.state,
+      body: `
+${options.state === undefined ? loadingHtml('Loading calendar…') : '<main id="app"></main>'}
+<div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
+`,
+    });
+  }
+  return getCalendarPageTemplate(webview, extensionUri, theme);
+}
+
+/**
+ * The calendar page, a month or a week of days large enough to list their
+ * tasks, with the day panel beside it, as a template script.
+ */
+function getCalendarPageTemplate(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri,
+  theme: DeckardTheme | undefined,
+): string {
+  const options = { page: true };
   const nonce = createNonce();
 
   return buildPageShell({

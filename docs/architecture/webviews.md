@@ -46,8 +46,8 @@ Every option and hook is optional, and a page that sets none behaves as Stats do
 | --- | --- | --- |
 | `name` | The page's turn after an index update in the log (`Refresh {name} after an index update`), and the name its snapshot is timed under unless `measure` says otherwise | every page |
 | `options.measure` | How the snapshot is timed in the log: by default `buildSnapshot` under `name`. `{ name }` logs it under another name, `{ name, includesPost: true }` times the post as well, and `false` leaves it to the page, which calls `measure` inside `buildSnapshot` around only what it always timed. | Home (`{ name: 'Dashboard', includesPost: true }`); `false` for a search page (`Search page`, around its search), both calendars (`CalendarController.snapshot` logs `Calendar`), and the Notes Graph (`Notes Graph`, with how many nodes the graph holds before hidden kinds are left out) |
-| `options.readsInertState` | The page draws a snapshot its HTML carries, which `html` is then handed. Not retained, it is drawn again from the last snapshot sent when it is hidden (Q2; see [State](#state)) | Stats |
-| `options.embedsSnapshot` | With `readsInertState`, the HTML set while the page is shown carries a snapshot built then, once the index has notes to show, so the page draws them on its first frame (Q3). It is built and timed as a sent one is, and kept as the last sent; a hidden page is built nothing | none yet |
+| `options.readsInertState` | The page draws a snapshot its HTML carries, which `html` is then handed. Not retained, it is drawn again from the last snapshot sent when it is hidden (Q2; see [State](#state)) | Stats, the Calendar view |
+| `options.embedsSnapshot` | With `readsInertState`, the HTML set while the page is shown carries a snapshot built then, once the index has notes to show, so the page draws them on its first frame (Q3). It is built and timed as a sent one is, and kept as the last sent; a hidden page is built nothing | the Calendar view |
 | `options.hasSnapshot` | `false` for a page drawn whole in its HTML: a refresh does nothing at all, so nothing is built, timed, or owed | Help, the Related Notes debug page |
 | `options.onChromeChange` | What a theme or zen change does: `redraw` (the default) resets the HTML and refreshes, `reload` only resets the HTML, `none` leaves the page | `reload`: Help, the Task Board, both calendars; `none`: a search page, which `SearchPanels` redraws, Related Notes, which listens itself, and the debug page |
 | `options.followIndexing`, `options.refreshWhenShown`, `options.scripts`, `options.restore` | Whether the page is told the first scan's progress, whether showing it sends a snapshot it missed, how its scripts are set, and what it reads from a panel kept across a reload | see the table under the recipe |
@@ -134,7 +134,7 @@ The page context compiles JSX with the automatic runtime and `jsxImportSource: '
 
 `src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency, and each Preact page's bundle carries its own copy, with what it uses of the shared core; see [One bundle per page](#one-bundle-per-page).
 
-Stats (`src/webview/stats/main.tsx`) and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js` and `dist/webview/help.js`; every other page still runs the inline script its builder writes. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
+Stats (`src/webview/stats/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `calendar.js`, and `help.js`; every other page still runs the inline script its builder writes. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
 
 1. the policy `getContentSecurityPolicy` builds (next section);
 2. for a page with `bundle`, `<meta name="deckard-theme" content="…">`, the theme's name, which a gear's theme row reads (`readThemeName`);
@@ -218,7 +218,7 @@ Only Chrome enforces the policy. jsdom ignores CSP entirely: a script with the w
 
 **Initial state.** A Preact page reads a snapshot its shell carries as `<script type="application/json" id="state">`, with `<` escaped, and draws it on its first frame with no loading line; no JSON is ever interpolated into executable script. Updates arrive as `postMessage({ type: 'state' })`, the entry point the tests already drive. See [decision 0005](decisions/0005-inert-json-for-initial-state.md).
 
-When the shell carries one is Q3 of the sub-plan: a page's HTML embeds a freshly built snapshot only when the build is cheap, under 50 ms median on the 5,000-note bench, read from the `measure` line its host writes (`npm run bench:index` reports Stats'). Otherwise the page opens on its loading line, with the indexing count until the first scan ends, and the host posts the snapshot, as before. Stats builds in 150 ms there (65 ms on 1,000 notes), so it opens on its loading line and nothing builds a snapshot into HTML. A page under 50 ms sets `options.embedsSnapshot`: whenever its HTML is set while it is shown and the index has notes, the host builds its snapshot, timed as a sent one is, and hands it to `html`.
+When the shell carries one is Q3 of the sub-plan: a page's HTML embeds a freshly built snapshot only when the build is cheap, under 50 ms median on the 5,000-note bench, read from the `measure` line its host writes (`npm run bench:index` reports Stats'). Otherwise the page opens on its loading line, with the indexing count until the first scan ends, and the host posts the snapshot, as before. Stats builds in 150 ms there (65 ms on 1,000 notes), so it opens on its loading line and nothing builds a snapshot into HTML. A page under 50 ms sets `options.embedsSnapshot`: whenever its HTML is set while it is shown and the index has notes, the host builds its snapshot, timed as a sent one is, and hands it to `html`. The Calendar view's month builds in 15 ms there (3.3 ms on 1,000), so its HTML carries it; the view still says `ready` when it loads, as it always has, and is sent a snapshot then.
 
 A page that reads inert JSON says so with `options.readsInertState`. `controller.html(webview, theme, state)` is then handed a snapshot to carry when there is one. `test:dom` draws each surface of such a page twice, posted and embedded, and holds the two to one DOM (`readsInertState` in the page catalog).
 
@@ -258,6 +258,19 @@ Domain logic leaves page script. The graph's clustering and salience, the Home w
 | `tagLabel.tsx`, `metric.tsx`, `inline.tsx`, `loading.tsx` | `<TagLabel label svg>`, `<Metric>` with `<Sparkline>` and `describeChange`, `<Inline tokens>`, which draws `InlineToken[]` as markdown-it's elements and text nodes, and `<Loading>` |
 
 The token types live in `domain/model/inline.ts`, since the protocol imports only the domain model; `ui/protocol/inline.ts` re-exports them for the pages.
+
+Lane B's shared components are in `src/webview/shared/calendar/`, written with the Calendar view and held to the template script they replace:
+
+| Module | What a page uses |
+| --- | --- |
+| `session.ts` | `new CalendarSession({ initial, view, afterFullDraw, stepsByDay })`: a calendar's store, its host's snapshots each drawn whole, and what both calendars do: `selectDay`, `redraw`, `focusWhenDrawn`, `onGridKey`, `onDoubleClick`, and the `actions` of the controls both draw. Choosing a day only marks it until the next full draw, as the template's `selectDay` did (`marked` and `tabStop` in `model.ts`). `send` posts a calendar message |
+| `model.ts` | `CalendarState`, and the words and choices both calendars share: `dueTone`, `describeDay`, `dayClasses`, `isDrawn`, `drawnWeekdays`, `markedDate`, `tabStopDate`, `withGroupShown` |
+| `grid.tsx`, `calendarIcon.tsx` | `<CalendarGrid snapshot weeks label multiselectable days>`, with `<WeekdayRow>` and each week's `<WeekRail>`; each calendar draws its own days. `<CalendarIcon>` |
+| `dayPanel.tsx` | `<DayPanel day shownGroups>`, the chosen day as the calendars and Related Notes show it, and `installDayPanel({ send, showGroup })`, which wires every panel on the page once. `src/test/calendar-day-panel.test.ts` holds it to `calendarDay.ts`, which Related Notes still draws |
+| `taskRow.tsx` | `<DayTaskRow item leading trailing>`, the panel's own task row until the shared one exists; it sets the host's sanitized `renderedTitle` as the template did, in one place |
+| `events.ts` | `eventElement(event)` |
+
+The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `shiftDate`, `isWeekend`, `skipWeekend`, `stepDate`, `sameDayIn`, `chooseFocusDay`, and `stepCalendar`.
 
 Three things a page written on the core has to know, each learned on Stats:
 

@@ -14,7 +14,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
-import { pageExtensionUri } from './pageWebview';
+import { pageExtensionUri, pageWebview } from './pageWebview';
 
 /** Today, and the month it is in, as the calendar starts on. */
 const today = formatLocalDate(new Date());
@@ -199,6 +199,26 @@ suite('Calendar host', () => {
     }
   });
 
+  test('once the index has notes, its HTML carries the month, and the month it loads asks for is the same', async () => {
+    const { host, surface, themePreview, send, states } = openCalendar();
+    try {
+      surface.htmlWebview = pageWebview as vscode.Webview;
+      // The index is published a turn after the host is built.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const lines = captureTimingLog(() => themePreview.show('cooper'));
+      const block = /<script type="application\/json" id="state">(.*?)<\/script>/.exec(String(surface.html));
+      assert.ok(block, 'the month is in the HTML');
+      const carried = JSON.parse(block[1]) as CalendarSnapshot;
+      assert.strictEqual(carried.month, thisMonth);
+      assert.deepStrictEqual(lines, ['Calendar: N ms'], 'built and timed as Calendar, as a sent month is');
+      assert.deepStrictEqual(states(), [], 'and nothing posted');
+      await send({ type: 'ready' });
+      assert.deepStrictEqual(states().map((message) => message.data), [carried], 'ready is answered with the same month');
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('is named Calendar, and keeps its context while hidden', () => {
     const { host, controller } = openCalendar();
     try {
@@ -209,6 +229,8 @@ suite('Calendar host', () => {
         followIndexing: false,
         onChromeChange: 'reload',
         measure: false,
+        readsInertState: true,
+        embedsSnapshot: true,
       });
     } finally {
       host.dispose();
