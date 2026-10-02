@@ -546,7 +546,9 @@ function rankEntity(reorder: (keys: string[]) => string[] | undefined): boolean 
 // context menu, which also renames a tag and parks it.
 installRankedRows({
   kinds: {
-    tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },
+    // A favorite and the rest are ranked apart; Move up or down never
+    // crosses from one to the other.
+    tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey', group: '.tag-group' },
     entity: { selector: '.entity-row[data-entity-key]', key: 'entityKey' },
     widget: { selector: '.home-widget.is-editing[data-widget-id]', key: 'widgetId', edgeLabels: ['Move to first', 'Move to last'] },
   },

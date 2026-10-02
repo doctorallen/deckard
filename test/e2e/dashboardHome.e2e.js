@@ -709,6 +709,31 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   assert.deepStrictEqual(sent('parkTag'), [{ type: 'parkTag', tagKey: '#gamma' }]);
 });
 
+test('Alt+Up and Alt+Down move a tag within favorites or the rest, never across', async () => {
+  const note = parseMarkdown('notes/alpha.md', '# Alpha #alpha #beta #gamma\nBody text.', { createdAt: 1, updatedAt: 2 }, {});
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view } = await openDashboard(index, async (preferences) => {
+    await preferences.homeWidgets.setDashboardMode('browse');
+    await preferences.display.setTagSortMode('custom');
+    await preferences.favorites.toggleFavorite('#alpha');
+  });
+  const row = (key) => view.find(`.tag-row[data-tag-key="${key}"]`);
+  const sent = () => view.posted.filter((message) => message.type === 'reorderTags');
+  const status = () => view.find('#live-status').textContent;
+
+  // #beta is the first of the rest, right under the favorite #alpha.
+  view.fire('keydown', row('#beta'), { key: 'ArrowUp', altKey: true });
+  assert.deepStrictEqual(sent(), [], 'the first of the rest stays first of the rest');
+  assert.notStrictEqual(status(), 'Moved up.');
+
+  view.fire('keydown', row('#alpha'), { key: 'ArrowDown', altKey: true });
+  assert.deepStrictEqual(sent(), [], 'the last favorite stays a favorite');
+
+  view.fire('keydown', row('#beta'), { key: 'ArrowDown', altKey: true });
+  assert.deepStrictEqual(sent().map((message) => [message.tagKeys, message.isFavorite]), [[['#alpha', '#gamma', '#beta'], false]]);
+  assert.strictEqual(status(), 'Moved down.');
+});
+
 test('typing a tag search keeps focus and text through a host update', async () => {
   const { view, panel, lastState, stored } = await openDashboard();
   view.click(view.find('[data-dashboard-mode="browse"]'));
