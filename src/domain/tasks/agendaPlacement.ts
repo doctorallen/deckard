@@ -102,9 +102,10 @@ function placeBySchedule(
 
 /**
  * The first date still to come places the task: within the horizon it is
- * Upcoming, past it Later. A task nothing here placed — scheduled in the
- * past, say, but not started until after the horizon — is Later by the
- * date it waits for.
+ * Upcoming, past it Later. A task scheduled in the past but not started
+ * until after the horizon is Later by the date it waits for. One with no
+ * date still to come has only a start date, already come: nothing says
+ * when it is wanted, so it is No date, as a task with no dates is.
  */
 function placeAhead(
   { dueAt, scheduledAt, startAt }: Task,
@@ -120,7 +121,10 @@ function placeAhead(
         candidate.at !== undefined && candidate.at >= tomorrow,
     )
     .sort((left, right) => left.at - right.at);
-  const soonest = ahead[0] ?? { at: startAt ?? NO_DATE, verb: 'starts' };
+  const soonest = ahead.at(0);
+  if (!soonest) {
+    return { group: 'nodate', at: NO_DATE, reason: '' };
+  }
   return {
     group: soonest.at < horizon ? 'upcoming' : 'later',
     at: soonest.at,
