@@ -35,9 +35,10 @@ type StateOf = { type: 'state'; data: { query: { text: string } } };
 /**
  * The Task Board over one note, attached to a fake panel in front: what the
  * page is sent, the tags it opens, the active search it makes itself, and a
- * task write that waits until a test lets it finish.
+ * task write that waits until a test lets it finish. `exports` plans its
+ * Export, and plans none by default.
  */
-function openBoard() {
+function openBoard(exports: unknown = {}) {
   let index: WorkspaceIndex = buildWorkspaceIndex(
     new Map([['/notes/atlas.md', parseMarkdown('/notes/atlas.md', NOTE)]]),
   );
@@ -63,7 +64,7 @@ function openBoard() {
     openTag: async (tagKey) => void openedTags.push(tagKey),
     activeSearch,
     writes,
-    exports: {} as never,
+    exports: exports as never,
     navigation: new NavigationService(),
     source,
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
@@ -277,6 +278,29 @@ suite('Task Board host', () => {
       assert.strictEqual(board.activeSearch.active, undefined);
       assert.strictEqual(board.controller.getRefineState()?.query.text, 'is:done', 'and, once closed, the search as it stands');
     } finally {
+      board.dispose();
+    }
+  });
+
+  test('exports the notes or the tasks, as the page asks', async () => {
+    const planned: unknown[][] = [];
+    const nothing = (what: string) => ({ kind: 'nothing', what });
+    const board = openBoard({
+      fromSearch: (query: string, what: string) => (planned.push(['search', query, what]), nothing(what)),
+      fromResults: (what: string, results: { tasks: unknown[] }) => (planned.push(['results', what, results.tasks.length]), nothing(what)),
+    });
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showInformationMessage = window.showInformationMessage;
+    const shown: unknown[] = [];
+    window.showInformationMessage = async (message: unknown) => void shown.push(message);
+    try {
+      await board.send({ type: 'setBoardQuery', query: 'is:open' });
+      await board.send({ type: 'exportResults', kind: 'notes' });
+      await board.send({ type: 'exportResults', kind: 'tasks' });
+      assert.deepStrictEqual(planned, [['search', 'is:open', 'notes'], ['results', 'tasks', 2]]);
+      assert.deepStrictEqual(shown, ['There are no notes to export.', 'There are no tasks to export.']);
+    } finally {
+      window.showInformationMessage = showInformationMessage;
       board.dispose();
     }
   });
