@@ -1,10 +1,10 @@
 # Source paths cited outside the compiler
 
-The harness tables in section 2 are as of the end of Phase 4 (`d65b73f`); sections 1, 3, 4, and 5 still describe `1805a01`.
+The harness tables in section 2 are as of the end of Phase 6 (`030ee64`); sections 1, 3, 4, and 5 still describe `1805a01`.
 
 This inventory lists every place outside TypeScript's view that names a source path, a compiled path, or a command id by string. The compiler catches a broken import, but it does not see these places, so a moved file breaks them or leaves them stale without any error. It was taken at `dev` `1805a01`, before Phase 0 of [the refactor plan](../../implementation/19-refactor.md), and each later phase checks against it.
 
-Line numbers are 1-based at `1805a01`, except in section 2, where they are at `d65b73f`. "Breaks" means a test, script, build, or runtime path fails, or silently stops covering something, after a move. "Stale" means only a document goes out of date.
+Line numbers are 1-based at `1805a01`, except in section 2, where they are at `030ee64`. "Breaks" means a test, script, build, or runtime path fails, or silently stops covering something, after a move. "Stale" means only a document goes out of date.
 
 ## Totals
 
@@ -13,10 +13,10 @@ Line numbers are 1-based at `1805a01`, except in section 2, where they are at `d
 | 1. Current docs, `src/` paths | 80 citations in 10 files | 53 | 0 | 80 | 0 |
 | 1. Current docs, `test/` harness paths | 15 citations in 7 files | 10 | 0 | 15 | 0 |
 | 1. `docs/implementation/` plans | 757 citations in 20 files | 218 | 0 | 757 (dated, not kept current) | 0 |
-| 2. Harness `out/` module loads | 73 sites in 12 files | 31 modules, 30 of them through the catalog | 73 (3 of them silently) | 0 | 0 |
-| 2. Compiled-tree roots and paths between harness files | 19 rows | `out/`, 16 harness files, 2 baselines | 15 (14 on a harness move, 1 on a `src/` move) | 0 | 4 |
-| 2. Reads by path in `src/test` | 13 rows in 11 files | `out/extension.js`, `src/extension.ts`, 6 `src/ui/` folders, `src/services`, `src/domain` | 13 (3 of them by checking less) | 0 | 0 |
-| 2. Constructor signatures and internals | 28 rows in 10 files | 10 classes, 2 factories, 5 state builders, 8 members | 28 | 0 | 0 |
+| 2. Harness `out/` module loads | 104 sites in 13 files | 34 modules, all through the catalog | 104 (19 of them silently, all in the perf run) | 0 | 0 |
+| 2. Compiled-tree roots and paths between harness files | 26 rows | `out/`, `dist/webview`, 20 harness files, 1 fixture, 4 baselines | 21 (on a harness, fixture, or baseline move, or a bundle leaving `dist/webview`) | 0 | 5 |
+| 2. Reads by path in `src/test` | 18 rows in 18 files, and 1 in `test/ui` | `out/extension.js`, `out/composition/services.js`, `src/webview`, `dist/webview`, `src/extension.ts`, 8 `src/` folders | 20 (3 of them by checking less) | 0 | 0 |
+| 2. Constructor signatures and internals | 32 rows in 11 files | 11 classes, 2 factories, 8 state builders, 8 members | 32 | 0 | 0 |
 | 3. `scripts/` | 26 rows in 5 scripts | 1 source file, 12 command ids, 2 settings | 22 | 1 | 3 |
 | 4. Build, packaging, and CI configuration | 26 rows in 12 files | 2 entry points, 1 bundle name | 12 (6 of them on a `src/` move) | 0 | 14 |
 | 5. `.vscode/` and `development/` | 11 rows in 8 files | 1 `dist/` glob | 4 | 1 | 6 |
@@ -203,67 +203,76 @@ Of the 757, 35 are `out/` or `dist/` paths, and 28 of those are in the two `19-`
 
 ## 2. Test harnesses
 
+This section is as of the end of Phase 6 (`030ee64`), and counts `test/ui/checkWebviewScripts.js` as deleted, as it is at the end of that phase. It names no path in it.
+
 The Node harnesses in `test/e2e`, `test/ui`, and `test/perf` load the `tsc` output in `out/`, with a stub standing in for `vscode`. `tsconfig.json` sets `rootDir` to `src`, so `out/` mirrors `src/` exactly, and any move under `src/` moves the compiled file with it. The mocha suites keep passing, because their imports are compiler-checked. The harnesses fail instead, and only when their own npm script runs.
 
-Since Phase 0 the harnesses no longer name `out/` paths themselves. They take each module by name from the catalog in `test/harness/modules.js`, which maps the name to its path under `out/` once, so a move is one edit there. Two loads still go around it: `test/ui/checkLayout.js:42` builds its own path to `out/domain/query/queryContext.js`, and the page builders reach the harnesses through `out/test/pages.js`, the catalog of `src/test/pages.ts`, whose imports the compiler checks.
+Since Phase 0 the harnesses no longer name `out/` paths themselves. They take each module by name from the catalog in `test/harness/modules.js`, which maps the name to its path under `out/` once, so a move is one edit there. Since Phase 6 none goes around it: `test/ui/surfaces.js`, which took the layout harness's state builders over, takes `queryContext` from the catalog too. The page builders reach the harnesses through `out/test/pages.js`, the catalog of `src/test/pages.ts`, whose imports the compiler checks.
+
+Since Phase 6 a page is a shell that loads its bundle and style sheets from `dist/webview/` by URI. Every harness, and the mocha suites through `src/test/webviewPage.ts`, passes the page through `test/harness/loadPage.js`, which reads each file the page names under the repository's root and inlines it, so each harness's npm script runs `npm run build:webview` after `npm run compile-tests`, and a bundle not built fails with the URI it named. Those paths are written by the shells' own code (`src/ui/webview/host/pageShell.ts`) and by `esbuild.js`, so a page moved under `src/webview` keeps them in step without any harness edit.
 
 ### Distinct `out/` modules
 
-The catalog names 40 modules. The harnesses take something from 30 of them at 72 sites in 12 files, and `checkLayout.js` loads a 31st by its own path, for 73 sites in all. `test/perf/indexSpeed.js` loads its seven through `load('…')` (lines 49 to 55), which resolves the name through the catalog's `pathOf`. `src/test/extension.test.ts` reads a 32nd compiled file, `out/extension.js`, listed under "Reads by path in `src/test`" below.
+The catalog names 46 modules. The harnesses take something from 34 of them at 104 sites in 13 files. `test/perf/indexSpeed.js` loads its twelve through `load('…')`, which resolves the name through the catalog's `pathOf`. `src/test/extension.test.ts` reads two more compiled files as text, `out/extension.js` and `out/composition/services.js`, listed under "Reads by path in `src/test`" below.
 
 | `out/` module | Catalog name | What the harness takes from it | Used at | On a move |
 | --- | --- | --- | --- | --- |
-| `core/changelog.js` | `changelog` | `parseChangelog` | `test/ui/pages.js:67` | Breaks |
+| `core/changelog.js` | `changelog` | `parseChangelog` | `test/ui/pages.js:56` | Breaks |
 | `core/storage/parsedFileCodec.js` | `parsedFileCodec` | `encodeParsedFile`, `decodeParsedFile` | `test/perf/indexSpeed.js:55` | Degrades silently |
 | `core/storage/searchStore.js` | `searchStore` | `SearchStore` | `test/perf/indexSpeed.js:52` | Degrades silently |
-| `core/workspace/indexer.js` | `indexer` | `buildWorkspaceIndex`; perf also takes `createWorkspaceIndex` | `test/e2e/calendar.e2e.js:13`, `test/e2e/calendarPage.e2e.js:13`, `test/e2e/dashboardHome.e2e.js:14`, `test/e2e/searchPage.e2e.js:13`, `test/e2e/sidebarNotes.e2e.js:13`, `test/ui/checkLayout.js:39`, `test/perf/indexSpeed.js:50` | Breaks |
+| `core/workspace/indexer.js` | `indexer` | `buildWorkspaceIndex`; perf also takes `createWorkspaceIndex` | `test/ui/surfaces.js:25`, `test/e2e/calendar.e2e.js:13`, `test/e2e/calendarPage.e2e.js:13`, `test/e2e/dashboardHome.e2e.js:15`, `test/e2e/searchPage.e2e.js:13`, `test/e2e/sidebarNotes.e2e.js:13`, `test/perf/indexSpeed.js:50` | Breaks |
 | `core/workspace/scanner.js` | `scanner` | `WorkspaceScanner` | `test/perf/indexSpeed.js:51` | Breaks |
-| `domain/markdown/parser.js` | `parser` | `parseMarkdown` | `test/e2e/calendar.e2e.js:12`, `test/e2e/calendarPage.e2e.js:12`, `test/e2e/dashboardHome.e2e.js:13`, `test/e2e/searchPage.e2e.js:12`, `test/e2e/sidebarNotes.e2e.js:12`, `test/e2e/stats.e2e.js:153`, `test/e2e/stats.e2e.js:178`, `test/ui/checkLayout.js:38`, `test/perf/indexSpeed.js:49` | Breaks |
-| `domain/query/queryContext.js` | (none; by path) | `createQueryContext` | `test/ui/checkLayout.js:42` | Breaks |
-| `shared/timing.js` | `timing` | `setTimingLog` | `test/perf/indexSpeed.js:53` | Degrades silently |
-| `test/pages.js` | `pageCatalog` | `PAGES`, which renders every page builder | `test/ui/pages.js:74` | Breaks |
-| `test/preferenceServices.js` | `preferenceServices` | `createPreferences` | `test/e2e/calendarPage.e2e.js:18`, `test/e2e/dashboardHome.e2e.js:12`, `test/e2e/searchPage.e2e.js:10`, `test/e2e/sidebarNotes.e2e.js:11`, `test/e2e/stats.e2e.js:11`, `test/e2e/taskBoard.e2e.js:11`, `test/ui/checkLayout.js:40` | Breaks |
-| `test/taskWrites.js` | `taskWrites` | `createTaskWrites` | `test/e2e/calendar.e2e.js:53`, `test/e2e/calendarPage.e2e.js:56`, `test/e2e/calendarPage.e2e.js:175`, `test/e2e/dashboardHome.e2e.js:73`, `test/e2e/dashboardHome.e2e.js:149`, `test/e2e/searchPage.e2e.js:65`, `test/e2e/taskBoard.e2e.js:77`, `test/e2e/taskBoard.e2e.js:364` | Breaks |
+| `domain/index/indexState.js` | `indexState` | `buildWorkspaceIndex` | `test/e2e/navigation.e2e.js:66` | Breaks |
+| `domain/markdown/parser.js` | `parser` | `parseMarkdown` | `test/ui/surfaces.js:24`, `test/e2e/calendar.e2e.js:12`, `test/e2e/calendarPage.e2e.js:12`, `test/e2e/dashboardHome.e2e.js:14`, `test/e2e/navigation.e2e.js:65`, `test/e2e/searchPage.e2e.js:12`, `test/e2e/sidebarNotes.e2e.js:12`, `test/e2e/stats.e2e.js:156`, `test/e2e/stats.e2e.js:181`, `test/perf/indexSpeed.js:49` | Breaks |
+| `domain/query/queryContext.js` | `queryContext` | `createQueryContext` | `test/ui/surfaces.js:28`, `test/perf/indexSpeed.js:352`, `:376`, `:430`, `:474` | Breaks |
+| `shared/timing.js` | `timing` | `measure`, `setTimingLog` | `test/perf/indexSpeed.js:53` | Degrades silently |
+| `test/pages.js` | `pageCatalog` | `PAGES` and `renderPage`, which render every page's shell | `test/ui/pages.js:63`, `:100`, `test/ui/checkDom.js:146` | Breaks |
+| `test/preferenceServices.js` | `preferenceServices` | `createPreferences` | `test/ui/surfaces.js:26`, `test/e2e/calendarPage.e2e.js:18`, `test/e2e/dashboardHome.e2e.js:13`, `test/e2e/navigation.e2e.js:63`, `test/e2e/searchPage.e2e.js:10`, `test/e2e/sidebarNotes.e2e.js:11`, `test/e2e/stats.e2e.js:11`, `test/e2e/taskBoard.e2e.js:11`, `test/perf/indexSpeed.js:323`, `:377`, `:431`, `:475` | Breaks |
+| `test/taskWrites.js` | `taskWrites` | `createTaskWrites` | `test/e2e/calendar.e2e.js:53`, `test/e2e/calendarPage.e2e.js:56`, `:176`, `test/e2e/dashboardHome.e2e.js:74`, `:150`, `test/e2e/navigation.e2e.js:117`, `:126`, `test/e2e/searchPage.e2e.js:65`, `test/e2e/taskBoard.e2e.js:77`, `:107`, `:400` | Breaks |
 | `ui/commands/dailyNote.js` | `dailyNote` | `formatLocalDate`, `getPeriodicNote`, which it re-exports from `domain/notes/periodicNotes` | `test/e2e/calendar.e2e.js:14`, `test/e2e/calendarPage.e2e.js:14` | Breaks |
 | `ui/commands/workspaceWrites.js` | `workspaceWrites` | `WorkspaceWriteHistory` | `test/e2e/calendarPage.e2e.js:19`, `test/e2e/searchPage.e2e.js:14`, `test/e2e/sidebarNotes.e2e.js:14` | Breaks |
 | `ui/providers/tagDecorations.js` | `tagDecorations` | `EditorTagDecorations` | `test/e2e/editorDecorations.e2e.js:9` | Breaks |
-| `ui/state/calendarState.js` | `calendarState` | `createCalendar` | `test/ui/checkLayout.js:37` | Breaks |
-| `ui/state/dashboardState.js` | `dashboardState` | `createSearchPageSnapshot`, `createDeckardStatsSnapshot` | `test/ui/checkLayout.js:36` | Breaks |
-| `ui/state/notesGraphState.js` | `notesGraphState` | `createNotesGraphSnapshot`, `toWire`, `graphInputsChanged` | `test/perf/indexSpeed.js:54` | Breaks |
-| `ui/state/relatedNotesRanking.js` | `relatedNotesRanking` | `createSidebarSnapshot` | `test/ui/checkLayout.js:35` | Breaks |
-| `ui/state/taskBoardState.js` | `taskBoardState` | `createTaskBoard` | `test/ui/checkLayout.js:34` | Breaks |
+| `ui/state/calendarState.js` | `calendarState` | `createCalendar` | `test/ui/surfaces.js:23`, `test/perf/indexSpeed.js:351` | Breaks |
+| `ui/state/dashboardState.js` | `dashboardState` | `createDashboardSnapshot`, `createSearchPageSnapshot`, `createDeckardStatsSnapshot` | `test/ui/surfaces.js:20`, `test/perf/indexSpeed.js:322`, `:429`, `:472` | Breaks |
+| `ui/state/dashboardWidgets.js` | `dashboardWidgets` | `createDashboardWidgets` | `test/ui/surfaces.js:21`, `test/perf/indexSpeed.js:473` | Breaks |
+| `ui/state/noteLinks.js` | `noteLinks` | `collectNoteLinks` | `test/perf/indexSpeed.js:512` | Degrades silently |
+| `ui/state/notesGraphState.js` | `notesGraphState` | `createNotesGraphSnapshot`, `toWire`; perf also takes `graphInputsChanged` | `test/ui/surfaces.js:22`, `test/perf/indexSpeed.js:54` | Breaks |
+| `ui/state/relatedNotesRanking.js` | `relatedNotesRanking` | `createSidebarSnapshot` | `test/ui/surfaces.js:19`, `test/perf/indexSpeed.js:511` | Breaks |
+| `ui/state/taskBoardState.js` | `taskBoardState` | `createTaskBoard` | `test/ui/surfaces.js:18`, `test/perf/indexSpeed.js:375` | Breaks |
 | `ui/webview/activeCalendar.js` | `activeCalendar` | `ActiveCalendar` | `test/e2e/calendarPage.e2e.js:15` | Breaks |
-| `ui/webview/activeSearch.js` | `activeSearch` | `ActiveSearch` | `test/e2e/calendarPage.e2e.js:16`, `test/e2e/searchPage.e2e.js:9`, `test/e2e/sidebarNotes.e2e.js:10`, `test/e2e/taskBoard.e2e.js:12` | Breaks |
+| `ui/webview/activeSearch.js` | `activeSearch` | `ActiveSearch` | `test/e2e/calendarPage.e2e.js:16`, `test/e2e/navigation.e2e.js:62`, `test/e2e/searchPage.e2e.js:9`, `test/e2e/sidebarNotes.e2e.js:10`, `test/e2e/taskBoard.e2e.js:12` | Breaks |
 | `ui/webview/calendar.js` | `calendar` | `CalendarView` | `test/e2e/calendar.e2e.js:11` | Breaks |
 | `ui/webview/calendarPage.js` | `calendarPage` | `CalendarPanel` | `test/e2e/calendarPage.e2e.js:11` | Breaks |
-| `ui/webview/components.js` | `components` | `getZenCss` | `test/ui/verifyWebviews.js:13` | Breaks |
-| `ui/webview/dashboard.js` | `dashboard` | `DashboardPanel` | `test/e2e/dashboardHome.e2e.js:11`, `test/e2e/taskBoard.e2e.js:13` | Breaks |
+| `ui/webview/dashboard.js` | `dashboard` | `DashboardPanel` | `test/e2e/dashboardHome.e2e.js:12`, `test/e2e/navigation.e2e.js:59`, `test/e2e/taskBoard.e2e.js:13` | Breaks |
+| `ui/webview/notesGraph.js` | `notesGraph` | `NotesGraphPanel` | `test/e2e/navigation.e2e.js:61` | Breaks |
 | `ui/webview/searchPage.js` | `searchPage` | `SearchPanels` | `test/e2e/searchPage.e2e.js:8` | Breaks |
 | `ui/webview/sidebarNotes.js` | `sidebarNotes` | `SidebarNotesView` | `test/e2e/calendarPage.e2e.js:17`, `test/e2e/searchPage.e2e.js:11`, `test/e2e/sidebarNotes.e2e.js:9` | Breaks |
-| `ui/webview/stats.js` | `stats` | `StatsPanel` | `test/e2e/stats.e2e.js:10` | Breaks |
-| `ui/webview/taskBoard.js` | `taskBoard` | `TaskBoardPanel` | `test/e2e/taskBoard.e2e.js:10` | Breaks |
-| `ui/webview/themePreview.js` | `themePreview` | `ThemePreview` | `test/e2e/calendar.e2e.js:15`, `test/e2e/calendarPage.e2e.js:20`, `test/e2e/dashboardHome.e2e.js:15`, `test/e2e/searchPage.e2e.js:15`, `test/e2e/sidebarNotes.e2e.js:15`, `test/e2e/stats.e2e.js:12`, `test/e2e/taskBoard.e2e.js:14` | Breaks |
-| `ui/webview/themes.js` | `themes` | `deckardThemes` | `test/ui/pages.js:77` | Breaks |
+| `ui/webview/stats.js` | `stats` | `StatsPanel` | `test/e2e/navigation.e2e.js:58`, `test/e2e/stats.e2e.js:10` | Breaks |
+| `ui/webview/taskBoard.js` | `taskBoard` | `TaskBoardPanel` | `test/e2e/navigation.e2e.js:60`, `test/e2e/taskBoard.e2e.js:10` | Breaks |
+| `ui/webview/themePreview.js` | `themePreview` | `ThemePreview` | `test/e2e/calendar.e2e.js:15`, `test/e2e/calendarPage.e2e.js:20`, `test/e2e/dashboardHome.e2e.js:16`, `test/e2e/navigation.e2e.js:64`, `test/e2e/searchPage.e2e.js:15`, `test/e2e/sidebarNotes.e2e.js:15`, `test/e2e/stats.e2e.js:12`, `test/e2e/taskBoard.e2e.js:14` | Breaks |
+| `ui/webview/themes.js` | `themes` | `deckardThemes` | `test/ui/pages.js:66` | Breaks |
 
-Every source file behind these 31 modules exists at the end of Phase 4, as does every one the catalog names. Ten catalog entries have no harness user: `preferences` (`core/storage/preferences.js`) and the nine page builders from `calendarHtml` to `taskBoardHtml`. The page builders reach the harnesses through `test/pages.js`; nothing loads `preferences` by name since the harnesses took `createPreferences`.
+Every source file behind these 34 modules exists at the end of Phase 6, as does every one the catalog names. Twelve catalog entries have no harness user: `preferences` (`core/storage/preferences.js`), `components`, `guide`, and the nine page shells from `calendarHtml` to `taskBoardHtml`. The page shells reach the harnesses through `test/pages.js`. `components` lost its one user in Phase 6, when `test/ui/verifyWebviews.js` stopped taking `getZenCss` from it and began reading `src/webview/shared/zen.css` by path (see "Reads by path" below).
 
-"Breaks" now means the catalog entry must follow the move, and until it does every harness that names it fails. The one load by path, `queryContext.js`, breaks alone and needs its own edit.
+"Breaks" means the catalog entry must follow the move, and until it does every harness that names it fails.
 
-"Degrades silently" means the harness does not fail. `load()` in `test/perf/indexSpeed.js:39-48` returns `{}` when a module is not found. The perf run guards three of its seven loads: `SearchStore` at line 201, `setTimingLog` at 127 and 178, and the codec at 113. A move of the codec or `timing.js` makes the run print a dash for the steps it can no longer measure, the mark it uses for a step the code cannot do yet. A move of `searchStore.js` makes it time every start without the cache, with no warning. `npm run bench:index` is not a test suite, so nothing fails. The other four loads are used without a guard, and the run stops with a `TypeError`. The run also takes `WorkspaceIndexer` from `indexer.js` for an older checkout; at the end of Phase 4 that export is gone, and the run builds through `createWorkspaceIndex` (line 207).
+"Degrades silently" means the harness does not fail. `load()` in `test/perf/indexSpeed.js:39-48` returns `{}` when a module is not found, and the run prints a dash for a step it cannot measure, the mark it uses for a step the code cannot do yet. It guards 19 of its 23 loads: the cache (`SearchStore`, line 226), the codec (138), the timing log (152, and `measure` in each snapshot timing), and every module the snapshot timings Phase 6 added load (lines 321 to 539, each guarded by its own `if (!…)`). A move of `searchStore.js` makes it time every start without the cache, with no warning; a move of `timing.js` blanks every snapshot timing; a move of any module the snapshot timings load blanks that timing alone. `npm run bench:index` is not a test suite, so nothing fails. The loads of the parser, the indexer, the scanner, and the graph state are used without a guard, and the run stops with a `TypeError`. The run also takes `WorkspaceIndexer` from `indexer.js` for an older checkout; that export is gone, and the run builds through `createWorkspaceIndex` (line 232).
 
 The export names in the third column are part of the same contract. Renaming an export breaks the harness just as moving its file does.
 
 ### Compiled-tree roots
 
-These check that `out/` exists before they run, or join paths onto it. A move inside `src/` does not affect them. A change to `outDir` does.
+These check that `out/` or `dist/` exists before they run, or join paths onto them. A move inside `src/` does not affect them. A change to `outDir`, or to where `esbuild.js` writes the page bundles, does.
 
 | File | Line | Path | On a move |
 | --- | --- | --- | --- |
 | `test/harness/modules.js` | 16 | `out`, joined with each catalog path in `pathOf` | Breaks only if `outDir` changes |
-| `test/e2e/run.js` | 30 | `out` | Breaks only if `outDir` changes |
+| `test/e2e/run.js` | 31 | `out` | Breaks only if `outDir` changes |
 | `test/ui/pages.js` | 10 | `out` | Breaks only if `outDir` changes |
-| `test/ui/checkLayout.js` | 26 | `out`, joined at 42 with `domain/query/queryContext.js` | Breaks if `outDir` changes, or if `queryContext.ts` moves |
+| `test/ui/checkLayout.js` | 34 | `out`, checked only; since Phase 6 it joins no module path onto it | Breaks only if `outDir` changes |
 | `test/perf/indexSpeed.js` | 22 | `out` | Breaks only if `outDir` changes |
+| `test/harness/loadPage.js` | 26, 69, 76 | the repository's root, joined with the path after the stand-in webview's `vscode-webview://deckard/` origin, such as `dist/webview/stats.js` | Breaks if the bundles leave `dist/webview` without the shells following, or if the loader moves to another depth |
+| `test/e2e/vscodeStub.js` | 78 | `dist/webview/…`, matched in a URI the stub's `asWebviewUri` is given | Breaks if the bundles leave `dist/webview` |
 
 ### Paths between harness files
 
@@ -272,85 +281,101 @@ A move under `src/` leaves these alone. They break when a harness file moves.
 | File | Line | Path | On a move |
 | --- | --- | --- | --- |
 | `test/ui/pages.js` | 19, 26 | `test/e2e/vscodeStub.js` | Breaks if the stub moves |
-| `test/e2e/support.js` | 21 | `./vscodeStub.js` | Breaks if the stub moves |
+| `test/e2e/support.js` | 26 | `./vscodeStub.js` | Breaks if the stub moves |
 | `test/perf/indexSpeed.js` | 28 | `test/e2e/vscodeStub.js` | Breaks if the stub moves |
-| `test/e2e/run.js` | 19-28, 44, 49 | the eight suite file names, passed to mocha beside `support.js` as its `--require` | Breaks if a suite or `support.js` is renamed |
-| `test/e2e/*.e2e.js` | `calendar` 9, `calendarPage` 9, `dashboardHome` 9, `searchPage` 6, `sidebarNotes` 7, `stats` 8, `taskBoard` 8 | `./support.js` | Breaks if the support file moves |
-| `test/e2e/*.e2e.js`, `test/ui/pages.js`, `checkLayout.js`, `verifyWebviews.js`, `test/perf/indexSpeed.js` | `calendar` 10, `calendarPage` 10, `dashboardHome` 10, `editorDecorations` 8, `searchPage` 7, `sidebarNotes` 8, `stats` 9, `taskBoard` 9; `pages` 44, `checkLayout` 32, `verifyWebviews` 13; `indexSpeed` 36 | `../harness/modules.js` | Breaks if the catalog moves |
-| `test/e2e/support.js`, `test/ui/pages.js`, `checkLayout.js`, `verifyWebviews.js` | 15, 45, 33, 11 | `../harness/loadPage.js` | Breaks if the page loader moves |
+| `test/e2e/run.js` | 19-29, 45, 50 | the nine suite file names, passed to mocha beside `support.js` as its `--require` | Breaks if a suite or `support.js` is renamed |
+| `test/e2e/*.e2e.js` | `calendar` 9, `calendarPage` 9, `dashboardHome` 9, `navigation` 17, `searchPage` 6, `sidebarNotes` 7, `stats` 8, `taskBoard` 8 | `./support.js` | Breaks if the support file moves |
+| `test/e2e/*.e2e.js`, `test/ui/pages.js`, `surfaces.js`, `checkDom.js`, `test/perf/indexSpeed.js` | `calendar` 10, `calendarPage` 10, `dashboardHome` 11, `editorDecorations` 8, `navigation` 57, `searchPage` 7, `sidebarNotes` 8, `stats` 9, `taskBoard` 9; `pages` 44, `surfaces` 17, `checkDom` 37; `indexSpeed` 36 | `../harness/modules.js` | Breaks if the catalog moves |
+| `test/e2e/support.js`, `dashboardHome.e2e.js`, `test/ui/pages.js`, `checkLayout.js`, `checkDom.js`, `verifyWebviews.js`, `test/harness/domRecorder.js` | 19, 10, 45, 40, 40, 19, 19 | `../harness/loadPage.js` (`./loadPage.js` from `domRecorder.js`) | Breaks if the page loader moves |
+| `test/e2e/support.js` | 20 | `../harness/domRecorder.js` | Breaks if the recorder moves |
+| `test/ui/checkLayout.js`, `checkDom.js`, `diffDomRecords.js`, `test/harness/domRecorder.js` | 41, 41, 26, 18 | `../harness/domSnapshot.js` (`./domSnapshot.js` from `domRecorder.js`) | Breaks if the DOM normalizer moves |
+| `test/ui/verifyWebviews.js`, `checkContrast.js` | 20, 716 | `../harness/domGoldens.js` | Breaks if the goldens reader moves |
 | `test/harness/runUnitSuites.js` | 13 | `./importGraph.js` | Breaks if the import graph reader moves |
-| `test/ui/checkLayout.js`, `verifyWebviews.js`, `checkContrast.js`, `checkWebviewScripts.js` | 31, 10, 16, 17 | `./pages.js` | Breaks if the catalog moves |
-| `test/ui/checkVisual.js` | 30, 31 | `./pages.js`, `./checkLayout.js` | Breaks if either moves |
-| `test/ui/checkRenderedContrast.js` | 21, 22 | `./pages.js`, `./checkLayout.js` | Breaks if either moves |
-| `test/ui/checkVisual.js` | 63 | `visual-baseline/<platform>` | Records a new baseline and passes if the folder moves, except under `--ci`, which CI passes and which fails the run |
-| `test/ui/checkContrast.js` | 679 | `contrast-baseline.json` | Breaks if the baseline moves |
-| `test/ui/pages.js` | 65, 68 | `../../package.json`, `CHANGELOG.md` | Breaks if `pages.js` changes depth |
+| `test/ui/checkLayout.js`, `verifyWebviews.js`, `checkContrast.js`, `checkDom.js`, `checkVisual.js`, `checkRenderedContrast.js`, `surfaces.js` | 39, 18, 16, 36, 30, 21, 16 | `./pages.js` | Breaks if the catalog moves |
+| `test/ui/checkLayout.js`, `checkDom.js`, `checkVisual.js`, `checkRenderedContrast.js`, `checkContrast.js` | 42, 39, 31, 22, 715 | `./surfaces.js` | Breaks if the surfaces move |
+| `test/ui/checkDom.js`, `checkVisual.js`, `checkRenderedContrast.js` | 38, 32, 23 | `./checkLayout.js` | Breaks if the layout check moves |
+| `test/ui/surfaces.js` | 182 | `fixtures/guide-daily-notes.html` | Breaks if the fixture moves |
+| `test/harness/domGoldens.js`, `test/ui/checkDom.js` | 16, 43 | `test/ui/dom-baseline` | Breaks if the goldens move; `checkDom.js` records new ones where it looks |
+| `test/ui/checkVisual.js` | 93 | `visual-baseline/<platform>` | Records a new baseline and passes if the folder moves, except under `--ci`, which CI passes and which fails the run |
+| `test/ui/checkContrast.js` | 719, 721 | `contrast-baseline.json`, `contrast-shapes.json` | Breaks if either moves |
+| `test/ui/pages.js` | 54, 57 | `../../package.json`, `CHANGELOG.md` | Breaks if `pages.js` changes depth |
+
+Six files under `src/test` import harness files through the compiler: `webviewPage.ts` (`loadPage`, `domRecorder`), `page-loader.test.ts` (`loadPage`), `components-primitives.test.ts` (`domGoldens`), and `webview-query-editor.test.ts`, `webview-search.test.ts`, and `webview-tasks.test.ts` (`domSnapshot`; these three test the page-script builders being deleted at the end of Phase 6), each as `../../test/harness/…` with a `.d.ts` beside the harness file. The compiler checks those paths, but the compiled copy resolves them from `out/test/`, so they also break if `outDir` changes depth.
 
 ### Reads by path in `src/test`
 
-Most of `src/test` imports through TypeScript, which the compiler checks. These places build a path at runtime instead. Ten files assume that their compiled copy sits exactly at `out/test/<name>.js`, two levels below the repository, as the comment at `src/test/changelog.test.ts:25` says. Moving one of them into a subfolder of `src/test` breaks it.
+Most of `src/test` imports through TypeScript, which the compiler checks. These places build a path at runtime instead. Each assumes that its compiled copy sits exactly at `out/test/<name>.js`, two levels below the repository, as the comment at `src/test/changelog.test.ts:25` says. Moving one of them into a subfolder of `src/test` breaks it.
 
 | File | Line | Path it builds | On a move |
 | --- | --- | --- | --- |
-| `src/test/extension.test.ts` | 333 | `out/extension.js`, read as text; line 342 asserts `'setContext', '<key>'` for each walkthrough `onContext:` key | Breaks when those `setContext` calls leave `src/extension.ts`, or when the file is renamed |
-| `src/test/naming.test.ts` | 10, 11 | the repository root, then `src/ui/webview`; line 94 reads every `.ts` file there | Breaks on a depth change; a page builder moved out of the folder drops out of the check silently |
-| `src/test/naming.test.ts` | 31-52 | `src/extension.ts` and, walked recursively, `src/ui/commands`, `ui/views`, `ui/preview`, `ui/webview`, `ui/state`, `ui/providers`, `services`, and `domain` | Checks less without failing: a missing folder is skipped (49-51) |
-| `src/test/icons.test.ts` | 14 | `src/ui/webview`, filtered to `*Html.ts` | Passes with nothing to check if the page builders leave the folder |
+| `src/test/extension.test.ts` | 336, 337 | `out/extension.js` and `out/composition/services.js`, read as text; line 347 asserts `'setContext', '<key>'` for each walkthrough `onContext:` key | Breaks when those `setContext` calls leave the two files, or when either is renamed |
+| `src/test/pageWebview.ts` | 19 | the repository's root, as the extension URI every page shell in the mocha suites is rendered against, so `loadPage` finds `dist/webview` under it | Breaks on a depth change |
+| `src/test/sheets.ts` | 12 | `src/webview`, from which the suites read a page's style sheets by name | Breaks on a depth change, or if a sheet moves |
+| `src/test/graphBundle.ts`, `src/test/sharedBundle.ts` | 8, 8 | the repository's root, as esbuild's `resolveDir` for `./src/webview/notesGraph/<module>` and `./src/webview/shared/<module>` | Breaks on a depth change, or if a module named moves |
+| `src/test/naming.test.ts` | 10, 11 | the repository root, then `src/ui/webview`; line 96 lists every `.ts` file there and line 98 reads it | Breaks on a depth change; a page shell moved out of the folder drops out of the check silently |
+| `src/test/naming.test.ts` | 31-52 | `src/extension.ts` and, walked recursively, `src/composition`, `ui/commands`, `ui/views`, `ui/preview`, `ui/webview`, `ui/state`, `ui/providers`, `services`, and `domain`, leaving out `*Html.ts` | Checks less without failing: a missing folder is skipped (50-52); `src/webview` is not walked |
+| `src/test/icons.test.ts` | 14 | `src/ui/webview`, filtered to `*Html.ts` | Passes with nothing to check if the page shells leave the folder; it does not read `src/webview` |
 | `src/test/changelog.test.ts` | 26, 27 | the repository root, then `scripts/changelog.js` | Breaks on a depth change, or if the script moves |
-| `src/test/help-page.test.ts` | 17 | `package.json` | Breaks on a depth change |
+| `src/test/help-page.test.ts` | 18 | `package.json` | Breaks on a depth change |
+| `src/test/help-host.test.ts` | 18 | the repository's root, as the extension URI | Breaks on a depth change |
+| `src/test/setting-toggles.test.ts` | 7 | the repository's root, then `package.json` | Breaks on a depth change |
 | `src/test/markdown-injection-grammar.test.ts` | 112 | `syntaxes/deckard.injection.tmLanguage.json` | Breaks on a depth change |
 | `src/test/markdown-injection-grammar.test.ts` | 151 | `package.json` | Breaks on a depth change |
 | `src/test/choose-theme.test.ts` | 13 | `package.json` | Breaks on a depth change |
 | `src/test/tag-decorations.test.ts` | 93 | `../../package.json` | Breaks on a depth change |
-| `src/test/indexCorpus.ts` | 18 | the repository root, used at 52 for `resources/sample` and at 73 for `development/notes` | Breaks on a depth change |
+| `src/test/indexCorpus.ts` | 18 | the repository root, used for `resources/sample` and `development/notes` | Breaks on a depth change |
 | `src/test/sample-workspace.test.ts` | 32 | the repository root, as the extension URI | Breaks on a depth change |
-| `src/test/guide.test.ts` | 13 | `docs/guide` | Breaks on a depth change |
+| `src/test/guide.test.ts` | 12 | `docs/guide` | Breaks on a depth change |
 
-The plan puts this `out/extension.js` read at `src/test/extension.test.ts:342`. The read is at line 333, and line 342 holds the assertion.
+`test/ui/verifyWebviews.js:33` reads `src/webview/shared/zen.css` by path, from the repository's root, to compare it with what each zen page draws. It breaks if the sheet moves.
 
-`.vscode-test.mjs:4` runs `out/test/**/*.test.js`. A subfolder of `src/test` is still found. A test placed beside its source, outside `src/test`, is not run, and nothing reports that it was skipped.
+`.vscode-test.mjs:4` runs `out/test/**/*.test.js`. A subfolder of `src/test` is still found. A test placed beside its source, outside `src/test`, is not run, and nothing reports that it was skipped. `test/harness/runUnitSuites.js` runs the `test:unit` suites from the same `out/test` files.
 
 ### Constructor signatures and arguments
 
-By the end of Phase 4 every panel and view host the harnesses build takes one options object, so a reordering no longer breaks a call; a renamed or newly required key does, and the compiler does not check any of these calls. `CalendarView` and the state builders still take positional arguments.
+Every panel and view host the harnesses build takes one options object, so a reordering does not break a call; a renamed or newly required key does, and the compiler does not check any of these calls. `CalendarView`, `createCalendar`, `createSidebarSnapshot`, `createDeckardStatsSnapshot`, `createSearchPageSnapshot`, and `createDashboardWidgets` still take positional arguments.
 
 | File | Line | Call | Arguments |
 | --- | --- | --- | --- |
-| `test/e2e/dashboardHome.e2e.js` | 66 | `new DashboardPanel({ indexer, preferences, extensionUri, navigation, whatsNew, tryNext, writes, themePreview })` | 1 object, 8 keys |
-| `test/e2e/dashboardHome.e2e.js` | 144 | `new DashboardPanel({ … })` | 1 object, 6 keys |
-| `test/e2e/taskBoard.e2e.js` | 71 | `new TaskBoardPanel({ indexer, preferences, extensionUri, openTag, activeSearch, writes, themePreview })` | 1 object, 7 keys |
-| `test/e2e/taskBoard.e2e.js` | 355 | `new DashboardPanel({ … })` | 1 object, 6 keys |
+| `test/e2e/dashboardHome.e2e.js` | 67 | `new DashboardPanel({ indexer, preferences, extensionUri, navigation, whatsNew, tryNext, writes, themePreview })` | 1 object, 8 keys |
+| `test/e2e/dashboardHome.e2e.js` | 145 | `new DashboardPanel({ … })` | 1 object, 6 keys |
+| `test/e2e/taskBoard.e2e.js` | 71, 101 | `new TaskBoardPanel({ indexer, preferences, extensionUri, openTag, activeSearch, writes, themePreview })` | 1 object, 7 keys |
+| `test/e2e/taskBoard.e2e.js` | 391 | `new DashboardPanel({ indexer, preferences, extensionUri, navigation, openTag, openSearch, openTaskBoard, writes, themePreview })` | 1 object, 9 keys |
+| `test/e2e/navigation.e2e.js` | 111, 112, 120, 129 | `new StatsPanel({ … })`, `new DashboardPanel({ … })`, `new TaskBoardPanel({ … })`, `new NotesGraphPanel({ indexer, extensionUri, onGraphContext, themePreview })` | 1 object each: 5, 6, 7, and 4 keys |
 | `test/e2e/calendarPage.e2e.js` | 53 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview })` | 1 object, 4 keys |
-| `test/e2e/calendarPage.e2e.js` | 156 | `new SidebarNotesView({ indexer, preferences, activeSearch, onOpenTag, extensionVersion, activeCalendar, history, themePreview })` | 1 object, 8 keys |
-| `test/e2e/calendarPage.e2e.js` | 172 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview, activeCalendar })` | 1 object, 5 keys |
+| `test/e2e/calendarPage.e2e.js` | 156 | `new SidebarNotesView({ indexer, extensionUri, preferences, activeSearch, onOpenTag, extensionVersion, activeCalendar, history, themePreview })` | 1 object, 9 keys |
+| `test/e2e/calendarPage.e2e.js` | 173 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview, activeCalendar })` | 1 object, 5 keys |
 | `test/e2e/searchPage.e2e.js` | 60 | `new SearchPanels({ indexer, preferences, extensionUri, activeSearch, writes, themePreview })` | 1 object, 6 keys |
-| `test/e2e/searchPage.e2e.js` | 79 | `new SidebarNotesView({ … })` | 1 object, 7 keys |
-| `test/e2e/sidebarNotes.e2e.js` | 49, 106, 258, 342, 379 | `new SidebarNotesView({ … })` | 1 object, 7 keys each |
+| `test/e2e/searchPage.e2e.js` | 79 | `new SidebarNotesView({ … })` | 1 object, 8 keys |
+| `test/e2e/sidebarNotes.e2e.js` | 49, 107, 261, 346, 384 | `new SidebarNotesView({ indexer, extensionUri, preferences, activeSearch, onOpenTag, extensionVersion, history, themePreview })` | 1 object, 8 keys each |
 | `test/e2e/stats.e2e.js` | 72 | `new StatsPanel({ indexer, preferences, extensionUri, onOpenTag, themePreview })` | 1 object, 5 keys |
-| `test/e2e/calendar.e2e.js` | 53 | `new CalendarView(indexer, writes, themePreview)` | 3 |
+| `test/e2e/calendar.e2e.js` | 53 | `new CalendarView(indexer, writes, themePreview, extensionUri)` | 4 |
 | `test/e2e/editorDecorations.e2e.js` | 45, 67 | `new EditorTagDecorations().register()` | 0; the provider registers only when `register()` is called |
-| `test/e2e/*.e2e.js`, `test/ui/checkLayout.js` | `checkLayout` 143, `calendarPage` 158, `dashboardHome` 63 and 146, `searchPage` 58, `sidebarNotes` 48, 108, 260, 344, 378, `stats` 66, `taskBoard` 68 | `createPreferences(globalState)`, the preference services as the extension builds them | 1 |
-| `test/perf/indexSpeed.js` | 202 | `new WorkspaceScanner(access)` | 1 |
-| `test/perf/indexSpeed.js` | 208 | `createWorkspaceIndex({ scanner, searchStore, readCache, version, events, ownWrites })` | 1 object, 6 keys |
-| `test/perf/indexSpeed.js` | 268 | `new SearchStore(storage)`, a path; line 271 retries with a `Uri` for an older checkout | 1 |
-| `test/ui/checkLayout.js` | 148, 165 | `createTaskBoard(index, preferences, search, options, tagTitleDisplayMode)` | 5 |
-| `test/ui/checkLayout.js` | 181, 193, 211, 227, 242 | `createCalendar(index, month, queryContext, options)` | 4 |
-| `test/ui/checkLayout.js` | 256, 282 | `createSidebarSnapshot(index, filePath, file, options)` | 4 |
-| `test/ui/checkLayout.js` | 307, 321 | `createDeckardStatsSnapshot(index, preferences, unreadable, now)`, `createSearchPageSnapshot(index, preferences, query, options)` | 4, 4 |
+| `test/e2e/*.e2e.js`, `test/ui/surfaces.js` | `surfaces` 297, `calendarPage` 159, `dashboardHome` 64 and 147, `navigation` 104, `searchPage` 58, `sidebarNotes` 48, 110, 264, 349, 383, `stats` 66, `taskBoard` 68 and 100 | `createPreferences(globalState)`, the preference services as the extension builds them | 1 |
+| `test/perf/indexSpeed.js` | 227 | `new WorkspaceScanner(access)` | 1 |
+| `test/perf/indexSpeed.js` | 233 | `createWorkspaceIndex({ scanner, searchStore, readCache, version, events, ownWrites })` | 1 object, 6 keys |
+| `test/perf/indexSpeed.js` | 293 | `new SearchStore(storage)`, a path; line 296 retries with a `Uri` for an older checkout | 1 |
+| `test/perf/indexSpeed.js` | 328, 382, 436, 480 | `createPreferences({ … })`, a memento stand-in | 1 |
+| `test/ui/surfaces.js`, `test/perf/indexSpeed.js` | `surfaces` 302, 319; `indexSpeed` 394 | `createTaskBoard({ index, preferences, search, options, tagTitleDisplayMode })` | 1 object, 5 keys |
+| `test/ui/surfaces.js`, `test/perf/indexSpeed.js` | `surfaces` 335, 347, 365, 381, 396; `indexSpeed` 361 | `createCalendar(index, month, queryContext, options)` | 4 |
+| `test/ui/surfaces.js`, `test/perf/indexSpeed.js` | `surfaces` 203, 410, 436; `indexSpeed` 530 | `createSidebarSnapshot(index, filePath, file, options)` | 4 |
+| `test/ui/surfaces.js`, `test/perf/indexSpeed.js` | `surfaces` 461, 475; `indexSpeed` 337, 456 | `createDeckardStatsSnapshot(index, preferences, unreadable, now)`, `createSearchPageSnapshot(index, preferences, query, options)` | 4, 4 |
+| `test/ui/surfaces.js`, `test/perf/indexSpeed.js` | `surfaces` 127, 130; `indexSpeed` 493, 494 | `createDashboardSnapshot({ index, preferences, tagTitleDisplayMode, agendaQuery, queryContext })`, `createDashboardWidgets(index, preferences, options)` | 1 object with 5 keys, 3 |
+| `test/ui/surfaces.js` | 222 | `toWire(createNotesGraphSnapshot(index), { notes, tasks })` | 1; 2 |
 
-`test/ui/checkVisual.js` and `test/ui/checkRenderedContrast.js` reuse `createSurfaces()` from `checkLayout.js:139`, so the `checkLayout.js` rows also pin those two checks.
+`test/ui/checkLayout.js`, `checkDom.js`, `checkVisual.js`, `checkRenderedContrast.js`, and `checkContrast.js` all take `createSurfaces()` from `test/ui/surfaces.js:293`, so the `surfaces.js` rows pin all five checks.
 
 ### Reaching into internals
 
 | File | Line | What it touches | On a change |
 | --- | --- | --- | --- |
-| `test/e2e/calendarPage.e2e.js` | 192, 193, 197 | replaces `page.handleDayMessage` on a `CalendarPanel`, then restores it | Breaks if the method moves off the panel |
-| `test/e2e/taskBoard.e2e.js` | 419 | `activeSearch.active === board` | Breaks if the active search stops holding the panel itself |
-| `test/e2e/taskBoard.e2e.js` | 421, 429 | `activeSearch.setSidebarVisible(…)` | Breaks if renamed |
-| `test/e2e/taskBoard.e2e.js` | 424 | `board.getRefineState()` | Breaks if the method moves off the panel |
-| `test/e2e/taskBoard.e2e.js` | 426 | `board.applySearch(…)` | Breaks if the method moves off the panel |
-| `test/e2e/taskBoard.e2e.js` | 367 | `dashboard.openSavedFilter(…)` | Breaks if the method moves off the panel |
-| `test/e2e/searchPage.e2e.js` | 111, 336, 340, 342, 533, 544 | `panels.showQuery(…)`, `panels.restore(…)` | Breaks if either moves off `SearchPanels` |
+| `test/e2e/calendarPage.e2e.js` | 193, 194, 198 | replaces `page.handleDayMessage` on a `CalendarPanel`, then restores it | Breaks if the method moves off the panel |
+| `test/e2e/taskBoard.e2e.js` | 455 | `activeSearch.active === board` | Breaks if the active search stops holding the panel itself |
+| `test/e2e/taskBoard.e2e.js` | 457, 465 | `activeSearch.setSidebarVisible(…)` | Breaks if renamed |
+| `test/e2e/taskBoard.e2e.js` | 460 | `board.getRefineState()` | Breaks if the method moves off the panel |
+| `test/e2e/taskBoard.e2e.js` | 462 | `board.applySearch(…)` | Breaks if the method moves off the panel |
+| `test/e2e/taskBoard.e2e.js` | 403 | `dashboard.openSavedFilter(…)` | Breaks if the method moves off the panel |
+| `test/e2e/searchPage.e2e.js` | 112, 337, 341, 343, 534, 545, 556 | `panels.showQuery(…)`, `panels.restore(…)` | Breaks if either moves off `SearchPanels` |
 
 Every e2e suite also reads the stub's own hooks, such as `vscode._test`, `panel._toWebview`, `panel._deliver`, `panel._onWebviewMessage`, `panel._setVisible`, and `host._fromWebview`. Those belong to `test/e2e/vscodeStub.js`, not to the source, so a source move does not affect them.
 
@@ -484,8 +509,10 @@ grep -noE "load\('[^']+'\)" test/perf/indexSpeed.js
 grep -rnE "'out'|\"out\"" test
 grep -rnE "__dirname|path\.join\(root, 'out'" src/test
 grep -rnE "require\('\./|require\('\.\./harness/|require\(path\.join\(__dirname" test
-grep -rnE 'new (DashboardPanel|SidebarNotesView|TaskBoardPanel|SearchPanels|StatsPanel|CalendarView|CalendarPanel|EditorTagDecorations|WorkspaceScanner|SearchStore)\b|\b(createPreferences|createWorkspaceIndex)\(' test
-grep -nE 'createTaskBoard\(|createSidebarSnapshot\(|createCalendar\(|createDeckardStatsSnapshot\(|createSearchPageSnapshot\(' test/ui/checkLayout.js
+grep -rnE 'new (DashboardPanel|SidebarNotesView|TaskBoardPanel|SearchPanels|StatsPanel|NotesGraphPanel|CalendarView|CalendarPanel|EditorTagDecorations|WorkspaceScanner|SearchStore)\b|\b(createPreferences|createWorkspaceIndex)\(' test
+grep -nE 'create(TaskBoard|SidebarSnapshot|Calendar|DeckardStatsSnapshot|SearchPageSnapshot|DashboardSnapshot|DashboardWidgets|NotesGraphSnapshot)\(' test/ui/surfaces.js test/perf/indexSpeed.js
+grep -rnE 'loadPage|dist/webview' test/harness test/e2e/vscodeStub.js src/test/webviewPage.ts
+grep -rnE "from '\.\./\.\./test/" src/test
 ```
 
 Section 3:
@@ -520,10 +547,10 @@ Run these in `bash` from the repository root. Checks 1 to 5 print nothing while 
    { grep -rhoE '\.\./\.\./out/[A-Za-z0-9_./-]+\.js' test | sed 's#^\.\./\.\./##'; grep -oE "load\('[^']+'\)" test/perf/indexSpeed.js | sed -E "s#load\('([^']+)'\)#out/\1#"; echo out/extension.js; } | sort -u | while read -r p; do [ -f "$p" ] || echo "missing: $p"; done
    ```
 
-   Since Phase 0 the harnesses load through the catalog, so the check above finds no `../../out/` path, and it reads the perf run's `load('…')` names as paths, so it reports those seven as missing. This one checks every catalog entry and the one load by path:
+   Since Phase 0 the harnesses load through the catalog, so the check above finds no `../../out/` path, and it reads the perf run's `load('…')` names as paths, so it reports those it loads as missing. This one checks every catalog entry, and, as of Phase 6, the harnesses load nothing by path:
 
    ```bash
-   { grep -oE "^  [A-Za-z]+: '[^']+'" test/harness/modules.js | sed -E "s#.*'([^']+)'#out/\1#"; echo out/domain/query/queryContext.js; } | sort -u | while read -r p; do [ -f "$p" ] || echo "missing: $p"; done
+   { grep -oE "^  [A-Za-z]+: '[^']+'" test/harness/modules.js | sed -E "s#.*'([^']+)'#out/\1#"; } | sort -u | while read -r p; do [ -f "$p" ] || echo "missing: $p"; done
    ```
 
 3. Every `src/` path that `esbuild.js` and the scripts name still exists:

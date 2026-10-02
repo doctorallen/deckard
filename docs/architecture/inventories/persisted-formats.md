@@ -28,12 +28,13 @@ This inventory lists every format Deckard writes and later reads back, so that a
 | 18 | Preference export file | a file the reader picks | `deckard.version: 1`, not checked on read | `preference-backups.test.ts` |
 | 19 | Sample workspace folder, `deckard-sample` | `globalStorageUri` | none | `sample-workspace.test.ts` |
 | 20 | Search page state, view type `deckard.tagOverview` | webview state | none | `search-page-behavior.test.ts`, `webview-saved-state.test.ts`, `searchPage.e2e.js` |
-| 21 | Task Board state, view type `deckard.taskBoard` | webview state | none | `taskBoard.e2e.js` |
+| 21 | Task Board state, view type `deckard.taskBoard` | webview state | none | `taskBoard.e2e.js`, `webview-saved-state.test.ts` |
 | 22 | Dashboard state, view type `deckard.dashboard` | webview state | none | `dashboard-behavior.test.ts`, `webview-saved-state.test.ts` |
 | 23 | Notes graph state, view type `deckard.notesGraph` | webview state | none | `notes-graph-behavior.test.ts`, `parked-views.test.ts`, `webview-saved-state.test.ts` |
-| 24 | Calendar page state, view type `deckard.calendarPage` | webview state | none | `webview-saved-state.test.ts` |
+| 24 | Calendar page state, view type `deckard.calendarPage` | webview state | none | `webview-saved-state.test.ts`, `calendar.test.ts` |
 | 24a | Help state, view type `deckard.help`, since Phase 6 step 4.1: `{ guide?: { page, anchor? }, scrollY, drawn }`, read only by the drawing of the page that saved it | webview state | `drawn`, a hash of the HTML's nonce | `help-page.test.ts` |
 | 24b | Related Notes state, view `deckard.relatedNotes`, since Phase 6 step 4.6: what the reader chose in it, and its scroll | webview state | none | `webview-saved-state.test.ts` |
+| 24c | Stats state, view type `deckard.stats`, since Phase 6 step 4.2: `{ showAllOrphans, showUsedOnce, pairsAsTable, scrollY? }` | webview state | none | `stats.test.ts` |
 | 25 | Entry ids, tag keys, and Find keys stored inside rows 1, 9, and 17 | inside other formats | none | `preferences-prune.test.ts`, `preferences.test.ts`; relative only |
 | 26 | Settings Deckard writes | `settings.json` | none | `exclude-folders.test.ts`, `settings.test.ts`; partly |
 
@@ -63,6 +64,8 @@ Task metadata, front matter, block ids (`^id`), query blocks, and every other sy
 | Ids widened (1.23) | `prune` `:973`, `carryLegacyIds` `:1773` | `taskOrder`, `sectionAccessCounts`, and `sectionAccessTimes` keyed by an old one-hash id move to the new id whose first half it is (`legacyIdOf`, `src/core/markdown/parser.ts:1880`) | `preferences-prune.test.ts:25` |
 | First-seen times | `prune` `:1000` | A blob with no `tagFirstSeen` marks every indexed tag as `0`, meaning known before times were kept | `preferences.test.ts:358` |
 | Saved filters | `normalizeSavedFilters` `:1647` | Drops filters with no name, fewer than two tags and no query, or a duplicate id or tag set | `preferences.test.ts:467` |
+
+Phase 6 changed no stored shape and no migration. Since step 4.7, `normalizeDashboardWidgets` (`src/core/storage/preferencesSchema.ts`) recognizes a stored widget's kind with `isWidgetKind` over `WIDGET_KINDS` in `src/domain/dashboard/widgetCatalog.ts`, the catalog the Dashboard page reads too, in place of `DASHBOARD_WIDGET_KINDS`; the kinds and the traits it reads are the same, and `widget-catalog.test.ts` pins them.
 
 `preferences-invariants.test.ts` walks random operations over the store with in-memory mementos. It pins what operations keep and remove, and that one workspace never reaches another (`:228`). It does not pin a stored shape.
 
@@ -232,38 +235,56 @@ The plan's list does not include this store.
 
 ## Webview state
 
-VS Code keeps what a page passes to `setState` and hands it back when it restores the panel after a reload, through the serializers registered at `src/extension.ts:892` to `:916`. A page restored after an upgrade receives state written by the old script. Seven panel view types are serialized: `deckard.dashboard`, `deckard.stats`, `deckard.help`, `deckard.notesGraph`, `deckard.calendarPage`, `deckard.taskBoard`, and `deckard.tagOverview`. `stats` keeps no state, and `help` kept none before Phase 6 step 4.1 (row 24a). The sidebar views `deckard.relatedNotes` and `deckard.calendar` are webview views (`src/extension.ts:631`, `:636`); VS Code hands a view's state back to the page it loads again, though a view has no serializer. Related Notes kept none before Phase 6 step 4.6 (row 24b). The sidebar calendar runs the calendar script but never writes state, because its layout control is drawn only on the page (since Phase 6 step 4.3, its own bundle, `src/webview/calendar/main.tsx`, writes none at all).
+This section is as of the end of Phase 6, when every page became a bundle under `src/webview/<page>/`; its paths name functions rather than lines.
 
-The ten `getState()` calls the plan counts are `calendarHtml.ts:114`, `:352`; `searchPageHtml.ts:161`, `:552`, `:564`, `:715`; `dashboardHtml.ts:271`; `taskBoardHtml.ts:540`, `:545`; and `notesGraphHtml.ts:295`, all under `src/ui/webview/`. The `getState` option at `components.ts:3617` is a host-state callback, not the VS Code API. The shared scroll helpers `rememberScroll` and `restoreScroll` (`src/ui/webview/components.ts:1769`, `:1780`) merge `scrollY` into a page's state.
+VS Code keeps what a page passes to `setState` and hands it back when it restores the panel after a reload, through the serializers `registerSerializers` registers in `src/composition/services.ts`. A page restored after an upgrade receives state written by the old script. Seven panel view types are serialized: `deckard.dashboard`, `deckard.stats`, `deckard.help`, `deckard.notesGraph`, `deckard.calendarPage`, `deckard.taskBoard`, and `deckard.tagOverview`; only the last two hand the state to the host's `restore`. The sidebar views `deckard.relatedNotes` and `deckard.calendar` are webview views (`registerViews`, the same file); VS Code hands a view's state back to the page it loads again, though a view has no serializer. The Related Notes debug panel has no serializer and runs no script.
 
-No test restores a page from saved state. The harness starts its kept state as `undefined` (`src/test/webviewPage.ts:80`) and has no option to seed it. The tests below pin what a page writes, not what it reads back.
+Since [decision 0017](../decisions/0017-retain-context-on-four-pages.md), which replaced 0006, a page not kept running while hidden is loaded again each time it is shown, so what the reader chose in it must come back from `setState`. Each page's controller under `src/ui/webview/pages/` sets `retainContextWhenHidden`:
+
+| Page | Kept running while hidden | What it keeps with `setState` | Row |
+|---|---|---|---|
+| Dashboard | yes | its view: mode, columns, tag search, namespace filter, arranging, hint | 22 |
+| Search page | yes | its search, origin, tab, and scroll | 20 |
+| Task Board | yes | its search and scroll | 21 |
+| Notes Graph | yes | its 23 settings and its camera | 23 |
+| Stats | no | three choices and its scroll | 24c |
+| Help | no | the guide page shown and its scroll | 24a |
+| Calendar page | no | its layout and scroll | 24 |
+| Calendar view | no | nothing | |
+| Related Notes | no | the reader's choices and its scroll | 24b |
+| Related Notes debug page | no | nothing; it runs no script | |
+
+A page reads what it kept through `keptState`, `src/webview/shared/vscode.ts`, which reads anything but a record as nothing kept, and writes through `keepState`, which merges a change over what was kept; the search page, the Task Board, and the Notes Graph read `getState()` themselves, as their template scripts did, and Help keeps its own record. The shared scroll helpers `rememberScroll` and `restoreScroll` (`src/webview/shared/scroll.ts`) merge `scrollY` into a page's state at most every 200 ms as it scrolls, and scroll back to a number on the first draw. A query editor's `getState` option (`src/webview/shared/queryEditor.tsx`) is a host-state callback, not the VS Code API.
+
+The page harness now seeds kept state: `openWebviewPage(html, state, { savedState })` (`src/test/webviewPage.ts`) loads a page with it and `savedState()` reads back what the page kept, so the tests below pin both what a page writes and what it reads back. They load the page's bundle, not the host; the host's reads are pinned by the e2e suites.
 
 ### 20. Search page
 
 - **Shape:** `{ query: string; origin: string; tab?: 'notes' | 'tasks'; scrollY?: number }`.
-- **Written:** `saveState` in `src/webview/searchPage/main.tsx`, after each state, and `rememberScroll` (`src/webview/shared/scroll.ts`) as the page scrolls. Since Phase 6 step 4.5 the page is a Preact page, and the shape is unchanged.
+- **Written:** `saveState` in `src/webview/searchPage/main.tsx`, after each state the host sends, with the `scrollY` kept before only while the search is the same, and `tab` only once the reader chose it; `rememberScroll` as the page scrolls. Since Phase 6 step 4.5 the page is a Preact page, and the shape is unchanged.
 - **Read by the page:** `tab` when its script starts (`savedPageState` in `main.tsx`), and `scrollY` on its first state (`restoreScroll`).
-- **Read by the host:** `readSerializedSearch` (`src/ui/webview/searchPage.ts:272` to `:314`), called from `restore` (`:156`).
-- **Migration:** a page saved before search pages kept one string is read from `tagKey`, `filterTagKeys`, and `refinement` or `query` (`src/ui/webview/searchPage.ts:287` to `:313`). A page whose tag no longer exists is closed.
-- **Pinned by:** `search-page-behavior.test.ts:650` asserts the written `{ query, origin }`. `searchPage.e2e.js` restores a page from each saved shape, current and legacy, through `readSerializedSearch`, and asserts the search it reopens on or that it closes. `webview-saved-state.test.ts` asserts the page's reads of `tab` and `scrollY`, that any other value it was left with is not read, and that it keeps where it was scrolled.
+- **Read by the host:** `readSerializedSearch` (`src/ui/webview/searchPage.ts`), called from `SearchPanels.restore`.
+- **Migration:** a page saved before search pages kept one string is read from `tagKey`, `filterTagKeys`, and `refinement` or `query` (`readSerializedSearch`). A page whose tag no longer exists is closed.
+- **Pinned by:** `search-page-behavior.test.ts` asserts the written `{ query, origin }`. `searchPage.e2e.js` restores a page from each saved shape, current and legacy, through `readSerializedSearch`, and asserts the search it reopens on or that it closes. `webview-saved-state.test.ts` asserts the page's reads of `tab` and `scrollY`, that any other value it was left with is not read, and that it keeps where it was scrolled.
 
 ### 21. Task Board
 
 - **Shape:** `{ query: string; scrollY?: number }`.
-- **Written:** `src/ui/webview/taskBoardHtml.ts:541` and `:545`.
-- **Read by the page:** `scrollY` at `:543`. **Read by the host:** `query` in `restore` (`src/ui/webview/taskBoard.ts:175` to `:180`).
-- **Pinned by:** `taskBoard.e2e.js` restores the board with `{ query: 'is:open #project/atlas' }` and asserts the query it shows, and with shapes it ignores, which open on `is:open`.
+- **Written:** `receiveState`, `src/webview/taskBoard/main.tsx` (since Phase 6 step 4.4; before, `src/ui/webview/taskBoardHtml.ts`), the search of each snapshot the host sends, with the `scrollY` kept before only while the search is the same; `rememberScroll` as the page scrolls.
+- **Read by the page:** `scrollY` on its first snapshot (`restoreScroll`). Nothing else it was left with is read or kept.
+- **Read by the host:** `query`, when it is a string, in `restoreSearch` (`src/ui/webview/pages/taskBoard/taskBoardController.ts`), called from `TaskBoardPanel.restore`.
+- **Pinned by:** `taskBoard.e2e.js` restores the board with `{ query: 'is:open #project/atlas' }` and asserts the query it shows, and with shapes it ignores, which open on `is:open`. `webview-saved-state.test.ts` asserts the scroll kept only for its search, that anything else it was left with is not kept, and that it keeps where it was scrolled.
 
 ### 22. Dashboard
 
 - **Shape:** `{ dashboardMode, tagColumns, browseQuery, tagNamespaceFilter, editingHome, homeHintDismissed }`.
 - **Written:** `keepView`, `src/webview/dashboard/keptView.ts` (since Phase 6 step 4.7; before, `saveDashboardViewState` in the template script of `src/ui/webview/dashboardHtml.ts`), the whole record each time the reader changes one of its fields.
 - **Read by the page:** `readKeptView`, `src/webview/dashboard/keptView.ts`. `dashboardMode` is kept only as `'browse'`, and `tagColumns` only as 1 to 4; a kept value that is not a record reads as nothing kept. `browseQuery` is written but never read back. The host's `restore` ignores the state.
-- **Pinned by:** `dashboard-behavior.test.ts:437` asserts `homeHintDismissed` is written. `webview-saved-state.test.ts` loads the page with each field set, with values it does not know, and with kept values that are not a record, and asserts the mode, columns, namespace filter, arranging state, and hint it draws, the record it writes back, and `browseQuery` written as the tag search is typed.
+- **Pinned by:** `dashboard-behavior.test.ts` asserts `homeHintDismissed` is written. `webview-saved-state.test.ts` loads the page with each field set, with values it does not know, and with kept values that are not a record, and asserts the mode, columns, namespace filter, arranging state, and hint it draws, the record it writes back, and `browseQuery` written as the tag search is typed.
 
 ### 23. Notes graph
 
-- **Shape:** the 23 keys of `defaults` (`DEFAULT_SETTINGS`, `src/webview/notesGraph/settings.ts`), such as `showNotes`, `selectedTags`, `group`, `headings`, and `linkDistance`, plus `camera: { x, y, k }`. Unchanged by Phase 6 step 4.8, which moved the page from the template script in `src/ui/webview/notesGraphHtml.ts`; the page is still kept running while hidden (Q1), so nothing else is kept.
+- **Shape:** the 23 keys of `defaults` (`DEFAULT_SETTINGS`, `src/webview/notesGraph/settings.ts`), such as `showNotes`, `selectedTags`, `group`, `headings`, and `linkDistance`, plus `camera: { x, y, k }`. Unchanged by Phase 6 step 4.8, which moved the page from the template script in `src/ui/webview/notesGraphHtml.ts`; the page is still kept running while hidden (0017), so nothing else is kept.
 - **Written:** `persist`, `src/webview/notesGraph/settings.ts`: every setting, in the order of the defaults, then the camera, replacing what was kept before. A key an older page kept that is not a setting is not written back.
 - **Read by the page:** `readKept`, `readSettings`, and `readCamera`, `src/webview/notesGraph/settings.ts`. Any saved value other than `undefined` is taken as is, with no type check, and a saved state that is not a record reads as nothing kept. The camera is taken as it was saved when its zoom reads as a finite number (`isFinite`, so `'2'` and `null` pass), else the view at the origin, unzoomed. The host's `restore` (`NotesGraphPanel.restore`, `src/ui/webview/notesGraph.ts`) ignores the state.
 - **Pinned by:** `notes-graph-behavior.test.ts` and `parked-views.test.ts` assert keys the page writes. `webview-saved-state.test.ts` loads the page with every key and the camera, asserts each control and the zoom, and asserts every key comes back as given, of whatever type; and, since step 4.8, that a state that is not a record reads as the defaults, that empty and null values are taken as given, which cameras are taken, and which keys are written, in what order. Each was checked against the template page before it moved.
@@ -271,9 +292,18 @@ No test restores a page from saved state. The harness starts its kept state as `
 ### 24. Calendar page
 
 - **Shape:** `{ layout: 'month' | 'week' }`; since Phase 6 step 4.3, `{ layout?: 'month' | 'week', scrollY?: number }`, as the page is no longer kept running while hidden.
-- **Written:** `setLayout` and `rememberScroll`, `src/webview/calendarPage/main.tsx`; `scrollY` at most every 200 ms as the page scrolls.
+- **Written:** `setLayout` (through `keepState`) and `rememberScroll`, `src/webview/calendarPage/main.tsx`; `scrollY` at most every 200 ms as the page scrolls.
 - **Read by the page:** `keptLayout` and `restoreScroll` on the first draw, `src/webview/calendarPage/main.tsx`. Anything but `'week'` reads as `'month'`, as before, and a `scrollY` that is not a number is not read. The host's `restore` (`src/ui/webview/calendarPage.ts`) ignores the state.
 - **Pinned by:** `webview-saved-state.test.ts` loads the page with `{ layout: 'week' }` and asserts the week layout, and with other values, which read as the month; `calendar.test.ts` asserts what the page keeps.
+
+The sidebar calendar (`deckard.calendar`) keeps nothing: its own bundle, `src/webview/calendar/main.tsx`, since Phase 6 step 4.3, never calls `setState`, and its month is in its HTML.
+
+### 24a. Help
+
+- **Shape:** since Phase 6 step 4.1, `{ guide?: { page: string; anchor?: string }; scrollY: number; drawn: string }`. `drawn` is a hash of the script's nonce, so state saved by an earlier drawing of the page is not read: the host draws each HTML with a new nonce, and VS Code loads the same HTML again when it shows a hidden page.
+- **Written:** `save`, `src/webview/help/main.ts`, when a guide page is shown or closed, when the host reveals a section, and once scrolling pauses (`saveSoon`).
+- **Read by the page:** `readState`, the same file, on load: only a record whose `drawn` matches and whose `scrollY` is a number, and its `guide` only with a string `page`. The page asks the host for that guide page again and scrolls back. The host reads none of it.
+- **Pinned by:** `help-page.test.ts` asserts that a page shown again comes back to the guide page it showed and where it was scrolled, and that a page drawn anew, such as for a theme, opens where it is drawn, not where it was.
 
 ### 24b. Related Notes
 
@@ -281,6 +311,13 @@ No test restores a page from saved state. The harness starts its kept state as `
 - **Written:** `keepChoices`, `src/webview/sidebarNotes/main.tsx`, after each draw and each fold of the context or a Links group, merged over what was kept; `scrollY` by `rememberScroll` at most every 200 ms as the view scrolls.
 - **Read by the page:** `readChoices`, `src/webview/sidebarNotes/model.ts`, when its script starts, and `restoreScroll` on its first draw. A value of the wrong kind reads as a new view's choice: `noteLimit` only as a finite number over 50, the flags only as booleans (`linksOpen.linked` true unless kept false), the lists only their strings. The host reads none of it.
 - **Pinned by:** `webview-saved-state.test.ts` loads the view with every choice, with a list it did not count for, with Refine and the calendar's day, and with values of the wrong kind, and asserts what it draws and what it keeps.
+
+### 24c. Stats
+
+- **Shape:** since Phase 6 step 4.2, as the page is no longer kept running while hidden: `{ showAllOrphans: boolean; showUsedOnce: boolean; pairsAsTable: boolean; scrollY?: number }`. Before, Stats kept nothing.
+- **Written:** `keepState`, from `choose` in `src/webview/stats/main.tsx`, each time the reader shows the rest of the unlinked notes, the tags used once, or the pairs as a table; `scrollY` by `rememberScroll`. Nothing is kept until the reader chooses or scrolls.
+- **Read by the page:** `keptChoices`, the same file, when its script starts: each flag is on only when it was kept as `true`; and `restoreScroll` on its first snapshot. The host's `restore` ignores the state.
+- **Pinned by:** `stats.test.ts` ("Stats: what the reader chose, kept across a hide") asserts what the page keeps as the reader chooses and scrolls, what it draws when loaded with it, and that values of another kind read as nothing chosen.
 
 ## 25. Keys stored inside other formats
 
@@ -350,6 +387,6 @@ Run these from the repository root and check each hit against the rows above.
 - Codec: `grep -n "FORMAT\|v:" src/core/storage/parsedFileCodec.ts`
 - Parse options against the fingerprint: `grep -n "getParseOptions" -A 35 src/core/workspace/scanner.ts`
 - Preference migrations: `grep -n "legacy\|Legacy\|version\|normalize" src/core/storage/preferences.ts`
-- Webview state: `grep -rn "getState\|setState" src/ui --include='*.ts'` and `grep -rn "registerWebviewPanelSerializer\|registerWebviewViewProvider" src/extension.ts`
+- Webview state: `grep -rn "getState\|setState\|keepState\|keptState" src/webview`, `grep -rn "retainContextWhenHidden" src/ui/webview/pages src/composition`, and `grep -rn "registerWebviewPanelSerializer\|registerWebviewViewProvider" src/composition/services.ts`
 - Settings written: `grep -rn "writeSetting(\|configuration.update\|\.update('[a-zA-Z.]*'," src --include='*.ts' | grep -v '^src/test'`
 - Tests per format: `grep -rln "<key or function>" src/test` for each key, constant, and function named above, then a search for the literal key string to tell a literal pin from a constant.

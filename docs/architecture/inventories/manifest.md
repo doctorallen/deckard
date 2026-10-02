@@ -1,6 +1,8 @@
 # Manifest cross-reference
 
-This inventory ties every entry in `package.json` that the source must honor to the place in `src/` that honors it: commands, menus, settings, context keys, command re-entry, views, and files. Phase 0 of [the refactor plan](../../implementation/19-refactor.md) takes it before anything moves, so that splitting `src/extension.ts` cannot silently stop registering a command, reading a setting, or setting a context key. It was taken at `dev` 1805a01, and every `path:line` below is 1-based at that commit.
+This inventory ties every entry in `package.json` that the source must honor to the place in `src/` that honors it: commands, menus, settings, context keys, command re-entry, views, and files. Phase 0 of [the refactor plan](../../implementation/19-refactor.md) takes it before anything moves, so that splitting `src/extension.ts` cannot silently stop registering a command, reading a setting, or setting a context key. It was taken at `dev` 1805a01, and every `path:line` below is 1-based at that commit, except in §6's editor panels and sidebar views, which are as of the end of Phase 6 (`030ee64`).
+
+No other section has been refreshed since. Phase 5 moved what `src/extension.ts` registered into `src/composition/` and `src/ui/commands/<feature>/register.ts`, and Phase 6 rewrote every file under `src/ui/webview/`, so the `src/extension.ts` and `src/ui/webview/` lines that sections 1 to 5, 7, and 8 cite describe `1805a01` only, and the code is found now by the command id, setting, or key each row names. A full refresh is out of reach for the end of Phase 6, so those sections stand as of their date.
 
 ## Summary
 
@@ -480,35 +482,37 @@ VS Code runs these ids when a reader clicks a tree item, a CodeLens, a code acti
 
 ## 6. Webviews and views
 
+The two tables below and the paragraphs with them are as of the end of Phase 6 (`030ee64`), refreshed from the code when Phase 6 rewrote every page. The language model tools further down still describe `1805a01`.
+
 ### Editor panels
 
-Seven panel view types have both a serializer and an `onWebviewPanel:` activation event, and they match one to one. An eighth view type, `deckard.relatedNotesDebug`, has neither, so that panel does not come back after a reload.
+Seven panel view types have both a serializer and an `onWebviewPanel:` activation event, and they match one to one. An eighth view type, `deckard.relatedNotesDebug`, has neither, so that panel does not come back after a reload. Since Phase 6 every panel but the search page's is made by one `vscode.window.createWebviewPanel` call, in `PanelAdapter.open` (`src/ui/webview/host/panelAdapter.ts:65`), with the view type its host names; the search page, which can hold several panels, still makes its own (`src/ui/webview/searchPage.ts:408`). The serializers are registered in `registerSerializers`, `src/composition/services.ts:1088`.
 
-| View type | Activation event | Serializer | Created at |
+| View type | Activation event | Serializer | View type named at |
 |---|---|---|---|
-| `deckard.dashboard` | `package.json:44` | `src/extension.ts:892` | `ui/webview/dashboard.ts:278` |
-| `deckard.tagOverview` | `package.json:45` | `src/extension.ts:913` | `ui/webview/searchPage.ts:403` |
-| `deckard.stats` | `package.json:46` | `src/extension.ts:896` | `ui/webview/stats.ts:80` |
-| `deckard.help` | `package.json:47` | `src/extension.ts:899` | `ui/webview/help.ts:69` |
-| `deckard.notesGraph` | `package.json:48` | `src/extension.ts:902` | `ui/webview/notesGraph.ts:214` |
-| `deckard.taskBoard` | `package.json:49` | `src/extension.ts:909` | `ui/webview/taskBoard.ts:194` |
-| `deckard.calendarPage` | `package.json:50` | `src/extension.ts:906` | `ui/webview/calendarPage.ts:94` |
+| `deckard.dashboard` | `package.json:44` | `src/composition/services.ts:1091` | `ui/webview/dashboard.ts:67` |
+| `deckard.tagOverview` | `package.json:45` | `src/composition/services.ts:1112` | `ui/webview/searchPage.ts:409` |
+| `deckard.stats` | `package.json:46` | `src/composition/services.ts:1095` | `ui/webview/stats.ts:44` |
+| `deckard.help` | `package.json:47` | `src/composition/services.ts:1098` | `ui/webview/help.ts:42` |
+| `deckard.notesGraph` | `package.json:48` | `src/composition/services.ts:1101` | `ui/webview/notesGraph.ts:68` |
+| `deckard.taskBoard` | `package.json:49` | `src/composition/services.ts:1108` | `ui/webview/taskBoard.ts:58` |
+| `deckard.calendarPage` | `package.json:50` | `src/composition/services.ts:1105` | `ui/webview/calendarPage.ts:66` |
 | `deckard.relatedNotesDebug` | none | none | `ui/webview/relatedNotesDebug.ts:38` |
 
-Two more readers depend on the view types' `deckard.` prefix: `hasVisibleDeckardPage()` at `ui/commands/chooseTheme.ts:54`, which tests `viewType.includes('deckard.')`, and the two `editor/title` zen buttons, whose `when` tests `activeWebviewPanelId =~ /^deckard\./`.
+Two more readers depend on the view types' `deckard.` prefix: `hasVisibleDeckardPage()` at `ui/commands/chooseTheme.ts:56`, which tests `viewType.includes('deckard.')`, and the two `editor/title` zen buttons, whose `when` tests `activeWebviewPanelId =~ /^deckard\./`.
 
 ### Sidebar views
 
-`contributes.viewsContainers.activitybar` declares the container `deckard` at `package.json:1393`. `contributes.views.deckard` declares four views. Each has one registration. No source calls `registerTreeDataProvider`.
+`contributes.viewsContainers.activitybar` declares the container `deckard` at `package.json:1393`. `contributes.views.deckard` declares four views. Each has one registration, in `registerViews`, `src/composition/services.ts:1031`. No source calls `registerTreeDataProvider`.
 
 | View id | Declared at | Type | Registered at |
 |---|---|---|---|
-| `deckard.relatedNotes` | `package.json:1402` | webview | `registerWebviewViewProvider`, `src/extension.ts:631` |
-| `deckard.outline` | `package.json:1409` | tree | `createTreeView`, `src/extension.ts:640` |
-| `deckard.agenda` | `package.json:1415` | tree | `createTreeView`, `src/extension.ts:646` |
-| `deckard.calendar` | `package.json:1421` | webview | `registerWebviewViewProvider`, `src/extension.ts:636` |
+| `deckard.relatedNotes` | `package.json:1402` | webview | `registerWebviewViewProvider`, `src/composition/services.ts:1036` |
+| `deckard.outline` | `package.json:1409` | tree | `createTreeView`, `src/composition/services.ts:1043` |
+| `deckard.agenda` | `package.json:1415` | tree | `createTreeView`, `src/composition/services.ts:1049` |
+| `deckard.calendar` | `package.json:1421` | webview | `registerWebviewViewProvider`, `src/composition/services.ts:1039` |
 
-VS Code derives command ids from these names, and the source runs three of them: `workbench.view.extension.deckard` from the container id (`ui/webview/sidebarNotes.ts:239`, `250`), `deckard.agenda.focus` (`ui/views/taskStatusBar.ts:325`, `ui/webview/dashboard.ts:725`, `package.json:141`), and `deckard.relatedNotes.focus` (`ui/commands/noteActions.ts:50`). `viewsWelcome` names `deckard.outline` and `deckard.agenda` at `package.json:203`, `207`, and `212`.
+VS Code derives command ids from these names, and the source runs three of them: `workbench.view.extension.deckard` from the container id (`ui/webview/pages/sidebarNotes/sidebarNotesController.ts:280`, `292`), `deckard.agenda.focus` (`ui/views/taskStatusBar.ts:154`, `ui/webview/pages/dashboard/dashboardController.ts:471`, `package.json:141`), and `deckard.relatedNotes.focus` (`ui/commands/noteActions.ts:50`). `viewsWelcome` names `deckard.outline` and `deckard.agenda` at `package.json:203`, `207`, and `212`.
 
 ### Language model tools
 
