@@ -1,18 +1,22 @@
 import * as vscode from 'vscode';
 
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { findFencedLines, isHeading } from '../../domain/markdown/lineShapes';
 
 /** Context key for whether a section is focused, which offers the way back. */
 export const SECTION_FOCUSED = 'deckard.sectionFocused';
 
 /**
- * The zero-based line of the heading a line is under, outside code, by the
- * parser's rule: hashes alone, `#`, are a heading with no words, and a
- * heading may be indented by up to three spaces, as the preview reads them.
+ * The zero-based line of the heading a line is under, outside code and front
+ * matter, by the parser's rule: hashes alone, `#`, are a heading with no
+ * words, and a heading may be indented by up to three spaces, as the preview
+ * reads them. A `#` line in front matter is a YAML comment, so `lines` is
+ * the whole note, for its front matter to be found closed.
  */
 export function findHeadingLineAbove(lines: readonly string[], line: number): number | undefined {
   const fenced = findFencedLines([...lines]);
-  for (let at = Math.min(line, lines.length - 1); at >= 0; at -= 1) {
+  const frontmatterEnd = findFrontmatterEnd(lines) ?? -1;
+  for (let at = Math.min(line, lines.length - 1); at > frontmatterEnd; at -= 1) {
     if (!fenced.has(at) && isHeading(lines[at])) {
       return at;
     }

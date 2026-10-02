@@ -202,6 +202,8 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
    * saying what it will put back, then reads the notes again with `refresh`.
    * Given `mine`, the write a message's Undo is for, it takes back nothing
    * once Deckard has written since, even while the question was open.
+   * Without it, the write is the one the question named, so a write that
+   * lands while the question is open is not taken back either.
    */
   public async undoLast(
     refresh: () => Promise<void>,
@@ -214,6 +216,10 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       );
       return undefined;
     }
+    // The question names the write that is last as it opens; one that lands
+    // while it is open, or while the Undo waits its turn, is not what the
+    // reader agreed to take back.
+    const asked = mine ?? this.mark();
 
     const choice = await vscode.window.showWarningMessage(
       `Undo ${write.label}?`,
@@ -232,16 +238,12 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
     if (choice !== 'Undo') {
       return undefined;
     }
-    if (mine && !mine.isLatest()) {
-      reportWrittenSince();
-      return undefined;
-    }
-
-    const result = await this.undo(mine);
+    const result = asked.isLatest() ? await this.undo(asked) : undefined;
     if (!result) {
       if (mine) {
-        // A write landed while the Undo waited its turn.
         reportWrittenSince();
+      } else {
+        reportWrittenWhileAsked();
       }
       return undefined;
     }
@@ -504,6 +506,16 @@ function withConfirmation(
     );
   });
   return confirmed;
+}
+
+/**
+ * Says Undo Last Change took nothing back because Deckard wrote again
+ * while its question was open, and how to see the newer write.
+ */
+function reportWrittenWhileAsked(): void {
+  void vscode.window.showInformationMessage(
+    'Deckard changed your notes again while you were deciding, so nothing was undone. Run Deckard: Undo Last Change again to see the newer change.',
+  );
 }
 
 /**

@@ -33,18 +33,6 @@ function decode(bytes: Buffer): { text: string; bom: boolean } {
   return { text: (bom ? bytes.subarray(3) : bytes).toString('utf8'), bom };
 }
 
-/** A range from two positions or four numbers, as VS Code's Range is made. */
-class Range implements Span {
-  public readonly start: Place;
-  public readonly end: Place;
-
-  /** Either `(start, end)` positions or `(startLine, startCharacter, endLine, endCharacter)`. */
-  public constructor(a: Place | number, b: Place | number, c?: number, d?: number) {
-    this.start = typeof a === 'number' ? new vscode.Position(a, b as number) : a;
-    this.end = typeof a === 'number' ? new vscode.Position(c ?? 0, d ?? 0) : (b as Place);
-  }
-}
-
 /** An edit across notes: replacements and inserts kept per note, in order. */
 class WorkspaceEdit {
   private readonly edits = new Map<string, [vscode.Uri, { range: Span; newText: string }[]]>();
@@ -104,7 +92,7 @@ class DiskDocument {
     if (text === undefined) {
       throw new Error('Illegal value for `line`');
     }
-    return { text, range: new Range(line, 0, line, text.length) };
+    return { text, range: new vscode.Range(line, 0, line, text.length) };
   }
 
   /** The offset of a position in the text. */
@@ -129,7 +117,7 @@ class DiskDocument {
  * Makes `vscode` a workspace over the real disk, modeled on what VS Code
  * does, when the suite runs under the stand-in: documents that leave the
  * byte order mark out of their text and keep it when saved, `applyEdit`,
- * `fs`, a `WorkspaceEdit` that inserts, and a `Range` made from positions.
+ * `fs`, and a `WorkspaceEdit` that inserts.
  * In the extension host it changes nothing, so there the suite runs against
  * VS Code itself. Returns what puts the stand-in back.
  */
@@ -147,7 +135,6 @@ export function useDiskWorkspace(): () => void {
   const api = vscodeModule as unknown as Record<string, unknown>;
   const uri = vscode.Uri as unknown as Record<string, unknown>;
   const replaced: [Record<string, unknown>, string, unknown][] = [
-    [api, 'Range', Range],
     [api, 'WorkspaceEdit', WorkspaceEdit],
     [uri, 'joinPath', (base: vscode.Uri, ...parts: string[]) => vscode.Uri.file(path.join(base.fsPath, ...parts))],
     [workspace, 'openTextDocument', async (target: vscode.Uri) => open(target)],

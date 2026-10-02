@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { getEntityNamespaceAliases } from '../../domain/markdown/parser';
 import { createQueryContext, QueryContext } from '../../domain/query/queryContext';
 import { readStatusNamespace, TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { readWeekStart } from './datePrompt';
@@ -7,7 +8,10 @@ import { readWeekStart } from './datePrompt';
 /**
  * The QueryContext a view, command, or tool works in, read from settings at
  * the moment it starts its work: who `deckard.me` names, the week start of
- * `deckard.calendar.weekStart`, and the task policy, at `now`.
+ * `deckard.calendar.weekStart`, the task policy, and the namespace aliases
+ * of `deckard.entityNamespaceAliases` over the built-in ones (the aliases the
+ * index was built with, so a tag written the way a note writes it is found),
+ * at `now`.
  *
  * Every entry point reads it once and hands it down, so a setting changed a
  * moment ago is what the next evaluation uses, and the pure code below never
@@ -15,10 +19,12 @@ import { readWeekStart } from './datePrompt';
  * scope, from the workspace as a whole.
  */
 export function readQueryContext(now: number = Date.now()): QueryContext {
+  const configuration = vscode.workspace.getConfiguration('deckard');
   return createQueryContext(now, {
-    identity: vscode.workspace.getConfiguration('deckard').get<string>('me', ''),
+    identity: configuration.get<string>('me', ''),
     weekStart: readWeekStart(),
     taskPolicy: readTaskPolicy(),
+    entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
   });
 }
 

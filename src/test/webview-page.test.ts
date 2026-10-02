@@ -8,6 +8,17 @@ import { openWebviewPage } from './webviewPage';
 suite('Webview page harness', () => {
   const page = (script: string) => `<!DOCTYPE html><html><body><canvas id="c"></canvas><script>${script}</script></body></html>`;
 
+  test('a page that did not ask for the recording canvas still gets a 2D context, as in a webview', () => {
+    const opened = openWebviewPage(
+      page(`document.body.setAttribute('data-context', String(document.getElementById('c').getContext('2d') !== null));`),
+    );
+    try {
+      assert.strictEqual(opened.document.body.getAttribute('data-context'), 'true');
+    } finally {
+      opened.dispose();
+    }
+  });
+
   test('a canvas page is drawn into a recording', () => {
     const opened = openWebviewPage(
       page(`

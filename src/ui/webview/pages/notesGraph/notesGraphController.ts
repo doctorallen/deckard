@@ -16,7 +16,7 @@ import type {
   SidebarGraphContext,
 } from '../../../protocol/notesGraph';
 import { openSourceAt } from '../../../commands/navigation';
-import { NotesGraphKinds, toWire } from '../../../state/notesGraphState';
+import { NotesGraphKinds, selectShownNodes, toWire } from '../../../state/notesGraphState';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { openSource, openTag } from '../../host/sharedHandlers';
 import { PanelSurface } from '../../host/surface';
@@ -334,13 +334,15 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
 
   /**
    * Tells Related Notes the selected node and what it is joined to, while
-   * the graph is in front.
+   * the graph is in front: of the kinds the page shows, as the graph it is
+   * sent holds them, so a hidden task is not listed beside its note.
    */
   private async publishGraphContext(page: PageContext, reveal: boolean): Promise<void> {
     if (!page.surface?.active) {
       return;
     }
-    const snapshot = this.getSnapshot();
+    const whole = this.getSnapshot();
+    const snapshot = { ...whole, nodes: selectShownNodes(whole, this.kinds) };
     const selectedNode = this.selectedNodeId
       ? snapshot.nodes.find((node) => node.id === this.selectedNodeId)
       : undefined;

@@ -78,6 +78,22 @@ suite('Move inline tags to front matter', () => {
     assert.strictEqual(findCommentedTagField('---\ntitle: x # mine\ntags: [a]\n---\n'), undefined, 'another field may end in a comment');
   });
 
+  test('keeps the comments and blank lines under a tag field', () => {
+    assert.strictEqual(
+      moveInlineTagsToFrontmatterContent(
+        ['---', 'title: Plan', 'people:', '  - dana', '  # ren joins in May', '', '# status follows', 'status: open', '---', '# Plan #atlas'].join('\n'),
+      ),
+      ['---', 'title: Plan', '  # ren joins in May', '', '# status follows', 'status: open', 'people: [dana]', 'tags: [atlas]', '---', '# Plan'].join('\n'),
+    );
+  });
+
+  test('reads a quoted value holding a comma as one value, as YAML does', () => {
+    assert.strictEqual(
+      moveInlineTagsToFrontmatterContent('---\ntags: ["a, b", \'it\'\'s, here\', c]\n---\n# Plan #atlas\n'),
+      '---\ntags: ["a, b", "it\'s, here", c, atlas]\n---\n# Plan\n',
+    );
+  });
+
   test('keeps a CRLF note in CRLF', () => {
     assert.strictEqual(
       moveInlineTagsToFrontmatterContent('---\r\ntitle: Plan\r\n---\r\n# Plan #atlas\r\ntext\r\n'),

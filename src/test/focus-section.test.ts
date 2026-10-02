@@ -39,6 +39,15 @@ suite('Focus Section', () => {
     assert.strictEqual(findHeadingLineAbove(['# Plan', '    ## Code', 'under it'], 2), 0, 'four spaces in is code');
   });
 
+  test('reads no heading in front matter, where a # line is a YAML comment', () => {
+    const lines = ['---', '# a comment', 'tags: [plan]', '---', 'text', '# Plan', 'under it'];
+    assert.strictEqual(findHeadingLineAbove(lines, 4), undefined, 'below the front matter');
+    assert.strictEqual(findHeadingLineAbove(lines, 2), undefined, 'inside it');
+    assert.strictEqual(findHeadingLineAbove(lines, 6), 5);
+    const closedByDots = ['---', '# a comment', '...', 'text'];
+    assert.strictEqual(findHeadingLineAbove(closedByDots, 3), undefined, 'closed by ...');
+  });
+
   test('folds all but the section, opens its sub-headings, and says so in a key', async () => {
     const document = await vscode.workspace.openTextDocument({
       language: 'markdown',

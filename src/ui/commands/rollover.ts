@@ -110,7 +110,7 @@ class RolloverDocuments implements RolloverNotes<vscode.Uri, WriteHandle> {
     }
   }
 
-  /** Writes the rollover as one write, which Undo takes back. */
+  /** Writes the rollover as one write, which Undo takes back whole or not at all. */
   public async write(
     edits: readonly RolloverEdit<vscode.Uri>[],
     carried: number,
@@ -128,6 +128,10 @@ class RolloverDocuments implements RolloverNotes<vscode.Uri, WriteHandle> {
       // A rollover is one gesture over a few notes; showing it every morning
       // would be in the way. Undo is what takes it back.
       preview: 'never',
+      // Moving or migrating takes a task out of, or marks it in, the note it
+      // came from as it lands in today's, so putting back only some notes
+      // would lose the task from both, or leave it in both.
+      together: true,
     });
     return written.applied ? { applied: true, handle: written.handle } : { applied: false };
   }

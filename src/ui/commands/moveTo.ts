@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
 import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLines';
-import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
@@ -14,14 +14,14 @@ import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
 import { MoveSource as ServiceMoveSource, MoveTarget } from '../../services/moveService';
 import { TaskWrites } from './taskActions';
-import { createWikiLink } from './insertLink';
+import { createWikiLinkToSection } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
 import { WriteHandle } from './workspaceWrites';
 import { getPeriodicNote } from '../../domain/notes/periodicNotes';
 import { findSameSection } from '../../domain/capture/captureLines';
-import { createPinForLine } from '../../domain/notes/pins';
-import { Task } from '../../domain/model';
+import { createPinForSection } from '../../domain/notes/pins';
+import { PinnedNote, Section, Task, WorkspaceIndex } from '../../domain/model';
 import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
@@ -107,7 +107,7 @@ export async function moveTasks(
 /** Where a move writes, once chosen and found again, and the heading it names. */
 interface ResolvedTarget extends MoveTarget<vscode.Uri> {
   /** The heading to remember as recent. */
-  heading?: { filePath: string; line: number };
+  recent?: PinnedNote;
 }
 
 /**
@@ -137,11 +137,8 @@ async function moveBlocks(
     void reportFailure({ outcome: 'Deckard could not move it, so nothing was written.' });
     return;
   }
-  if (target.heading) {
-    const pin = createPinForLine(indexer.getSnapshot(), target.heading.filePath, target.heading.line);
-    if (pin?.heading) {
-      await preferences.usage.recordRecentHeading(pin);
-    }
+  if (target.recent) {
+    await preferences.usage.recordRecentHeading(target.recent);
   }
   announceMove(sources, target, result.created, result.handle);
 }
@@ -243,31 +240,71 @@ async function resolveSection(
     return undefined;
   }
   const document = await vscode.workspace.openTextDocument(uri);
-  const saved = indexer.getSnapshot().files.get(destination.filePath)?.sections ?? [];
-  const live = findSameSection(saved, destination.section, indexer.parse(uri, document.getText()).sections);
+  const found = readSectionTarget(
+    indexer.getSnapshot(),
+    destination.filePath,
+    destination.section,
+    indexer.parse(uri, document.getText()).sections,
+  );
   const heading = stripTags(destination.section.heading).trim() || destination.section.heading;
-  if (!live) {
+  if (!found) {
     void reportFailure({
       outcome: `Deckard did not move it: the heading “${heading}” is no longer in ${destination.filePath.split('/').pop()}.`,
     });
     return undefined;
   }
-  const link = createWikiLink(indexer.getSnapshot(), destination.filePath, destination.section.id).text.slice(2, -2);
   return {
     uri,
-    link,
+    link: found.link,
     name: `${noteTitle(destination.filePath)} › ${heading}`,
-    section: { startLine: live.startLine, endLine: live.bodyEndLine },
-    heading: { filePath: destination.filePath, line: destination.section.startLine },
+    section: { startLine: found.section.startLine, endLine: found.section.bodyEndLine },
+    recent: found.recent,
   };
 }
 
-/** The first eight words of a line, without its marker, tags, or metadata. */
+/** A heading a move writes under, as its note holds it now, and the link to it. */
+export interface SectionTarget {
+  /** The heading, found again among the note's sections as it is now. */
+  section: Section;
+  /** What a link left behind names, `Note#Heading`, without its brackets. */
+  link: string;
+  /** The heading to remember as recent, for the next Move to… or capture. */
+  recent: PinnedNote;
+}
+
+/**
+ * Finds `chosen`, a heading chosen from `index`, again among `live`, the
+ * sections of `filePath` as the note is now, with the link a move leaves
+ * behind to it and the heading to remember as recent. Undefined when the
+ * note no longer holds the heading.
+ */
+export function readSectionTarget(
+  index: WorkspaceIndex,
+  filePath: string,
+  chosen: Section,
+  live: readonly Section[],
+): SectionTarget | undefined {
+  const saved = index.files.get(filePath)?.sections ?? [];
+  const section = findSameSection(saved, chosen, live);
+  if (!section) {
+    return undefined;
+  }
+  // From the heading as the note holds it: the index may have read the note
+  // again since the heading was chosen, and no longer know it by its id or
+  // hold it at the line it was chosen at.
+  const link = createWikiLinkToSection(index, filePath, section).text.slice(2, -2);
+  return { section, link, recent: createPinForSection(filePath, live, section) };
+}
+
+/**
+ * The first eight words of a line, without its marker, tags, or metadata,
+ * nor any character a file name or the link left behind cannot hold.
+ */
 export function suggestNoteName(line: string): string {
   const draft = parseTaskDraft(line.replace(/^\s*(?:[-*+]|\d+[.)])\s+(?!\[)/, ''));
   const words = stripTags(draft.description)
     .replace(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, '$1')
-    .replace(/[/\\<>:"|?*#]/g, ' ')
+    .replace(/[/\\<>:"|?*#^[\]]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 8);
@@ -277,14 +314,14 @@ export function suggestNoteName(line: string): string {
 /**
  * Where a new note named `name` goes: the notes folder of the workspace
  * folder `from` is in, or else of the first one. Undefined when the name
- * cannot be a file name or no folder is open.
+ * cannot be a file name the link left behind opens, or no folder is open.
  */
 async function newNoteUri(
   indexer: IndexReader<vscode.Uri>,
   from: vscode.Uri,
   name: string,
 ): Promise<vscode.Uri | undefined> {
-  const fileName = getExtractedNoteFileName(name);
+  const fileName = getLinkableNoteFileName(name);
   const folder = vscode.workspace.getWorkspaceFolder(from) ?? vscode.workspace.workspaceFolders?.[0];
   return fileName && folder ? vscode.Uri.joinPath(indexer.getNotesFolderUri(folder), fileName) : undefined;
 }

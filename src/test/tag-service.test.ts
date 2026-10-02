@@ -73,7 +73,7 @@ class FakeNotes implements TagNotes<string> {
 }
 
 /** A service over an index that counts its refreshes, and preferences that record each key they move. */
-function serviceWith(options: { refresh?: () => Promise<void> } = {}) {
+function serviceWith(options: { refresh?: () => Promise<void>; putBack?: () => Promise<void> } = {}) {
   const moved: [string, string][] = [];
   let refreshes = 0;
   const service = new TagService({
@@ -88,7 +88,7 @@ function serviceWith(options: { refresh?: () => Promise<void> } = {}) {
         moved.push([sourceKey, targetKey]);
         return Promise.resolve();
       },
-      snapshotTagKeys: () => () => Promise.resolve(),
+      snapshotTagKeys: () => options.putBack ?? (() => Promise.resolve()),
     },
   });
   return { service, moved, refreshes: () => refreshes };
@@ -218,6 +218,26 @@ suite('TagService', () => {
 
     assert.deepStrictEqual(moved, [['#apollo', '#hermes'], ['#hermes', '#apollo']]);
     assert.strictEqual(refreshes(), 2);
+  });
+
+  test("a merge's Undo reads the notes again even when the preferences cannot be put back", async () => {
+    const index = indexOf(notes);
+    const fake = new FakeNotes(notes);
+    const failure = new Error('storage is full');
+    const { service, refreshes } = serviceWith({ putBack: () => Promise.reject(failure) });
+    const result = await confirmed(
+      await service.rewrite({
+        index,
+        source: tagOf(index, '#apollo'),
+        replacement: { key: '#atlas', label: '#atlas' },
+        notes: fake,
+      }),
+    );
+    assert.strictEqual(result.kind, 'written');
+    assert.strictEqual(refreshes(), 1);
+
+    await assert.rejects(fake.writes[0].description.restore(), failure, 'the failure is still told');
+    assert.strictEqual(refreshes(), 2, 'the notes are back, so the index reads them again');
   });
 
   test('refuses a new name that is the old tag however it is typed', async () => {

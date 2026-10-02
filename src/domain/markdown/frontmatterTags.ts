@@ -224,6 +224,57 @@ function hasQuotedComma(list: string): boolean {
   return false;
 }
 
+/**
+ * The values of a field written on its own line as YAML reads them: as
+ * splitValues reads them, except that in a `[a, b]` list a comma inside a
+ * quoted value is part of it, and `''` inside single quotes is one quote.
+ * The parser reads such a list as splitValues does, so a field read this
+ * way is only for writing the note's own values back as it wrote them.
+ */
+export function splitQuotedValues(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) {
+    return splitValues(value);
+  }
+  const inner = trimmed.slice(1, -1);
+  const items: string[] = [];
+  let item = '';
+  let quote: string | undefined;
+  let valueStart = true;
+  for (let at = 0; at < inner.length; at += 1) {
+    const character = inner[at];
+    if (quote) {
+      item += character;
+      if (character === quote && quote === "'" && inner[at + 1] === "'") {
+        item += "'";
+        at += 1;
+      } else if (character === quote) {
+        quote = undefined;
+      }
+    } else if (character === ',') {
+      items.push(item);
+      item = '';
+      valueStart = true;
+    } else {
+      // Only a quote that opens a value starts one, so the `'` in `it's` does not.
+      if (valueStart && (character === '"' || character === "'")) {
+        quote = character;
+      }
+      valueStart &&= /\s/.test(character);
+      item += character;
+    }
+  }
+  items.push(item);
+  return items.map((each) => readListValue(each.trim())).filter(Boolean);
+}
+
+/** One `[a, b]` list value without its quotes, a single-quoted one's `''` read as `'`. */
+function readListValue(value: string): string {
+  return value.length >= 2 && value.startsWith("'") && value.endsWith("'")
+    ? value.slice(1, -1).replace(/''/g, "'")
+    : unquote(value);
+}
+
 /** A field's values written back on its own line, each quoted only where YAML needs it. */
 function writeInlineList(name: string, values: readonly string[]): string {
   return `${name}: [${values.map((value) => formatYamlValue(value, 'list')).join(', ')}]`;

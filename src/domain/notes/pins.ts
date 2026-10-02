@@ -30,14 +30,24 @@ export function createPinForLine(
     return undefined;
   }
   const section = findHeadingAtLine(file.sections, line);
-  if (!section) {
-    return { filePath };
-  }
+  return section ? createPinForSection(filePath, file.sections, section) : { filePath };
+}
+
+/**
+ * The pin for `section`, a heading among `sections`, the note's sections as
+ * read at one moment: for a heading read from the note as it is now, which
+ * the index may hold at another line, or not yet at all.
+ */
+export function createPinForSection(
+  filePath: string,
+  sections: readonly Section[],
+  section: Section,
+): PinnedNote {
   return {
     filePath,
     heading: section.heading,
     headingLevel: section.headingLevel,
-    occurrence: countSameHeadingsBefore(file.sections, section),
+    occurrence: countSameHeadingsBefore(sections, section),
   };
 }
 

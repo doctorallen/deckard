@@ -9,7 +9,9 @@ import {
   readMoveBlock,
 } from '../domain/markdown/moveLines';
 import { parseMarkdown } from '../domain/markdown/parser';
-import { suggestNoteName } from '../ui/commands/moveTo';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { readSectionTarget, suggestNoteName } from '../ui/commands/moveTo';
+import { validateExtractedNoteName } from '../ui/commands/extractHeading';
 
 const cursor = (line: number) => ({ start: { line, character: 0 }, end: { line, character: 0 }, isEmpty: true });
 const select = (from: [number, number], to: [number, number]) => ({
@@ -115,5 +117,40 @@ suite('What Move to… moves', () => {
   test('names a new note from the first eight words of the line', () => {
     assert.strictEqual(suggestNoteName('- [ ] Ask about the #project/atlas budget before the end of the month 📅 2026-10-02'), 'Ask about the budget before the end of');
     assert.strictEqual(suggestNoteName('Budget questions'), 'Budget questions');
+  });
+
+  test('suggests a new note name the link left behind can open', () => {
+    for (const line of ['- [ ] Plan [draft] for Q3', 'Notes on a^b and [x]', '- Issue #42 follow-up']) {
+      const name = suggestNoteName(line);
+      assert.strictEqual(validateExtractedNoteName(name), undefined, `${line} → ${name}`);
+    }
+    assert.strictEqual(suggestNoteName('- [ ] Plan [draft] for Q3'), 'Plan draft for Q3');
+  });
+
+  test('links to the heading chosen even after the index has read its note again', () => {
+    const before = parseMarkdown('plan.md', '# Plan\n\n## Calls\n- [ ] Ren\n');
+    const chosen = before.sections.find((section) => section.heading === 'Calls');
+    assert.ok(chosen);
+    // Saved with a line above the heading while the picker was open, and read again.
+    const now = parseMarkdown('plan.md', '# Plan\nA line added.\n\n## Calls\n- [ ] Ren\n');
+    const index = buildWorkspaceIndex(new Map([[now.filePath, now]]));
+    assert.ok(!index.sections.has(chosen.id), 'the heading as it was chosen is gone from the index');
+    const target = readSectionTarget(index, 'plan.md', chosen, now.sections);
+    assert.strictEqual(target?.section.startLine, 4);
+    assert.strictEqual(target?.link, 'plan#Calls', 'the link left behind names the heading');
+  });
+
+  test('remembers the heading chosen, not the one at its old line, after the index has read its note again', () => {
+    const before = parseMarkdown('plan.md', '# Plan\n\n## Calls\n- [ ] Ren\n');
+    const chosen = before.sections.find((section) => section.heading === 'Calls');
+    assert.ok(chosen);
+    const now = parseMarkdown('plan.md', '# Plan\nA line added.\n\n## Calls\n- [ ] Ren\n');
+    const index = buildWorkspaceIndex(new Map([[now.filePath, now]]));
+    assert.deepStrictEqual(readSectionTarget(index, 'plan.md', chosen, now.sections)?.recent, {
+      filePath: 'plan.md',
+      heading: 'Calls',
+      headingLevel: 2,
+      occurrence: 0,
+    });
   });
 });

@@ -32,8 +32,8 @@ export interface WebviewPage {
   /** What the page kept for a window reload. */
   savedState(): unknown;
   /**
-   * With `canvas: true`, every call the page made on a canvas's 2D context,
-   * oldest first, with the drawing state it was made under.
+   * Every call the page made on a canvas's 2D context, oldest first, with
+   * the drawing state it was made under.
    */
   readonly canvasCalls: CanvasCall[];
   /**
@@ -60,9 +60,10 @@ export interface CanvasCall {
 /** How openWebviewPage runs a page beyond its HTML and state. */
 export interface WebviewPageOptions {
   /**
-   * Gives every canvas a 2D context that draws nothing and records each
-   * call, holds animation frames until `flushFrames`, and gives canvases an
-   * 800 by 600 size, so a page that paints can be tested by what it paints.
+   * Holds animation frames until `flushFrames`, so a page that paints can be
+   * tested by what it paints, frame by frame. Every page's canvases have a
+   * 2D context that draws nothing and records each call, and an 800 by 600
+   * size, with or without it; without it, frames run on the window's clock.
    */
   canvas?: boolean;
   /**
@@ -91,7 +92,7 @@ function clone<T>(value: T): T {
 
 /**
  * What a page shares with its stand-in host: the messages it posted, what it
- * kept for a reload, and, with `canvas: true`, its canvas calls and the
+ * kept for a reload, its canvas calls, and, with `canvas: true`, the
  * animation frames it is waiting on.
  */
 interface PageHost {
@@ -132,8 +133,8 @@ export function openWebviewPage(
 
 /**
  * Gives a window, before its page runs, the API VS Code gives a webview, a
- * `scrollTo` that does nothing, and, as the options ask, the stepped clock
- * and the recording canvas with its held animation frames.
+ * `scrollTo` that does nothing, the recording canvas, and, as the options
+ * ask, the stepped clock and held animation frames.
  */
 function installHost(window: Window & typeof globalThis, host: PageHost, options: WebviewPageOptions): void {
   // A page restores its scroll after each render. jsdom has no viewport
@@ -155,10 +156,12 @@ function installHost(window: Window & typeof globalThis, host: PageHost, options
   if (options.clockStep !== undefined) {
     installSteppedClock(window, options.clockStep);
   }
+  // A webview always has a 2D context, and jsdom has none, so a page that
+  // paints in a frame of its own would throw there; every page gets one.
+  installRecordingCanvas(window, host.canvasCalls);
   if (!options.canvas) {
     return;
   }
-  installRecordingCanvas(window, host.canvasCalls);
   Object.defineProperty(window, 'requestAnimationFrame', {
     value: (callback: FrameRequestCallback) => {
       host.frames.push(callback);

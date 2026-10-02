@@ -46,7 +46,7 @@ Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt
 - A `[>]` line is not a task, so it stops counting as open, and its link gives today's note a backlink.
 - A task is carried only if its line is unchanged since indexing and not already in today's note. In `migrate` mode, a task in several notes is carried once, from the newest. Only a note Deckard creates rolls tasks in.
 - `Deckard: Roll Unfinished Tasks Forward` does it on demand, whatever the setting, creating today's note if needed. It moves tasks unless the setting is `migrate` or `copy`.
-- The rollover is one write, with **Open** and **Undo** afterward. `Deckard: Undo Last Change` also undoes it.
+- The rollover is one write, with **Open** and **Undo** afterward. `Deckard: Undo Last Change` also undoes it. Its notes go back together or not at all: if one changed since, Undo puts nothing back and names that note.
 
 ## Calendar
 

@@ -21,11 +21,19 @@ class EventEmitter {
   }
 }
 
-/** A range from four numbers, as VS Code's is made; nothing else of its API. */
+/**
+ * A range from two positions or four numbers, as VS Code's is made, with
+ * its start before its end; nothing else of its API.
+ */
 class Range {
-  constructor(startLine, startCharacter, endLine, endCharacter) {
-    this.start = { line: startLine, character: startCharacter };
-    this.end = { line: endLine, character: endCharacter };
+  constructor(startOrLine, endOrCharacter, endLine, endCharacter) {
+    const numbers = typeof startOrLine === 'number';
+    const first = numbers ? new Position(startOrLine, endOrCharacter) : startOrLine;
+    const second = numbers ? new Position(endLine, endCharacter) : endOrCharacter;
+    const reversed =
+      second.line < first.line || (second.line === first.line && second.character < first.character);
+    this.start = reversed ? second : first;
+    this.end = reversed ? first : second;
   }
 }
 
