@@ -14,7 +14,7 @@
  * (`session.ts`).
  */
 import { chooseFocusDay, isWeekend } from '../../../domain/markdown/calendar';
-import type { CalendarDay, CalendarSnapshot } from '../../../ui/protocol/calendar';
+import type { CalendarDay, CalendarSnapshot, CalendarWeek } from '../../../ui/protocol/calendar';
 
 /** A calendar's state: the host's snapshot, and what the reader did since. */
 export interface CalendarState {
@@ -123,13 +123,16 @@ export function markedDate(state: CalendarState): string | undefined {
  * The day that takes Tab: the one given it since the last full draw, or,
  * as the last full draw chose, the chosen day when the focused day is not
  * drawn, else the focused day, else today, else the first of the month.
+ * It is chosen among the days of `weeks`, the weeks the grid draws: the
+ * page's Week layout draws one of the month's, and a day of another week
+ * would leave the grid with no day in the Tab order.
  */
-export function tabStopDate(state: DrawnCalendar): string | undefined {
+export function tabStopDate(state: DrawnCalendar, weeks: readonly CalendarWeek[]): string | undefined {
   if (state.tabStop !== undefined) {
     return state.tabStop;
   }
   const snapshot = state.snapshot;
-  const days = snapshot.weeks.flatMap((week) => week.days.filter((day) => isDrawn(snapshot, day)));
+  const days = weeks.flatMap((week) => week.days.filter((day) => isDrawn(snapshot, day)));
   return chooseFocusDay(days, state.drawnFocus, snapshot.dayPanel ? state.drawnSelected : undefined);
 }
 

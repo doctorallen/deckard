@@ -241,6 +241,28 @@ suite('Calendar', () => {
     }
   });
 
+  test('the Week layout keeps a day of the week it draws in the Tab order', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const snapshot = (selectedDate: string) =>
+      createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page', selectedDate });
+    const page = openWebviewPage(renderPage('calendarPage', { state: snapshot('2026-09-08') }), undefined, { savedState: { layout: 'week' } });
+    try {
+      const tabStops = () => page.findAll('.calendar-grid .day[tabindex="0"]').map((day) => (day as HTMLElement).dataset.date);
+      assert.deepStrictEqual(tabStops(), ['2026-09-08']);
+      page.click('.calendar-grid .day[data-date="2026-09-09"]');
+      // The host chooses a day in another week, as the Related Notes day does.
+      page.send(snapshot('2026-09-22'));
+      assert.deepStrictEqual(
+        page.findAll('.calendar-grid .day').map((day) => (day as HTMLElement).dataset.date),
+        ['2026-09-20', '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26'],
+        'the chosen day\'s week is drawn',
+      );
+      assert.deepStrictEqual(tabStops(), ['2026-09-22'], 'the chosen day takes Tab, not the day focused in a week not drawn');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('draws a repeating task on each later date its rule lands on, quieter than a due date', () => {
     const repeating = buildWorkspaceIndex(new Map([
       ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],

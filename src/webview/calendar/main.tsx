@@ -122,7 +122,7 @@ function Day({ state, day, tabStop }: DayProps) {
 /** The sidebar: the month's header, its grid, and the chosen day under it. */
 function CalendarView({ state }: { readonly state: DrawnCalendar }) {
   const snapshot = state.snapshot;
-  const tabStop = tabStopDate(state);
+  const tabStop = tabStopDate(state, snapshot.weeks);
   const days = (week: CalendarWeek) => week.days.filter((day) => isDrawn(snapshot, day)).map((day) => <Day state={state} day={day} tabStop={tabStop} />);
   // The chosen day under the month, with the panel on.
   const day = snapshot.dayPanel && !snapshot.dayInSidebar ? snapshot.selected : undefined;
