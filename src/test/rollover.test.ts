@@ -399,6 +399,29 @@ suite('Task rollover', () => {
     );
   });
 
+  test('reads Carried over\'s section as the parser does: a bare # ends it, and code does not', () => {
+    assert.deepStrictEqual(
+      placeCarriedOver('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n#\n\nAfter.\n', ['- [ ] Two']),
+      { start: { line: 5, character: 0 }, end: { line: 5, character: 0 }, text: '- [ ] Two\n' },
+      'before the bare # that ends the section',
+    );
+    assert.deepStrictEqual(
+      placeCarriedOver('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n```\n# not a heading\n```\n', ['- [ ] Two']),
+      { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, text: '\n- [ ] Two\n' },
+      'after the code block, which is part of the section',
+    );
+    assert.strictEqual(
+      placeCarriedOver('# 2026-09-25\n\n```\n## Carried over\n```\n', ['- [ ] Two']).text,
+      '\n\n## Carried over\n\n- [ ] Two\n',
+      'a Carried over heading in code is not one',
+    );
+    assert.strictEqual(
+      placeCarriedOver('```\n# Example\n```\n## 2026-09-25\n', ['- [ ] Two']).text,
+      '\n\n### Carried over\n\n- [ ] Two\n',
+      'the first heading outside code sets the level',
+    );
+  });
+
   test('says in one sentence what it did, and where from', () => {
     assert.strictEqual(
       describeRollover(

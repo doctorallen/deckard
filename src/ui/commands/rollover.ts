@@ -26,6 +26,7 @@ import {
 import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 import { getCaptureInsertion } from '../../domain/capture/captureLines';
+import { findFencedLines, readHeading } from '../../domain/markdown/lineShapes';
 
 /**
  * Roll Tasks Forward, and the rollover a new daily note starts with.
@@ -286,6 +287,9 @@ export function describeRollover(
  * after what is already there, or under a new one at the end of the note,
  * one level deeper than the note's first heading (`##` under `# {date}`).
  * Returns the stretch of the note to replace and what replaces it.
+ *
+ * A heading is one as the parser reads it, `#` alone included, and a line
+ * in fenced code is never one, so the section ends where the Outline says.
  */
 export function placeCarriedOver(
   content: string,
@@ -297,16 +301,17 @@ export function placeCarriedOver(
 } {
   const eol = content.includes('\r\n') ? '\r\n' : '\n';
   const noteLines = content.split(/\r?\n/);
-  const heading = (text: string) => /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/.exec(text);
-  const existing = noteLines.findIndex(
-    (text) => heading(text)?.[2].trim().toLowerCase() === CARRIED_OVER_HEADING.toLowerCase(),
+  const fenced = findFencedLines(noteLines);
+  const headings = noteLines.map((text, line) => (fenced.has(line) ? undefined : readHeading(text)));
+  const existing = headings.findIndex(
+    (heading) => heading?.text.toLowerCase() === CARRIED_OVER_HEADING.toLowerCase(),
   );
   if (existing >= 0) {
-    const level = heading(noteLines[existing])![1].length;
+    const level = headings[existing]!.level;
     let endLine = noteLines.length;
     for (let at = existing + 1; at < noteLines.length; at += 1) {
-      const next = heading(noteLines[at]);
-      if (next && next[1].length <= level) {
+      const next = headings[at];
+      if (next && next.level <= level) {
         endLine = at;
         break;
       }
@@ -318,8 +323,8 @@ export function placeCarriedOver(
     const at = { line: insertion.line, character: insertion.character };
     return { start: at, end: at, text: insertion.text };
   }
-  const first = noteLines.map(heading).find(Boolean);
-  const level = first ? Math.min(first[1].length + 1, 6) : 2;
+  const first = headings.find(Boolean);
+  const level = first ? Math.min(first.level + 1, 6) : 2;
   let last = noteLines.length - 1;
   while (last >= 0 && noteLines[last].trim() === '') {
     last -= 1;
