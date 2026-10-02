@@ -182,6 +182,37 @@ suite('Calendar', () => {
     }
   });
 
+  test('with the weekends hidden, Page Down lands on a weekday the next month draws', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const key = (page: ReturnType<typeof openWebviewPage>, date: string, name: string) => {
+      const day = page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      day.focus();
+      day.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: name, bubbles: true }));
+    };
+    // October 10th, 2026 is a Saturday, and October 31st another.
+    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { showWeekends: false }));
+    try {
+      key(sidebar, '2026-09-10', 'PageDown');
+      assert.deepStrictEqual(sidebar.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' });
+      sidebar.send(createCalendar(index, '2026-10', createQueryContext(now), { showWeekends: false }));
+      assert.strictEqual((sidebar.document.activeElement as HTMLElement).dataset.date, '2026-10-12', 'on to Monday, which is drawn');
+    } finally {
+      sidebar.dispose();
+    }
+    const panel = openWebviewPage(
+      renderPage('calendar'),
+      createCalendar(index, '2026-09', createQueryContext(now), { showWeekends: false, dayPanel: true }),
+    );
+    try {
+      key(panel, '2026-09-10', 'PageDown');
+      assert.deepStrictEqual(panel.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-12' }, 'the day chosen is one the grid draws');
+      key(panel, '2026-09-30', 'PageDown');
+      assert.deepStrictEqual(panel.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-30' });
+    } finally {
+      panel.dispose();
+    }
+  });
+
   test('draws a repeating task on each later date its rule lands on, quieter than a due date', () => {
     const repeating = buildWorkspaceIndex(new Map([
       ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],

@@ -11,7 +11,7 @@
  */
 import type { ComponentChild } from 'preact';
 
-import { sameDayIn, stepDate } from '../../../domain/markdown/calendar';
+import { sameShownDayIn, stepDate } from '../../../domain/markdown/calendar';
 import type { CalendarMessage, CalendarSnapshot } from '../../../ui/protocol/calendar';
 import type { StateMessage } from '../../../ui/protocol/messaging';
 import { type ActionHandler, onHostMessage, type PageStore, startPage } from '../page';
@@ -225,11 +225,15 @@ export class CalendarSession<S extends CalendarState> {
     this.selectDay(date);
   }
 
-  /** Page Up and Page Down: the same day of the month before or after. */
+  /**
+   * Page Up and Page Down: the same day of the month before or after, or,
+   * with the weekends hidden, a weekday of that month near it, since a
+   * hidden day can take neither the focus nor the choice.
+   */
   private stepMonth(day: HTMLElement, key: string): void {
     const shown = this.snapshot as CalendarSnapshot;
     const month = key === 'PageUp' ? shown.previousMonth : shown.nextMonth;
-    const date = sameDayIn(day.dataset.date as string, month);
+    const date = sameShownDayIn(day.dataset.date as string, month, Boolean(shown.hideWeekends));
     this.focusWhenDrawn(date);
     send(shown.dayPanel ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
   }
