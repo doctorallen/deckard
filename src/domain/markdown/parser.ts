@@ -1081,11 +1081,17 @@ function findTagMatches(
   personMarker?: string,
 ): TagMatch[] {
   const activePersonMarker = getPersonMarker(personMarker);
+  const markers = findTagMarkers(text, activePersonMarker);
+  if (markers.length === 0) {
+    return [];
+  }
   const skipped = findCodeAndLinkRanges(text);
-  return [...text.matchAll(getTagPattern(activePersonMarker))].flatMap((match) => {
-    const marker = match[2];
-    const rawName = match[3];
-    const markerIndex = (match.index ?? 0) + match[0].lastIndexOf(marker);
+  return markers.flatMap((markerIndex) => {
+    const rawName = readTagNameAt(text, markerIndex);
+    if (rawName === undefined) {
+      return [];
+    }
+    const marker = text[markerIndex];
     if (isNumericHashTag(marker, rawName) || isInRanges(skipped, markerIndex)) {
       return [];
     }
@@ -1099,6 +1105,81 @@ function findTagMatches(
       },
     ];
   });
+}
+
+/** The UTF-16 codes of `#` and `@`. */
+const HASH_CODE = '#'.charCodeAt(0);
+const AT_CODE = '@'.charCodeAt(0);
+
+/**
+ * The columns of every `#`, `@`, and people marker in `text`: the only
+ * places a tag can start, so a line with none of them is read no further.
+ */
+function findTagMarkers(text: string, personMarker: string): number[] {
+  const markers: number[] = [];
+  const personCode = personMarker.charCodeAt(0);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code === HASH_CODE || code === AT_CODE || code === personCode) {
+      markers.push(index);
+    }
+  }
+  return markers;
+}
+
+/**
+ * The name of the tag whose marker is at `markerIndex`, read as the tag
+ * pattern reads it, or undefined when no tag starts there.
+ *
+ * The pattern scans every column of a line for a character that is not a
+ * tag's word character or `#`, followed by a marker; this asks the same of
+ * the marker's column alone. A tag starts the text, or follows a character
+ * that is none of those, a whole character when it is a surrogate pair as
+ * the pattern's `u` flag reads it. Its name is the longest the name's
+ * pattern reads, less any `-` it ends on, which is the longest that ends on
+ * a word character and is not followed by one.
+ */
+function readTagNameAt(text: string, markerIndex: number): string | undefined {
+  if (markerIndex > 0 && isTagWordOrHash(characterBefore(text, markerIndex))) {
+    return undefined;
+  }
+  TAG_NAME_AT.lastIndex = markerIndex + 1;
+  const name = TAG_NAME_AT.exec(text)?.[0];
+  if (name === undefined) {
+    return undefined;
+  }
+  let end = name.length;
+  while (name[end - 1] === '-') {
+    end -= 1;
+  }
+  return name.slice(0, end);
+}
+
+/** The character, a whole surrogate pair when it is one, that ends just before `index`. */
+function characterBefore(text: string, index: number): string {
+  const low = text.charCodeAt(index - 1);
+  if (low >= 0xdc00 && low <= 0xdfff && index >= 2) {
+    const high = text.charCodeAt(index - 2);
+    if (high >= 0xd800 && high <= 0xdbff) {
+      return text.slice(index - 2, index);
+    }
+  }
+  return text[index - 1];
+}
+
+/** Whether a character is a tag's word character or `#`, without a pattern for plain ASCII. */
+function isTagWordOrHash(character: string): boolean {
+  const code = character.charCodeAt(0);
+  if (code < 0x80) {
+    return (
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      code === 95 ||
+      code === HASH_CODE
+    );
+  }
+  return TAG_WORD_OR_HASH.test(character);
 }
 
 /**
@@ -1136,6 +1217,12 @@ export const TAG_WORD_CHARACTERS = '\\p{L}\\p{N}\\p{M}_';
  * tags, read whole.
  */
 export const TAG_NAME_SOURCE = `[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*(?:\\/[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*)*`;
+
+/** A tag's name, read where it starts. */
+const TAG_NAME_AT = new RegExp(TAG_NAME_SOURCE, 'uy');
+
+/** A tag's word character or `#`: what a character before a tag's marker may not be. */
+const TAG_WORD_OR_HASH = new RegExp(`^[${TAG_WORD_CHARACTERS}#]$`, 'u');
 
 /** The tag pattern for one people marker, compiled. */
 function compileTagPattern(personMarker: string): RegExp {
