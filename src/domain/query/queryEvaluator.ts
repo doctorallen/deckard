@@ -1,7 +1,7 @@
 import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../tasks/taskPolicy';
-import { DAY_MS, startOfDay } from '../markdown/calendar';
+import { addDays, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../../shared/paths';
-import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
+import { EntityNamespaceAliases, isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
   Section,
@@ -606,7 +606,10 @@ function matchesCondition(
 ): boolean {
   switch (condition.field) {
     case 'tag':
-      return applyNegation(condition, matchesTag(condition.value, unit));
+      return applyNegation(
+        condition,
+        matchesTag(condition.value, unit, context.query.entityNamespaceAliases),
+      );
     case 'link':
       return matchesLinkCondition(condition, unit, context);
     case 'text':
@@ -625,7 +628,10 @@ function matchesCondition(
     case 'in':
       return applyNegation(condition, isInFolder(condition.value, unit.filePath));
     case 'kind':
-      return applyNegation(condition, matchesKind(condition.value, unit));
+      return applyNegation(
+        condition,
+        matchesKind(condition.value, unit, context.query.entityNamespaceAliases),
+      );
     case 'file':
       return matchesPathValue(condition, getFileName(unit.filePath));
     case 'path':
@@ -679,16 +685,36 @@ function applyNegation(
 
 /**
  * Matches a tag by canonical key, accepting the same spellings the rest of
- * Deckard accepts and supporting `*` for namespace queries.
+ * Deckard accepts, a namespace by any of its aliases, and `*` for
+ * namespace queries.
  */
-function matchesTag(value: string, unit: QueryUnit): boolean {
-  if (isWildcard(value)) {
-    const pattern = createGlob(value, true);
+function matchesTag(value: string, unit: QueryUnit, aliases: EntityNamespaceAliases): boolean {
+  const canonical = resolveNamespaceAlias(value, aliases);
+  if (isWildcard(canonical)) {
+    const pattern = createGlob(canonical, true);
     return [...unit.tagKeys].some((tagKey) => pattern.test(tagKey));
   }
 
   const tagMap = new Map([...unit.tagKeys].map((tagKey) => [tagKey, tagKey]));
-  return resolveIndexedTagKey(tagMap, value) !== undefined;
+  return resolveIndexedTagKey(tagMap, canonical) !== undefined;
+}
+
+/**
+ * A tag value with its namespace read through the aliases, as the parser
+ * reads a note's tags: `#organization/acme` is kept as `#org/acme`, so a
+ * search must ask for it the same way. The `#` may be left off, as a
+ * search allows; anything without a namespace is returned as written.
+ */
+function resolveNamespaceAlias(value: string, aliases: EntityNamespaceAliases): string {
+  const match = /^(#?)([^/#@]+)\/(.+)$/s.exec(value);
+  if (!match) {
+    return value;
+  }
+  const namespace = match[2].toLowerCase();
+  // Only the record's own keys count, so `#constructor/x` is not Object's.
+  return Object.hasOwn(aliases, namespace)
+    ? `${match[1]}${aliases[namespace]}/${match[3]}`
+    : value;
 }
 
 /**
@@ -698,7 +724,7 @@ function matchesTag(value: string, unit: QueryUnit): boolean {
 function matchesText(condition: QueryConditionNode, unit: QueryUnit): boolean {
   const needle = condition.value.toLowerCase();
   if (condition.operator === 'eq' || condition.operator === 'neq') {
-    // Whole-word match keeps `text:plan` from matching "planning".
+    // Whole-word match keeps `text = plan` from matching "planning".
     const pattern = new RegExp(
       `(^|[^\\p{L}\\p{N}_])${escapeRegExp(needle)}([^\\p{L}\\p{N}_]|$)`,
       'u',
@@ -758,7 +784,7 @@ function isForToday(unit: QueryUnit, open: boolean, { now }: QueryContext): bool
     return false;
   }
   const today = startOfDay(now);
-  const tomorrow = today + DAY_MS;
+  const tomorrow = addDays(today, 1);
   if (unit.dueAt !== undefined && unit.dueAt < today) {
     return false;
   }
@@ -793,7 +819,7 @@ function isAvailable(unit: QueryUnit, open: boolean, context: QueryContext): boo
     open &&
     unit.parked !== true &&
     unit.blocked !== true &&
-    (unit.startAt === undefined || unit.startAt < startOfDay(context.now) + DAY_MS) &&
+    (unit.startAt === undefined || unit.startAt < addDays(startOfDay(context.now), 1)) &&
     !context.taskPolicy.onHoldStatuses.includes(unit.status ?? '')
   );
 }
@@ -821,7 +847,7 @@ const TASK_IS_PREDICATES: ReadonlyMap<string, IsPredicate> = new Map<string, IsP
   [
     'due',
     (unit, open, { now }) =>
-      open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now) + 7 * DAY_MS,
+      open && unit.dueAt !== undefined && unit.dueAt < addDays(startOfDay(now), 7),
   ],
   ['needs-date', (unit, open, context) => open && needsNewDate(unit.dueAt, context.now, context.taskPolicy)],
   ['today', isForToday],
@@ -900,10 +926,12 @@ export function isInFolder(folder: string, filePath: string): boolean {
 }
 
 /**
- * Matches an entity namespace, so `kind = project` finds every project tag.
+ * Matches an entity namespace, so `kind = project` finds every project tag,
+ * and `kind = organization` every tag the index keeps under `org`.
  */
-function matchesKind(value: string, unit: QueryUnit): boolean {
-  const kind = value.toLowerCase();
+function matchesKind(value: string, unit: QueryUnit, aliases: EntityNamespaceAliases): boolean {
+  const written = value.toLowerCase();
+  const kind = Object.hasOwn(aliases, written) ? aliases[written] : written;
   return [...unit.tagKeys].some((tagKey) => getTagKind(tagKey) === kind);
 }
 

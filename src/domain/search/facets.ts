@@ -7,6 +7,7 @@
  * nothing, and each value carries the clause that adds it to the query, so
  * refining by facet and writing a query are the same thing.
  */
+import { addDays, startOfDay } from '../markdown/calendar';
 import { formatMonthName } from '../markdown/dates';
 import { countLinkTargets, resolveLinkQuery } from '../query/queryLinks';
 import {
@@ -59,7 +60,6 @@ const TAG_VALUE_LIMIT = 10;
 const RELATED_VALUE_LIMIT = 30;
 const FOLDER_VALUE_LIMIT = 8;
 const LINK_VALUE_LIMIT = 8;
-const DAY = 24 * 60 * 60 * 1000;
 
 /** What every facet of one search reads. */
 interface FacetContext {
@@ -188,6 +188,9 @@ function statusFacet(context: FacetContext): SearchFacet[] {
 function dueFacet(context: FacetContext): SearchFacet[] {
   const { today } = context;
   const tasks = context.source.tasks;
+  // Calendar days, as the clauses count them, so a week that spans a
+  // daylight-saving change still ends at midnight.
+  const weekEnd = addDays(today, 7);
   return [
     makeFacet(context, { id: 'due', label: 'Due' }, [
       {
@@ -204,14 +207,14 @@ function dueFacet(context: FacetContext): SearchFacet[] {
           (task) =>
             task.dueAt !== undefined &&
             task.dueAt >= today &&
-            task.dueAt < today + 7 * DAY,
+            task.dueAt < weekEnd,
         ).length,
       },
       {
         label: 'Later',
         clause: 'due >= 7d',
         count: tasks.filter(
-          (task) => task.dueAt !== undefined && task.dueAt >= today + 7 * DAY,
+          (task) => task.dueAt !== undefined && task.dueAt >= weekEnd,
         ).length,
       },
       {
@@ -257,8 +260,8 @@ function updatedFacet(context: FacetContext): SearchFacet[] {
     ...source.sections.map((section) => section.updatedAt),
     ...source.files.map((file) => file.updatedAt),
   ];
-  const weekStart = today - 6 * DAY;
-  const monthStart = today - 29 * DAY;
+  const weekStart = addDays(today, -6);
+  const monthStart = addDays(today, -29);
   return [
     makeFacet(context, { id: 'updated', label: 'Updated' }, [
       {
@@ -503,11 +506,4 @@ function countFolders(source: FacetSource): SearchFacetValue[] {
     }
   }
   return [];
-}
-
-/** The local midnight a moment falls on. */
-function startOfDay(timestamp: number): number {
-  const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
 }

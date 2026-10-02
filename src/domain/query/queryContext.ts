@@ -1,4 +1,5 @@
 import { Weekday } from '../markdown/dates';
+import { EntityNamespaceAliases, getEntityNamespaceAliases } from '../markdown/parser';
 import { DEFAULT_TASK_POLICY, TaskPolicy } from '../tasks/taskPolicy';
 
 /**
@@ -24,6 +25,13 @@ export interface QueryContext {
   taskPolicy: Readonly<TaskPolicy>;
   /** The moment the question is asked, in milliseconds since the epoch. */
   now: number;
+  /**
+   * The namespace aliases the index was built with, `organization` for
+   * `org` and those of `deckard.entityNamespaceAliases`, so a tag or a kind
+   * written in a search the way a note writes it finds what the index keeps
+   * under its canonical namespace.
+   */
+  entityNamespaceAliases: EntityNamespaceAliases;
 }
 
 /** The settings a QueryContext is built from, each one optional. */
@@ -32,12 +40,15 @@ export interface QueryContextSettings {
   weekStart?: Weekday;
   /** Anything left out takes its default, as the settings' defaults are. */
   taskPolicy?: Partial<TaskPolicy>;
+  /** Already merged over the built-in aliases, as getEntityNamespaceAliases returns them. */
+  entityNamespaceAliases?: EntityNamespaceAliases;
 }
 
 /**
  * A QueryContext for `now`, with every setting it is not given at the
- * settings' own default: nobody named, weeks from Sunday, and
- * DEFAULT_TASK_POLICY. An identity of only spaces names nobody.
+ * settings' own default: nobody named, weeks from Sunday,
+ * DEFAULT_TASK_POLICY, and the built-in namespace aliases. An identity of
+ * only spaces names nobody.
  */
 export function createQueryContext(
   now: number,
@@ -49,5 +60,6 @@ export function createQueryContext(
     weekStart: settings.weekStart ?? 0,
     taskPolicy: { ...DEFAULT_TASK_POLICY, ...settings.taskPolicy },
     now,
+    entityNamespaceAliases: settings.entityNamespaceAliases ?? getEntityNamespaceAliases(undefined),
   };
 }

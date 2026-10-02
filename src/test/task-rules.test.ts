@@ -74,6 +74,18 @@ suite('Task rules', () => {
     assert.deepStrictEqual(placed, { group: 'later', at: at(10, 20), reason: 'starts Tue 2026-10-20' });
   });
 
+  test('a task whose only date is a start already come is not upcoming, since nothing dates it ahead', () => {
+    const place = (line: string) => placeTask(task(line), days, DEFAULT_TASK_POLICY);
+    const undated = { group: 'nodate', at: NO_DATE, reason: '' };
+    assert.deepStrictEqual(place('- [ ] Started last week 🛫 2026-09-18'), undated);
+    assert.deepStrictEqual(place('- [ ] Starts today 🛫 2026-09-25'), undated);
+    assert.deepStrictEqual(place('- [ ] Starts tomorrow 🛫 2026-09-26'), {
+      group: 'upcoming',
+      at: at(9, 26),
+      reason: 'starts Sat 2026-09-26',
+    });
+  });
+
   test('turns a drop on a column into an edit of the line', () => {
     const line = '- [ ] Draft notes #status/todo';
     const draft = task(line);

@@ -22,7 +22,8 @@ import { ParsedFile, PersistedPreferences, Section, TagInfo, Task, WorkspaceInde
 import { formatIsoDate, startOfDay } from '../domain/markdown/calendar';
 import { resolveDateRange } from '../domain/query/queryDates';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { parseMarkdown } from '../domain/markdown/parser';
+import { getEntityNamespaceAliases, parseMarkdown } from '../domain/markdown/parser';
+import { buildSearchFacets } from '../domain/search/facets';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
@@ -181,6 +182,27 @@ suite('Deckard query language', () => {
     assert.deepStrictEqual(parseQuery(formatted).diagnostics, []);
   });
 
+  test('quotes a value that is a word joining terms, so the query still reads', () => {
+    for (const [source, written] of [
+      ['"not"', 'text ~ "not"'],
+      ['"or" #work', 'text ~ "or" AND tag = #work'],
+      ['text ~ "AND"', 'text ~ "AND"'],
+      ['file = "Or"', 'file = "Or"'],
+      ['text ~ "&&"', 'text ~ "&&"'],
+      ['text ~ "||x"', 'text ~ "||x"'],
+    ]) {
+      const parsed = parseQuery(source);
+      assert.strictEqual(formatQuery(parsed.node), written, source);
+      assert.deepStrictEqual(parseQuery(written).diagnostics, [], written);
+      assert.strictEqual(
+        formatQuery(parseQuery(fromBuilderTree(toBuilderTree(parsed.node))).node),
+        written,
+        `${source} through the builder`,
+      );
+    }
+    assert.strictEqual(formatQuery(parseQuery('text ~ "band"').node), 'text ~ band');
+  });
+
   test('expresses a tag intersection as the query the chips imply', () => {
     const query = buildTagIntersectionQuery(['#project/atlas', '@ren-kade']);
     assert.strictEqual(query, 'tag = #project/atlas AND tag = @ren-kade');
@@ -290,6 +312,25 @@ suite('Deckard query language', () => {
     );
   });
 
+  test('reads text = as a whole word, and text: and text ~ as any part of one, as the guide says', () => {
+    const file = parseMarkdown(
+      'notes/n.md',
+      '# Sprint\n- [ ] Finish the planning doc\n- [ ] Write the plan\n',
+    );
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const titles = (text: string) =>
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now())).tasks.map(
+        (task) => task.title,
+      );
+    assert.deepStrictEqual(titles('text = plan'), ['Write the plan']);
+    assert.deepStrictEqual(titles('text != plan'), ['Finish the planning doc']);
+    for (const contains of ['text:plan', 'text ~ plan', 'plan']) {
+      assert.deepStrictEqual(titles(contains), ['Finish the planning doc', 'Write the plan'], contains);
+    }
+    assert.strictEqual(formatQuery(parseQuery('text = plan').node), 'text = plan');
+    assert.strictEqual(formatQuery(parseQuery('text:plan').node), 'text ~ plan');
+  });
+
   test('matches text inside a section body', () => {
     const index = createIndex();
     const results = evaluateQuery(index, parseQuery('text ~ elevator').node, createQueryContext(Date.now()));
@@ -339,6 +380,24 @@ suite('Deckard query language', () => {
       results.sections.map((section) => section.id),
       ['vendor'],
     );
+  });
+
+  test('finds a tag and a kind by a namespace alias, as the note was written', () => {
+    // A workspace's own alias, as the settings give it, merged over the built-in ones.
+    const aliases = { entityNamespaceAliases: getEntityNamespaceAliases({ proj: 'project' }) };
+    const file = parseMarkdown('notes/acme.md', '# Acme #organization/acme\n\n# Atlas #proj/atlas\n', undefined, aliases);
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const headings = (text: string, settings = {}) =>
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now(), settings)).sections.map(
+        (section) => section.heading.split(' #')[0],
+      );
+    for (const text of ['#organization/acme', '#org/acme', 'tag = organization/acme', '#organization/*', 'kind = organization', 'kind = org']) {
+      assert.deepStrictEqual(headings(text), ['Acme'], text);
+    }
+    assert.deepStrictEqual(headings('-#organization/acme'), ['Atlas']);
+    for (const text of ['#proj/atlas', 'kind = proj', '#project/atlas']) {
+      assert.deepStrictEqual(headings(text, aliases), ['Atlas'], text);
+    }
   });
 
   test('matches an entity namespace by kind', () => {
@@ -564,6 +623,25 @@ suite('Deckard search page state', () => {
     assert.deepStrictEqual(parseQuery('due = 2026-12-31').diagnostics, []);
   });
 
+  test('refuses a window or a day written with a minus sign, rather than reading it as a day ahead', () => {
+    for (const value of ['-7d', '"-3-days"', '-friday']) {
+      assert.strictEqual(
+        parseQuery(`due = ${value}`).diagnostics[0]?.message,
+        parseQuery('due = soon').diagnostics[0]?.message,
+        value,
+      );
+      assert.strictEqual(
+        parseQuery(`updated > ${value}`).diagnostics[0]?.message,
+        parseQuery('updated > soon').diagnostics[0]?.message,
+        value,
+      );
+    }
+    // A plus sign says ahead, as it does in a date box, and dashes still stand for spaces.
+    for (const value of ['+2w', '3-days-ago', 'next-friday']) {
+      assert.deepStrictEqual(parseQuery(`due = ${value}`).diagnostics, [], value);
+    }
+  });
+
   test('takes "feb 29" as a date, since some years have it, and refuses a day no year has', () => {
     for (const text of ['due <= "feb 29"', 'due = "29 february"', 'created >= "feb 29"', 'done = "feb 29"']) {
       assert.deepStrictEqual(parseQuery(text).diagnostics, [], text);
@@ -576,6 +654,30 @@ suite('Deckard search page state', () => {
     const january2028 = new Date(2028, 0, 20, 12).getTime();
     const range = resolveDateRange('feb 29', january2028, 'future', 0);
     assert.strictEqual(range && formatIsoDate(range.start), '2028-02-29');
+  });
+
+  test('reads "feb 29" as the nearest leap day, however many years away', () => {
+    // From October 2026 the next leap day is in 2028 and the last in 2024.
+    const october2026 = new Date(2026, 9, 2, 12).getTime();
+    const day = (direction: 'past' | 'future', now = october2026) => {
+      const range = resolveDateRange('feb 29', now, direction, 0);
+      return range && formatIsoDate(range.start);
+    };
+    assert.strictEqual(day('future'), '2028-02-29');
+    assert.strictEqual(day('past'), '2024-02-29');
+    assert.deepStrictEqual(
+      evaluateQuery(
+        buildWorkspaceIndex(
+          new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] Spring 📅 2027-05-01\n')]]),
+        ),
+        parseQuery('due <= "feb 29"').node,
+        createQueryContext(october2026),
+      ).tasks.map((task) => task.title),
+      ['Spring'],
+    );
+    // 2100 is no leap year, so from 2097 the next is eight years on.
+    assert.strictEqual(day('future', new Date(2097, 0, 1, 12).getTime()), '2104-02-29');
+    assert.strictEqual(day('past', new Date(2103, 11, 1, 12).getTime()), '2096-02-29');
   });
 
   test('a day ends at its next midnight, on a daylight-saving change as on any other', () => {
@@ -604,6 +706,92 @@ suite('Deckard search page state', () => {
         process.env.TZ = zone;
       }
     }
+  });
+
+  test('counts named days and windows in calendar days, across a daylight-saving change', () => {
+    // New York moves its clocks forward on Sunday 2026-03-08 and back on
+    // Sunday 2026-11-01, so a day there is not always 24 hours.
+    inTimeZone('America/New_York', () => {
+      const midnight = (day: string) => startOfDay(new Date(`${day}T12:00`).getTime());
+      const index = buildWorkspaceIndex(
+        new Map([
+          [
+            'notes/a.md',
+            parseMarkdown(
+              'notes/a.md',
+              [
+                '- [ ] Sunday 📅 2026-03-08',
+                '- [ ] Monday 📅 2026-03-09',
+                '- [ ] Thursday 📅 2026-03-12',
+                '- [ ] Starts Monday 🛫 2026-03-09',
+                '- [ ] Fall 📅 2026-11-01',
+                '',
+              ].join('\n'),
+            ),
+          ],
+        ]),
+      );
+      const titles = (text: string, now: number) =>
+        evaluateQuery(index, parseQuery(text).node, createQueryContext(now)).tasks.map((task) => task.title);
+
+      const springDay = new Date(2026, 2, 8, 9).getTime();
+      assert.deepStrictEqual(titles('due = today', springDay), ['Sunday']);
+      assert.deepStrictEqual(titles('is:today', springDay), ['Sunday']);
+      assert.deepStrictEqual(titles('due = tomorrow', springDay), ['Monday']);
+      assert.ok(!titles('is:available', springDay).includes('Starts Monday'), 'it starts tomorrow');
+
+      const nov2 = new Date(2026, 10, 2, 12).getTime();
+      assert.deepStrictEqual(titles('due = yesterday', nov2), ['Fall']);
+
+      const march5 = new Date(2026, 2, 5, 12).getTime();
+      assert.strictEqual(resolveDateRange('7d', march5, 'future', 0)?.end, midnight('2026-03-12'));
+      assert.ok(!titles('due = 7d', march5).includes('Thursday'), 'seven days, not eight');
+      assert.ok(!titles('is:due', march5).includes('Thursday'), 'seven days, not eight');
+      const march10 = new Date(2026, 2, 10, 12).getTime();
+      assert.strictEqual(resolveDateRange('7d', march10, 'past', 0)?.start, midnight('2026-03-04'));
+
+      const due = buildSearchFacets(
+        buildWorkspaceIndex(new Map()),
+        {
+          sections: [],
+          files: [],
+          tasks: [
+            createTask({ id: 'a', dueAt: midnight('2026-03-05') }),
+            createTask({ id: 'b', dueAt: midnight('2026-03-12') }),
+          ],
+        },
+        '',
+        { now: march5 },
+      ).find((facet) => facet.id === 'due');
+      assert.deepStrictEqual(
+        due?.values.map((value) => [value.label, value.count]),
+        [
+          ['Next 7 days', 1],
+          ['Later', 1],
+        ],
+        'the facet counts the days its clause finds',
+      );
+      const updated = buildSearchFacets(
+        buildWorkspaceIndex(new Map()),
+        {
+          sections: [
+            createSection({ id: 'old', updatedAt: new Date(2026, 2, 3, 23, 30).getTime() }),
+            createSection({ id: 'new', updatedAt: new Date(2026, 2, 4, 9).getTime() }),
+          ],
+          files: [],
+          tasks: [],
+        },
+        '',
+        { now: march10 },
+      ).find((facet) => facet.id === 'updated');
+      assert.deepStrictEqual(
+        updated?.values.map((value) => [value.label, value.count]),
+        [
+          ['Last 7 days', 1],
+          ['1–4 weeks ago', 1],
+        ],
+      );
+    });
   });
 
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {
@@ -843,4 +1031,19 @@ function createTask(values: Partial<Task> & { id: string }): Task {
     sourceLineText: '- [ ] task',
     ...values,
   };
+}
+
+/** Runs `run` with the process's time zone set to `zone`, and puts it back after. */
+function inTimeZone(zone: string, run: () => void): void {
+  const saved = process.env.TZ;
+  process.env.TZ = zone;
+  try {
+    run();
+  } finally {
+    if (saved === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = saved;
+    }
+  }
 }
