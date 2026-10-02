@@ -15,10 +15,10 @@
  *   outrank the user's, else the user's.
  * - `user`: the user's settings, for every window; the context key that
  *   picks which command the palette offers follows (setOutlineFollowCursor).
- * - `folder-where-set`: a workspace folder's settings when one sets it, else
- *   where set; the context key follows (setZenMode).
+ * - `zen`: where set, through zen's own setter, which also sets the
+ *   context key that picks which command the palette offers (setZenMode).
  */
-export type ToggleTarget = 'where-set' | 'user' | 'folder-where-set';
+export type ToggleTarget = 'where-set' | 'user' | 'zen';
 
 /** One setting, and the two commands that turn it on and off. */
 export interface SettingToggle {
@@ -69,7 +69,7 @@ export const SETTING_TOGGLES: readonly SettingToggle[] = [
     disable: 'deckard.disableZenMode',
     setting: 'zenMode',
     values: { enable: true, disable: false },
-    target: 'folder-where-set',
+    target: 'zen',
   },
 ];
 

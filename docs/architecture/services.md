@@ -129,7 +129,7 @@ A feature is a `(context, services) => void | Promise<void>` in `src/ui/commands
 
 `runFeatures` runs each feature synchronously, in its own `try`. One that throws, or whose promise rejects, is written to the log as `Deckard could not register <feature>`, and the rest still register. The plan named `Promise.allSettled`; a loop does the same for features that are all synchronous, and keeps `activate()` synchronous, so every command exists and the exports are returned by the time VS Code counts Deckard active. This is Foam's pattern; Markdown All in One and the git extension do the same.
 
-The ten commands that only turn one setting on and off are rows of `SETTING_TOGGLES` in [`src/ui/commands/toggles/settingToggles.ts`](../../src/ui/commands/toggles/settingToggles.ts): an enable and a disable command, the setting, its two values, and the target it is written to, `where-set`, `user`, or `folder-where-set`. `setting-toggles.test.ts` runs under `test:unit`.
+The ten commands that only turn one setting on and off are rows of `SETTING_TOGGLES` in [`src/ui/commands/toggles/settingToggles.ts`](../../src/ui/commands/toggles/settingToggles.ts): an enable and a disable command, the setting, its two values, and the target it is written to, `where-set`, `user`, or `zen`. `setting-toggles.test.ts` runs under `test:unit`.
 
 There is no dependency-injection container and no static locator. GitLens's `Container.instance` and Dendron's `ExtensionProvider` both carry comments working around a static locator. Decorator containers such as `tsyringe` and `inversify` need `reflect-metadata` and `emitDecoratorMetadata`, which esbuild does not support without a Babel shim. A plain object built once is enough, and it is what lets services run under the fast test tier.
 

@@ -25,7 +25,7 @@ export function isZenModeEnabled(): boolean {
  * deckard.zenMode itself, which outranks them, kept zen on whatever the gear
  * said: the switch wrote, and nothing changed. It is written where the value
  * in force comes from: the workspace's settings when they set it, else the
- * user's. A folder's own setting is found and written by setZenMode.
+ * user's. A folder's settings never decide a window setting (setZenMode).
  */
 export function zenModeTarget(
   setting:
@@ -71,27 +71,20 @@ export function watchZenModeContext(): vscode.Disposable {
 }
 
 /**
- * Turns zen on or off for every window, matching how the setting reads. Each
- * page redraws from its own configuration listener, so there is nothing to
- * refresh here.
+ * Turns zen on or off, where the value in force is set. Each page redraws
+ * from its own configuration listener, so there is nothing to refresh here.
+ *
+ * Zen is a window setting, so a folder's settings.json never decides it on
+ * its own: in a multi-root workspace VS Code ignores a folder's value, and
+ * in a single folder that file is the workspace's settings. It used to be
+ * written to a folder's settings whenever inspect() reported a folder value,
+ * which happens only in a single folder that sets it, and there VS Code
+ * refuses a window setting at the folder level: the switch threw, and zen
+ * could be neither turned on nor off. It is written to the workspace's
+ * settings in that case, which is the same file.
  */
 export async function setZenMode(enabled: boolean): Promise<void> {
-  // A folder that sets it is written through a configuration for that folder.
-  const folder = vscode.workspace.workspaceFolders?.find(
-    (candidate) =>
-      vscode.workspace
-        .getConfiguration('deckard', candidate.uri)
-        .inspect<boolean>('zenMode')?.workspaceFolderValue !== undefined,
-  );
-  const written = folder
-    ? await writeSetting(
-        'zenMode',
-        enabled,
-        vscode.ConfigurationTarget.WorkspaceFolder,
-        vscode.workspace.getConfiguration('deckard', folder.uri),
-      )
-    : await writeSetting('zenMode', enabled, zenModeTarget());
-  if (written) {
+  if (await writeSetting('zenMode', enabled, zenModeTarget())) {
     await syncZenModeContext();
   }
 }

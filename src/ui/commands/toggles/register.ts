@@ -20,9 +20,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
 }
 
 /**
- * Writes one toggle's value where its target says. The `user` and
- * `folder-where-set` targets are the Outline's and zen's own setters, which
- * also set the context key the palette reads; each serves its one setting.
+ * Writes one toggle's value where its target says. The `user` and `zen`
+ * targets are the Outline's and zen's own setters, which also set the
+ * context key the palette reads; each serves its one setting.
  */
 function writeToggle(command: ToggleCommand, pageCommands: PageCommands): Promise<unknown> {
   switch (command.target) {
@@ -30,7 +30,7 @@ function writeToggle(command: ToggleCommand, pageCommands: PageCommands): Promis
       return writeSetting(command.setting, command.value, settingTarget(command.setting));
     case 'user':
       return setOutlineFollowCursor(command.value);
-    case 'folder-where-set':
+    case 'zen':
       return pageCommands.setZenMode(command.value);
   }
 }
