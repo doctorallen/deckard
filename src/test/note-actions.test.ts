@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { buildNoteActionItems, NoteActionState } from '../ui/commands/noteActions';
+import { buildNoteActionItems, hasHeadingAbove, NoteActionState } from '../ui/commands/noteActions';
 import { isDailyNoteText, readTopHeadings } from '../ui/commands/activeNoteContext';
 
 const target = { uri: 'file:///notes/atlas.md', line: 4 };
@@ -39,6 +39,14 @@ suite('Note Actions', () => {
       '$(target) Focus Section',
       '$(pin) Pin Note to Home',
     ]);
+  });
+
+  test('finds a heading above the cursor as the parser reads one', () => {
+    const above = (lines: string[]) => hasHeadingAbove({ lineAt: (at: number) => ({ text: lines[at] }) } as never, lines.length - 1);
+    assert.strictEqual(above(['#', 'text']), true, 'hashes alone');
+    assert.strictEqual(above(['   ## Plan', 'text']), true, 'up to three spaces in');
+    assert.strictEqual(above(['    # Code', 'text']), false, 'four spaces in is code');
+    assert.strictEqual(above(['#tag', 'text']), false, 'a tag');
   });
 
   test('opens Related Notes for the heading only inside a tagged entry', () => {

@@ -261,16 +261,27 @@ export function buildQueryFromTree(group: EditorGroup, depth: number): string {
   return depth > 0 && terms.length > 1 ? `(${body})` : body;
 }
 
+/**
+ * What `name` names in a table, or undefined when the table does not list
+ * it. Only the table's own keys count, as in the host's parser: the word is
+ * the reader's, and `constructor` read through plain indexing would find
+ * what every object inherits.
+ */
+function ownEntry<Value>(table: Readonly<Record<string, Value>>, name: string): Value | undefined {
+  return Object.hasOwn(table, name) ? table[name] : undefined;
+}
+
 /** The field a word names, from the host's spellings or the built-in names. */
 export function fieldFor(word: string, aliases: Readonly<Record<string, string>>): string | undefined {
   const name = String(word).toLowerCase();
-  if (aliases[name]) {
-    return aliases[name];
+  const alias = ownEntry(aliases, name);
+  if (alias) {
+    return alias;
   }
   if (name === 'no') {
     return 'has';
   }
-  return DEFAULT_OPERATORS[name] ? name : undefined;
+  return ownEntry(DEFAULT_OPERATORS, name) ? name : undefined;
 }
 
 /** A row the builder can edit. */
@@ -353,7 +364,7 @@ export function valueContext(prefix: string, aliases: Readonly<Record<string, st
   if (!match) {
     return undefined;
   }
-  const field = aliases[match[1].toLowerCase()];
+  const field = ownEntry(aliases, match[1].toLowerCase());
   return field ? { field, token: match[3] } : undefined;
 }
 

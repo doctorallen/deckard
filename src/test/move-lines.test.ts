@@ -60,6 +60,18 @@ suite('What Move to… moves', () => {
     assert.ok(!('refused' in readMoveBlock(['Text', '```', 'code', '```', 'After'], select([0, 0], [3, 3]))));
   });
 
+  test('refuses a heading as the parser reads one: hashes alone, and up to three spaces in', () => {
+    for (const heading of ['#', '##', '# ', '   # Plan']) {
+      assert.deepStrictEqual(readMoveBlock(['Text', heading, 'More'], cursor(1)), { refused: 'heading' }, JSON.stringify(heading));
+      assert.deepStrictEqual(
+        readMoveBlock(['Text', heading, 'More'], select([0, 0], [2, 2])),
+        { refused: 'heading' },
+        `${JSON.stringify(heading)} inside a block`,
+      );
+    }
+    assert.ok(!('refused' in readMoveBlock(['#tag line', 'More'], cursor(0))), 'a tag is not a heading');
+  });
+
   test('a task left behind is marked [>] with a link to where it went', () => {
     const moved = block(note, cursor(1));
     assert.deepStrictEqual(leaveBehind(moved, note, '2026-09-25', 'link'), [

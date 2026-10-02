@@ -13,9 +13,12 @@ import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatt
 import { findListParents, findParentTaskLine } from './listNesting';
 import {
   findFencedLines,
+  isHeading,
   isTaskLineOf,
   matchHeading,
   matchTaskLine,
+  readHeading,
+  stripClosingHeadingHashes,
   TaskLineMatch,
   TaskLineShape,
 } from './lineShapes';
@@ -64,11 +67,6 @@ const hubPropertyExclusions = new Set(['describes', 'tag', 'tags']);
 /** `describes:` names tags exactly as `tags:` does, so both parse the same. */
 function getTagField(field: string): string {
   return field === 'describes' ? 'tags' : field;
-}
-
-/** Whether a line is a heading as the parser reads one, words and all. */
-function isParsedHeading(line: string): boolean {
-  return matchHeading(line, 'kept') !== undefined;
 }
 
 /**
@@ -1153,13 +1151,9 @@ function findHeadings(
     if (fencedLines.has(lineIndex)) {
       return;
     }
-    const match = matchHeading(line, 'kept');
+    const match = readHeading(line);
     if (match) {
-      headings.push({
-        lineNumber: lineIndex + 1,
-        level: match.level,
-        text: stripClosingHeadingHashes(match.text.trim()),
-      });
+      headings.push({ lineNumber: lineIndex + 1, level: match.level, text: match.text });
     }
   });
 
@@ -1349,7 +1343,7 @@ function readTaggedEntry(
   const line = context.lines[lineIndex];
   if (
     context.fencedLines.has(lineIndex) ||
-    isParsedHeading(line) ||
+    isHeading(line) ||
     isTaskLineOf(line, taskShape) ||
     // A task migrated to another day is neither a task nor a note.
     isTaskLineOf(line, MIGRATED_TASK_LINE)
@@ -1418,7 +1412,7 @@ function readTaggedParagraph(
     const continuation = lines[next];
     if (
       fencedLines.has(next) ||
-      isParsedHeading(continuation) ||
+      isHeading(continuation) ||
       isTaskLineOf(continuation, taskShape) ||
       getListItemMatch(continuation) ||
       extractTags(continuation, undefined, personMarker).length === 0
@@ -1896,13 +1890,6 @@ export function hasAtxHeadingClosingHashes(line: string): boolean {
 
   const text = match.text.trim();
   return stripClosingHeadingHashes(text) !== text;
-}
-
-/**
- * Applies the optional closing-hash rule from ATX headings to display text.
- */
-function stripClosingHeadingHashes(text: string): string {
-  return text.replace(/[ \t]+#+[ \t]*$/, '').trim();
 }
 
 /**

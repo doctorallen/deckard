@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isHeading } from '../../domain/markdown/lineShapes';
 import { isTaskLine } from '../../domain/markdown/taskDraft';
 import { createPinForLine } from '../../domain/notes/pins';
 import { WorkspaceIndex } from '../../domain/model';
@@ -98,10 +99,14 @@ export function readNoteActionState(
   };
 }
 
-/** Whether a heading is written at or above a line, for a note not yet read. */
-function hasHeadingAbove(document: vscode.TextDocument, line: number): boolean {
+/**
+ * Whether a heading is written at or above a line, for a note not yet read:
+ * a heading as the parser reads one, so `#` alone and a heading indented by
+ * up to three spaces count, as they do for Focus Section.
+ */
+export function hasHeadingAbove(document: Pick<vscode.TextDocument, 'lineAt'>, line: number): boolean {
   for (let at = line; at >= 0; at -= 1) {
-    if (/^#{1,6}[ \t]/.test(document.lineAt(at).text)) {
+    if (isHeading(document.lineAt(at).text)) {
       return true;
     }
   }

@@ -180,9 +180,10 @@ const vscodeParkingSettings: ParkingSettings<vscode.Uri> = {
 };
 
 /**
- * The Undo button on a write to the notes: it takes back the last write as
- * Undo Last Change does, asking first, without asking whether that is still
- * this one.
+ * The Undo button on a write to the notes: it takes the write back as Undo
+ * Last Change does, asking first, but only while it is still Deckard's last
+ * write. It checks before asking and again once answered, and once Deckard
+ * has written since, it says to use Undo Last Change and writes nothing.
  */
 function offerUndo(indexer: ParkingIndex, written: WriteHandle, text: string): void {
   written.offerUndo(text, { guard: 'ask', refresh: () => indexer.refresh() });

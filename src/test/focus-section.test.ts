@@ -35,6 +35,8 @@ suite('Focus Section', () => {
     for (const bare of ['#', '# ', '#   ']) {
       assert.strictEqual(findHeadingLineAbove(['# Plan', 'text', bare, 'under it'], 3), 2, JSON.stringify(bare));
     }
+    assert.strictEqual(findHeadingLineAbove(['# Plan', '   ## Indented', 'under it'], 2), 1, 'up to three spaces in');
+    assert.strictEqual(findHeadingLineAbove(['# Plan', '    ## Code', 'under it'], 2), 0, 'four spaces in is code');
   });
 
   test('folds all but the section, opens its sub-headings, and says so in a key', async () => {

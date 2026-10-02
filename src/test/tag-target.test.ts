@@ -23,6 +23,13 @@ suite('Where a suggested tag goes', () => {
     assert.deepStrictEqual(findTagTarget(note, 12), { line: 12, kind: 'heading', label: 'Next steps' });
   });
 
+  test('hashes alone are a heading, as the parser reads them', () => {
+    const bare = ['Prose.', '#', 'Under it.'];
+    assert.deepStrictEqual(findTagTarget(bare, 2), { line: 2, kind: 'heading', label: '' });
+    assert.deepStrictEqual(findTagTarget(bare, 3), { line: 2, kind: 'heading', label: '' }, 'the section under it');
+    assert.deepStrictEqual(findTagTarget(['   ## Plan ##', 'Text'], 2), { line: 1, kind: 'heading', label: 'Plan' });
+  });
+
   test('the task or list item the cursor is on', () => {
     assert.deepStrictEqual(findTagTarget(note, 7), { line: 7, kind: 'line', label: 'line 7' });
   });

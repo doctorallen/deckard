@@ -1,5 +1,5 @@
 import { findFrontmatterEnd } from './frontmatter';
-import { findFencedLines, matchHeading } from './lineShapes';
+import { findFencedLines, readHeading } from './lineShapes';
 import { stripTags } from './parser';
 
 /**
@@ -31,9 +31,12 @@ function findFrontMatter(lines: readonly string[]): Set<number> {
   return held;
 }
 
-/** The heading on a line, labeled by its words without tags, or undefined for any other line. */
+/**
+ * The heading on a line, labeled by its words without tags, or undefined for
+ * any other line. A heading is what the parser takes for one, `#` alone too.
+ */
 function headingTarget(lines: readonly string[], index: number): TagTarget | undefined {
-  const match = matchHeading(lines[index], 'dropped');
+  const match = readHeading(lines[index]);
   return match
     ? { line: index + 1, kind: 'heading', label: stripTags(match.text) || match.text }
     : undefined;

@@ -104,6 +104,24 @@ suite('Front matter tags', () => {
     }
   });
 
+  test('reads both tags: and tag:, as the parser does', () => {
+    const both = "---\ntags: ''\ntag: [parked]\n---\n# Atlas\n";
+    assert.deepStrictEqual(readFrontmatterTagValues(both), ['parked']);
+    assert.strictEqual(addFrontmatterTag(both, 'parked'), undefined, 'Park finds the tag already there');
+    assert.strictEqual(removeFrontmatterTags(both, ['parked']), "---\ntags: ''\n---\n# Atlas\n", 'Unpark takes it out of tag:');
+    assert.strictEqual(
+      addFrontmatterTag(both, 'later'),
+      "---\ntags: ''\ntag: [parked, later]\n---\n# Atlas\n",
+      'a new tag joins the field that names tags',
+    );
+    const split = '---\ntags: [a, parked]\ntag:\n  - parked\n  - b\n---\n';
+    assert.deepStrictEqual(readFrontmatterTagValues(split), ['a', 'parked', 'parked', 'b']);
+    assert.strictEqual(removeFrontmatterTags(split, ['parked']), '---\ntags: [a]\ntag:\n  - b\n---\n', 'out of both');
+    assert.strictEqual(removeFrontmatterTags('---\ntag: parked\ntags:\n  - parked\n---\nBody\n', ['parked']), 'Body\n');
+    // A field written twice is read where it is written last, as the parser reads it.
+    assert.deepStrictEqual(readFrontmatterTagValues('---\ntags: [old]\ntitle: x\ntags: [new]\n---\n'), ['new']);
+  });
+
   test('says when there was nothing to remove', () => {
     assert.strictEqual(removeFrontmatterTags('# A\n', ['parked']), undefined);
     assert.strictEqual(removeFrontmatterTags('---\ntags: [a]\n---\n', ['parked']), undefined);

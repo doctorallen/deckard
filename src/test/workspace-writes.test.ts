@@ -272,6 +272,90 @@ suite('An Undo offered on a message', () => {
     }
   });
 
+  /**
+   * Stands in for an editor holding `name`'s note as `text` and the same on
+   * disk, and for VS Code, which refuses every edit; until the returned
+   * function puts the real ones back.
+   */
+  function refuseEditsTo(name: string, text: string): () => void {
+    const uri = vscode.Uri.file(`/notes/${name}.md`);
+    const document = {
+      uri,
+      isDirty: false,
+      lineCount: 1,
+      getText: () => text,
+      lineAt: () => ({ range: { end: new vscode.Position(0, text.length) } }),
+    };
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const replaced: [Record<string, unknown>, string, unknown][] = [
+      [workspace, 'openTextDocument', async () => document],
+      [workspace, 'fs', { readFile: async () => Buffer.from(text, 'utf8') }],
+      [workspace, 'applyEdit', async () => false],
+      [window, 'visibleTextEditors', [{ document }]],
+    ];
+    const kept = replaced.map(([owner, key]) => Object.getOwnPropertyDescriptor(owner, key));
+    replaced.forEach(([owner, key, value]) =>
+      Object.defineProperty(owner, key, { configurable: true, get: () => value }),
+    );
+    return () =>
+      replaced.forEach(([owner, key], at) => {
+        const descriptor = kept[at];
+        if (descriptor) {
+          Object.defineProperty(owner, key, descriptor);
+        } else {
+          delete owner[key];
+        }
+      });
+  }
+
+  const REFUSED =
+    'VS Code did not accept the undo in plan.md, so the note keeps the edit. Check that the note is not read-only, then try again.';
+
+  test("a message's Undo says VS Code refused it, rather than that the note changed", async () => {
+    const history = new WorkspaceWriteHistory();
+    const written = await writeWithHandle(history, 'plan');
+    const putBack = refuseEditsTo('plan', 'b');
+    const messages = listen();
+    try {
+      await written.takeBack({ guard: 'latest', done: 'Took it back.' });
+      assert.deepStrictEqual(messages.said, [REFUSED]);
+      assert.strictEqual(history.lastWrite?.label, 'plan', 'the write is kept, to try again');
+    } finally {
+      messages.restore();
+      putBack();
+    }
+  });
+
+  test('Undo Last Change says VS Code refused it, rather than that the note changed', async () => {
+    const history = new WorkspaceWriteHistory();
+    await writeWithHandle(history, 'plan');
+    const putBack = refuseEditsTo('plan', 'b');
+    const messages = listen((text) => (text.startsWith('Undo ') ? 'Undo' : undefined));
+    try {
+      await history.undoLast(async () => undefined);
+      assert.deepStrictEqual(messages.said, ['Undo plan?', REFUSED]);
+    } finally {
+      messages.restore();
+      putBack();
+    }
+  });
+
+  test('an Undo still says a note changed since, when it did', async () => {
+    const history = new WorkspaceWriteHistory();
+    const written = await writeWithHandle(history, 'plan');
+    // The write left "b"; the note now reads otherwise.
+    const putBack = refuseEditsTo('plan', 'changed by hand');
+    const messages = listen();
+    try {
+      await written.takeBack({ guard: 'latest', done: 'Took it back.' });
+      assert.deepStrictEqual(messages.said, ['plan.md changed after Deckard last read it, so nothing was written.']);
+    } finally {
+      messages.restore();
+      putBack();
+    }
+  });
+
   test("Park Note's Undo refuses before it asks once Deckard has written since", async () => {
     const history = new WorkspaceWriteHistory();
     const park = await writeWithHandle(history, 'parking a.md');

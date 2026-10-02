@@ -6,7 +6,7 @@ import { createNoteTitleMap, noteTitle } from '../index/backlinks';
 import { findCodeAndLinkRanges } from '../markdown/inlineRanges';
 import { ParsedFile, WorkspaceIndex } from '../model';
 import { escapeRegExp } from '../../shared/text';
-import { findFencedLines } from '../markdown/lineShapes';
+import { findFencedLines, isHeading } from '../markdown/lineShapes';
 import { findFrontmatterEnd } from '../markdown/frontmatter';
 
 /** A note's name written in another note's prose, where a link could go. */
@@ -92,7 +92,7 @@ export function findUnlinkedMentions(
     const fenced = findFencedLines(lines);
     const frontmatterEnd = findFrontmatterEnd(lines) ?? -1;
     lines.forEach((text, line) => {
-      if (line <= frontmatterEnd || fenced.has(line) || /^ {0,3}#{1,6}\s/.test(text)) {
+      if (line <= frontmatterEnd || fenced.has(line) || isHeading(text)) {
         return;
       }
       // Blank out what is not prose, keeping every column where it was.

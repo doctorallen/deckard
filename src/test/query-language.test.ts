@@ -21,6 +21,8 @@ import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { ParsedFile, PersistedPreferences, Section, TagInfo, Task, WorkspaceIndex } from '../domain/model';
 import { formatIsoDate, startOfDay } from '../domain/markdown/calendar';
 import { resolveDateRange } from '../domain/query/queryDates';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
@@ -560,6 +562,48 @@ suite('Deckard search page state', () => {
     }
     assert.deepStrictEqual(parseQuery('due = 2028-02-29').diagnostics, [], 'a leap day is a day');
     assert.deepStrictEqual(parseQuery('due = 2026-12-31').diagnostics, []);
+  });
+
+  test('takes "feb 29" as a date, since some years have it, and refuses a day no year has', () => {
+    for (const text of ['due <= "feb 29"', 'due = "29 february"', 'created >= "feb 29"', 'done = "feb 29"']) {
+      assert.deepStrictEqual(parseQuery(text).diagnostics, [], text);
+    }
+    assert.strictEqual(
+      parseQuery('due <= "feb 30"').diagnostics[0]?.message,
+      parseQuery('due = soon').diagnostics[0]?.message,
+    );
+    // In a leap year it is that year's leap day, read on the moment asked.
+    const january2028 = new Date(2028, 0, 20, 12).getTime();
+    const range = resolveDateRange('feb 29', january2028, 'future', 0);
+    assert.strictEqual(range && formatIsoDate(range.start), '2028-02-29');
+  });
+
+  test('a day ends at its next midnight, on a daylight-saving change as on any other', () => {
+    // New York moves its clocks on 2026-03-08, a 23-hour day, and on
+    // 2026-11-01, a 25-hour one.
+    const zone = process.env.TZ;
+    process.env.TZ = 'America/New_York';
+    try {
+      const now = new Date(2026, 0, 15, 12).getTime();
+      for (const [day, next] of [['2026-03-08', '2026-03-09'], ['2026-11-01', '2026-11-02']]) {
+        const range = resolveDateRange(day, now, 'future', 0);
+        assert.strictEqual(range?.end, startOfDay(new Date(`${next}T12:00`).getTime()), day);
+      }
+      const index = buildWorkspaceIndex(
+        new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] Spring 📅 2026-03-09\n- [ ] Fall 📅 2026-11-01\n')]]),
+      );
+      const titles = (text: string) =>
+        evaluateQuery(index, parseQuery(text).node, createQueryContext(now)).tasks.map((task) => task.title);
+      assert.deepStrictEqual(titles('due = 2026-03-08'), [], 'the next day is not this one');
+      assert.deepStrictEqual(titles('due < 2026-03-09'), []);
+      assert.deepStrictEqual(titles('due = 2026-11-01'), ['Fall']);
+    } finally {
+      if (zone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = zone;
+      }
+    }
   });
 
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {

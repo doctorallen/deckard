@@ -109,9 +109,10 @@ function readWindow(normalized: string, { now, direction }: RangeContext): Range
 }
 
 /**
- * A `YYYY-MM-DD` day, as that one day from its local midnight. A day the
- * calendar does not have, such as `2026-02-31`, names no time rather than
- * rolling over into March.
+ * A `YYYY-MM-DD` day, as that one day from its local midnight to the next,
+ * which is 23 or 25 hours on a daylight-saving change. A day the calendar
+ * does not have, such as `2026-02-31`, names no time rather than rolling
+ * over into March.
  */
 function readIsoDay(normalized: string): RangeReading {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
@@ -121,7 +122,7 @@ function readIsoDay(normalized: string): RangeReading {
   if (start === undefined) {
     return { range: undefined };
   }
-  return { range: { start, end: start + DAY_MS, isWindow: false } };
+  return { range: { start, end: addDays(start, 1), isWindow: false } };
 }
 
 /** A whole week or month, as resolveDatePeriod reads it. */

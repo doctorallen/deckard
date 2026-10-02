@@ -29,6 +29,27 @@ class Range {
   }
 }
 
+/**
+ * An edit across notes, as VS Code's is made: replacements kept per note,
+ * and `entries` to read them back. Nothing applies it here.
+ */
+class WorkspaceEdit {
+  constructor() {
+    this.edits = new Map();
+  }
+
+  replace(uri, range, newText) {
+    const key = uri.toString();
+    const entry = this.edits.get(key) ?? [uri, []];
+    entry[1].push({ range, newText });
+    this.edits.set(key, entry);
+  }
+
+  entries() {
+    return [...this.edits.values()];
+  }
+}
+
 /** A line and a character, as VS Code's position holds them. */
 class Position {
   constructor(line, character) {
@@ -298,6 +319,7 @@ module.exports = {
   EventEmitter,
   Range,
   Position,
+  WorkspaceEdit,
   Selection,
   DocumentLink,
   MarkdownString,
