@@ -108,6 +108,22 @@ suite('CaptureService', () => {
     assert.deepStrictEqual(events, ['draft cleared', 'remembered Calls']);
   });
 
+  test('under a heading: found and remembered when the index read the note again while the heading was being chosen', async () => {
+    const chosen = indexOf({ 'day.md': day }).files.get('day.md')!.sections.find((section) => section.heading === 'Calls')!;
+    // A line written above the heading, saved, and read by the index before the pick was made.
+    const now = `# Day\nA line added above.\n${day.slice('# Day\n'.length)}`;
+    const notes = new FakeNotes({ 'day.md': now });
+    const { captures, events } = service(indexOf({ 'day.md': now }), notes);
+
+    assert.deepStrictEqual(await captures.captureUnderHeading('- [ ] Call Ren', chosen), {
+      kind: 'added',
+      uri: 'day.md',
+      taskLine: 4,
+    });
+    assert.strictEqual(notes.texts.get('day.md'), '# Day\nA line added above.\n## Calls\n- [ ] One\n- [ ] Call Ren\n\n## Later\nText\n');
+    assert.deepStrictEqual(events, ['draft cleared', 'remembered Calls']);
+  });
+
   test('under a heading: a note that is gone, a heading that is gone, or a refused edit writes nothing', async () => {
     const index = indexOf({ 'day.md': day });
     const chosen = index.files.get('day.md')!.sections.find((section) => section.heading === 'Calls')!;

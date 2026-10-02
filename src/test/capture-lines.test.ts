@@ -151,6 +151,22 @@ suite('Quick capture', () => {  const tags = [
     );
   });
 
+  test('finds the chosen heading when the index has read the note again since', () => {
+    const before = parseMarkdown('day.md', '# Day\n## Calls\nA\n## Calls\nB\n').sections;
+    const now = '# Day\nAdded.\n## Calls\nA\n## Calls\nB\n';
+    const saved = parseMarkdown('day.md', now).sections;
+    const chosen = before.filter((section) => section.heading === 'Calls')[1];
+
+    assert.strictEqual(findSameSection(saved, chosen, saved)?.startLine, 5, 'the Calls with the same lines under it');
+    const edited = parseMarkdown('day.md', '# Day\nAdded.\n## Calls\nA, and more\n## Calls\nB\n').sections;
+    const first = before.filter((section) => section.heading === 'Calls')[0];
+    assert.strictEqual(findSameSection(saved, first, edited)?.startLine, 3, 'failing that, the Calls nearest where it was chosen');
+    const once = parseMarkdown('day.md', '# Day\nAdded.\n## Calls\nA\n').sections;
+    assert.strictEqual(findSameSection(once, chosen, once)?.startLine, 3, 'the only Calls');
+    const renamed = parseMarkdown('day.md', '# Day\nAdded.\n## Phone\nA\n').sections;
+    assert.strictEqual(findSameSection(renamed, chosen, renamed), undefined, 'a heading that is gone is not guessed');
+  });
+
 
   test('writes a capture as a task read on its day, as typed, or as a note line', () => {
     // Friday 2026-09-25, noon.

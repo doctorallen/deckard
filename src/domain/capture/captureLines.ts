@@ -105,7 +105,16 @@ export function getCaptureInsertion(
 
 /**
  * Finds the heading chosen from the index in the note as it is now, by its
- * text, its level, and how many headings like it come before it.
+ * text, its level, and how many headings like it come before it in the
+ * index's sections, `saved`. Undefined when the note no longer holds a
+ * heading of that text and level.
+ *
+ * The index may have read the note again since the heading was chosen, so
+ * `saved` no longer holds it when a line above it moved. Then which of its
+ * like it was is not known, and of the headings like it in the note now,
+ * the one with the same lines under it is taken, or failing that the one
+ * nearest the line it was chosen at: the only one, for a heading whose
+ * text the note does not repeat.
  */
 export function findSameSection(
   saved: readonly Section[],
@@ -116,8 +125,23 @@ export function findSameSection(
     !section.isInline &&
     section.heading === chosen.heading &&
     section.headingLevel === chosen.headingLevel;
+  const candidates = live.filter(same);
   const occurrence = saved
     .filter(same)
     .findIndex((section) => section.id === chosen.id);
-  return occurrence < 0 ? undefined : live.filter(same)[occurrence];
+  if (occurrence >= 0) {
+    return candidates[occurrence];
+  }
+  const rank = (section: Section) => [
+    section.bodyContent === chosen.bodyContent ? 0 : 1,
+    Math.abs(section.startLine - chosen.startLine),
+  ];
+  return candidates.reduce<Section | undefined>((best, section) => {
+    if (!best) {
+      return section;
+    }
+    const [bestBody, bestDistance] = rank(best);
+    const [body, distance] = rank(section);
+    return body < bestBody || (body === bestBody && distance < bestDistance) ? section : best;
+  }, undefined);
 }
