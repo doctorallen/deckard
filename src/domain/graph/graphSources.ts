@@ -147,6 +147,7 @@ function isParkedSource(
   return parked.files.has(id);
 }
 
+/** The values once each, in code-unit order. */
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort();
 }

@@ -99,6 +99,12 @@ export function rankRelatedNotes(
   return notes.sort(compareRelatedNotes);
 }
 
+/**
+ * What one ranking reads for every entry it scores, worked out once: the
+ * note being read and its tags with their weights, the association
+ * matcher, the link names, and, when keyword links are on, the lexical
+ * model. The association support is at least one, whatever was asked.
+ */
 function createRankingContext(
   index: WorkspaceIndex,
   subject: RelatedNotesSubject,
@@ -229,6 +235,7 @@ function findMatchingTasks(
   });
 }
 
+/** A matched section as the entry the ranking scores and the page shows. */
 function toSectionReference(
   context: RankingContext,
   { file, sectionsById }: FileScope,
@@ -257,6 +264,7 @@ function toSectionReference(
   };
 }
 
+/** A matched task as the entry the ranking scores and the page shows. */
 function toTaskReference(
   context: RankingContext,
   { file, sectionsById }: FileScope,

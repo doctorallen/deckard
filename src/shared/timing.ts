@@ -117,6 +117,11 @@ export function logTrace(message: () => string): void {
   }
 }
 
+/**
+ * Logs how long an operation took: a slow one at Info, as `Slow: …`, and
+ * any other only when the log keeps Debug lines. The description is built
+ * only when the line is written.
+ */
 function report(
   operation: string,
   milliseconds: number,
@@ -138,6 +143,7 @@ function report(
   }
 }
 
+/** Whether a log writes lines of a level: it is not off, and its level is at or below that one. */
 function keeps(target: TimingLog, level: number): boolean {
   return target.logLevel !== LogLevel.off && target.logLevel <= level;
 }

@@ -511,6 +511,7 @@ function countFolders(source: FacetSource): SearchFacetValue[] {
   return [];
 }
 
+/** The local midnight a moment falls on. */
 function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);

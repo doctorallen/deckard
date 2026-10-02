@@ -6,6 +6,7 @@
  * `vscode`.
  */
 
+/** A pending timer, whatever the runtime's `setTimeout` returns for one. */
 type Handle = ReturnType<typeof setTimeout>;
 
 /**

@@ -81,6 +81,7 @@ export function isInCodeOrLink(text: string, column: number): boolean {
   return isInRanges(findCodeAndLinkRanges(text), column);
 }
 
+/** How many backticks in a row start at `start`. */
 function measureRun(text: string, start: number): number {
   let end = start;
   while (text[end] === '`') {
@@ -106,6 +107,7 @@ function findClosingRun(text: string, from: number, length: number): number | un
   return undefined;
 }
 
+/** Where `needle` next appears from `from` on the same line, or undefined past its end. */
 function findOnLine(text: string, needle: string, from: number): number | undefined {
   const found = text.indexOf(needle, from);
   if (found < 0) {

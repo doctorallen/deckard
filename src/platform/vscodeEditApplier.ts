@@ -75,14 +75,17 @@ function toWorkspaceEdit(edits: readonly NoteEdit<vscode.Uri>[]): vscode.Workspa
   return edit;
 }
 
+/** A port's range as VS Code's. */
 function toRange(range: TextRange): vscode.Range {
   return new vscode.Range(toPosition(range.start), toPosition(range.end));
 }
 
+/** A port's position as VS Code's. */
 function toPosition(position: TextPosition): vscode.Position {
   return new vscode.Position(position.line, position.character);
 }
 
+/** VS Code's position as the port's, so callers never hold a `vscode` type. */
 function fromPosition(position: vscode.Position): TextPosition {
   return { line: position.line, character: position.character };
 }

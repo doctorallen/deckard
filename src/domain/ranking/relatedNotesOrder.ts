@@ -46,6 +46,7 @@ export function sortRelatedNotes(
   });
 }
 
+/** Orders two dates newest or oldest first, with an entry that has none after every one that has. */
 function compareRelatedNoteDates(
   left: number | undefined,
   right: number | undefined,

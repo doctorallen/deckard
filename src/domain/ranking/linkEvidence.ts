@@ -65,6 +65,7 @@ export function getLinkEvidence(
     : { entryWeight: 0, fileWeight: 0 };
 }
 
+/** Whether either note links to the other, by any name the other goes by. */
 function filesAreLinked(linkNames: LinkNames, left: ParsedFile, right: ParsedFile): boolean {
   const leftNames = linkNames(left.filePath, left.aliases);
   const rightNames = linkNames(right.filePath, right.aliases);
@@ -74,6 +75,10 @@ function filesAreLinked(linkNames: LinkNames, left: ParsedFile, right: ParsedFil
   );
 }
 
+/**
+ * Whether a link opens an entry: it names the entry's note, and either no
+ * heading or the entry's own title, as headings are compared.
+ */
 function linkTargetsEntry(
   linkNames: LinkNames,
   link: string,
@@ -112,14 +117,20 @@ export function createLinkNames(): LinkNames {
   };
 }
 
+/** The note a link names, without its `#Heading`, as names are compared. */
 function getLinkFileTarget(link: string): string {
   return normalizeLink(link.split('#', 1)[0]);
 }
 
+/** A note name as links are compared: trimmed, without `.md`, lowercased. */
 function normalizeLink(value: string): string {
   return value.trim().replace(/\.md$/i, '').toLocaleLowerCase();
 }
 
+/**
+ * A heading as a link's `#Heading` is compared with an entry's title:
+ * without tags or case, each run of other characters one space.
+ */
 function normalizeHeadingTarget(value: string): string {
   return stripTags(value)
     .toLocaleLowerCase()
