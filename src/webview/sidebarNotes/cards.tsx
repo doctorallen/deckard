@@ -123,6 +123,26 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
   );
 }
 
+/**
+ * Results as cards, each keyed by the line it opens, so a result keeps its
+ * card when the list is ranked again, and the focus stays on the result it
+ * was on rather than on whatever moved into its place. Two results on one
+ * line are told apart by their turn.
+ */
+export function RankedNoteCards({ notes, display }: { readonly notes: readonly RankedNote[]; readonly display: CardDisplay }) {
+  const seen = new Map<string, number>();
+  return (
+    <>
+      {notes.map((note) => {
+        const place = `${note.filePath}:${note.sourceLine}`;
+        const turn = seen.get(place) ?? 0;
+        seen.set(place, turn + 1);
+        return <RankedNoteCard key={turn ? `${place}#${turn}` : place} note={note} display={display} />;
+      })}
+    </>
+  );
+}
+
 /** A graph node's name: a tag as its pill, anything else as its title. */
 function NodeTitle({ node }: { readonly node: NotesGraphNode }) {
   return node.kind === 'tag'
@@ -212,7 +232,7 @@ export function Similar({ similar, display }: { readonly similar: SidebarNotesSn
           <section class="similar-wording" aria-label="Similar wording (no tags yet)">
             <span class="section-label">Similar wording (no tags yet)</span>
             <p class="similar-hint">These share words with this note, not tags or links.</p>
-            <div class="note-list">{similar.notes.map((note) => <RankedNoteCard note={note} display={display} />)}</div>
+            <div class="note-list"><RankedNoteCards notes={similar.notes} display={display} /></div>
           </section>
         )
         : null}

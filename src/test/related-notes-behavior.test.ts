@@ -205,6 +205,20 @@ suite('Related Notes behavior', () => {
     );
   });
 
+  test('ranked again, the list keeps the focus on the result it was on, not on its place', () => {
+    const ranked = (...names: string[]) =>
+      names.map((name) => note({ sectionId: name, filePath: `notes/${name}.md`, title: name, fileName: `${name}.md`, sourceLine: 1 }));
+    const page = open({ notes: ranked('alpha', 'beta', 'gamma') });
+    const insert = page.find('.note[data-file-path="notes/gamma.md"] [data-action="insert-link"]') as HTMLElement;
+    insert.focus();
+    insert.click();
+    // Linking gamma raises it to the top.
+    page.send({ activeFileName: 'today.md', activeTags: [], tagTitleDisplayMode: 'inline', state: 'ready', notes: ranked('gamma', 'alpha', 'beta') });
+    const active = page.document.activeElement as HTMLElement;
+    assert.strictEqual(active.getAttribute('data-action'), 'insert-link');
+    assert.strictEqual(active.closest<HTMLElement>('.note')?.dataset.filePath, 'notes/gamma.md', 'Enter again would link the result chosen, not the one now in its place');
+  });
+
   test('opens a matching tag rather than the result carrying it', () => {
     // Matching tags are listed beneath a result only when titles are drawn
     // without their tags; inline, the title already carries them.

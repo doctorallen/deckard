@@ -20,7 +20,7 @@ import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openTagCo
 import { installViewOptions } from '../shared/viewOptions';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
-import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCard, Similar } from './cards';
+import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
 import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
@@ -50,7 +50,7 @@ function NoteList({ snapshot, display }: { readonly snapshot: SidebarNotesSnapsh
   const hidden = snapshot.notes.length - shown.length;
   return (
     <>
-      <div class="note-list">{shown.map((note) => <RankedNoteCard note={note} display={display} />)}</div>
+      <div class="note-list"><RankedNoteCards notes={shown} display={display} /></div>
       {hidden > 0
         ? <button type="button" class="show-more-notes" data-action="show-more-notes">{hidden > NOTE_PAGE_SIZE ? `Show ${NOTE_PAGE_SIZE} more of ${hidden}` : `Show ${hidden} more`}</button>
         : null}
