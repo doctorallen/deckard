@@ -3,6 +3,7 @@
  * dated one: the date it gives itself, else its daily note's, else when it
  * was last saved.
  */
+import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { ParsedFile } from '../model';
 import { getDailyNoteDate } from './entryLabels';
 
@@ -17,9 +18,12 @@ export interface RelevantDate {
  * the day its daily-note name or heading gives, else when it was saved.
  */
 export function getRelevantDate(file: ParsedFile): RelevantDate | undefined {
-  const frontmatterBlock = file.content.match(
-    /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/,
-  )?.[1];
+  // Scored for every candidate entry, so a note that cannot open with front
+  // matter is not split into lines at all.
+  const lines = /^\s*---/.test(file.content) ? file.content.split(/\r?\n/) : [];
+  const frontmatterEnd = findFrontmatterEnd(lines);
+  const frontmatterBlock =
+    frontmatterEnd === undefined ? undefined : lines.slice(1, frontmatterEnd).join('\n');
   const frontmatter = frontmatterBlock?.match(
     /^(?:date|created|updated):\s*["']?(\d{4}-\d{2}-\d{2})/im,
   )?.[1];

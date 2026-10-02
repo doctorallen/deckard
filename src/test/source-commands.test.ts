@@ -329,6 +329,16 @@ suite('Source commands', () => {
       '---\ndescribes: project/atlas-program\n---\n# Atlas\n',
       "the template's own describes is kept",
     );
+    assert.strictEqual(
+      applyHubTemplate({ template: '---\ntags: [meeting]\n...\n# {title}\n', tag: project, title: 'Atlas', now }),
+      '---\ndescribes: project/atlas\ntags: [meeting]\n...\n# Atlas\n',
+      'front matter closed by ... gains describes, not a second block',
+    );
+    assert.strictEqual(
+      applyHubTemplate({ template: '---\r\ntags: [meeting]\r\n---\r\n# {title}\r\n', tag: project, title: 'Atlas', now }),
+      '---\r\ndescribes: project/atlas\r\ntags: [meeting]\r\n---\r\n# Atlas\r\n',
+      'describes is written in the line ending the template uses',
+    );
 
     const person = { key: '@dana', label: '@dana' };
     const personNote = applyHubTemplate({ template: '# {title}\nRole: \n', tag: person, title: 'Dana', now });

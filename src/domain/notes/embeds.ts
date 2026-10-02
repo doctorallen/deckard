@@ -9,6 +9,7 @@ import {
   parseWikiTarget,
   resolveWikiTarget,
 } from '../index/backlinks';
+import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { findFencedLines } from '../markdown/lineShapes';
 import { BLOCK_ID_PATTERN } from '../markdown/taskFields';
 
@@ -170,11 +171,8 @@ function readSection(read: EmbedRead, heading: string, title: string): ResolvedE
 /** The body of a note, without the front matter a reader does not need. */
 export function withoutFrontmatter(content: string): string {
   const lines = content.split(/\r?\n/);
-  if (lines[0]?.trim() !== '---') {
-    return content;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end < 0 ? content : lines.slice(end + 1).join('\n').replace(/^\n+/, '');
+  const end = findFrontmatterEnd(lines);
+  return end === undefined ? content : lines.slice(end + 1).join('\n').replace(/^\n+/, '');
 }
 
 /** Reads the note an embed is written in, as `resolveEmbed` needs it. */

@@ -1,3 +1,4 @@
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { matchTaskLine, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseIsoDate } from '../../domain/markdown/calendar';
@@ -34,11 +35,7 @@ const BLOCK_ID = /[ \t]+(\^[A-Za-z0-9-]+)[ \t]*$/;
 
 /** The lines front matter takes, which hold no tasks. */
 function frontMatterLines(lines: readonly string[]): number {
-  if (lines[0]?.trim() !== '---') {
-    return 0;
-  }
-  const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-  return end > 0 ? end + 1 : 0;
+  return (findFrontmatterEnd(lines) ?? -1) + 1;
 }
 
 /**

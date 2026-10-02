@@ -15,7 +15,7 @@ import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatt
  * `---` closes it here, trimmed, as the parser reads it.
  */
 export function getFrontmatterBounds(lines: readonly string[]): { end: number } | undefined {
-  const end = findFrontmatterEnd(lines, 'dashes');
+  const end = findFrontmatterEnd(lines);
   return end === undefined ? undefined : { end };
 }
 

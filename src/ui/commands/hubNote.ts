@@ -7,6 +7,7 @@ import type { IndexReader } from '../../core/workspace/indexReader';
 import { resolveSourceUri } from './navigation';
 import { askTemplateQuestions } from './templates';
 import { fillTemplate, getTemplateVariables } from '../../domain/notes/templates';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { TagInfo, TagReference, WorkspaceIndex } from '../../domain/model';
 
@@ -52,15 +53,17 @@ export function applyHubTemplate({ template, tag, title, now, answers }: HubTemp
     answers,
   );
   const describes = `describes: ${getDescribesValue(tag)}`;
-  const frontmatter = /^---\r?\n(?:([\s\S]*?)\r?\n)?---(?:\r?\n|$)/.exec(content);
-  if (!frontmatter) {
+  const lines = content.split(/\r?\n/);
+  const end = findFrontmatterEnd(lines);
+  if (end === undefined) {
     return `---\n${describes}\n---\n${content}`;
   }
-  if (/^describes\s*:/m.test(frontmatter[1] ?? '')) {
+  if (lines.slice(1, end).some((line) => /^describes\s*:/.test(line))) {
     return content;
   }
-  const eol = frontmatter[0].startsWith('---\r\n') ? '\r\n' : '\n';
-  const bodyStart = 3 + eol.length;
+  // The field goes first, under the opening line, in that line's ending.
+  const bodyStart = content.indexOf('\n') + 1;
+  const eol = content[bodyStart - 2] === '\r' ? '\r\n' : '\n';
   return `${content.slice(0, bodyStart)}${describes}${eol}${content.slice(bodyStart)}`;
 }
 

@@ -21,7 +21,7 @@ const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]+/;
 /** The lines of the note's front matter, 0-based, if it opens with some. */
 function findFrontMatter(lines: readonly string[]): Set<number> {
   const held = new Set<number>();
-  const end = findFrontmatterEnd(lines, 'dashes-or-dots');
+  const end = findFrontmatterEnd(lines);
   if (end === undefined) {
     return held;
   }

@@ -471,7 +471,7 @@ export function formatEntityTitle(kind: string, name: string): string {
  * YAML remains ordinary Markdown and does not prevent notes from indexing.
  */
 function parseFrontmatter(lines: string[], settings: TagSettings): Frontmatter {
-  const end = findFrontmatterEnd(lines, 'dashes');
+  const end = findFrontmatterEnd(lines);
   if (end === undefined) {
     return { tags: [], links: [], tagSpans: [] };
   }

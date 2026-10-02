@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { Debouncer } from '../../shared/debounce';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { findDailyNoteDate } from '../../domain/markdown/parser';
 
 /** What the context needs to know about the index. */
@@ -23,11 +24,7 @@ const setContext: ContextSetter = (key, value) => {
 export function readTopHeadings(lines: readonly string[]): string[] {
   const headings: string[] = [];
   let fence: string | undefined;
-  let start = 0;
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-    start = end > 0 ? end + 1 : 0;
-  }
+  const start = (findFrontmatterEnd(lines) ?? -1) + 1;
   for (let at = start; at < lines.length; at += 1) {
     const line = lines[at];
     const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];

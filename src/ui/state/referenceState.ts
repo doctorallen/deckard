@@ -11,6 +11,7 @@ import {
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { ParsedFile, Section, Task, WorkspaceIndex } from '../../domain/model';
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 
 /**
  * What the editor shows about a note's connections: how often it and its
@@ -344,11 +345,8 @@ function removeFirstLine(text: string): string {
 
 function removeFrontmatter(content: string): string {
   const lines = content.split(/\r?\n/);
-  if (lines[0]?.trim() !== '---') {
-    return content;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end < 0 ? content : lines.slice(end + 1).join('\n');
+  const end = findFrontmatterEnd(lines);
+  return end === undefined ? content : lines.slice(end + 1).join('\n');
 }
 
 function limitExcerpt(text: string): { text: string; truncated: boolean } {
