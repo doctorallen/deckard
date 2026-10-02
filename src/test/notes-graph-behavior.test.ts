@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 
+import { narrowNotesGraphMessage } from '../ui/webview/pages/notesGraph/messages';
 import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { readSheet } from './sheets';
@@ -414,6 +415,27 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(faint.length, 1);
       assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 0, 'the host is not told what it said');
       assert.match(page.text('#status-counts') ?? '', /^3 notes · 1 tasks · 3 of 3 links drawn · \d+ groups?$/);
+    });
+
+    test('Escape clears the selection, and tells the host so it clears Related Notes too', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const strokes = () => lastFrame(page).filter((call) => call.op === 'stroke').length;
+      const before = strokes();
+      const canvas = page.find('#graph');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      page.flushFrames(1);
+      assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:a' });
+      assert.strictEqual(strokes(), before + 2, 'ringed');
+
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      page.flushFrames(1);
+      assert.strictEqual(strokes(), before, 'the ring and the highlight go');
+      const cleared = page.posted.at(-1);
+      assert.deepStrictEqual(cleared, { type: 'clearSelection' });
+      assert.deepStrictEqual(narrowNotesGraphMessage(cleared), { type: 'clearSelection' }, 'a message the host takes');
+      assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
     });
 
     test('a node Related Notes hovers is ringed with its neighbors bright, until the hover ends', () => {

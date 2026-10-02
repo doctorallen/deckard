@@ -5,7 +5,6 @@
  * nodes with the arrows. Listened to outside Preact, on the one canvas
  * element it draws.
  */
-import { vscodeApi } from '../shared/vscode';
 import { toWorld } from './camera';
 import {
   centerOnNode,
@@ -229,9 +228,9 @@ function onKey(page: GraphPage, event: KeyboardEvent): void {
   const { state } = page;
   if (event.key === 'Escape') {
     setSelectedIndex(state, -1);
-    // A selectNode with no node, which the host refuses: a known bug, kept
-    // as the page has always sent it.
-    vscodeApi().postMessage({ type: 'selectNode', nodeId: null });
+    // Sent even when the page shows no selection, since the host may hold
+    // one the page could not find, such as a node it has since left out.
+    send({ type: 'clearSelection' });
     scheduleFrame(page);
     return;
   }
