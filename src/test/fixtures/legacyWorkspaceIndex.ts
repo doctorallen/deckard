@@ -2,7 +2,8 @@
  * The workspace index exactly as Deckard built it before the index became a
  * fold of each note's contribution (dev at 0958f97, `buildWorkspaceIndex` in
  * `src/core/workspace/indexer.ts`), kept so the equivalence test can hold the
- * new build to the old one. Do not change it: it is the reference.
+ * new build to the old one. Do not change what it builds: it is the
+ * reference.
  */
 import { getEntityKind } from '../../domain/markdown/parser';
 import {
@@ -16,14 +17,31 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 
+/** The maps the legacy build fills as it reads each note. */
+interface LegacyCollections {
+  sections: Map<string, Section>;
+  tasks: Map<string, Task>;
+  tags: Map<string, TagInfo>;
+  entities: Map<string, Entity>;
+  hubFilePaths: Map<string, string[]>;
+}
+
+/**
+ * Builds the workspace index from parsed notes as the legacy build did: every
+ * note's sections, tasks, front-matter tags, and hubs, then the tag
+ * associations, each tag's and entity's count, and each tag's hubs.
+ */
 export function buildLegacyWorkspaceIndex(
   files: Map<string, ParsedFile>,
 ): WorkspaceIndex {
-  const sections = new Map<string, Section>();
-  const tasks = new Map<string, Task>();
-  const tags = new Map<string, TagInfo>();
-  const entities = new Map<string, Entity>();
-  const hubFilePaths = new Map<string, string[]>();
+  const collections: LegacyCollections = {
+    sections: new Map<string, Section>(),
+    tasks: new Map<string, Task>(),
+    tags: new Map<string, TagInfo>(),
+    entities: new Map<string, Entity>(),
+    hubFilePaths: new Map<string, string[]>(),
+  };
+  const { sections, tasks, tags, entities, hubFilePaths } = collections;
 
   files.forEach((file) => {
     file.hub?.describes.forEach((tagReference) => {
@@ -32,72 +50,109 @@ export function buildLegacyWorkspaceIndex(
         file.filePath,
       ]);
     });
-    file.sections.forEach((section) => {
-      sections.set(section.id, section);
-      // A tag written on one of the section's own body lines finds the
-      // section too: the tag stayed on its line, and the section is what
-      // holds the line.
-      const bodyTagLabels = new Map(
-        (section.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
-      );
-      const tagKeys = [
-        ...new Set([...section.tags, ...bodyTagLabels.keys()]),
-      ];
-      tagKeys.forEach((tagKey) => {
-        const label =
-          section.tagLabels[tagKey] ?? bodyTagLabels.get(tagKey) ?? tagKey;
-        const tag = getOrCreateTag(tags, tagKey, label);
-        tag.sectionIds.push(section.id);
-        addEntityReference(
-          entities,
-          tagKey,
-          label,
-          'section',
-          section.id,
-          section.updatedAt,
-        );
-      });
-    });
-    file.tasks.forEach((task) => {
-      tasks.set(task.id, task);
-      task.tags.forEach((tagKey) => {
-        const tag = getOrCreateTag(tags, tagKey, task.tagLabels[tagKey]);
-        tag.taskIds.push(task.id);
-        addEntityReference(
-          entities,
-          tagKey,
-          task.tagLabels[tagKey] ?? tagKey,
-          'task',
-          task.id,
-          task.updatedAt,
-        );
-      });
-    });
-    const contentTagKeys = new Set([
-      ...file.sections.flatMap((section) => section.tags),
-      ...file.tasks.flatMap((task) => task.tags),
-    ]);
-    file.frontmatterTags.forEach((tagReference) => {
-      if (contentTagKeys.has(tagReference.key)) {
-        return;
-      }
-      const tag = getOrCreateTag(tags, tagReference.key, tagReference.label);
-      if (!tag.filePaths.includes(file.filePath)) {
-        tag.filePaths.push(file.filePath);
-      }
-      addEntityReference(
-        entities,
-        tagReference.key,
-        tagReference.label,
-        'file',
-        file.filePath,
-        file.updatedAt,
-      );
-    });
+    collectSections(file, collections);
+    collectTasks(file, collections);
+    collectFrontmatterTags(file, collections);
   });
 
   const { tagAssociations } = buildTagAssociations(sections, tasks);
 
+  countTags(tags, tasks);
+  // The first note by path is the tag's hub; any others are shown as conflicts.
+  hubFilePaths.forEach((filePaths, tagKey) => {
+    const tag = tags.get(tagKey);
+    if (tag) {
+      tag.hubFilePaths = [...filePaths].sort((left, right) =>
+        left.localeCompare(right),
+      );
+    }
+  });
+  countEntities(entities, tasks);
+
+  return {
+    files,
+    sections,
+    tasks,
+    tags,
+    entities,
+    tagAssociations,
+    updatedAt: Date.now(),
+  };
+}
+
+/** Adds a note's sections, and the tags and entities each one carries. */
+function collectSections(file: ParsedFile, { sections, tags, entities }: LegacyCollections): void {
+  file.sections.forEach((section) => {
+    sections.set(section.id, section);
+    // A tag written on one of the section's own body lines finds the
+    // section too: the tag stayed on its line, and the section is what
+    // holds the line.
+    const bodyTagLabels = new Map(
+      (section.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
+    );
+    const tagKeys = [
+      ...new Set([...section.tags, ...bodyTagLabels.keys()]),
+    ];
+    tagKeys.forEach((tagKey) => {
+      const label =
+        section.tagLabels[tagKey] ?? bodyTagLabels.get(tagKey) ?? tagKey;
+      const tag = getOrCreateTag(tags, tagKey, label);
+      tag.sectionIds.push(section.id);
+      addEntityReference(
+        entities,
+        { key: tagKey, label },
+        { type: 'section', id: section.id, updatedAt: section.updatedAt },
+      );
+    });
+  });
+}
+
+/** Adds a note's tasks, and the tags and entities each one carries. */
+function collectTasks(file: ParsedFile, { tasks, tags, entities }: LegacyCollections): void {
+  file.tasks.forEach((task) => {
+    tasks.set(task.id, task);
+    task.tags.forEach((tagKey) => {
+      const tag = getOrCreateTag(tags, tagKey, task.tagLabels[tagKey]);
+      tag.taskIds.push(task.id);
+      addEntityReference(
+        entities,
+        { key: tagKey, label: task.tagLabels[tagKey] ?? tagKey },
+        { type: 'task', id: task.id, updatedAt: task.updatedAt },
+      );
+    });
+  });
+}
+
+/**
+ * Adds a note's front-matter tags to the note's own path, leaving out a tag
+ * one of its sections or tasks already carries.
+ */
+function collectFrontmatterTags(file: ParsedFile, { tags, entities }: LegacyCollections): void {
+  const contentTagKeys = new Set([
+    ...file.sections.flatMap((section) => section.tags),
+    ...file.tasks.flatMap((task) => task.tags),
+  ]);
+  file.frontmatterTags.forEach((tagReference) => {
+    if (contentTagKeys.has(tagReference.key)) {
+      return;
+    }
+    const tag = getOrCreateTag(tags, tagReference.key, tagReference.label);
+    if (!tag.filePaths.includes(file.filePath)) {
+      tag.filePaths.push(file.filePath);
+    }
+    addEntityReference(
+      entities,
+      tagReference,
+      { type: 'file', id: file.filePath, updatedAt: file.updatedAt },
+    );
+  });
+}
+
+/**
+ * Counts each tag's sections, its notes, and the tasks no section it tags
+ * already holds.
+ */
+function countTags(tags: Map<string, TagInfo>, tasks: Map<string, Task>): void {
   tags.forEach((tag) => {
     // A task inside a tagged section is already represented by that section;
     // count it separately only when its tag would otherwise have no entry.
@@ -109,15 +164,10 @@ export function buildLegacyWorkspaceIndex(
     tag.count =
       taggedSections.size + standaloneTasks.length + tag.filePaths.length;
   });
-  // The first note by path is the tag's hub; any others are shown as conflicts.
-  hubFilePaths.forEach((filePaths, tagKey) => {
-    const tag = tags.get(tagKey);
-    if (tag) {
-      tag.hubFilePaths = [...filePaths].sort((left, right) =>
-        left.localeCompare(right),
-      );
-    }
-  });
+}
+
+/** Counts each entity's references as countTags counts a tag's. */
+function countEntities(entities: Map<string, Entity>, tasks: Map<string, Task>): void {
   entities.forEach((entity) => {
     const entitySections = new Set(entity.sectionIds);
     const standaloneTasks = entity.taskIds.filter((taskId) => {
@@ -127,16 +177,6 @@ export function buildLegacyWorkspaceIndex(
     entity.count =
       entitySections.size + standaloneTasks.length + entity.filePaths.length;
   });
-
-  return {
-    files,
-    sections,
-    tasks,
-    tags,
-    entities,
-    tagAssociations,
-    updatedAt: Date.now(),
-  };
 }
 
 /**
@@ -222,8 +262,8 @@ function addAssociationGroup(
   const uniqueTags = [...new Map(tags.map((tag) => [tag.key, tag])).values()];
   uniqueTags.forEach((tag, index) => {
     uniqueTags.slice(index + 1).forEach((associatedTag) => {
-      addAssociationEvidence(associations, tag, associatedTag, source, 1, true);
-      addAssociationEvidence(associations, associatedTag, tag, source, 1, true);
+      addAssociationEvidence(associations, [tag, associatedTag], source, { weight: 1, isCoOccurrence: true });
+      addAssociationEvidence(associations, [associatedTag, tag], source, { weight: 1, isCoOccurrence: true });
     });
   });
 }
@@ -254,19 +294,15 @@ function addHeadingAssociations(
         registerSourceUnit(sourceUnits, unitId, [...sourceTags, ...parent.headingTags ?? []]);
         addAssociationEvidence(
           associations,
-          childTag,
-          parentTag,
+          [childTag, parentTag],
           { sectionId: section.id, unitId },
-          0.5 / depth,
-          false,
+          { weight: 0.5 / depth, isCoOccurrence: false },
         );
         addAssociationEvidence(
           associations,
-          parentTag,
-          childTag,
+          [parentTag, childTag],
           { sectionId: section.id, unitId },
-          0.5 / depth,
-          false,
+          { weight: 0.5 / depth, isCoOccurrence: false },
         );
       });
     });
@@ -275,13 +311,15 @@ function addHeadingAssociations(
   }
 }
 
+/**
+ * Adds one piece of evidence that a tag goes with another, in that
+ * direction: a pair written together, or a heading tag under another.
+ */
 function addAssociationEvidence(
   associations: Map<string, MutableTagAssociation>,
-  tag: TagReference,
-  associatedTag: TagReference,
+  [tag, associatedTag]: [TagReference, TagReference],
   source: { sectionId?: string; taskId?: string; unitId: string },
-  weight: number,
-  isCoOccurrence: boolean,
+  { weight, isCoOccurrence }: { weight: number; isCoOccurrence: boolean },
 ): void {
   if (tag.key === associatedTag.key) {
     return;
@@ -404,12 +442,10 @@ function getOrCreateTag(
  */
 function addEntityReference(
   entities: Map<string, Entity>,
-  key: string,
-  label: string,
-  referenceType: 'section' | 'task' | 'file',
-  referenceId: string,
-  updatedAt: number | undefined,
+  { key, label }: { key: string; label: string },
+  reference: { type: 'section' | 'task' | 'file'; id: string; updatedAt: number | undefined },
 ): void {
+  const { updatedAt } = reference;
   const kind = getEntityKind({ key, label });
   if (!kind) {
     return;
@@ -432,13 +468,12 @@ function addEntityReference(
     entities.set(key, entity);
   }
 
-  const references =
-    referenceType === 'section'
-      ? entity.sectionIds
-      : referenceType === 'task'
-        ? entity.taskIds
-        : entity.filePaths;
-  references.push(referenceId);
+  const references = {
+    section: entity.sectionIds,
+    task: entity.taskIds,
+    file: entity.filePaths,
+  }[reference.type];
+  references.push(reference.id);
   if (updatedAt !== undefined && (entity.updatedAt ?? 0) < updatedAt) {
     entity.updatedAt = updatedAt;
   }

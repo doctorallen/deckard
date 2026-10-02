@@ -28,14 +28,6 @@ export default {
     "src/domain/query/queryParser.ts": [
       "createCondition"
     ],
-    "src/test/fixtures/legacyWorkspaceIndex.ts": [
-      "addAssociationEvidence",
-      "addEntityReference"
-    ],
-    "src/test/view-state.test.ts": [
-      "createTask",
-      "overview"
-    ],
     "src/ui/preview/queryBlockHtml.ts": [
       "(arrow function)",
       "renderGroup"
@@ -164,9 +156,6 @@ export default {
       "readSerializedSearch"
     ]
   },
-  "jsdoc/escape-inline-tags": {
-    "src/test/components-primitives.test.ts": 1
-  },
   "jsdoc/require-jsdoc": {
     "src/core/changelog.ts": 1,
     "src/core/mcp/mcpProtocol.ts": 4,
@@ -188,12 +177,6 @@ export default {
     "src/domain/markdown/taskMetadata.ts": 4,
     "src/domain/query/queryLinks.ts": 2,
     "src/domain/query/queryTypes.ts": 6,
-    "src/test/calendar-day.test.ts": 1,
-    "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
-    "src/test/indexCorpus.ts": 3,
-    "src/test/notes-graph-behavior.test.ts": 1,
-    "src/test/relatedNotesFixture.ts": 1,
-    "src/test/webviewPage.ts": 2,
     "src/ui/commands/activeNoteContext.ts": 2,
     "src/ui/commands/assistantTools.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
@@ -247,8 +230,7 @@ export default {
     "src/domain/markdown/captureWords.ts": 1,
     "src/domain/markdown/tagTarget.ts": 1,
     "src/domain/markdown/wordCount.ts": 1,
-    "src/domain/query/queryParser.ts": 2,
-    "src/test/naming.test.ts": 1
+    "src/domain/query/queryParser.ts": 2
   },
   "max-lines-per-function": {
     "src/domain/index/indexState.ts": [
@@ -276,12 +258,6 @@ export default {
       "createCondition",
       "parseWordCondition",
       "tokenize"
-    ],
-    "src/test/fixtures/legacyWorkspaceIndex.ts": [
-      "buildLegacyWorkspaceIndex"
-    ],
-    "src/test/webviewPage.ts": [
-      "openWebviewPage"
     ],
     "src/ui/commands/bulkEdit.ts": [
       "applyBulkEdit"
@@ -361,9 +337,6 @@ export default {
     "src/domain/notes/periodicNotes.ts": 1,
     "src/domain/query/queryDates.ts": 2,
     "src/domain/query/queryFormat.ts": 1,
-    "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
-    "src/test/naming.test.ts": 1,
-    "src/test/tag-grouping.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 1,
     "src/ui/commands/bulkEdit.ts": 2,
     "src/ui/commands/moveTo.ts": 2,
@@ -385,7 +358,6 @@ export default {
     "src/domain/markdown/parser.ts": 2,
     "src/domain/markdown/taskSteps.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
-    "src/test/note-links.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/focusSection.ts": 1,
     "src/ui/commands/notify.ts": 1,
@@ -407,7 +379,6 @@ export default {
     "src/domain/index/parked.ts": 1,
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
-    "src/test/webviewPage.ts": 1,
     "src/ui/commands/chooseTheme.ts": 1,
     "src/ui/commands/focusSection.ts": 1,
     "src/ui/commands/mcpServer.ts": 1,

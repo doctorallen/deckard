@@ -10,6 +10,7 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 
+/** The workspace of some notes by path, each created on the morning of 25 September 2026. */
 export function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
     new Map(

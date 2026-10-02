@@ -89,6 +89,10 @@ const NOTES: Record<string, string> = {
   ),
 };
 
+/**
+ * The workspace the Related Notes evaluation ranks over, with the cases it
+ * holds the ranking to.
+ */
 export function createEvaluationWorkspace(): {
   index: WorkspaceIndex;
   files: Map<string, ParsedFile>;

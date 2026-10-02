@@ -67,7 +67,7 @@ suite('Component primitives', () => {
   const tip = (target: WebviewPage): HTMLElement | null => target.document.getElementById('deckard-tip');
 
   suite('disabled controls (9b)', () => {
-    /** Every selector in a sheet, with @media flattened. */
+    /** Every selector in a sheet, with `@media` flattened. */
     const selectorsOf = (css: string): string[] => {
       const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
       const selectors: string[] = [];

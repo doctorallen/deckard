@@ -21,6 +21,7 @@ export function graphState(nodes: GraphNode[], edges: GraphEdge[], extra: Record
   };
 }
 
+/** A note node of the graph, titled by its id, in `notes/<id>.md`, of degree 1. */
 export function note(id: string, extra: Partial<GraphNode> = {}): GraphNode {
   return { id: `section:${id}`, kind: 'note', title: id, tagKeys: [], degree: 1, filePath: `notes/${id}.md`, line: 1, ...extra };
 }
