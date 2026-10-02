@@ -42,6 +42,27 @@ suite('Word similarity', () => {
     assert.strictEqual(another.weight, 0);
   });
 
+  test('front matter is left out only where a note opens with it, and prose between two rules is read', () => {
+    const content = '---\nsummary: quokka\n---\n# Plan\nIntro.\n\n---\n\nMarmalade pipeline.\n\n---\n\nThe end.\n';
+    const active = parseMarkdown('notes/a.md', content);
+    const index = buildWorkspaceIndex(
+      new Map([
+        ['notes/a.md', active],
+        note('notes/b.md', '# Quokka\nMarmalade pipeline, and a quokka.\n'),
+      ]),
+    );
+    const model = createLexicalModel(index, active);
+    assert.ok(model.queryTerms.has('marmalade'), 'the prose between the rules');
+    assert.ok(!model.queryTerms.has('quokka'), 'the front matter, from the title as from the text');
+    assert.ok(!model.queryTerms.has('summary'));
+    const asked = createMoreLikeThisModel(index, active);
+    assert.ok(asked.queryTerms.has('marmalade'));
+    assert.ok(!asked.queryTerms.has('quokka'));
+    // An entry's text never opens a note, and its rules are rules.
+    const words = getLexicalWeight(model, 'Plan', 'Intro.\n\n---\n\nMarmalade pipeline.\n\n---\n\nThe end.').terms.map((term) => term.term);
+    assert.ok(words.includes('marmalade') && words.includes('pipeline'), words.join(', '));
+  });
+
   test('a note with nothing else to go on is queried by its 25 rarest shared words', () => {
     const words = Array.from({ length: 40 }, (_, at) => `word${String.fromCharCode(97 + (at % 26))}${String.fromCharCode(97 + Math.floor(at / 26))}`);
     const active = parseMarkdown('notes/a.md', `# Long\n${words.join(' ')}\n`);

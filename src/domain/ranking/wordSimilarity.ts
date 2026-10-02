@@ -4,6 +4,7 @@
  * and the corpus they form are cached per entry and per index.
  */
 
+import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { ParsedFile, Section, Task, WorkspaceIndex } from '../model';
 
 /**
@@ -329,14 +330,17 @@ function isCommonplace(model: LexicalModel, term: string): boolean {
  * without stop words, tags, links, addresses, front matter, or code. The
  * text is read with its title, and the title's words are listed twice more
  * before it, so what an entry is called weighs more than what it says.
+ *
+ * The note being read is passed whole as both title and text, so front
+ * matter is taken off each, and only where a note has it: at its start.
  */
 function getLexicalTerms(title: string, content: string): string[] {
   const ignored = STOP_WORDS;
-  const clean = `${title}\n${content}`
-    .replace(/^---\s*$[\s\S]*?^(?:---|\.\.\.)\s*$/m, ' ')
+  const heading = withoutFrontmatter(title);
+  const clean = `${heading}\n${withoutFrontmatter(content)}`
     .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
     .replace(/\[\[[^\]]+\]\]|https?:\/\/\S+|[#@][\w/-]+/g, ' ');
-  const titleTerms = title
+  const titleTerms = heading
     .replace(/[#@][\w/-]+/g, ' ')
     .toLocaleLowerCase()
     .match(/[a-z][a-z-]{2,}/g) ?? [];
@@ -362,6 +366,21 @@ export function getSectionLexicalContent(
     sectionLexicalContents.set(section, content);
   }
   return content;
+}
+
+/**
+ * Text without the front matter it opens with, by the rule every reader of
+ * front matter shares; as it is when it opens with none. A `---` further
+ * down is a horizontal rule, and what lies between two of them is prose.
+ */
+function withoutFrontmatter(text: string): string {
+  // Most text is an entry, which never opens with a fence; only a note can.
+  if (!/^\s*---/.test(text)) {
+    return text;
+  }
+  const lines = text.split(/\r?\n/);
+  const end = findFrontmatterEnd(lines);
+  return end === undefined ? text : lines.slice(end + 1).join('\n');
 }
 
 /**
