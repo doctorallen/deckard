@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { sameShownDayIn } from '../../../../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../../../../domain/model';
 import { measure } from '../../../../shared/timing';
 import type {
@@ -15,7 +16,7 @@ import { readWeekStart } from '../../../commands/datePrompt';
 import { openSourceAt } from '../../../commands/navigation';
 import { readQueryContext } from '../../../commands/queryContext';
 import { openTask, TaskWrites, toggleTask } from '../../../commands/taskActions';
-import { CalendarOptions, clampToMonth, createCalendar } from '../../../state/calendarState';
+import { CalendarOptions, createCalendar } from '../../../state/calendarState';
 import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { ready } from '../../host/sharedHandlers';
@@ -153,9 +154,10 @@ export class CalendarController {
     const from = date ?? this.selectedDate ?? (this.host.dayPanel() ? today : undefined);
     // The chosen day is always one of the month shown: a day outside it
     // would leave the page's Week layout drawing one week while it stepped
-    // from another.
+    // from another. With the weekends hidden it is a weekday, as a step on
+    // the page lands, since a hidden day can be neither seen nor focused.
     if (from !== undefined) {
-      this.selectedDate = from.slice(0, 7) === month ? from : clampToMonth(from, month);
+      this.selectedDate = from.slice(0, 7) === month ? from : sameShownDayIn(from, month, !readShowWeekends());
     }
     if (this.selectedDate === today) {
       this.selectedDate = undefined;
