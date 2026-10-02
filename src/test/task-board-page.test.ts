@@ -316,4 +316,35 @@ suite('Task Board page', () => {
     sorted.send(boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo 🔺\n' }));
     assert.strictEqual(sorted.document.activeElement, cardTitled(sorted, 'Beta'));
   });
+
+  test('a drag cut short by a redraw is let go, and only a card\'s drag is taken by a column', () => {
+    const board = boardOf(TWO);
+    const shown = show(board);
+    /** A drag event at `target`, carrying `transfer` as the browser's data would. */
+    const drag = (type: string, target: Element, transfer: { types: string[] }): Event => {
+      const event = new shown.window.Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: transfer });
+      target.dispatchEvent(event);
+      return event;
+    };
+    const cardDrag = { types: [] as string[], effectAllowed: '', dropEffect: '', setData(type: string) { this.types.push(type); } };
+    const doing = () => shown.find('.board-column[data-column-id="status:doing"]');
+    const beta = cardTitled(shown, 'Beta');
+    drag('dragstart', beta, cardDrag);
+    shown.send(board);
+    // The browser ends the drag at the card it began on, which the redraw took away.
+    drag('dragend', beta, cardDrag);
+
+    const text = { types: ['text/plain'], dropEffect: '' };
+    assert.strictEqual(drag('dragover', doing(), text).defaultPrevented, false, 'a column does not offer to take dragged words');
+    drag('drop', doing(), text);
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'and dropping them moves no card');
+
+    const alpha = { types: [] as string[], effectAllowed: '', dropEffect: '', setData(type: string) { this.types.push(type); } };
+    drag('dragstart', cardTitled(shown, 'Alpha'), alpha);
+    assert.strictEqual(drag('dragover', doing(), alpha).defaultPrevented, true, 'a column takes a card');
+    drag('drop', doing(), alpha);
+    assert.strictEqual(shown.lastPosted('moveTask')?.column, 'status:doing', 'and the card dropped there moves');
+    assert.strictEqual(shown.findAll('.task-board.is-dragging-card, .board-column.drop-target, .board-card.dragging').length, 0, 'nothing is left marked as dragged');
+  });
 });

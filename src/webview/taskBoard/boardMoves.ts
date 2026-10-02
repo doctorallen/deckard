@@ -308,22 +308,26 @@ class BoardMoves {
     }
   }
 
-  /** The drop: the card dragged, not another copy of its task in another column, moves to the column. */
+  /**
+   * The drop: the card dragged, not another copy of its task in another
+   * column, moves to the column. Any drop ends the drag here, since the
+   * dragend the browser sends to the card it began on never arrives when a
+   * redraw took that card away.
+   */
   private onDrop(event: DragEvent): void {
     const column = dropColumn(event);
-    if (!column) {
-      return;
+    if (column) {
+      event.preventDefault();
+      const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
+        .find((candidate) => board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn);
+      if (card && card.closest('.board-column') !== column) {
+        const from = String(card.dataset.cardColumn);
+        applyMove(card, String(column.dataset.columnId));
+        this.post({ type: 'moveTask', taskId: String(board.dragId), column: String(column.dataset.columnId), from });
+        announce(`Moved ${taskTitleOf(card)} to ${columnTitle(column)}.`);
+      }
     }
-    event.preventDefault();
-    const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
-      .find((candidate) => board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn);
-    if (card && card.closest('.board-column') !== column) {
-      const from = String(card.dataset.cardColumn);
-      applyMove(card, String(column.dataset.columnId));
-      this.post({ type: 'moveTask', taskId: String(board.dragId), column: String(column.dataset.columnId), from });
-      announce(`Moved ${taskTitleOf(card)} to ${columnTitle(column)}.`);
-    }
-    clearDropTargets();
+    endDrag();
   }
 
   public listen(): void {
@@ -365,21 +369,43 @@ class BoardMoves {
   }
 }
 
+/**
+ * The type a card's drag carries, besides its plain text, which tells the
+ * columns it is a card: words dragged from a note carry plain text too.
+ */
+const CARD_DRAG_TYPE = 'application/x-deckard-card';
+
+/** Whether a drag is a card's, by the type its card put on it. */
+function carriesCard(event: DragEvent): boolean {
+  return Boolean(event.dataTransfer && Array.from(event.dataTransfer.types).includes(CARD_DRAG_TYPE));
+}
+
 /** The column under a drag that takes the card being dragged. */
 function dropColumn(event: DragEvent): HTMLElement | undefined {
   const target = event.target instanceof Element ? event.target : null;
   const column = target ? target.closest<HTMLElement>('.task-board .board-column') : null;
-  return column && board.dragId && column.dataset.droppable === 'true' ? column : undefined;
+  return column && board.dragId && carriesCard(event) && column.dataset.droppable === 'true' ? column : undefined;
 }
 
 function clearDropTargets(): void {
   document.querySelectorAll('.board-column.drop-target').forEach((column) => column.classList.remove('drop-target'));
 }
 
+/** Lets go of the card being dragged, if any: its marks, the columns', and which card it was. */
+function endDrag(): void {
+  document.querySelectorAll('.task-board .board-card.dragging').forEach((card) => card.classList.remove('dragging'));
+  document.querySelectorAll('.task-board.is-dragging-card').forEach((element) => element.classList.remove('is-dragging-card'));
+  clearDropTargets();
+  board.dragId = undefined;
+  board.dragColumn = undefined;
+}
+
 /** A card picked up, carried over the columns, and put down; the drop itself is the board's. */
 function listenForDrags(): void {
   document.addEventListener('dragstart', (event) => {
     const card = boardCard(event.target);
+    // A drag of anything else lets go of a card a cut-short drag left held.
+    endDrag();
     if (!card) {
       return;
     }
@@ -394,14 +420,12 @@ function listenForDrags(): void {
     }
 
     event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(CARD_DRAG_TYPE, String(board.dragId));
     event.dataTransfer.setData('text/plain', String(board.dragId));
   });
   document.addEventListener('dragend', (event) => {
     boardCard(event.target)?.classList.remove('dragging');
-    document.querySelectorAll('.task-board.is-dragging-card').forEach((element) => element.classList.remove('is-dragging-card'));
-    clearDropTargets();
-    board.dragId = undefined;
-    board.dragColumn = undefined;
+    endDrag();
   });
   document.addEventListener('dragover', (event) => {
     const column = dropColumn(event);
