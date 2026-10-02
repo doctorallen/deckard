@@ -15,6 +15,7 @@ const { readFileSync } = require('node:fs');
 // pages.js puts the vscode stand-in in place, which the modules below need.
 const { renderPage } = require('./pages.js');
 const modules = require('../harness/modules.js');
+const { createGlobalState } = require('../e2e/support.js');
 const { createTaskBoard } = modules.taskBoardState;
 const { createSidebarSnapshot } = modules.relatedNotesRanking;
 const { createDashboardSnapshot, createSearchPageSnapshot, createDeckardStatsSnapshot } = modules.dashboardState;
@@ -98,15 +99,6 @@ function createCalendarPageIndex() {
     '- [ ] Pay rent 📅 2026-09-28 🔁 every month when done',
   ].join('\n') + '\n', { createdAt: created, updatedAt: created }));
   return buildWorkspaceIndex(files);
-}
-
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    keys: () => [...store.keys()],
-    update: (key, value) => { store.set(key, value); return Promise.resolve(); },
-  };
 }
 
 const NOW = new Date(2026, 8, 21, 12).getTime();
@@ -286,16 +278,15 @@ function createMenuSurfaces(surfaces) {
 }
 
 /**
- * The surfaces measured, each with the snapshot its page renders from and
- * the geometry it must keep. A probe runs in the page and reports; the
- * expectations here read the report.
+ * The Task Board, by status and grouped by a tag namespace. Only the board's
+ * surfaces carry steps, so no other page's pixels move with them.
+ *
+ * @param {object} boardIndex The workspace, with steps on the first task.
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The two board surfaces.
  */
-function createSurfaces(zen) {
-  const { index, files } = createIndex();
-  // Only the board's surfaces carry steps, so no other page's pixels move.
-  const boardIndex = createIndex(true).index;
-  const preferences = createPreferences(createGlobalState());
-  const surfaces = [
+function createBoardSurfaces(boardIndex, preferences) {
+  return [
     {
       page: 'taskBoard',
       viewport: [1400, 900],
@@ -327,6 +318,18 @@ function createSurfaces(zen) {
       clippers: ['.board-column'],
       hovered: ['.board-card'],
     },
+  ];
+}
+
+/**
+ * The sidebar calendar, with and without its weekends, Related Notes showing
+ * the calendar page's chosen day, and the calendar page, wide and narrow.
+ * Each draws its own small month, so no other surface's pixels move with it.
+ *
+ * @returns {object[]} The five calendar surfaces.
+ */
+function createCalendarSurfaces() {
+  return [
     {
       // The calendar in a narrow sidebar with its day panel on: counts that
       // run to two digits, and rows whose words are longer than the panel.
@@ -402,6 +405,18 @@ function createSurfaces(zen) {
       clippers: ['.cal-chip', '.day-panel .task-row'],
       hovered: ['.cal-chip'],
     },
+  ];
+}
+
+/**
+ * Related Notes for a tagged note, and for a note with no tags.
+ *
+ * @param {object} index The workspace.
+ * @param {Map<string, object>} files The parsed notes, by path.
+ * @returns {object[]} The two Related Notes surfaces.
+ */
+function createRelatedNotesSurfaces(index, files) {
+  return [
     {
       // As narrow as a reader is likely to drag the sidebar: the page's own
       // floor is 220px.
@@ -447,6 +462,18 @@ function createSurfaces(zen) {
       clippers: [],
       hovered: ['.note'],
     },
+  ];
+}
+
+/**
+ * Stats, and the search page a tag opens.
+ *
+ * @param {object} index The workspace.
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The Stats and search page surfaces.
+ */
+function createSummarySurfaces(index, preferences) {
+  return [
     // Zen folds each card's file and line away and reveals it on hover, so a
     // hovered result is the one row that grows. The search page is where that
     // reveal sits inside a .card-header rather than at the end of the row.
@@ -479,6 +506,25 @@ function createSurfaces(zen) {
       clippers: [],
       hovered: ['.card'],
     },
+  ];
+}
+
+/**
+ * The surfaces measured, each with the snapshot its page renders from and
+ * the geometry it must keep. A probe runs in the page and reports; the
+ * expectations here read the report. They are the same with zen on or off;
+ * each pass makes them anew.
+ */
+function createSurfaces() {
+  const { index, files } = createIndex();
+  // Only the board's surfaces carry steps, so no other page's pixels move.
+  const boardIndex = createIndex(true).index;
+  const preferences = createPreferences(createGlobalState());
+  const surfaces = [
+    ...createBoardSurfaces(boardIndex, preferences),
+    ...createCalendarSurfaces(),
+    ...createRelatedNotesSurfaces(index, files),
+    ...createSummarySurfaces(index, preferences),
   ];
   return [
     ...surfaces,

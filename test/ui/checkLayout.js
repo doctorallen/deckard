@@ -28,7 +28,7 @@
 // once at a time, so the runs do not compete.
 const path = require('node:path');
 const os = require('node:os');
-const { existsSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
+const { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
 const compiled = path.join(__dirname, '..', '..', 'out');
@@ -36,7 +36,7 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
+const { renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { captureScript } = require('../harness/domSnapshot.js');
 const { createSurfaces, surfaceHtml } = require('./surfaces.js');
@@ -77,7 +77,21 @@ function probeScript(surface, options = {}) {
   const dom = domProbeParts(options);
   return `
 (function () {${dom.start}
-  function box(el) {
+${probeMeasures(surface)}  const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];${dom.store}
+${probeRestingChecks()}${probeHover(surface)}  const pre = document.createElement('pre');
+  pre.id = 'layout-probe';
+  pre.textContent = ${dom.json};
+  document.body.appendChild(pre);
+})();`;
+}
+
+/**
+ * The probe's measuring functions: `box` reads an element's client and
+ * scroll sizes and overflow, `report` reads every scroller and clipper the
+ * surface names, and `wide` names what reaches past a scroller's edge.
+ */
+function probeMeasures(surface) {
+  return `  function box(el) {
     return {
       clientW: el.clientWidth, scrollW: el.scrollWidth,
       clientH: el.clientHeight, scrollH: el.scrollHeight,
@@ -123,8 +137,16 @@ function probeScript(surface, options = {}) {
     }
     return found;
   }
-  const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];${dom.store}
-  // A control that cannot act must not light up under the pointer: its
+`;
+}
+
+/**
+ * The probe's checks of the page at rest: the disabled controls' colors, to
+ * compare once hovered, tags drawn as controls on a card, a clamped result
+ * taller than three lines, and a tag that breaks or leaves its entry.
+ */
+function probeRestingChecks() {
+  return `  // A control that cannot act must not light up under the pointer: its
   // colors at rest, to compare once every :hover rule is forced onto it.
   function look(el) {
     const style = getComputedStyle(el);
@@ -162,7 +184,16 @@ function probeScript(surface, options = {}) {
     })
     .slice(0, 4)
     .map((label) => label.textContent + ' (' + label.getClientRects().length + ' lines)');
-  let target = null;
+`;
+}
+
+/**
+ * The probe's hovered run: the first of the surface's hover targets on the
+ * page is hovered, with every :hover rule rewritten to a class, and measured
+ * again, and the disabled controls are hovered to see whether they light up.
+ */
+function probeHover(surface) {
+  return `  let target = null;
   let hoverTarget = '';
   for (const sel of ${JSON.stringify(surface.hovered)}) {
     target = document.querySelector(sel);
@@ -189,11 +220,7 @@ function probeScript(surface, options = {}) {
       .map((el, i) => { const now = look(el); return now === disabledAtRest[i] ? '' : name(el) + ' ' + disabledAtRest[i] + ' -> ' + now; })
       .filter(Boolean);
   }
-  const pre = document.createElement('pre');
-  pre.id = 'layout-probe';
-  pre.textContent = ${dom.json};
-  document.body.appendChild(pre);
-})();`;
+`;
 }
 
 /**
@@ -324,6 +351,11 @@ setTimeout(function () {
 // twice on the same surface is a fault and is reported as one.
 const MEASURE_TIMEOUT_MS = 60000;
 
+/**
+ * Opens a page in headless Chrome once and returns the finished process,
+ * killed if it runs past MEASURE_TIMEOUT_MS. Time is virtual, with a budget
+ * of three seconds, unless `options.realTime` is set.
+ */
 function runChrome(file, viewport, options = {}) {
   return spawnSync(chrome, [
     '--headless=new', '--disable-gpu', '--no-sandbox',
@@ -359,6 +391,7 @@ function measure(file, viewport, options = {}) {
   return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
 }
 
+/** The Chrome to lay pages out in: CHROME_PATH, or the first of the usual names found, or undefined. */
 function findChrome() {
   const candidates = [
     process.env.CHROME_PATH,
@@ -367,18 +400,22 @@ function findChrome() {
   ].filter(Boolean);
   for (const candidate of candidates) {
     if (candidate.includes('/')) {
-      if (existsSync(candidate)) return candidate;
+      if (existsSync(candidate)) {
+        return candidate;
+      }
       continue;
     }
     const found = spawnSync('which', [candidate], { encoding: 'utf8' });
-    if (found.status === 0 && found.stdout.trim()) return found.stdout.trim();
+    if (found.status === 0 && found.stdout.trim()) {
+      return found.stdout.trim();
+    }
   }
   return undefined;
 }
 
 // The surfaces, the page builder and the browser are shared with the visual
 // check, which draws the same pages and compares the pixels instead.
-module.exports = { chrome, createSurfaces, buildPage, findChrome, measure, medianFirstRender, probeScript, timingProbe };
+module.exports = { chrome, createSurfaces, buildPage, findChrome, isPicked, measure, medianFirstRender, passes, probeScript, timingProbe };
 
 /**
  * The median of `runs` first renders of a page in Chrome, in milliseconds,
@@ -408,13 +445,167 @@ function medianFirstRender(html, surface, options) {
 function timeSurfaces(dir) {
   const runs = Number(process.env.LAYOUT_TIMING_RUNS) || 10;
   const rendered = new Map(renderPagesForTheme('replicant', { zen: false }));
-  for (const surface of createSurfaces(false)) {
+  for (const surface of createSurfaces()) {
     const surfaceName = surface.name || surface.page;
     const only = process.env.LAYOUT_ONLY;
-    if (only && only !== surfaceName && only !== surface.page) continue;
+    if (only && only !== surfaceName && only !== surface.page) {
+      continue;
+    }
     const median = medianFirstRender(surfaceHtml(surface, rendered, { theme: 'replicant', zen: false }), surface, { file: path.join(dir, `timing-${surfaceName}.html`), runs });
     console.log(`  ${surfaceName.padEnd(24)} ${median.toFixed(1)} ms, median of ${runs} first renders`);
   }
+}
+
+/** Every pass the check makes, as [theme, zen] pairs: each theme, without zen and then with it. */
+function passes() {
+  return themes.map((entry) => entry.id ?? entry).flatMap((theme) => [[theme, false], [theme, true]]);
+}
+
+/**
+ * Whether a check's `*_ONLY` variable picks a surface in a pass, or names
+ * nothing. LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking
+ * at it, LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it, and
+ * LAYOUT_ONLY=oblivion every surface in a pass.
+ *
+ * @param {string | undefined} only The variable's value.
+ * @param {string} label The pass, as `<theme>` or `<theme>+zen`.
+ * @param {string} name The surface's name, or its page's.
+ * @returns {boolean} Whether to draw the surface.
+ */
+function isPicked(only, label, name) {
+  return !only || only === `${label}:${name}` || only === name || only === label;
+}
+
+/** What one run of the probe found wrong, as sentences. */
+function describeRun(run) {
+  return [...describeOverflow(run), ...describeMarks(run), ...describeClipping(run)];
+}
+
+/** Each scroller a run found wider than it shows, with what reaches past its edge. */
+function describeOverflow(run) {
+  return run.scrollers
+    .filter((box) => box.scrollW > box.clientW)
+    .map((box) => `${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
+}
+
+/** The elements a run found drawn wrong: boxed tags, clamps, broken tags, and disabled controls lit. */
+function describeMarks(run) {
+  const problems = [];
+  for (const boxed of run.cardTagsBoxed || []) {
+    problems.push(`a tag on a card is drawn as a control: ${boxed}`);
+  }
+  for (const over of run.clampOver || []) {
+    problems.push(`a result cut to three lines is taller than three: ${over}`);
+  }
+  for (const broken of run.tagsBroken || []) {
+    problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
+  }
+  for (const lit of run.disabledLit || []) {
+    problems.push(`a control that cannot act lights up under the pointer: ${lit}`);
+  }
+  return problems;
+}
+
+/** Each clipper a run found hiding content it cannot scroll to. */
+function describeClipping(run) {
+  return run.clippers
+    .filter((box) => box.scrollH > box.clientH && box.overflowY === 'hidden')
+    .map((box) => `${run.label}: ${box.sel} clips ${box.scrollH - box.clientH}px it cannot scroll to`);
+}
+
+/**
+ * Measures one surface's page, unless LAYOUT_DRY is set, and returns the
+ * probe's runs with what they found wrong. A Chrome that fails is a problem
+ * of the surface's rather than of the whole check.
+ */
+function checkSurface(file, surface, label) {
+  const problems = [];
+  let runs;
+  try {
+    runs = process.env.LAYOUT_DRY ? [] : measure(file, surface.viewport);
+  } catch (error) {
+    problems.push(error.message);
+    runs = [];
+  }
+  if (process.env.LAYOUT_DEBUG) {
+    console.log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
+  }
+  if (runs[0] && (runs[0].viewport[0] !== surface.viewport[0] || runs[0].viewport[1] !== surface.viewport[1])) {
+    problems.push(`viewport is ${runs[0].viewport.join('x')}, not ${surface.viewport.join('x')}`);
+  }
+  if (runs[0] && !runs[0].hoverTarget) {
+    problems.push(`no row to hover: none of ${surface.hovered.join(', ')} is on the page (saw ${runs[0].classes.join(', ') || 'no row-like classes'})`);
+  }
+  for (const run of runs) {
+    problems.push(...describeRun(run));
+  }
+  return { runs, problems };
+}
+
+/**
+ * Prints how one surface laid out, or the page written under LAYOUT_DRY.
+ *
+ * @returns {boolean} Whether the surface failed.
+ */
+function reportSurface({ file, label, surfaceName, runs, problems }) {
+  if (process.env.LAYOUT_DRY) {
+    console.log(`  wrote ${file}`);
+    return false;
+  }
+  if (problems.length === 0) {
+    const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
+    console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
+    return false;
+  }
+  console.log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
+  problems.forEach((problem) => console.log(`         ${problem}`));
+  return true;
+}
+
+/**
+ * Lays out every surface LAYOUT_ONLY picks in every theme, with zen off and
+ * on, writing each page into `dir`.
+ *
+ * @returns {number} How many surfaces failed.
+ */
+function checkSurfaces(dir) {
+  let failed = 0;
+  for (const [theme, zen] of passes()) {
+    const label = zen ? `${theme}+zen` : theme;
+    const rendered = new Map(renderPagesForTheme(theme, { zen }));
+    for (const surface of createSurfaces().filter((entry) => isPicked(process.env.LAYOUT_ONLY, label, entry.name || entry.page))) {
+      const surfaceName = surface.name || surface.page;
+      const html = surfaceHtml(surface, rendered, { theme, zen });
+      const file = path.join(dir, `${label}-${surfaceName}.html`);
+      writeFileSync(file, buildPage(html, surface));
+      const { runs, problems } = checkSurface(file, surface, label);
+      failed += reportSurface({ file, label, surfaceName, runs, problems }) ? 1 : 0;
+    }
+  }
+  return failed;
+}
+
+/** The layout check: every surface laid out and measured, exiting 1 when any fails. */
+function run() {
+  // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
+  const keep = process.env.LAYOUT_KEEP;
+  const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
+  if (keep && !existsSync(keep)) {
+    mkdirSync(keep, { recursive: true });
+  }
+  let failed = 0;
+  try {
+    failed = checkSurfaces(dir);
+  } finally {
+    if (!keep) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  if (failed) {
+    console.log(`\n${failed} surface(s) mis-laid`);
+    process.exit(1);
+  }
+  console.log('\nevery surface lays out as drawn');
 }
 
 if (require.main === module && process.env.LAYOUT_TIMING === '1') {
@@ -425,86 +616,5 @@ if (require.main === module && process.env.LAYOUT_TIMING === '1') {
     rmSync(dir, { recursive: true, force: true });
   }
 } else if (require.main === module) {
-// LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
-const keep = process.env.LAYOUT_KEEP;
-const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
-if (keep && !existsSync(keep)) require('node:fs').mkdirSync(keep, { recursive: true });
-let failed = 0;
-try {
-  for (const theme of themes.map((entry) => entry.id ?? entry)) {
-   for (const zen of [false, true]) {
-    const label = zen ? `${theme}+zen` : theme;
-    const rendered = new Map(renderPagesForTheme(theme, { zen }));
-    for (const surface of createSurfaces(zen)) {
-      // LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking at it.
-      // LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it.
-      const only = process.env.LAYOUT_ONLY;
-      const surfaceName = surface.name || surface.page;
-      if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
-      const html = surfaceHtml(surface, rendered, { theme, zen });
-      const file = path.join(dir, `${label}-${surfaceName}.html`);
-      writeFileSync(file, buildPage(html, surface));
-      const problems = [];
-      let runs;
-      try {
-        runs = process.env.LAYOUT_DRY ? [] : measure(file, surface.viewport);
-      } catch (error) {
-        problems.push(error.message);
-        runs = [];
-      }
-      if (process.env.LAYOUT_DEBUG) {
-        console.log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
-      }
-      if (runs[0] && (runs[0].viewport[0] !== surface.viewport[0] || runs[0].viewport[1] !== surface.viewport[1])) {
-        problems.push(`viewport is ${runs[0].viewport.join('x')}, not ${surface.viewport.join('x')}`);
-      }
-      if (runs[0] && !runs[0].hoverTarget) {
-        problems.push(`no row to hover: none of ${surface.hovered.join(', ')} is on the page (saw ${runs[0].classes.join(', ') || 'no row-like classes'})`);
-      }
-      for (const run of runs) {
-        for (const box of run.scrollers) {
-          if (box.scrollW > box.clientW) {
-            problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
-          }
-        }
-        for (const boxed of run.cardTagsBoxed || []) {
-          problems.push(`a tag on a card is drawn as a control: ${boxed}`);
-        }
-        for (const over of run.clampOver || []) {
-          problems.push(`a result cut to three lines is taller than three: ${over}`);
-        }
-        for (const broken of run.tagsBroken || []) {
-          problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
-        }
-        for (const lit of run.disabledLit || []) {
-          problems.push(`a control that cannot act lights up under the pointer: ${lit}`);
-        }
-        for (const box of run.clippers) {
-          if (box.scrollH > box.clientH && box.overflowY === 'hidden') {
-            problems.push(`${run.label}: ${box.sel} clips ${box.scrollH - box.clientH}px it cannot scroll to`);
-          }
-        }
-
-      }
-      if (process.env.LAYOUT_DRY) {
-        console.log(`  wrote ${file}`);
-      } else if (problems.length === 0) {
-        const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
-        console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
-      } else {
-        failed += 1;
-        console.log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
-        problems.forEach((problem) => console.log(`         ${problem}`));
-      }
-    }
-   }
-  }
-} finally {
-  if (!keep) rmSync(dir, { recursive: true, force: true });
-}
-if (failed) {
-  console.log(`\n${failed} surface(s) mis-laid`);
-  process.exit(1);
-}
-console.log('\nevery surface lays out as drawn');
+  run();
 }

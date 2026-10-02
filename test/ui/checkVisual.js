@@ -27,9 +27,9 @@ const { PNG } = require('pngjs');
 const pixelmatchModule = require('pixelmatch');
 const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
 
-const { renderPagesForTheme, themes } = require('./pages.js');
+const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
-const { chrome, createSurfaces, buildPage } = require('./checkLayout.js');
+const { chrome, createSurfaces, buildPage, isPicked, passes } = require('./checkLayout.js');
 
 /** How different one pixel may be before it counts, 0 to 1. */
 const PIXEL_THRESHOLD = 0.1;
@@ -101,9 +101,15 @@ const updating = process.argv.includes('--update');
 const ci = process.argv.includes('--ci');
 const keep = process.env.VISUAL_KEEP;
 const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-visual-'));
-if (keep) mkdirSync(keep, { recursive: true });
+if (keep) {
+  mkdirSync(keep, { recursive: true });
+}
 mkdirSync(BASELINES, { recursive: true });
 
+/**
+ * Takes a screenshot of a page at a surface's size and returns it as a PNG,
+ * retrying once if Chrome wedges.
+ */
 function screenshot(file, viewport, out, attempt = 1) {
   const result = spawnSync(chrome, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
@@ -120,80 +126,104 @@ function screenshot(file, viewport, out, attempt = 1) {
     }
     throw new Error('chrome wedged twice, 60s each');
   }
-  if (!existsSync(out)) throw new Error(`no screenshot (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 300)}`);
+  if (!existsSync(out)) {
+    throw new Error(`no screenshot (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 300)}`);
+  }
   return PNG.sync.read(readFileSync(out));
 }
 
-let failed = 0;
-let recorded = 0;
-let compared = 0;
+/**
+ * Compares a surface's screenshot with its baseline, counting it as
+ * compared, and as failed when more of it differs than its share allows.
+ */
+function compareShot({ label, surfaceName, name }, drawn, baseline, tally) {
+  const expected = PNG.sync.read(readFileSync(baseline));
+  if (expected.width !== drawn.width || expected.height !== drawn.height) {
+    tally.failed += 1;
+    console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
+    return;
+  }
+  const diff = new PNG({ width: drawn.width, height: drawn.height });
+  const differing = pixelmatch(expected.data, drawn.data, diff.data, drawn.width, drawn.height, { threshold: PIXEL_THRESHOLD });
+  const share = differing / (drawn.width * drawn.height);
+  tally.compared += 1;
+  if (share > allowedShare(name, surfaceName)) {
+    tally.failed += 1;
+    const diffFile = path.join(dir, `${name}.diff.png`);
+    writeFileSync(diffFile, PNG.sync.write(diff));
+    console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
+  } else {
+    console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
+  }
+}
+
+/**
+ * Draws one surface and compares it with its baseline, or records the
+ * baseline when updating or when there is none.
+ */
+function drawSurface(surface, { label, theme, zen, rendered }, tally) {
+  const surfaceName = surface.name || surface.page;
+  const name = `${label}-${surfaceName}`;
+  const file = path.join(dir, `${name}.html`);
+  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
+  const shot = path.join(dir, `${name}.png`);
+  const baseline = path.join(BASELINES, `${name}.png`);
+  let drawn;
+  try {
+    drawn = screenshot(file, surface.viewport, shot);
+  } catch (error) {
+    tally.failed += 1;
+    console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${error.message}`);
+    return;
+  }
+  if (updating || !existsSync(baseline)) {
+    writeFileSync(baseline, readFileSync(shot));
+    tally.recorded += 1;
+    console.log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surfaceName}`);
+    return;
+  }
+  compareShot({ label, surfaceName, name }, drawn, baseline, tally);
+}
+
+/**
+ * A baseline nothing draws any more is a surface that was removed or
+ * renamed; say so, rather than keep a picture of something that is gone.
+ * Updating removes it; otherwise it fails.
+ */
+function checkStaleBaselines(seen, tally) {
+  for (const stale of readdirSync(BASELINES).filter((name) => name.endsWith('.png') && !seen.has(name))) {
+    if (updating) {
+      rmSync(path.join(BASELINES, stale));
+      console.log(`  removed ${stale}: nothing draws it now`);
+    } else {
+      tally.failed += 1;
+      console.log(`  FAIL ${stale}: a baseline nothing draws now; run with --update to drop it`);
+    }
+  }
+}
+
+/** What the run has counted so far, kept as it goes so a crash leaves the screenshots of a failure. */
+const tally = { failed: 0, recorded: 0, compared: 0 };
 const seen = new Set();
 try {
-  for (const theme of themes.map((entry) => entry.id ?? entry)) {
-    for (const zen of [false, true]) {
-      const label = zen ? `${theme}+zen` : theme;
-      const rendered = new Map(renderPagesForTheme(theme, { zen }));
-      for (const surface of createSurfaces(zen)) {
-        const only = process.env.VISUAL_ONLY;
-        const surfaceName = surface.name || surface.page;
-        if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
-        const name = `${label}-${surfaceName}`;
-        seen.add(`${name}.png`);
-        const file = path.join(dir, `${name}.html`);
-        writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
-        const shot = path.join(dir, `${name}.png`);
-        const baseline = path.join(BASELINES, `${name}.png`);
-        let drawn;
-        try {
-          drawn = screenshot(file, surface.viewport, shot);
-        } catch (error) {
-          failed += 1;
-          console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${error.message}`);
-          continue;
-        }
-        if (updating || !existsSync(baseline)) {
-          writeFileSync(baseline, readFileSync(shot));
-          recorded += 1;
-          console.log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surfaceName}`);
-          continue;
-        }
-        const expected = PNG.sync.read(readFileSync(baseline));
-        if (expected.width !== drawn.width || expected.height !== drawn.height) {
-          failed += 1;
-          console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
-          continue;
-        }
-        const diff = new PNG({ width: drawn.width, height: drawn.height });
-        const differing = pixelmatch(expected.data, drawn.data, diff.data, drawn.width, drawn.height, { threshold: PIXEL_THRESHOLD });
-        const share = differing / (drawn.width * drawn.height);
-        compared += 1;
-        if (share > allowedShare(name, surfaceName)) {
-          failed += 1;
-          const diffFile = path.join(dir, `${name}.diff.png`);
-          writeFileSync(diffFile, PNG.sync.write(diff));
-          console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
-        } else {
-          console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
-        }
-      }
+  for (const [theme, zen] of passes()) {
+    const label = zen ? `${theme}+zen` : theme;
+    const rendered = new Map(renderPagesForTheme(theme, { zen }));
+    for (const surface of createSurfaces().filter((entry) => isPicked(process.env.VISUAL_ONLY, label, entry.name || entry.page))) {
+      seen.add(`${label}-${surface.name || surface.page}.png`);
+      drawSurface(surface, { label, theme, zen, rendered }, tally);
     }
   }
-  // A baseline nothing draws any more is a surface that was removed or
-  // renamed; say so, rather than keep a picture of something that is gone.
   if (!process.env.VISUAL_ONLY) {
-    for (const stale of readdirSync(BASELINES).filter((name) => name.endsWith('.png') && !seen.has(name))) {
-      if (updating) {
-        rmSync(path.join(BASELINES, stale));
-        console.log(`  removed ${stale}: nothing draws it now`);
-      } else {
-        failed += 1;
-        console.log(`  FAIL ${stale}: a baseline nothing draws now; run with --update to drop it`);
-      }
-    }
+    checkStaleBaselines(seen, tally);
   }
 } finally {
-  if (!keep && failed === 0) rmSync(dir, { recursive: true, force: true });
+  if (!keep && tally.failed === 0) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
+let { failed } = tally;
+const { recorded, compared } = tally;
 if (recorded) {
   console.log(`\n${recorded} baseline(s) ${updating ? 'updated' : 'recorded'} under test/ui/visual-baseline/${process.platform}; commit them.`);
   if (ci && !updating) {

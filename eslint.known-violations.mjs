@@ -165,17 +165,7 @@ export default {
     ],
     "src/ui/webview/searchPage.ts": [
       "readSerializedSearch"
-    ],
-    "test/ui/checkContrast.js": [
-      "parseColor"
     ]
-  },
-  curly: {
-    "test/ui/checkContrast.js": 52,
-    "test/ui/checkLayout.js": 5,
-    "test/ui/checkRenderedContrast.js": 1,
-    "test/ui/checkVisual.js": 4,
-    "test/ui/verifyWebviews.js": 13
   },
   "jsdoc/escape-inline-tags": {
     "src/test/components-primitives.test.ts": 1
@@ -263,12 +253,7 @@ export default {
     "src/domain/markdown/tagTarget.ts": 1,
     "src/domain/markdown/wordCount.ts": 1,
     "src/domain/query/queryParser.ts": 2,
-    "src/test/naming.test.ts": 1,
-    "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 17,
-    "test/ui/checkRenderedContrast.js": 5,
-    "test/ui/checkVisual.js": 7,
-    "test/ui/verifyWebviews.js": 2
+    "src/test/naming.test.ts": 1
   },
   "max-lines-per-function": {
     "scripts/capture-dashboard-screenshot.mjs": [
@@ -374,12 +359,6 @@ export default {
     ],
     "src/ui/webview/taskBoardHtml.ts": [
       "getTaskBoardHtml"
-    ],
-    "test/ui/checkLayout.js": [
-      "probeScript"
-    ],
-    "test/ui/surfaces.js": [
-      "createSurfaces"
     ]
   },
   "max-params": {
@@ -419,11 +398,6 @@ export default {
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1
   },
-  "no-unused-vars": {
-    "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 1,
-    "test/ui/surfaces.js": 1
-  },
   "unicorn/no-negated-condition": {
     "src/domain/markdown/parser.ts": 2,
     "src/domain/markdown/taskSteps.ts": 2,
@@ -443,8 +417,7 @@ export default {
     "src/ui/state/referenceState.ts": 1,
     "src/ui/state/tagGrouping.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
-    "src/ui/views/taskStatusBar.ts": 1,
-    "test/ui/checkContrast.js": 1
+    "src/ui/views/taskStatusBar.ts": 1
   },
   "unicorn/prefer-early-return": {
     "src/domain/index/indexState.ts": 4,

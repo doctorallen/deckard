@@ -94,16 +94,20 @@ function effectiveValue(css, selector, property) {
   let value;
   for (const [, head, body] of rules) {
     const selectors = head.split(',').map((part) => part.trim());
-    if (!selectors.includes(selector)) continue;
+    if (!selectors.includes(selector)) {
+      continue;
+    }
     for (const declaration of body.split(';')) {
       const [name, ...rest] = declaration.split(':');
-      if (name && name.trim() === property) value = rest.join(':').trim();
+      if (name && name.trim() === property) {
+        value = rest.join(':').trim();
+      }
     }
   }
   return value;
 }
 
-// Classes that render a row a reader can open.
+/** Classes that render a row a reader can open. */
 const CONTENT_ROWS = [
   'tag-row', 'entity-row', 'note-row', 'task-row', 'saved-filter-row',
   'board-card', 'stat-row',
@@ -128,46 +132,72 @@ function bareDrawnRows(body) {
     });
 }
 
-let fail = 0;
-for (const [name, render] of pages) {
-  let html;
-  try { html = render(); }
-  catch (error) { console.log(`  FAIL ${name}: render threw: ${error.message}`); fail++; continue; }
-  const problems = [];
-  const blocks = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+/**
+ * The inline scripts of a page that run, leaving out its state in an
+ * application/json block, which is data.
+ */
+function runnableScripts(html) {
+  return [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
     .map(([, attributes, text]) => ({ attributes, text }))
-    .filter((block) => !/\btype="application\/json"/.test(block.attributes));
-  const scripts = blocks.map((block) => block.text);
+    .filter((block) => !/\btype="application\/json"/.test(block.attributes))
+    .map((block) => block.text);
+}
+
+/** A problem for each script that does not parse. */
+function scriptProblems(scripts) {
+  const problems = [];
   for (const script of scripts) {
     try { new Function(script); }
     catch (error) { problems.push('script does not parse: ' + error.message); }
   }
-  if (!/--amber\s*:/.test(html)) problems.push('missing design tokens');
-  if (!/--panel-raised\s*:/.test(html)) problems.push('missing the full token set');
-  // Every row a reader can open must carry a shared surface component, so it
-  // gets the same border, hover and focus as every other one. Layout rows
-  // such as .control-row are not content and are not listed here.
+  return problems;
+}
+
+/**
+ * Every row a reader can open must carry a shared surface component, so it
+ * gets the same border, hover and focus as every other one. Layout rows such
+ * as .control-row are not content and are not listed in CONTENT_ROWS.
+ */
+function bareTextRowProblems(html) {
+  const problems = [];
   for (const rowClass of CONTENT_ROWS) {
-    for (const match of html.matchAll(new RegExp(`class="([^"]*\\b${rowClass}\\b[^"]*)"`, 'g'))) {
-      const classes = match[1].split(/\s+/);
-      if (!classes.includes('row') && !classes.includes('card') && !classes.includes('task')) {
-        problems.push(`.${rowClass} is missing a shared surface (.row/.card): "${match[1]}"`);
-      }
+    const bare = [...html.matchAll(new RegExp(`class="([^"]*\\b${rowClass}\\b[^"]*)"`, 'g'))]
+      .filter((match) => !hasSharedSurface(match[1].split(/\s+/)));
+    for (const match of bare) {
+      problems.push(`.${rowClass} is missing a shared surface (.row/.card): "${match[1]}"`);
     }
   }
+  return problems;
+}
 
-  // Page layout must survive the shared sheet.
-  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
-    .map((m) => m[1])
-    .join('\n');
-  // A stray closing brace makes the browser drop the rule after it.
+/**
+ * How far the braces of a page's styles are off balance: below zero at the
+ * first stray closing brace, which makes the browser drop the rule after it,
+ * and above zero when a block is left open.
+ */
+function braceDepth(styles) {
   let depth = 0;
   for (const character of styles.replace(/\/\*[\s\S]*?\*\//g, '').replace(/"(?:[^"\\]|\\.)*"/g, '""')) {
-    if (character === '{') depth += 1;
-    if (character === '}') depth -= 1;
-    if (depth < 0) break;
+    if (character === '{') {
+      depth += 1;
+    }
+    if (character === '}') {
+      depth -= 1;
+    }
+    if (depth < 0) {
+      break;
+    }
   }
-  if (depth !== 0) problems.push(`style braces do not balance (${depth < 0 ? 'a stray }' : 'an unclosed {'})`);
+  return depth;
+}
+
+/** The problems with a page's styles: their braces, its layout, and zen's place. */
+function styleProblems(name, styles) {
+  const problems = [];
+  const depth = braceDepth(styles);
+  if (depth !== 0) {
+    problems.push(`style braces do not balance (${depth < 0 ? 'a stray }' : 'an unclosed {'})`);
+  }
   for (const [selector, property, expected] of LAYOUT_CONTRACTS[name] ?? []) {
     const actual = effectiveValue(styles, selector, property);
     if (!actual || !actual.includes(expected)) {
@@ -186,12 +216,23 @@ for (const [name, render] of pages) {
   } else if (!cascade.endsWith(zenSheet)) {
     problems.push('the zen sheet is not the last layer of the page\'s sheets');
   }
+  return problems;
+}
 
+/** The problems with a page's tokens and its Content-Security-Policy. */
+function tokenAndPolicyProblems(html) {
+  const problems = [];
   // Tokens must be declared once, by the shared sheet.
   const roots = (html.match(/:root\s*\{/g) || []).length;
-  if (roots > 2) problems.push(`${roots} :root blocks; tokens should come from the base sheet`);
-  if (!/:root/.test(html)) problems.push('missing :root');
-  if (!/Content-Security-Policy/.test(html)) problems.push('missing CSP');
+  if (roots > 2) {
+    problems.push(`${roots} :root blocks; tokens should come from the base sheet`);
+  }
+  if (!/:root/.test(html)) {
+    problems.push('missing :root');
+  }
+  if (!/Content-Security-Policy/.test(html)) {
+    problems.push('missing CSP');
+  }
   // Every inline style and script carries the nonce the page's policy
   // names. The page comes through the page loader, so a bundle it loads by
   // URI is counted here as the inline script it becomes.
@@ -205,8 +246,32 @@ for (const [name, render] of pages) {
   if (ungated.length) {
     problems.push(`${ungated.length} inline style or script without the page's nonce`);
   }
+  return problems;
+}
+
+let fail = 0;
+for (const [name, render] of pages) {
+  let html;
+  try { html = render(); }
+  catch (error) { console.log(`  FAIL ${name}: render threw: ${error.message}`); fail++; continue; }
+  const scripts = runnableScripts(html);
+  const problems = scriptProblems(scripts);
+  if (!/--amber\s*:/.test(html)) {
+    problems.push('missing design tokens');
+  }
+  if (!/--panel-raised\s*:/.test(html)) {
+    problems.push('missing the full token set');
+  }
+  problems.push(...bareTextRowProblems(html));
+  // Page layout must survive the shared sheet.
+  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
+    .map((m) => m[1])
+    .join('\n');
+  problems.push(...styleProblems(name, styles), ...tokenAndPolicyProblems(html));
   if (problems.length) { fail++; console.log(`  FAIL ${name}\n       ` + problems.join('\n       ')); }
-  else console.log(`  ok   ${name}  (${(html.length/1024).toFixed(0)}kb, ${scripts.length} script)`);
+  else {
+    console.log(`  ok   ${name}  (${(html.length/1024).toFixed(0)}kb, ${scripts.length} script)`);
+  }
 }
 // The same rule over what each surface draws, so it still holds once a
 // page's markup is no longer text.

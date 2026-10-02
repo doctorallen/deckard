@@ -18,9 +18,9 @@ const path = require('node:path');
 const os = require('node:os');
 const { mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 
-const { renderPagesForTheme, themes } = require('./pages.js');
+const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
-const { chrome, createSurfaces, buildPage, measure } = require('./checkLayout.js');
+const { chrome, createSurfaces, buildPage, isPicked, measure, passes } = require('./checkLayout.js');
 
 if (!chrome) {
   console.log('rendered contrast check skipped: no Chrome found (set CHROME_PATH)');
@@ -145,43 +145,63 @@ const PROBE = `
   document.body.appendChild(pre);
 })();`;
 
-const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-contrast-'));
-let failed = 0;
-try {
-  for (const theme of themes.map((entry) => entry.id ?? entry)) {
-    for (const zen of [false, true]) {
-      const label = zen ? `${theme}+zen` : theme;
-      const rendered = new Map(renderPagesForTheme(theme, { zen }));
-      for (const surface of createSurfaces(zen)) {
-        const only = process.env.CONTRAST_ONLY;
-        if (only && only !== `${label}:${surface.page}` && only !== surface.page && only !== label) continue;
-        const file = path.join(dir, `${label}-${surface.page}.html`);
-        writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE));
-        let failures;
-        try {
-          failures = measure(file, surface.viewport)[0].failures
-            // Corpo draws a field's edge in VS Code's own input border, the
-            // editor theme's choice and the edge its own fields have; its
-            // text is still Deckard's to get right.
-            .filter((failure) => !(theme === 'corpo' && failure.kind === 'edge'))
-            .filter((failure) => !KNOWN.has(`${theme}:${surface.name || surface.page} ${failure.kind} ${failure.el}`));
-        } catch (error) {
-          failures = [{ kind: 'error', el: error.message }];
-        }
-        if (failures.length === 0) {
-          console.log(`  ok   ${label.padEnd(16)} ${surface.page}`);
-          continue;
-        }
-        failed += 1;
-        console.log(`  FAIL ${label.padEnd(16)} ${surface.page}`);
-        for (const failure of failures) {
-          console.log(failure.kind === 'error'
-            ? `         ${failure.el}`
-            : `         ${failure.kind} ${failure.el}${failure.text ? ` "${failure.text}"` : ''} ${failure.ratio} < ${failure.needed}: ${failure.fg} on ${failure.bg}${failure.size ? `, ${failure.size}px` : ''}`);
-        }
+/**
+ * What a surface draws below AA, less what Corpo's field edges and the known
+ * list excuse; a Chrome that fails is one failure of kind `error`.
+ */
+function surfaceFailures(file, surface, theme) {
+  try {
+    return measure(file, surface.viewport)[0].failures
+      // Corpo draws a field's edge in VS Code's own input border, the
+      // editor theme's choice and the edge its own fields have; its
+      // text is still Deckard's to get right.
+      .filter((failure) => !(theme === 'corpo' && failure.kind === 'edge'))
+      .filter((failure) => !KNOWN.has(`${theme}:${surface.name || surface.page} ${failure.kind} ${failure.el}`));
+  } catch (error) {
+    return [{ kind: 'error', el: error.message }];
+  }
+}
+
+/** One failure as the report prints it: the element, its ratio, and the colors. */
+function describeFailure(failure) {
+  return failure.kind === 'error'
+    ? `         ${failure.el}`
+    : `         ${failure.kind} ${failure.el}${failure.text ? ` "${failure.text}"` : ''} ${failure.ratio} < ${failure.needed}: ${failure.fg} on ${failure.bg}${failure.size ? `, ${failure.size}px` : ''}`;
+}
+
+/**
+ * Draws every surface CONTRAST_ONLY picks in every theme, with zen off and
+ * on, writing each page into `dir`, and prints what each draws below AA.
+ *
+ * @returns {number} How many surfaces failed.
+ */
+function checkSurfaces(dir) {
+  let failed = 0;
+  for (const [theme, zen] of passes()) {
+    const label = zen ? `${theme}+zen` : theme;
+    const rendered = new Map(renderPagesForTheme(theme, { zen }));
+    for (const surface of createSurfaces().filter((entry) => isPicked(process.env.CONTRAST_ONLY, label, entry.page))) {
+      const file = path.join(dir, `${label}-${surface.page}.html`);
+      writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE));
+      const failures = surfaceFailures(file, surface, theme);
+      if (failures.length === 0) {
+        console.log(`  ok   ${label.padEnd(16)} ${surface.page}`);
+        continue;
+      }
+      failed += 1;
+      console.log(`  FAIL ${label.padEnd(16)} ${surface.page}`);
+      for (const failure of failures) {
+        console.log(describeFailure(failure));
       }
     }
   }
+  return failed;
+}
+
+const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-contrast-'));
+let failed = 0;
+try {
+  failed = checkSurfaces(dir);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
