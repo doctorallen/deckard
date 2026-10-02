@@ -29,6 +29,7 @@ export interface UnitLink {
   block?: string;
 }
 
+/** Every link in an index, given to the entries that own its line, and the notes with a link none owns. */
 export interface LinkState {
   /** Keyed `section:<id>`, `task:<id>`, or `file:<path>`. */
   byUnit: ReadonlyMap<string, readonly UnitLink[]>;
@@ -46,8 +47,13 @@ export interface LinkQuery {
   block?: string;
 }
 
+/** Each index's links by owner, gathered the first time a search asks for `link`. */
 const linkStates = new WeakMap<WorkspaceIndex, LinkState>();
 
+/**
+ * The links of an index by the entry that owns each one's line, gathered
+ * once and kept with the index; see UnitLink for how a line is owned.
+ */
 export function getQueryLinkState(index: WorkspaceIndex): LinkState {
   const cached = linkStates.get(index);
   if (cached) {
@@ -69,9 +75,9 @@ export function getQueryLinkState(index: WorkspaceIndex): LinkState {
       sourcePath: occurrence.sourcePath,
       ...(occurrence.targetPath ? { targetPath: occurrence.targetPath } : {}),
       name: occurrence.note.toLocaleLowerCase(),
-      ...(occurrence.heading !== undefined
-        ? { heading: normalizeHeading(occurrence.heading) }
-        : {}),
+      ...(occurrence.heading === undefined
+        ? {}
+        : { heading: normalizeHeading(occurrence.heading) }),
       ...(occurrence.block ? { block: occurrence.block } : {}),
     };
     let lines = bySource.get(occurrence.sourcePath);

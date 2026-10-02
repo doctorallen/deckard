@@ -69,15 +69,22 @@ export function getPeriodicNote(
     week: `${date} to ${formatLocalDate(end)}`,
     month: `${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()}`,
   };
-  return {
-    name:
-      period === 'day'
-        ? date
-        : period === 'week'
-          ? `week-${date}-${formatLocalDate(end)}`
-          : `month-${MONTH_NAMES[start.getMonth()].toLowerCase()}-${start.getFullYear()}`,
-    variables,
-  };
+  return { name: periodicNoteName(period, start, end), variables };
+}
+
+/**
+ * A periodic note's file name, without `.md`: the day itself, the week's
+ * first and last days, or the month's name and year.
+ */
+function periodicNoteName(period: NotePeriod, start: Date, end: Date): string {
+  const date = formatLocalDate(start);
+  if (period === 'day') {
+    return date;
+  }
+  if (period === 'week') {
+    return `week-${date}-${formatLocalDate(end)}`;
+  }
+  return `month-${MONTH_NAMES[start.getMonth()].toLowerCase()}-${start.getFullYear()}`;
 }
 
 /** The first day of the period holding a day: a week's first day, a month's 1st. */

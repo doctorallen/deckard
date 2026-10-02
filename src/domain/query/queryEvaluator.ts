@@ -21,19 +21,13 @@ import {
 } from './queryLinks';
 import { QueryContext } from './queryContext';
 import { DateDirection, resolveDateRange } from './queryDates';
-import { QueryConditionNode, QueryNode } from './queryTypes';
+import { compareByOperator, QueryConditionNode, QueryNode } from './queryTypes';
 import { escapeRegExp, isWildcard, normalizeFolder } from './queryValues';
 
 export type { DateDirection } from './queryDates';
 export { resolveDateRange } from './queryDates';
 
-/**
- * Evaluates a parsed DQL query against the workspace index.
- *
- * The evaluator works on source units — a tagged section, a task, or a
- * front-matter-only file — which is the same granularity the overview already
- * renders, so an advanced query produces the same kind of cards as a tag.
- */
+/** What a search finds, by kind, each list in index order. */
 export interface QueryResults {
   sections: Section[];
   tasks: Task[];
@@ -54,8 +48,12 @@ interface TagMembership {
 }
 
 /**
- * The sections, tasks, and notes of an index a parsed search finds, or none
- * for a search that did not parse.
+ * Evaluates a parsed DQL query against the workspace index: the sections,
+ * tasks, and notes it finds, or none for a search that did not parse.
+ *
+ * The evaluator works on source units — a tagged section, a task, or a
+ * front-matter-only file — which is the same granularity the overview already
+ * renders, so an advanced query produces the same kind of cards as a tag.
  *
  * Everything the answer depends on besides the index and the search comes in
  * `query`, and its `now` is the one moment every date condition is compared
@@ -121,6 +119,7 @@ interface EvaluationContext {
   linkQueries: Map<string, LinkQuery>;
 }
 
+/** The context of one evaluation; the links are gathered only when the search names `link`. */
 function createEvaluationContext(
   index: WorkspaceIndex,
   node: QueryNode,
@@ -134,17 +133,20 @@ function createEvaluationContext(
   };
 }
 
+/** Whether any condition in a query names a field. */
 function hasField(node: QueryNode, field: QueryConditionNode['field']): boolean {
   switch (node.type) {
     case 'condition':
       return node.field === field;
     case 'not':
       return hasField(node.child, field);
-    default:
+    case 'and':
+    case 'or':
       return node.children.some((child) => hasField(child, field));
   }
 }
 
+/** Answers `link`, reading each link value once per evaluation. */
 function matchesLinkCondition(
   condition: QueryConditionNode,
   unit: QueryUnit,
@@ -164,6 +166,7 @@ export interface TagMatchCount {
   tasks: number;
 }
 
+/** Each index's tag counts, counted the first time they are asked for. */
 const tagMatchCounts = new WeakMap<WorkspaceIndex, Map<string, TagMatchCount>>();
 
 /**
@@ -207,6 +210,7 @@ export interface TagPairMatchCount extends TagMatchCount {
   tags: [string, string];
 }
 
+/** Each index's tag-pair counts, counted the first time they are asked for. */
 const tagPairMatchCounts = new WeakMap<
   WorkspaceIndex,
   TagPairMatchCount[]
@@ -342,6 +346,7 @@ export function matchesPerson(written: string, assignee?: string): boolean {
   return personName(written) === personName(assignee);
 }
 
+/** A person's name without its marker or namespace, lowercased, for comparing two spellings. */
 function personName(value: string): string {
   const text = value.trim().toLocaleLowerCase();
   const withoutMarker = text.startsWith('@') ? text.slice(1) : text;
@@ -364,8 +369,10 @@ interface DependencyState {
   neededIds: Set<string>;
 }
 
+/** Each index's dependency edges, built the first time a task unit needs them. */
 const dependencyStates = new WeakMap<WorkspaceIndex, DependencyState>();
 
+/** The live dependency edges of an index, built once and kept with it. */
 function getDependencyState(index: WorkspaceIndex): DependencyState {
   const cached = dependencyStates.get(index);
   if (cached) {
@@ -394,8 +401,10 @@ interface PeriodicState {
   periodic: Set<string>;
 }
 
+/** Each index's daily and periodic notes, gathered the first time `is:` asks. */
 const periodicStates = new WeakMap<WorkspaceIndex, PeriodicState>();
 
+/** The daily and periodic notes of an index, gathered once and kept with it. */
 function getPeriodicState(index: WorkspaceIndex): PeriodicState {
   const cached = periodicStates.get(index);
   if (cached) {
@@ -414,6 +423,7 @@ function getPeriodicState(index: WorkspaceIndex): PeriodicState {
   return state;
 }
 
+/** Which tags each section, task, and note holds, read from the index's tag records. */
 function buildTagMembership(index: WorkspaceIndex): TagMembership {
   const membership: TagMembership = {
     sections: new Map(),
@@ -469,6 +479,10 @@ function collectInheritedTagKeys(
   }
 }
 
+/**
+ * A section as a condition tests it: the tags it holds, those on its own
+ * lines, and those of every heading above it, with its heading and text.
+ */
 function createSectionUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
@@ -549,6 +563,7 @@ function createTaskUnit(
   };
 }
 
+/** A note as a condition tests it: the tags its front matter gives it, and its whole text. */
 function createFileUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
@@ -567,6 +582,7 @@ function createFileUnit(
   };
 }
 
+/** Whether a unit satisfies a query: every child of an AND, any of an OR, not a NOT's. */
 function matchesNode(
   node: QueryNode,
   unit: QueryUnit,
@@ -584,6 +600,7 @@ function matchesNode(
   }
 }
 
+/** Whether a unit satisfies one condition, by the field the condition names. */
 function matchesCondition(
   condition: QueryConditionNode,
   unit: QueryUnit,
@@ -676,6 +693,10 @@ function matchesTag(value: string, unit: QueryUnit): boolean {
   return resolveIndexedTagKey(tagMap, value) !== undefined;
 }
 
+/**
+ * Answers `text`: `=` and `!=` look for the value as a whole word, and `~`
+ * and `!~` anywhere, in the unit's text, case aside.
+ */
 function matchesText(condition: QueryConditionNode, unit: QueryUnit): boolean {
   const needle = condition.value.toLowerCase();
   if (condition.operator === 'eq' || condition.operator === 'neq') {
@@ -689,6 +710,7 @@ function matchesText(condition: QueryConditionNode, unit: QueryUnit): boolean {
   return applyNegation(condition, unit.text.includes(needle));
 }
 
+/** Answers `task`: any task, an open one, or a done one; never a note. */
 function matchesTaskState(value: string, unit: QueryUnit): boolean {
   if (unit.kind !== 'task') {
     return false;
@@ -712,7 +734,6 @@ function matchesIs(
   unit: QueryUnit,
   context: QueryContext,
 ): boolean {
-  const { now, identity } = context;
   if (value === 'note') {
     return unit.kind !== 'task';
   }
@@ -723,80 +744,98 @@ function matchesIs(
   if (unit.kind !== 'task') {
     return false;
   }
-  const open = unit.completed !== true;
-  switch (value) {
-    case 'open':
-      return open;
-    case 'done':
-      return !open;
-    case 'task':
-      return true;
-    case 'overdue':
-      return open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now);
-    case 'due':
-      return (
-        open &&
-        unit.dueAt !== undefined &&
-        unit.dueAt < startOfDay(now) + 7 * DAY_MS
-      );
-    case 'needs-date':
-      return open && needsNewDate(unit.dueAt, now, context.taskPolicy);
-    case 'today': {
-      // Exactly the Tasks view's Today: due today, or scheduled for today or
-      // earlier and started, and not overdue.
-      if (!open) {
-        return false;
-      }
-      const today = startOfDay(now);
-      const tomorrow = today + DAY_MS;
-      if (unit.dueAt !== undefined && unit.dueAt < today) {
-        return false;
-      }
-      if (unit.dueAt !== undefined && unit.dueAt < tomorrow) {
-        return true;
-      }
-      const started = unit.startAt === undefined || unit.startAt < tomorrow;
-      return started && unit.scheduledAt !== undefined && unit.scheduledAt < tomorrow;
-    }
-    case 'waiting':
-      // Waiting on someone: marked so, or handed to someone other than me.
-      return (
-        open &&
-        (unit.status === 'waiting' ||
-          (unit.assignee !== undefined &&
-            !(identity !== undefined && matchesPerson(identity, unit.assignee))))
-      );
-    case 'available':
-      // What can be started now: nothing it waits for is open, it has
-      // started, and its status does not put it on hold.
-      return (
-        open &&
-        unit.parked !== true &&
-        unit.blocked !== true &&
-        (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY_MS) &&
-        !context.taskPolicy.onHoldStatuses.includes(unit.status ?? '')
-      );
-    case 'blocked':
-      return unit.blocked === true;
-    case 'blocking':
-      return unit.blocking === true;
-    case 'mine':
-      // A task nobody was asked to do falls to whoever is reading, so what
-      // carries no 👤 is mine, and what names me is mine once I have a name.
-      return (
-        unit.assignee === undefined ||
-        (identity !== undefined && matchesPerson(identity, unit.assignee))
-      );
-    case 'assigned':
-      return unit.assignee !== undefined;
-    case 'unassigned':
-      return unit.assignee === undefined;
-    case 'step':
-      return unit.step === true;
-    default:
-      return false;
-  }
+  const matches = TASK_IS_PREDICATES.get(value);
+  return matches ? matches(unit, unit.completed !== true, context) : false;
 }
+
+/** Whether a task, open or not as `open` says, is what one `is:` value names. */
+type IsPredicate = (unit: QueryUnit, open: boolean, context: QueryContext) => boolean;
+
+/**
+ * Exactly the Tasks view's Today: open, and due today, or scheduled for
+ * today or earlier and started, and not overdue.
+ */
+function isForToday(unit: QueryUnit, open: boolean, { now }: QueryContext): boolean {
+  if (!open) {
+    return false;
+  }
+  const today = startOfDay(now);
+  const tomorrow = today + DAY_MS;
+  if (unit.dueAt !== undefined && unit.dueAt < today) {
+    return false;
+  }
+  if (unit.dueAt !== undefined && unit.dueAt < tomorrow) {
+    return true;
+  }
+  const started = unit.startAt === undefined || unit.startAt < tomorrow;
+  return started && unit.scheduledAt !== undefined && unit.scheduledAt < tomorrow;
+}
+
+/**
+ * Waiting on a person, as the board's Waiting column means it: an open task
+ * marked waiting, or handed to someone other than me. Waiting on another
+ * task is `is:blocked`.
+ */
+function isWaiting(unit: QueryUnit, open: boolean, { identity }: QueryContext): boolean {
+  return (
+    open &&
+    (unit.status === 'waiting' ||
+      (unit.assignee !== undefined &&
+        !(identity !== undefined && matchesPerson(identity, unit.assignee))))
+  );
+}
+
+/**
+ * The Task Board's Can start now, which narrows the board to this search,
+ * so the two must agree: open, not parked, nothing it waits for still open,
+ * started by today, and no on-hold status.
+ */
+function isAvailable(unit: QueryUnit, open: boolean, context: QueryContext): boolean {
+  return (
+    open &&
+    unit.parked !== true &&
+    unit.blocked !== true &&
+    (unit.startAt === undefined || unit.startAt < startOfDay(context.now) + DAY_MS) &&
+    !context.taskPolicy.onHoldStatuses.includes(unit.status ?? '')
+  );
+}
+
+/**
+ * Mine: a task nobody was asked to do falls to whoever is reading, so what
+ * carries no 👤 is mine, and what names me is mine once I have a name.
+ */
+function isMine(unit: QueryUnit, _open: boolean, { identity }: QueryContext): boolean {
+  return (
+    unit.assignee === undefined ||
+    (identity !== undefined && matchesPerson(identity, unit.assignee))
+  );
+}
+
+/**
+ * The `is:` values that only a task can be, each with its test. A Map, so
+ * a value read from a search is never looked up on Object's prototype.
+ */
+const TASK_IS_PREDICATES: ReadonlyMap<string, IsPredicate> = new Map<string, IsPredicate>([
+  ['open', (_unit, open) => open],
+  ['done', (_unit, open) => !open],
+  ['task', () => true],
+  ['overdue', (unit, open, { now }) => open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now)],
+  [
+    'due',
+    (unit, open, { now }) =>
+      open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now) + 7 * DAY_MS,
+  ],
+  ['needs-date', (unit, open, context) => open && needsNewDate(unit.dueAt, context.now, context.taskPolicy)],
+  ['today', isForToday],
+  ['waiting', isWaiting],
+  ['available', isAvailable],
+  ['blocked', (unit) => unit.blocked === true],
+  ['blocking', (unit) => unit.blocking === true],
+  ['mine', isMine],
+  ['assigned', (unit) => unit.assignee !== undefined],
+  ['unassigned', (unit) => unit.assignee === undefined],
+  ['step', (unit) => unit.step === true],
+]);
 
 /**
  * Answers `has:` and `no:`. Like the task date fields themselves, only tasks
@@ -810,6 +849,7 @@ function matchesHas(condition: QueryConditionNode, unit: QueryUnit): boolean {
   return applyNegation(condition, isTaskFieldPresent(unit, condition.value));
 }
 
+/** Whether a task has what `has:` names: a priority, an id, dependencies, steps, or a date. */
 function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
   switch (field) {
     case 'priority':
@@ -825,6 +865,7 @@ function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
   }
 }
 
+/** One of a task's dates by its field's name; undefined for any other name. */
 function getTaskDate(unit: QueryUnit, field: string): number | undefined {
   switch (field) {
     case 'due':
@@ -882,6 +923,10 @@ export function getTagKind(tagKey: string): string | undefined {
     : undefined;
 }
 
+/**
+ * Answers `file` and `path`: `~` and `!~` look for the value anywhere, case
+ * aside, and `=` and `!=` match it whole as a `*` and `?` glob.
+ */
 function matchesPathValue(
   condition: QueryConditionNode,
   candidate: string,
@@ -935,22 +980,7 @@ function matchesPriority(
   }
   const actual = TASK_PRIORITY_RANKS[unit.priority ?? 'none'];
   const wanted = TASK_PRIORITY_RANKS[condition.value as TaskPriority | 'none'];
-  switch (condition.operator) {
-    case 'eq':
-      return actual === wanted;
-    case 'neq':
-      return actual !== wanted;
-    case 'gt':
-      return actual > wanted;
-    case 'gte':
-      return actual >= wanted;
-    case 'lt':
-      return actual < wanted;
-    case 'lte':
-      return actual <= wanted;
-    default:
-      return false;
-  }
+  return compareByOperator(condition.operator, actual, wanted);
 }
 
 /**
@@ -1001,7 +1031,8 @@ function matchesDate(
       return timestamp < range.start;
     case 'lte':
       return timestamp < range.end;
-    default:
+    case 'contains':
+    case 'notContains':
       return false;
   }
 }

@@ -10,9 +10,6 @@ export default {
       "setTaskLineCompletion",
       "writeCompletion"
     ],
-    "src/domain/query/queryParser.ts": [
-      "createCondition"
-    ],
     "src/test/fixtures/legacyWorkspaceIndex.ts": [
       "addAssociationEvidence",
       "addEntityReference"
@@ -52,7 +49,6 @@ export default {
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
-    "src/domain/query/queryEvaluator.ts": 3,
     "src/ui/commands/bulkEdit.ts": 1,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/quickFindActions.ts": 1,
@@ -66,13 +62,6 @@ export default {
     ],
     "src/core/mcp/mcpProtocol.ts": [
       "handleMcpMessage"
-    ],
-    "src/domain/query/queryEvaluator.ts": [
-      "matchesIs"
-    ],
-    "src/domain/query/queryParser.ts": [
-      "createCondition",
-      "tokenize"
     ],
     "src/ui/commands/bulkEdit.ts": [
       "describeBulkEditResult"
@@ -152,8 +141,6 @@ export default {
     "src/core/storage/searchStoreWorker.ts": 1,
     "src/core/storage/searchStoreWorkerClient.ts": 2,
     "src/core/workspace/scanner.ts": 3,
-    "src/domain/query/queryLinks.ts": 2,
-    "src/domain/query/queryTypes.ts": 6,
     "src/test/calendar-day.test.ts": 1,
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/indexCorpus.ts": 3,
@@ -213,7 +200,6 @@ export default {
   "max-depth": {
     "scripts/build-walkthrough-images.mjs": 1,
     "scripts/capture-dashboard-screenshot.mjs": 4,
-    "src/domain/query/queryParser.ts": 2,
     "src/test/naming.test.ts": 1,
     "test/ui/checkContrast.js": 2,
     "test/ui/checkLayout.js": 17,
@@ -225,14 +211,6 @@ export default {
     "scripts/capture-dashboard-screenshot.mjs": [
       "capture",
       "writeCompanionExtension"
-    ],
-    "src/domain/query/queryEvaluator.ts": [
-      "matchesIs"
-    ],
-    "src/domain/query/queryParser.ts": [
-      "createCondition",
-      "parseWordCondition",
-      "tokenize"
     ],
     "src/test/fixtures/legacyWorkspaceIndex.ts": [
       "buildLegacyWorkspaceIndex"
@@ -328,9 +306,6 @@ export default {
   },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
-    "src/domain/notes/periodicNotes.ts": 1,
-    "src/domain/query/queryDates.ts": 2,
-    "src/domain/query/queryFormat.ts": 1,
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/naming.test.ts": 1,
     "src/test/tag-grouping.test.ts": 1,
@@ -357,7 +332,6 @@ export default {
     "test/ui/surfaces.js": 1
   },
   "unicorn/no-negated-condition": {
-    "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
     "src/ui/commands/focusSection.ts": 1,
@@ -377,7 +351,6 @@ export default {
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
-    "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
     "src/ui/commands/chooseTheme.ts": 1,
     "src/ui/commands/focusSection.ts": 1,
