@@ -347,4 +347,16 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.lastPosted('moveTask')?.column, 'status:doing', 'and the card dropped there moves');
     assert.strictEqual(shown.findAll('.task-board.is-dragging-card, .board-column.drop-target, .board-card.dragging').length, 0, 'nothing is left marked as dragged');
   });
+
+  test('x pressed twice before the host answers completes the card, then reopens it', () => {
+    const shown = show(boardOf(TWO));
+    const beta = cardTitled(shown, 'Beta');
+    beta.focus();
+    press(shown, beta, 'x');
+    assert.ok(beta.classList.contains('completed'), 'the card shows it is done at once');
+    assert.strictEqual((beta.querySelector('[data-action="board-toggle-task"]') as HTMLInputElement).checked, true, 'and so does its box');
+    press(shown, beta, 'x');
+    assert.deepStrictEqual(shown.posted.filter((message) => message.type === 'toggleTask').map((message) => message.completed), [true, false]);
+    assert.strictEqual(shown.text('#live-status'), 'Reopened Beta.');
+  });
 });

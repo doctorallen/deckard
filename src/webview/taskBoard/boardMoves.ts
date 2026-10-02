@@ -116,14 +116,30 @@ class BoardMoves {
     this.post(openSourceMessage(card, event));
   }
 
+  /**
+   * Completes or reopens a card's task. The card says so at once, as a move
+   * does, so a second x before the host answers reopens it rather than
+   * completing it again.
+   */
   private completeCard(card: HTMLElement, completed: boolean): void {
     this.post({ type: 'toggleTask', taskId: String(card.dataset.taskId), completed });
-    announce(`${completed ? 'Completed ' : 'Reopened '}${taskTitleOf(card)}.`);
-    if (!(completed && !reducedMotion())) {
+    const title = taskTitleOf(card);
+    announce(`${completed ? 'Completed ' : 'Reopened '}${title}.`);
+    listsChanged();
+    card.classList.toggle('completed', completed);
+    const box = card.querySelector<HTMLInputElement>('[data-action="board-toggle-task"]');
+    if (box) {
+      box.checked = completed;
+      box.setAttribute('aria-label', `${completed ? 'Reopen ' : 'Complete '}${title}`);
+      box.setAttribute('data-tip', `${completed ? 'Reopen' : 'Complete'} this task`);
+    }
+    if (!completed) {
+      card.classList.remove('is-completing');
       return;
     }
-
-    listsChanged();
+    if (reducedMotion()) {
+      return;
+    }
     card.classList.add('is-completing');
     board.lingerUntil = Date.now() + 800;
   }
