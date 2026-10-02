@@ -517,6 +517,26 @@ suite('Markdown parser', () => {
     );
   });
 
+  test('reads a month and day across New Year in the year it is nearer, within two months', () => {
+    const dueOn = (notePath: string, text: string, updatedAt?: number) => {
+      const parsed = parseMarkdown(notePath, text, updatedAt === undefined ? undefined : { updatedAt });
+      return new Date(parsed.tasks[0].dueAt ?? 0).toDateString();
+    };
+    assert.strictEqual(dueOn('2026-12-28.md', '# 2026-12-28\n- [ ] Call Ren Jan 5'), new Date(2027, 0, 5).toDateString());
+    assert.strictEqual(dueOn('2027-01-03.md', '- [ ] Pay the Dec 20 invoice'), new Date(2026, 11, 20).toDateString());
+    assert.strictEqual(
+      dueOn('notes/report.md', '- [ ] Submit the report Mar 1', new Date(2026, 4, 15).getTime()),
+      new Date(2026, 2, 1).toDateString(),
+      'a day further back in the same year stays in it',
+    );
+    assert.strictEqual(
+      dueOn('2026-12-28.md', '- [ ] Renew the lease Jun 30'),
+      new Date(2026, 5, 30).toDateString(),
+      'a day far from New Year stays in the note\'s year',
+    );
+    assert.strictEqual(dueOn('2026-12-28.md', '- [ ] Call Ren Jan 5, 2026'), new Date(2026, 0, 5).toDateString(), 'a written year wins');
+  });
+
   test('reads loose task dates from the day a daily note is for', () => {
     // Saved long afterwards, as after editing an old note or cloning the
     // repository, which must not move its dates.

@@ -1742,13 +1742,13 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   const monthDate = text.match(monthDatePattern);
   if (monthDate && anchor !== undefined) {
     const month = MONTH_NUMBERS[monthDate[1].toLowerCase()];
-    const year = monthDate[3]
-      ? Number(monthDate[3])
-      : new Date(anchor).getFullYear();
-    const at =
-      month === undefined
-        ? undefined
-        : makeDay(year, month, Number(monthDate[2]));
+    if (month === undefined) {
+      return undefined;
+    }
+    const day = Number(monthDate[2]);
+    const at = monthDate[3]
+      ? makeDay(Number(monthDate[3]), month, day)
+      : placeMonthDay(month, day, anchor);
     return at === undefined ? undefined : { at, text: monthDate[0] };
   }
 
@@ -1763,6 +1763,31 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   }
 
   return undefined;
+}
+
+/** How near New Year a month and day must be to be read in the year before or after: two months. */
+const ACROSS_NEW_YEAR_MS = 61 * 24 * 60 * 60 * 1000;
+
+/**
+ * The day a month and day with no year names, from the day the note is
+ * anchored to: in the anchor's year, unless the same day in the year before
+ * or after is nearer the anchor and within two months of it. So `Jan 5` in
+ * the note for December 28 is the coming January 5, and `Dec 20` in the
+ * note for January 3 the December just gone, while `Mar 1` in a note saved
+ * in May stays this year's, overdue rather than a year off. Undefined for a
+ * day the month does not have.
+ */
+function placeMonthDay(month: number, day: number, anchor: number): number | undefined {
+  const year = new Date(anchor).getFullYear();
+  const sameYear = makeDay(year, month, day);
+  const distance = (at: number): number => Math.abs(at - anchor);
+  const across = [makeDay(year - 1, month, day), makeDay(year + 1, month, day)]
+    .filter((at): at is number => at !== undefined && distance(at) <= ACROSS_NEW_YEAR_MS)
+    .sort((left, right) => distance(left) - distance(right))[0];
+  if (across !== undefined && (sameYear === undefined || distance(across) < distance(sameYear))) {
+    return across;
+  }
+  return sameYear;
 }
 
 /**
