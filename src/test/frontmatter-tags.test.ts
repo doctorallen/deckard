@@ -5,6 +5,7 @@ import {
   readFrontmatterTagValues,
   removeFrontmatterTags,
 } from '../domain/markdown/frontmatterTags';
+import { parseMarkdown } from '../domain/markdown/parser';
 
 suite('Front matter tags', () => {
   test('adds a front matter to a note that has none', () => {
@@ -120,6 +121,27 @@ suite('Front matter tags', () => {
     assert.strictEqual(removeFrontmatterTags('---\ntag: parked\ntags:\n  - parked\n---\nBody\n', ['parked']), 'Body\n');
     // A field written twice is read where it is written last, as the parser reads it.
     assert.deepStrictEqual(readFrontmatterTagValues('---\ntags: [old]\ntitle: x\ntags: [new]\n---\n'), ['new']);
+  });
+
+  test('reads a block list written without indentation, as the parser does', () => {
+    const note = '---\ntitle: Old plan\ntags:\n- parked\n- archive\n---\n# Old plan\n';
+    assert.deepStrictEqual(
+      parseMarkdown('old.md', note).frontmatterTags.map((tag) => tag.key),
+      ['#parked', '#archive'],
+      'the parser reads both items',
+    );
+    assert.deepStrictEqual(readFrontmatterTagValues(note), ['parked', 'archive']);
+    assert.strictEqual(
+      removeFrontmatterTags(note, ['parked']),
+      '---\ntitle: Old plan\ntags:\n- archive\n---\n# Old plan\n',
+      'Unpark takes the item out',
+    );
+    assert.strictEqual(
+      addFrontmatterTag(note, 'work'),
+      '---\ntitle: Old plan\ntags:\n- parked\n- archive\n- work\n---\n# Old plan\n',
+      'Park adds to the list rather than writing a second value',
+    );
+    assert.strictEqual(addFrontmatterTag(note, 'parked'), undefined, 'Park finds the tag already there');
   });
 
   test('says when there was nothing to remove', () => {

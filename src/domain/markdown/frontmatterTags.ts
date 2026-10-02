@@ -41,8 +41,12 @@ function sameTag(written: string, tag: string): boolean {
 
 /** The tags field's line: its name, `tag` or `tags` in any case, and what follows the colon. */
 const TAGS_FIELD = /^(tags?)[ \t]*:[ \t]*(.*?)[ \t]*$/i;
-/** One item of a YAML block list: its indentation and its value. */
-const LIST_ITEM = /^([ \t]+)-[ \t]+(.*?)[ \t]*$/;
+/**
+ * One item of a YAML block list: its indentation and its value. YAML lets a
+ * list under a field sit at the field's own column, and the parser reads
+ * `- parked` there, so no indentation is needed.
+ */
+const LIST_ITEM = /^([ \t]*)-[ \t]+(.*?)[ \t]*$/;
 
 /** Whether a block list's item is empty once unquoted, and so names no tag. */
 function isEmptyItem(item: { value: string }): boolean {
