@@ -255,6 +255,17 @@ export class DashboardController implements PageController<DashboardPageState, D
   }
 
   /**
+   * Before the first scan, or a warm start's cached notes, the index is
+   * empty, and Home drawn from it would say the workspace has no notes and
+   * offer a sample workspace. A preference saved meanwhile would redraw it,
+   * so until then nothing is sent and the page stays on its loading line,
+   * which says how far the scan has got.
+   */
+  public isReady(): boolean {
+    return this.home.indexer.hasIndexed !== false;
+  }
+
+  /**
    * Coming back to a page left open is also how a new day arrives, so it
    * refreshes when the day has turned even if nothing was indexed.
    */

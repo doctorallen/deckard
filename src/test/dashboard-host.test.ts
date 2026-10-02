@@ -81,12 +81,16 @@ function createLedger() {
 /**
  * Home over two notes, attached to a fake panel in front: what the page is
  * sent, where it sends the reader, and whether it is the active source.
+ * `scan.hasIndexed` false opens it during the first scan, with no notes.
  */
-function openHome() {
-  let index = createIndex();
+function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
+  let index = scan.hasIndexed ? createIndex() : buildWorkspaceIndex(new Map());
   const updates = new vscode.EventEmitter<void>();
   const indexer = {
     ready: Promise.resolve(),
+    get hasIndexed() {
+      return scan.hasIndexed;
+    },
     getSnapshot: () => index,
     onDidUpdate: (listener: () => void) => updates.event(listener),
     getParkedRules: () => ({ tags: ['#parked'], hasFolders: false, isParkedPath: () => false }),
@@ -243,6 +247,25 @@ suite('Dashboard host', () => {
       const columns = home.states().slice(next).map((state) => state.data.tagColumns);
       assert.deepStrictEqual(columns.slice(columns.indexOf(4)).filter((count) => count !== 4), [], `${columns}`);
       assert.strictEqual(home.preferences.reader.value.dashboardTagColumns, 4);
+    } finally {
+      home.dispose();
+    }
+  });
+
+  test('is sent nothing during the first scan, so an empty index never says there are no notes', async () => {
+    const scan = { hasIndexed: false };
+    const home = openHome(scan);
+    try {
+      home.host.refresh();
+      // A preference saved while the scan runs would redraw Home.
+      await home.preferences.display.setTagSortMode('count');
+      assert.strictEqual(home.states().length, 0, 'Home stays on its loading line');
+
+      scan.hasIndexed = true;
+      home.updateIndex();
+      const states = home.states() as unknown as Array<{ data: { totalNoteCount: number } }>;
+      assert.strictEqual(states.length, 1);
+      assert.ok(states[0].data.totalNoteCount > 0, 'drawn from the scanned notes');
     } finally {
       home.dispose();
     }
