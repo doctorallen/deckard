@@ -521,4 +521,17 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.findAll('.undo-notice').length, 0, 'the offer is withdrawn');
     assert.strictEqual(shown.document.activeElement, shown.find('.board-status[data-status="todo"]'), 'withdrawn, it goes to the status column where the removed one was');
   });
+
+  test('a list row\'s and a card\'s controls are named by the title as it reads, not its Markdown', () => {
+    const files = { 'notes/a.md': '- [ ] Send **the** [proposal](https://x.example/p) #status/todo\n' };
+    const list = show(boardOf(files, { taskBoardLayout: 'list' }));
+    assert.strictEqual(list.find('.task-row [data-action="task-row-menu"]').getAttribute('aria-label'), 'Change Send the proposal #status/todo: status, priority, or due date');
+    assert.strictEqual(list.find('.task-row [data-action="toggle-task"]').getAttribute('aria-label'), 'Toggle Send the proposal #status/todo');
+    list.dispose();
+
+    const cards = show(boardOf(files));
+    assert.strictEqual(cards.find('.board-card [data-action="board-menu"]').getAttribute('aria-label'), 'Change Send the proposal: status, priority, or due date');
+    assert.strictEqual(cards.find('.board-card [data-action="board-toggle-task"]').getAttribute('aria-label'), 'Complete Send the proposal');
+    assert.match(cards.find('.board-card').getAttribute('aria-label') ?? '', /^Send the proposal, Todo/);
+  });
 });

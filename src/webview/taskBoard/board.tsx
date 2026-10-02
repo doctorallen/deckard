@@ -8,7 +8,7 @@ import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapsh
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { EllipsisIcon } from '../shared/strokeIcons';
-import { formatSourceLocation, HeadingPathSteps, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
+import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
 
@@ -130,7 +130,8 @@ interface CardProps {
 
 /** One task card, with its checkbox and the menu that edits it. */
 function BoardCard({ card, columnId, columns }: CardProps) {
-  const plainTitle = String(card.title || '');
+  // The title as it reads names the card and its controls, not its Markdown.
+  const title = plainTitle(card.titleTokens || []) || String(card.title || '');
   const fileName = String(card.filePath).split('/').pop() || card.filePath;
   // The file and line, then the headings above, fold under the card as they
   // do under a row.
@@ -139,7 +140,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // full otherwise: its title, its column, and when it is due.
   const columnLabel = columns.find((column) => column.id === columnId)?.label;
   const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
-  const cardName = [plainTitle, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
+  const cardName = [title, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
   // The board is one Tab stop: the card last focused, or the first. Arrow
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
@@ -156,7 +157,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       data-file-path={card.filePath}
       data-line={card.line}
     >
-      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${plainTitle}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
+      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${title}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
       <div class="task-summary">
         <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
         <CardDetails card={card} />
@@ -174,7 +175,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
           key="menu"
           action="board-menu"
           className="board-move"
-          label={`Change ${plainTitle}: status, priority, or due date`}
+          label={`Change ${title}: status, priority, or due date`}
           tip="Change this task"
           icon={<EllipsisIcon />}
           attributes={{ tabindex: '-1', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }}
