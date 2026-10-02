@@ -1,6 +1,8 @@
 import * as assert from 'assert';
-import { request as httpRequest } from 'node:http';
+import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { connect, createServer as createNetServer } from 'node:net';
+
+import * as vscode from 'vscode';
 
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { DeckardMcpServer, McpServerSettings } from '../ui/commands/mcpServer';
@@ -8,10 +10,11 @@ import { WorkspaceIndex } from '../domain/model';
 
 /**
  * Secret storage as VS Code's is: shared by every window, with each read and
- * write a round trip that takes a moment.
+ * write a round trip that takes a moment, and a change heard in every window.
  */
 function createSecrets() {
   const values = new Map<string, string>();
+  const changes = new vscode.EventEmitter<{ key: string }>();
   const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
   return {
     get: async (key: string) => {
@@ -21,7 +24,9 @@ function createSecrets() {
     store: async (key: string, value: string) => {
       await tick();
       values.set(key, value);
+      changes.fire({ key });
     },
+    onDidChange: changes.event,
     values,
   };
 }
@@ -30,6 +35,7 @@ function createSecrets() {
 function createServer(
   secrets = createSecrets(),
   settings: McpServerSettings = { enabled: false, port: 0 },
+  retryDelay?: number,
 ) {
   return new DeckardMcpServer({
     indexer: { ready: Promise.resolve(), getSnapshot: () => ({}) as WorkspaceIndex },
@@ -38,6 +44,7 @@ function createServer(
     tools: [],
     version: 'test',
     readSettings: () => settings,
+    retryDelay,
   });
 }
 
@@ -137,5 +144,85 @@ suite('MCP server lifecycle', () => {
     await restarted;
     await pause(20);
     assert.strictEqual(await isListening(port), false);
+  });
+
+  /** Runs `body` with every error message Deckard shows collected rather than shown. */
+  async function collectErrors(body: (errors: string[]) => Promise<void>): Promise<void> {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showErrorMessage = window.showErrorMessage;
+    const errors: string[] = [];
+    window.showErrorMessage = async (message: string) => {
+      errors.push(message);
+      return undefined;
+    };
+    try {
+      await body(errors);
+    } finally {
+      window.showErrorMessage = showErrorMessage;
+    }
+  }
+
+  test("a second window finds its port held by the first window's Deckard, says nothing, and takes the port when that window closes", async () => {
+    await collectErrors(async (errors) => {
+      const port = await findFreePort();
+      const secrets = createSecrets();
+      const first = createServer(secrets, { enabled: true, port });
+      const second = createServer(secrets, { enabled: true, port }, 20);
+      try {
+        await first.restart();
+        await second.restart();
+        assert.deepStrictEqual(errors, []);
+        const token = await first.getToken();
+        first.dispose();
+        await pause(100);
+        assert.strictEqual(await ping(port, token), 200, 'the second window serves the port now');
+      } finally {
+        first.dispose();
+        await second.stop();
+        second.dispose();
+      }
+    });
+  });
+
+  test('a port another program holds is still reported', async () => {
+    await collectErrors(async (errors) => {
+      // Another program answers on the port, but not as Deckard does.
+      const other = createHttpServer((_request, response) => {
+        response.writeHead(401).end('Who are you?');
+      });
+      await new Promise<void>((resolve) => other.listen(0, '127.0.0.1', resolve));
+      const address = other.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      const server = createServer(createSecrets(), { enabled: true, port });
+      try {
+        await server.restart();
+        assert.deepStrictEqual(errors, [
+          `Deckard could not start its MCP server on port ${port}, because another program is using it. Choose a free port in the "MCP Server: Port" setting.`,
+        ]);
+      } finally {
+        server.dispose();
+        await new Promise((resolve) => other.close(resolve));
+      }
+    });
+  });
+
+  test('a token reset in another window retires the old token here too', async () => {
+    const secrets = createSecrets();
+    const running = createServer(secrets);
+    const elsewhere = createServer(secrets);
+    try {
+      const port = await running.start(0);
+      const old = await running.getToken();
+      await elsewhere.resetToken();
+      await pause(20);
+      const token = await elsewhere.getToken();
+      assert.notStrictEqual(token, old);
+      assert.strictEqual(await ping(port, old), 401);
+      assert.strictEqual(await ping(port, token), 200);
+    } finally {
+      await running.stop();
+      running.dispose();
+      elsewhere.dispose();
+    }
   });
 });

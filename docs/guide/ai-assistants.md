@@ -31,7 +31,8 @@ claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Aut
 ```
 
 - The server is off by default. It listens on `127.0.0.1` only, at `deckard.mcpServer.port`.
-- Every request needs the server's token, kept in VS Code's secret storage. `Deckard: Reset MCP Server Token` makes a new one and breaks every copied setup.
+- With several VS Code windows open, the first window to start the server holds the port, and clients see that window's notes. The other windows wait quietly and take the port over when that window closes.
+- Every request needs the server's token, kept in VS Code's secret storage and shared by every window. `Deckard: Reset MCP Server Token` makes a new one and breaks every copied setup.
 - Requests from web pages on other sites are refused, token or not.
 - There is no dialog before a write; the refactor preview is where you see the line and can decline it.
 - Deckard sends nothing itself; the client may send what it gets to its model service.
