@@ -73,6 +73,8 @@ export function getClaudeCodeSetup(port: number, token: string): string {
 export class DeckardMcpServer implements vscode.Disposable {
   private server: Server | undefined;
   private token: string | undefined;
+  /** The token being read or made, so callers at the same moment share one. */
+  private tokenRequest: Promise<string> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   private readonly indexer: IndexSource;
@@ -158,8 +160,26 @@ export class DeckardMcpServer implements vscode.Disposable {
     void this.stop();
   }
 
-  /** The token, made and stored the first time it is needed. */
-  public async getToken(): Promise<string> {
+  /**
+   * The token, made and stored the first time it is needed. Calls that
+   * overlap share one read: turning the server on from Copy MCP Server Setup
+   * starts it and copies the token at once, and two calls that each found no
+   * token would each make one, so the server would refuse the copied token.
+   */
+  public getToken(): Promise<string> {
+    return this.tokenRequest ?? this.shareTokenRequest(this.readOrMakeToken());
+  }
+
+  /** Replaces the token, so every copied setup stops working. */
+  public async resetToken(): Promise<void> {
+    const token = randomBytes(32).toString('hex');
+    // Shared like a read, so a copy made meanwhile waits for the new token.
+    await this.shareTokenRequest(Promise.resolve(this.secrets.store(TOKEN_KEY, token)).then(() => token));
+    this.token = token;
+  }
+
+  /** The stored token, or a new one, stored, when there is none. */
+  private async readOrMakeToken(): Promise<string> {
     const stored = await this.secrets.get(TOKEN_KEY);
     if (stored) {
       return stored;
@@ -169,11 +189,16 @@ export class DeckardMcpServer implements vscode.Disposable {
     return token;
   }
 
-  /** Replaces the token, so every copied setup stops working. */
-  public async resetToken(): Promise<void> {
-    const token = randomBytes(32).toString('hex');
-    await this.secrets.store(TOKEN_KEY, token);
-    this.token = token;
+  /** Makes a token read or write the one every caller waits on until it settles. */
+  private shareTokenRequest(request: Promise<string>): Promise<string> {
+    this.tokenRequest = request;
+    const settle = () => {
+      if (this.tokenRequest === request) {
+        this.tokenRequest = undefined;
+      }
+    };
+    request.then(settle, settle);
+    return request;
   }
 
   /**
