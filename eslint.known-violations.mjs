@@ -314,18 +314,6 @@ export default {
     ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
-    ],
-    "src/ui/webview/searchPageHtml.ts": [
-      "getSearchPageHtml"
-    ],
-    "src/ui/webview/sidebarNotesHtml.ts": [
-      "getSidebarNotesHtml"
-    ],
-    "src/ui/webview/statsHtml.ts": [
-      "getStatsHtml"
-    ],
-    "src/ui/webview/taskBoardHtml.ts": [
-      "getTaskBoardHtml"
     ]
   },
   "no-nested-ternary": {
