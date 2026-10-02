@@ -1,4 +1,5 @@
 import { isParkedTask } from '../index/parked';
+import { addDays } from '../markdown/calendar';
 import { Task, WorkspaceIndex } from '../model';
 import { formatLocalDate, listDailyNotes, parseLocalDate } from './periodicNotes';
 
@@ -38,13 +39,12 @@ export function planRollover(
    */
   mode: RolloverMode = 'move',
 ): RolloverPlan | undefined {
+  // Counted back in calendar days: a day a clock change shortened is still
+  // a day, and counting hours would reach one day too far.
   const earliest =
     lookbackDays > 0
       ? formatLocalDate(
-          new Date(
-            (parseLocalDate(today)?.getTime() ?? Date.now()) -
-              lookbackDays * 24 * 60 * 60 * 1000,
-          ),
+          new Date(addDays(parseLocalDate(today)?.getTime() ?? Date.now(), -lookbackDays)),
         )
       : undefined;
   const notes = listDailyNotes(index).filter(
