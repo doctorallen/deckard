@@ -698,6 +698,48 @@ test('a page saved before search pages reopens on its tag, tags, and words', asy
   assert.strictEqual(gone.disposed, true, 'a page for a tag that is gone is not restored');
 });
 
+test('a page restored during the first scan shows the scan at once, then its search', async () => {
+  const index = createIndex();
+  let finish;
+  const published = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const updates = new vscode.EventEmitter();
+  const progress = new vscode.EventEmitter();
+  const indexer = {
+    ...createIndexer(index),
+    ready: published,
+    published,
+    hasIndexed: false,
+    scanProgress: { completed: 10, total: 100 },
+    onDidProgress: progress.event,
+    onDidUpdate: updates.event,
+  };
+  const panels = new SearchPanels({
+    indexer,
+    preferences: createPreferences(createGlobalState()),
+    extensionUri: vscode.Uri.file('/ext'),
+    activeSearch: new ActiveSearch(),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  const panel = vscode.window.createWebviewPanel('deckard.tagOverview', 'Saved', -1, {});
+  const restoring = panels.restore(panel, { query: 'kickoff', origin: 'kickoff' });
+  await settle();
+  assert.ok(panel.webview.html.length > 0, 'the page is drawn before the scan ends');
+  const view = mountWebview(panel.webview.html, panel);
+  assert.ok(view.find('#app .loading'), 'and says the scan is under way');
+
+  indexer.hasIndexed = true;
+  finish();
+  updates.fire();
+  await restoring;
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  assert.deepStrictEqual(visibleTitles(view), ['Beta kickoff']);
+  assert.strictEqual(box(view), 'kickoff');
+  panels.dispose();
+});
+
 /**
  * Restores a page from what VS Code kept for it across a reload, as the
  * serializer does, and says what it reopened on: the search in its box and
