@@ -22,7 +22,7 @@ import { ParsedFile, PersistedPreferences, Section, TagInfo, Task, WorkspaceInde
 import { formatIsoDate, startOfDay } from '../domain/markdown/calendar';
 import { resolveDateRange } from '../domain/query/queryDates';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { parseMarkdown } from '../domain/markdown/parser';
+import { getEntityNamespaceAliases, parseMarkdown } from '../domain/markdown/parser';
 import { buildSearchFacets } from '../domain/search/facets';
 
 suite('Deckard query language', () => {
@@ -359,6 +359,24 @@ suite('Deckard query language', () => {
       results.sections.map((section) => section.id),
       ['vendor'],
     );
+  });
+
+  test('finds a tag and a kind by a namespace alias, as the note was written', () => {
+    // A workspace's own alias, as the settings give it, merged over the built-in ones.
+    const aliases = { entityNamespaceAliases: getEntityNamespaceAliases({ proj: 'project' }) };
+    const file = parseMarkdown('notes/acme.md', '# Acme #organization/acme\n\n# Atlas #proj/atlas\n', undefined, aliases);
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const headings = (text: string, settings = {}) =>
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now(), settings)).sections.map(
+        (section) => section.heading.split(' #')[0],
+      );
+    for (const text of ['#organization/acme', '#org/acme', 'tag = organization/acme', '#organization/*', 'kind = organization', 'kind = org']) {
+      assert.deepStrictEqual(headings(text), ['Acme'], text);
+    }
+    assert.deepStrictEqual(headings('-#organization/acme'), ['Atlas']);
+    for (const text of ['#proj/atlas', 'kind = proj', '#project/atlas']) {
+      assert.deepStrictEqual(headings(text, aliases), ['Atlas'], text);
+    }
   });
 
   test('matches an entity namespace by kind', () => {
