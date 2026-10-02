@@ -172,7 +172,7 @@ suite('Task service', () => {
     const written = { uri: new FakeNotes().uri('plan.md'), lineNumber: 1, replacement: '- [x] Send proposal', original: '- [ ] Send proposal' };
     const refused = setup({ 'plan.md': text });
     refused.fake.refuse = true;
-    assert.deepStrictEqual(await refused.service.revertLine(written), { kind: 'rejected' });
+    assert.deepStrictEqual(await refused.service.revertLine(written), { kind: 'rejected', uri: written.uri });
     const error = new Error('gone');
     const failing = setup({ 'plan.md': text });
     failing.fake.failOpen = error;

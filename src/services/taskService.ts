@@ -140,7 +140,7 @@ export interface Completion {
 export type LineRevert<U> =
   | { kind: 'reverted' }
   | { kind: 'stale'; uri: U }
-  | { kind: 'rejected' }
+  | { kind: 'rejected'; uri: U }
   | { kind: 'failed'; uri: U; error: unknown };
 
 /** What a write kept in the history did, with the handle its Undo works through. */
@@ -264,7 +264,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
         return { kind: 'stale', uri };
       }
       if (!(await this.options.notes.apply([{ uri, replacements: [{ range, text: original }] }]))) {
-        return { kind: 'rejected' };
+        return { kind: 'rejected', uri };
       }
       await this.options.notes.save(uri);
       // The line is the one it was, so the task is too: give it back the

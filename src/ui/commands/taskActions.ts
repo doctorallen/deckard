@@ -175,7 +175,8 @@ function offerUndo(
 
 /**
  * Puts a task line back the way it was, through the task service, and says
- * so only when it could not: the range changed since, or the undo failed.
+ * so only when it could not: the range changed since, VS Code refused the
+ * undo, or the undo failed.
  */
 async function revertTaskLine(
   writes: TaskWrites,
@@ -184,6 +185,13 @@ async function revertTaskLine(
   const result: LineRevert<vscode.Uri> = await writes.tasks.revertLine(written);
   if (result.kind === 'stale') {
     void reportStale([result.uri]);
+    return;
+  }
+  if (result.kind === 'rejected') {
+    void reportFailure({
+      ...describeRejectedEdit(noteName(result.uri)),
+      outcome: `VS Code did not accept the undo in ${noteName(result.uri)}, so the note keeps the edit.`,
+    });
     return;
   }
   if (result.kind === 'failed') {
