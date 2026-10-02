@@ -698,7 +698,7 @@ function matchesTag(value: string, unit: QueryUnit): boolean {
 function matchesText(condition: QueryConditionNode, unit: QueryUnit): boolean {
   const needle = condition.value.toLowerCase();
   if (condition.operator === 'eq' || condition.operator === 'neq') {
-    // Whole-word match keeps `text:plan` from matching "planning".
+    // Whole-word match keeps `text = plan` from matching "planning".
     const pattern = new RegExp(
       `(^|[^\\p{L}\\p{N}_])${escapeRegExp(needle)}([^\\p{L}\\p{N}_]|$)`,
       'u',

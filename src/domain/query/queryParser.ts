@@ -943,19 +943,21 @@ const VALUE_READERS: Partial<
 
 /**
  * Maps written operators onto the evaluator's operator set: each symbol
- * QUERY_OPERATOR_SYMBOLS writes reads as its operator, except `=`, which
- * with `:` and anything else reads as the field's default, `contains` for
- * `text` and `eq` for every other field.
+ * QUERY_OPERATOR_SYMBOLS writes reads as its operator, so `text = plan` is
+ * the whole word, as the guide, Help, and the builder say. `:`, which
+ * names no operator of its own, reads as the field's default: `contains`
+ * for `text`, so `text:plan` matches as a bare word does, and `eq` for
+ * every other field.
  */
 function readOperator(value: string, field: QueryField): QueryOperator {
   return WRITTEN_OPERATORS.get(value) ?? (field === 'text' ? 'contains' : 'eq');
 }
 
-/** The written operators that name an operator of their own: every symbol but `=`. */
+/** The operator each written symbol names. */
 const WRITTEN_OPERATORS: ReadonlyMap<string, QueryOperator> = new Map(
-  (Object.entries(QUERY_OPERATOR_SYMBOLS) as [QueryOperator, string][])
-    .filter(([operator]) => operator !== 'eq')
-    .map(([operator, symbol]) => [symbol, operator]),
+  (Object.entries(QUERY_OPERATOR_SYMBOLS) as [QueryOperator, string][]).map(
+    ([operator, symbol]) => [symbol, operator],
+  ),
 );
 
 /**

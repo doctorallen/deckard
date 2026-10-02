@@ -291,6 +291,25 @@ suite('Deckard query language', () => {
     );
   });
 
+  test('reads text = as a whole word, and text: and text ~ as any part of one, as the guide says', () => {
+    const file = parseMarkdown(
+      'notes/n.md',
+      '# Sprint\n- [ ] Finish the planning doc\n- [ ] Write the plan\n',
+    );
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const titles = (text: string) =>
+      evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now())).tasks.map(
+        (task) => task.title,
+      );
+    assert.deepStrictEqual(titles('text = plan'), ['Write the plan']);
+    assert.deepStrictEqual(titles('text != plan'), ['Finish the planning doc']);
+    for (const contains of ['text:plan', 'text ~ plan', 'plan']) {
+      assert.deepStrictEqual(titles(contains), ['Finish the planning doc', 'Write the plan'], contains);
+    }
+    assert.strictEqual(formatQuery(parseQuery('text = plan').node), 'text = plan');
+    assert.strictEqual(formatQuery(parseQuery('text:plan').node), 'text ~ plan');
+  });
+
   test('matches text inside a section body', () => {
     const index = createIndex();
     const results = evaluateQuery(index, parseQuery('text ~ elevator').node, createQueryContext(Date.now()));
