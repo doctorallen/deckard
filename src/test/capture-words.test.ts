@@ -46,6 +46,15 @@ suite('Capture reads its last words', () => {
     assert.strictEqual(read('Stand-up daily').recurrence, 'every day');
   });
 
+  test('a last word that names a property of every object is still a word', () => {
+    for (const word of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      const reading = read(`Fix the ${word}`);
+      assert.strictEqual(reading.line, `- [ ] Fix the ${word}`, word);
+      assert.strictEqual(reading.priority, undefined, word);
+      assert.strictEqual(reading.recurrence, undefined, word);
+    }
+  });
+
   test('a capture with nothing to read is written exactly as typed', () => {
     assert.strictEqual(read('Plan the offsite').line, '- [ ] Plan the offsite');
     assert.strictEqual(read('tomorrow').line, '- [ ] tomorrow', 'a day alone is the whole task');
