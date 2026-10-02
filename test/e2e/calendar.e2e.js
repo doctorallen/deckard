@@ -37,6 +37,9 @@ function createIndex() {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
+// The tags the calendar asked to open, as Deckard opens them on a search page.
+const openedTags = [];
+
 /** Lets the host finish handling a message the page posted. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -50,7 +53,13 @@ async function openCalendar() {
     getSnapshot: () => index,
     onDidUpdate: updates.event,
   };
-  const calendar = new CalendarView(indexer, modules.taskWrites.createTaskWrites(), new ThemePreview(), vscode.Uri.file('/ext'));
+  const calendar = new CalendarView({
+    indexer,
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: (tagKey) => openedTags.push(tagKey),
+  });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;
@@ -64,7 +73,7 @@ async function openCalendar() {
     view.findAll('[data-action="show-month"]').find(
       (button) => button.getAttribute('aria-label') === text || button.textContent === text,
     );
-  return { host, view, updates, day, monthButton };
+  return { calendar, host, view, updates, day, monthButton };
 }
 
 // ---------------------------------------------------------------------------
@@ -212,3 +221,22 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
   }
 });
 
+
+test('with the weekends hidden, a month step keeps the chosen day\'s place on a weekday', async () => {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  await configuration.update('calendar.dayPanel', true);
+  await configuration.update('calendar.showWeekends', false);
+  try {
+    const { calendar, view, monthButton } = await openCalendar();
+    // October 10th, 2026 is a Saturday, which is not drawn.
+    await calendar.controller.handle({ type: 'selectDay', date: '2026-09-10' });
+    await settle();
+    view.click(monthButton('Next month'));
+    await settle();
+    assert.strictEqual(calendar.controller.selectedDate, '2026-10-12', 'on to Monday');
+    assert.strictEqual(view.find('.calendar-grid .day.selected').getAttribute('data-date'), '2026-10-12', 'which is drawn chosen');
+  } finally {
+    await configuration.update('calendar.dayPanel', undefined);
+    await configuration.update('calendar.showWeekends', undefined);
+  }
+});

@@ -157,6 +157,7 @@ document.addEventListener('click', (event) => {
 });
 installDayPanel({
   send,
+  opensTags: true,
   showGroup: (group) => session.redraw({ shownGroups: withGroupShown(session.store.state.shownGroups, group) }),
 });
 // With the panel on, a click chooses a day and a double-click opens it.

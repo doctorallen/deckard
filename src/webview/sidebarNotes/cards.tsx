@@ -109,7 +109,7 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
       className=""
       attributes={cardAttributes(note)}
       title={display.titleDisplay === 'inline' ? <TitleWithTags title={title} tags={note.titleTags || []} /> : title}
-      trailing={<div class="note-actions"><InsertLink title={note.title} /><RelevanceScore note={note} reasons={reasons} /></div>}
+      trailing={<div class="note-actions"><InsertLink title={title} /><RelevanceScore note={note} reasons={reasons} /></div>}
       source={<div class="source">{formatSourceLocation(fileName, note.sourceLine)}</div>}
       body={[
         steps.length ? <div class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null,
@@ -120,6 +120,26 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
         </div>,
       ]}
     />
+  );
+}
+
+/**
+ * Results as cards, each keyed by the line it opens, so a result keeps its
+ * card when the list is ranked again, and the focus stays on the result it
+ * was on rather than on whatever moved into its place. Two results on one
+ * line are told apart by their turn.
+ */
+export function RankedNoteCards({ notes, display }: { readonly notes: readonly RankedNote[]; readonly display: CardDisplay }) {
+  const seen = new Map<string, number>();
+  return (
+    <>
+      {notes.map((note) => {
+        const place = `${note.filePath}:${note.sourceLine}`;
+        const turn = seen.get(place) ?? 0;
+        seen.set(place, turn + 1);
+        return <RankedNoteCard key={turn ? `${place}#${turn}` : place} note={note} display={display} />;
+      })}
+    </>
   );
 }
 
@@ -212,7 +232,7 @@ export function Similar({ similar, display }: { readonly similar: SidebarNotesSn
           <section class="similar-wording" aria-label="Similar wording (no tags yet)">
             <span class="section-label">Similar wording (no tags yet)</span>
             <p class="similar-hint">These share words with this note, not tags or links.</p>
-            <div class="note-list">{similar.notes.map((note) => <RankedNoteCard note={note} display={display} />)}</div>
+            <div class="note-list"><RankedNoteCards notes={similar.notes} display={display} /></div>
           </section>
         )
         : null}

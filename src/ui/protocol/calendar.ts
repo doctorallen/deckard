@@ -8,6 +8,7 @@ import type {
   ChooseThemeMessage,
   DashboardTask,
   OpenHelpMessage,
+  OpenTagMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
   ToggleTaskMessage,
@@ -244,6 +245,8 @@ export interface CalendarPageToHost {
   toggleTask: ToggleTaskMessage;
   moveTask: CalendarMoveTaskMessage;
   searchCreated: CalendarSearchCreatedMessage;
+  /** A tag written in a task's title in the day panel, which opens its page. */
+  openTag: OpenTagMessage;
 }
 
 /** What the host sends the sidebar Calendar, by type. */

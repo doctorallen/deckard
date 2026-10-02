@@ -15,14 +15,14 @@ import { installKeySheet } from '../shared/keySheet';
 import { type ActionHandler, dispatchAction, readEmbeddedState } from '../shared/page';
 import { installDayPanel } from '../shared/calendar/dayPanel';
 import { eventElement } from '../shared/calendar/events';
-import { selectedDateOf, withGroupShown } from '../shared/calendar/model';
+import { isDrawn, selectedDateOf, withGroupShown } from '../shared/calendar/model';
 import { CalendarSession, send } from '../shared/calendar/session';
 import { announce } from '../shared/status';
 import { installViewOptions } from '../shared/viewOptions';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { clearDragMarks, installTaskDrag } from './drag';
-import { CalendarPage, type CalendarLayout, type CalendarPageState, type DrawnCalendarPage } from './view';
+import { CalendarPage, type CalendarLayout, type CalendarPageState, chosenWeek, type DrawnCalendarPage } from './view';
 
 /** Sends the host one of the messages only the calendar page sends. */
 function sendPage(message: CalendarPageMessage): void {
@@ -61,25 +61,48 @@ function setLayout(next: string | null): void {
   announce(next === 'week' ? 'Week layout' : 'Month layout');
 }
 
-/** Steps the page a month or a week, keeping the chosen day's place. */
+/**
+ * Where the page steps from: the chosen day, or in the Week layout, when
+ * the week drawn does not hold it, that week's first day of the month.
+ */
+function stepFrom(state: CalendarPageState): string {
+  const snapshot = state.snapshot as CalendarSnapshot;
+  const chosen = selectedDateOf(state) || snapshot.today;
+  const week = state.layout === 'week' ? chosenWeek(state as DrawnCalendarPage) : undefined;
+  if (!week || week.days.some((day) => day.date === chosen)) {
+    return chosen;
+  }
+  return (week.days.find((day) => day.inMonth && isDrawn(snapshot, day)) ?? week.days[0]).date;
+}
+
+/**
+ * Steps the page a month or a week, keeping the chosen day's place. The
+ * day stepped to takes the grid's tab stop, and the focus too when a day
+ * had it; from the ‹ and › buttons the focus stays on the button, so Enter
+ * steps again rather than opening a day's note.
+ */
 function step(by: number): void {
   const state = session.store.state;
   const snapshot = state.snapshot as CalendarSnapshot;
   const next = stepCalendar(state.layout, by, {
-    date: selectedDateOf(state) || snapshot.today,
+    date: stepFrom(state),
     previousMonth: snapshot.previousMonth,
     nextMonth: snapshot.nextMonth,
     hideWeekends: Boolean(snapshot.hideWeekends),
   });
-  session.focusWhenDrawn(next.date);
-  send(next.month ? { type: 'showMonth', month: next.month, date: next.date } : { type: 'selectDay', date: next.date });
+  if (document.activeElement?.closest('.calendar-grid')) {
+    session.focusWhenDrawn(next.date);
+  } else {
+    session.setFocusDate(next.date);
+  }
+  session.sendStep(next.month ? { type: 'showMonth', month: next.month, date: next.date } : { type: 'selectDay', date: next.date });
 }
 
 /** Back to today, in its month. */
 function goToday(): void {
   const snapshot = session.store.state.snapshot as CalendarSnapshot;
   session.focusWhenDrawn(snapshot.today);
-  send({ type: 'showMonth', month: snapshot.currentMonth, date: snapshot.today });
+  session.sendStep({ type: 'showMonth', month: snapshot.currentMonth, date: snapshot.today });
 }
 
 /** The page's controls, by their `data-action`, after those both calendars draw. */
@@ -140,6 +163,7 @@ document.addEventListener('click', (event) => {
 });
 installDayPanel({
   send,
+  opensTags: true,
   showGroup: (group) => session.redraw({ shownGroups: withGroupShown(session.store.state.shownGroups, group) }),
 });
 // With the panel on, a click chooses a day and a double-click opens it.

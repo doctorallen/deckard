@@ -57,6 +57,12 @@ suite('Calendar messages', () => {
     assert.strictEqual(narrowCalendarMessage({ type: 'toggleTask', taskId: 't', completed: 'yes' }), undefined);
   });
 
+  test('accepts a tag to open by any key, which the host looks up', () => {
+    assert.deepStrictEqual(narrowCalendarMessage({ type: 'openTag', tagKey: '#project/atlas' }), { type: 'openTag', tagKey: '#project/atlas' });
+    assert.strictEqual(narrowCalendarMessage({ type: 'openTag', tagKey: '' }), undefined);
+    assert.strictEqual(narrowCalendarMessage({ type: 'openTag', tagKey: 7 }), undefined);
+  });
+
   test('accepts a search for the notes created on a day', () => {
     assert.deepStrictEqual(narrowCalendarMessage({ type: 'searchCreated', date: '2026-09-25' }), { type: 'searchCreated', date: '2026-09-25' });
     assert.strictEqual(narrowCalendarMessage({ type: 'searchCreated', date: 'today' }), undefined);

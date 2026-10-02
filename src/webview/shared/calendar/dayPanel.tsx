@@ -172,6 +172,11 @@ export interface DayPanelHandlers {
   readonly send: (message: CalendarMessage) => void;
   /** Shows a group whole, and draws the page again. */
   readonly showGroup: (group: string) => void;
+  /**
+   * Whether a tag in a task's title is the panel's to open. Related Notes
+   * opens every tag it draws itself, so it leaves the panel's to its own.
+   */
+  readonly opensTags?: boolean;
 }
 
 /** Runs a panel control's action, by its `data-action`. */
@@ -187,14 +192,21 @@ function runPanelAction(target: Element, handlers: DayPanelHandlers): void {
   } else if (action === 'search-created') {
     handlers.send({ type: 'searchCreated', date: value('data-date') });
   } else if (action === 'show-group') {
+    const group = target.closest('.day-group');
     handlers.showGroup(value('data-group'));
+    // Show more is gone once its group is whole, so the focus goes on to
+    // the first row it showed rather than falling to the page.
+    group?.querySelectorAll<HTMLElement>('.task-row')[DAY_ROWS]?.focus();
+  } else if (action === 'open-tag' && handlers.opensTags) {
+    handlers.send({ type: 'openTag', tagKey: value('data-tag-key') });
   }
 }
 
 /**
  * Wires every day panel on the page, once: a row opens its task, its
- * checkbox completes or reopens it, its button moves it on, and the
- * panel's note, create, search, and show-more controls do what they say.
+ * checkbox completes or reopens it, its button moves it on, a tag in its
+ * title opens the tag, and the panel's note, create, search, and show-more
+ * controls do what they say.
  * The listeners sit on the document, so the page may draw its panel freely.
  */
 export function installDayPanel(handlers: DayPanelHandlers): void {

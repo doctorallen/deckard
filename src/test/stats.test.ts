@@ -138,6 +138,29 @@ suite('Stats: what needs attention, first', () => {
     }
   });
 
+  test('Enter on a button in a row is the button\'s, and on the row itself opens the row', () => {
+    const page = open(build({
+      'notes/a.md': '# A #project/atlas\n\nSee [[Nowhere]].',
+      'notes/b.md': '# B #project/atlass',
+    }));
+    try {
+      const enter = (element: Element) => {
+        const event = new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        element.dispatchEvent(event);
+        return event;
+      };
+      for (const action of ['create-missing-note', 'merge-lookalike']) {
+        const before = page.posted.length;
+        assert.strictEqual(enter(page.find(`[data-action="${action}"]`)).defaultPrevented, false, `Enter on ${action} is left to the button, which clicks it`);
+        assert.deepStrictEqual(page.posted.slice(before), [], 'and the row does not open');
+      }
+      assert.strictEqual(enter(page.find('[data-missing-index="0"]')).defaultPrevented, true);
+      assert.deepStrictEqual(page.lastPosted('openSearch'), { type: 'openSearch', query: 'link = [[Nowhere]]' }, 'the row itself opens');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('says in one line when nothing needs attention', () => {
     const page = open(build({ 'notes/a.md': '# A\n\n[[b]]', 'notes/b.md': '# B\n\n[[a]]' }));
     try {

@@ -29,6 +29,8 @@ export interface CalendarPanelOptions {
   themePreview: ThemePreview;
   /** Where the page says it is in front, so Related Notes can show its day. */
   activeCalendar?: ActiveCalendar;
+  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
+  openTag: (tagKey: string) => unknown;
 }
 
 /**
@@ -57,6 +59,7 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
       source: this,
       refresh: () => this.page.host.refresh(),
       post: (message) => this.page.host.post(message),
+      openTag: options.openTag,
       extensionUri: options.extensionUri,
     });
     this.controller = this.pageController.calendar;
@@ -72,16 +75,14 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
   }
 
   /**
-   * Opens the page, on a month and a day when given, such as the sidebar's.
-   * An open page is brought forward and drawn at once; a new one is drawn
-   * once the index has notes to show.
+   * Opens the page, on a month and a day when given, such as the sidebar's;
+   * on a month alone, with the chosen day's place in it. An open page is
+   * brought forward and drawn at once; a new one is drawn once the index
+   * has notes to show.
    */
   public async show(month?: string, date?: string): Promise<void> {
     if (month) {
-      this.controller.month = month;
-    }
-    if (date) {
-      this.controller.selectedDate = date;
+      this.controller.moveToMonth(month, date);
     }
     const open = this.page.panel;
     if (open) {

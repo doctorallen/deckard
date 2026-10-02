@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 
+import { sameShownDayIn } from '../../../../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../../../../domain/model';
+import { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type {
   CalendarMessage,
@@ -15,7 +17,7 @@ import { readWeekStart } from '../../../commands/datePrompt';
 import { openSourceAt } from '../../../commands/navigation';
 import { readQueryContext } from '../../../commands/queryContext';
 import { openTask, TaskWrites, toggleTask } from '../../../commands/taskActions';
-import { CalendarOptions, clampToMonth, createCalendar } from '../../../state/calendarState';
+import { CalendarOptions, createCalendar } from '../../../state/calendarState';
 import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { ready } from '../../host/sharedHandlers';
@@ -46,6 +48,8 @@ export interface CalendarControllerHost {
    * with the move's number when the page gave it one.
    */
   refused?: (taskId: string, requestId: number | undefined) => void;
+  /** Opens a tag's page, by its key in the index, as a tag in a task's title asks. */
+  openTag: (tagKey: string) => unknown;
 }
 
 /**
@@ -57,6 +61,7 @@ export class CalendarController {
   public month = formatLocalDate(new Date()).slice(0, 7);
   /** The day chosen for the panel; today while none was chosen. */
   public selectedDate: string | undefined;
+  private readonly navigation = new NavigationService();
 
   /** Starts on this month, with no day chosen. */
   public constructor(
@@ -138,21 +143,43 @@ export class CalendarController {
       case 'openMonth':
         await this.openPeriod('month', `${this.month}-01`);
         return;
+      case 'openTag': {
+        // The day panel may have been drawn before the tag was renamed, so
+        // the tag is found as the other pages find a tag a title names.
+        const tag = this.navigation.resolveTag(this.indexer.getSnapshot(), message.tagKey, 'lenient');
+        if (tag.kind === 'open') {
+          await this.host.openTag(tag.tagKey);
+        }
+        return;
+      }
+    }
+  }
+
+  /**
+   * Shows another month, drawn at the next refresh, with a day of it
+   * chosen: `date` when it is in that month, else the place in it of
+   * `date`, of the chosen day, or, with the panel on, of today. With the
+   * panel off and no day chosen, none is.
+   */
+  public moveToMonth(month: string, date?: string): void {
+    this.month = month;
+    const today = formatLocalDate(new Date());
+    const from = date ?? this.selectedDate ?? (this.host.dayPanel() ? today : undefined);
+    // The chosen day is always one of the month shown: a day outside it
+    // would leave the page's Week layout drawing one week while it stepped
+    // from another. With the weekends hidden it is a weekday, as a step on
+    // the page lands, since a hidden day can be neither seen nor focused.
+    if (from !== undefined) {
+      this.selectedDate = from.slice(0, 7) === month ? from : sameShownDayIn(from, month, !readShowWeekends());
+    }
+    if (this.selectedDate === today) {
+      this.selectedDate = undefined;
     }
   }
 
   /** Steps to another month, taking the day the step chose or keeping the chosen day's place in it. */
   private showMonth(message: CalendarShowMonthMessage): void {
-    this.month = message.month;
-    // A new month keeps the chosen day's place in it.
-    if (message.date) {
-      this.selectedDate = message.date;
-    } else if (this.selectedDate || this.host.dayPanel()) {
-      this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
-    }
-    if (this.selectedDate === formatLocalDate(new Date())) {
-      this.selectedDate = undefined;
-    }
+    this.moveToMonth(message.month, message.date);
     this.host.refresh();
   }
 
@@ -259,6 +286,8 @@ export interface CalendarViewControllerOptions {
   writes: TaskWrites;
   /** Sends the calendar its snapshot through its host, or marks it stale while hidden. */
   refresh: () => void;
+  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
+  openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
 }
@@ -300,6 +329,7 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
     this.calendar = new CalendarController(view.indexer, view.writes, {
       dayPanel: readDayPanel,
       refresh: view.refresh,
+      openTag: view.openTag,
     });
     this.handlers = calendarHandlers(this.calendar);
   }
@@ -353,6 +383,7 @@ export function calendarHandlers(calendar: CalendarController): MessageHandlers<
     toggleTask: handle,
     moveTask: handle,
     searchCreated: handle,
+    openTag: handle,
   };
 }
 

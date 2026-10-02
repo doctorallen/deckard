@@ -34,8 +34,12 @@ export type DrawnCalendarPage = CalendarPageState & DrawnCalendar;
 /** How many of a day's tasks a month's day names before +N more. */
 const MONTH_CHIPS = 4;
 
-/** The week the chosen day is in: the row the Week layout draws. */
-function chosenWeek(state: DrawnCalendarPage): CalendarWeek | undefined {
+/**
+ * The row the Week layout draws: the week the chosen day is in, or, when
+ * the month holds no such week, as after midnight turns today into the
+ * next month, the month's first.
+ */
+export function chosenWeek(state: DrawnCalendarPage): CalendarWeek | undefined {
   const snapshot = state.snapshot;
   const date = state.drawnSelected || snapshot.today;
   return snapshot.weeks.find((week) => week.days.some((day) => day.date === date))
@@ -80,13 +84,17 @@ interface Shown {
 function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; readonly shown: Shown }) {
   const snapshot = state.snapshot;
   const monthLabel = snapshot.title + (snapshot.notePath ? ', monthly note' : '');
+  // The title shows the week's days in the Week layout, and still opens the
+  // month's note, so its name says both, starting with what it shows.
+  const titleLabel = shown.week ? `${shown.title}, ${monthLabel}` : monthLabel;
   const step = state.layout === 'week' ? 'week' : 'month';
-  const onToday = state.drawnSelected === snapshot.today && (state.layout === 'week' || snapshot.month === snapshot.currentMonth);
+  const onToday = state.drawnSelected === snapshot.today &&
+    (shown.week ? shown.week.days.some((day) => day.date === snapshot.today) : snapshot.month === snapshot.currentMonth);
   return (
     <header class="calendar-page-header">
       <div>
         <p class="eyebrow">DECKARD / CALENDAR</p>
-        <h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={monthLabel}>{shown.title}</button></h1>
+        <h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={titleLabel}>{shown.title}</button></h1>
       </div>
       <div class="calendar-page-actions" role="group" aria-label="Calendar">
         <button type="button" data-action="step-calendar" data-by="-1" aria-label={`Previous ${step}`} data-tip={`Previous ${step} ([)`}>‹</button>

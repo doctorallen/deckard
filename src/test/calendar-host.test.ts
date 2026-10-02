@@ -26,6 +26,7 @@ const thisMonth = today.slice(0, 7);
  */
 function openCalendar(options: { scanning?: boolean } = {}) {
   const files = [parseMarkdown(`/notes/${today}.md`, `# ${today}\n- [ ] Call Ren 📅 ${today}\n`)];
+  const openedTags: string[] = [];
   let index: WorkspaceIndex = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const updates = new vscode.EventEmitter<void>();
   const progress = new vscode.EventEmitter<void>();
@@ -42,6 +43,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     indexer,
     writes: createTaskWrites(),
     refresh: () => host?.refresh(),
+    openTag: (tagKey) => openedTags.push(tagKey),
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   host = new WebviewHost(controller, { indexer, themePreview });
@@ -55,6 +57,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     surface,
     themePreview,
     states,
+    openedTags,
     send: (message: unknown) => surface.webview.send(message),
     updateIndex: (next: WorkspaceIndex) => {
       index = next;
@@ -177,6 +180,20 @@ suite('Calendar host', () => {
         ['deckard.search', 'created = 2026-09-25'],
         ['offer', 'There is no note for 2031-03-14 yet.'],
       ]);
+    } finally {
+      host.dispose();
+    }
+  });
+
+  test('a tag in a day\'s task opens the tag the index has, written with or without its #', async () => {
+    const { host, openedTags, send, updateIndex } = openCalendar();
+    try {
+      const tagged = parseMarkdown(`/notes/${today}.md`, `# ${today}\n- [ ] Call Ren #project/atlas 📅 ${today}\n`);
+      updateIndex(buildWorkspaceIndex(new Map([[tagged.filePath, tagged]])));
+      await send({ type: 'openTag', tagKey: '#project/atlas' });
+      await send({ type: 'openTag', tagKey: 'project/atlas' });
+      await send({ type: 'openTag', tagKey: '#project/gone' });
+      assert.deepStrictEqual(openedTags, ['#project/atlas', '#project/atlas'], 'a tag the index no longer has opens nothing');
     } finally {
       host.dispose();
     }

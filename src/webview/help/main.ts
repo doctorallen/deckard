@@ -22,8 +22,9 @@ declare function acquireVsCodeApi(): VsCodeApi;
 
 /**
  * What Help saves, so that shown again it comes back where it was: the
- * guide page it shows, if any, at the heading it was opened at; how far
- * down the window was scrolled; and which drawing of the page saved it.
+ * guide page it shows, if any, at the heading it was opened at, and the
+ * section of Help it was opened from, for Back; how far down the window
+ * was scrolled; and which drawing of the page saved it.
  * VS Code hands the state to the page whenever its HTML loads, and the host
  * draws the HTML anew for a theme or zen change, a section asked for while
  * Help is hidden, and a window reload; each drawing opens where it is asked
@@ -31,6 +32,8 @@ declare function acquireVsCodeApi(): VsCodeApi;
  */
 interface HelpState {
   guide?: { page: string; anchor?: string };
+  /** The section of Help the guide page was opened from, while one is shown. */
+  returnTo?: string;
   scrollY: number;
   /** The drawing of the page that saved it, from the nonce the host drew it with. */
   drawn: string;
@@ -72,12 +75,17 @@ function readState(): HelpState | undefined {
     return undefined;
   }
   const guide = state.guide && typeof state.guide.page === 'string' ? state.guide : undefined;
-  return { ...(guide ? { guide } : {}), scrollY: state.scrollY, drawn };
+  const back = guide && typeof state.returnTo === 'string' ? { returnTo: state.returnTo } : {};
+  return { ...(guide ? { guide } : {}), ...back, scrollY: state.scrollY, drawn };
 }
 
-/** Saves which guide page is shown, if any, and how far down the window is. */
+/**
+ * Saves which guide page is shown, if any, and where Back goes from it,
+ * and how far down the window is.
+ */
 function save(): void {
-  vscode?.setState({ ...(shownGuide ? { guide: shownGuide } : {}), scrollY: window.scrollY, drawn });
+  const back = shownGuide && returnTo ? { returnTo } : {};
+  vscode?.setState({ ...(shownGuide ? { guide: shownGuide } : {}), ...back, scrollY: window.scrollY, drawn });
 }
 
 /** Saves where scrolling stopped, once it has paused. */
@@ -131,7 +139,11 @@ function showGuide(message: HelpGuideMessage): void {
   save();
 }
 
-/** Help again in place of the guide page, at a section when one is named. */
+/**
+ * Help again in place of the guide page, at a section when one is named,
+ * else at the top, with the focus on the heading it lands at: the guide
+ * page, and whatever had the focus on it, are gone.
+ */
 function showHelp(anchor?: string): void {
   if (!article || !guideView) {
     return;
@@ -139,28 +151,35 @@ function showHelp(anchor?: string): void {
   guideView.hidden = true;
   guideView.replaceChildren();
   article.hidden = false;
-  if (anchor) {
-    reveal(anchor);
-  } else {
+  if (!reveal(anchor)) {
     window.scrollTo(0, 0);
+    focusHeading(article.querySelector<HTMLElement>('h1'));
   }
   shownGuide = undefined;
   save();
 }
 
-/** Opened on a section, such as What's new, the page goes to it. */
-function reveal(anchor: string | null | undefined): void {
-  const section = anchor ? document.getElementById(anchor) : null;
-  if (!section) {
-    return;
-  }
-  section.scrollIntoView?.({ block: 'start' });
-  const heading = section.querySelector<HTMLElement>('h2');
+/** Puts the focus on a heading, which takes it only from a script. */
+function focusHeading(heading: HTMLElement | null): void {
   if (!heading) {
     return;
   }
   heading.setAttribute('tabindex', '-1');
   heading.focus({ preventScroll: true });
+}
+
+/**
+ * Opened on a section, such as What's new, the page goes to it; false
+ * when there is no such section.
+ */
+function reveal(anchor: string | null | undefined): boolean {
+  const section = anchor ? document.getElementById(anchor) : null;
+  if (!section) {
+    return false;
+  }
+  section.scrollIntoView?.({ block: 'start' });
+  focusHeading(section.querySelector<HTMLElement>('h2'));
+  return true;
 }
 
 /** Asks for a guide page, noting where Help was for Back when it is Help that asked. */
@@ -246,6 +265,7 @@ function open(): void {
   }
   if (saved.guide && vscode) {
     restoring = { page: saved.guide.page, scrollY: saved.scrollY };
+    returnTo = saved.returnTo;
     const { page, anchor } = saved.guide;
     vscode.postMessage(anchor ? { type: 'openGuide', page, anchor } : { type: 'openGuide', page });
     return;
