@@ -50,6 +50,7 @@ suite('Preference backups', () => {
     assert.strictEqual(nameFromDate(at), '2026-09-22T19-43-14-277Z');
     assert.strictEqual(dateFromName('2026-09-22T19-43-14-277Z.json').getTime(), at.getTime());
     assert.ok(Number.isNaN(dateFromName('notes.json').getTime()), 'a stray file is not a copy');
+    assert.strictEqual(dateFromName('2026-09-22T19-43-14-277Z-2.json').getTime(), at.getTime(), 'a second copy of the millisecond');
   });
 
   test('writes a copy of the store into workspace storage, newest first', async () => {
