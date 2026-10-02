@@ -331,6 +331,26 @@ test('plain words narrow the whole search as they are typed', async () => {
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
 });
 
+test('the same words typed again after the search changed narrow it again', async () => {
+  const { view } = await openSearch('');
+  const bar = () => view.find('[data-action="query-input"]');
+  view.type(bar(), 'planning');
+  await settle(300);
+  view.keydown(bar(), 'Enter');
+  await settle();
+  // Back to the search before, which the host shows without the words.
+  view.click(view.find('[data-action="history-back"]'));
+  await settle();
+  assert.ok(visibleTitles(view).length > 1, 'every note again');
+
+  view.posted.length = 0;
+  view.type(bar(), 'planning');
+  await settle(300);
+  assert.deepStrictEqual(view.posted, [{ type: 'previewSearch', words: ['planning'] }]);
+  await settle();
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');

@@ -81,7 +81,9 @@ let fittingMore: Array<{ readonly element: Element; readonly parent: Node; reado
  * the results feel like they are following the typing.
  */
 const PREVIEW_DELAY_MS = 180;
+/** The words waiting out that delay, until they are sent. */
 let previewHandle: ReturnType<typeof setTimeout> | undefined;
+/** The words the host narrows by, or will once the words waiting are sent. */
 let sentPreview = '';
 
 /** In the tabs layout, the tab with results, until the reader picks one. */
@@ -152,7 +154,10 @@ const editor = createQueryEditor({
     }
     sentPreview = words.join(' ');
     clearTimeout(previewHandle);
-    previewHandle = setTimeout(() => send({ type: 'previewSearch', words }), PREVIEW_DELAY_MS);
+    previewHandle = setTimeout(() => {
+      previewHandle = undefined;
+      send({ type: 'previewSearch', words });
+    }, PREVIEW_DELAY_MS);
   },
   placeholder: () => 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…',
   label: 'Search notes and tasks',
@@ -498,6 +503,12 @@ onHostMessage<StateMessage<SearchPageState>>('state', (message) => {
   if (searched !== openedFor) {
     openedFor = searched;
     openedCards = new Set();
+  }
+  // The host lets go of the typed words whenever the search changes, and
+  // says which it still narrows by; typing the same words again must send
+  // them again. Words still waiting to be sent are newer than its answer.
+  if (previewHandle === undefined) {
+    sentPreview = (latest.draftWords || []).join(' ');
   }
   editor.receive();
   redraw({ snapshot: latest });
