@@ -185,6 +185,81 @@ function applyMove(card: HTMLElement, columnId: string): void {
 }
 
 /**
+ * The tasks whose line the page asked the host to rewrite, by the id they
+ * had, until the host's next state or its refusal answers the edit.
+ * Rewriting a line usually gives its task a new id, so an edit sent with
+ * the old one after the first was written finds no task and is refused.
+ */
+const unanswered = new Set<string>();
+
+/**
+ * The edits a card was given while its task's last edit was unanswered,
+ * in order: where the task is written, the column its card was in, and
+ * how to send the edit for the card the host draws there next.
+ */
+const held: { written: string; column: string; send: (card: HTMLElement) => void }[] = [];
+
+/** An attribute selector for one data attribute, its value escaped. */
+function attributeSelector(name: string, value: string): string {
+  return `[data-${name}="${value.replace(/["\\]/g, '\\$&')}"]`;
+}
+
+/** Where a card's task is written, its file and line, as a selector. */
+function writtenAt(card: HTMLElement): string {
+  return attributeSelector('file-path', String(card.dataset.filePath)) + attributeSelector('line', String(card.dataset.line));
+}
+
+/**
+ * Sends the edits held for cards while their task's last edit was
+ * unanswered, once the host's next state is drawn, which answers it: the
+ * host draws again when the write reaches the index. Each goes to the card
+ * written where its task is written, in the column it was in when it was
+ * asked for, and with the id the state gives the task; an edit for a task
+ * the board no longer draws is dropped. Edits of one task go one state at
+ * a time, in order.
+ */
+export function sendHeldEdits(): void {
+  unanswered.clear();
+  const waiting = held.splice(0);
+  const busy = new Set<string>();
+  for (const edit of waiting) {
+    const card = document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}${attributeSelector('card-column', edit.column)}`)
+      || document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}`);
+    if (!card) {
+      continue;
+    }
+    if (busy.has(edit.written) || unanswered.has(String(card.dataset.taskId))) {
+      busy.add(edit.written);
+      held.push(edit);
+      continue;
+    }
+    edit.send(card);
+    busy.add(edit.written);
+  }
+}
+
+/** Lets a task's next edit go: the host refused the last one, so the id it was sent with is still the task's. */
+export function settleRefusedEdit(taskId: string): void {
+  unanswered.delete(taskId);
+}
+
+/**
+ * Sends a card's edit now, or, while its task's last edit is unanswered,
+ * shows it now with `showNow` and holds it until a state gives the task its
+ * new id. Two quick keys on a card used to send the second with the id the
+ * first had just made stale, and the host refused it.
+ */
+function whenAnswered(card: HTMLElement, send: (card: HTMLElement) => void, showNow?: () => void): void {
+  if (!unanswered.has(String(card.dataset.taskId))) {
+    send(card);
+    return;
+  }
+  const at = { written: writtenAt(card), column: String(card.dataset.cardColumn) };
+  showNow?.();
+  held.push({ ...at, send });
+}
+
+/**
  * What a card's menu says when the task already has the move `value`
  * makes, "Draft spec: Priority is already High.", or undefined when it
  * does not.
@@ -193,6 +268,31 @@ function alreadyHas(card: HTMLElement, groups: readonly ActionMenuGroup[], value
   const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
   const chosen = group ? group.items.find((item) => item.value === value) : undefined;
   return chosen && chosen.checked ? `${taskTitleOf(card)}: ${(group && group.label) || 'It'} is already ${chosen.label}.` : undefined;
+}
+
+/**
+ * Marks a card completed or open at once, with its checkbox, as a move
+ * shows at once; a completed card lingers a moment before the next draw.
+ */
+function markCompleted(card: HTMLElement, completed: boolean): void {
+  const title = taskTitleOf(card);
+  listsChanged();
+  card.classList.toggle('completed', completed);
+  const box = card.querySelector<HTMLInputElement>('[data-action="board-toggle-task"]');
+  if (box) {
+    box.checked = completed;
+    box.setAttribute('aria-label', `${completed ? 'Reopen ' : 'Complete '}${title}`);
+    box.setAttribute('data-tip', `${completed ? 'Reopen' : 'Complete'} this task`);
+  }
+  if (!completed) {
+    card.classList.remove('is-completing');
+    return;
+  }
+  if (reducedMotion()) {
+    return;
+  }
+  card.classList.add('is-completing');
+  board.lingerUntil = Date.now() + 800;
 }
 
 /** The board's moves, wired once by `installBoardMoves`. */
@@ -213,27 +313,43 @@ class BoardMoves {
    * completing it again.
    */
   private completeCard(card: HTMLElement, completed: boolean): void {
-    this.post({ type: 'toggleTask', taskId: String(card.dataset.taskId), completed });
-    const title = taskTitleOf(card);
-    announce(`${completed ? 'Completed ' : 'Reopened '}${title}.`);
-    listsChanged();
-    card.classList.toggle('completed', completed);
-    const box = card.querySelector<HTMLInputElement>('[data-action="board-toggle-task"]');
-    if (box) {
-      box.checked = completed;
-      box.setAttribute('aria-label', `${completed ? 'Reopen ' : 'Complete '}${title}`);
-      box.setAttribute('data-tip', `${completed ? 'Reopen' : 'Complete'} this task`);
-    }
-    if (!completed) {
-      card.classList.remove('is-completing');
-      return;
-    }
-    if (reducedMotion()) {
-      return;
-    }
-    card.classList.add('is-completing');
-    board.lingerUntil = Date.now() + 800;
+    announce(`${completed ? 'Completed ' : 'Reopened '}${taskTitleOf(card)}.`);
+    whenAnswered(card, (drawn) => {
+      // Held, the task may be so already by the time it is sent.
+      if (drawn.classList.contains('completed') === completed) {
+        return;
+      }
+      markCompleted(drawn, completed);
+      this.sendRewrite({ type: 'toggleTask', taskId: String(drawn.dataset.taskId), completed });
+    }, () => markCompleted(card, completed));
   }
+
+  /** Sends an edit that rewrites its task's line, whose id is then unanswered. */
+  private sendRewrite(message: TaskBoardMessage & { taskId: string }): void {
+    unanswered.add(message.taskId);
+    this.post(message);
+  }
+
+  /**
+   * Moves a card to `column` now, or once its task's last edit is answered;
+   * by then the task may already be there, and nothing is sent.
+   */
+  private move(card: HTMLElement, column: string): void {
+    whenAnswered(card, (drawn) => {
+      if (drawn.dataset.cardColumn === column || alreadyHas(drawn, board.moves[cardKeyOf(drawn)] || [], column)) {
+        return;
+      }
+      const from = String(drawn.dataset.cardColumn);
+      applyMove(drawn, column);
+      this.sendRewrite({ type: 'moveTask', taskId: String(drawn.dataset.taskId), column, from });
+    }, () => applyMove(card, column));
+  }
+
+  /** Asks the host for something about a card's task, with the id the task has once its last edit is answered. */
+  private ask(card: HTMLElement, type: 'pickTaskDate' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps'): void {
+    whenAnswered(card, (drawn) => this.post({ type, taskId: String(drawn.dataset.taskId) }));
+  }
+
 
   /**
    * Moves a card from a key. A key that asks for what the card's menu says
@@ -246,9 +362,7 @@ class BoardMoves {
       announce(already);
       return;
     }
-    const from = String(card.dataset.cardColumn);
-    applyMove(card, column);
-    this.post({ type: 'moveTask', taskId: String(card.dataset.taskId), column, from });
+    this.move(card, column);
     announce(said);
   }
 
@@ -285,12 +399,7 @@ class BoardMoves {
 
   /** The single keys that edit a focused card; true when the key was one. */
   private editKey(key: string, card: HTMLElement, column: HTMLElement, columns: HTMLElement[]): boolean {
-    const taskId = String(card.dataset.taskId);
-    const asks: Readonly<Record<string, TaskBoardMessage>> = {
-      d: { type: 'pickTaskDate', taskId },
-      e: { type: 'editTask', taskId },
-      s: { type: 'breakIntoSteps', taskId },
-    };
+    const asks: Readonly<Record<string, 'pickTaskDate' | 'editTask' | 'breakIntoSteps'>> = { d: 'pickTaskDate', e: 'editTask', s: 'breakIntoSteps' };
     if (key === 'x') {
       this.completeCard(card, !card.classList.contains('completed'));
     } else if (key === 't' || key === 'm') {
@@ -301,7 +410,7 @@ class BoardMoves {
     } else if (key === '[' || key === ']') {
       this.moveAcross(card, column, columns, key === ']' ? 1 : -1);
     } else if (Object.prototype.hasOwnProperty.call(asks, key)) {
-      this.post(asks[key]);
+      this.ask(card, asks[key]);
     } else {
       return false;
     }
@@ -321,17 +430,9 @@ class BoardMoves {
 
   /** A choice in a card's menu: a date, Move to…, steps, or a move, said as the menu said it. */
   private chooseFor(card: HTMLElement, groups: readonly ActionMenuGroup[], value: string): void {
-    const taskId = String(card.dataset.taskId);
-    if (value === 'pick-date') {
-      this.post({ type: 'pickTaskDate', taskId });
-      return;
-    }
-    if (value === 'move-to') {
-      this.post({ type: 'moveTaskTo', taskId });
-      return;
-    }
-    if (value === 'break-steps') {
-      this.post({ type: 'breakIntoSteps', taskId });
+    const asks: Readonly<Record<string, 'pickTaskDate' | 'moveTaskTo' | 'breakIntoSteps'>> = { 'pick-date': 'pickTaskDate', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' };
+    if (Object.prototype.hasOwnProperty.call(asks, value)) {
+      this.ask(card, asks[value]);
       return;
     }
     const already = alreadyHas(card, groups, value);
@@ -342,9 +443,7 @@ class BoardMoves {
     // Said as the menu said it: "Draft spec: Priority, High."
     const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
     const chosen = group ? group.items.find((item) => item.value === value) : undefined;
-    const from = String(card.dataset.cardColumn);
-    applyMove(card, value);
-    this.post({ type: 'moveTask', taskId, column: value, from });
+    this.move(card, value);
     announce(`${taskTitleOf(card)}: ${group && group.label ? `${group.label}, ` : ''}${chosen ? chosen.label : value}.`);
   }
 
@@ -447,9 +546,7 @@ class BoardMoves {
       const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
         .find((candidate) => board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn);
       if (card && card.closest('.board-column') !== column) {
-        const from = String(card.dataset.cardColumn);
-        applyMove(card, String(column.dataset.columnId));
-        this.post({ type: 'moveTask', taskId: String(board.dragId), column: String(column.dataset.columnId), from });
+        this.move(card, String(column.dataset.columnId));
         announce(`Moved ${taskTitleOf(card)} to ${columnTitle(column)}.`);
       }
     }

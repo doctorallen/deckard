@@ -188,7 +188,7 @@ test('Can start now narrows the board to is:available, and back to is:open', asy
 });
 
 test('the board is one Tab stop, and a focused card answers single keys', async () => {
-  const { view } = await openBoard();
+  const { view, updates } = await openBoard();
   const stops = () => view.findAll('.board-card').filter((card) => card.getAttribute('tabindex') === '0');
   assert.strictEqual(stops().length, 1, 'one card is the Tab stop');
   assert.ok(
@@ -205,24 +205,36 @@ test('the board is one Tab stop, and a focused card answers single keys', async 
   assert.strictEqual(stops().length, 1);
   assert.strictEqual(stops()[0], inColumn[1], 'and becomes the Tab stop');
 
-  const card = inColumn[1];
+  const taskId = inColumn[1].dataset.taskId;
+  const columnId = column.dataset.columnId;
+  // The card as the last state drew it.
+  const card = () => view.find(`.board-card[data-task-id="${taskId}"]`);
   const sent = () => view.posted[view.posted.length - 1];
-  view.keydown(card, 'e');
-  assert.deepStrictEqual(sent(), { type: 'editTask', taskId: card.dataset.taskId });
-  view.keydown(card, 'd');
-  assert.deepStrictEqual(sent(), { type: 'pickTaskDate', taskId: card.dataset.taskId });
-  view.keydown(card, 't');
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'due:today', from: column.dataset.columnId, requestId: 1 });
-  view.keydown(card, '2');
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'priority:high', from: column.dataset.columnId, requestId: 2 });
-  view.keydown(card, ']');
+  // A card's next edit waits for the host to answer the last with a state,
+  // since the edit gives the task a new id; this index keeps its ids.
+  const answered = async () => {
+    updates.fire();
+    await delay(10);
+  };
+  view.keydown(card(), 'e');
+  assert.deepStrictEqual(sent(), { type: 'editTask', taskId });
+  view.keydown(card(), 'd');
+  assert.deepStrictEqual(sent(), { type: 'pickTaskDate', taskId });
+  view.keydown(card(), 't');
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId, column: 'due:today', from: columnId, requestId: 1 });
+  await answered();
+  view.keydown(card(), '2');
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId, column: 'priority:high', from: columnId, requestId: 2 });
+  await answered();
+  view.keydown(card(), ']');
   const droppable = view.findAll('.board-column').filter((candidate) => candidate.dataset.droppable === 'true');
-  const next = droppable[droppable.indexOf(column) + 1];
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: next.dataset.columnId, from: column.dataset.columnId, requestId: 3 });
-  view.keydown(card, 'x');
-  assert.deepStrictEqual(sent(), { type: 'toggleTask', taskId: card.dataset.taskId, completed: true });
+  const next = droppable[droppable.findIndex((candidate) => candidate.dataset.columnId === columnId) + 1];
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId, column: next.dataset.columnId, from: columnId, requestId: 3 });
+  await answered();
+  view.keydown(card(), 'x');
+  assert.deepStrictEqual(sent(), { type: 'toggleTask', taskId, completed: true });
 
-  view.keydown(card, '?');
+  view.keydown(card(), '?');
   const sheet = view.find('.key-sheet');
   assert.ok(sheet, 'the keys are listed on ?');
   assert.strictEqual(sheet.getAttribute('role'), 'dialog');

@@ -348,7 +348,7 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.findAll('.task-board.is-dragging-card, .board-column.drop-target, .board-card.dragging').length, 0, 'nothing is left marked as dragged');
   });
 
-  test('x pressed twice before the host answers completes the card, then reopens it', () => {
+  test('x pressed twice before the host answers completes the card, then reopens it', async () => {
     const shown = show(boardOf(TWO));
     const beta = cardTitled(shown, 'Beta');
     beta.focus();
@@ -356,8 +356,16 @@ suite('Task Board page', () => {
     assert.ok(beta.classList.contains('completed'), 'the card shows it is done at once');
     assert.strictEqual((beta.querySelector('[data-action="board-toggle-task"]') as HTMLInputElement).checked, true, 'and so does its box');
     press(shown, beta, 'x');
-    assert.deepStrictEqual(shown.posted.filter((message) => message.type === 'toggleTask').map((message) => message.completed), [true, false]);
+    const toggles = () => shown.posted.filter((message) => message.type === 'toggleTask');
+    assert.deepStrictEqual(toggles().map((message) => message.completed), [true], 'the reopening waits for the host to answer the completion');
+    assert.ok(!beta.classList.contains('completed'), 'though it shows at once');
     assert.strictEqual(shown.text('#live-status'), 'Reopened Beta.');
+    const done = boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [x] Beta ✅ 2026-09-21\n' });
+    shown.send(done);
+    // The completed card lingers a moment before the state is drawn.
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    const id = done.columns.flatMap((column) => column.cards).find((card) => card.title === 'Beta')?.taskId;
+    assert.deepStrictEqual(toggles().map(({ taskId, completed }) => ({ taskId, completed })).slice(1), [{ taskId: id, completed: false }], 'then goes with the id the completion gave it');
   });
 
   test('a key that asks for what a card already has says so, and sends nothing', () => {
@@ -551,5 +559,34 @@ suite('Task Board page', () => {
     const box = shown.find('[data-action="query-input"]');
     assert.strictEqual(drag('drop', box).defaultPrevented, true, 'and the page keeps the drop from the field');
     assert.strictEqual(shown.lastPosted('moveTask'), undefined);
+  });
+
+  test('a card\'s second edit before the host answers its first waits, and goes with the task\'s new id', () => {
+    const shown = show(boardOf(TWO));
+    const moves = () => shown.posted.filter((message) => message.type === 'moveTask');
+    cardTitled(shown, 'Beta').focus();
+    press(shown, cardTitled(shown, 'Beta'), ']');
+    press(shown, cardTitled(shown, 'Beta'), ']');
+    assert.strictEqual(moves().length, 1, 'the second is not sent with the id the first is about to change');
+    assert.strictEqual(cardTitled(shown, 'Beta').closest('.board-column')?.getAttribute('data-column-id'), 'status:doing', 'though it shows at once');
+
+    // The first is written: the task's line, and so its id, changed.
+    const written = boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n' });
+    shown.send(written);
+    const beta = written.columns.flatMap((column) => column.cards).find((card) => card.title === 'Beta');
+    assert.deepStrictEqual(moves().slice(1).map(({ taskId, column, from }) => ({ taskId, column, from })), [{ taskId: beta?.taskId, column: 'status:doing', from: 'status:todo' }]);
+    assert.strictEqual(cardTitled(shown, 'Beta').closest('.board-column')?.getAttribute('data-column-id'), 'status:doing');
+    assert.strictEqual(shown.document.activeElement, cardTitled(shown, 'Beta'), 'focus stays with it');
+
+    // A refused edit leaves the task's id as it was. An edit held behind it
+    // that asks for where the task already is sends nothing, and the next
+    // goes at once, with the id the task still has.
+    press(shown, cardTitled(shown, 'Beta'), '[');
+    assert.strictEqual(moves().length, 2, 'held behind the move to Doing');
+    shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'moveRefused', taskId: beta?.taskId } }));
+    shown.send(written);
+    assert.strictEqual(moves().length, 2, 'Beta is in Todo already');
+    press(shown, cardTitled(shown, 'Beta'), ']');
+    assert.deepStrictEqual(moves().slice(2).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: beta?.taskId, column: 'status:doing' }]);
   });
 });

@@ -23,7 +23,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
-import { type BoardScroll, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll } from './boardMoves';
+import { type BoardScroll, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SortControl, TableSortNote, TaskList } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
@@ -537,6 +537,9 @@ function receiveState(next: TaskBoardSnapshot): void {
   if (first) {
     restoreScroll(previous);
   }
+  // A card's edits made before the host answered its last go now, with
+  // the id this state gives its task.
+  sendHeldEdits();
 }
 
 rememberScroll(keptState, (value) => vscodeApi().setState(value));
@@ -549,12 +552,14 @@ let pendingState: TaskBoardSnapshot | undefined;
 // the move's number, and the task is what finds the card.
 onHostMessage<{ type: 'moveRefused'; taskId: string }>('moveRefused', (message) => {
   const card = Array.from(document.querySelectorAll<HTMLElement>('.board-card')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
+  settleRefusedEdit(String(message.taskId));
   announce(`${card ? taskTitleOf(card) : 'The task'} was not moved.`);
 });
 // So is a completion or reopening it could not write, from a card, a row,
 // or the table.
 onHostMessage<ToggleRefusedMessage>('toggleRefused', (message) => {
   const entry = Array.from(document.querySelectorAll<HTMLElement>('.board-card, .task-row, .result-row')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
+  settleRefusedEdit(String(message.taskId));
   announce(`${entry ? taskTitleOf(entry) : 'The task'} was not ${message.completed ? 'completed' : 'reopened'}.`);
 });
 onHostMessage<StateMessage<TaskBoardSnapshot>>('state', (message) => {
