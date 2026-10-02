@@ -7,7 +7,9 @@ import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatt
  * Park Note writes `tags: [parked]` and Unpark Note takes it back out, so
  * these read the shapes people write: `tags: [a, b]`, `tags: a`, a YAML
  * block list under `tags:`, `tag:` as the field's name, quoted values, and
- * values written with their `#`. Line endings are kept as the note has them.
+ * values written with their `#`. A note may write both `tags:` and `tag:`,
+ * and the parser reads both, so these do too. Line endings are kept as the
+ * note has them.
  *
  * An empty value, such as `tags: ''` or a block list's `- ''`, names no tag,
  * as the parser reads it: it is never read as a tag, and a rewrite of the
@@ -49,7 +51,6 @@ function isEmptyItem(item: { value: string }): boolean {
 
 /** The tags field as written. */
 interface TagsField {
-  kind: 'field';
   /** The field's line. */
   line: number;
   /** The field's name as written, `tags` or `tag` in its own case. */
@@ -61,39 +62,69 @@ interface TagsField {
 }
 
 /**
- * What the front matter says about tags: no tags field, a field Deckard
- * cannot safely rewrite, or the field.
+ * What the front matter says about tags: a field Deckard cannot safely
+ * rewrite, or the fields the parser reads tags from, which may be none.
  */
-type TagsFieldReading = { kind: 'none' } | { kind: 'unreadable' } | TagsField;
+type TagsFieldsReading = { kind: 'unreadable' } | { kind: 'fields'; fields: TagsField[] };
 
-/** Reads the first tags field between the front matter's fences, `end` being the closing one. */
-function findTagsField(lines: readonly string[], end: number): TagsFieldReading {
+/**
+ * Reads the tags fields between the front matter's fences, `end` being the
+ * closing one, as the parser reads them: `tags` and `tag` are two fields,
+ * both read, and a field written twice is read where it is written last,
+ * in any case. They come in the order the note writes them. Unreadable
+ * when either one Deckard would read is a shape it cannot rewrite.
+ */
+function findTagsFields(lines: readonly string[], end: number): TagsFieldsReading {
+  const read = new Map<string, TagsField | 'unreadable'>();
   for (let line = 1; line < end; line += 1) {
     const match = lines[line].match(TAGS_FIELD);
-    if (!match) {
-      continue;
+    if (match) {
+      read.set(match[1].toLowerCase(), readTagsField(lines, end, line, match));
     }
-    const inline = match[2];
-    const items: TagsField['items'] = [];
-    for (let next = line + 1; next < end; next += 1) {
-      const item = lines[next].match(LIST_ITEM);
-      if (!item) {
-        break;
-      }
-      items.push({ line: next, value: unquote(item[2]), indent: item[1] });
-    }
-    // A value on the field's line and a list under it is not YAML Deckard
-    // can safely rewrite.
-    if (inline && items.length > 0) {
-      return { kind: 'unreadable' };
-    }
-    // A flow list across lines, or any other value Deckard cannot read.
-    if (inline.startsWith('[') && !inline.endsWith(']')) {
-      return { kind: 'unreadable' };
-    }
-    return { kind: 'field', line, name: match[1], inline, items };
   }
-  return { kind: 'none' };
+  const fields: TagsField[] = [];
+  for (const field of read.values()) {
+    if (field === 'unreadable') {
+      return { kind: 'unreadable' };
+    }
+    fields.push(field);
+  }
+  return { kind: 'fields', fields: fields.sort((left, right) => left.line - right.line) };
+}
+
+/** The tags field on `line`, whose TAGS_FIELD match is `match`, with the block list under it. */
+function readTagsField(
+  lines: readonly string[],
+  end: number,
+  line: number,
+  match: RegExpMatchArray,
+): TagsField | 'unreadable' {
+  const inline = match[2];
+  const items: TagsField['items'] = [];
+  for (let next = line + 1; next < end; next += 1) {
+    const item = lines[next].match(LIST_ITEM);
+    if (!item) {
+      break;
+    }
+    items.push({ line: next, value: unquote(item[2]), indent: item[1] });
+  }
+  // A value on the field's line and a list under it is not YAML Deckard
+  // can safely rewrite.
+  if (inline && items.length > 0) {
+    return 'unreadable';
+  }
+  // A flow list across lines, or any other value Deckard cannot read.
+  if (inline.startsWith('[') && !inline.endsWith(']')) {
+    return 'unreadable';
+  }
+  return { line, name: match[1], inline, items };
+}
+
+/** The tags a field names, as written: its block list's items, or its line's values. */
+function fieldValues(field: TagsField): string[] {
+  return field.items.length > 0
+    ? field.items.filter((item) => !isEmptyItem(item)).map((item) => item.value)
+    : splitValues(field.inline);
 }
 
 /** The note's line ending, CRLF when any line has one, so a rewrite keeps it. */
@@ -114,18 +145,21 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
   if (!bounds) {
     return `---${eol}tags: [${value}]${eol}---${eol}${content}`;
   }
-  const field = findTagsField(lines, bounds.end);
-  if (field.kind === 'unreadable') {
+  const reading = findTagsFields(lines, bounds.end);
+  if (reading.kind === 'unreadable') {
     return undefined;
   }
-  if (field.kind === 'none') {
+  if (reading.fields.some((each) => fieldValues(each).some((written) => sameTag(written, value)))) {
+    return undefined;
+  }
+  // Into the first field that names a tag already, so `tags: ''` above a
+  // `tag:` list is not the one written; the first field when none does.
+  const field = reading.fields.find((each) => fieldValues(each).length > 0) ?? reading.fields[0];
+  if (!field) {
     lines.splice(bounds.end, 0, `tags: [${value}]`);
     return lines.join(eol);
   }
   if (field.items.length > 0) {
-    if (field.items.some((item) => sameTag(item.value, value))) {
-      return undefined;
-    }
     const last = field.items[field.items.length - 1];
     lines.splice(last.line + 1, 0, `${last.indent}- ${value}`);
     // The empty items all sit above the new one, so their lines are unmoved.
@@ -133,9 +167,6 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
     return lines.filter((_, index) => !empty.has(index)).join(eol);
   }
   const values = splitValues(field.inline);
-  if (values.some((written) => sameTag(written, value))) {
-    return undefined;
-  }
   lines[field.line] = `${field.name}: [${[...values, value].join(', ')}]`;
   return lines.join(eol);
 }
@@ -155,17 +186,20 @@ export function removeFrontmatterTags(
   if (!bounds) {
     return undefined;
   }
-  const field = findTagsField(lines, bounds.end);
-  if (field.kind !== 'field') {
+  const reading = findTagsFields(lines, bounds.end);
+  if (reading.kind === 'unreadable') {
     return undefined;
   }
   const removes = (written: string) => tags.some((tag) => sameTag(written, tag));
-  const drop = field.items.length > 0
-    ? dropFromBlockList(field, removes)
-    : dropFromInline(lines, field, removes);
-  if (!drop) {
+  // A field rewritten on its own line keeps its place, so each field's
+  // lines are where they were when the next is read.
+  const drops = reading.fields
+    .map((field) => (field.items.length > 0 ? dropFromBlockList(field, removes) : dropFromInline(lines, field, removes)))
+    .filter((each): each is Set<number> => each !== undefined);
+  if (drops.length === 0) {
     return undefined;
   }
+  const drop = new Set(drops.flatMap((each) => [...each]));
   const next = lines.filter((_, index) => !drop.has(index));
   const end = bounds.end - drop.size;
   // Nothing left between the fences: the front matter goes too.
@@ -216,21 +250,13 @@ function dropFromInline(
   return new Set();
 }
 
-/** The values of the front matter's tags field, as written. */
+/** The values of the front matter's tags fields, as written, `tags` and `tag` in the note's order. */
 export function readFrontmatterTagValues(content: string): string[] | undefined {
   const lines = content.split(/\r?\n/);
   const bounds = getFrontmatterBounds(lines);
   if (!bounds) {
     return [];
   }
-  const field = findTagsField(lines, bounds.end);
-  if (field.kind === 'unreadable') {
-    return undefined;
-  }
-  if (field.kind === 'none') {
-    return [];
-  }
-  return field.items.length > 0
-    ? field.items.filter((item) => !isEmptyItem(item)).map((item) => item.value)
-    : splitValues(field.inline);
+  const reading = findTagsFields(lines, bounds.end);
+  return reading.kind === 'unreadable' ? undefined : reading.fields.flatMap(fieldValues);
 }
