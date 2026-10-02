@@ -2,6 +2,8 @@ import * as assert from 'assert';
 
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { MAX_QUERY_LENGTH } from '../ui/webview/host/narrowing';
+import { narrowSearchPageMessage } from '../ui/webview/pages/searchPage/messages';
 
 /**
  * Drives the overview webview's own script in jsdom.
@@ -574,6 +576,39 @@ suite('Tag overview query builder', () => {
     assert.deepStrictEqual(view.posted, [], 'no search runs');
     assert.strictEqual(taken, false, 'Tab is left to move focus on');
     assert.strictEqual(view.suggestionsFor('query'), '', 'the list closes');
+  });
+
+  test('holds back a search longer than the host takes, says why, and keeps what was typed', async () => {
+    const view = mountTagOverview();
+    view.send(createState(''));
+    const bar = { dataset: { action: 'query-input', suggestKey: 'query' } };
+
+    view.posted.length = 0;
+    const tooLong = 'x'.repeat(MAX_QUERY_LENGTH + 1);
+    view.key(view.type(bar, tooLong), 'Enter');
+
+    assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setOverviewQuery'), [], 'nothing the host would drop is sent');
+    assert.strictEqual(
+      view.find('.query-error').textContent,
+      'This search is 2,001 characters long, and a search can be at most 2,000. Shorten it to run it.',
+    );
+    assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong, 'what was typed stays');
+    // A search that was never sent never comes back, so nothing says it is
+    // still searching.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    assert.ok(!view.find('.query-workspace').classList.contains('is-searching'));
+    // An index update while the text is still there leaves it there.
+    view.send(createState(''));
+    assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong);
+
+    // As long as the host takes, it runs, and the reason goes with its answer.
+    const longest = 'x'.repeat(MAX_QUERY_LENGTH);
+    view.key(view.type(bar, longest), 'Enter');
+    const sent = view.posted.filter((message) => message.type === 'setOverviewQuery');
+    assert.strictEqual(sent.length, 1);
+    assert.ok(narrowSearchPageMessage(sent[0]), 'the host takes the longest search the page sends');
+    view.send(createState(longest));
+    assert.strictEqual(view.findAll('.query-error').length, 0);
   });
 
   test('keeps the bar in place while a search is typed', () => {

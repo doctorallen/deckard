@@ -6,6 +6,13 @@
  */
 import type { QueryBuilderJoin } from '../../ui/protocol/query';
 
+/**
+ * The longest search a page may send. Every page's host refuses a longer
+ * one without a word (`MAX_QUERY_LENGTH` in the host's narrowing), so the
+ * box says so itself rather than sending it.
+ */
+export const MAX_SEARCH_LENGTH = 2000;
+
 /** The operators each field takes, when the host has not said. */
 export const DEFAULT_OPERATORS: Readonly<Record<string, readonly string[]>> = {
   tag: ['eq', 'neq'], link: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],

@@ -27,6 +27,7 @@ import {
   isGroup,
   itemAt,
   joinTags,
+  MAX_SEARCH_LENGTH,
   mergeAlternative,
   OPERATOR_DESCRIPTIONS,
   OPERATOR_LABELS,
@@ -468,6 +469,8 @@ class SearchBox implements QueryEditor {
   private suggestionToken = '';
   /** Whether the open list is an empty box's recent searches, offered rather than asked for by typing. */
   private suggestionsUnasked = false;
+  /** Why the last search was held back as too long, until a search runs or the search changes. */
+  private tooLong: string | undefined;
   /** Whether the pointer went down in the search box, so leaving its field for its buttons keeps what was typed. */
   private pointerInWorkspace = false;
   /** The bar's field, where the caret is put back. */
@@ -576,12 +579,13 @@ class SearchBox implements QueryEditor {
     const value = this.currentText();
     const hasText = Boolean(String(value).trim());
     const errors = (this.query().diagnostics || []).filter((diagnostic) => diagnostic.severity === 'error');
+    const error = this.tooLong ?? (errors.length ? errors[0].message : undefined);
     const terms = this.chips();
     const label = this.options.label || 'Search';
-    const invalid = errors.length ? ' invalid' : '';
-    const status = errors.length
-      ? <span key="error" class="query-error" role="alert">{errors[0].message}</span>
-      : <span key="hint" class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>;
+    const invalid = error === undefined ? '' : ' invalid';
+    const status = error === undefined
+      ? <span key="hint" class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>
+      : <span key="error" class="query-error" role="alert">{error}</span>;
     return (
       <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} aria-label={label}>
         <div class="query-bar-row">
@@ -804,6 +808,10 @@ class SearchBox implements QueryEditor {
    * it, as keepEntry says.
    */
   private run(text: string, keepEntry?: boolean, incidental?: boolean, focusBar?: boolean): void {
+    const search = joinTags(String(text).trim());
+    if (this.refuseTooLong(search)) {
+      return;
+    }
     this.awaitingApply = true;
     // A search still out after a second shows a thin bar under the box.
     clearTimeout(this.searchingTimer);
@@ -826,7 +834,24 @@ class SearchBox implements QueryEditor {
     this.restoreFocus = focusBar !== false;
     // A facet click or a dropped chip is a step along the way, not a search
     // worth keeping among the recent ones.
-    this.options.apply(joinTags(String(text).trim()), !incidental);
+    this.options.apply(search, !incidental);
+  }
+
+  /**
+   * Holds back a search longer than a host takes, which would otherwise be
+   * dropped on the way and leave the box searching for good. What was typed
+   * stays where it is, and the status line says why nothing ran; true when
+   * the search was held back.
+   */
+  private refuseTooLong(search: string): boolean {
+    if (search.length <= MAX_SEARCH_LENGTH) {
+      this.tooLong = undefined;
+      return false;
+    }
+    const count = (value: number): string => value.toLocaleString('en-US');
+    this.tooLong = `This search is ${count(search.length)} characters long, and a search can be at most ${count(MAX_SEARCH_LENGTH)}. Shorten it to run it.`;
+    this.options.render();
+    return true;
   }
 
   /**
@@ -1101,8 +1126,14 @@ class SearchBox implements QueryEditor {
     // A tag or condition, or a field's value, is a whole term: it becomes a
     // chip at once. A field name waits for its value.
     if (item.term) {
+      const search = combineQuery(this.appliedText(), text, this.query().canAppend !== false);
+      // Checked before the field is emptied, so a search held back for its
+      // length leaves what was typed in it.
+      if (this.refuseTooLong(search)) {
+        return;
+      }
       this.setEntry(input, '');
-      this.run(combineQuery(this.appliedText(), text, this.query().canAppend !== false));
+      this.run(search);
       return;
     }
     this.setEntry(input, text);
@@ -1223,6 +1254,7 @@ class SearchBox implements QueryEditor {
         this.draft = undefined;
       }
       this.appliedSeen = text;
+      this.tooLong = undefined;
       this.searchCameBack();
     }
     if (text === this.builderSourceText) {
@@ -1340,6 +1372,7 @@ class SearchBox implements QueryEditor {
   /** Clear: empties the field and the search, leaving what the page keeps. */
   private clearSearch(): void {
     this.entry = '';
+    this.tooLong = undefined;
     this.entryAfterRun = '';
     document.querySelectorAll<HTMLInputElement>('[data-suggest-key="query"]').forEach((bar) => {
       bar.value = '';
