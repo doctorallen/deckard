@@ -134,7 +134,10 @@ export function findTagMergeCandidates(
           Math.max(group[left].name.length, group[right].name.length) >= 8
             ? 2
             : 1;
-        if (isWithinDistance(group[left].name, group[right].name, distance)) {
+        if (
+          digitsOf(group[left].name) === digitsOf(group[right].name) &&
+          isWithinDistance(group[left].name, group[right].name, distance)
+        ) {
           keep(group[left], group[right], 'spelling');
         }
       }
@@ -245,6 +248,15 @@ function eachPair(
 /** A name without its hyphens, underscores, and spaces, so `to-do` and `todo` meet. */
 function collapse(name: string): string {
   return name.replace(/[-_ ]/g, '');
+}
+
+/**
+ * The digits of a name, in order. Two names whose digits differ are told
+ * apart on purpose, `#q1` and `#q2`, `#sprint-12` and `#sprint-13`, or two
+ * dated tags, so the spelling pass never offers to merge them.
+ */
+function digitsOf(name: string): string {
+  return name.replace(/\D/g, '');
 }
 
 /** A name with a final `es` or `s` taken off, so `projects` and `project` meet. */

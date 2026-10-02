@@ -87,6 +87,27 @@ suite('Tag hygiene', () => {
     );
   });
 
+  test('leaves numbered and dated tags alone, since a changed digit is another tag, not a typo', () => {
+    assert.deepStrictEqual(
+      pairs(
+        indexOfTags({
+          '#q1': 4,
+          '#q2': 3,
+          '#sprint-12': 6,
+          '#sprint-13': 5,
+          '#sprint-1': 2,
+          '#meeting/2026-09-01': 1,
+          '#meeting/2026-09-02': 1,
+          '#release/v2': 3,
+          '#release/v2s': 1,
+          '#project/atlas2': 3,
+          '#project/atals2': 1,
+        }),
+      ),
+      ['#release/v2s -> #release/v2 (plural)', '#project/atals2 -> #project/atlas2 (spelling)'],
+    );
+  });
+
   test('counts a transposition as one edit, and bounds the rest', () => {
     assert.strictEqual(isWithinDistance('atlas', 'atals', 1), true);
     assert.strictEqual(isWithinDistance('atlas', 'atlss', 1), true);
