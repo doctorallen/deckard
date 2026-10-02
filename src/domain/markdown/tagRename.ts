@@ -1,5 +1,6 @@
 import type { HeadingTagSpan, TagReference } from '../model';
 import { isFrontmatterClose } from './frontmatter';
+import { formatYamlValue } from './frontmatterTags';
 import {
   EntityNamespaceAliases,
   extractTagSpans,
@@ -290,7 +291,20 @@ function getReplacementText(
     return replacement.label;
   }
 
-  return getFrontmatterReplacement(field, replacement, options);
+  const text = getFrontmatterReplacement(field, replacement, options);
+  // A value already in quotes keeps them. One written plain is quoted when
+  // YAML would misread the new text plain, as it reads `#topic/atlas` as a
+  // comment and refuses `@dana`.
+  if (/['"]/.test(line[span.startColumn - 1] ?? '')) {
+    return text;
+  }
+  return formatYamlValue(text, isInList(line, span.startColumn) ? 'list' : 'line');
+}
+
+/** Whether a front-matter value at `column` sits inside a `[a, b]` list on its line. */
+function isInList(line: string, column: number): boolean {
+  const before = line.slice(0, column);
+  return before.lastIndexOf('[') > before.lastIndexOf(']');
 }
 
 /**

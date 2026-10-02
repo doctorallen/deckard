@@ -121,3 +121,29 @@ suite('Front matter bounds and values', () => {
     assert.strictEqual(unquote('a'), 'a');
   });
 });
+
+suite('Rename Tag in front matter', () => {
+  const rename = (content: string, source: string, key: string) =>
+    replaceIndexedTag(content, source, { key, label: key }).content;
+
+  test('quotes a new tag YAML would misread in a field written plain', () => {
+    assert.strictEqual(
+      rename('---\nproject: atlas\n---\n# H\n', '#project/atlas', '#topic/atlas'),
+      '---\nproject: "#topic/atlas"\n---\n# H\n',
+    );
+    assert.strictEqual(
+      rename('---\npeople: [dana]\n---\n# H\n', '@dana', '#team/dana'),
+      '---\npeople: ["#team/dana"]\n---\n# H\n',
+    );
+    assert.strictEqual(rename('---\ntags: [atlas, b]\n---\n', '#atlas', '@dana'), '---\ntags: ["@dana", b]\n---\n');
+  });
+
+  test('writes a tag plain where YAML reads it plain, and keeps quotes already there', () => {
+    assert.strictEqual(rename('---\nproject: atlas\n---\n', '#project/atlas', '#project/hermes'), '---\nproject: hermes\n---\n');
+    assert.strictEqual(
+      rename('---\nproject: "atlas"\n---\n', '#project/atlas', '#topic/atlas'),
+      '---\nproject: "#topic/atlas"\n---\n',
+    );
+    assert.strictEqual(rename('---\ntags: [old, #old]\n---\n', '#old', '#new'), '---\ntags: [new, #new]\n---\n', 'a value written with its # keeps its shape');
+  });
+});
