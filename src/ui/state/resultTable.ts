@@ -4,6 +4,7 @@ import {
   TASK_PRIORITY_RANKS,
   describeDueDate,
 } from '../../domain/markdown/taskMetadata';
+import type { InlineToken } from '../../domain/model/inline';
 import { QueryContext } from '../../domain/query/queryContext';
 import {
   TableCell,
@@ -76,6 +77,8 @@ export interface TableTask {
   title: string;
   /** `title` as rendered inline Markdown, sanitized. */
   renderedTitle?: string;
+  /** `title` as inline Markdown tokens; given with `renderedTitle`. */
+  titleTokens?: InlineToken[];
   completed: boolean;
   dueAt?: number;
   dueText?: string;
@@ -117,6 +120,7 @@ export function createTaskCells(
         return {
           text: task.title,
           ...(task.renderedTitle ? { html: task.renderedTitle } : {}),
+          ...(task.renderedTitle && task.titleTokens ? { tokens: task.titleTokens } : {}),
         };
       case 'due':
         // An open task's due date reads beside today; a done one keeps its date.

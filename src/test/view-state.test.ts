@@ -1,5 +1,8 @@
 import * as assert from 'assert';
 
+import { buildBlockExcerpt } from '../domain/markdown/blockExcerpt';
+import { tokenizeInline } from '../domain/markdown/inline';
+
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
@@ -347,6 +350,8 @@ suite('Dashboard state', () => {
     const index = createFileIndex([parseMarkdown('notes/a.md', `# Entry #work\n${body}`)]);
     const lines3 = createSearchPageSnapshot(index, defaultPreferences, 'vendor', { queryContext: createQueryContext(Date.now()) });
     assert.match(lines3.sections[0].snippet?.rawContent ?? '', /^The vendor review/);
+    assert.deepStrictEqual(lines3.sections[0].snippet?.bodyTokens, buildBlockExcerpt('The vendor review is late.'), 'and as tokens');
+    assert.deepStrictEqual(lines3.sections[0].bodyTokens, buildBlockExcerpt(body), 'the body as tokens, for a page to draw');
     assert.strictEqual(lines3.sections[0].long, true);
     const drafted = createSearchPageSnapshot(index, defaultPreferences, '#work', { queryContext: createQueryContext(Date.now()), previewWords: ['vendor'] });
     assert.ok(drafted.sections[0].snippet, 'the words being typed count');
@@ -458,6 +463,7 @@ suite('Dashboard state', () => {
             tags: [],
             rawContent: '',
             renderedHtml: '',
+            bodyTokens: [],
             startLine: section.startLine,
             createdAt: section.createdAt,
             updatedAt: section.updatedAt,
@@ -593,6 +599,7 @@ suite('Dashboard state', () => {
     );
     assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
     assert.strictEqual(item.renderedTitle.includes(title), false);
+    assert.deepStrictEqual(item.titleTokens, tokenizeInline(title), 'and as tokens, for a page to draw');
   });
 
   test('words an open task\'s due date beside today, and leaves a done one its date', () => {
@@ -1918,6 +1925,7 @@ function createCard(
     tags: [],
     rawContent: '',
     renderedHtml: '',
+    bodyTokens: [],
     startLine: 1,
     createdAt,
     updatedAt,

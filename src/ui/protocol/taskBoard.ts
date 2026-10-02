@@ -9,6 +9,7 @@ import type {
   TaskLayout,
   TaskSortMode,
 } from '../../domain/model/preferences';
+import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
 import type { Correlated, IndexingMessage, MessageOf, StateMessage } from './messaging';
@@ -45,6 +46,8 @@ export interface TaskBoardCard {
   titleTags: TagReference[];
   /** The title as sanitized inline Markdown, as the task list shows it. */
   renderedTitle: string;
+  /** The title as inline Markdown tokens, which the page draws in place of `renderedTitle`. */
+  titleTokens: InlineToken[];
   completed: boolean;
   filePath: string;
   line: number;
@@ -190,6 +193,8 @@ export interface TableCell {
    * form, which is what a label or a sort reads.
    */
   html?: string;
+  /** `html`'s Markdown as inline tokens, which the page draws in its place; set with it. */
+  tokens?: InlineToken[];
   kind?: 'overdue' | 'muted';
 }
 

@@ -3,6 +3,7 @@
  * them, and the query language's shapes. Nothing here knows about VS Code,
  * the disk, or a page.
  */
+export type * from './blocks';
 export type * from './graph';
 export type * from './inline';
 export type * from './notes';
