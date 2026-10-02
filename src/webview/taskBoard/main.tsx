@@ -429,11 +429,13 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// A right-click on a list or table row opens its ⋯ menu, as on a card.
+// A right-click on a list or table row opens its ⋯ menu, as on a card. On
+// a ranked list the row's Move to top and Move to bottom menu answered it
+// first, and one menu opens, not two over each other; ⋯ is still its button.
 document.addEventListener('contextmenu', (event) => {
   const element = event.target instanceof Element ? event.target : null;
   const row = rowOf(element);
-  if (!row || (element && element.closest('[data-tag-key], a, input'))) {
+  if (!row || event.defaultPrevented || (element && element.closest('[data-tag-key], a, input'))) {
     return;
   }
   const button = row.querySelector<HTMLElement>('[data-action="task-row-menu"]');

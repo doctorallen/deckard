@@ -447,4 +447,15 @@ suite('Task Board page', () => {
     assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'the menu opens');
     assert.strictEqual(shown.lastPosted('openSource'), undefined, 'and the note does not');
   });
+
+  test('a right-click on a ranked list row opens one menu', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'rank' }));
+    const title = shown.find('.task-list .task-row .task-title');
+    title.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    const open = ['rank-context-menu', 'action-menu'].filter((id) => {
+      const menu = shown.document.getElementById(id);
+      return menu !== null && !menu.hidden;
+    });
+    assert.strictEqual(open.length, 1, `open: ${open.join(', ')}`);
+  });
 });
