@@ -1143,17 +1143,75 @@ function readTagNameAt(text: string, markerIndex: number): string | undefined {
   if (markerIndex > 0 && isTagWordOrHash(characterBefore(text, markerIndex))) {
     return undefined;
   }
-  TAG_NAME_AT.lastIndex = markerIndex + 1;
-  const name = TAG_NAME_AT.exec(text)?.[0];
-  if (name === undefined) {
+  const start = markerIndex + 1;
+  const asciiEnd = readAsciiTagNameEnd(text, start);
+  let end: number;
+  if (asciiEnd === undefined) {
+    const pattern = getTagNameAt();
+    pattern.lastIndex = start;
+    const name = pattern.exec(text)?.[0];
+    if (name === undefined) {
+      return undefined;
+    }
+    end = start + name.length;
+  } else if (asciiEnd === start) {
     return undefined;
+  } else {
+    end = asciiEnd;
   }
-  let end = name.length;
-  while (name[end - 1] === '-') {
+  while (text[end - 1] === '-') {
     end -= 1;
   }
-  return name.slice(0, end);
+  return text.slice(start, end);
 }
+
+/**
+ * Where the tag name's pattern, read from `start`, ends, while every
+ * character it decides on is plain ASCII, where its Unicode classes are
+ * A to Z, a to z, 0 to 9, and `_`: `start` itself for no name. Undefined
+ * once a character past ASCII is met, for the pattern itself to read.
+ */
+function readAsciiTagNameEnd(text: string, start: number): number | undefined {
+  let index = start;
+  let code = text.charCodeAt(index);
+  if (code >= 0x80) {
+    return undefined;
+  }
+  if (!isAsciiLetterOrDigit(code)) {
+    return start;
+  }
+  for (;;) {
+    index += 1;
+    code = text.charCodeAt(index);
+    if (code >= 0x80) {
+      return undefined;
+    }
+    if (isAsciiLetterOrDigit(code) || code === UNDERSCORE_CODE || code === HYPHEN_CODE) {
+      continue;
+    }
+    if (code !== SLASH_CODE) {
+      return index;
+    }
+    // A `/` goes on only to another part, which starts with a letter or digit.
+    const next = text.charCodeAt(index + 1);
+    if (next >= 0x80) {
+      return undefined;
+    }
+    if (!isAsciiLetterOrDigit(next)) {
+      return index;
+    }
+    index += 1;
+  }
+}
+
+/** Whether a UTF-16 code is A to Z, a to z, or 0 to 9. */
+function isAsciiLetterOrDigit(code: number): boolean {
+  return (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+const UNDERSCORE_CODE = '_'.charCodeAt(0);
+const HYPHEN_CODE = '-'.charCodeAt(0);
+const SLASH_CODE = '/'.charCodeAt(0);
 
 /** The character, a whole surrogate pair when it is one, that ends just before `index`. */
 function characterBefore(text: string, index: number): string {
@@ -1171,15 +1229,10 @@ function characterBefore(text: string, index: number): string {
 function isTagWordOrHash(character: string): boolean {
   const code = character.charCodeAt(0);
   if (code < 0x80) {
-    return (
-      (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      code === 95 ||
-      code === HASH_CODE
-    );
+    return isAsciiLetterOrDigit(code) || code === UNDERSCORE_CODE || code === HASH_CODE;
   }
-  return TAG_WORD_OR_HASH.test(character);
+  tagWordOrHash ??= new RegExp(`^[${TAG_WORD_CHARACTERS}#]$`, 'u');
+  return tagWordOrHash.test(character);
 }
 
 /**
@@ -1218,11 +1271,20 @@ export const TAG_WORD_CHARACTERS = '\\p{L}\\p{N}\\p{M}_';
  */
 export const TAG_NAME_SOURCE = `[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*(?:\\/[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*)*`;
 
-/** A tag's name, read where it starts. */
-const TAG_NAME_AT = new RegExp(TAG_NAME_SOURCE, 'uy');
+/**
+ * A tag's name, read where it starts, and a tag's word character or `#`,
+ * what a character before a tag's marker may not be: built the first time
+ * a tag holds a character past ASCII, since building these Unicode patterns
+ * is costly and plain ASCII is read without them.
+ */
+let tagNameAt: RegExp | undefined;
+let tagWordOrHash: RegExp | undefined;
 
-/** A tag's word character or `#`: what a character before a tag's marker may not be. */
-const TAG_WORD_OR_HASH = new RegExp(`^[${TAG_WORD_CHARACTERS}#]$`, 'u');
+/** The sticky pattern for a tag's name. */
+function getTagNameAt(): RegExp {
+  tagNameAt ??= new RegExp(TAG_NAME_SOURCE, 'uy');
+  return tagNameAt;
+}
 
 /** The tag pattern for one people marker, compiled. */
 function compileTagPattern(personMarker: string): RegExp {
