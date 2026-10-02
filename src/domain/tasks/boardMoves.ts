@@ -17,6 +17,7 @@ import {
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
+import { isStatusColumnName } from './taskColumns';
 
 /**
  * What dropping a task on a board column means for its line.
@@ -52,7 +53,6 @@ export interface TaskMoveOptions {
  */
 export type TagMoveResolver = (value: string, reopen: (line: string) => string) => TaskMove;
 
-const STATUS_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const PRIORITIES: ReadonlySet<string> = new Set([
   'highest',
   'high',
@@ -62,10 +62,11 @@ const PRIORITIES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * True for a status that can be written as the value of a tag.
+ * True for a status that can be written as the value of a tag: the rule of
+ * a board's status columns, which the gear and the host check too.
  */
 export function isValidStatusName(value: string): boolean {
-  return STATUS_NAME.test(value);
+  return isStatusColumnName(value);
 }
 
 /** One move being resolved: the task, the column's value, and the settings. */
