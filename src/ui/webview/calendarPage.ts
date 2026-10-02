@@ -29,6 +29,8 @@ export interface CalendarPanelOptions {
   themePreview: ThemePreview;
   /** Where the page says it is in front, so Related Notes can show its day. */
   activeCalendar?: ActiveCalendar;
+  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
+  openTag: (tagKey: string) => unknown;
 }
 
 /**
@@ -57,6 +59,7 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
       source: this,
       refresh: () => this.page.host.refresh(),
       post: (message) => this.page.host.post(message),
+      openTag: options.openTag,
       extensionUri: options.extensionUri,
     });
     this.controller = this.pageController.calendar;

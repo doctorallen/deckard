@@ -246,7 +246,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);
-  const calendar = createCalendar(context, core, writes, search.themePreview);
+  const calendar = createCalendar(context, core, writes, search);
   const home = createHome(context, {
     core,
     preferences,
@@ -760,15 +760,20 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
   };
 }
 
-/** The sidebar calendar, the calendar page, and the active day and Home they share. */
+/**
+ * The sidebar calendar, the calendar page, and the active day and Home they
+ * share. A tag in a day's task opens on a search page, as from Related Notes.
+ */
 function createCalendar(
   context: vscode.ExtensionContext,
   core: Core,
   writes: Omit<Writes, 'capture'>,
-  themePreview: ThemePreview,
+  search: ReturnType<typeof createSearch>,
 ) {
   const { indexer } = core;
-  const calendar = new CalendarView(indexer, writes.tasks, themePreview, context.extensionUri);
+  const { themePreview, searchPanels } = search;
+  const openTag = (tagKey: string) => searchPanels.show(tagKey);
+  const calendar = new CalendarView({ indexer, writes: writes.tasks, themePreview, extensionUri: context.extensionUri, openTag });
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
   context.subscriptions.push(activeCalendar, activeHome);
@@ -778,6 +783,7 @@ function createCalendar(
     writes: writes.tasks,
     themePreview,
     activeCalendar,
+    openTag,
   });
   context.subscriptions.push(calendarPage);
   return { calendar, activeCalendar, activeHome, calendarPage };

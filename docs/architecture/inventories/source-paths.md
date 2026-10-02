@@ -336,7 +336,7 @@ Most of `src/test` imports through TypeScript, which the compiler checks. These 
 
 ### Constructor signatures and arguments
 
-Every panel and view host the harnesses build takes one options object, so a reordering does not break a call; a renamed or newly required key does, and the compiler does not check any of these calls. `CalendarView`, `createCalendar`, `createSidebarSnapshot`, `createDeckardStatsSnapshot`, `createSearchPageSnapshot`, and `createDashboardWidgets` still take positional arguments.
+Every panel and view host the harnesses build takes one options object, so a reordering does not break a call; a renamed or newly required key does, and the compiler does not check any of these calls. `createCalendar`, `createSidebarSnapshot`, `createDeckardStatsSnapshot`, `createSearchPageSnapshot`, and `createDashboardWidgets` still take positional arguments.
 
 | File | Line | Call | Arguments |
 | --- | --- | --- | --- |
@@ -345,16 +345,16 @@ Every panel and view host the harnesses build takes one options object, so a reo
 | `test/e2e/taskBoard.e2e.js` | 71, 101 | `new TaskBoardPanel({ indexer, preferences, extensionUri, openTag, activeSearch, writes, themePreview })` | 1 object, 7 keys |
 | `test/e2e/taskBoard.e2e.js` | 391 | `new DashboardPanel({ indexer, preferences, extensionUri, navigation, openTag, openSearch, openTaskBoard, writes, themePreview })` | 1 object, 9 keys |
 | `test/e2e/navigation.e2e.js` | 111, 112, 120, 129 | `new StatsPanel({ … })`, `new DashboardPanel({ … })`, `new TaskBoardPanel({ … })`, `new NotesGraphPanel({ indexer, extensionUri, onGraphContext, themePreview })` | 1 object each: 5, 6, 7, and 4 keys |
-| `test/e2e/calendarPage.e2e.js` | 53 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview })` | 1 object, 4 keys |
-| `test/e2e/calendarPage.e2e.js` | 156 | `new SidebarNotesView({ indexer, extensionUri, preferences, activeSearch, onOpenTag, extensionVersion, activeCalendar, history, themePreview })` | 1 object, 9 keys |
-| `test/e2e/calendarPage.e2e.js` | 173 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview, activeCalendar })` | 1 object, 5 keys |
+| `test/e2e/calendarPage.e2e.js` | 53 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview, openTag })` | 1 object, 5 keys |
+| `test/e2e/calendarPage.e2e.js` | 175 | `new SidebarNotesView({ indexer, extensionUri, preferences, activeSearch, onOpenTag, extensionVersion, activeCalendar, history, themePreview })` | 1 object, 9 keys |
+| `test/e2e/calendarPage.e2e.js` | 192 | `new CalendarPanel({ indexer, extensionUri, writes, themePreview, openTag, activeCalendar })` | 1 object, 6 keys |
 | `test/e2e/searchPage.e2e.js` | 60 | `new SearchPanels({ indexer, preferences, extensionUri, activeSearch, writes, themePreview })` | 1 object, 6 keys |
 | `test/e2e/searchPage.e2e.js` | 79 | `new SidebarNotesView({ … })` | 1 object, 8 keys |
 | `test/e2e/sidebarNotes.e2e.js` | 49, 107, 261, 346, 384 | `new SidebarNotesView({ indexer, extensionUri, preferences, activeSearch, onOpenTag, extensionVersion, history, themePreview })` | 1 object, 8 keys each |
 | `test/e2e/stats.e2e.js` | 72 | `new StatsPanel({ indexer, preferences, extensionUri, onOpenTag, themePreview })` | 1 object, 5 keys |
-| `test/e2e/calendar.e2e.js` | 53 | `new CalendarView(indexer, writes, themePreview, extensionUri)` | 4 |
+| `test/e2e/calendar.e2e.js` | 56 | `new CalendarView({ indexer, writes, themePreview, extensionUri, openTag })` | 1 object, 5 keys |
 | `test/e2e/editorDecorations.e2e.js` | 45, 67 | `new EditorTagDecorations().register()` | 0; the provider registers only when `register()` is called |
-| `test/e2e/*.e2e.js`, `test/ui/surfaces.js` | `surfaces` 297, `calendarPage` 159, `dashboardHome` 64 and 147, `navigation` 104, `searchPage` 58, `sidebarNotes` 48, 110, 264, 349, 383, `stats` 66, `taskBoard` 68 and 100 | `createPreferences(globalState)`, the preference services as the extension builds them | 1 |
+| `test/e2e/*.e2e.js`, `test/ui/surfaces.js` | `surfaces` 297, `calendarPage` 178, `dashboardHome` 64 and 147, `navigation` 104, `searchPage` 58, `sidebarNotes` 48, 110, 264, 349, 383, `stats` 66, `taskBoard` 68 and 100 | `createPreferences(globalState)`, the preference services as the extension builds them | 1 |
 | `test/perf/indexSpeed.js` | 227 | `new WorkspaceScanner(access)` | 1 |
 | `test/perf/indexSpeed.js` | 233 | `createWorkspaceIndex({ scanner, searchStore, readCache, version, events, ownWrites })` | 1 object, 6 keys |
 | `test/perf/indexSpeed.js` | 293 | `new SearchStore(storage)`, a path; line 296 retries with a `Uri` for an older checkout | 1 |

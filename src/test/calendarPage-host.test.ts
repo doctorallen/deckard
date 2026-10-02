@@ -46,6 +46,7 @@ function openPage() {
     source,
     refresh: () => host?.refresh(),
     post: (message) => host?.post(message),
+    openTag: () => undefined,
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   host = new WebviewHost(controller, { indexer, themePreview });

@@ -37,6 +37,9 @@ function createIndex() {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
+// The tags the calendar asked to open, as Deckard opens them on a search page.
+const openedTags = [];
+
 /** Lets the host finish handling a message the page posted. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -50,7 +53,13 @@ async function openCalendar() {
     getSnapshot: () => index,
     onDidUpdate: updates.event,
   };
-  const calendar = new CalendarView(indexer, modules.taskWrites.createTaskWrites(), new ThemePreview(), vscode.Uri.file('/ext'));
+  const calendar = new CalendarView({
+    indexer,
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: (tagKey) => openedTags.push(tagKey),
+  });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;

@@ -16,6 +16,19 @@ interface CalendarIndexSource {
   getSnapshot(): WorkspaceIndex;
 }
 
+/** What the sidebar Calendar is built from. */
+export interface CalendarViewOptions {
+  indexer: CalendarIndexSource;
+  /** What checking a task off, or dropping it on a day, writes through. */
+  writes: TaskWrites;
+  /** The theme Choose Theme… is previewing, which the calendar draws in. */
+  themePreview: ThemePreview;
+  /** The extension's folder, which the calendar's style sheets are under. */
+  extensionUri: vscode.Uri;
+  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
+  openTag: (tagKey: string) => unknown;
+}
+
 /**
  * A month calendar in the Deckard sidebar. Each day shows whether it has a
  * daily note and how many open tasks are due; selecting a day, a week, or the
@@ -30,19 +43,13 @@ export class CalendarView implements vscode.WebviewViewProvider, vscode.Disposab
   public readonly controller: CalendarController;
 
   /** Builds the calendar; nothing is drawn until VS Code resolves its view. */
-  public constructor(
-    indexer: CalendarIndexSource,
-    /** What checking a task off, or dropping it on a day, writes through. */
-    writes: TaskWrites,
-    /** The theme Choose Theme… is previewing, which the calendar draws in. */
-    themePreview: ThemePreview,
-    /** The extension's folder, which the calendar's style sheets are under. */
-    extensionUri: vscode.Uri,
-  ) {
+  public constructor(options: CalendarViewOptions) {
+    const { indexer, themePreview, extensionUri } = options;
     const controller = new CalendarViewController({
       indexer,
-      writes,
+      writes: options.writes,
       refresh: () => this.page.host.refresh(),
+      openTag: options.openTag,
       extensionUri,
     });
     this.controller = controller.calendar;

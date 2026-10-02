@@ -11,7 +11,7 @@ import type {
   CalendarPageToHost,
   CalendarShowMonthMessage,
 } from '../../../protocol/calendar';
-import { isRequestId, Narrower, NarrowingTable, narrowWith, onlyType, UncheckedMessage } from '../../host/narrowing';
+import { isRequestId, Narrower, NarrowingTable, narrowOpenTag, narrowWith, onlyType, UncheckedMessage } from '../../host/narrowing';
 
 /** The longest note path the day panel may ask to open. */
 const MAX_FILE_PATH_LENGTH = 4096;
@@ -124,6 +124,7 @@ export const CALENDAR_MESSAGES: NarrowingTable<CalendarPageToHost> = {
   openTask: narrowOpenTask,
   toggleTask: narrowToggleTask,
   moveTask: narrowMoveTask,
+  openTag: narrowOpenTag,
 };
 
 /** A message from the sidebar Calendar, narrowed by its table, or undefined. */

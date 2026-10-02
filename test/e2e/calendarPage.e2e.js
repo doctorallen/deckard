@@ -55,6 +55,7 @@ async function openPage(...shown) {
     extensionUri: vscode.Uri.file('/ext'),
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
+    openTag: () => undefined,
   });
   await page.show(...shown);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -193,6 +194,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
     extensionUri: vscode.Uri.file('/ext'),
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
+    openTag: () => undefined,
     activeCalendar,
   });
   await page.show();

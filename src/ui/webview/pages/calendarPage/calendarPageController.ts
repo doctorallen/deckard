@@ -36,6 +36,8 @@ export interface CalendarPageControllerOptions {
   refresh: () => void;
   /** Sends the page one message through its host, while it is open. */
   post: (message: CalendarMoveRefusedMessage) => void;
+  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
+  openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
 }
@@ -84,6 +86,7 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
     this.calendar = new CalendarController(calendarPage.indexer, calendarPage.writes, {
       dayPanel: () => true,
       refresh: calendarPage.refresh,
+      openTag: calendarPage.openTag,
       refused: (taskId, requestId) => {
         calendarPage.post({ type: 'moveRefused', taskId, ...(requestId === undefined ? {} : { requestId }) });
         calendarPage.refresh();

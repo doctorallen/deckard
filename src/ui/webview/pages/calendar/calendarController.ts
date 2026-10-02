@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { sameShownDayIn } from '../../../../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../../../../domain/model';
+import { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type {
   CalendarMessage,
@@ -47,6 +48,8 @@ export interface CalendarControllerHost {
    * with the move's number when the page gave it one.
    */
   refused?: (taskId: string, requestId: number | undefined) => void;
+  /** Opens a tag's page, by its key in the index, as a tag in a task's title asks. */
+  openTag: (tagKey: string) => unknown;
 }
 
 /**
@@ -58,6 +61,7 @@ export class CalendarController {
   public month = formatLocalDate(new Date()).slice(0, 7);
   /** The day chosen for the panel; today while none was chosen. */
   public selectedDate: string | undefined;
+  private readonly navigation = new NavigationService();
 
   /** Starts on this month, with no day chosen. */
   public constructor(
@@ -139,6 +143,15 @@ export class CalendarController {
       case 'openMonth':
         await this.openPeriod('month', `${this.month}-01`);
         return;
+      case 'openTag': {
+        // The day panel may have been drawn before the tag was renamed, so
+        // the tag is found as the other pages find a tag a title names.
+        const tag = this.navigation.resolveTag(this.indexer.getSnapshot(), message.tagKey, 'lenient');
+        if (tag.kind === 'open') {
+          await this.host.openTag(tag.tagKey);
+        }
+        return;
+      }
     }
   }
 
@@ -273,6 +286,8 @@ export interface CalendarViewControllerOptions {
   writes: TaskWrites;
   /** Sends the calendar its snapshot through its host, or marks it stale while hidden. */
   refresh: () => void;
+  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
+  openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
 }
@@ -314,6 +329,7 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
     this.calendar = new CalendarController(view.indexer, view.writes, {
       dayPanel: readDayPanel,
       refresh: view.refresh,
+      openTag: view.openTag,
     });
     this.handlers = calendarHandlers(this.calendar);
   }
@@ -367,6 +383,7 @@ export function calendarHandlers(calendar: CalendarController): MessageHandlers<
     toggleTask: handle,
     moveTask: handle,
     searchCreated: handle,
+    openTag: handle,
   };
 }
 

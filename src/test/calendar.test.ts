@@ -461,4 +461,20 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('a tag in a day panel task opens the tag, in the sidebar and on the page', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const tagged = note('notes/a.md', '# A\n- [ ] Call Ren #project/atlas 📅 2026-09-13\n');
+    const taggedIndex = buildWorkspaceIndex(new Map([[tagged.filePath, tagged]]));
+    for (const [id, layout] of [['calendar', 'sidebar'], ['calendarPage', 'page']] as const) {
+      const page = openWebviewPage(renderPage(id), createCalendar(taggedIndex, '2026-09', createQueryContext(now), { dayPanel: true, layout }));
+      try {
+        const before = page.posted.length;
+        page.click('.day-panel .task-row [data-action="open-tag"]');
+        assert.deepStrictEqual(page.posted.slice(before), [{ type: 'openTag', tagKey: '#project/atlas' }], `${id}: the tag opens, not the task`);
+      } finally {
+        page.dispose();
+      }
+    }
+  });
 });
