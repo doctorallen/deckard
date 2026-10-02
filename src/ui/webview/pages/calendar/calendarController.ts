@@ -6,6 +6,7 @@ import { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type {
   CalendarMessage,
+  CalendarMoveRefusedMessage,
   CalendarMoveTaskMessage,
   CalendarPageToHost,
   CalendarShowMonthMessage,
@@ -286,6 +287,8 @@ export interface CalendarViewControllerOptions {
   writes: TaskWrites;
   /** Sends the calendar its snapshot through its host, or marks it stale while hidden. */
   refresh: () => void;
+  /** Sends the calendar one message through its host, while it is drawn. */
+  post: (message: CalendarMoveRefusedMessage) => void;
   /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
   openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
@@ -330,6 +333,12 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
       dayPanel: readDayPanel,
       refresh: view.refresh,
       openTag: view.openTag,
+      // A move the day panel asked for that could not be made is said, as
+      // on the calendar page, and the panel drawn again as it is.
+      refused: (taskId, requestId) => {
+        view.post({ type: 'moveRefused', taskId, ...(requestId === undefined ? {} : { requestId }) });
+        view.refresh();
+      },
     });
     this.handlers = calendarHandlers(this.calendar);
   }

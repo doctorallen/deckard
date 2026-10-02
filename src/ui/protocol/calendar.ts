@@ -252,6 +252,8 @@ export interface CalendarPageToHost {
 /** What the host sends the sidebar Calendar, by type. */
 export interface CalendarHostToPage {
   state: StateMessage<CalendarSnapshot>;
+  /** A task the day panel asked to move that was not moved. */
+  moveRefused: CalendarMoveRefusedMessage;
 }
 
 /**

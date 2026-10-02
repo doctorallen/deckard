@@ -585,4 +585,20 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('the sidebar says a move from its day panel was not made, naming the task', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, selectedDate: '2026-09-12' }));
+    try {
+      const move = page.find('.day-panel [data-action="move-task"]') as HTMLElement;
+      const refuse = (taskId: string) =>
+        page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId } }));
+      refuse(String(move.dataset.taskId));
+      assert.strictEqual(page.text('#live-status'), `"Call Ren" was not moved to ${String(move.dataset.date)}.`);
+      refuse('gone');
+      assert.strictEqual(page.text('#live-status'), 'The task was not moved.');
+    } finally {
+      page.dispose();
+    }
+  });
 });

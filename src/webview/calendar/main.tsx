@@ -6,8 +6,9 @@
  * `deckard.calendar.dayPanel` on, a click chooses a day for the panel
  * under the month, and a double-click or Enter opens it.
  */
-import type { CalendarDay, CalendarSnapshot, CalendarWeek } from '../../ui/protocol/calendar';
-import { dispatchAction, readEmbeddedState } from '../shared/page';
+import type { CalendarDay, CalendarMoveRefusedMessage, CalendarSnapshot, CalendarWeek } from '../../ui/protocol/calendar';
+import { dispatchAction, onHostMessage, readEmbeddedState } from '../shared/page';
+import { announce } from '../shared/status';
 import { DayPanel, installDayPanel } from '../shared/calendar/dayPanel';
 import { CalendarGrid } from '../shared/calendar/grid';
 import {
@@ -162,4 +163,12 @@ installDayPanel({
 });
 // With the panel on, a click chooses a day and a double-click opens it.
 document.addEventListener('dblclick', session.onDoubleClick);
+// A move the host could not make is said, naming the task and the day
+// when its button in the day panel is still drawn, as the page says it.
+onHostMessage<CalendarMoveRefusedMessage>('moveRefused', (message) => {
+  const button = [...document.querySelectorAll<HTMLElement>('.day-panel [data-action="move-task"]')]
+    .find((move) => move.dataset.taskId === message.taskId);
+  const title = button?.closest('.task-row')?.querySelector('.task-title')?.textContent;
+  announce(button && title ? `"${title}" was not moved to ${String(button.dataset.date)}.` : 'The task was not moved.');
+});
 send({ type: 'ready' });
