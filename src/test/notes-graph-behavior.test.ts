@@ -415,6 +415,30 @@ suite('Notes Graph behavior', () => {
       assert.match(page.text('#status-counts') ?? '', /^3 notes · 1 tasks · 3 of 3 links drawn · \d+ groups?$/);
     });
 
+    test('a node Related Notes hovers is ringed with its neighbors bright, until the hover ends', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const strokes = () => lastFrame(page).filter((call) => call.op === 'stroke').length;
+      const before = strokes();
+
+      post(page, { type: 'highlightNode', nodeId: 'section:b' });
+      page.flushFrames(1);
+      assert.strictEqual(arcsAt(page, 0.15), 1, 'the task beside c is faint');
+      assert.strictEqual(strokes(), before + 2, 'the highlight and the ring');
+      const ring = lastFrame(page).filter((call) => call.op === 'arc').at(-1) as CanvasCall;
+      const node = lastFrame(page).find((call) => call.op === 'arc' && call.args[0] === ring.args[0] && call.args[1] === ring.args[1]) as CanvasCall;
+      const transform = lastFrame(page).find((call) => call.op === 'setTransform' && (call.args as number[])[0] !== 1) as CanvasCall;
+      const k = (transform.args as number[])[0];
+      assert.ok(Math.abs((ring.args as number[])[2] - (node.args as number[])[2] - 3 / k) < 1e-9, 'three pixels out, as a hover is');
+
+      post(page, { type: 'highlightNode' });
+      page.flushFrames(1);
+      assert.strictEqual(arcsAt(page, 0.15), 0);
+      assert.strictEqual(strokes(), before);
+      assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 0);
+    });
+
     test('Show notes off draws only the tasks, and Show tasks off only the notes', () => {
       const page = openCanvas();
       page.send(chain());
