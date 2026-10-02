@@ -475,8 +475,13 @@ suite('Webview saved state', () => {
         scrollY: 40, noteLimit: 100, noteListKey: LIST, showEveryActiveTag: true, contextOpen: false,
         linksOpen: { linked: true, mentions: false }, openLinkSections: ['notes/standup.md:2'], expandedRefine: [], shownGroups: [],
       });
-      (view.find('details.active-file') as HTMLDetailsElement).open = true;
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // A fold says it opened with a toggle event, queued as a task; the
+      // page keeps the fold when the event comes, so the test waits for
+      // that event, not for a time that a busy run can pass first.
+      const fold = view.find('details.active-file') as HTMLDetailsElement;
+      const toggled = new Promise((resolve) => fold.addEventListener('toggle', resolve, { once: true }));
+      fold.open = true;
+      await toggled;
       assert.strictEqual((view.savedState() as { contextOpen: boolean }).contextOpen, true, 'a fold is kept as the reader leaves it');
     });
   });
