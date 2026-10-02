@@ -82,6 +82,25 @@ function collectAncestorEvidence(
   if ((section.headingTags ?? []).length === 0) {
     return;
   }
+  someHeadingAncestor(section, sectionById, (parent, depth) => {
+    collectHeadingPairs(section, parent, depth, sink);
+    return false;
+  });
+}
+
+/**
+ * Walks the headings above a section, the nearest first, until `visit`
+ * returns true, and says whether it did. `depth` is 1 for the parent and
+ * one more for each heading further up. A loop in the parents ends the walk
+ * at the first repeat, and a parent `sectionById` does not hold ends it
+ * there, so a damaged heading tree never walks forever. The association
+ * evidence and parking both inherit down headings through this one walk.
+ */
+export function someHeadingAncestor(
+  section: Section,
+  sectionById: ReadonlyMap<string, Section>,
+  visit: (parent: Section, depth: number) => boolean,
+): boolean {
   let parentSectionId = section.parentSectionId;
   let depth = 1;
   const visited = new Set<string>();
@@ -89,12 +108,15 @@ function collectAncestorEvidence(
     visited.add(parentSectionId);
     const parent = sectionById.get(parentSectionId);
     if (!parent) {
-      break;
+      return false;
     }
-    collectHeadingPairs(section, parent, depth, sink);
+    if (visit(parent, depth)) {
+      return true;
+    }
     parentSectionId = parent.parentSectionId;
     depth += 1;
   }
+  return false;
 }
 
 /** Each of a heading's tags against each of one ancestor's, as one authoring unit. */

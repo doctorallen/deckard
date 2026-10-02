@@ -27,8 +27,13 @@ export function formatQuery(node: QueryNode | undefined): string {
   return formatNode(node, 'top');
 }
 
+/** What a node is written inside, which decides whether it needs parentheses. */
 type FormatContext = 'top' | 'or' | 'and' | 'not';
 
+/**
+ * A node as canonical text: an OR is parenthesized inside an AND or a NOT,
+ * and an AND inside a NOT, where precedence would otherwise change it.
+ */
 function formatNode(node: QueryNode, context: FormatContext): string {
   if (node.type === 'condition') {
     return formatCondition(node);
@@ -109,12 +114,7 @@ export function getQueryTagIntersection(
   if (!node) {
     return undefined;
   }
-  const conditions =
-    node.type === 'and'
-      ? node.children
-      : node.type === 'condition'
-        ? [node]
-        : undefined;
+  const conditions = flatConditions(node);
   if (!conditions) {
     return undefined;
   }
@@ -134,6 +134,14 @@ export function getQueryTagIntersection(
   return tagKeys;
 }
 
+/** The terms of a query that is one AND, or one condition alone; undefined otherwise. */
+function flatConditions(node: QueryNode): QueryNode[] | undefined {
+  if (node.type === 'and') {
+    return node.children;
+  }
+  return node.type === 'condition' ? [node] : undefined;
+}
+
 /**
  * Projects an AST into the tree the visual builder edits.
  *
@@ -151,6 +159,7 @@ export function toBuilderTree(node: QueryNode | undefined): QueryBuilderGroup {
   return 'items' in item ? item : { join: 'and', items: [item] };
 }
 
+/** A node as a builder row or group, a negated condition as its opposite row. */
 function toBuilderItem(node: QueryNode): QueryBuilderItem {
   if (node.type === 'condition') {
     return conditionRow(node, false);
@@ -168,6 +177,7 @@ function toBuilderItem(node: QueryNode): QueryBuilderItem {
   return { join: node.type, items: node.children.map(toBuilderItem) };
 }
 
+/** A condition as a builder row, its operator turned to its opposite when it was negated. */
 function conditionRow(node: QueryConditionNode, negated: boolean): QueryBuilderRow {
   return {
     field: node.field,
@@ -199,6 +209,7 @@ export function fromBuilderTree(group: QueryBuilderGroup, depth = 0): string {
   return depth > 0 && terms.length > 1 ? `(${body})` : body;
 }
 
+/** A builder row as query text: a row the builder cannot edit as it was written, an empty one as nothing. */
 function formatBuilderRow(row: QueryBuilderRow): string {
   if (!row.supported) {
     return row.text.trim();

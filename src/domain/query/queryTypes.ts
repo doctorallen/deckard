@@ -32,6 +32,7 @@ export type {
   TagReferenceLike,
 } from '../model/query';
 
+/** Every field a query can name, in the order the query bar suggests them. */
 export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',
   'link',
@@ -111,25 +112,48 @@ export const QUERY_PRIORITY_VALUES = [
   'lowest',
 ] as const;
 
+/**
+ * The symbol each operator is written with, which the parser reads, the
+ * builder and error messages write, and the formatter writes back.
+ */
+export const QUERY_OPERATOR_SYMBOLS: Readonly<Record<QueryOperator, string>> = {
+  eq: '=',
+  neq: '!=',
+  contains: '~',
+  notContains: '!~',
+  gt: '>',
+  gte: '>=',
+  lt: '<',
+  lte: '<=',
+};
+
 /** The operator as a query writes it: `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=`. */
 export function describeOperator(operator: QueryOperator): string {
+  return QUERY_OPERATOR_SYMBOLS[operator];
+}
+
+/**
+ * Compares two ranks as an operator asks, for a field whose values are
+ * ordered, such as priority. `contains` and `!~` order nothing, so they
+ * never match.
+ */
+export function compareByOperator(operator: QueryOperator, actual: number, wanted: number): boolean {
   switch (operator) {
     case 'eq':
-      return '=';
+      return actual === wanted;
     case 'neq':
-      return '!=';
-    case 'contains':
-      return '~';
-    case 'notContains':
-      return '!~';
+      return actual !== wanted;
     case 'gt':
-      return '>';
+      return actual > wanted;
     case 'gte':
-      return '>=';
+      return actual >= wanted;
     case 'lt':
-      return '<';
+      return actual < wanted;
     case 'lte':
-      return '<=';
+      return actual <= wanted;
+    case 'contains':
+    case 'notContains':
+      return false;
   }
 }
 
@@ -186,8 +210,10 @@ export const QUERY_OPERATOR_INVERSES: Readonly<
 /** Values `task:` accepts. */
 export const QUERY_TASK_VALUES = ['open', 'done', 'any'] as const;
 
+/** One value `task:` accepts. */
 export type QueryTaskValue = (typeof QUERY_TASK_VALUES)[number];
 
+/** One condition: a field compared with a value, as the parser stores it. */
 export interface QueryConditionNode {
   type: 'condition';
   field: QueryField;
@@ -199,18 +225,22 @@ export interface QueryConditionNode {
   end: number;
 }
 
+/** Conditions joined by AND or OR, two or more. */
 export interface QueryLogicalNode {
   type: 'and' | 'or';
   children: QueryNode[];
 }
 
+/** A condition or group negated. */
 export interface QueryNotNode {
   type: 'not';
   child: QueryNode;
 }
 
+/** A parsed query: a condition, a group of them, or a negation. */
 export type QueryNode = QueryConditionNode | QueryLogicalNode | QueryNotNode;
 
+/** What parseQuery returns: the text, its tree when it parsed, and what it reported. */
 export interface ParsedQuery {
   /** The query text exactly as it was parsed. */
   text: string;

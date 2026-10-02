@@ -69,10 +69,12 @@ export function carrySectionIds(
   return moved;
 }
 
+/** What a heading is known by across an edit: its level and its words. */
 function headingKey(section: Section): string {
   return `${section.headingLevel}\u0000${section.heading}`;
 }
 
+/** A note's headings, inline entries left out, grouped by headingKey, each group in line order. */
 function groupHeadings(sections: readonly Section[]): Map<string, Section[]> {
   const groups = new Map<string, Section[]>();
   sections

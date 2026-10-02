@@ -30,6 +30,7 @@ export { MONTH_NUMBERS, WEEKDAY_NAMES } from './calendar';
 /** A day of the week, 0 for Sunday, as `Date.getDay()` numbers them. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+/** How parseDatePhrase reads what a box was given. */
 export interface DatePhraseOptions {
   /** The day a week starts on, for `next week` and `end of week`. Sunday by default. */
   weekStart?: Weekday;
@@ -125,6 +126,7 @@ function nearestYear(
     : [...candidates].reverse().find((at) => at <= today);
 }
 
+/** A numeric date's year, with two digits read as this century's. */
 function fullYear(written: string): number {
   const year = Number(written);
   return written.length <= 2 ? 2000 + year : year;
@@ -156,121 +158,205 @@ export function parseDatePhrase(
   return at === undefined ? undefined : { date: formatIsoDate(at) };
 }
 
+/** What a phrase reader knows besides the phrase: today, and the options with their defaults. */
+interface PhraseContext {
+  today: number;
+  weekStart: Weekday;
+  direction: 'future' | 'past';
+  numericOrder: DatePhraseOptions['numericOrder'];
+}
+
+/**
+ * What a reader made of a phrase: undefined when the phrase is not its
+ * shape, so the next reader tries; otherwise the day, which is undefined
+ * when the phrase is its shape but names no day, such as `2026-02-30`, and
+ * then no later reader tries.
+ */
+type PhraseReading = { at: number | undefined } | undefined;
+
+/**
+ * Reads a phrase already trimmed, lowercased, and stripped of ordinal
+ * suffixes, trying each shape in PHRASE_READERS in order until one claims
+ * it. Undefined when none does, or the one that does finds no such day.
+ */
 function readPhrase(
   text: string,
   today: number,
   options: DatePhraseOptions,
 ): number | undefined {
-  const weekStart = options.weekStart ?? 0;
-  const direction = options.direction ?? 'future';
-
-  const iso = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(text);
-  if (iso) {
-    return makeDay(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const context: PhraseContext = {
+    today,
+    weekStart: options.weekStart ?? 0,
+    direction: options.direction ?? 'future',
+    numericOrder: options.numericOrder,
+  };
+  for (const read of PHRASE_READERS) {
+    const reading = read(text, context);
+    if (reading) {
+      return reading.at;
+    }
   }
+  return undefined;
+}
 
+/** `2026-10-02` or `2026/10/2`, refused when no such day exists. */
+function readIsoPhrase(text: string): PhraseReading {
+  const iso = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(text);
+  return iso ? { at: makeDay(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])) } : undefined;
+}
+
+/** `today`, `tomorrow`, and `yesterday`. */
+function readNamedDay(text: string, { today }: PhraseContext): PhraseReading {
   if (text === 'today') {
-    return today;
+    return { at: today };
   }
   if (text === 'tomorrow') {
-    return addDays(today, 1);
+    return { at: addDays(today, 1) };
   }
   if (text === 'yesterday') {
-    return addDays(today, -1);
+    return { at: addDays(today, -1) };
   }
+  return undefined;
+}
 
-  // "in 3 days", "+2w", "3 weeks", and "3 days ago"
+/**
+ * A distance from today: `in 3 days`, `+2w`, `3 weeks`, `3 days ago`. A
+ * leading `+` says forward, so it cannot stand with `ago`; both together
+ * is a typo, refused rather than guessed at.
+ */
+function readDistance(text: string, { today }: PhraseContext): PhraseReading {
   const distance =
     /^(?:in )?(\+)?(\d+) ?(d|w|m|y|days?|weeks?|months?|years?)( ago)?$/.exec(text);
-  if (distance && !(distance[1] && distance[4])) {
-    const count = Number(distance[2]) * (distance[4] ? -1 : 1);
-    const unit = distance[3][0];
-    if (unit === 'd') {
-      return addDays(today, count);
-    }
-    if (unit === 'w') {
-      return addDays(today, count * 7);
-    }
-    return addMonths(today, unit === 'm' ? count : count * 12);
+  if (!distance || (distance[1] && distance[4])) {
+    return undefined;
   }
+  const count = Number(distance[2]) * (distance[4] ? -1 : 1);
+  const unit = distance[3][0];
+  if (unit === 'd') {
+    return { at: addDays(today, count) };
+  }
+  if (unit === 'w') {
+    return { at: addDays(today, count * 7) };
+  }
+  return { at: addMonths(today, unit === 'm' ? count : count * 12) };
+}
 
-  // "friday", "next friday", "this friday", "on friday", "last friday"
+/**
+ * A weekday, bare or after `next`, `this`, `on`, or `last`. It is never
+ * today: a bare one is the next such day, or for the past direction the
+ * last, and `last` always looks back while `next` always looks ahead.
+ */
+function readWeekdayPhrase(text: string, { today, direction }: PhraseContext): PhraseReading {
   const weekday = new RegExp(`^(?:(next|this|on|last) )?${WEEKDAY_WORD}$`).exec(text);
-  if (weekday) {
-    const wanted = weekdayNumber(weekday[2]);
-    const current = new Date(today).getDay();
-    const back =
-      weekday[1] === 'last' || (direction === 'past' && weekday[1] !== 'next');
-    return back
-      ? addDays(today, -(((current - wanted + 7) % 7) || 7))
-      : addDays(today, ((wanted - current + 7) % 7) || 7);
+  if (!weekday) {
+    return undefined;
   }
+  const wanted = weekdayNumber(weekday[2]);
+  const current = new Date(today).getDay();
+  const back =
+    weekday[1] === 'last' || (direction === 'past' && weekday[1] !== 'next');
+  return back
+    ? { at: addDays(today, -(((current - wanted + 7) % 7) || 7)) }
+    : { at: addDays(today, ((wanted - current + 7) % 7) || 7) };
+}
 
+/**
+ * The week and month words: `next week` is the first Monday on or after
+ * the first day of the coming week, whatever day weeks start on; `end of
+ * week` and `end of month` are the last day of this week and this month;
+ * `next month` is the first day of the next; `weekend` is today on a
+ * weekend, and the coming Saturday otherwise.
+ */
+function readWeekOrMonth(text: string, { today, weekStart }: PhraseContext): PhraseReading {
   if (text === 'next week') {
     const next = addDays(startOfWeek(today, weekStart), 7);
-    return addDays(next, (1 - weekStart + 7) % 7);
+    return { at: addDays(next, (1 - weekStart + 7) % 7) };
   }
   if (/^(?:end of (?:the )?week|eow)$/.test(text)) {
-    return addDays(startOfWeek(today, weekStart), 6);
+    return { at: addDays(startOfWeek(today, weekStart), 6) };
   }
   if (/^(?:end of (?:the )?month|eom)$/.test(text)) {
     const date = new Date(today);
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime();
+    return { at: new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime() };
   }
   if (text === 'next month') {
     const date = new Date(today);
-    return new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime();
+    return { at: new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime() };
   }
   if (/^(?:this |the )?weekend$/.test(text)) {
     const current = new Date(today).getDay();
-    return current === 0 || current === 6 ? today : addDays(today, 6 - current);
+    return { at: current === 0 || current === 6 ? today : addDays(today, 6 - current) };
   }
-
-  const withoutOn = text.replace(/^on /, '');
-  // "oct 3", "october 3, 2027"
-  const monthFirst = new RegExp(`^${MONTH_WORD} (\\d{1,2}),? ?(\\d{4})?$`).exec(withoutOn);
-  // "3 oct", "3 october 2027"
-  const dayFirst = new RegExp(`^(\\d{1,2}) ${MONTH_WORD},? ?(\\d{4})?$`).exec(withoutOn);
-  if (monthFirst || dayFirst) {
-    const month = monthNumber(monthFirst ? monthFirst[1] : dayFirst![2]);
-    const day = Number(monthFirst ? monthFirst[2] : dayFirst![1]);
-    const year = monthFirst ? monthFirst[3] : dayFirst![3];
-    if (month === undefined) {
-      return undefined;
-    }
-    return year
-      ? makeDay(Number(year), month, day)
-      : nearestYear(month, day, today, direction);
-  }
-
-  // "10/3", "10/3/27", "3.10.2026": only where the order is known.
-  const numeric = /^(\d{1,2})([/.])(\d{1,2})(?:\2(\d{2}|\d{4}))?$/.exec(withoutOn);
-  if (numeric && options.numericOrder) {
-    const first = Number(numeric[1]);
-    const second = Number(numeric[3]);
-    const orders: [number, number][] =
-      options.numericOrder === 'mdy'
-        ? [
-            [first, second],
-            [second, first],
-          ]
-        : [
-            [second, first],
-            [first, second],
-          ];
-    for (const [month, day] of orders) {
-      const found = numeric[4]
-        ? makeDay(fullYear(numeric[4]), month - 1, day)
-        : nearestYear(month - 1, day, today, direction);
-      if (found !== undefined) {
-        return found;
-      }
-    }
-    return undefined;
-  }
-
   return undefined;
 }
+
+/**
+ * A month name and a day in either order, `oct 3` or `3 october 2027`,
+ * after an optional `on`. Without a year it is the nearest such day in
+ * the reading's direction.
+ */
+function readMonthDay(text: string, { today, direction }: PhraseContext): PhraseReading {
+  const withoutOn = text.replace(/^on /, '');
+  const monthFirst = new RegExp(`^${MONTH_WORD} (\\d{1,2}),? ?(\\d{4})?$`).exec(withoutOn);
+  const dayFirst = new RegExp(`^(\\d{1,2}) ${MONTH_WORD},? ?(\\d{4})?$`).exec(withoutOn);
+  if (!monthFirst && !dayFirst) {
+    return undefined;
+  }
+  const month = monthNumber(monthFirst ? monthFirst[1] : dayFirst![2]);
+  const day = Number(monthFirst ? monthFirst[2] : dayFirst![1]);
+  const year = monthFirst ? monthFirst[3] : dayFirst![3];
+  if (month === undefined) {
+    return { at: undefined };
+  }
+  return {
+    at: year ? makeDay(Number(year), month, day) : nearestYear(month, day, today, direction),
+  };
+}
+
+/**
+ * A numeric date, `10/3`, `10/3/27`, `3.10.2026`, read only where the box
+ * says which order it is in, since `10/3` means two different days. The
+ * other order is tried when the first names no day, so `25/3` still reads
+ * in a month-first box.
+ */
+function readNumericDate(text: string, context: PhraseContext): PhraseReading {
+  const numeric = /^(\d{1,2})([/.])(\d{1,2})(?:\2(\d{2}|\d{4}))?$/.exec(text.replace(/^on /, ''));
+  if (!numeric || !context.numericOrder) {
+    return undefined;
+  }
+  const first = Number(numeric[1]);
+  const second = Number(numeric[3]);
+  const orders: [number, number][] =
+    context.numericOrder === 'mdy'
+      ? [
+          [first, second],
+          [second, first],
+        ]
+      : [
+          [second, first],
+          [first, second],
+        ];
+  for (const [month, day] of orders) {
+    const found = numeric[4]
+      ? makeDay(fullYear(numeric[4]), month - 1, day)
+      : nearestYear(month - 1, day, context.today, context.direction);
+    if (found !== undefined) {
+      return { at: found };
+    }
+  }
+  return { at: undefined };
+}
+
+/** The shapes a date phrase can take, in the order they are tried. */
+const PHRASE_READERS: readonly ((text: string, context: PhraseContext) => PhraseReading)[] = [
+  readIsoPhrase,
+  readNamedDay,
+  readDistance,
+  readWeekdayPhrase,
+  readWeekOrMonth,
+  readMonthDay,
+  readNumericDate,
+];
 
 /**
  * A day said back as a box shows it: its weekday, the date, and how far it is
@@ -342,6 +428,9 @@ export function formatMonthName(at: number, now: number): string {
     : `${name} ${day.getFullYear()}`;
 }
 
+/** How many weeks or months from this one each period word names. */
+const PERIOD_STEPS: Readonly<Record<string, number>> = { this: 0, last: -1, next: 1 };
+
 /**
  * A whole week or month named in a search: `this-week`, `last-month`,
  * `next-week`, or `2026-08`. The end is the first moment after it.
@@ -365,7 +454,7 @@ export function resolveDatePeriod(
   if (!period) {
     return undefined;
   }
-  const step = period[1] === 'this' ? 0 : period[1] === 'last' ? -1 : 1;
+  const step = PERIOD_STEPS[period[1]];
   if (period[2] === 'week') {
     const start = addDays(startOfWeek(now, weekStart), step * 7);
     return { start, end: addDays(start, 7) };

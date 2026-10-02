@@ -25,7 +25,9 @@ export interface DateRange {
 
 /**
  * Turns a date value into the half-open interval it names, read on the day
- * `now` falls on, with weeks starting on `weekStart`.
+ * `now` falls on, with weeks starting on `weekStart`: a named day, a
+ * relative window, a `YYYY-MM-DD` day, a whole week or month, or any other
+ * day in plain words, tried in that order. Undefined when it is none.
  */
 export function resolveDateRange(
   value: string,
@@ -34,75 +36,124 @@ export function resolveDateRange(
   weekStart: Weekday,
 ): DateRange | undefined {
   const normalized = value.trim().toLowerCase();
-
-  const namedDayOffsets: Record<string, number> = {
-    yesterday: -1,
-    today: 0,
-    tomorrow: 1,
-  };
-  if (Object.hasOwn(namedDayOffsets, normalized)) {
-    const start = startOfDay(now) + namedDayOffsets[normalized] * DAY_MS;
-    return { start, end: start + DAY_MS, isWindow: false };
+  const context: RangeContext = { now, direction, weekStart };
+  for (const read of RANGE_READERS) {
+    const reading = read(normalized, context);
+    if (reading) {
+      return reading.range;
+    }
   }
+  return undefined;
+}
 
+/** What a date value is read against. */
+interface RangeContext {
+  now: number;
+  direction: DateDirection;
+  weekStart: Weekday;
+}
+
+/**
+ * What a reader made of a date value: undefined when the value is not its
+ * shape, so the next reader tries; otherwise the range, which is undefined
+ * when the value is its shape but names no time, and then no later reader
+ * tries.
+ */
+type RangeReading = { range: DateRange | undefined } | undefined;
+
+/** How far each named day is from today. */
+const NAMED_DAY_OFFSETS: Readonly<Record<string, number>> = {
+  yesterday: -1,
+  today: 0,
+  tomorrow: 1,
+};
+
+/** `yesterday`, `today`, or `tomorrow`, as that one day. */
+function readNamedDay(normalized: string, { now }: RangeContext): RangeReading {
+  if (!Object.hasOwn(NAMED_DAY_OFFSETS, normalized)) {
+    return undefined;
+  }
+  const start = startOfDay(now) + NAMED_DAY_OFFSETS[normalized] * DAY_MS;
+  return { range: { start, end: start + DAY_MS, isWindow: false } };
+}
+
+/** How many days each window unit counts: a month is 30 and a year 365. */
+const DAYS_PER_UNIT: Readonly<Record<string, number>> = { d: 1, w: 7, m: 30, y: 365 };
+
+/**
+ * A relative window, `7d`, `2w`, `3m`, `1y`. A window counts today as its
+ * first day: `updated = 7d` is the last seven days including today, and
+ * `due = 7d` is today and the six after it.
+ */
+function readWindow(normalized: string, { now, direction }: RangeContext): RangeReading {
   const relative = /^(\d+)([dwmy])$/.exec(normalized);
-  if (relative) {
-    const amount = Number(relative[1]);
-    const unit = relative[2];
-    const days =
-      unit === 'd'
-        ? amount
-        : unit === 'w'
-          ? amount * 7
-          : unit === 'm'
-            ? amount * 30
-            : amount * 365;
-    // A window counts today as its first day: `updated = 7d` is the last seven
-    // days including today, and `due = 7d` is today and the six after it.
-    return direction === 'past'
-      ? {
+  if (!relative) {
+    return undefined;
+  }
+  const days = Number(relative[1]) * DAYS_PER_UNIT[relative[2]];
+  return direction === 'past'
+    ? {
+        range: {
           start: startOfDay(now) - (days - 1) * DAY_MS,
           end: startOfDay(now) + DAY_MS,
           isWindow: true,
-        }
-      : {
+        },
+      }
+    : {
+        range: {
           start: startOfDay(now),
           end: startOfDay(now) + days * DAY_MS,
           isWindow: true,
-        };
-  }
+        },
+      };
+}
 
+/** A `YYYY-MM-DD` day, as that one day from its local midnight. */
+function readIsoDay(normalized: string): RangeReading {
   const absolute = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
-  if (absolute) {
-    const start = new Date(
-      Number(absolute[1]),
-      Number(absolute[2]) - 1,
-      Number(absolute[3]),
-    ).getTime();
-    if (Number.isNaN(start)) {
-      return undefined;
-    }
-    return { start, end: start + DAY_MS, isWindow: false };
+  if (!absolute) {
+    return undefined;
   }
+  const start = new Date(
+    Number(absolute[1]),
+    Number(absolute[2]) - 1,
+    Number(absolute[3]),
+  ).getTime();
+  if (Number.isNaN(start)) {
+    return { range: undefined };
+  }
+  return { range: { start, end: start + DAY_MS, isWindow: false } };
+}
 
-  // A whole week or month: `this-week`, `last-month`, `2026-08`.
+/** A whole week or month, as resolveDatePeriod reads it. */
+function readPeriod(normalized: string, { now, weekStart }: RangeContext): RangeReading {
   const period = resolveDatePeriod(normalized, now, weekStart);
-  if (period) {
-    return { ...period, isWindow: false };
-  }
+  return period ? { range: { ...period, isWindow: false } } : undefined;
+}
 
-  // Any other day in plain words, with `-` for a space: `friday`,
-  // `end-of-month`, `"oct 3"`. A bare weekday points back for the dates a
-  // note or task already has, and ahead for the ones a task is due.
+/**
+ * Any other day in plain words, with `-` for a space: `friday`,
+ * `end-of-month`, `"oct 3"`. A bare weekday points back for the dates a
+ * note or task already has, and ahead for the ones a task is due.
+ */
+function readPhraseDay(normalized: string, { now, direction, weekStart }: RangeContext): RangeReading {
   const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
     direction,
     weekStart,
   });
-  if (phrase?.date) {
-    const [year, month, day] = phrase.date.split('-').map(Number);
-    const start = new Date(year, month - 1, day).getTime();
-    return { start, end: addDays(start, 1), isWindow: false };
+  if (!phrase?.date) {
+    return undefined;
   }
-
-  return undefined;
+  const [year, month, day] = phrase.date.split('-').map(Number);
+  const start = new Date(year, month - 1, day).getTime();
+  return { range: { start, end: addDays(start, 1), isWindow: false } };
 }
+
+/** The shapes a date value can take, in the order they are tried. */
+const RANGE_READERS: readonly ((normalized: string, context: RangeContext) => RangeReading)[] = [
+  readNamedDay,
+  readWindow,
+  readIsoDay,
+  readPeriod,
+  readPhraseDay,
+];

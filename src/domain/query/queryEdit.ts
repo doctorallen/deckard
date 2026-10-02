@@ -1,3 +1,11 @@
+/**
+ * Edits query text by the terms a person wrote, rather than by rewriting it.
+ *
+ * Removing a chip or lifting a tag into the page's title cuts the words out
+ * of the text where they stand, so `vendor #atlas is:open` loses `is:open`
+ * and keeps the rest exactly as it was typed, instead of coming back in the
+ * canonical `text ~ vendor AND tag = #atlas` spelling.
+ */
 import { formatQuery } from './queryFormat';
 import { parseQuery } from './queryParser';
 import {
@@ -9,16 +17,10 @@ import {
 } from './queryTypes';
 import { escapeRegExp, isWildcard } from './queryValues';
 
-/**
- * Edits query text by the terms a person wrote, rather than by rewriting it.
- *
- * Removing a chip or lifting a tag into the page's title cuts the words out
- * of the text where they stand, so `vendor #atlas is:open` loses `is:open`
- * and keeps the rest exactly as it was typed, instead of coming back in the
- * canonical `text ~ vendor AND tag = #atlas` spelling.
- */
+/** One term of a query as the search box shows it, with the query as it reads without it. */
 export type QueryTerm = QueryTermChip;
 
+/** A top-level term and where it was written, when that could be found. */
 interface TermSpan {
   node: QueryNode;
   start?: number;
@@ -51,6 +53,11 @@ export function getTopLevelJoin(parsed: ParsedQuery): QueryBuilderJoin {
   return parsed.node?.type === 'or' ? 'or' : 'and';
 }
 
+/**
+ * A term as the search box lists it: its text as written, or formatted when
+ * its place is unknown; the query without it; and for a group, its own
+ * terms listed the same way.
+ */
 function termOf(
   parsed: ParsedQuery,
   root: QueryNode,
@@ -80,6 +87,7 @@ function termOf(
   };
 }
 
+/** A stretch of the query text, by offsets, end exclusive. */
 interface Span {
   start: number;
   end: number;
@@ -92,27 +100,40 @@ interface Span {
  * would cut a parenthesis in half.
  */
 function spanOf(text: string, node: QueryNode): Span | undefined {
-  let span: Span | undefined;
-  if (node.type === 'condition') {
-    span = { start: node.start, end: node.end };
-  } else if (node.type === 'not') {
-    const inner = spanOf(text, node.child);
-    const start = inner && findNegationStart(text, inner.start);
-    span = inner && start !== undefined ? { start, end: inner.end } : undefined;
-  } else {
-    const spans = node.children.map((child) => spanOf(text, child));
-    if (spans.every((child): child is Span => child !== undefined)) {
-      span = {
+  const span = rawSpanOf(text, node);
+  if (!span) {
+    return undefined;
+  }
+  const widened = widenOverParentheses(text, span);
+  return isBalanced(text.slice(widened.start, widened.end)) ? widened : undefined;
+}
+
+/**
+ * Where a node was written before parentheses are taken in: a condition's
+ * own place, a NOT's from its negation to its child's end, and a group's
+ * from its first child's to its last's.
+ */
+function rawSpanOf(text: string, node: QueryNode): Span | undefined {
+  switch (node.type) {
+    case 'condition':
+      return { start: node.start, end: node.end };
+    case 'not': {
+      const inner = spanOf(text, node.child);
+      const start = inner && findNegationStart(text, inner.start);
+      return inner && start !== undefined ? { start, end: inner.end } : undefined;
+    }
+    case 'and':
+    case 'or': {
+      const spans = node.children.map((child) => spanOf(text, child));
+      if (!spans.every((child): child is Span => child !== undefined)) {
+        return undefined;
+      }
+      return {
         start: Math.min(...spans.map((child) => child.start)),
         end: Math.max(...spans.map((child) => child.end)),
       };
     }
   }
-  if (!span) {
-    return undefined;
-  }
-  span = widenOverParentheses(text, span);
-  return isBalanced(text.slice(span.start, span.end)) ? span : undefined;
 }
 
 /** Takes in each pair of parentheses written directly around a place. */
@@ -129,6 +150,7 @@ function widenOverParentheses(text: string, span: Span): Span {
   }
 }
 
+/** Whether every parenthesis in some text closes one opened before it, and every one opened closes. */
 function isBalanced(text: string): boolean {
   let depth = 0;
   for (const char of text) {
@@ -220,12 +242,13 @@ export function extractTagTerms(
       return;
     }
     const tagKey = resolve(node.value);
-    if (tagKey) {
-      if (!tagKeys.includes(tagKey)) {
-        tagKeys.push(tagKey);
-      }
-      cuts.push({ start: span.start, end: span.end });
+    if (!tagKey) {
+      return;
     }
+    if (!tagKeys.includes(tagKey)) {
+      tagKeys.push(tagKey);
+    }
+    cuts.push({ start: span.start, end: span.end });
   });
   const rest = cuts
     .sort((left, right) => right.start - left.start)
@@ -416,6 +439,11 @@ export function canAppendTerm(parsed: ParsedQuery): boolean {
   return parsed.node?.type !== 'or';
 }
 
+/**
+ * The terms of a query that is one AND, or one term, each with where it
+ * was written: a condition, or a negated condition from its `-`, `!`, or
+ * NOT. Undefined for a query whose top level is an OR, or an empty one.
+ */
 function getTermSpans(parsed: ParsedQuery): TermSpan[] | undefined {
   const node = parsed.node;
   if (!node || node.type === 'or') {

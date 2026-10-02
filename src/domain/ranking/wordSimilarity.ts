@@ -27,6 +27,7 @@ export interface LexicalEvidence {
   terms: Array<{ term: string; contribution: number }>;
 }
 
+/** What a wording model knows of the whole index, before a note is read against it. */
 type LexicalCorpus = Omit<LexicalModel, 'queryTerms' | 'queryOrder'>;
 
 /**
@@ -39,6 +40,7 @@ const lexicalCorpora = new WeakMap<WorkspaceIndex, LexicalCorpus>();
 const lexicalTerms = new WeakMap<Section | Task, string[]>();
 const sectionLexicalContents = new WeakMap<Section, string>();
 
+/** A section's terms, from its heading and its own text, tokenized once per section. */
 function getSectionTerms(section: Section, fileSections: Section[]): string[] {
   let terms = lexicalTerms.get(section);
   if (!terms) {
@@ -51,6 +53,7 @@ function getSectionTerms(section: Section, fileSections: Section[]): string[] {
   return terms;
 }
 
+/** A task's terms, from its title and its line, tokenized once per task. */
 function getTaskTerms(task: Task): string[] {
   let terms = lexicalTerms.get(task);
   if (!terms) {
@@ -60,6 +63,11 @@ function getTaskTerms(task: Task): string[] {
   return terms;
 }
 
+/**
+ * The index's corpus for BM25: how many entries hold each term, how many
+ * entries there are, and their average length, each at least one so no
+ * score divides by zero. Worked out once per index.
+ */
 function getLexicalCorpus(index: WorkspaceIndex): LexicalCorpus {
   const cached = lexicalCorpora.get(index);
   if (cached) {
@@ -136,6 +144,7 @@ export function getCachedLexicalTerms(
 /** How often each term occurs, by term list. Cached lists keep theirs. */
 const termFrequencies = new WeakMap<string[], Map<string, number>>();
 
+/** How often each term occurs in a list of terms, counted once per list. */
 function getTermFrequencies(terms: string[]): Map<string, number> {
   let frequencies = termFrequencies.get(terms);
   if (!frequencies) {
@@ -315,6 +324,12 @@ function isCommonplace(model: LexicalModel, term: string): boolean {
   );
 }
 
+/**
+ * The terms ranking compares: words of three letters or more, lowercased,
+ * without stop words, tags, links, addresses, front matter, or code. The
+ * text is read with its title, and the title's words are listed twice more
+ * before it, so what an entry is called weighs more than what it says.
+ */
 function getLexicalTerms(title: string, content: string): string[] {
   const ignored = STOP_WORDS;
   const clean = `${title}\n${content}`

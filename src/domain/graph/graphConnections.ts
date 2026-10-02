@@ -42,6 +42,7 @@ function otherEnd(edge: NotesGraphEdge, nodeId: string): string | undefined {
   return edge.target === nodeId ? edge.source : undefined;
 }
 
+/** Orders node kinds as connections list them: notes, then tasks, then tags. */
 function compareNodeKinds(
   left: NotesGraphNode['kind'],
   right: NotesGraphNode['kind'],

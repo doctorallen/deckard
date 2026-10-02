@@ -55,6 +55,7 @@ export function findTagLookalikes(
 /** How many comparisons the spelling pass is allowed before it stops. */
 const COMPARISON_BUDGET = 250_000;
 
+/** A tag as the passes compare it: its count, and its key split into namespace and name, lowercased. */
 interface TagFacts {
   key: string;
   label: string;
@@ -150,12 +151,14 @@ export function findTagMergeCandidates(
   return { candidates: candidates.slice(0, limit), total: candidates.length };
 }
 
+/** How confusable a reason makes two tags, most first: the order candidates are listed in. */
 function rank(reason: TagMergeReason): number {
   return ['marker', 'namespace', 'separator', 'plural', 'spelling'].indexOf(
     reason,
   );
 }
 
+/** Why two tags are offered for merging, in words, with each one's count. */
 function describe(
   reason: TagMergeReason,
   source: TagFacts,
@@ -176,6 +179,7 @@ function describe(
   }
 }
 
+/** A count of entries with its noun, `1 entry` or `3 entries`. */
 function entries(count: number): string {
   return `${count} ${count === 1 ? 'entry' : 'entries'}`;
 }
@@ -190,6 +194,7 @@ function order(left: TagFacts, right: TagFacts): [TagFacts, TagFacts] {
     : [right, left];
 }
 
+/** A tag's facts: `#ns/name` split at its first slash, and `@name` as a name in the person namespace. */
 function toFacts(tag: TagInfo): TagFacts {
   const key = tag.key.toLocaleLowerCase();
   if (!key.startsWith('#')) {
@@ -212,6 +217,7 @@ function toFacts(tag: TagInfo): TagFacts {
   };
 }
 
+/** The tags grouped by `keyOf`, each group in the tags' order, leaving out groups of one. */
 function groupBy(
   tags: readonly TagFacts[],
   keyOf: (tag: TagFacts) => string,
@@ -224,6 +230,7 @@ function groupBy(
   return [...groups.values()].filter((group) => group.length > 1);
 }
 
+/** Visits every pair in a group once, each in the group's order. */
 function eachPair(
   group: readonly TagFacts[],
   visit: (left: TagFacts, right: TagFacts) => void,
@@ -235,10 +242,12 @@ function eachPair(
   }
 }
 
+/** A name without its hyphens, underscores, and spaces, so `to-do` and `todo` meet. */
 function collapse(name: string): string {
   return name.replace(/[-_ ]/g, '');
 }
 
+/** A name with a final `es` or `s` taken off, so `projects` and `project` meet. */
 function singular(name: string): string {
   return name.replace(/(?:es|s)$/, '');
 }

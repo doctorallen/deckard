@@ -191,6 +191,13 @@ export function toGraphEdge(edge: EdgeAccumulator): NotesGraphEdge {
   };
 }
 
+/**
+ * The node a `[[link]]` written in `source` opens: a node of the named
+ * note, or of `source`'s own note for `[[#Heading]]`, matched by path, path
+ * without `.md`, or file name, case aside. A `#Heading` picks the node with
+ * that title when there is one; otherwise the note's own node comes first,
+ * then the first by id. Undefined when no node has the name.
+ */
 function resolveLinkTarget(
   link: string,
   source: GraphSource,
@@ -233,6 +240,7 @@ function resolveLinkTarget(
   );
 }
 
+/** The names a path is linked by, lowercased: as written, without `.md`, and its file name alone. */
 function pathAliases(filePath: string): string[] {
   const normalized = filePath
     .replace(/\\/g, '/')
@@ -243,10 +251,12 @@ function pathAliases(filePath: string): string[] {
   return [...new Set([normalized, withoutExtension, fileName])];
 }
 
+/** A heading as a link's `#Heading` matches it: without tags, letter case, or extra spaces. */
 function normalizeHeading(value: string): string {
   return stripTags(value).trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+/** Orders an edge's kinds as it lists them: links, headings, associated tags, then membership. */
 function compareEdgeTypes(
   left: NotesGraphEdgeType,
   right: NotesGraphEdgeType,
