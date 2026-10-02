@@ -280,6 +280,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
           options.parseInlineTags === false ? 'no-inline' : 'inline',
           options.personMarker ?? '',
           JSON.stringify(options.entityNamespaceAliases ?? {}),
+          options.assigneeFromPersonTag === true ? 'person-assigns' : 'field-assigns',
         ].join('\u0000');
       },
     );
