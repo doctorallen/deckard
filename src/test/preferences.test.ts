@@ -528,6 +528,49 @@ suite('Preferences store', () => {
     store.repository.dispose();
   });
 
+  test('two windows open at once keep each other\'s machine-wide choices', async () => {
+    const machine = new MemoryMemento();
+    const first = createPreferences(machine, new MemoryMemento());
+    const second = createPreferences(machine, new MemoryMemento());
+    await first.repository.initialize();
+    await second.repository.initialize();
+
+    await first.display.setTagSortMode('count');
+    // The second window, which read the machine-wide blob before that
+    // choice, records a visit to a tag.
+    await second.usage.recordTagAccess('#project/atlas');
+    await second.favorites.toggleFavorite('#project/atlas');
+
+    const later = createPreferences(machine, new MemoryMemento());
+    assert.strictEqual(later.reader.value.tagSortMode, 'count', 'the first window\'s sort mode is kept');
+    assert.strictEqual(second.reader.value.tagSortMode, 'alphabetical', 'the second window shows what it read');
+    const copy = machine.get<{ favoriteTags: string[]; tagAccessOrder: string[] }>('deckard.preferences');
+    assert.deepStrictEqual(copy?.favoriteTags, ['#project/atlas'], 'the whole copy is the last workspace\'s');
+    assert.deepStrictEqual(copy?.tagAccessOrder, second.reader.value.tagAccessOrder);
+
+    // A machine-wide choice a window makes is still written, even when the
+    // window held that value already and another window changed it since.
+    await second.display.setTagSortMode('alphabetical');
+    assert.strictEqual(createPreferences(machine, new MemoryMemento()).reader.value.tagSortMode, 'alphabetical');
+    for (const store of [first, second, later]) {
+      store.repository.dispose();
+    }
+  });
+
+  test('a window with no folder open keeps another\'s choices too', async () => {
+    const machine = new MemoryMemento();
+    const first = createPreferences(machine);
+    const second = createPreferences(machine);
+    await first.display.setTagSortMode('count');
+    await second.favorites.toggleFavorite('#project/atlas');
+    const later = createPreferences(machine);
+    assert.strictEqual(later.reader.value.tagSortMode, 'count');
+    assert.deepStrictEqual(later.reader.value.favoriteTags, ['#project/atlas']);
+    for (const store of [first, second, later]) {
+      store.repository.dispose();
+    }
+  });
+
   test('knows whether Home still holds the widgets it started with', () => {
     assert.strictEqual(isDefaultHomeLayout(DEFAULT_DASHBOARD_WIDGETS), true);
     assert.strictEqual(

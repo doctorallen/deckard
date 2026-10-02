@@ -60,7 +60,7 @@ The store reads and writes one `PersistedPreferences` blob, at `version: 1`, spl
 | `workspaceState` | The keys that name workspace content: favorites, access counts and times, task order, saved filters, recent queries, pins, Home widgets, and the Dashboard view state | These keys mean something only in the workspace whose notes they name |
 | `globalState` | A whole copy of the blob | Presentation choices such as sort modes, column counts, and page sizes are machine-wide. The whole copy is what an older Deckard reads, and it seeds a workspace whose own storage VS Code cleaned up |
 
-Until 1.19 everything was machine-wide and pruned against whichever window last built an index. Opening any folder with a README deleted the favorites and pins of the notes workspace, because that folder's index did not contain them. The split fixed that. With no folder open, the store uses the machine-wide blob alone.
+Until 1.19 everything was machine-wide and pruned against whichever window last built an index. Opening any folder with a README deleted the favorites and pins of the notes workspace, because that folder's index did not contain them. The split fixed that. With no folder open, the store uses the machine-wide blob alone. Every window shares `globalState` and reads it once, when it starts, so a write lays only the keys that change over what `globalState` holds now, with the workspace's share of the copy taken whole from the window writing it. Writing a window's whole blob there put back every machine-wide choice another window had made since, such as a sort mode, on the next visit it recorded.
 
 `PreferencesRepository` does the reading and writing. Every write goes through one promise queue, so two changes land in the order they were made. A change fires `onDidChange`, which every page that follows preferences hears. A visit is recorded quietly and fires only `onDidRecordVisit`, because a visit on every note switch would otherwise redraw every page.
 
@@ -96,7 +96,7 @@ Three rules keep pruning from destroying data:
 
 ## Copies and export
 
-Deckard once had a bug that emptied favorites, pins, and view counts, and the data came back only because it could be reconstructed. So `PreferenceSnapshots` writes a copy into the workspace's storage under `preference-snapshots/` each time preferences change, two seconds after a burst settles, and keeps the last 20. `Deckard: Restore Favorites, Pins, and Searches` offers them. Export writes the blob as JSON with `version: 1`.
+Deckard once had a bug that emptied favorites, pins, and view counts, and the data came back only because it could be reconstructed. So `PreferenceSnapshots` writes a copy into the workspace's storage under `preference-snapshots/` each time preferences change, two seconds after a burst settles, and keeps the last 20. `Deckard: Restore Favorites, Pins, and Searches` offers them. Import and Restore call `writeNow` once the reader confirms and before they replace anything, since preferences chosen in an earlier session have no copy until something changes in this one; a copy that cannot be written stops the replace. Export writes the blob as JSON with `version: 1`.
 
 ## What the plan changed
 

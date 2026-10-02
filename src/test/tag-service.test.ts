@@ -126,6 +126,29 @@ suite('TagService', () => {
     assert.strictEqual(refreshes(), 1);
   });
 
+  test('renames a tag in a note saved with a byte order mark, which the editor leaves out', async () => {
+    // The index can hold the text as read from disk, mark and all.
+    const onDisk = 'Notes on #apollo.\n';
+    const index = indexOf({ 'notes/a.md': `\uFEFF${onDisk}` });
+    const fake = new FakeNotes({ 'notes/a.md': onDisk });
+    const { service } = serviceWith();
+
+    const result = await service.rewrite({
+      index,
+      source: tagOf(index, '#apollo'),
+      replacement: { key: '#hermes', label: '#hermes' },
+      notes: fake,
+    });
+
+    assert.strictEqual(result.kind, 'written', 'the note has not changed since it was indexed');
+    const [{ edits }] = fake.writes[0].files;
+    assert.deepStrictEqual(
+      edits.map(({ start, end }) => onDisk.slice(start, end)),
+      ['#apollo'],
+      'the edits fall on the tag in the text the editor holds',
+    );
+  });
+
   test('an Undo puts the preferences back and reads the notes again', async () => {
     const index = indexOf(notes);
     const fake = new FakeNotes(notes);

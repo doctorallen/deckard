@@ -227,8 +227,11 @@ export class TagService {
     const files: TagFileEdits[] = [];
     let occurrenceCount = 0;
     for (const [filePath, file] of index.files) {
+      // Planned on the text without a byte order mark, as an editor holds
+      // it, since the edits are offsets into the editor's text.
+      const indexed = withoutByteOrderMark(file.content);
       const planned = planTagEdits(
-        file.content,
+        indexed,
         source.key,
         replacement,
         await notes.optionsFor(filePath),
@@ -242,7 +245,7 @@ export class TagService {
       } catch (error) {
         return { kind: 'unopened', filePath, error };
       }
-      if (content !== file.content) {
+      if (withoutByteOrderMark(content) !== indexed) {
         return { kind: 'stale', filePath };
       }
       occurrenceCount += planned.occurrenceCount;
@@ -263,4 +266,14 @@ export class TagService {
       return { error };
     }
   }
+}
+
+/**
+ * `text` without a leading UTF-8 byte order mark. The index can hold a
+ * note's text as read from disk, mark and all, while VS Code's document
+ * leaves the mark out, so a note saved with one read as changed since it
+ * was indexed, and every rename that reached it was refused.
+ */
+function withoutByteOrderMark(text: string): string {
+  return text.startsWith('\uFEFF') ? text.slice(1) : text;
 }

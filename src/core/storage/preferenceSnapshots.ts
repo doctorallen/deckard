@@ -59,6 +59,14 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
     }
   }
 
+  /**
+   * Whether copies are written at all: false in a window with no folder
+   * open, which has no storage to write them to.
+   */
+  public get keepsCopies(): boolean {
+    return this.folder !== undefined;
+  }
+
   /** Every copy there is, newest first. */
   public async list(): Promise<Array<PreferenceSnapshot<U>>> {
     const folder = this.folder;

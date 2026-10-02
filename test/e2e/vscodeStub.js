@@ -245,11 +245,15 @@ let inputBoxResponse;
 
 /**
  * Settings a test sets or the extension writes, by their full name, such as
- * `deckard.theme`. There is one map for the whole process, so a setting a
- * suite writes holds for every later test in its process, and test/e2e/run.js
- * runs each suite in a process of its own.
+ * `deckard.theme`: the user's in `settings`, and the workspace's and the
+ * folder's in `workspaceSettings` and `workspaceFolderSettings`, each a map
+ * by full name. There is one set for the whole process, so a setting a
+ * suite writes holds for every later test in its process, and
+ * test/e2e/run.js runs each suite in a process of its own.
  */
 const settings = new Map();
+const workspaceSettings = new Map();
+const workspaceFolderSettings = new Map();
 /** Every setting the extension wrote, with its name, value, and target, in order. */
 const configurationUpdates = [];
 /** Every command the extension ran, with its arguments, in order. */
@@ -257,21 +261,49 @@ const executedCommands = [];
 const configurationEmitter = new EventEmitter();
 
 /**
- * The settings under a section, read from and written to the one
- * process-wide settings map. A setting no test set reads as the fallback the
- * caller gives, never as the manifest's default. An update writes the map,
- * is recorded in `_test.configurationUpdates`, and fires
- * `onDidChangeConfiguration` for that name and every section above it.
+ * The level an update writes to, as VS Code reads its target: `true` or
+ * Global is the user's, Workspace, `false`, or none is the workspace's, and
+ * WorkspaceFolder is the folder's.
+ */
+function levelOf(target) {
+  if (target === true || target === 1) {
+    return settings;
+  }
+  return target === 3 ? workspaceFolderSettings : workspaceSettings;
+}
+
+/**
+ * The settings under a section, read from and written to the process-wide
+ * levels. A read takes the folder's value, else the workspace's, else the
+ * user's, and a setting no level holds reads as the fallback the caller
+ * gives, never as the manifest's default. `inspect` reports each level's
+ * value apart, so a test can set a workspace's and see where Deckard
+ * writes. An update writes its target's level, or takes the setting out of
+ * it when the value is undefined, is recorded in
+ * `_test.configurationUpdates`, and fires `onDidChangeConfiguration` for
+ * that name and every section above it.
  */
 function getConfiguration(section) {
   const fullName = (key) => (section ? `${section}.${key}` : key);
+  const levels = [workspaceFolderSettings, workspaceSettings, settings];
   return {
-    get: (key, fallback) =>
-      settings.has(fullName(key)) ? settings.get(fullName(key)) : fallback,
-    inspect: (key) => ({ key: fullName(key), globalValue: settings.get(fullName(key)) }),
+    get: (key, fallback) => {
+      const level = levels.find((each) => each.has(fullName(key)));
+      return level ? level.get(fullName(key)) : fallback;
+    },
+    inspect: (key) => ({
+      key: fullName(key),
+      globalValue: settings.get(fullName(key)),
+      workspaceValue: workspaceSettings.get(fullName(key)),
+      workspaceFolderValue: workspaceFolderSettings.get(fullName(key)),
+    }),
     update: (key, value, target) => {
       const name = fullName(key);
-      settings.set(name, value);
+      if (value === undefined) {
+        levelOf(target).delete(name);
+      } else {
+        levelOf(target).set(name, value);
+      }
       configurationUpdates.push({ name, value, target });
       configurationEmitter.fire({
         affectsConfiguration: (changed) => name === changed || name.startsWith(`${changed}.`),
@@ -427,6 +459,8 @@ module.exports = {
   _test: {
     createdPanels,
     settings,
+    workspaceSettings,
+    workspaceFolderSettings,
     configurationUpdates,
     executedCommands,
     createWebviewView,

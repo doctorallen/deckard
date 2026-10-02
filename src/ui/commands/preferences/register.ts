@@ -20,7 +20,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       exportPreferences({ reader: preferences, maintenance }),
     ),
     registerCommand('deckard.importPreferences', () =>
-      importPreferences({ reader: preferences, maintenance }),
+      importPreferences({ reader: preferences, maintenance }, snapshots),
     ),
     registerCommand('deckard.restorePreferences', () =>
       restorePreferences({ reader: preferences, maintenance }, snapshots),

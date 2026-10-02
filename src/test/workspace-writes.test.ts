@@ -10,8 +10,23 @@ import {
   WorkspaceWriteHistory,
   WriteHandle,
 } from '../ui/commands/workspaceWrites';
+import { useDiskWorkspace } from './diskWorkspace';
+
+/**
+ * In the extension host the suites run against VS Code; under the e2e
+ * stand-in, against a workspace on disk modeled on it.
+ */
+function onDisk(): void {
+  let putBack: () => void = () => undefined;
+  suiteSetup(() => {
+    putBack = useDiskWorkspace();
+  });
+  suiteTeardown(() => putBack());
+}
 
 suite('Workspace writes', () => {
+  onDisk();
+
   test('shows a write that reaches more than one note', () => {
     assert.strictEqual(shouldPreview('severalNotes', 1), false);
     assert.strictEqual(shouldPreview('severalNotes', 2), true);
@@ -107,6 +122,71 @@ suite('Workspace writes', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('a write whose notes go back together puts none back once one has changed, and names it', async () => {
+    const root = await createTemporaryRoot();
+    const inbox = vscode.Uri.file(path.join(root.fsPath, 'inbox.md'));
+    const plan = vscode.Uri.file(path.join(root.fsPath, 'plan.md'));
+    await write(inbox, '# Inbox\n- [ ] Call Ren\n');
+    await write(plan, '# Plan\n');
+    const history = new WorkspaceWriteHistory();
+    let restored = 0;
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(inbox, new vscode.Range(1, 0, 2, 0), '');
+    edit.replace(plan, lineRange(1, 0, 0), '- [ ] Call Ren\n');
+    await history.write(edit, {
+      label: 'Move to…',
+      preview: 'never',
+      together: true,
+      restore: async () => {
+        restored += 1;
+      },
+    });
+    await editByHand(inbox, '# Inbox\n- [ ] Water plants\n');
+
+    const undone = await history.undo();
+    assert.deepStrictEqual(
+      { ...undone, skippedUris: undone?.skippedUris.map(String) },
+      { label: 'Move to…', restored: 0, skipped: 1, skippedUris: [inbox.toString()] },
+    );
+    assert.strictEqual(await read(inbox), '# Inbox\n- [ ] Water plants\n');
+    assert.strictEqual(await read(plan), '# Plan\n- [ ] Call Ren\n', 'the task is still where it went');
+    assert.strictEqual(restored, 0);
+    assert.strictEqual(history.lastWrite?.label, 'Move to…', 'kept, to try again once the note is put back');
+
+    await editByHand(inbox, '# Inbox\n');
+    const again = await history.undo();
+    assert.strictEqual(again?.restored, 2);
+    assert.strictEqual(await read(inbox), '# Inbox\n- [ ] Call Ren\n');
+    assert.strictEqual(await read(plan), '# Plan\n');
+    assert.strictEqual(restored, 1);
+    await deleteTemporaryRoot(root);
+  });
+
+  test('puts back a note saved with a byte order mark, mark and all', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.file(path.join(root.fsPath, 'note.md'));
+    const mark = Buffer.from([0xef, 0xbb, 0xbf]);
+    await vscode.workspace.fs.writeFile(note, Buffer.concat([mark, Buffer.from('One #a tag.\n', 'utf8')]));
+    const history = new WorkspaceWriteHistory();
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(note, lineRange(0, 4, 6), '#b');
+    const written = await history.write(edit, { label: 'the rename of #a', preview: 'never' });
+    assert.deepStrictEqual(
+      written.notes.map(({ before, after }) => ({ before, after })),
+      [{ before: 'One #a tag.\n', after: 'One #b tag.\n' }],
+    );
+
+    const undone = await history.undo();
+    assert.strictEqual(undone?.restored, 1, 'the mark on disk is no change since the write');
+    assert.deepStrictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(note)),
+      Buffer.concat([mark, Buffer.from('One #a tag.\n', 'utf8')]),
+    );
+    await deleteTemporaryRoot(root);
+  });
+
   test('puts back what the write changed outside the notes', async () => {
     const root = await createTemporaryRoot();
     const note = vscode.Uri.joinPath(root, 'note.md');
@@ -170,6 +250,55 @@ suite('Workspace writes', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('two writes made at once land one after the other, and an Undo takes back only the last', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.file(path.join(root.fsPath, 'note.md'));
+    await write(note, 'one\ntwo\n');
+    const history = new WorkspaceWriteHistory();
+
+    const first = new vscode.WorkspaceEdit();
+    first.replace(note, lineRange(0, 3, 3), ' #a');
+    const second = new vscode.WorkspaceEdit();
+    second.replace(note, lineRange(1, 3, 3), ' #b');
+    const [one, two] = await Promise.all([
+      history.write(first, { label: 'adding #a', preview: 'never' }),
+      history.write(second, { label: 'adding #b', preview: 'never' }),
+    ]);
+    assert.ok(one.applied && two.applied);
+    assert.strictEqual(await read(note), 'one #a\ntwo #b\n');
+    assert.deepStrictEqual(
+      two.notes.map(({ before, after }) => ({ before, after })),
+      [{ before: 'one #a\ntwo\n', after: 'one #a\ntwo #b\n' }],
+      'the second write found the note as the first left it',
+    );
+    assert.strictEqual(one.handle.isLatest(), false);
+
+    const undone = await history.undo();
+    assert.strictEqual(undone?.label, 'adding #b');
+    assert.strictEqual(await read(note), 'one #a\ntwo\n', 'the first write stays');
+    await deleteTemporaryRoot(root);
+  });
+
+  test('an Undo asked for while a write is landing waits for it, and then takes nothing back', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.file(path.join(root.fsPath, 'note.md'));
+    await write(note, 'one\ntwo\n');
+    const history = new WorkspaceWriteHistory();
+    const first = new vscode.WorkspaceEdit();
+    first.replace(note, lineRange(0, 3, 3), ' #a');
+    const written = await history.write(first, { label: 'adding #a', preview: 'never' });
+    assert.ok(written.applied);
+
+    const second = new vscode.WorkspaceEdit();
+    second.replace(note, lineRange(1, 3, 3), ' #b');
+    const later = history.write(second, { label: 'adding #b', preview: 'never' });
+    assert.strictEqual(await written.handle.undo(), undefined, 'the write it was for is no longer the last');
+    await later;
+    assert.strictEqual(await read(note), 'one #a\ntwo #b\n');
+    assert.strictEqual(history.lastWrite?.label, 'adding #b');
+    await deleteTemporaryRoot(root);
+  });
+
   test('a write\'s saves are marked as Deckard\'s own, for the index', async () => {
     const root = await createTemporaryRoot();
     const note = vscode.Uri.joinPath(root, 'note.md');
@@ -186,6 +315,8 @@ suite('Workspace writes', () => {
 });
 
 suite('An Undo offered on a message', () => {
+  onDisk();
+
   const WRITTEN_SINCE = 'Deckard has changed your notes again since, so use Deckard: Undo Last Change.';
 
   /** A write to one note, as the history keeps it; nothing on disk. */
@@ -392,6 +523,19 @@ suite('An Undo offered on a message', () => {
 
 function lineRange(line: number, start: number, end: number): vscode.Range {
   return new vscode.Range(line, start, line, end);
+}
+
+/**
+ * Changes a note through its document and saves it, as a reader would, so
+ * the document and the disk agree at once; a write to disk reaches an open
+ * document only when VS Code next hears of the file.
+ */
+async function editByHand(uri: vscode.Uri, content: string): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(uri, new vscode.Range(new vscode.Position(0, 0), document.lineAt(document.lineCount - 1).range.end), content);
+  assert.ok(await vscode.workspace.applyEdit(edit));
+  assert.ok(await document.save());
 }
 
 async function write(uri: vscode.Uri, content: string): Promise<void> {

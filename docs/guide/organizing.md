@@ -17,7 +17,7 @@ Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard mov
 
 - The list starts with **New note…** and **Today's note**, then the five headings Capture and Move to… used last, then every heading. Lines go under the heading's own lines, above any nested heading.
 - A task left behind becomes `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`; anything else becomes a `[[link]]` to where it went. Set `deckard.moveTo.leaveBehind` to `nothing` to leave no trace. A `[>]` line is not a task.
-- If the lines or heading changed before you chose, nothing is written. The move is previewed only when `deckard.previewWorkspaceWrites` is `always`. **Undo**, or `Deckard: Undo Last Change`, puts both notes back.
+- If the lines or heading changed before you chose, nothing is written. The move is previewed only when `deckard.previewWorkspaceWrites` is `always`. **Undo**, or `Deckard: Undo Last Change`, puts both notes back, or neither: if either changed since, nothing is put back.
 
 ## Parking notes
 

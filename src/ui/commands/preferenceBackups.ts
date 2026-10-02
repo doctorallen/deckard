@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { PreferenceSnapshots } from '../../core/storage/preferenceSnapshots';
+import { normalizePreferences } from '../../core/storage/preferencesSchema';
 import { isRecord } from '../../shared/guards';
 import { pluralize } from '../../shared/text';
 import { reportFailure } from './notify';
@@ -56,6 +57,11 @@ export function createExport(
 /**
  * Reads an export, or a snapshot, back. A snapshot is the bare preference
  * blob; an export wraps it. Anything else is refused with a reason.
+ *
+ * What it returns is normalized, as every blob the repository keeps is: a
+ * file written by hand, or by an older Deckard, can leave a list out, and
+ * describing it before the confirm would otherwise read a list that is not
+ * there.
  */
 export function readExport(value: unknown): {
   preferences: PersistedPreferences;
@@ -73,12 +79,12 @@ export function readExport(value: unknown): {
         ? new Date(value.deckard.exportedAt)
         : undefined;
     return {
-      preferences: value.preferences as unknown as PersistedPreferences,
+      preferences: normalizePreferences(value.preferences as Partial<PersistedPreferences>),
       exportedAt,
     };
   }
   if (value.version === 1 && Array.isArray(value.favoriteTags)) {
-    return { preferences: value as unknown as PersistedPreferences };
+    return { preferences: normalizePreferences(value as Partial<PersistedPreferences>) };
   }
   throw new NotPreferencesError();
 }
@@ -116,10 +122,14 @@ export async function exportPreferences(store: BackupStore): Promise<void> {
 
 /**
  * Asks for a file, through the open dialog, and replaces this workspace's
- * preferences with it once the reader confirms. A file that is not an export
- * or a snapshot is turned away, and nothing changes.
+ * preferences with it once the reader confirms, after `snapshots` keeps a
+ * copy of what is there now. A file that is not an export or a snapshot is
+ * turned away, and nothing changes.
  */
-export async function importPreferences(store: BackupStore): Promise<void> {
+export async function importPreferences(
+  store: BackupStore,
+  snapshots: PreferenceSnapshots,
+): Promise<void> {
   const chosen = await vscode.window.showOpenDialog({
     canSelectMany: false,
     filters: { JSON: ['json'] },
@@ -142,7 +152,7 @@ export async function importPreferences(store: BackupStore): Promise<void> {
     );
     return;
   }
-  await replaceAfterAsking(store, parsed.preferences, {
+  await replaceAfterAsking(store, snapshots, parsed.preferences, {
     what: `the file ${source.fsPath}`,
     when: parsed.exportedAt,
   });
@@ -185,7 +195,7 @@ export async function restorePreferences(
     });
     return;
   }
-  await replaceAfterAsking(store, preferences, {
+  await replaceAfterAsking(store, snapshots, preferences, {
     what: 'the copy Deckard kept',
     when: picked.snapshot.at,
   });
@@ -194,22 +204,41 @@ export async function restorePreferences(
 /**
  * Asks, in a modal, before replacing: it names both what comes in and what
  * goes, since what goes is only recoverable from the copy taken first.
+ *
+ * The copy is written here, once the reader confirms, rather than left to
+ * the copy each change schedules: preferences chosen in an earlier session
+ * have no copy until something changes in this one, and a copy that cannot
+ * be written stops the replace, since the modal promised one.
  */
 async function replaceAfterAsking(
   store: BackupStore,
+  snapshots: PreferenceSnapshots,
   preferences: PersistedPreferences,
   from: { what: string; when?: Date },
 ): Promise<void> {
   const when = from.when ? ` from ${from.when.toLocaleString()}` : '';
+  const now = describePreferences(store.reader.value);
   const confirm = await vscode.window.showWarningMessage(
     `Replace what this workspace remembers with ${from.what}${when}?`,
     {
       modal: true,
-      detail: `It holds ${describePreferences(preferences)}. What is here now holds ${describePreferences(store.reader.value)}, and is copied first so it can be restored.`,
+      detail: snapshots.keepsCopies
+        ? `It holds ${describePreferences(preferences)}. What is here now holds ${now}, and is copied first so it can be restored.`
+        : `It holds ${describePreferences(preferences)}. What is here now holds ${now}. With no folder open, Deckard keeps no copy of it, so it cannot be restored.`,
     },
     'Replace',
   );
   if (confirm !== 'Replace') {
+    return;
+  }
+  try {
+    await snapshots.writeNow();
+  } catch (error) {
+    void reportFailure({
+      outcome: 'Deckard could not keep a copy of what this workspace remembers, so nothing was replaced.',
+      fix: 'Check that the disk has space and can be written to, then try again.',
+      error,
+    });
     return;
   }
   await store.maintenance.importPreferences(preferences);

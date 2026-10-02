@@ -172,7 +172,9 @@ export async function renameHeadingCommand(
     );
     return undefined;
   }
-  if (editor.document.getText() !== file?.content) {
+  // The index can hold the text with a byte order mark the editor leaves
+  // out, which is no difference the reader made.
+  if (!file || editor.document.getText() !== withoutByteOrderMark(file.content)) {
     offerSaveFirst(editor.document, indexer);
     return undefined;
   }
@@ -199,6 +201,9 @@ export async function renameHeadingCommand(
   const written = await history.write(toWorkspaceEdit(plan.edits), {
     label: `the rename of the heading "${heading}"`,
     description: `Rename the heading to "${next.trim()}"`,
+    // Putting back the heading without its links, or the links without
+    // it, would break every link it renamed.
+    together: true,
   });
   if (!written.applied) {
     void reportFailure(describeRejectedEdit(noteName(editor.document.uri)));
@@ -271,4 +276,9 @@ function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('updateLinksOnRename', true);
+}
+
+/** `text` without a leading UTF-8 byte order mark, as VS Code's document holds it. */
+function withoutByteOrderMark(text: string): string {
+  return text.startsWith('\uFEFF') ? text.slice(1) : text;
 }

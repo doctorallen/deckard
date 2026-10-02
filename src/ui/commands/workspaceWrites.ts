@@ -28,6 +28,8 @@ export interface WorkspaceWrite {
   notes: WrittenNote[];
   /** Puts back what the write changed outside the notes, such as favorites. */
   restore?: () => Promise<void>;
+  /** Whether its notes go back together or not at all, as WorkspaceWriteOptions says. */
+  together?: boolean;
 }
 
 /** What an Undo managed to put back. */
@@ -36,7 +38,9 @@ export interface UndoResult {
   restored: number;
   /**
    * Notes Undo left as they are: those changed since the write, or every
-   * note when VS Code refused the Undo's edit.
+   * note when VS Code refused the Undo's edit. For a write whose notes go
+   * back together, the notes that changed since, which kept all of them
+   * from going back.
    */
   skipped: number;
   /** Which notes those are, so a message can name them. */
@@ -59,16 +63,49 @@ export interface UndoResult {
  * wrote is what another's Undo sees, and a test builds its own.
  */
 export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
+  /** The write or Undo running now; the next waits for it. */
+  private turn: Promise<unknown> = Promise.resolve();
+
   /**
    * Puts every note the write changed back as it was, unless it has changed
-   * again since, in which case it is left to whoever changed it.
+   * again since, in which case it is left to whoever changed it. Given
+   * `mine`, it takes back nothing once that write is no longer the last,
+   * judged when its turn comes, after any write still landing.
    */
-  public async undo(): Promise<UndoResult | undefined> {
+  public undo(mine?: WriteMark): Promise<UndoResult | undefined> {
+    return this.inTurn(() => (mine && !mine.isLatest() ? Promise.resolve(undefined) : this.undoLatest()));
+  }
+
+  /**
+   * Runs `job` once every write and Undo asked for before it has finished.
+   * Each reads the notes, applies its edit, and reads them again across
+   * several awaits; two at once would each read what the other was
+   * changing, and the Undo of the last would take back both.
+   */
+  private inTurn<T>(job: () => Promise<T>): Promise<T> {
+    const run = this.turn.then(job, job);
+    this.turn = run.catch(() => undefined);
+    return run;
+  }
+
+  /** Takes back the last write, as `undo` says. */
+  private async undoLatest(): Promise<UndoResult | undefined> {
     const write = this.lastWrite;
     if (!write) {
       return undefined;
     }
     const plan = await planUndo(write.notes);
+    if (write.together && plan.skippedUris.length > 0) {
+      // Putting back only some of them would undo half of one change, such
+      // as a task taken out of its note and never put back. The write is
+      // kept, so the Undo can be tried again once the note is put back.
+      return {
+        label: write.label,
+        restored: 0,
+        skipped: plan.skippedUris.length,
+        skippedUris: plan.skippedUris,
+      };
+    }
     if (!(await applyUndo(plan))) {
       return {
         label: write.label,
@@ -95,8 +132,18 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
    * know. What actually landed is read back from the notes afterwards, so
    * leaving a change out of the preview leaves it out of the Undo as well.
    * A write that lands returns the handle its Undo button works through.
+   * Writes take turns, so one asked for while another lands starts from
+   * the notes as that one left them.
    */
-  public async write(
+  public write(
+    edit: vscode.WorkspaceEdit,
+    options: WorkspaceWriteOptions,
+  ): Promise<WorkspaceWriteResult> {
+    return this.inTurn(() => this.writeNow(edit, options));
+  }
+
+  /** Makes one write, as `write` says, once its turn has come. */
+  private async writeNow(
     edit: vscode.WorkspaceEdit,
     options: WorkspaceWriteOptions,
   ): Promise<WorkspaceWriteResult> {
@@ -145,6 +192,7 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       at: Date.now(),
       notes,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.together ? { together: true } : {}),
     });
     return { applied: true, notes, handle: this.createHandle() };
   }
@@ -173,7 +221,11 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
         modal: true,
         detail: `${pluralize(write.notes.length, 'note')} go back to what they were before Deckard changed them, at ${new Date(
           write.at,
-        ).toLocaleTimeString()}. A note you have changed since is left as it is.`,
+        ).toLocaleTimeString()}. ${
+          write.together
+            ? 'They go back together, so if you have changed one since, none is put back.'
+            : 'A note you have changed since is left as it is.'
+        }`,
       },
       'Undo',
     );
@@ -185,8 +237,12 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       return undefined;
     }
 
-    const result = await this.undo();
+    const result = await this.undo(mine);
     if (!result) {
+      if (mine) {
+        // A write landed while the Undo waited its turn.
+        reportWrittenSince();
+      }
       return undefined;
     }
     try {
@@ -273,7 +329,7 @@ class Handle implements WriteHandle {
 
   /** Takes this write back while it is still the last; undefined once Deckard has written since. */
   public async undo(): Promise<UndoResult | undefined> {
-    return this.isLatest() ? this.history.undo() : undefined;
+    return this.history.undo(this.mine);
   }
 
   /** The Undo button, pressed: takes the write back the way `offer.guard` says. */
@@ -319,8 +375,11 @@ interface UndoPlan {
   edit: vscode.WorkspaceEdit;
   /** The notes in that edit, saved once it lands. */
   documents: vscode.TextDocument[];
-  /** The notes nobody has open, written straight to disk. */
-  quiet: { uri: vscode.Uri; text: string }[];
+  /**
+   * The notes nobody has open, written straight to disk, each with the
+   * byte order mark it had there.
+   */
+  quiet: { uri: vscode.Uri; text: string; byteOrderMark: boolean }[];
   /** The notes changed since the write, or unreadable, which are left alone. */
   skippedUris: vscode.Uri[];
 }
@@ -333,7 +392,7 @@ interface UndoPlan {
 async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
   const edit = new vscode.WorkspaceEdit();
   const documents: vscode.TextDocument[] = [];
-  const quiet: { uri: vscode.Uri; text: string }[] = [];
+  const quiet: UndoPlan['quiet'] = [];
   const skippedUris: vscode.Uri[] = [];
 
   for (const note of notes) {
@@ -347,10 +406,8 @@ async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
     // The note has to be what the write left, both on disk and in any
     // editor holding it. Either one differing means someone has been here
     // since, and an Undo is not Deckard's to make.
-    if (
-      document.getText() !== note.after ||
-      (await readFile(note.uri)) !== note.after
-    ) {
+    const disk = await readFile(note.uri);
+    if (document.getText() !== note.after || disk?.text !== note.after) {
       skippedUris.push(note.uri);
       continue;
     }
@@ -361,7 +418,7 @@ async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
       edit.replace(note.uri, wholeDocument(document), note.before);
       documents.push(document);
     } else {
-      quiet.push({ uri: note.uri, text: note.before });
+      quiet.push({ uri: note.uri, text: note.before, byteOrderMark: disk.byteOrderMark });
     }
   }
   return { edit, documents, quiet, skippedUris };
@@ -382,9 +439,10 @@ async function applyUndo(plan: UndoPlan): Promise<boolean> {
     }
   }
   for (const note of plan.quiet) {
+    const text = Buffer.from(note.text, 'utf8');
     await vscode.workspace.fs.writeFile(
       note.uri,
-      Buffer.from(note.text, 'utf8'),
+      note.byteOrderMark ? Buffer.concat([BYTE_ORDER_MARK, text]) : text,
     );
   }
   return true;
@@ -421,6 +479,13 @@ export interface WorkspaceWriteOptions {
   preview?: WritePreview;
   /** Puts back what the write changed outside the notes, on an Undo. */
   restore?: () => Promise<void>;
+  /**
+   * Whether the notes go back together or not at all: true for a write
+   * whose notes only make sense together, such as Move to…, which takes a
+   * task out of one note and puts it into another. Its Undo puts nothing
+   * back, and names the note, once any of them has changed since.
+   */
+  together?: boolean;
 }
 
 /** The same edit, with every change waiting for the reader to accept it. */
@@ -503,15 +568,29 @@ function isOpenInEditor(uri: vscode.Uri): boolean {
   );
 }
 
-/** A note as it stands on disk, or nothing when it cannot be read. */
-async function readFile(uri: vscode.Uri): Promise<string | undefined> {
+/** The three bytes of a UTF-8 byte order mark. */
+const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
+
+/**
+ * A note as it stands on disk, or nothing when it cannot be read. Its text
+ * leaves out a byte order mark, as VS Code's document does, so a note saved
+ * with one does not read as changed since; whether it had one is kept, so
+ * an Undo written to disk writes it back.
+ */
+async function readFile(
+  uri: vscode.Uri,
+): Promise<{ text: string; byteOrderMark: boolean } | undefined> {
+  let bytes: Buffer;
   try {
-    return Buffer.from(await vscode.workspace.fs.readFile(uri)).toString(
-      'utf8',
-    );
+    bytes = Buffer.from(await vscode.workspace.fs.readFile(uri));
   } catch {
     return undefined;
   }
+  const byteOrderMark = bytes.subarray(0, 3).equals(BYTE_ORDER_MARK);
+  return {
+    text: (byteOrderMark ? bytes.subarray(3) : bytes).toString('utf8'),
+    byteOrderMark,
+  };
 }
 
 /** The range that replaces a note's whole text. */
