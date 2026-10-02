@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { parseQuery } from '../domain/query/queryParser';
 import { MAX_QUERY_LENGTH } from '../ui/webview/host/narrowing';
 import { narrowSearchPageMessage } from '../ui/webview/pages/searchPage/messages';
 
@@ -218,6 +219,20 @@ suite('Tag overview query builder', () => {
     const rendered = view.suggestionsFor('p0');
     assert.match(rendered, /open/);
     assert.doesNotMatch(rendered, /#project\/atlas/);
+  });
+
+  test('writes a value that is a word joining terms in quotes, so the search still reads', () => {
+    for (const word of ['not', 'OR', 'And', '&&x', '||']) {
+      const view = mountTagOverview();
+      view.send(createState());
+      view.click({ action: 'toggle-builder' });
+      view.posted.length = 0;
+      view.change({ dataset: { action: 'builder-set-value', path: '0' } }, word);
+
+      const sent = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+      assert.strictEqual(sent?.query, `tag = "${word}"`, word);
+      assert.ok(parseQuery(String(sent?.query)).node, `${word}: the search parses`);
+    }
   });
 
   test('completes a value in the query bar once the field is known', () => {

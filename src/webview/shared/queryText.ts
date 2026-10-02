@@ -177,10 +177,21 @@ export function stripLinkBrackets(value: string): string {
   return String(value).trim().replace(/^\[\[/, '').replace(/\]\]$/, '').replace(/\|.*$/, '').trim();
 }
 
-/** A value as a condition writes it: quoted when it holds a space, an operator, a quote, or a [[. */
+/**
+ * A value the host's tokenizer would read as AND, OR, or NOT rather than
+ * as a word: one of the keywords in any case, or one that starts with `&&`
+ * or `||`. The host's formatter quotes the same values (`quoteValue`).
+ */
+const JOINING_WORD = /^(?:and|or|not)$|^(?:&&|\|\|)/i;
+
+/**
+ * A value as a condition writes it: quoted when it holds a space, an
+ * operator, a quote, or a [[, or is a word that joins terms.
+ */
 export function quoteQueryValue(value: string): string {
-  // [[x]] unquoted would read back as a link rather than the characters.
-  return /[\s:=<>~!()"']/.test(value) || value.includes('[[') || !value
+  // [[x]] unquoted would read back as a link rather than the characters,
+  // and and, or, not, &&, and || as the words that join terms.
+  return /[\s:=<>~!()"']/.test(value) || value.includes('[[') || JOINING_WORD.test(value) || !value
     ? `"${value.replace(/(["\\])/g, '\\$1')}"`
     : value;
 }
