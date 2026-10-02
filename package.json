@@ -2276,14 +2276,14 @@
           "deckard.assistantTools": {
             "type": "boolean",
             "default": true,
-            "description": "Let AI assistants in VS Code, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing itself; what a tool returns goes to the assistant that asked, and VS Code asks before the first call in each session.",
+            "description": "Let AI assistants in VS Code, such as GitHub Copilot in agent mode, use Deckard's tools: search your notes and tasks with Deckard queries, list your tags, add a task to a note, and change an existing task. VS Code asks before the first call in each session and before each write, and nothing is written until you approve the line in the refactor preview. Deckard sends nothing itself; what a tool returns goes to the assistant that asked.",
             "order": 0
           },
           "deckard.mcpServer.enabled": {
             "type": "boolean",
             "default": false,
             "order": 1,
-            "markdownDescription": "Run a Model Context Protocol server on 127.0.0.1 so Claude Code and other MCP clients can search your notes and tasks. It answers only requests that carry its token. [Copy MCP Server Setup](command:deckard.copyMcpSetup) copies the command that adds it; the port is `#deckard.mcpServer.port#`."
+            "markdownDescription": "Run a Model Context Protocol server on 127.0.0.1 so Claude Code and other MCP clients can use Deckard's tools: search your notes and tasks, list your tags, add a task to a note, and change an existing task. A client's write has no dialog of its own, but nothing is written until you approve the line in the refactor preview. It answers only requests that carry its token. [Copy MCP Server Setup](command:deckard.copyMcpSetup) copies the command that adds it; the port is `#deckard.mcpServer.port#`."
           },
           "deckard.mcpServer.port": {
             "type": "integer",

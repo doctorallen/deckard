@@ -178,6 +178,27 @@ suite('Assistant tool table', () => {
     );
   });
 
+  test('the settings that turn the tools on say they can add and change tasks, and how a write is approved', () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8'),
+    ) as {
+      contributes: {
+        configuration: Array<{ properties: Record<string, { description?: string; markdownDescription?: string }> }>;
+      };
+    };
+    const settings = Object.assign({}, ...manifest.contributes.configuration.map((section) => section.properties)) as Record<
+      string,
+      { description?: string; markdownDescription?: string }
+    >;
+    assert.ok(ASSISTANT_TOOLS.some((declared) => declared.kind === 'write'), 'the tools include writes');
+    for (const key of ['deckard.assistantTools', 'deckard.mcpServer.enabled']) {
+      const text = settings[key].markdownDescription ?? settings[key].description ?? '';
+      assert.match(text, /add a task/, `${key} says the tools add tasks`);
+      assert.match(text, /change an existing task/, `${key} says the tools change tasks`);
+      assert.match(text, /refactor preview/, `${key} says where a write is approved`);
+    }
+  });
+
   test('says what each tool is doing while VS Code runs it', () => {
     assert.strictEqual(
       tool('deckard_query').progressMessage({ query: 'task = open' }),
