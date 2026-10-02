@@ -67,6 +67,33 @@ export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
   tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
 };
 
+/**
+ * How many entries a listed widget's gear offers to show, and its pager to
+ * show a page at a time. The host keeps no more than the largest.
+ */
+export const WIDGET_ENTRY_COUNTS: readonly number[] = [3, 5, 10, 20];
+
+/**
+ * The most widgets Home holds. The page offers no more once it holds this
+ * many, and the host keeps no more than this.
+ */
+export const HOME_WIDGET_LIMIT = 30;
+
+/**
+ * The longest task Quick add sends, which the host accepts: its field takes
+ * no more, so a task the host would refuse is never typed.
+ */
+export const QUICK_ADD_MAX_LENGTH = 1000;
+
+/**
+ * Whether Gone quiet can watch a namespace: a word of letters, digits,
+ * dashes, and underscores that starts with a letter. Its gear offers only
+ * these, and the host keeps only these.
+ */
+export function isWatchableNamespace(namespace: string): boolean {
+  return namespace.length <= 64 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace);
+}
+
 /** Whether a value, read from storage or from a choice, names a kind of widget. */
 export function isWidgetKind(value: unknown): value is DashboardWidgetKind {
   return typeof value === 'string' && Object.hasOwn(WIDGET_KINDS, value);

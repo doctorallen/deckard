@@ -4,6 +4,7 @@
  */
 import type { ComponentChild } from 'preact';
 
+import { QUICK_ADD_MAX_LENGTH } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget, DashboardWidgetKind } from '../../ui/protocol/dashboard';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import type { HomeContext } from './homeContext';
@@ -151,6 +152,7 @@ function QuickAddBody({ widget, home }: WidgetBodyProps) {
           type="text"
           data-action="quick-add-draft"
           value={home.quickAdd.draft}
+          maxLength={QUICK_ADD_MAX_LENGTH}
           placeholder="Call Ren about the audit #project/atlas 📅 tomorrow"
           aria-label="Task to add to today’s note"
           autocomplete="off"

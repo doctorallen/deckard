@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { listedParkedTags } from '../../../../domain/index/parked';
+import { readAgendaQuery, readUpcomingDays } from '../../../../domain/tasks/agendaGroups';
 import type { DashboardColumnCount, DashboardMode, PersistedPreferences } from '../../../../domain/model/preferences';
 import type { WorkspaceIndex } from '../../../../domain/model';
 import type { QueryContext } from '../../../../domain/query/queryContext';
@@ -121,6 +122,12 @@ export class DashboardController implements PageController<DashboardPageState, D
   private sourceNotePath: string | undefined;
   /** The day the widgets were built for: Today goes stale when it turns. */
   private publishedOn = startOfToday();
+  /**
+   * How many saves of the tab, and of the tag columns, are still being
+   * written. A save's change event carries what was stored then, which an
+   * earlier save can make older than the reader's last choice.
+   */
+  private readonly pendingWrites = { mode: 0, columns: 0 };
 
   /** Reads Home's tab and columns as they were saved; nothing is drawn until the host asks. */
   public constructor(private readonly home: DashboardControllerOptions) {
@@ -173,7 +180,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         index,
         preferences: viewPreferences,
         tagTitleDisplayMode,
-        agendaQuery: configuration.get<string>('agenda.query', ''),
+        agendaQuery: readAgendaQuery(configuration),
         queryContext,
       }),
       homeArranged: !isDefaultHomeLayout(blob.dashboardWidgets),
@@ -222,9 +229,16 @@ export class DashboardController implements PageController<DashboardPageState, D
           page.refresh();
         }
       }),
+      // A tab or column choice still being saved is the newest the page
+      // knows; the stored one can be the choice before it, and taking it
+      // would flip Home back for a moment.
       preferences.reader.onDidChange((nextPreferences) => {
-        this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
-        this.dashboardMode = nextPreferences.dashboardViewState.mode;
+        if (this.pendingWrites.columns === 0) {
+          this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
+        }
+        if (this.pendingWrites.mode === 0) {
+          this.dashboardMode = nextPreferences.dashboardViewState.mode;
+        }
         page.refresh();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -239,6 +253,17 @@ export class DashboardController implements PageController<DashboardPageState, D
       }),
     );
     return disposables;
+  }
+
+  /**
+   * Before the first scan, or a warm start's cached notes, the index is
+   * empty, and Home drawn from it would say the workspace has no notes and
+   * offer a sample workspace. A preference saved meanwhile would redraw it,
+   * so until then nothing is sent and the page stays on its loading line,
+   * which says how far the scan has got.
+   */
+  public isReady(): boolean {
+    return this.home.indexer.hasIndexed !== false;
   }
 
   /**
@@ -380,13 +405,13 @@ export class DashboardController implements PageController<DashboardPageState, D
       setDashboardMode: async (message, page) => {
         this.dashboardMode = message.mode;
         page.refresh();
-        await preferences.homeWidgets.setDashboardMode(message.mode);
+        await this.whileWriting('mode', () => preferences.homeWidgets.setDashboardMode(message.mode));
       },
       setDashboardSearch: (message) => preferences.homeWidgets.setDashboardSearch(message.field, message.query),
       setDashboardColumns: async (message, page) => {
         this.dashboardTagColumns = message.columns;
         page.refresh();
-        await preferences.display.setDashboardColumns(message.section, message.columns);
+        await this.whileWriting('columns', () => preferences.display.setDashboardColumns(message.section, message.columns));
       },
       reorderTags: (message) => this.reorderTags(message.tagKeys, message.tagKey, message.isFavorite),
       reorderEntities: async (message) => {
@@ -483,10 +508,17 @@ export class DashboardController implements PageController<DashboardPageState, D
           }[message.view],
         ),
       openDailyNote: () => navigation.openDailyNote(),
+      // The page holds the task as "Adding…" until it is answered, so a
+      // capture that fails, such as on a read-only disk, still answers, and
+      // the page gives the text back.
       quickAdd: async (message, page) => {
-        const added = await navigation.quickAdd(message.text.trim());
-        const result: DashboardHostToPage['quickAddResult'] = { type: 'quickAddResult', text: message.text, added };
-        page.post(result);
+        let added = false;
+        try {
+          added = await navigation.quickAdd(message.text.trim());
+        } finally {
+          const result: DashboardHostToPage['quickAddResult'] = { type: 'quickAddResult', text: message.text, added };
+          page.post(result);
+        }
       },
       openNote: async (message) => {
         if (indexer.getSnapshot().files.has(message.filePath)) {
@@ -511,6 +543,16 @@ export class DashboardController implements PageController<DashboardPageState, D
       snoozeTryNext: (message) => this.handleTryNext(message.type, message.key),
       retireTryNext: (message) => this.handleTryNext(message.type, message.key),
     };
+  }
+
+  /** Runs a save of the tab or the tag columns, counted as pending until it settles. */
+  private async whileWriting(field: 'mode' | 'columns', write: () => Promise<void>): Promise<void> {
+    this.pendingWrites[field] += 1;
+    try {
+      await write();
+    } finally {
+      this.pendingWrites[field] -= 1;
+    }
   }
 
   /**
@@ -562,10 +604,12 @@ export class DashboardController implements PageController<DashboardPageState, D
     },
   ): DashboardSnapshot['widgets'] {
     const { queryContext, tagTitleDisplayMode, tryNext } = reading;
+    // The agenda's settings are read as the Tasks view reads them, so its
+    // widget lists what the view does, however they were written.
     return createDashboardWidgets(index, viewPreferences, {
       queryContext,
-      upcomingDays: configuration.get<number>('agenda.upcomingDays', 7),
-      agendaQuery: configuration.get<string>('agenda.query', ''),
+      upcomingDays: readUpcomingDays(configuration),
+      agendaQuery: readAgendaQuery(configuration),
       tagTitleDisplayMode,
       sourceNotePath: this.getSourceNotePath(),
       ...(tryNext ? { tryNext } : {}),

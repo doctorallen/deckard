@@ -27,7 +27,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { ModeTabs, PageHeader } from './header';
-import { HomePanel, widgetChoices } from './home';
+import { HOME_FULL_MESSAGE, HomePanel, isHomeFull, widgetChoices } from './home';
 import type { HomeContext } from './homeContext';
 import { keepView, readKeptView } from './keptView';
 import type { DashboardView } from './model';
@@ -232,6 +232,7 @@ function setEditingHome(editing: boolean): void {
   view.editingHome = editing;
   if (!editing) {
     widgetUndo.clear();
+    refocusRestored = undefined;
   }
   view.openWidgetOptions = undefined;
   saveView();
@@ -371,9 +372,15 @@ function addWidget(value: string): void {
     }
     widget.filterId = value.slice(separator + 1);
   }
+  const widgets = widgetConfig(snapshot);
+  // The host keeps the first widgets Home can hold, so a new one, which
+  // goes first, would push the last off Home with no Undo.
+  if (isHomeFull(widgets)) {
+    announce(HOME_FULL_MESSAGE);
+    return;
+  }
   // A new widget goes first, after Try next, where it is seen without
   // scrolling; it is then shown, marked for a moment, and focused.
-  const widgets = widgetConfig(snapshot);
   widgets.splice(widgets.length && widgets[0].kind === 'tryNext' ? 1 : 0, 0, widget);
   newWidget = { id: widget.id, until: Date.now() + 2400, shown: false };
   sendWidgets(snapshot, widgets);
@@ -426,8 +433,9 @@ function revealNewWidget(): void {
   newWidgetMark.tabindex = element.getAttribute('tabindex');
   element.setAttribute('tabindex', '-1');
   element.focus?.({ preventScroll: true });
-  const title = element.querySelector('.home-widget-title');
-  announce(`Added ${title ? String(title.textContent).trim() : 'a widget'} to the top of Home.`);
+  // The widget's name, as its frame is labeled: the title's text also
+  // holds the grip and the count.
+  announce(`Added ${element.getAttribute('aria-label') || 'a widget'} to the top of Home.`);
   const id = newWidget.id;
   setTimeout(() => {
     document.querySelector(`.home-widget[data-widget-id="${id}"]`)?.classList.remove('is-new');
@@ -440,11 +448,13 @@ function revealNewWidget(): void {
 /** The last list of what + Add widget offers that the host was told, as JSON. */
 let sentChoices = '';
 
-/** Tells the host what can be added, when that has changed, so Related Notes can offer it too. */
+/**
+ * Tells the host what can be added, when that has changed, so Related Notes
+ * can offer it too. It is worked out from Home's settings, which every
+ * snapshot carries, so a Dashboard opened on the Tags tab, sent no widgets
+ * yet, tells it as well.
+ */
 function sendWidgetChoices(snapshot: DashboardPageState): void {
-  if (!snapshot.widgets) {
-    return;
-  }
   const choices = widgetChoices(widgetConfig(snapshot), snapshot.savedFilters);
   const key = JSON.stringify(choices);
   if (key === sentChoices) {
@@ -471,8 +481,16 @@ function removeWidget(widgetId: string | undefined): void {
   widgetUndo.show(`Removed ${(drawn && drawn.title) || 'the widget'}.`, 'undo-remove-widget', { widget: removed, index });
 }
 
-/** Puts back the widget removed last, where it was. */
+/**
+ * The widget Undo put back, whose Remove button takes focus once the host
+ * draws it again: Undo was taken with focus on it, and the toast emptied
+ * takes focus away to the page itself.
+ */
+let refocusRestored: string | undefined;
+
+/** Puts back the widget removed last, where it was, and, when Undo had focus, focus where the removal was made. */
 function undoRemoveWidget(): void {
+  const fromUndo = Boolean(document.getElementById('undo-toast')?.contains(document.activeElement));
   const undone = widgetUndo.take();
   const snapshot = shown();
   if (!undone || !snapshot) {
@@ -480,8 +498,28 @@ function undoRemoveWidget(): void {
   }
   const widgets = widgetConfig(snapshot);
   widgets.splice(Math.min(undone.index, widgets.length), 0, undone.widget);
+  refocusRestored = fromUndo ? undone.widget.id : undefined;
   sendWidgets(snapshot, widgets);
   redraw();
+}
+
+/**
+ * Focuses the restored widget's Remove button once it is drawn, while
+ * focus is still on the page itself or somewhere in Home's grid, where a
+ * stand-in for the gone widget may have put it; elsewhere, the reader has
+ * moved on, and it is left there.
+ */
+function focusRestoredWidget(): void {
+  const id = refocusRestored;
+  const button = id ? document.querySelector<HTMLElement>(`.home-widget[data-widget-id="${id}"] [data-action="remove-widget"]`) : null;
+  if (!button) {
+    return;
+  }
+  refocusRestored = undefined;
+  const active = document.activeElement;
+  if (!active || active === document.body || active.closest('.home-grid')) {
+    button.focus();
+  }
 }
 
 // ----- Ranking ---------------------------------------------------------------
@@ -537,7 +575,9 @@ function rankEntity(reorder: (keys: string[]) => string[] | undefined): boolean 
 // context menu, which also renames a tag and parks it.
 installRankedRows({
   kinds: {
-    tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },
+    // A favorite and the rest are ranked apart; Move up or down never
+    // crosses from one to the other.
+    tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey', group: '.tag-group' },
     entity: { selector: '.entity-row[data-entity-key]', key: 'entityKey' },
     widget: { selector: '.home-widget.is-editing[data-widget-id]', key: 'widgetId', edgeLabels: ['Move to first', 'Move to last'] },
   },
@@ -777,8 +817,27 @@ function moveBetweenTabs(event: KeyboardEvent, element: Element): boolean {
   return true;
 }
 
+/**
+ * Escape closes the widget gear focus is in and hands focus back to the
+ * gear, as the page's own gear does; true when it did.
+ */
+function closeWidgetOptions(event: KeyboardEvent, element: Element | null): boolean {
+  const options = event.key === 'Escape' && element ? element.closest<HTMLDetailsElement>('.home-widget-options[open]') : null;
+  if (!options) {
+    return false;
+  }
+  event.preventDefault();
+  options.open = false;
+  view.openWidgetOptions = undefined;
+  options.querySelector<HTMLElement>('summary')?.focus();
+  return true;
+}
+
 document.addEventListener('keydown', (event) => {
   const element = event.target instanceof Element ? event.target : null;
+  if (closeWidgetOptions(event, element)) {
+    return;
+  }
   // The search box takes / only where it is on screen.
   const inSearch = Boolean(element && element.closest('[data-suggest-key]'));
   if ((inSearch || (view.mode === 'home' && findWidget('search'))) && editor.handleKeydown(event)) {
@@ -857,10 +916,14 @@ document.addEventListener('input', (event) => {
 
 // ----- What the host sends ---------------------------------------------------
 
-// A widget chosen in Related Notes: Home goes into customizing, and adds it.
+// A widget chosen in Related Notes: Home is shown, goes into customizing,
+// and adds it. On the Tags tab the new widget would be added out of sight.
 onHostMessage<{ type: 'addWidget'; value: unknown }>('addWidget', (message) => {
   if (typeof message.value !== 'string') {
     return;
+  }
+  if (view.mode !== 'home') {
+    setDashboardMode('home', false);
   }
   if (!view.editingHome) {
     setEditingHome(true);
@@ -904,6 +967,7 @@ function receiveState(incoming: DashboardPageState): void {
   editor.receive();
   redraw({ snapshot: incoming });
   revealNewWidget();
+  focusRestoredWidget();
 }
 
 onHostMessage<StateMessage<DashboardPageState>>('state', (message) => receiveState(message.data));

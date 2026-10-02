@@ -7,7 +7,7 @@
  * format can be tested without a store. `PreferencesRepository` reads and
  * writes through it, and every write passes through `normalizePreferences`.
  */
-import { isWidgetKind, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { HOME_WIDGET_LIMIT, isWatchableNamespace, isWidgetKind, WIDGET_ENTRY_COUNTS, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import { legacyIdOf } from '../../domain/markdown/parser';
 import { isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
@@ -125,11 +125,8 @@ export const DASHBOARD_WIDGET_DAYS_LIMIT = 365;
 /** The most notes Home keeps pinned. */
 export const PINNED_NOTE_LIMIT = 50;
 
-/** The most entries a list widget can show. */
-export const DASHBOARD_WIDGET_COUNT_LIMIT = 20;
-
-/** The most widgets Home keeps. */
-const DASHBOARD_WIDGET_LIMIT = 30;
+/** The most entries a list widget can show: the most its gear and its pager offer. */
+export const DASHBOARD_WIDGET_COUNT_LIMIT = Math.max(...WIDGET_ENTRY_COUNTS);
 
 /** The longest search a tasks widget keeps. */
 const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
@@ -473,7 +470,7 @@ export function normalizeDashboardWidgets(
     ids.add(widget.id);
     kinds.add(widget.kind);
     widgets.push(widget);
-    if (widgets.length >= DASHBOARD_WIDGET_LIMIT) {
+    if (widgets.length >= HOME_WIDGET_LIMIT) {
       break;
     }
   }
@@ -572,12 +569,7 @@ function applyTasksQuery(candidate: WidgetCandidate, widget: DashboardWidgetConf
 /** The namespace Gone quiet watches when it is not `person`, and whether it lists only tags with no open task. */
 function applyQuietPeople(candidate: WidgetCandidate, widget: DashboardWidgetConfig): boolean {
   const namespace = typeof candidate.namespace === 'string' ? candidate.namespace.trim() : '';
-  if (
-    namespace &&
-    namespace.length <= 64 &&
-    /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace) &&
-    namespace.toLowerCase() !== 'person'
-  ) {
+  if (namespace && isWatchableNamespace(namespace) && namespace.toLowerCase() !== 'person') {
     widget.namespace = namespace.toLowerCase();
   }
   if (candidate.noOpenTasks === true) {

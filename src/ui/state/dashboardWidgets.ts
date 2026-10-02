@@ -1,3 +1,4 @@
+import { isWatchableNamespace } from '../../domain/dashboard/widgetCatalog';
 import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
 import {
@@ -536,14 +537,15 @@ function buildQuietPeopleWidget({ index, options, config, widget, take }: Widget
   });
   return {
     ...widget,
-    // What the gear offers: every namespace the index holds.
+    // What the gear offers: every namespace the index holds that the host
+    // keeps as the one to watch, so a choice is never silently dropped.
     namespaces: [
       ...new Set(
         [...index.entities.values()].map((entity) => String(entity.kind).toLowerCase()),
       ),
       'person',
     ]
-      .filter((name, at, all) => all.indexOf(name) === at)
+      .filter((name, at, all) => all.indexOf(name) === at && isWatchableNamespace(name))
       .sort(),
     total: quiet.length,
     tags: take(quiet).map((person) => ({

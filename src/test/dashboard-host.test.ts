@@ -40,7 +40,10 @@ function createIndex(): WorkspaceIndex {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
-/** Where Home sent the reader, in order; a quick add containing "refused" is not added. */
+/**
+ * Where Home sent the reader, in order; a quick add containing "refused" is
+ * not added, and one containing "read-only" fails as a read-only disk would.
+ */
 function createNavigation(): DashboardNavigation & { opened: string[] } {
   const opened: string[] = [];
   return {
@@ -51,6 +54,9 @@ function createNavigation(): DashboardNavigation & { opened: string[] } {
     openDailyNote: () => void opened.push('today'),
     quickAdd: (text) => {
       opened.push(`add ${text}`);
+      if (text.includes('read-only')) {
+        throw new Error('EROFS: read-only file system');
+      }
       return !text.includes('refused');
     },
     createHubNote: (tagKey) => void opened.push(`hub ${tagKey}`),
@@ -75,12 +81,16 @@ function createLedger() {
 /**
  * Home over two notes, attached to a fake panel in front: what the page is
  * sent, where it sends the reader, and whether it is the active source.
+ * `scan.hasIndexed` false opens it during the first scan, with no notes.
  */
-function openHome() {
-  let index = createIndex();
+function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
+  let index = scan.hasIndexed ? createIndex() : buildWorkspaceIndex(new Map());
   const updates = new vscode.EventEmitter<void>();
   const indexer = {
     ready: Promise.resolve(),
+    get hasIndexed() {
+      return scan.hasIndexed;
+    },
     getSnapshot: () => index,
     onDidUpdate: (listener: () => void) => updates.event(listener),
     getParkedRules: () => ({ tags: ['#parked'], hasFolders: false, isParkedPath: () => false }),
@@ -216,6 +226,51 @@ suite('Dashboard host', () => {
     }
   });
 
+  test('two quick tab or column choices end on the last, with no flip back', async () => {
+    const home = openHome();
+    try {
+      // The page does not wait for one save before sending the next choice.
+      const before = home.states().length;
+      await Promise.all([
+        home.send({ type: 'setDashboardMode', mode: 'browse' }),
+        home.send({ type: 'setDashboardMode', mode: 'home' }),
+      ]);
+      const modes = home.states().slice(before).map((state) => state.data.viewState.mode);
+      assert.deepStrictEqual(modes.slice(modes.indexOf('home')).filter((mode) => mode !== 'home'), [], `${modes}`);
+      assert.strictEqual(home.preferences.reader.value.dashboardViewState.mode, 'home');
+
+      const next = home.states().length;
+      await Promise.all([
+        home.send({ type: 'setDashboardColumns', section: 'tags', columns: 3 }),
+        home.send({ type: 'setDashboardColumns', section: 'tags', columns: 4 }),
+      ]);
+      const columns = home.states().slice(next).map((state) => state.data.tagColumns);
+      assert.deepStrictEqual(columns.slice(columns.indexOf(4)).filter((count) => count !== 4), [], `${columns}`);
+      assert.strictEqual(home.preferences.reader.value.dashboardTagColumns, 4);
+    } finally {
+      home.dispose();
+    }
+  });
+
+  test('is sent nothing during the first scan, so an empty index never says there are no notes', async () => {
+    const scan = { hasIndexed: false };
+    const home = openHome(scan);
+    try {
+      home.host.refresh();
+      // A preference saved while the scan runs would redraw Home.
+      await home.preferences.display.setTagSortMode('count');
+      assert.strictEqual(home.states().length, 0, 'Home stays on its loading line');
+
+      scan.hasIndexed = true;
+      home.updateIndex();
+      const states = home.states() as unknown as Array<{ data: { totalNoteCount: number } }>;
+      assert.strictEqual(states.length, 1);
+      assert.ok(states[0].data.totalNoteCount > 0, 'drawn from the scanned notes');
+    } finally {
+      home.dispose();
+    }
+  });
+
   test('is sent nothing while hidden, one snapshot when shown, and one when shown on a new day', () => {
     const home = openHome();
     try {
@@ -247,6 +302,19 @@ suite('Dashboard host', () => {
       assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
         { type: 'quickAddResult', text: ' Call Ren ', added: true },
         { type: 'quickAddResult', text: 'refused task', added: false },
+      ]);
+    } finally {
+      home.dispose();
+    }
+  });
+
+  test('answers a quick add that fails, so the page gives the task back', async () => {
+    const home = openHome();
+    try {
+      // The failure still reaches the log, as any handler's does.
+      await assert.rejects(home.send({ type: 'quickAdd', text: 'read-only task' }), /read-only/);
+      assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
+        { type: 'quickAddResult', text: 'read-only task', added: false },
       ]);
     } finally {
       home.dispose();

@@ -20,6 +20,11 @@ export interface RankedRowKind {
   readonly key: string;
   /** The menu's labels for the two ends, first then last; Move to top and Move to bottom unless given. */
   readonly edgeLabels?: readonly [string, string];
+  /**
+   * The part of the page a row moves within one place at a time, such as
+   * the Tags tab's favorites or the rest; the whole page unless given.
+   */
+  readonly group?: string;
 }
 
 /** One more row of a rank menu, which `onMenuAction` runs. */
@@ -258,23 +263,49 @@ class RankedRows {
         && this.options.reorder({ kind: current.kind, key: current.key, targetKey: String(targetKey), before: this.dropBefore, placeholder: this.placeholder }) === true;
       this.suppressClick = true;
     }
-    // A dropped row takes the placeholder's place until the host answers.
-    if (dropped && this.placeholder && this.placeholder.parentElement) {
-      this.placeholder.parentElement.insertBefore(current.row, this.placeholder);
-      current.row.classList.remove('is-dragging');
+    if (dropped) {
+      this.placeDropped(current.row);
     }
     this.clearPreview();
     this.drag = undefined;
   }
 
-  /** Moves a row one place, past the row of its kind above or below it. */
+  /**
+   * A dropped row takes the placeholder's place until the host answers. A
+   * draw that came in mid-drag made the list afresh without the row, and the
+   * placeholder may have followed the pointer into the new list: the row
+   * put there would be a second copy of one the new list already draws, so
+   * the page is told its list changed and draws it afresh instead.
+   */
+  private placeDropped(row: HTMLElement): void {
+    const placeholder = this.placeholder;
+    if (!placeholder || !placeholder.parentElement) {
+      return;
+    }
+    if (row.isConnected && placeholder.isConnected) {
+      placeholder.parentElement.insertBefore(row, placeholder);
+      row.classList.remove('is-dragging');
+    } else {
+      this.options.onListChanged?.();
+    }
+  }
+
+  /**
+   * Moves a row one place, past the row of its kind above or below it in
+   * its group. A row at the edge of its group stays: past the edge is a row
+   * the page keeps apart, such as a favorite, and the page would put it
+   * back where it was while saying it moved.
+   */
   private step(kind: string, key: string, up: boolean): void {
     if (!this.options.canRank(kind)) {
       return;
     }
-    const rows = Array.from(document.querySelectorAll<HTMLElement>(this.options.kinds[kind].selector)).filter((candidate) =>
+    const { selector, group } = this.options.kinds[kind];
+    const all = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter((candidate) =>
       !candidate.classList.contains('drag-placeholder') && !candidate.classList.contains('drag-ghost'));
-    const row = rows.find((candidate) => this.keyOf(candidate, kind) === key);
+    const row = all.find((candidate) => this.keyOf(candidate, kind) === key);
+    const within = row && group ? row.closest(group) : null;
+    const rows = within ? all.filter((candidate) => within.contains(candidate)) : all;
     const target = row ? rows[rows.indexOf(row) + (up ? -1 : 1)] : undefined;
     if (!row || !target) {
       return;
