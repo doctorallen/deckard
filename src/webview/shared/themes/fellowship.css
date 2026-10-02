@@ -49,3 +49,6 @@ button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, 
 .metric:nth-child(3n + 2)::before { border-bottom-color: var(--amber); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }
 .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--green); background: var(--panel-raised); box-shadow: inset 4px 0 0 var(--green), 0 0 0 1px rgba(85, 113, 61, .2); }
+/* The Notes Graph's status line sits on the darkest parchment, where the
+   muted ink read at 4.43:1; one step deeper, it reads at 4.76:1. */
+.status-line { color: #505739; }

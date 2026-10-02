@@ -31,17 +31,10 @@ if (!chrome) {
 
 /**
  * Text drawn below AA that is known and not yet fixed, by theme, surface,
- * and element, zen or not. A surface added in Phase 6 step 1 found these on
- * a page that had never been drawn here before: Fellowship's Notes Graph
- * status line is 4.43:1 against the 4.5:1 it needs. They are listed rather
- * than fixed because the refactor changes nothing a reader sees; anything
- * else below AA still fails.
+ * and element, zen or not, as `<theme>:<surface> <kind> <element>`. It is
+ * empty: anything below AA fails.
  */
-const KNOWN = new Set([
-  'fellowship:notesGraph text div.status-line > span.graph-legend',
-  'fellowship:notesGraph text div.status-line > span.graph-legend > span.legend-word',
-  'fellowship:notesGraph text div.status-line > span',
-]);
+const KNOWN = new Set([]);
 
 /**
  * Controls whose only content is an icon, by selector. WCAG asks 3:1 of
