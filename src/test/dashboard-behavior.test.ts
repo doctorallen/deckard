@@ -120,9 +120,10 @@ suite('Dashboard behavior', () => {
   test('groups and names a tag by the namespace the parser reads, not its key as written', () => {
     const index = buildWorkspaceIndex(new Map([['notes/acme.md', parseMarkdown('notes/acme.md', '# Acme #org/acme')]]));
     // The index keys its tags canonically, so a key written another way can
-    // only be made by hand; the parser reads its alias and its case.
+    // only be made by hand. Aliases are applied once, where text comes in,
+    // so a key is read as keyed; its case is still read as the parser reads it.
     const acme = index.tags.get('#org/acme')!;
-    index.tags.set('#Organization/Beta', { ...acme, key: '#Organization/Beta', label: '#Organization/Beta' });
+    index.tags.set('#Org/Beta', { ...acme, key: '#Org/Beta', label: '#Org/Beta' });
     store = createPreferences(new MemoryMemento());
     const preferences = { ...store.reader.value, dashboardViewState: { mode: 'browse' as const, tagSearchQuery: '' } };
     page = openWebviewPage(renderPage('dashboard'), {
