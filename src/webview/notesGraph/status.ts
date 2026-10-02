@@ -5,8 +5,8 @@
 import { type GraphSettings, type GraphState, isRendered, type ViewNode } from './model';
 
 /**
- * The status line: the group let go and the search's matches, when there
- * are any, then, with Only links I wrote, how many wiki links are drawn and
+ * The status line: the tags and the group let go and the search's
+ * matches, when there are any, then, with Only links I wrote, how many wiki links are drawn and
  * how many nodes have none; otherwise the notes, tasks, links drawn of all
  * the graph holds, and groups.
  */
@@ -16,7 +16,8 @@ export function describeStatus(state: GraphState, settings: GraphSettings): stri
   const visibleEdgeCount = edges.filter((edge) =>
     edge.drawn && isRendered(state, settings, edge.a) && isRendered(state, settings, edge.b)).length;
   const matchCount = state.matchSet ? Object.keys(state.matchSet).length : -1;
-  const searchNote = (state.groupNotice ? state.groupNotice + ' · ' : '') + (matchCount >= 0
+  const searchNote = (state.tagNotice ? state.tagNotice + ' · ' : '') +
+    (state.groupNotice ? state.groupNotice + ' · ' : '') + (matchCount >= 0
     ? matchCount + (matchCount === 1 ? ' match' : ' matches') + ' · '
     : '');
   if (settings.onlyWrittenLinks) {

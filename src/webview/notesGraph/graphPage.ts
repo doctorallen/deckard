@@ -284,6 +284,26 @@ function describeEmpty(snapshot: NonNullable<GraphState['snapshot']>): string | 
   return 'Nothing in ' + focus.title + ' to draw yet — write in it and save, or turn off Around this note to see the whole workspace.';
 }
 
+/**
+ * Lets go of the tags picked that a new graph's checklist does not offer,
+ * such as a neighborhood without them: kept, they would dim every node,
+ * with no box in the list to uncheck. The status line names them, by the
+ * labels the last graph gave them.
+ */
+export function dropMissingTags(page: GraphPage, snapshot: { readonly tags: readonly (readonly [string, string, number])[] }, labels: Record<string, string>): void {
+  const offered = new Set(snapshot.tags.map(([key]) => key));
+  const { settings, state } = page;
+  const gone = settings.selectedTags.filter((key) => !offered.has(key));
+  if (!gone.length) {
+    state.tagNotice = '';
+    return;
+  }
+  settings.selectedTags = settings.selectedTags.filter((key) => offered.has(key));
+  keep(page);
+  state.tagNotice = (gone.length === 1 ? 'Tag ' : 'Tags ') + gone.map((key) => labels[key] || key).join(', ') +
+    ' no longer there — let go';
+}
+
 /** The Group list takes the group picked; its options are the groups named now. */
 export function renderGroupList(page: GraphPage): void {
   page.ui = { ...page.ui, groupValue: page.settings.group || '' };

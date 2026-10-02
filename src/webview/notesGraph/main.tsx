@@ -24,6 +24,7 @@ import { type ControlHandlers, type ControlRefs, GraphBody, type SliderKey, type
 import {
   clearResetUndo,
   dismissResetUndo,
+  dropMissingTags,
   fitToView,
   type GraphLook,
   type GraphPage,
@@ -216,12 +217,14 @@ function filterHandlers(page: GraphPage): Pick<ControlHandlers, 'searchInput' | 
         next.push(key);
       }
       page.settings.selectedTags = next;
+      page.state.tagNotice = '';
       keep(page);
       recomputeTagMatches(page.state, page.settings);
       scheduleFrame(page);
     },
     clearTags: () => {
       page.settings.selectedTags = [];
+      page.state.tagNotice = '';
       keep(page);
       recomputeTagMatches(page.state, page.settings);
       renderTagList(page);
@@ -318,6 +321,7 @@ function receive(page: GraphPage, message: HostMessage | undefined): void {
   if (message && message.type === 'state' && message.data) {
     const snapshot: NotesGraphWireSnapshot = message.data;
     state.snapshot = snapshot;
+    dropMissingTags(page, snapshot, state.tagLabelByKey);
     state.tagLabelByKey = {};
     (snapshot.tags || []).forEach((entry) => {
       state.tagLabelByKey[entry[0]] = entry[1];

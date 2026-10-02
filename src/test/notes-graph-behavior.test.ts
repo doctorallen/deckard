@@ -915,6 +915,32 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(empty.textContent?.trim(), 'No indexed notes yet — save a Markdown file with tags or links.');
     });
 
+    test('a picked tag a new graph does not hold is let go, and the status line says so', () => {
+      const page = openCanvas();
+      const tag = (key: string): GraphNode => ({ id: `tag:${key}`, kind: 'tag', title: key, tagKeys: [], degree: 1 });
+      page.send(graphState(
+        [note('Alpha', { tagKeys: ['#alpha'] }), note('Beta'), tag('#alpha')],
+        [
+          { source: 'section:Alpha', target: 'tag:#alpha', weight: 1, types: ['tag-membership'] },
+          { source: 'section:Alpha', target: 'section:Beta', weight: 1, types: ['wiki-link'] },
+        ],
+      ));
+      const box = page.find('#tag-list input') as HTMLInputElement;
+      box.checked = true;
+      box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      assert.deepStrictEqual((page.savedState() as { selectedTags: string[] }).selectedTags, ['#alpha']);
+
+      // Around another note, whose neighborhood holds no #alpha.
+      page.send(graphState([note('Beta'), note('Gamma')], [{ source: 'section:Beta', target: 'section:Gamma', weight: 1, types: ['wiki-link'] }]));
+      assert.deepStrictEqual((page.savedState() as { selectedTags: string[] }).selectedTags, [], 'let go, and kept so');
+      assert.match(page.text('#status-counts') ?? '', /^Tag #alpha no longer there — let go · 2 notes · /);
+      settle(page);
+      assert.ok(lastFrame(page).filter((call) => call.op === 'arc').every((call) => call.globalAlpha === 1), 'nothing is dimmed');
+
+      page.send(graphState([note('Beta'), note('Gamma')], []));
+      assert.match(page.text('#status-counts') ?? '', /^2 notes · /, 'said once');
+    });
+
     test('a selection a filter hides is let go, and the host is told so Related Notes lets it go too', () => {
       const page = openCanvas();
       const toggle = (id: string, checked: boolean) => {

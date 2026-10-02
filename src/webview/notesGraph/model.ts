@@ -142,6 +142,8 @@ export interface GraphState extends SimulationState {
   groupMatch: Uint8Array | null;
   /** Said in the status line when a kept group is gone. */
   groupNotice: string;
+  /** Said in the status line when a new graph let tags picked go, until the next graph or pick. */
+  tagNotice: string;
   groupCenters: GroupCenter[];
   labelRects: LabelRect[];
   tagLabelByKey: Record<string, string>;
@@ -186,6 +188,7 @@ export function emptyGraphState(): GraphState {
     groupKeyIndex: {},
     groupMatch: null,
     groupNotice: '',
+    tagNotice: '',
     groupCenters: [],
     labelRects: [],
     tagLabelByKey: {},
