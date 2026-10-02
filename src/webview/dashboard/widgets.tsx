@@ -5,7 +5,7 @@
  */
 import type { ComponentChild } from 'preact';
 
-import { WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { WIDGET_ENTRY_COUNTS, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget } from '../../ui/protocol/dashboard';
 import { SettingsIcon } from '../shared/icons';
 import { describePageRange } from '../shared/pageSteps';
@@ -77,7 +77,7 @@ function listingGroups(widget: DashboardWidget, attributes: Readonly<Record<stri
   if (traits.listed && !widget.paged) {
     groups.push(
       <OptionsGroup label="Show">
-        <ViewOptionChoices action="set-widget-count" choices={[[3, '3'], [5, '5'], [10, '10'], [20, '20']]} selected={widget.count || 5} label="Entries shown" attributes={attributes} />
+        <ViewOptionChoices action="set-widget-count" choices={WIDGET_ENTRY_COUNTS.map((count) => [count, String(count)] as const)} selected={widget.count || 5} label="Entries shown" attributes={attributes} />
       </OptionsGroup>,
     );
   }
@@ -205,10 +205,10 @@ function WidgetPaging({ widget, home }: WidgetProps) {
   if (!paging || home.editing) {
     return null;
   }
-  // The sizes on offer, and whatever this widget is already set to, so a
-  // count chosen before it was paged is not silently changed by its own
-  // control.
-  const sizes = [3, 5, 10, 20, 50, paging.size]
+  // The sizes on offer, the counts the host keeps, and whatever this widget
+  // is already set to, so a count chosen before it was paged is not
+  // silently changed by its own control.
+  const sizes = [...WIDGET_ENTRY_COUNTS, paging.size]
     .filter((size, index, all) => all.indexOf(size) === index)
     .sort((left, right) => left - right);
   return (

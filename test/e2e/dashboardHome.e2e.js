@@ -272,6 +272,21 @@ test('a Dashboard opened on the Tags tab tells Related Notes what Home can add',
   assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
 });
 
+test('every page size a paged widget offers is the size Home keeps', async () => {
+  const { view, preferences } = await openDashboard(createIndex(), async (store) => {
+    await store.homeWidgets.setDashboardWidgets([{ id: 'paged', kind: 'tasks', width: 'half', count: 5, paged: true, page: 1, query: 'is:open' }]);
+  });
+  const sizes = () => view.find('[data-action="set-widget-page-size"]');
+  const offered = [...sizes().options].map((option) => Number(option.value));
+  assert.ok(offered.length > 1);
+  for (const size of offered) {
+    view.change(sizes(), String(size));
+    await delay(20);
+    assert.strictEqual(preferences.reader.value.dashboardWidgets[0].count, size, `${size} per page`);
+    assert.strictEqual(Number(sizes().value), size);
+  }
+});
+
 test('Escape closes a widget\'s gear and hands focus back to it', async () => {
   const { view, panel, lastState } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));

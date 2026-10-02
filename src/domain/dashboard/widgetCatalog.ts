@@ -68,6 +68,12 @@ export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
 };
 
 /**
+ * How many entries a listed widget's gear offers to show, and its pager to
+ * show a page at a time. The host keeps no more than the largest.
+ */
+export const WIDGET_ENTRY_COUNTS: readonly number[] = [3, 5, 10, 20];
+
+/**
  * The most widgets Home holds. The page offers no more once it holds this
  * many, and the host keeps no more than this.
  */
