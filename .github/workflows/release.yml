@@ -11,6 +11,9 @@ on:
 
 permissions:
   contents: write
+  # The Marketplace publish signs in to Microsoft Entra with GitHub's OIDC
+  # token, so no publishing secret is stored.
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -90,6 +93,57 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Deckard $TAG_NAME" \
             --repo "$GITHUB_REPOSITORY"
+
+      # The Marketplace is checked rather than the tag, so re-running a job
+      # whose release was made but whose publish failed still publishes.
+      - name: Check whether the Marketplace has this version
+        id: marketplace
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          published="$(npx vsce show esperinnovations.deckard-notes --json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).versions[0].version")"
+          echo "Marketplace has $published; this build is $VERSION."
+          if [ "$published" = "$VERSION" ]; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The app registration esper-themes-publish trusts this repository's
+      # master branch; its IDs are repository variables, not secrets.
+      - name: Sign in to Microsoft Entra
+        if: steps.marketplace.outputs.needed == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # The publisher's Members page takes this ID, not the app's client ID.
+      # It names an identity, not a credential, so it is safe in the log.
+      - name: Show the identity the Marketplace sees
+        if: steps.marketplace.outputs.needed == 'true'
+        run: |
+          az rest \
+            --uri "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1" \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --query "{id: id, displayName: displayName}" -o table
+
+      # Publishes the same file the GitHub release carries. A re-run, which
+      # skips the build, takes it from the release.
+      - name: Publish to the Marketplace
+        if: steps.marketplace.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: v${{ steps.version.outputs.value }}
+        run: |
+          vsix_path="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          if [ -z "$vsix_path" ]; then
+            gh release download "$TAG_NAME" --pattern '*.vsix' --repo "$GITHUB_REPOSITORY"
+            vsix_path="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          fi
+          test -n "$vsix_path"
+          npx vsce publish --packagePath "$vsix_path" --azure-credential
 
       # A version already released keeps its notes in step with its section
       # of the changelog, which a later merge may have corrected.
