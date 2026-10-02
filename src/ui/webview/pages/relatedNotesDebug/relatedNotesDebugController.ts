@@ -14,8 +14,14 @@ import { narrowRelatedNotesDebugMessage } from './messages';
  */
 export class RelatedNotesDebugController implements PageController<never, RelatedNotesDebugPageToHost> {
   public readonly name = 'Related Notes debug';
+  /**
+   * Not kept running while hidden (Q1 of docs/implementation/20-webviews.md):
+   * it runs no script and keeps no state, so shown again VS Code loads the
+   * HTML it was last given, the same evidence, from the top, with any
+   * calculation that was unfolded folded again.
+   */
   public readonly options: PageOptions = {
-    retainContextWhenHidden: true,
+    retainContextWhenHidden: false,
     enableFindWidget: true,
     scripts: 'off',
     // The page is drawn afresh each time an entry is shown, and a theme
