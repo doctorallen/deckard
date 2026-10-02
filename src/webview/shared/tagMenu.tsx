@@ -8,7 +8,7 @@
 import { render } from 'preact';
 
 import { type ContextMenuAction, ContextMenuItem } from './rankedRows';
-import { returnFocusFromMenu } from './menuKeys';
+import { returnFocusFromMenu, walkMenu } from './menuKeys';
 
 /** The menu's element, made the first time it opens. */
 let menu: HTMLElement | undefined;
@@ -74,6 +74,12 @@ function menuElement(): HTMLElement {
     menu.className = 'tag-context-menu popover';
     menu.setAttribute('role', 'menu');
     document.body.appendChild(menu);
+    // The arrows, Home, and End walk its rows while focus is in it.
+    document.addEventListener('keydown', (event) => {
+      if (menu && !menu.hidden && event.target instanceof Node && menu.contains(event.target)) {
+        walkMenu(menu, event, '[data-context-action]');
+      }
+    });
   }
   return menu;
 }
