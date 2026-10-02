@@ -222,6 +222,13 @@ suite('Task service', () => {
       kind: 'rejected',
       uri: fake.uri('plan.md'),
     });
+    const error = new Error('unreadable');
+    fake.failOpen = error;
+    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), 0, 'Trip'), {
+      kind: 'failed',
+      uri: fake.uri('plan.md'),
+      error,
+    });
   });
 
   test('writes steps under a task, after the ones it has', async () => {

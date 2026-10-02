@@ -21,6 +21,8 @@ import { resolveTaskMove } from '../ui/state/taskBoardState';
 import { AgendaTreeServices } from '../ui/views/agendaTree';
 import { countDueTasks } from '../ui/views/taskStatusBar';
 import { getCaptureInsertion } from '../domain/capture/captureLines';
+import { FakeHistory, FakeNotes } from './fakeNotes';
+import { FakeSettings } from './fakeWorkspace';
 
 /**
  * Task writes over `history`, carrying ranks to `keepRank`, which drops them
@@ -54,6 +56,31 @@ export function createTaskWrites(
       resolveUri: (filePath) => resolveSourceUri(filePath),
       placeInsertion: getCaptureInsertion,
     }),
+  };
+}
+
+/**
+ * Task writes over notes in memory, so a suite can make a note fail to open
+ * or refuse an edit, and run without the editor. Each task's path names its
+ * note in `notes`. Move to is not among them.
+ */
+export function createFakeTaskWrites(notes: FakeNotes): TaskWrites {
+  const tasks = new TaskService({
+    notes,
+    history: new FakeHistory(notes),
+    ownWrites: { note: () => undefined },
+    keepRank: () => undefined,
+    resolveUri: async (filePath) => notes.uri(filePath),
+    configuration: new FakeSettings(),
+    clock: { now: () => Date.now() },
+  });
+  return {
+    history: new WorkspaceWriteHistory(),
+    keepRank: () => undefined,
+    // The fakes' URIs and handles stand in for VS Code's, which these
+    // writes only pass back to the messages that name them.
+    tasks: tasks as unknown as TaskService<vscode.Uri, WriteHandle>,
+    moves: undefined as unknown as MoveService<vscode.Uri, WriteHandle>,
   };
 }
 

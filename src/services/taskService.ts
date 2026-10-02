@@ -294,9 +294,18 @@ export class TaskService<U extends ResourceUri, H = unknown> {
   /**
    * Completes the open steps written directly under the task on a zero-based
    * line, in one write that Undo takes back. `stale` when none is open any
-   * more. Rejects when the note cannot be read.
+   * more; `failed` when the note cannot be read or written.
    */
   public async completeSteps(uri: U, taskLine: number, title: string): Promise<StepsWrite<U, H>> {
+    try {
+      return await this.writeCompletedSteps(uri, taskLine, title);
+    } catch (error) {
+      return { kind: 'failed', uri, error };
+    }
+  }
+
+  /** {@link completeSteps}, rejecting when the note cannot be read or written. */
+  private async writeCompletedSteps(uri: U, taskLine: number, title: string): Promise<StepsWrite<U, H>> {
     const note = await this.options.notes.open(uri);
     const lines = note.getText().split(/\r?\n/);
     const open = findStepFamily(lines, taskLine).steps.filter((line) => !isCheckedTaskLine(lines[line]));

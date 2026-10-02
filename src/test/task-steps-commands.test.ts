@@ -8,6 +8,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { toggleTask } from '../ui/commands/taskActions';
 import {
   addTaskSteps,
+  breakIntoStepsCommand,
   buildSuggestPrompt,
   createLanguageModelSuggester,
   describeSuggestFailure,
@@ -15,7 +16,9 @@ import {
   StepList,
 } from '../ui/commands/taskSteps';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
-import { createTaskWrites } from './taskWrites';
+import { createFakeTaskWrites, createTaskWrites } from './taskWrites';
+import { FakeNotes } from './fakeNotes';
+import type { IndexReader } from '../core/workspace/indexReader';
 import { toggleTaskLines } from '../domain/tasks/toggleLines';
 import { formatIsoDate } from '../domain/markdown/calendar';
 
@@ -325,6 +328,97 @@ suite('Completing steps', () => {
       assert.deepStrictEqual(shown[0], ['Completed "Alone".', 'Undo']);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+});
+
+suite('A task whose note cannot be opened', () => {
+  /** Every message said, by kind, each answered by `answer`. */
+  function listen(answer: (text: string) => string | undefined = () => undefined) {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const names = ['showInformationMessage', 'showWarningMessage', 'showErrorMessage'] as const;
+    const originals = names.map((name) => window[name]);
+    const said: { kind: string; args: unknown[] }[] = [];
+    names.forEach((name) => {
+      window[name] = async (...args: unknown[]) => {
+        said.push({ kind: name, args });
+        return answer(String(args[0]));
+      };
+    });
+    return {
+      said,
+      errors: () => said.filter((message) => message.kind === 'showErrorMessage').map((message) => message.args),
+      restore: () => names.forEach((name, at) => (window[name] = originals[at])),
+    };
+  }
+
+  /** Waits for an error message, as long as a chain of messages can take. */
+  async function untilError(messages: ReturnType<typeof listen>): Promise<void> {
+    for (let tries = 0; tries < 40 && messages.errors().length === 0; tries += 1) {
+      await settle();
+    }
+  }
+
+  test('Break into Steps from the board says so, and asks for no steps', async () => {
+    const content = '- [ ] Plan the offsite\n';
+    const notes = new FakeNotes({ 'plan.md': content });
+    notes.failOpen = new Error('EACCES: permission denied');
+    const [task] = parseMarkdown('plan.md', content).tasks;
+    const messages = listen();
+    try {
+      const written = await breakIntoStepsCommand({} as IndexReader, createFakeTaskWrites(notes), task);
+      assert.strictEqual(written, false);
+      assert.deepStrictEqual(messages.errors(), [
+        ['Deckard could not write the steps in plan.md, so nothing was written.', 'Open Log'],
+      ]);
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test('Complete Steps says so, rather than failing unheard', async () => {
+    const content = '- [ ] Plan the offsite\n  - [ ] Book the venue\n';
+    const notes = new FakeNotes({ 'plan.md': content });
+    const [task] = parseMarkdown('plan.md', content).tasks;
+    // The note is readable for the completion, and not by the time
+    // Complete Steps is chosen.
+    const messages = listen((text) => {
+      if (!text.startsWith('Completed "Plan the offsite".')) {
+        return undefined;
+      }
+      notes.failOpen = new Error('EACCES: permission denied');
+      return 'Complete Steps';
+    });
+    try {
+      assert.strictEqual(await toggleTask(createFakeTaskWrites(notes), task, true), true);
+      await untilError(messages);
+      assert.deepStrictEqual(messages.errors(), [
+        ['Deckard could not complete the steps in plan.md, so nothing was written.', 'Open Log'],
+      ]);
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test('Complete Task says so, as completing the task would', async () => {
+    const content = '- [ ] Plan the offsite\n  - [ ] Book the venue\n';
+    const notes = new FakeNotes({ 'plan.md': content });
+    const step = parseMarkdown('plan.md', content).tasks[1];
+    const messages = listen((text) => {
+      if (!text.includes('the last open step of')) {
+        return undefined;
+      }
+      notes.failOpen = new Error('EACCES: permission denied');
+      return 'Complete Task';
+    });
+    try {
+      assert.strictEqual(await toggleTask(createFakeTaskWrites(notes), step, true), true);
+      await untilError(messages);
+      assert.deepStrictEqual(messages.errors(), [
+        ['Deckard could not update the task in plan.md, so nothing was written.', 'Open Log'],
+      ]);
+    } finally {
+      messages.restore();
     }
   });
 });
