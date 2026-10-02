@@ -195,6 +195,54 @@ suite('Help page', () => {
     }
   });
 
+  test('Back from a guide page opened from the introduction puts the focus on Help\'s title', () => {
+    const page = openWebviewPage(renderPage('help'));
+    try {
+      const link = page.find('p.read-more a[data-guide-page="README"]') as HTMLElement;
+      assert.strictEqual(link.closest('section'), null, 'the full guide link is in no section');
+      link.focus();
+      link.click();
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'guide', page: 'README', title: 'Guide', html: '<h1>Guide</h1>' } }));
+      const back = page.find('#guide-view [data-action="guide-back"]') as HTMLElement;
+      back.focus();
+      back.click();
+      assert.strictEqual(page.document.activeElement, page.find('main > article h1'), 'not dropped to the page itself');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('shown again on a guide page, Back still returns to the section it was opened from', () => {
+    const html = renderPage('help');
+    const guide = (page: string) => ({ type: 'guide', page, title: 'Tags', html: '<h1>Tags</h1>' });
+    const first = openWebviewPage(html);
+    let saved: unknown;
+    try {
+      first.click('#tags .read-more a[data-guide-page]');
+      const asked = first.lastPosted('openGuide') as { page: string };
+      first.window.dispatchEvent(new first.window.MessageEvent('message', { data: guide(asked.page) }));
+      saved = first.savedState();
+      assert.strictEqual((saved as { returnTo?: string }).returnTo, 'tags');
+    } finally {
+      first.dispose();
+    }
+    // VS Code loads the same HTML again when a hidden Help is shown.
+    const again = openWebviewPage(html, undefined, { savedState: saved });
+    try {
+      const asked = again.lastPosted('openGuide') as { page: string };
+      again.window.dispatchEvent(new again.window.MessageEvent('message', { data: guide(asked.page) }));
+      const revealed: string[] = [];
+      again.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+        revealed.push(this.id);
+      };
+      again.click('#guide-view [data-action="guide-back"]');
+      assert.deepStrictEqual(revealed, ['tags'], 'Back goes to Tags, not the top');
+      assert.strictEqual(again.document.activeElement, again.find('#tags h2'));
+    } finally {
+      again.dispose();
+    }
+  });
+
   test('drawn anew, such as for a theme, it opens where it is drawn, not where it was', () => {
     const saved = (() => {
       const page = openWebviewPage(renderPage('help'));
