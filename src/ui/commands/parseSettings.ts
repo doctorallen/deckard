@@ -32,10 +32,12 @@ export function readParseOptions(scope: vscode.Uri): ParseOptions {
 }
 
 /**
- * `deckard.entityNamespaceAliases` alone, for a provider that recognizes
- * entities but never reads inline tags on its own.
+ * `deckard.entityNamespaceAliases` alone, merged over the built-in aliases:
+ * for a provider that recognizes entities but never reads inline tags on its
+ * own, in its document's scope, or, with no scope, for reading a tag someone
+ * typed the way the index read the notes, from the workspace as a whole.
  */
-export function readEntityNamespaceAliases(scope: vscode.Uri): EntityNamespaceAliases {
+export function readEntityNamespaceAliases(scope?: vscode.Uri): EntityNamespaceAliases {
   return getEntityNamespaceAliases(
     vscode.workspace.getConfiguration('deckard', scope).get<unknown>('entityNamespaceAliases', {}),
   );

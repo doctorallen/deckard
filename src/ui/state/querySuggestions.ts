@@ -1,4 +1,4 @@
-import { isPersonTag } from '../../domain/markdown/parser';
+import { EntityNamespaceAliases, isPersonTag } from '../../domain/markdown/parser';
 import { canAppendTerm, getTopLevelJoin, getTopLevelTerms } from '../../domain/query/queryEdit';
 import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -73,7 +73,7 @@ export function createQueryViewState({
     isAdvanced,
     diagnostics: pending ? parseQuery(pending).diagnostics : parsed.diagnostics,
     builder: toBuilderTree(parsed.node),
-    tags: resolveQueryTags(index, parsed),
+    tags: resolveQueryTags(index, parsed, queryContext.entityNamespaceAliases),
     suggestions: createQuerySuggestions(index, recentQueries, queryContext),
     matchCounts,
   };
@@ -81,15 +81,18 @@ export function createQueryViewState({
 
 /**
  * Resolves the tags a query names against the index so chips and titles can
- * show a tag's real label rather than the spelling that was typed.
+ * show a tag's real label rather than the spelling that was typed, reading
+ * a namespace through `entityNamespaceAliases` (the workspace's, when the
+ * caller has them) as the index read the notes.
  */
 export function resolveQueryTags(
   index: WorkspaceIndex,
   parsed: ParsedQuery,
+  entityNamespaceAliases?: EntityNamespaceAliases,
 ): TagReference[] {
   const seen = new Set<string>();
   return collectQueryTagKeys(parsed.node)
-    .map((tagKey) => resolveIndexedTagKey(index.tags, tagKey))
+    .map((tagKey) => resolveIndexedTagKey(index.tags, tagKey, entityNamespaceAliases))
     .flatMap((tagKey) => {
       if (!tagKey || seen.has(tagKey)) {
         return [];

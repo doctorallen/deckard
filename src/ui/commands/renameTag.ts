@@ -100,7 +100,7 @@ export async function mergeIndexedTag(
 
     const namedTarget = requestedTargetKey
       ? index.tags.get(
-          resolveIndexedTagKey(index.tags, requestedTargetKey) ?? '',
+          resolveIndexedTagKey(index.tags, requestedTargetKey, getParseOptions().entityNamespaceAliases) ?? '',
         )
       : undefined;
     const targetTag =
@@ -404,7 +404,11 @@ async function chooseIndexedTag(
   action: 'rename' | 'merge',
 ): Promise<TagInfo | undefined> {
   if (requestedTagKey !== undefined) {
-    const canonicalTagKey = resolveIndexedTagKey(index.tags, requestedTagKey);
+    const canonicalTagKey = resolveIndexedTagKey(
+      index.tags,
+      requestedTagKey,
+      getParseOptions().entityNamespaceAliases,
+    );
     const requestedTag = canonicalTagKey
       ? index.tags.get(canonicalTagKey)
       : undefined;
@@ -499,7 +503,7 @@ export function describeRenameTarget(
   if (!replacement) {
     return { message: RENAME_TAG_ERROR, severity: 'error' };
   }
-  const existingKey = resolveIndexedTagKey(index.tags, replacement.key);
+  const existingKey = resolveIndexedTagKey(index.tags, replacement.key, options.entityNamespaceAliases);
   if (existingKey === sourceTag.key || replacement.key === sourceTag.key) {
     return {
       message: `This is ${sourceTag.label} already; nothing will change.`,

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { describeMissingTag, reportFailure } from '../commands/notify';
+import { readEntityNamespaceAliases } from '../commands/parseSettings';
 import { onDidChangePageChrome } from './host/pageChrome';
 import { ThemePreview } from './themePreview';
 
@@ -115,7 +116,7 @@ export class SearchPanels implements vscode.Disposable {
     if (this.indexer.hasIndexed === false) {
       const early = this.openWhileIndexing(tagKey);
       await whenPublished(this.indexer);
-      const found = resolveIndexedTagKey(this.indexer.getSnapshot().tags, tagKey);
+      const found = resolveIndexedTagKey(this.indexer.getSnapshot().tags, tagKey, readEntityNamespaceAliases());
       if (found === tagKey) {
         this.settle(early);
         return;
@@ -131,6 +132,7 @@ export class SearchPanels implements vscode.Disposable {
     const canonicalTagKey = resolveIndexedTagKey(
       this.indexer.getSnapshot().tags,
       tagKey,
+      readEntityNamespaceAliases(),
     );
     if (!canonicalTagKey) {
       void reportFailure({ outcome: describeMissingTag(tagKey) });
@@ -152,14 +154,15 @@ export class SearchPanels implements vscode.Disposable {
     }
     const text = queryText.trim();
     const index = this.indexer.getSnapshot();
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
+    const aliases = readEntityNamespaceAliases();
+    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text), aliases);
     if (tagKeys?.length === 1) {
       await this.preferences.usage.recordTagAccess(tagKeys[0]);
       if (index.entities.has(tagKeys[0])) {
         await this.preferences.usage.recordEntityAccess(tagKeys[0]);
       }
     }
-    const key = getSearchKey(index, text);
+    const key = getSearchKey(index, text, aliases);
     const existing = [...this.panels].find((panel) => panel.key() === key);
     (existing ?? this.createPanel(text)).show();
   }
@@ -193,7 +196,7 @@ export class SearchPanels implements vscode.Disposable {
       webviewPanel.dispose();
       return;
     }
-    const key = getSearchKey(index, saved.query);
+    const key = getSearchKey(index, saved.query, readEntityNamespaceAliases());
     const existing = [...this.panels].find((panel) => panel.key() === key);
     if (existing) {
       webviewPanel.dispose();
@@ -235,7 +238,7 @@ export class SearchPanels implements vscode.Disposable {
       panel.refresh();
       return;
     }
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()));
+    const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()), readEntityNamespaceAliases());
     if (tagKeys?.length === 1) {
       void this.preferences.usage.recordTagAccess(tagKeys[0]);
       if (index.entities.has(tagKeys[0])) {
@@ -336,7 +339,7 @@ function readLegacySearch(
 ): { query: string; origin: string } | undefined {
   const tagKey = readTrimmed(saved.tagKey);
   const canonicalTagKey = tagKey
-    ? resolveIndexedTagKey(index.tags, tagKey)
+    ? resolveIndexedTagKey(index.tags, tagKey, readEntityNamespaceAliases())
     : undefined;
   if (tagKey && !canonicalTagKey) {
     return undefined;

@@ -4,7 +4,7 @@ import type { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexSearch, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { listedParkedTags } from '../../../../domain/index/parked';
 import { resolveIndexedTagKey } from '../../../../domain/index/tagNavigation';
-import { formatEntityTitle } from '../../../../domain/markdown/parser';
+import { EntityNamespaceAliases, formatEntityTitle } from '../../../../domain/markdown/parser';
 import type { Section, Task, WorkspaceIndex } from '../../../../domain/model';
 import type { TagTitleDisplayMode } from '../../../../domain/model/tags';
 import { formatQuery } from '../../../../domain/query/queryFormat';
@@ -20,6 +20,7 @@ import { createHubNote } from '../../../commands/hubNote';
 import { openResultAt, ResultOpening } from '../../../commands/navigation';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { setPinned } from '../../../commands/pinNote';
+import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
 import { readQueryContext } from '../../../commands/queryContext';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
@@ -206,7 +207,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /** What names the page's search, so the same search reached two ways finds this page. */
   public key(): string {
-    return getSearchKey(this.search.indexer.getSnapshot(), this.queryText);
+    return getSearchKey(this.search.indexer.getSnapshot(), this.queryText, readEntityNamespaceAliases());
   }
 
   /** The search the page shows, as typed. */
@@ -223,7 +224,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       node.field === 'tag' &&
       node.operator === 'eq' &&
       this.queryText === this.originQuery &&
-      resolveIndexedTagKey(index.tags, node.value) === undefined
+      resolveIndexedTagKey(index.tags, node.value, readEntityNamespaceAliases()) === undefined
     );
   }
 
@@ -615,7 +616,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       await this.applyQuery(page, text);
       return;
     }
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
+    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text), readEntityNamespaceAliases());
     const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
     const name = await vscode.window.showInputBox({
       title: 'Save search',
@@ -640,15 +641,20 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
 /**
  * What names a search, so the same search reached two ways finds one page:
- * a search of only tags is its set of tags, and any other search is its
- * canonical text.
+ * a search of only tags is its set of tags, each read through
+ * `entityNamespaceAliases` as the index read the notes, and any other search
+ * is its canonical text.
  */
-export function getSearchKey(index: WorkspaceIndex, queryText: string): string {
+export function getSearchKey(
+  index: WorkspaceIndex,
+  queryText: string,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): string {
   const parsed = parseQuery(queryText.trim());
   if (!parsed.node) {
     return '';
   }
-  const tagKeys = resolveQueryTagIntersection(index, parsed);
+  const tagKeys = resolveQueryTagIntersection(index, parsed, entityNamespaceAliases);
   return tagKeys
     ? `tags:${[...tagKeys].sort().join('\u0000')}`
     : `query:${formatQuery(parsed.node)}`;

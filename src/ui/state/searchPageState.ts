@@ -7,6 +7,7 @@ import {
 import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/query/queryEdit';
 import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
+import { EntityNamespaceAliases } from '../../domain/markdown/parser';
 import { getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
 import { ParsedQuery } from '../../domain/query/queryTypes';
@@ -470,7 +471,7 @@ export function evaluateSearchPage(
     .map((word) => word.trim())
     .filter(Boolean);
   const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
-  const tagKeys = resolveQueryTagIntersection(index, parsed);
+  const tagKeys = resolveQueryTagIntersection(index, parsed, options.queryContext.entityNamespaceAliases);
   const focusTag =
     tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
   const hubPaths = focusTag?.hubFilePaths ?? [];
@@ -530,11 +531,14 @@ export function evaluateSearchPage(
 
 /**
  * The canonical keys of a search made only of tags joined by AND, each of
- * which is in the index, or undefined for any other search.
+ * which is in the index, or undefined for any other search. A tag is read
+ * through `entityNamespaceAliases`, the workspace's when the caller has them
+ * (the built-in ones otherwise), as the index read the notes.
  */
 export function resolveQueryTagIntersection(
   index: WorkspaceIndex,
   parsed: ParsedQuery,
+  entityNamespaceAliases?: EntityNamespaceAliases,
 ): string[] | undefined {
   const intersection = getQueryTagIntersection(parsed.node);
   if (!intersection || intersection.length === 0) {
@@ -542,7 +546,7 @@ export function resolveQueryTagIntersection(
   }
   const tagKeys: string[] = [];
   for (const tagKey of intersection) {
-    const canonical = resolveIndexedTagKey(index.tags, tagKey);
+    const canonical = resolveIndexedTagKey(index.tags, tagKey, entityNamespaceAliases);
     if (!canonical) {
       return undefined;
     }

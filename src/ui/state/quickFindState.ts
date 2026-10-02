@@ -158,7 +158,7 @@ export function buildQuickFindResults(request: QuickFindRequest): QuickFindResul
   if (!input.trim()) {
     return buildEmptyResults(index, preferences, now);
   }
-  const { token, beforeToken, tagToken, parsed, message } = readTypedSearch(index, input);
+  const { token, beforeToken, tagToken, parsed, message } = readTypedSearch(index, input, request.queryContext);
   const conditions = matchConditions(token, request.conditions ?? [], beforeToken);
   const tags = matchTags({
     index,
@@ -199,18 +199,19 @@ interface TypedSearch {
 }
 
 /**
- * Reads what is typed. A `#` or `@` word that is not yet a whole tag is
+ * Reads what is typed. A `#` or `@` word that is not yet a whole tag (read
+ * through the context's namespace aliases, as the index read the notes) is
  * still being typed, so it completes to tags rather than narrowing the
  * results to nothing; and a search that does not parse is tried without its
  * last word, which is usually the unfinished part, so the rest keeps its
  * results while it is typed.
  */
-function readTypedSearch(index: WorkspaceIndex, input: string): TypedSearch {
+function readTypedSearch(index: WorkspaceIndex, input: string, context: QueryContext): TypedSearch {
   const token = getTrailingToken(input);
   const beforeToken = input.slice(0, input.length - token.length);
   const tagToken =
     /^-?[#@]/.test(token) &&
-    !resolveIndexedTagKey(index.tags, token.replace(/^-/, ''))
+    !resolveIndexedTagKey(index.tags, token.replace(/^-/, ''), context.entityNamespaceAliases)
       ? token.replace(/^-/, '')
       : undefined;
   let parsed = parseQuery(tagToken ? beforeToken : input);

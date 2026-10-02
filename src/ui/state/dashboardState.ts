@@ -1,4 +1,4 @@
-import { getEntityNamespace } from '../../domain/markdown/parser';
+import { EntityNamespaceAliases, getEntityNamespace } from '../../domain/markdown/parser';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
@@ -80,7 +80,7 @@ export function createDashboardSnapshot({
     entitySortMode: preferences.entitySortMode,
     selectedTag,
     viewState: { ...preferences.dashboardViewState },
-    savedFilters: createDashboardSavedFilters(index, preferences),
+    savedFilters: createDashboardSavedFilters(index, preferences, queryContext.entityNamespaceAliases),
     widgetConfig: preferences.dashboardWidgets.map((widget) => ({ ...widget })),
   };
 }
@@ -114,13 +114,15 @@ export function createTaskGlance(
 }
 
 /**
- * The saved views, with their tags resolved against the index. A saved query
- * keeps its place even when the tags it names are not in the index yet; a
- * saved tag set needs two tags that still exist.
+ * The saved views, with their tags resolved against the index, a saved
+ * query's through `entityNamespaceAliases` as the index read the notes. A
+ * saved query keeps its place even when the tags it names are not in the
+ * index yet; a saved tag set needs two tags that still exist.
  */
 export function createDashboardSavedFilters(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
+  entityNamespaceAliases?: EntityNamespaceAliases,
 ): DashboardSavedFilter[] {
   // A search Home already lists does not offer to be listed again.
   const onHome = new Set(
@@ -135,7 +137,7 @@ export function createDashboardSavedFilters(
         {
           id: filter.id,
           name: filter.name,
-          tags: resolveQueryTags(index, parseQuery(filter.query)),
+          tags: resolveQueryTags(index, parseQuery(filter.query), entityNamespaceAliases),
           query: filter.query,
           ...(filter.page ? { page: filter.page } : {}),
           ...home(filter.id),

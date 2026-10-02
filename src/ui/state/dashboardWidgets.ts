@@ -297,8 +297,8 @@ function buildTopTagsWidget({ index, preferences, options, widget, take }: Widge
 }
 
 /** The reader's saved searches, all of them. */
-function buildSavedSearchesWidget({ index, preferences, widget }: WidgetBuild): DashboardWidget {
-  const savedFilters = createDashboardSavedFilters(index, preferences);
+function buildSavedSearchesWidget({ index, preferences, options, widget }: WidgetBuild): DashboardWidget {
+  const savedFilters = createDashboardSavedFilters(index, preferences, options.queryContext.entityNamespaceAliases);
   return { ...widget, total: savedFilters.length, savedFilters };
 }
 
