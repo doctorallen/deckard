@@ -81,6 +81,16 @@ let fittingMore: Array<{ readonly element: Element; readonly parent: Node; reado
  * the results feel like they are following the typing.
  */
 const PREVIEW_DELAY_MS = 180;
+/**
+ * The most words, and the longest word, the host narrows by; it refuses a
+ * draft past either (`narrowPreviewSearch`), which would leave the results
+ * narrowed by the words before. The words past the first twelve, and a
+ * word too long to be one, only narrow further, so leaving them out shows
+ * a little more rather than something else.
+ */
+const PREVIEW_WORD_LIMIT = 12;
+const PREVIEW_WORD_LENGTH = 100;
+
 /** The words waiting out that delay, until they are sent. */
 let previewHandle: ReturnType<typeof setTimeout> | undefined;
 /** The words the host narrows by, or will once the words waiting are sent. */
@@ -148,7 +158,9 @@ const editor = createQueryEditor({
   // workspace. Sent on a short delay so a word costs one search, not one
   // per letter.
   onDraft: () => {
-    const words = editor.previewWords(editor.currentText());
+    const words = editor.previewWords(editor.currentText())
+      .filter((word) => word.length <= PREVIEW_WORD_LENGTH)
+      .slice(0, PREVIEW_WORD_LIMIT);
     if (words.join(' ') === sentPreview) {
       return;
     }

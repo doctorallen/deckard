@@ -351,6 +351,25 @@ test('the same words typed again after the search changed narrow it again', asyn
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
 });
 
+test('a long draft narrows by the words the host takes, never by older ones', async () => {
+  const { view } = await openSearch('');
+  const bar = () => view.find('[data-action="query-input"]');
+  view.type(bar(), 'planning');
+  await settle(300);
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+
+  // Thirteen words: the host takes twelve, so twelve are sent.
+  const missing = Array.from({ length: 12 }, (_, index) => `absent${index}`);
+  view.type(bar(), ['planning', ...missing].join(' '));
+  await settle(300);
+  assert.deepStrictEqual(visibleTitles(view), [], 'narrowed by the new words, which match nothing');
+
+  // A word longer than any word is left out, and the rest still narrow.
+  view.type(bar(), `planning ${'q'.repeat(101)}`);
+  await settle(300);
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
