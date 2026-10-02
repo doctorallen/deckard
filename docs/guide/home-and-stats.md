@@ -45,24 +45,25 @@ Three figures sit above Home: **Overdue** and **Due today**, as the [Tasks view]
 
 Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.
 
-**Gone quiet** watches people by default; its gear's **Namespace** chooses another, such as `project`. It reads `@` and `#person/…` tags, so one person written both ways counts as two tags ([Stats](#tags-that-look-alike) flags this). A name's date is its newest note's `updated:` field, daily note day, or file date.
+**Gone quiet** watches people by default; its gear's **Namespace** chooses another your tags use, such as `project`. It offers each namespace that starts with a letter, so `#2026/q1` adds no `2026`. It reads `@` and `#person/…` tags, so one person written both ways counts as two tags ([Stats](#tags-that-look-alike) flags this). A name's date is its newest note's `updated:` field, daily note day, or file date.
 
-**Paging**, in a widget's gear, shows all entries a page at a time. The Agenda widget and a saved search's results are not paged.
+**Paging**, in a widget's gear, shows all entries a page at a time, 3, 5, 10, or 20 to a page. The Agenda widget and a saved search's results are not paged.
 
 **Customize:** choose **Customize** in the View options gear, or on the line shown above the widgets until Home is arranged or the line dismissed. Then:
 
 - Drag a widget, or right-click to move it first or last. Switch it between half and full width.
 - Open its gear for entry count, paging, its search or saved search, or days to look back.
-- Remove it with **×**, or add more from **+ Add widget**. A new widget goes at the top, and is outlined for a moment.
+- Remove it with **×**, or add more from **+ Add widget**. A new widget goes at the top, and is outlined for a moment. Home holds 30 widgets at most; once full, it says so and adds none until one is removed.
+- <kbd>Escape</kbd> closes a widget's gear.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.
 
-While Home is the active editor, the Context sidebar lists every widget Home can add. Click one to start customizing and add it. **Reset widgets…** is there too.
+While Home is the active editor, the Context sidebar lists every widget Home can add. Click one to show Home, start customizing, and add it. **Reset widgets…** is there too.
 
 The arrangement is kept in VS Code's preferences, not your notes.
 
 ### Tags
 
-- **Tags** lists namespaced and unnamespaced tags together. Search them, narrow with **Namespace** (a person's `@` tag counts as **Person**) or to tags without one, and sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a row or use its context menu to move it. Display order does not change your files.
+- **Tags** lists namespaced and unnamespaced tags together, each named by what follows its namespace, so `#project/alpha/notes` reads *alpha/notes*. Search them, by the tag as written or as its row shows it, narrow with **Namespace** (a person's `@` tag counts as **Person**) or to tags without one, and sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a row or use its context menu to move it, or press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>, which move a tag within favorites or the rest; drag it across to favorite or unfavorite it. Display order does not change your files.
 - **Searches are kept** between visits. While one narrows the list, a line such as *Showing 3 of 42 tags matching “vendor”* offers **Clear search**, which also clears **Namespace**.
 - **Saved searches** are listed below the tags. Select one to reopen it where it was saved, or use **Remove**.
 - The View options gear sets one through four tag columns.
