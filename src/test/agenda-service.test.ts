@@ -7,6 +7,9 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { refuseMove, resolveTaskMove } from '../domain/tasks/boardMoves';
 import { AgendaService, AgendaServiceOptions, GroupMoveStep } from '../services/agendaService';
 import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from '../ui/state/agendaState';
+import { TaskService } from '../services/taskService';
+import type { ResourceUri } from '../ports/uri';
+import { FakeHistory, FakeNotes } from './fakeNotes';
 import { FakeSettings } from './fakeWorkspace';
 
 const at = (month: number, day: number): number => new Date(2026, month - 1, day).getTime();
@@ -156,6 +159,38 @@ suite('Agenda service', () => {
     assert.deepStrictEqual(refused, { kind: 'moved', moved: 0, refused: ['no tags'] });
   });
 
+  test('completes every task dropped on Done from one note, below a repeating one too', async () => {
+    const note = '# Plan\n- [ ] Water plants 🔁 every week 📅 2026-09-25\n- [ ] Pay rent 📅 2026-09-25\n';
+    const { index, service } = setup({}, note);
+    const notes = new FakeNotes({ 'plan.md': note });
+    const tasks = new TaskService<ResourceUri, number>({
+      notes,
+      history: new FakeHistory(notes),
+      ownWrites: { note: () => undefined },
+      keepRank: () => undefined,
+      resolveUri: async (filePath) => notes.uri(filePath),
+      configuration: new FakeSettings({}),
+      clock: { now: () => now },
+    });
+    const outcomes: string[] = [];
+    // The index is not read again between writes, as a drop does not wait
+    // for it: the next occurrence written above would move Pay rent down.
+    const result = await service.moveToGroup(
+      [taskTitled(index, 'Water'), taskTitled(index, 'Pay')],
+      { groupId: 'donetoday', groupBy: 'due' },
+      { from: new Map(), index: () => index },
+      async (step) => {
+        outcomes.push(step.kind === 'complete' ? (await tasks.toggle(step.task, true)).kind : step.kind);
+      },
+    );
+    assert.deepStrictEqual(result, { kind: 'moved', moved: 2, refused: [] });
+    assert.deepStrictEqual(outcomes, ['updated', 'updated']);
+    assert.strictEqual(
+      notes.text('plan.md'),
+      '# Plan\n- [ ] Water plants 🔁 every week 📅 2026-10-02\n- [x] Water plants 🔁 every week 📅 2026-09-25 ✅ 2026-09-25\n- [x] Pay rent 📅 2026-09-25 ✅ 2026-09-25\n',
+    );
+  });
+
   test('completes and reopens only the boxes that changed, each read again from the index', async () => {
     const { index, service } = setup();
     const late = taskTitled(index, 'Late');
@@ -172,7 +207,7 @@ suite('Agenda service', () => {
         return task.id !== 'gone';
       },
     );
-    assert.deepStrictEqual(toggled, [['Late', true], ['Done', false]]);
+    assert.deepStrictEqual(toggled, [['Done', false], ['Late', true]], 'from the bottom of the note up');
     assert.deepStrictEqual(result, { failed: true });
   });
 

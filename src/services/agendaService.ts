@@ -245,9 +245,11 @@ export class AgendaService<G extends AgendaGroupLike> {
   /**
    * Makes the tasks dropped on a group belong to it: each takes the edit the
    * Task board's own drop on that column makes, written by `write` before
-   * the next is resolved, from the index as it then is. A group that names
-   * no single edit writes nothing; a task the move cannot change is left as
-   * it is, with the reason.
+   * the next is resolved, from the index as it then is. Each note's tasks
+   * are written from the bottom up, so a line one write adds, such as a
+   * repeating task's next occurrence, never moves a task still to come. A
+   * group that names no single edit writes nothing; a task the move cannot
+   * change is left as it is, with the reason.
    */
   public async moveToGroup(
     tasks: readonly Task[],
@@ -262,7 +264,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     const options = this.readBoardOptions(this.options.readQueryContext());
     const refused: string[] = [];
     let moved = 0;
-    for (const task of tasks) {
+    for (const task of bottomUp(tasks, (task) => task)) {
       const source = context.from.get(task.id);
       const move = this.options.model.resolveMove(task, columnId, options, {
         index: context.index(),
@@ -284,7 +286,8 @@ export class AgendaService<G extends AgendaGroupLike> {
    * Completes or reopens the tasks whose boxes were checked or cleared: a
    * checked box completes an open task, a cleared one reopens a done one,
    * and a box that already says what the task is changes nothing. Each is
-   * read again from the index before `toggle` writes it. Returns whether any
+   * read again from the index before `toggle` writes it, each note's from
+   * the bottom up, as {@link moveToGroup} writes them. Returns whether any
    * could not be written, so the view can give its box back.
    */
   public async setCompleted(
@@ -292,7 +295,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     toggle: (task: Task, complete: boolean) => Promise<boolean>,
   ): Promise<{ failed: boolean }> {
     let failed = false;
-    for (const { task: drawn, checked } of changes) {
+    for (const { task: drawn, checked } of bottomUp([...changes], (change) => change.task)) {
       if (checked === drawn.completed) {
         continue;
       }
@@ -350,6 +353,23 @@ export class AgendaService<G extends AgendaGroupLike> {
   private settings() {
     return this.options.configuration.getConfiguration('deckard');
   }
+}
+
+/**
+ * The items note by note, in the order each note first comes, and each
+ * note's from its last line up: a write that adds or takes away a line then
+ * moves no task written after it.
+ */
+function bottomUp<T>(items: readonly T[], taskOf: (item: T) => Pick<Task, 'filePath' | 'lineNumber'>): T[] {
+  const byNote = new Map<string, T[]>();
+  for (const item of items) {
+    const note = byNote.get(taskOf(item).filePath) ?? [];
+    note.push(item);
+    byNote.set(taskOf(item).filePath, note);
+  }
+  return [...byNote.values()].flatMap((note) =>
+    [...note].sort((left, right) => taskOf(right).lineNumber - taskOf(left).lineNumber),
+  );
 }
 
 /** Why the view shows no task, or cannot read its search; see {@link AgendaStatus}. */
