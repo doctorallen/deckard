@@ -1,3 +1,4 @@
+import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -157,4 +158,63 @@ export function recordContextKeys(): { value(key: string): unknown; dispose(): v
 /** Activates Deckard, so its commands and listeners are in place. */
 export async function activateDeckard(): Promise<void> {
   await vscode.extensions.getExtension('esperinnovations.deckard-notes')?.activate();
+}
+
+/** Where a setting is set before a test writes it, one value per level. */
+export interface Arrangement<T> {
+  name: string;
+  values: Partial<Record<Level, T>>;
+}
+
+/**
+ * The places a reader can set a window setting, with `a` and `b` two
+ * values of it: nowhere, for the user, in the workspace, and in both with
+ * different values, the workspace's in force. A folder's settings.json is
+ * left out: for a window setting it is the workspace's in a single folder
+ * and ignored in a multi-root workspace, as the zen suite checks.
+ */
+export function arrangementsOf<T>(a: T, b: T): Arrangement<T>[] {
+  return [
+    { name: 'set nowhere', values: {} },
+    { name: 'set for the user', values: { user: a } },
+    { name: 'set in the workspace', values: { workspace: a } },
+    { name: 'set for the user and, otherwise, in the workspace', values: { user: b, workspace: a } },
+  ];
+}
+
+/** Sets `deckard.<key>` at each level the arrangement names. */
+export async function arrange<T>(key: string, arrangement: Arrangement<T>): Promise<void> {
+  for (const [level, value] of Object.entries(arrangement.values) as [Level, T][]) {
+    await setAt(key, level, value);
+  }
+}
+
+/** The level whose value of a window setting is in force: the workspace's when it holds one, else the user's. */
+export function decidingLevel(key: string): Level {
+  return levels(key).workspace === undefined ? 'user' : 'workspace';
+}
+
+/**
+ * Writes a setting the other way from what is in force, back, and the
+ * other way again, through `write`, and asserts after each that the window
+ * reads what was written and that it was written at the level that was in
+ * force. `a` and `b` are two values of the setting.
+ */
+export async function assertWrittenWhereSet<T>(
+  key: string,
+  write: (value: T) => Thenable<unknown>,
+  [a, b]: [T, T],
+): Promise<void> {
+  const level = decidingLevel(key);
+  const first = sameValue(deckard().get(key), a) ? b : a;
+  const second = first === a ? b : a;
+  for (const [step, value] of [['the first write', first], ['writing it back', second], ['writing it again', first]] as const) {
+    await write(value);
+    assert.deepStrictEqual(deckard().get(key), value, `${step}: the window reads ${JSON.stringify(value)}`);
+    assert.deepStrictEqual(
+      levels(key)[level],
+      value,
+      `${step}: written in the ${level} settings, ${JSON.stringify(levels(key))}`,
+    );
+  }
 }
