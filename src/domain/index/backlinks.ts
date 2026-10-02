@@ -55,6 +55,11 @@ export const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
  */
 export const WIKI_LINK_WITH_TEXT = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
+/**
+ * Splits what sits between a link's brackets, display text already removed,
+ * into the note and the heading or `^id` after the first `#`. Each part is
+ * trimmed; an empty heading or `^id` is left out rather than kept as `''`.
+ */
 export function parseWikiTarget(text: string): WikiLinkTarget {
   const hash = text.indexOf('#');
   if (hash < 0) {
@@ -172,9 +177,16 @@ export function findLinkedBlock(
   return file.blockIds?.[block];
 }
 
+/**
+ * The links of one index grouped by the note they open, so a note's, a
+ * heading's, or a line's backlinks are a lookup rather than a scan. A link
+ * whose name opens no note, or several, is kept in `occurrences` but
+ * answers none of the lookups.
+ */
 export class BacklinkIndex {
   private readonly byTarget = new Map<string, WikiLinkOccurrence[]>();
 
+  /** Groups the links by target, keeping the order they were found in. */
   public constructor(public readonly occurrences: readonly WikiLinkOccurrence[]) {
     for (const occurrence of occurrences) {
       if (occurrence.targetPath) {

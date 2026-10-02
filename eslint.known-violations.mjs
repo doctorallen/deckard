@@ -5,10 +5,6 @@
 // violation regenerates it, and the list only shrinks.
 export default {
   "@typescript-eslint/max-params": {
-    "src/domain/index/indexState.ts": [
-      "forget",
-      "remember"
-    ],
     "src/domain/markdown/parser.ts": [
       "(arrow function)",
       "collectTagSpans",
@@ -67,7 +63,6 @@ export default {
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
-    "src/domain/index/parked.ts": 1,
     "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/query/queryEvaluator.ts": 3,
     "src/ui/commands/bulkEdit.ts": 1,
@@ -190,9 +185,6 @@ export default {
     "src/core/storage/searchStoreWorker.ts": 1,
     "src/core/storage/searchStoreWorkerClient.ts": 2,
     "src/core/workspace/scanner.ts": 3,
-    "src/domain/index/backlinks.ts": 3,
-    "src/domain/index/indexState.ts": 9,
-    "src/domain/index/parked.ts": 5,
     "src/domain/markdown/captureWords.ts": 2,
     "src/domain/markdown/dates.ts": 1,
     "src/domain/markdown/inlineRanges.ts": 1,
@@ -276,12 +268,6 @@ export default {
     "scripts/capture-dashboard-screenshot.mjs": [
       "capture",
       "writeCompanionExtension"
-    ],
-    "src/domain/index/indexState.ts": [
-      "rank"
-    ],
-    "src/domain/index/parked.ts": [
-      "computeParked"
     ],
     "src/domain/markdown/dates.ts": [
       "readPhrase"
@@ -397,7 +383,6 @@ export default {
   },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
-    "src/domain/index/indexState.ts": 2,
     "src/domain/markdown/dates.ts": 1,
     "src/domain/markdown/parser.ts": 1,
     "src/domain/markdown/taskMetadata.ts": 2,
@@ -452,8 +437,6 @@ export default {
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
-    "src/domain/index/indexState.ts": 4,
-    "src/domain/index/parked.ts": 1,
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,

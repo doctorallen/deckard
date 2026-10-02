@@ -118,6 +118,24 @@ export function computeContribution(
   file: ParsedFile,
   entityKindOf: EntityKindOf = createEntityKindMemo(),
 ): FileContribution {
+  return {
+    file,
+    ...collectTagOps(file, entityKindOf),
+    hubKeys: (file.hub?.describes ?? []).map((reference) => reference.key),
+    ...computeAssociationParts(file),
+  };
+}
+
+/**
+ * The note's tag mentions in the order the index meets them: each
+ * section's, then each task's, then the front-matter tags no section or
+ * task already carries. Also groups them by tag, and lists the tags and
+ * the entity tags in the order each is first mentioned.
+ */
+function collectTagOps(
+  file: ParsedFile,
+  entityKindOf: EntityKindOf,
+): Pick<FileContribution, 'ops' | 'opsByKey' | 'tagKeys' | 'entityKeys'> {
   const ops: TagOp[] = [];
   const opsByKey = new Map<string, TagOp[]>();
   const tagKeys: string[] = [];
@@ -132,10 +150,11 @@ export function computeContribution(
       opsByKey.set(op.key, [op]);
       tagKeys.push(op.key);
     }
-    if (op.entityKind && !seenEntities.has(op.key)) {
-      seenEntities.add(op.key);
-      entityKeys.push(op.key);
+    if (!op.entityKind || seenEntities.has(op.key)) {
+      return;
     }
+    seenEntities.add(op.key);
+    entityKeys.push(op.key);
   };
 
   file.sections.forEach((section) => {
@@ -188,16 +207,7 @@ export function computeContribution(
       entityKind: entityKindOf(reference.key, reference.label),
     });
   });
-
-  return {
-    file,
-    ops,
-    opsByKey,
-    tagKeys,
-    entityKeys,
-    hubKeys: (file.hub?.describes ?? []).map((reference) => reference.key),
-    ...computeAssociationParts(file),
-  };
+  return { ops, opsByKey, tagKeys, entityKeys };
 }
 
 /**
@@ -360,16 +370,20 @@ export class LazyTagAssociations implements ReadonlyMap<string, TagAssociation[]
   private readonly lists = new Map<string, TagAssociation[]>();
   private everything: Map<string, TagAssociation[]> | undefined;
 
+  /** Ranks nothing yet: each tag's list is worked out when it is first read. */
   public constructor(private readonly generation: AssociationGeneration) {}
 
+  /** How many tags have an association, known without ranking any. */
   public get size(): number {
     return this.generation.filesByTag.size;
   }
 
+  /** Whether a tag has an association, known without ranking it. */
   public has(key: string): boolean {
     return this.generation.filesByTag.has(key);
   }
 
+  /** One tag's ranked associations, ranking only that tag the first time it is read. */
   public get(key: string): TagAssociation[] | undefined {
     const cached = this.everything?.get(key) ?? this.lists.get(key);
     if (cached) {
@@ -382,6 +396,7 @@ export class LazyTagAssociations implements ReadonlyMap<string, TagAssociation[]
     return list;
   }
 
+  /** Visits every tag in the whole-workspace order, which ranks them all. */
   public forEach(
     callback: (value: TagAssociation[], key: string, map: ReadonlyMap<string, TagAssociation[]>) => void,
     thisArg?: unknown,
@@ -389,18 +404,22 @@ export class LazyTagAssociations implements ReadonlyMap<string, TagAssociation[]
     this.all().forEach((value, key) => callback.call(thisArg, value, key, this));
   }
 
+  /** Every tag and its list in the whole-workspace order, which ranks them all. */
   public entries(): MapIterator<[string, TagAssociation[]]> {
     return this.all().entries();
   }
 
+  /** Every tag in the whole-workspace order, which ranks them all. */
   public keys(): MapIterator<string> {
     return this.all().keys();
   }
 
+  /** Every tag's list in the whole-workspace order, which ranks them all. */
   public values(): MapIterator<TagAssociation[]> {
     return this.all().values();
   }
 
+  /** The same as `entries()`, so the map spreads and iterates like a Map. */
   public [Symbol.iterator](): MapIterator<[string, TagAssociation[]]> {
     return this.all().entries();
   }
@@ -423,6 +442,15 @@ export class LazyTagAssociations implements ReadonlyMap<string, TagAssociation[]
     return this.everything;
   }
 
+  /**
+   * A tag's associations, ranked by compareRanked and cached for the life
+   * of this generation; undefined for a tag no note relates to another.
+   *
+   * The evidence is summed in two phases, every note's headings first, in
+   * note order, then every note's tasks, because that is the order the
+   * whole-workspace pass met it: the weights are floating-point sums, and
+   * a different order could round differently.
+   */
   private rank(tagKey: string): RankedAssociation[] | undefined {
     const cached = this.ranked.get(tagKey);
     if (cached) {
@@ -439,102 +467,144 @@ export class LazyTagAssociations implements ReadonlyMap<string, TagAssociation[]
         byAssociated: contributions.get(filePath)?.pairs.get(tagKey),
       }))
       .sort((left, right) => left.ordinal - right.ordinal);
-
-    interface Accumulator {
-      reference: TagReference;
-      first: [number, number, number];
-      weight: number;
-      coOccurrenceCount: number;
-      headingRelationshipCount: number;
-      sectionIds: string[];
-      taskIds: string[];
-      units: number;
-    }
     const accumulators = new Map<string, Accumulator>();
-    const accumulator = (
-      key: string,
-      reference: TagReference | undefined,
-      first: [number, number, number],
-    ): Accumulator => {
-      let found = accumulators.get(key);
-      if (!found) {
-        found = {
-          reference: reference ?? { key, label: key },
-          first,
-          weight: 0,
-          coOccurrenceCount: 0,
-          headingRelationshipCount: 0,
-          sectionIds: [],
-          taskIds: [],
-          units: 0,
-        };
-        accumulators.set(key, found);
-      }
-      return found;
-    };
-    // Evidence is summed in the order the workspace pass met it: every
-    // note's headings first, in note order, then every note's tasks.
-    parts.forEach(({ ordinal, byAssociated }) =>
-      byAssociated?.forEach((part, associatedKey) => {
-        if (part.sectionWeights.length === 0) {
-          return;
-        }
-        const found = accumulator(associatedKey, part.sectionReference, [0, ordinal, part.sectionFirst]);
-        part.sectionWeights.forEach((weight) => {
-          found.weight += weight;
-        });
-        found.coOccurrenceCount += part.sectionCoOccurrences;
-        found.headingRelationshipCount += part.headingRelationships;
-        found.sectionIds.push(...part.sectionIds);
-      }),
-    );
-    parts.forEach(({ ordinal, byAssociated }) =>
-      byAssociated?.forEach((part, associatedKey) => {
-        const found =
-          part.taskCoOccurrences > 0
-            ? accumulator(associatedKey, part.taskReference, [1, ordinal, part.taskFirst])
-            : accumulators.get(associatedKey);
-        if (!found) {
-          return;
-        }
-        for (let count = 0; count < part.taskCoOccurrences; count += 1) {
-          found.weight += 1;
-        }
-        found.coOccurrenceCount += part.taskCoOccurrences;
-        found.taskIds.push(...part.taskIds);
-        found.units += part.units;
-      }),
-    );
+    sumSectionEvidence(parts, accumulators);
+    sumTaskEvidence(parts, accumulators);
 
     const tagSourceUnitCount = tagUnits.get(tagKey) ?? 0;
-    const ranked = [...accumulators].map(([associatedKey, found]): RankedAssociation => {
-      const associatedTagSourceUnitCount = tagUnits.get(associatedKey) ?? 0;
-      return {
-        first: found.first,
-        association: {
-          associatedTag: { ...found.reference },
-          sectionIds: found.sectionIds,
-          taskIds: found.taskIds,
-          weight: found.weight,
-          coOccurrenceCount: found.coOccurrenceCount,
-          headingRelationshipCount: found.headingRelationshipCount,
-          count: found.units,
-          normalizedWeight: getNormalizedAssociationWeight(
-            found.weight,
-            found.units,
-            tagSourceUnitCount,
-            associatedTagSourceUnitCount,
-          ),
-          tagSourceUnitCount,
-          associatedTagSourceUnitCount,
-          totalSourceUnitCount: totalUnits,
-        },
-      };
-    });
+    const ranked = [...accumulators].map(([associatedKey, found]) =>
+      toRankedAssociation(found, {
+        tagSourceUnitCount,
+        associatedTagSourceUnitCount: tagUnits.get(associatedKey) ?? 0,
+        totalUnits,
+      }),
+    );
     ranked.sort(compareRanked);
     this.ranked.set(tagKey, ranked);
     return ranked;
   }
+}
+
+/** One note's evidence about a tag, by the tag it relates to, and where the note stands. */
+interface OrderedPart {
+  ordinal: number;
+  byAssociated: ReadonlyMap<string, PairPart> | undefined;
+}
+
+/** A tag's relation to one other tag while its notes' evidence is summed. */
+interface Accumulator {
+  reference: TagReference;
+  first: [number, number, number];
+  weight: number;
+  coOccurrenceCount: number;
+  headingRelationshipCount: number;
+  sectionIds: string[];
+  taskIds: string[];
+  units: number;
+}
+
+/**
+ * The accumulator for an associated tag, made the first time it is asked
+ * for. The first asking fixes its spelling and where it was first seen, so
+ * the order of the askings is the order of the map, which ranks the ties.
+ */
+function accumulatorFor(
+  accumulators: Map<string, Accumulator>,
+  key: string,
+  reference: TagReference | undefined,
+  first: [number, number, number],
+): Accumulator {
+  let found = accumulators.get(key);
+  if (!found) {
+    found = {
+      reference: reference ?? { key, label: key },
+      first,
+      weight: 0,
+      coOccurrenceCount: 0,
+      headingRelationshipCount: 0,
+      sectionIds: [],
+      taskIds: [],
+      units: 0,
+    };
+    accumulators.set(key, found);
+  }
+  return found;
+}
+
+/** The heading phase: each note's heading evidence, in note order, weight by weight. */
+function sumSectionEvidence(parts: readonly OrderedPart[], accumulators: Map<string, Accumulator>): void {
+  parts.forEach(({ ordinal, byAssociated }) =>
+    byAssociated?.forEach((part, associatedKey) => {
+      if (part.sectionWeights.length === 0) {
+        return;
+      }
+      const found = accumulatorFor(accumulators, associatedKey, part.sectionReference, [0, ordinal, part.sectionFirst]);
+      part.sectionWeights.forEach((weight) => {
+        found.weight += weight;
+      });
+      found.coOccurrenceCount += part.sectionCoOccurrences;
+      found.headingRelationshipCount += part.headingRelationships;
+      found.sectionIds.push(...part.sectionIds);
+    }),
+  );
+}
+
+/**
+ * The task phase, after every note's headings: each task co-occurrence adds
+ * one, a step at a time as the workspace pass added it. A part with no task
+ * evidence still adds its units to a relation the heading phase made.
+ */
+function sumTaskEvidence(parts: readonly OrderedPart[], accumulators: Map<string, Accumulator>): void {
+  parts.forEach(({ ordinal, byAssociated }) =>
+    byAssociated?.forEach((part, associatedKey) => {
+      const found =
+        part.taskCoOccurrences > 0
+          ? accumulatorFor(accumulators, associatedKey, part.taskReference, [1, ordinal, part.taskFirst])
+          : accumulators.get(associatedKey);
+      if (!found) {
+        return;
+      }
+      for (let count = 0; count < part.taskCoOccurrences; count += 1) {
+        found.weight += 1;
+      }
+      found.coOccurrenceCount += part.taskCoOccurrences;
+      found.taskIds.push(...part.taskIds);
+      found.units += part.units;
+    }),
+  );
+}
+
+/** How many authoring units hold each tag of a pair, and the workspace. */
+interface UnitCounts {
+  tagSourceUnitCount: number;
+  associatedTagSourceUnitCount: number;
+  totalUnits: number;
+}
+
+/** A summed relation as the association the index hands out, with where it was first seen. */
+function toRankedAssociation(found: Accumulator, counts: UnitCounts): RankedAssociation {
+  const { tagSourceUnitCount, associatedTagSourceUnitCount, totalUnits } = counts;
+  return {
+    first: found.first,
+    association: {
+      associatedTag: { ...found.reference },
+      sectionIds: found.sectionIds,
+      taskIds: found.taskIds,
+      weight: found.weight,
+      coOccurrenceCount: found.coOccurrenceCount,
+      headingRelationshipCount: found.headingRelationshipCount,
+      count: found.units,
+      normalizedWeight: getNormalizedAssociationWeight(
+        found.weight,
+        found.units,
+        tagSourceUnitCount,
+        associatedTagSourceUnitCount,
+      ),
+      tagSourceUnitCount,
+      associatedTagSourceUnitCount,
+      totalSourceUnitCount: totalUnits,
+    },
+  };
 }
 
 /**
@@ -545,8 +615,11 @@ function compareRanked(
   left: RankedAssociation | undefined,
   right: RankedAssociation | undefined,
 ): number {
-  if (!left || !right) {
-    return left ? -1 : right ? 1 : 0;
+  if (!left) {
+    return right ? 1 : 0;
+  }
+  if (!right) {
+    return -1;
   }
   const a = left.association;
   const b = right.association;
@@ -581,6 +654,17 @@ function getNormalizedAssociationWeight(
   );
   const supportConfidence = support / (support + 1);
   return rawWeight * prevalence * (0.5 + supportConfidence / 2);
+}
+
+/**
+ * The association records an update builds while it adds and takes back
+ * notes' parts. Sets the last generation holds are copied before they
+ * change; `copied` names the ones this update already copied.
+ */
+interface GenerationDraft {
+  associationFiles: Map<string, ReadonlySet<string>>;
+  tagUnits: Map<string, number>;
+  copied: Set<string>;
 }
 
 /** A change to the notes: a note saved or added, or a path removed. */
@@ -633,15 +717,13 @@ export class IndexState {
    */
   public static build(files: Iterable<ParsedFile>, reuse?: IndexState): IndexState {
     const state = new IndexState(reuse?.entityKindOf);
-    const associationFiles = new Map<string, ReadonlySet<string>>();
-    const tagUnits = new Map<string, number>();
-    const copied = new Set<string>();
+    const draft: GenerationDraft = { associationFiles: new Map(), tagUnits: new Map(), copied: new Set() };
     let totalUnits = 0;
     for (const file of files) {
       const replaced = state.contributions.get(file.filePath);
       if (replaced) {
         // Two notes under one path: the later wins, in the earlier's place.
-        state.forget(file.filePath, replaced, associationFiles, tagUnits, copied);
+        state.forget(file.filePath, replaced, draft);
         totalUnits -= replaced.unitCount;
       } else {
         state.ordinals.set(file.filePath, state.nextOrdinal);
@@ -651,14 +733,14 @@ export class IndexState {
       const contribution = kept?.file === file ? kept : computeContribution(file, state.entityKindOf);
       state.notes.set(file.filePath, file);
       state.contributions.set(file.filePath, contribution);
-      state.remember(file.filePath, contribution, associationFiles, tagUnits, copied);
+      state.remember(file.filePath, contribution, draft);
       totalUnits += contribution.unitCount;
     }
     state.generation = {
       contributions: new Map(state.contributions),
       ordinals: new Map(state.ordinals),
-      filesByTag: associationFiles,
-      tagUnits,
+      filesByTag: draft.associationFiles,
+      tagUnits: draft.tagUnits,
       totalUnits,
     };
     return state;
@@ -719,14 +801,16 @@ export class IndexState {
     if (changes.length === 0) {
       return;
     }
-    const associationFiles = new Map(this.generation.filesByTag);
-    const tagUnits = new Map(this.generation.tagUnits);
+    const draft: GenerationDraft = {
+      associationFiles: new Map(this.generation.filesByTag),
+      tagUnits: new Map(this.generation.tagUnits),
+      copied: new Set(),
+    };
     let totalUnits = this.generation.totalUnits;
-    const copied = new Set<string>();
     for (const change of changes) {
       const old = this.contributions.get(change.filePath);
       if (old) {
-        this.forget(change.filePath, old, associationFiles, tagUnits, copied);
+        this.forget(change.filePath, old, draft);
         totalUnits -= old.unitCount;
         this.markDirty(old);
       }
@@ -745,19 +829,24 @@ export class IndexState {
       const contribution = computeContribution(change.file, this.entityKindOf);
       this.notes.set(change.filePath, change.file);
       this.contributions.set(change.filePath, contribution);
-      this.remember(change.filePath, contribution, associationFiles, tagUnits, copied);
+      this.remember(change.filePath, contribution, draft);
       totalUnits += contribution.unitCount;
       this.markDirty(contribution);
     }
     this.generation = {
       contributions: new Map(this.contributions),
       ordinals: new Map(this.ordinals),
-      filesByTag: associationFiles,
-      tagUnits,
+      filesByTag: draft.associationFiles,
+      tagUnits: draft.tagUnits,
       totalUnits,
     };
   }
 
+  /**
+   * Notes the tags a note's part names, before and after a change, as ones
+   * the next snapshot folds again. Once everything is dirty, nothing more
+   * needs noting.
+   */
   private markDirty(contribution: FileContribution): void {
     if (this.dirty === 'all') {
       return;
@@ -768,13 +857,8 @@ export class IndexState {
   }
 
   /** Adds a note's part to the per-tag records and the id counts. */
-  private remember(
-    filePath: string,
-    contribution: FileContribution,
-    associationFiles: Map<string, ReadonlySet<string>>,
-    tagUnits: Map<string, number>,
-    copied: Set<string>,
-  ): void {
+  private remember(filePath: string, contribution: FileContribution, draft: GenerationDraft): void {
+    const { associationFiles, tagUnits, copied } = draft;
     contribution.tagKeys.forEach((key) => addTo(this.filesByTag, key, filePath));
     contribution.hubKeys.forEach((key) => addTo(this.hubFilesByTag, key, filePath));
     contribution.pairs.forEach((_, key) =>
@@ -787,22 +871,18 @@ export class IndexState {
   }
 
   /** Takes a note's part back out of the per-tag records and id counts. */
-  private forget(
-    filePath: string,
-    contribution: FileContribution,
-    associationFiles: Map<string, ReadonlySet<string>>,
-    tagUnits: Map<string, number>,
-    copied: Set<string>,
-  ): void {
+  private forget(filePath: string, contribution: FileContribution, draft: GenerationDraft): void {
+    const { associationFiles, tagUnits, copied } = draft;
     contribution.tagKeys.forEach((key) => removeFrom(this.filesByTag, key, filePath));
     contribution.hubKeys.forEach((key) => removeFrom(this.hubFilesByTag, key, filePath));
     contribution.pairs.forEach((_, key) => {
       const next = writableSet(associationFiles, key, copied);
       next.delete(filePath);
-      if (next.size === 0) {
-        associationFiles.delete(key);
-        copied.delete(key);
+      if (next.size > 0) {
+        return;
       }
+      associationFiles.delete(key);
+      copied.delete(key);
     });
     contribution.tagUnits.forEach((count, key) => {
       const remaining = (tagUnits.get(key) ?? 0) - count;
@@ -815,6 +895,12 @@ export class IndexState {
     this.countIds(contribution.file, -1);
   }
 
+  /**
+   * Counts a note's section and task ids in (`step` 1) or out (-1), keeping
+   * how many uses past the first there are across the workspace. A repeat
+   * is what a note's own part cannot see, so while there is one, snapshot()
+   * builds the index the direct way (see the file header).
+   */
   private countIds(file: ParsedFile, step: 1 | -1): void {
     const count = (id: string): void => {
       const before = this.idUses.get(id) ?? 0;
@@ -824,7 +910,6 @@ export class IndexState {
       } else {
         this.idUses.delete(id);
       }
-      // Each use past the first is a repeat.
       this.repeatedIds += Math.max(0, after - 1) - Math.max(0, before - 1);
     };
     file.sections.forEach((section) => count(`s\u0000${section.id}`));
@@ -878,19 +963,21 @@ export class IndexState {
     const entities = new Map<string, Entity>();
     this.contributions.forEach((contribution) => {
       contribution.tagKeys.forEach((key) => {
-        if (!tags.has(key)) {
-          const tag = dirty.has(key) ? rebuiltTags.get(key) : previous.tags.get(key);
-          if (tag) {
-            tags.set(key, tag);
-          }
+        if (tags.has(key)) {
+          return;
+        }
+        const tag = dirty.has(key) ? rebuiltTags.get(key) : previous.tags.get(key);
+        if (tag) {
+          tags.set(key, tag);
         }
       });
       contribution.entityKeys.forEach((key) => {
-        if (!entities.has(key)) {
-          const entity = dirty.has(key) ? rebuiltEntities.get(key) : previous.entities.get(key);
-          if (entity) {
-            entities.set(key, entity);
-          }
+        if (entities.has(key)) {
+          return;
+        }
+        const entity = dirty.has(key) ? rebuiltEntities.get(key) : previous.entities.get(key);
+        if (entity) {
+          entities.set(key, entity);
         }
       });
     });
@@ -961,12 +1048,9 @@ function applyTagOp(
     };
     tags.set(op.key, tag);
   }
-  if (op.type === 'section') {
-    tag.sectionIds.push(op.reference);
-  } else if (op.type === 'task') {
-    tag.taskIds.push(op.reference);
-  } else if (!tag.filePaths.includes(op.reference)) {
-    tag.filePaths.push(op.reference);
+  const tagReferences = referencesOf(tag, op.type);
+  if (op.type !== 'file' || !tagReferences.includes(op.reference)) {
+    tagReferences.push(op.reference);
   }
 
   if (!op.entityKind) {
@@ -988,18 +1072,35 @@ function applyTagOp(
     };
     entities.set(op.key, entity);
   }
-  const references =
-    op.type === 'section'
-      ? entity.sectionIds
-      : op.type === 'task'
-        ? entity.taskIds
-        : entity.filePaths;
-  references.push(op.reference);
+  referencesOf(entity, op.type).push(op.reference);
   if (op.updatedAt !== undefined && (entity.updatedAt ?? 0) < op.updatedAt) {
     entity.updatedAt = op.updatedAt;
   }
 }
 
+/**
+ * The list a tag's or an entity's record keeps one kind of mention in. A
+ * tag lists a note once however often its front matter names the tag; an
+ * entity keeps every mention.
+ */
+function referencesOf(
+  record: { sectionIds: string[]; taskIds: string[]; filePaths: string[] },
+  type: TagOp['type'],
+): string[] {
+  switch (type) {
+    case 'section':
+      return record.sectionIds;
+    case 'task':
+      return record.taskIds;
+    case 'file':
+      return record.filePaths;
+  }
+}
+
+/**
+ * The name an entity tag reads as: its last path segment, without the
+ * marker, with hyphens as spaces, so `@team/ada-lovelace` is "ada lovelace".
+ */
 function getEntityName(label: string): string {
   const name = label.slice(1).split('/').at(-1) ?? label;
   return name.replaceAll('-', ' ');
@@ -1024,6 +1125,7 @@ function writableSet(
   return next;
 }
 
+/** Adds a value to the set under `key`, made the first time. */
 function addTo(map: Map<string, Set<string>>, key: string, value: string): void {
   const set = map.get(key);
   if (set) {
@@ -1033,6 +1135,7 @@ function addTo(map: Map<string, Set<string>>, key: string, value: string): void 
   }
 }
 
+/** Removes a value from the set under `key`, dropping the key once its set is empty. */
 function removeFrom(map: Map<string, Set<string>>, key: string, value: string): void {
   const set = map.get(key);
   set?.delete(value);

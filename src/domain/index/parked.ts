@@ -1,5 +1,6 @@
 import { QueryNode } from '../query/queryTypes';
 import { ParkedState, ParsedFile, Section, Task, WorkspaceIndex } from '../model';
+import { someHeadingAncestor } from './associationEvidence';
 
 export type { ParkedState };
 
@@ -23,6 +24,7 @@ export const NO_PARKED_RULES: ParkedRules = {
   tags: [],
 };
 
+/** A state with nothing parked, whose sets the caller fills. */
 export function emptyParkedState(): ParkedState {
   return {
     files: new Set(),
@@ -66,34 +68,55 @@ export function computeParked(
   rules: ParkedRules,
 ): ParkedState {
   const state = emptyParkedState();
-  const parkedKeys = new Set<string>();
-  if (rules.tags.length > 0) {
-    index.tags.forEach((_, key) => {
-      if (isUnderParkedTag(key, rules.tags)) {
-        parkedKeys.add(key);
-      }
-    });
-  }
+  const parkedKeys = findParkedKeys(index, rules);
   if (!rules.hasFolders && parkedKeys.size === 0) {
     return state;
   }
-
-  const parkWhole = (file: ParsedFile): void => {
-    state.files.add(file.filePath);
-    file.sections.forEach((section) => state.sections.add(section.id));
-    file.tasks.forEach((task) => state.tasks.add(task.id));
-  };
   if (rules.hasFolders) {
-    index.files.forEach((file, filePath) => {
-      if (rules.isParkedPath(filePath)) {
-        state.byFolder += 1;
-        parkWhole(file);
-      }
-    });
+    parkFolders(index, rules, state);
   }
+  parkTagged(index, parkedKeys, state);
+  markParkedOnlyTags(index, state);
+  return state;
+}
 
-  // The notes a parked tag appears in, and nothing else, can hold a parked
-  // heading or task.
+/** The index's tags that are a parked tag or one of its sub-tags. */
+function findParkedKeys(index: WorkspaceIndex, rules: ParkedRules): Set<string> {
+  const parkedKeys = new Set<string>();
+  if (rules.tags.length === 0) {
+    return parkedKeys;
+  }
+  index.tags.forEach((_, key) => {
+    if (isUnderParkedTag(key, rules.tags)) {
+      parkedKeys.add(key);
+    }
+  });
+  return parkedKeys;
+}
+
+/** Parks a note and every heading and task in it. */
+function parkWhole(state: ParkedState, file: ParsedFile): void {
+  state.files.add(file.filePath);
+  file.sections.forEach((section) => state.sections.add(section.id));
+  file.tasks.forEach((task) => state.tasks.add(task.id));
+}
+
+/** Parks every note in a parked folder, counting each. */
+function parkFolders(index: WorkspaceIndex, rules: ParkedRules, state: ParkedState): void {
+  index.files.forEach((file, filePath) => {
+    if (!rules.isParkedPath(filePath)) {
+      return;
+    }
+    state.byFolder += 1;
+    parkWhole(state, file);
+  });
+}
+
+/**
+ * The notes a parked tag appears in. Nothing else can hold a parked
+ * heading or task, so only these are walked.
+ */
+function findCandidateNotes(index: WorkspaceIndex, parkedKeys: ReadonlySet<string>): Set<string> {
   const candidates = new Set<string>();
   parkedKeys.forEach((key) => {
     const tag = index.tags.get(key);
@@ -111,8 +134,17 @@ export function computeParked(
       }
     });
   });
+  return candidates;
+}
+
+/**
+ * Parks what a parked tag reaches in the notes not already parked whole: a
+ * note whose front matter carries one, counted, and otherwise each heading
+ * and task that carries or inherits one.
+ */
+function parkTagged(index: WorkspaceIndex, parkedKeys: ReadonlySet<string>, state: ParkedState): void {
   const parked = (key: string): boolean => parkedKeys.has(key);
-  candidates.forEach((filePath) => {
+  findCandidateNotes(index, parkedKeys).forEach((filePath) => {
     const file = index.files.get(filePath);
     if (!file || state.files.has(filePath)) {
       return;
@@ -120,7 +152,7 @@ export function computeParked(
     if (file.frontmatterTags.some((tag) => parked(tag.key))) {
       state.byTag += 1;
       state.taggedFiles.add(filePath);
-      parkWhole(file);
+      parkWhole(state, file);
       return;
     }
     file.sections.forEach((section) => {
@@ -134,8 +166,13 @@ export function computeParked(
       }
     });
   });
+}
 
-  // A tag is parked-only when every entry, task, and note it is on is parked.
+/**
+ * Marks as parked-only each tag whose every entry, task, and note is
+ * parked, looking only at tags on something parked.
+ */
+function markParkedOnlyTags(index: WorkspaceIndex, state: ParkedState): void {
   const seen = new Set<string>();
   const consider = (key: string): void => {
     if (seen.has(key)) {
@@ -161,7 +198,6 @@ export function computeParked(
   state.files.forEach((filePath) =>
     index.files.get(filePath)?.frontmatterTags.forEach((tag) => consider(tag.key)),
   );
-  return state;
 }
 
 /** Whether a heading above the section carries a tag that `test` accepts. */
@@ -170,22 +206,14 @@ function inheritsTag(
   section: Section,
   test: (key: string) => boolean,
 ): boolean {
-  let parentSectionId = section.parentSectionId;
-  const visited = new Set<string>();
-  while (parentSectionId && !visited.has(parentSectionId)) {
-    visited.add(parentSectionId);
-    const parent = index.sections.get(parentSectionId);
-    if (!parent) {
-      return false;
-    }
-    if (parent.headingTags?.some((tag) => test(tag.key))) {
-      return true;
-    }
-    parentSectionId = parent.parentSectionId;
-  }
-  return false;
+  return someHeadingAncestor(
+    section,
+    index.sections,
+    (parent) => parent.headingTags?.some((tag) => test(tag.key)) ?? false,
+  );
 }
 
+/** Whether a section carries a tag `test` accepts: on its heading, a body line, or a heading above. */
 function sectionCarries(
   index: WorkspaceIndex,
   section: Section,
@@ -198,6 +226,10 @@ function sectionCarries(
   );
 }
 
+/**
+ * Whether a task carries a tag `test` accepts: its own, its section's, or
+ * a heading's above that. A body-line tag of the section does not reach it.
+ */
 function taskCarries(
   index: WorkspaceIndex,
   task: Task,
@@ -210,18 +242,25 @@ function taskCarries(
   return section !== undefined && (section.tags.some(test) || inheritsTag(index, section, test));
 }
 
+/** Whether a task is parked; false for an index parking was never worked out for. */
 export function isParkedTask(index: WorkspaceIndex, taskId: string): boolean {
   return index.parked?.tasks.has(taskId) ?? false;
 }
 
+/** Whether a heading's entry is parked; false for an index parking was never worked out for. */
 export function isParkedSection(index: WorkspaceIndex, sectionId: string): boolean {
   return index.parked?.sections.has(sectionId) ?? false;
 }
 
+/** Whether a whole note is parked; false for an index parking was never worked out for. */
 export function isParkedFile(index: WorkspaceIndex, filePath: string): boolean {
   return index.parked?.files.has(filePath) ?? false;
 }
 
+/**
+ * Whether everything a tag is on is parked, so lists of tags can leave it
+ * out; false for an index parking was never worked out for.
+ */
 export function isParkedOnlyTag(index: WorkspaceIndex, tagKey: string): boolean {
   return index.parked?.tags.has(tagKey) ?? false;
 }
@@ -264,7 +303,8 @@ export function mentionsParked(node: QueryNode | undefined): boolean {
       return node.field === 'is' && node.value === 'parked';
     case 'not':
       return mentionsParked(node.child);
-    default:
+    case 'and':
+    case 'or':
       return node.children.some(mentionsParked);
   }
 }
