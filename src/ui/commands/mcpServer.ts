@@ -54,6 +54,23 @@ export interface McpServerOptions {
   tools: readonly McpTool[];
   /** Deckard's version, which the server reports. */
   version: string;
+  /** Where its settings are read from; `deckard.mcpServer.*` unless a test gives its own. */
+  readSettings?: () => McpServerSettings;
+}
+
+/** What `deckard.mcpServer.*` says: whether the server runs, and on which port. */
+export interface McpServerSettings {
+  enabled: boolean;
+  port: number;
+}
+
+/** The server's settings as VS Code holds them. */
+function readMcpSettings(): McpServerSettings {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  return {
+    enabled: configuration.get<boolean>('mcpServer.enabled', false),
+    port: configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT),
+  };
 }
 
 /** The command that adds the server to Claude Code, token included. */
@@ -76,12 +93,18 @@ export class DeckardMcpServer implements vscode.Disposable {
   /** The token being read or made, so callers at the same moment share one. */
   private tokenRequest: Promise<string> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  /** The restart under way, which the next one waits for. */
+  private restarting: Promise<void> = Promise.resolve();
+  /** Counts stops, so a server that finishes starting after one closes itself. */
+  private generation = 0;
+  private disposed = false;
 
   private readonly indexer: IndexSource;
   private readonly history: WorkspaceWriteHistory;
   private readonly secrets: SecretStore;
   private readonly tools: readonly McpTool[];
   private readonly version: string;
+  private readonly readSettings: () => McpServerSettings;
 
   /**
    * Keeps the server in step with `deckard.mcpServer.*`. It does not start
@@ -93,6 +116,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     this.secrets = options.secrets;
     this.tools = options.tools;
     this.version = options.version;
+    this.readSettings = options.readSettings ?? readMcpSettings;
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.mcpServer')) {
@@ -102,14 +126,25 @@ export class DeckardMcpServer implements vscode.Disposable {
     );
   }
 
-  /** Starts or stops the server to match its settings. */
-  public async restart(): Promise<void> {
+  /**
+   * Starts or stops the server to match its settings, once any restart
+   * already under way is done. Two at once would each start a server while
+   * the other's was still starting, and the first would go on listening
+   * with nothing left to close it.
+   */
+  public restart(): Promise<void> {
+    const next = this.restarting.then(() => this.restartNow());
+    this.restarting = next.catch(() => undefined);
+    return next;
+  }
+
+  /** Stops the server and starts it again if its settings say to; reports a port it cannot have. */
+  private async restartNow(): Promise<void> {
     await this.stop();
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    if (!configuration.get<boolean>('mcpServer.enabled', false)) {
+    const { enabled, port } = this.readSettings();
+    if (!enabled || this.disposed) {
       return;
     }
-    const port = configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT);
     try {
       await this.start(port);
     } catch (error) {
@@ -125,8 +160,12 @@ export class DeckardMcpServer implements vscode.Disposable {
     }
   }
 
-  /** Listens on a port, or on any free one for 0, and returns the port. */
+  /**
+   * Listens on a port, or on any free one for 0, and returns the port. A
+   * server stopped before it was listening closes again at once.
+   */
   public async start(port: number): Promise<number> {
+    const generation = this.generation;
     this.token = await this.getToken();
     const server = createServer((request, response) => {
       void this.handle(request, response);
@@ -138,6 +177,10 @@ export class DeckardMcpServer implements vscode.Disposable {
         resolve();
       });
     });
+    if (generation !== this.generation) {
+      server.close();
+      return port;
+    }
     this.server = server;
     const address = server.address();
     return typeof address === 'object' && address ? address.port : port;
@@ -145,6 +188,7 @@ export class DeckardMcpServer implements vscode.Disposable {
 
   /** Closes the server and every open connection; nothing when it is not running. */
   public async stop(): Promise<void> {
+    this.generation += 1;
     const server = this.server;
     this.server = undefined;
     if (!server) {
@@ -156,6 +200,7 @@ export class DeckardMcpServer implements vscode.Disposable {
 
   /** Stops following the settings and closes the server, without waiting for it. */
   public dispose(): void {
+    this.disposed = true;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     void this.stop();
   }
@@ -206,8 +251,7 @@ export class DeckardMcpServer implements vscode.Disposable {
    * turn the server on.
    */
   public async copySetup(): Promise<void> {
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    if (!configuration.get<boolean>('mcpServer.enabled', false)) {
+    if (!this.readSettings().enabled) {
       const choice = await vscode.window.showInformationMessage(
         "Deckard's MCP server is off. Turn it on for Claude Code and other MCP clients?",
         'Turn On',
@@ -224,9 +268,8 @@ export class DeckardMcpServer implements vscode.Disposable {
         return;
       }
     }
-    const port = configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT);
     await vscode.env.clipboard.writeText(
-      getClaudeCodeSetup(port, await this.getToken()),
+      getClaudeCodeSetup(this.readSettings().port, await this.getToken()),
     );
     void vscode.window.showInformationMessage(
       'Copied the command that adds Deckard to Claude Code. Run it in a terminal. It holds the server’s token, so keep it private.',
