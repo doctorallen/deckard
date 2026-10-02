@@ -105,10 +105,11 @@ export function readNoteActionState(
  * Whether a heading is written at or above a line, for a note not yet read,
  * by Focus Section's own rule, so it is offered only where it will act: a
  * heading as the parser reads one, `#` alone and a heading indented by up
- * to three spaces included, and never a line in fenced code.
+ * to three spaces included, and never a line in fenced code or front matter.
  */
-export function hasHeadingAbove(document: Pick<vscode.TextDocument, 'lineAt'>, line: number): boolean {
-  const lines = Array.from({ length: line + 1 }, (_, at) => document.lineAt(at).text);
+export function hasHeadingAbove(document: Pick<vscode.TextDocument, 'lineAt' | 'lineCount'>, line: number): boolean {
+  // The whole note, so front matter the cursor is inside is still found closed.
+  const lines = Array.from({ length: document.lineCount }, (_, at) => document.lineAt(at).text);
   return findHeadingLineAbove(lines, line) !== undefined;
 }
 
