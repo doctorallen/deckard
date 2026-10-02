@@ -979,16 +979,12 @@ function listAlternatives(values: readonly string[]): string {
  */
 export function isDateValue(value: string): boolean {
   // Whether a value reads does not depend on the day, or on the day a week
-  // starts, except that February 29th reads only near a leap day. So the
-  // future is read from a day with one just ahead, the past from a day
-  // with one just behind, and Sunday will do for the week.
+  // starts, so any fixed day and Sunday will do.
   return (
-    resolveDateRange(value, DATE_CHECK_DAY_PAST, 'past', 0) !== undefined &&
-    resolveDateRange(value, DATE_CHECK_DAY_FUTURE, 'future', 0) !== undefined
+    resolveDateRange(value, DATE_CHECK_DAY, 'past', 0) !== undefined &&
+    resolveDateRange(value, DATE_CHECK_DAY, 'future', 0) !== undefined
   );
 }
 
-/** A day with a leap day ahead of it, in January 2028, where a future date value is read. */
-const DATE_CHECK_DAY_FUTURE = new Date(2028, 0, 15, 12).getTime();
-/** A day with a leap day behind it, in December 2028, where a past date value is read. */
-const DATE_CHECK_DAY_PAST = new Date(2028, 11, 15, 12).getTime();
+/** The day a value is read on to check that it is a date. */
+const DATE_CHECK_DAY = new Date(2026, 0, 15, 12).getTime();

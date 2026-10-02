@@ -656,6 +656,30 @@ suite('Deckard search page state', () => {
     assert.strictEqual(range && formatIsoDate(range.start), '2028-02-29');
   });
 
+  test('reads "feb 29" as the nearest leap day, however many years away', () => {
+    // From October 2026 the next leap day is in 2028 and the last in 2024.
+    const october2026 = new Date(2026, 9, 2, 12).getTime();
+    const day = (direction: 'past' | 'future', now = october2026) => {
+      const range = resolveDateRange('feb 29', now, direction, 0);
+      return range && formatIsoDate(range.start);
+    };
+    assert.strictEqual(day('future'), '2028-02-29');
+    assert.strictEqual(day('past'), '2024-02-29');
+    assert.deepStrictEqual(
+      evaluateQuery(
+        buildWorkspaceIndex(
+          new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] Spring 📅 2027-05-01\n')]]),
+        ),
+        parseQuery('due <= "feb 29"').node,
+        createQueryContext(october2026),
+      ).tasks.map((task) => task.title),
+      ['Spring'],
+    );
+    // 2100 is no leap year, so from 2097 the next is eight years on.
+    assert.strictEqual(day('future', new Date(2097, 0, 1, 12).getTime()), '2104-02-29');
+    assert.strictEqual(day('past', new Date(2103, 11, 1, 12).getTime()), '2096-02-29');
+  });
+
   test('a day ends at its next midnight, on a daylight-saving change as on any other', () => {
     // New York moves its clocks on 2026-03-08, a 23-hour day, and on
     // 2026-11-01, a 25-hour one.

@@ -103,7 +103,8 @@ export function startOfWeek(at: number, weekStart: Weekday = 0): number {
 
 /**
  * A month and day with no year: the next one on or after today, or for the
- * past direction the last one on or before today.
+ * past direction the last one on or before today. February 29th is the
+ * next or last leap day, however far off; a day no year has is undefined.
  */
 function nearestYear(
   month: number,
@@ -112,17 +113,18 @@ function nearestYear(
   direction: 'future' | 'past',
 ): number | undefined {
   const year = new Date(today).getFullYear();
-  const candidates = [year - 1, year, year + 1]
-    .map((each) => makeDay(each, month, day))
-    .filter((at): at is number => at !== undefined);
-  if (candidates.length === 0) {
-    // February 29th, most years: say so rather than pick another day.
-    return undefined;
+  const step = direction === 'future' ? 1 : -1;
+  for (let offset = 0; offset <= LEAP_DAY_GAP; offset += 1) {
+    const at = makeDay(year + offset * step, month, day);
+    if (at !== undefined && (direction === 'future' ? at >= today : at <= today)) {
+      return at;
+    }
   }
-  return direction === 'future'
-    ? candidates.find((at) => at >= today)
-    : [...candidates].reverse().find((at) => at <= today);
+  return undefined;
 }
+
+/** The most years between two leap days, as from 2096 to 2104, since 2100 has none. */
+const LEAP_DAY_GAP = 8;
 
 /** A numeric date's year, with two digits read as this century's. */
 function fullYear(written: string): number {
