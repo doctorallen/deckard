@@ -484,6 +484,20 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
     });
 
+    test('the canvas names the keys that move between nodes, and Tab is not one: it leaves the canvas', () => {
+      const page = openCanvas();
+      page.send(chain());
+      const canvas = page.find('#graph');
+      assert.strictEqual(
+        canvas.getAttribute('aria-label'),
+        'Notes graph. Press the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear.',
+      );
+      const tab = new page.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+      canvas.dispatchEvent(tab);
+      assert.strictEqual(page.lastPosted('selectNode'), undefined);
+      assert.strictEqual(tab.defaultPrevented, false, 'Tab moves on to the controls');
+    });
+
     test('a node chosen with the arrow keys is said, with what it is joined by', () => {
       const page = openCanvas();
       page.send(chain());
