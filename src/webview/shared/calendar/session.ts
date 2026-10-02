@@ -297,12 +297,16 @@ export class CalendarSession<S extends CalendarState> {
   /** The controls both calendars draw, by their `data-action`. */
   private createActions(): Record<string, ActionHandler> {
     return {
-      // With the panel on, a day is chosen; without it, its note opens.
-      'open-day': (element) => {
+      // With the panel on, a day is chosen; without it, its note opens,
+      // once: a double-click's second click would open it again.
+      'open-day': (element, event) => {
         const date = element.getAttribute('data-date') as string;
         if (this.snapshot?.dayPanel) {
           this.focusDate = date;
           this.selectDay(date);
+          return;
+        }
+        if (event.detail > 1) {
           return;
         }
         send({ type: 'openDay', date });

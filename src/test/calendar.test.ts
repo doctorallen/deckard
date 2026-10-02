@@ -477,4 +477,18 @@ suite('Calendar', () => {
       }
     }
   });
+
+  test('without the day panel, a double-click on a day opens its note once', () => {
+    const page = openWebviewPage(renderPage('calendar'), calendar);
+    try {
+      const day = page.find('.calendar-grid .day[data-date="2026-09-14"]');
+      for (const detail of [1, 2]) {
+        day.dispatchEvent(new page.window.MouseEvent('click', { bubbles: true, detail }));
+      }
+      day.dispatchEvent(new page.window.MouseEvent('dblclick', { bubbles: true, detail: 2 }));
+      assert.deepStrictEqual(page.posted.filter((message) => message.type === 'openDay'), [{ type: 'openDay', date: '2026-09-14' }]);
+    } finally {
+      page.dispose();
+    }
+  });
 });
