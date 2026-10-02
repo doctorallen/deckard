@@ -130,9 +130,13 @@ export class HelpController implements PageController<never, HelpPageToHost> {
       ...(anchor ? { anchor } : {}),
     };
     // The panel is looked up again once the page is rendered, so a Help
-    // opened again meanwhile is the one sent the page; as before the move,
-    // one closed meanwhile is not checked for.
-    void page.surface!.webview.postMessage(message);
+    // opened again meanwhile is the one sent the page, and one closed
+    // meanwhile, with none opened since, is sent nothing.
+    const surface = page.surface;
+    if (!surface) {
+      return;
+    }
+    void surface.webview.postMessage(message);
   }
 
   /**

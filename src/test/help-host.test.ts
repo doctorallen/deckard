@@ -367,6 +367,33 @@ suite('Help host', () => {
     }
   });
 
+  test('a guide page read while Help is closed is dropped, and one reopened meanwhile is sent it', async () => {
+    for (const reopen of [false, true]) {
+      let finish: (bytes: Uint8Array) => void = () => undefined;
+      await withGuideFile(new Promise((resolve) => (finish = resolve)), () =>
+        withGuideRenderer(
+          async () => '<p>Tasks</p>',
+          async (surface, _calls, host) => {
+            const reading = surface.webview.send({ type: 'openGuide', page: 'tasks' });
+            surface.dispose();
+            const again = new FakeSurface();
+            if (reopen) {
+              host.attach(again);
+            }
+            finish(Buffer.from('# Tasks\n'));
+            await reading;
+            assert.deepStrictEqual(surface.webview.posted, [], 'the closed panel is sent nothing');
+            assert.deepStrictEqual(
+              again.webview.posted.map((message) => (message as { page?: string }).page),
+              reopen ? ['tasks'] : [],
+              reopen ? 'the Help opened meanwhile is sent the page' : 'and nothing is opened to send it to',
+            );
+          },
+        ),
+      );
+    }
+  });
+
   test('a failed start of the Markdown extension as Help opens is not reported', async () => {
     await withGuideRenderer(
       () => Promise.reject(new Error(`command '${RENDER}' not found`)),
@@ -382,11 +409,11 @@ suite('Help host', () => {
  * Runs `run` with Help's controller reading the repository's guide in a
  * fake panel, and VS Code's Markdown extension standing in as `render`.
  * Every command run is recorded in `calls`; only the Markdown extension's
- * answers.
+ * answers. `run` is handed the host too, to attach another panel to.
  */
 async function withGuideRenderer(
   render: (source: unknown) => Promise<unknown>,
-  run: (surface: FakeSurface, calls: unknown[][]) => Promise<void>,
+  run: (surface: FakeSurface, calls: unknown[][], host: WebviewHost<never, HelpPageToHost>) => Promise<void>,
 ): Promise<void> {
   const commands = vscode.commands as unknown as Record<string, unknown>;
   const original = commands.executeCommand;
@@ -402,9 +429,28 @@ async function withGuideRenderer(
     host.attach(surface);
     // Lets the start the host asked for as it attached settle, or fail.
     await new Promise((resolve) => setImmediate(resolve));
-    await run(surface, calls);
+    await run(surface, calls, host);
   } finally {
     commands.executeCommand = original;
     host.dispose();
+  }
+}
+
+/**
+ * Runs `run` with every file Help reads from disk answered by `bytes`, so
+ * a test decides when a guide page has been read.
+ */
+async function withGuideFile(bytes: Promise<Uint8Array>, run: () => Promise<void>): Promise<void> {
+  const workspace = vscode.workspace as unknown as Record<string, unknown>;
+  const original = Object.getOwnPropertyDescriptor(workspace, 'fs');
+  Object.defineProperty(workspace, 'fs', { configurable: true, value: { readFile: () => bytes } });
+  try {
+    await run();
+  } finally {
+    if (original) {
+      Object.defineProperty(workspace, 'fs', original);
+    } else {
+      delete workspace.fs;
+    }
   }
 }
