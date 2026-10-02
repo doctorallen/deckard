@@ -957,7 +957,14 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         }
         const undo = new vscode.WorkspaceEdit();
         undo.replace(uri, now.lineAt(target.line - 1).range, before);
-        await this.sidebar.history.write(undo, { label: `taking ${tag.label} off ${where}`, preview: 'never' });
+        const undone = await this.sidebar.history.write(undo, { label: `taking ${tag.label} off ${where}`, preview: 'never' });
+        if (!undone.applied) {
+          void reportFailure({
+            ...describeRejectedEdit(noteName(uri)),
+            outcome: `VS Code did not accept the undo in ${noteName(uri)}, so the line keeps ${tag.label}.`,
+          });
+          return;
+        }
         await this.sidebar.indexer.refresh();
       });
   }

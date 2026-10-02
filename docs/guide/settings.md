@@ -71,7 +71,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
+| `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. In a multi-root workspace, each folder can set its own. |
 | `deckard.exclude` | `{}` | Glob patterns, relative to the workspace folder and written like `files.exclude`, that Deckard leaves out of its index, such as `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide; set an inherited pattern to `false` to index it. In the Explorer, a folder's **Deckard → Exclude from Deckard** adds it, and **Include in Deckard** removes it from whichever settings set it, or sets it to `false` there when less specific settings set it too. To keep an archive searchable, park it instead. |
 | `deckard.parked.folders` | `{}` | Glob patterns of folders and notes to park, written like `deckard.exclude`. A parked note stays searchable with `is:parked` but is left out of to-do lists. `deckard.exclude` wins. |
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
@@ -128,8 +128,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.updateLinksOnRename` | `true` | Rewrites `[[Wiki links]]` to a note's old title when it is renamed. See [Renaming notes and headings](organizing.md#renaming-notes-and-headings). |
 | `deckard.moveTo.leaveBehind` | `link` | What Move to… leaves where the lines were: a task becomes `- [>] … → [[where it went]]` and anything else a `[[link]]`; `nothing` takes the lines out. |
 | `deckard.previewWorkspaceWrites` | `severalNotes` | Shows a write reaching more than one note in VS Code's refactor preview first. `always` previews every write; `never` none. See [Previewing and undoing a write](search-pages.md#previewing-and-undoing-a-write). |
-| `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks and list tags, after you allow the first call each session. See [AI assistants](ai-assistants.md#ai-assistants). |
-| `deckard.mcpServer.enabled` | `false` | Runs an MCP server on 127.0.0.1 with the same tools, for clients that carry its token. See [Claude Code and other MCP clients](ai-assistants.md#claude-code-and-other-mcp-clients). |
+| `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks, list tags, add a task to a note, and change an existing task, after you allow the first call each session. Nothing is written until you approve the line in the refactor preview. See [AI assistants](ai-assistants.md#ai-assistants). |
+| `deckard.mcpServer.enabled` | `false` | Runs an MCP server on 127.0.0.1 with the same tools, writes included, for clients that carry its token. Nothing is written until you approve the line in the refactor preview. See [Claude Code and other MCP clients](ai-assistants.md#claude-code-and-other-mcp-clients). |
 | `deckard.mcpServer.port` | `39217` | The port the MCP server listens on, on 127.0.0.1. |
 | `deckard.highlightNoteSections` | `true` | Highlights the tagged section or task the cursor is in. Colors: `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder` in `workbench.colorCustomizations`. |
 | `deckard.autoSelectNoteSections` | `true` | Focuses Related Notes on the tagged entry under the cursor. Disabled, Related Notes covers the whole document. |

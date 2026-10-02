@@ -31,13 +31,15 @@ class Range {
 
 /**
  * An edit across notes, as VS Code's is made: replacements kept per note,
- * and `entries` to read them back; `replaces` holds each one in order.
+ * and `entries` to read them back; `replaces` (also `replacements`) holds
+ * each one in order.
  * Nothing applies it here.
  */
 class WorkspaceEdit {
   constructor() {
     this.edits = new Map();
     this.replaces = [];
+    this.replacements = this.replaces;
   }
 
   replace(uri, range, newText) {
