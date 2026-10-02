@@ -28,19 +28,18 @@ const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
  */
 export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
-  const namespace = configuration.get<string>(
-    'board.statusNamespace',
-    'status',
-  );
+  // Settings are hand-edited JSON, so the value may be null or a list.
+  const namespace = configuration.get<unknown>('board.statusNamespace', 'status');
   const statuses = configuration.get<unknown>(
     'board.statuses',
     DEFAULT_STATUSES,
   );
   return {
     queryContext,
-    statusNamespace: /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace)
-      ? namespace.toLowerCase()
-      : 'status',
+    statusNamespace:
+      typeof namespace === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace)
+        ? namespace.toLowerCase()
+        : 'status',
     statuses: (Array.isArray(statuses) ? statuses : DEFAULT_STATUSES)
       .filter(
         (status): status is string =>
