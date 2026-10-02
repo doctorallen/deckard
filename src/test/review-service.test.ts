@@ -5,6 +5,7 @@ import { getReviewRange, parsePeriodicNoteName, ReviewPeriod, reviewPeriodOfNote
 import { createQueryContext } from '../domain/query/queryContext';
 import type { ResourceUri } from '../ports/uri';
 import { ReviewCounts, ReviewNote, ReviewService, ReviewSummaryOptions } from '../services/reviewService';
+import { formatReview, REVIEW_START, ReviewSummary, summarizeReview, writeReviewInto } from '../ui/state/reviewState';
 import { fileUri } from './fakeWorkspace';
 
 // ReviewService decides which days a review covers, what it looks ahead at,
@@ -136,6 +137,33 @@ suite('ReviewService', () => {
   test('still reports the review when the notes cannot be read again', async () => {
     const { service } = reviewsWith({ refresh: () => Promise.reject(new Error('index busy')) });
     assert.strictEqual((await service.write(weekRequest())).kind, 'written');
+  });
+
+  test('a CRLF note is written in its own line endings, and holds the review as it would be written', async () => {
+    let text = '# 2026-09-13 to 2026-09-19\r\n\r\nNotes.\r\n';
+    const handed: string[] = [];
+    const service = new ReviewService<ResourceUri, number, ReviewSummary>({
+      notes: {
+        open: () =>
+          Promise.resolve({
+            text,
+            write: (content) => {
+              handed.push(content);
+              // VS Code writes an edit into a CRLF document in CRLF.
+              text = content.replace(/\r?\n/g, '\r\n');
+              return Promise.resolve({ applied: true, handle: handed.length });
+            },
+          }),
+      },
+      report: { summarize: summarizeReview, format: formatReview, writeInto: writeReviewInto },
+      index: { refresh: () => Promise.resolve() },
+    });
+
+    assert.strictEqual((await service.write(weekRequest())).kind, 'written');
+    assert.ok(handed[0].includes(REVIEW_START));
+    assert.doesNotMatch(handed[0], /[^\r]\n/, 'every line ends in CRLF');
+    assert.strictEqual((await service.write(weekRequest())).kind, 'unchanged');
+    assert.strictEqual(handed.length, 1, 'written once');
   });
 });
 
