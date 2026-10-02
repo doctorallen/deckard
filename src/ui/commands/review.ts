@@ -228,8 +228,9 @@ function reportReview(
  * Says the review is written, and offers the two things a reader wants next:
  * to read it, and to take it back.
  *
- * Its Undo takes back whatever Deckard wrote last, without asking whether
- * that is still the review, as it always has.
+ * Its Undo takes the review back only while it is still Deckard's last
+ * write: once Deckard has written since, it says to use Undo Last Change
+ * and writes nothing.
  */
 function offerReview(
   message: string,

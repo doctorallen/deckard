@@ -224,8 +224,9 @@ export async function rollTasksForward(
  * note, which may have just been created, and the way back. `written` is
  * the rollover's handle when it carried anything, and nothing otherwise.
  *
- * Its Undo takes back whatever Deckard wrote last, without asking whether
- * that is still the rollover, as it always has.
+ * Its Undo takes the rollover back only while it is still Deckard's last
+ * write: once Deckard has written since, it says to use Undo Last Change
+ * and writes nothing.
  */
 async function offerRollover(
   message: string,
