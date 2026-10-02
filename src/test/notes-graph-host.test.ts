@@ -200,6 +200,19 @@ suite('Notes graph host', () => {
     }
   });
 
+  test('lets go of a selection whose kind the page stops showing, and Related Notes lists nothing', async () => {
+    const { host, contexts, nodeOf, send, types } = openGraph();
+    try {
+      await send({ type: 'selectNode', nodeId: nodeOf('task').id });
+      assert.strictEqual(contexts.at(-1)?.context?.selectedNode?.kind, 'task');
+      await send({ type: 'setGraphFilter', showNotes: true, showTasks: false });
+      assert.deepStrictEqual(types(), ['selectNode', 'state'], 'the task is not selected again');
+      assert.deepStrictEqual(contexts.at(-1)?.context, { selectedNode: undefined, connections: [] });
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('redraws for a change of kinds or scope, and not for kinds it already shows', async () => {
     const { host, controller, send, states } = openGraph();
     try {

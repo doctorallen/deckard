@@ -136,9 +136,10 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
 
   /**
    * The graph in its scope, with only the kinds of node the page shows. A
-   * selection the graph no longer holds is let go. The log times the graph
-   * alone, and counts every node it holds, before the kinds hidden are left
-   * out, as it always has.
+   * selection the page is not sent, because the graph no longer holds it or
+   * the page hides its kind, is let go, so Related Notes stops listing what
+   * it is joined to. The log times the graph alone, and counts every node it
+   * holds, before the kinds hidden are left out, as it always has.
    */
   public buildSnapshot(): NotesGraphWireSnapshot {
     const snapshot = measure(
@@ -146,10 +147,11 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
       () => this.getSnapshot(),
       (graph) => `${graph.nodes.length} nodes`,
     );
-    if (this.selectedNodeId && !snapshot.nodes.some((node) => node.id === this.selectedNodeId)) {
+    const wire = toWire(snapshot, this.kinds);
+    if (this.selectedNodeId && !wire.nodes.some((node) => node.id === this.selectedNodeId)) {
       this.selectedNodeId = undefined;
     }
-    return toWire(snapshot, this.kinds);
+    return wire;
   }
 
   /** A local graph follows the note being written. */

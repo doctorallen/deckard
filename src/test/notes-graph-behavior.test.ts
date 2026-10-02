@@ -5,7 +5,7 @@ import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { readSheet } from './sheets';
 
-type GraphNode = { id: string; kind: string; title: string; tagKeys: string[]; degree: number; filePath?: string; line?: number; links?: Record<string, number> };
+type GraphNode = { id: string; kind: string; title: string; tagKeys: string[]; degree: number; filePath?: string; line?: number; links?: Record<string, number>; parked?: boolean };
 type GraphEdge = { source: string; target: string; weight: number; types: string[] };
 
 /** A graph as the host sends it, with every count filled in from the nodes. */
@@ -900,6 +900,23 @@ suite('Notes Graph behavior', () => {
       assert.deepStrictEqual(errors, []);
       page.find('#graph').dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'a is still selected');
+    });
+
+    test('a selection a filter hides is let go, and the host is told so Related Notes lets it go too', () => {
+      const page = openCanvas();
+      const toggle = (id: string, checked: boolean) => {
+        const box = page.find(`#${id}`) as HTMLInputElement;
+        box.checked = checked;
+        box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      };
+      toggle('show-parked', true);
+      page.send(graphState([note('a', { parked: true }), note('b')], [{ source: 'section:a', target: 'section:b', weight: 1, types: ['wiki-link'] }]));
+      post(page, { type: 'selectNode', nodeId: 'section:a' });
+      toggle('show-parked', false);
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'clearSelection' });
+      const posted = page.posted.length;
+      toggle('show-parked', true);
+      assert.deepStrictEqual(page.posted.slice(posted), [], 'nothing is let go when nothing is selected');
     });
   });
 });

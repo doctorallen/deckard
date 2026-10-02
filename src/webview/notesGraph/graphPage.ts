@@ -219,7 +219,7 @@ export function resizeCanvas(page: GraphPage): void {
 /**
  * Rebuilds the graph drawn from the last snapshot, then finds the hover
  * and the selection again, a file's selection moving to its first heading
- * when it unfolds; heats the simulation, gently when nodes kept their
+ * when it unfolds, and the host told when the selection is gone; heats the simulation, gently when nodes kept their
  * places; says the status; and frames the graph the first time.
  */
 export function rebuildView(page: GraphPage, repositionCommunities?: boolean): void {
@@ -242,12 +242,7 @@ export function rebuildView(page: GraphPage, repositionCommunities?: boolean): v
   renderGroupList(page);
   setHoverIndex(state, findNodeIndex(state, state.externalHoverNodeId));
   hideTooltip(page);
-  let restoredSelection = findNodeIndex(state, state.selectedId);
-  if (restoredSelection < 0 && state.selectedId && rebuilt.previousFoldMembers[state.selectedId]) {
-    // Unfolded: the file's selection moves to its first heading.
-    restoredSelection = findNodeIndex(state, rebuilt.previousFoldMembers[state.selectedId][0]);
-  }
-  setSelectedIndex(state, restoredSelection);
+  restoreSelection(state, rebuilt.previousFoldMembers);
   state.alpha = rebuilt.reusedAny && state.hasFramed ? 0.3 : 1;
   updateStatus(page);
   page.ui = { ...page.ui, emptyDisplay: snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none' };
@@ -256,6 +251,24 @@ export function rebuildView(page: GraphPage, repositionCommunities?: boolean): v
     state.hasFramed = true;
   }
   scheduleFrame(page);
+}
+
+/**
+ * Finds the selection again in a rebuilt graph, a file's selection moving
+ * to its first heading when it unfolds. A selection the graph left out,
+ * by a filter or a new graph, is let go, and the host is told, so Related
+ * Notes, which lists what it is joined to, lets it go too.
+ */
+function restoreSelection(state: GraphState, previousFoldMembers: Record<string, string[]>): void {
+  const selectedId = state.selectedId;
+  let restored = findNodeIndex(state, selectedId);
+  if (restored < 0 && selectedId && previousFoldMembers[selectedId]) {
+    restored = findNodeIndex(state, previousFoldMembers[selectedId][0]);
+  }
+  setSelectedIndex(state, restored);
+  if (selectedId !== null && restored < 0) {
+    send({ type: 'clearSelection' });
+  }
 }
 
 /** The Group list takes the group picked; its options are the groups named now. */
