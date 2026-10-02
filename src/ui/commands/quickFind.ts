@@ -414,6 +414,10 @@ export class QuickFind implements vscode.Disposable {
     await this.show(value, rowKey(item));
   }
 
+  /**
+   * Save search, from a recent search's row button or the row actions: asks
+   * for a name, the search itself offered as one. Escape saves nothing.
+   */
   private async saveSearch(query: string): Promise<void> {
     const name = await vscode.window.showInputBox({
       title: 'Save search',
@@ -471,6 +475,7 @@ export class QuickFind implements vscode.Disposable {
     }
   }
 
+  /** Redraws after each keystroke, bound to the search box's value changing. */
   private scheduleRefresh(): void {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
@@ -488,6 +493,11 @@ export class QuickFind implements vscode.Disposable {
     return item ? rowKey(item) : undefined;
   }
 
+  /**
+   * Lists the results for what is typed now, or the scan's progress before
+   * the first scan ends. The row `activeKey` names is highlighted again when
+   * it is still listed.
+   */
   private refresh(activeKey?: string): void {
     const picker = this.picker;
     if (!picker) {
@@ -535,6 +545,12 @@ export class QuickFind implements vscode.Disposable {
     }
   }
 
+  /**
+   * Enter: does what the highlighted row is for. A spelling suggestion, a
+   * recent search, or a condition goes into the search box; a day, a capture,
+   * or a new note's name is acted on; any other result is opened, and what
+   * was typed is kept as a recent search.
+   */
   private async accept(): Promise<void> {
     const picker = this.picker;
     const chosen = picker?.activeItems[0];
@@ -542,34 +558,9 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     const query = picker.value.trim();
-    if (chosen.suggestion !== undefined) {
-      picker.value = chosen.suggestion;
-      this.refresh();
-      return;
-    }
-    if (chosen.showAll) {
-      await this.showAll();
-      return;
-    }
-    if (chosen.openDate !== undefined) {
-      picker.hide();
-      await openDailyNoteFor(this.indexer, this.writes.history, chosen.openDate);
-      return;
-    }
-    if (chosen.capture) {
-      picker.hide();
-      // Written as Capture writes it; the words were captured, so they are
-      // not kept as a search.
-      await captureToToday(chosen.capture.text, chosen.capture.line);
-      return;
-    }
-    if (chosen.create !== undefined) {
-      picker.hide();
-      const from =
-        this.editor?.document.uri ?? vscode.workspace.workspaceFolders?.[0]?.uri;
-      if (from) {
-        await createLinkedNote(this.indexer, from, chosen.create, this.linkNotes);
-      }
+    const done = this.acceptActionRow(picker, chosen);
+    if (done) {
+      await done;
       return;
     }
     const item = chosen.item;
@@ -581,7 +572,57 @@ export class QuickFind implements vscode.Disposable {
       this.refresh();
       return;
     }
+    await this.acceptResult(picker, query, item);
+  }
 
+  /**
+   * Enter on a row that is not a result: the spelling suggestion, Show all,
+   * a day's note, a capture, or a new note. Undefined when the row is a
+   * result, so accept goes on; called without awaiting first so each row's
+   * work starts at once, as it did inline.
+   */
+  private acceptActionRow(
+    picker: vscode.QuickPick<QuickFindPickItem>,
+    chosen: QuickFindPickItem,
+  ): Promise<unknown> | undefined {
+    if (chosen.suggestion !== undefined) {
+      picker.value = chosen.suggestion;
+      this.refresh();
+      return Promise.resolve();
+    }
+    if (chosen.showAll) {
+      return this.showAll();
+    }
+    if (chosen.openDate !== undefined) {
+      picker.hide();
+      return openDailyNoteFor(this.indexer, this.writes.history, chosen.openDate);
+    }
+    if (chosen.capture) {
+      picker.hide();
+      // Written as Capture writes it; the words were captured, so they are
+      // not kept as a search.
+      return captureToToday(chosen.capture.text, chosen.capture.line);
+    }
+    if (chosen.create === undefined) {
+      return undefined;
+    }
+    picker.hide();
+    const from =
+      this.editor?.document.uri ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+    return from
+      ? createLinkedNote(this.indexer, from, chosen.create, this.linkNotes)
+      : Promise.resolve();
+  }
+
+  /**
+   * Enter on a result: closes Find, keeps the search and the choice made for
+   * it, then opens the tag, the saved search, or the note or task.
+   */
+  private async acceptResult(
+    picker: vscode.QuickPick<QuickFindPickItem>,
+    query: string,
+    item: QuickFindItem,
+  ): Promise<void> {
     picker.hide();
     if (query) {
       await this.preferences.savedSearches.recordRecentQuery(query);
@@ -617,6 +658,10 @@ export class QuickFind implements vscode.Disposable {
     }
   }
 
+  /**
+   * The Show all row and the title bar's SHOW_ALL button: closes Find and
+   * opens every result on a search page, keeping the search as a recent one.
+   */
   private async showAll(): Promise<void> {
     const query = this.picker?.value.trim() ?? '';
     this.picker?.hide();
@@ -626,6 +671,10 @@ export class QuickFind implements vscode.Disposable {
     await this.actions.showSearch(query);
   }
 
+  /**
+   * A button on a row: add a tag to the search, open beside, complete,
+   * reopen, or date a task, insert a link, or save a recent search.
+   */
   private async triggerItemButton(
     event: vscode.QuickPickItemButtonEvent<QuickFindPickItem>,
   ): Promise<void> {
@@ -645,12 +694,9 @@ export class QuickFind implements vscode.Disposable {
       await this.openItem(item, true);
       return;
     }
-    if (event.button === COMPLETE || event.button === REOPEN) {
-      await this.runAction(event.button === COMPLETE ? 'complete' : 'reopen', item);
-      return;
-    }
-    if (event.button === SET_DUE) {
-      await this.setDue(item);
+    const taskButton = this.triggerTaskButton(event.button, item);
+    if (taskButton) {
+      await taskButton;
       return;
     }
     if (event.button === INSERT_LINK && item.filePath) {
@@ -666,6 +712,20 @@ export class QuickFind implements vscode.Disposable {
     picker.hide();
     await this.saveSearch(query);
   }
+
+  /** A task row's Complete, Reopen, or Set due button; undefined for any other button. */
+  private triggerTaskButton(
+    button: vscode.QuickInputButton,
+    item: QuickFindItem,
+  ): Promise<void> | undefined {
+    if (button === COMPLETE || button === REOPEN) {
+      return this.runAction(button === COMPLETE ? 'complete' : 'reopen', item);
+    }
+    if (button === SET_DUE) {
+      return this.setDue(item);
+    }
+    return undefined;
+  }
 }
 
 /**
@@ -680,6 +740,18 @@ export function toPickItems(
   value: string,
   dateRow?: DailyNoteRow,
 ): QuickFindPickItem[] {
+  return [
+    ...leadingRows(results, dateRow),
+    ...resultRows(results, value),
+    ...trailingRows(results, value, dateRow),
+  ];
+}
+
+/**
+ * The rows above the results: the day's note when a day is typed, then the
+ * message, then the spelling suggestion.
+ */
+function leadingRows(results: QuickFindResults, dateRow?: DailyNoteRow): QuickFindPickItem[] {
   const items: QuickFindPickItem[] = [];
   // A day typed opens that day's note first, rather than making a note
   // called "friday".
@@ -691,22 +763,6 @@ export function toPickItems(
       openDate: dateRow.date,
     });
   }
-  const group = (label: string, rows: QuickFindPickItem[]): void => {
-    if (rows.length === 0) {
-      return;
-    }
-    items.push({ label, kind: vscode.QuickPickItemKind.Separator });
-    items.push(...rows);
-  };
-  const row = (item: QuickFindItem): QuickFindPickItem => ({
-    label: `${iconFor(item)} ${item.label}`,
-    description: item.description,
-    detail: item.detail,
-    alwaysShow: true,
-    item,
-    buttons: buttonsFor(item),
-  });
-
   if (results.message) {
     items.push({
       label: `$(info) ${results.message}`,
@@ -721,22 +777,62 @@ export function toPickItems(
       suggestion: results.suggestion,
     });
   }
-  if (value.trim()) {
-    group('Complete', results.conditions.map(row));
-    group('Tags', results.tags.map(row));
-    group('Saved searches', results.savedViews.map(row));
-    group('Notes', results.notes.map(row));
-    group('Tasks', results.tasks.map(row));
-  } else {
-    // Before anything is typed: what was kept on purpose, then what was
-    // opened last, then the searches and tags most likely to be wanted.
-    group('Pinned', (results.pinned ?? []).map(row));
-    group('Recently opened', results.notes.map(row));
-    group('Recent searches', results.recent.map(row));
-    group('Saved searches', results.savedViews.map(row));
-    group('Tags', results.tags.map(row));
-  }
+  return items;
+}
 
+/**
+ * The results, each kind under its heading; a kind with no rows has no
+ * heading. What is typed decides which kinds are listed, and in what order.
+ */
+function resultRows(results: QuickFindResults, value: string): QuickFindPickItem[] {
+  const items: QuickFindPickItem[] = [];
+  const group = (label: string, rows: QuickFindPickItem[]): void => {
+    if (rows.length === 0) {
+      return;
+    }
+    items.push({ label, kind: vscode.QuickPickItemKind.Separator });
+    items.push(...rows);
+  };
+  if (value.trim()) {
+    group('Complete', results.conditions.map(toPickItem));
+    group('Tags', results.tags.map(toPickItem));
+    group('Saved searches', results.savedViews.map(toPickItem));
+    group('Notes', results.notes.map(toPickItem));
+    group('Tasks', results.tasks.map(toPickItem));
+    return items;
+  }
+  // Before anything is typed: what was kept on purpose, then what was
+  // opened last, then the searches and tags most likely to be wanted.
+  group('Pinned', (results.pinned ?? []).map(toPickItem));
+  group('Recently opened', results.notes.map(toPickItem));
+  group('Recent searches', results.recent.map(toPickItem));
+  group('Saved searches', results.savedViews.map(toPickItem));
+  group('Tags', results.tags.map(toPickItem));
+  return items;
+}
+
+/** A result as a row: its kind's icon, and the buttons its kind carries. */
+function toPickItem(item: QuickFindItem): QuickFindPickItem {
+  return {
+    label: `${iconFor(item)} ${item.label}`,
+    description: item.description,
+    detail: item.detail,
+    alwaysShow: true,
+    item,
+    buttons: buttonsFor(item),
+  };
+}
+
+/**
+ * The rows below the results, each only when it applies: create a note by
+ * the name typed, capture what was typed, and show every result.
+ */
+function trailingRows(
+  results: QuickFindResults,
+  value: string,
+  dateRow?: DailyNoteRow,
+): QuickFindPickItem[] {
+  const items: QuickFindPickItem[] = [];
   // Plain words that no note is called can be the name of a new one, as a
   // quick switcher offers: Find finds, and makes what it did not find.
   const name = value.trim();

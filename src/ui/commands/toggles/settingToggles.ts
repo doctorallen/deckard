@@ -43,7 +43,6 @@ export const SETTING_TOGGLES: readonly SettingToggle[] = [
     values: { enable: true, disable: false },
     target: 'where-set',
   },
-  // Weekends, and repeats, the same way.
   {
     enable: 'deckard.calendar.includeWeekends',
     disable: 'deckard.calendar.hideWeekends',

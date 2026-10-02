@@ -22,6 +22,7 @@ import { reportFailure } from './notify';
 
 /** A file that reads, but is not one Deckard wrote. */
 export class NotPreferencesError extends Error {
+  /** The message is what Import shows the reader; the default suits any file that is not an export. */
   constructor(message = 'This is not a Deckard preferences file.') {
     super(message);
     this.name = 'NotPreferencesError';
@@ -44,6 +45,7 @@ interface BackupStore {
   maintenance: { importPreferences(value: PersistedPreferences): Promise<void> };
 }
 
+/** Wraps the blob with the marker readExport looks for, stamped with when it was taken. */
 export function createExport(
   preferences: PersistedPreferences,
   now = new Date(),
@@ -95,6 +97,10 @@ export function describePreferences(preferences: PersistedPreferences): string {
   return parts.length ? parts.join(', ') : 'nothing chosen yet';
 }
 
+/**
+ * Asks where to save, through the save dialog, and writes this workspace's
+ * preferences there as one JSON file. Cancelling the dialog writes nothing.
+ */
 export async function exportPreferences(store: BackupStore): Promise<void> {
   const target = await vscode.window.showSaveDialog({
     defaultUri: vscode.Uri.file('deckard-preferences.json'),
@@ -111,6 +117,11 @@ export async function exportPreferences(store: BackupStore): Promise<void> {
   );
 }
 
+/**
+ * Asks for a file, through the open dialog, and replaces this workspace's
+ * preferences with it once the reader confirms. A file that is not an export
+ * or a snapshot is turned away, and nothing changes.
+ */
 export async function importPreferences(store: BackupStore): Promise<void> {
   const chosen = await vscode.window.showOpenDialog({
     canSelectMany: false,
@@ -140,6 +151,11 @@ export async function importPreferences(store: BackupStore): Promise<void> {
   });
 }
 
+/**
+ * Lists the copies Deckard kept, newest first, and replaces this workspace's
+ * preferences with the one chosen once the reader confirms. With no copies
+ * yet it says when one will be written.
+ */
 export async function restorePreferences(
   store: BackupStore,
   snapshots: PreferenceSnapshots,
@@ -178,6 +194,10 @@ export async function restorePreferences(
   });
 }
 
+/**
+ * Asks, in a modal, before replacing: it names both what comes in and what
+ * goes, since what goes is only recoverable from the copy taken first.
+ */
 async function replaceAfterAsking(
   store: BackupStore,
   preferences: PersistedPreferences,
@@ -201,6 +221,7 @@ async function replaceAfterAsking(
   );
 }
 
+/** How long ago a copy was taken, rounded to the unit a reader would say. */
 function describeAge(at: Date, now = Date.now()): string {
   const minutes = Math.round((now - at.getTime()) / 60000);
   if (minutes < 1) {return 'just now';}

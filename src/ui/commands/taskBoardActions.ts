@@ -68,9 +68,9 @@ export async function updateTaskBoardSetting(
   const configuration = vscode.workspace.getConfiguration('deckard');
   const current = configuration.inspect(`board.${key}`);
   const target =
-    current?.workspaceValue !== undefined
-      ? vscode.ConfigurationTarget.Workspace
-      : vscode.ConfigurationTarget.Global;
+    current?.workspaceValue === undefined
+      ? vscode.ConfigurationTarget.Global
+      : vscode.ConfigurationTarget.Workspace;
   await writeSetting(`board.${key}`, value, target, configuration);
 }
 

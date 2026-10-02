@@ -70,9 +70,6 @@ export default {
     "src/domain/index/parked.ts": 1,
     "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/query/queryEvaluator.ts": 3,
-    "src/ui/commands/quickFindActions.ts": 1,
-    "src/ui/commands/taskEditor.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
     "src/ui/state/quickFindState.ts": 1
   },
   complexity: {
@@ -109,14 +106,6 @@ export default {
     "src/domain/query/queryParser.ts": [
       "createCondition",
       "tokenize"
-    ],
-    "src/ui/commands/quickFind.ts": [
-      "accept",
-      "toPickItems",
-      "triggerItemButton"
-    ],
-    "src/ui/commands/taskEditor.ts": [
-      "readField"
     ],
     "src/ui/preview/queryBlockHtml.ts": [
       "renderTask"
@@ -200,19 +189,6 @@ export default {
     "src/test/notes-graph-behavior.test.ts": 1,
     "src/test/relatedNotesFixture.ts": 1,
     "src/test/webviewPage.ts": 2,
-    "src/ui/commands/noteVisits.ts": 5,
-    "src/ui/commands/notify.ts": 2,
-    "src/ui/commands/pinNote.ts": 2,
-    "src/ui/commands/preferenceBackups.ts": 5,
-    "src/ui/commands/quickFindActions.ts": 4,
-    "src/ui/commands/sampleWorkspace.ts": 2,
-    "src/ui/commands/selectionSeed.ts": 2,
-    "src/ui/commands/taskEditor.ts": 5,
-    "src/ui/commands/taskSteps.ts": 3,
-    "src/ui/commands/tidyPreferences.ts": 1,
-    "src/ui/commands/tryNext.ts": 5,
-    "src/ui/commands/whatsNew.ts": 4,
-    "src/ui/commands/workspaceWrites.ts": 2,
     "src/ui/preview/noteEmbeds.ts": 1,
     "src/ui/preview/queryBlocks.ts": 3,
     "src/ui/state/agendaState.ts": 3,
@@ -289,19 +265,6 @@ export default {
     ],
     "src/test/webviewPage.ts": [
       "openWebviewPage"
-    ],
-    "src/ui/commands/quickFind.ts": [
-      "toPickItems"
-    ],
-    "src/ui/commands/quickFindActions.ts": [
-      "buildRowActions"
-    ],
-    "src/ui/commands/taskEditor.ts": [
-      "readField"
-    ],
-    "src/ui/commands/taskSteps.ts": [
-      "(arrow function)",
-      "pickSteps"
     ],
     "src/ui/providers/tagSuggestions.ts": [
       "provideCompletionItems"
@@ -403,11 +366,6 @@ export default {
     "src/domain/markdown/taskSteps.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
-    "src/ui/commands/notify.ts": 1,
-    "src/ui/commands/pinNote.ts": 1,
-    "src/ui/commands/settings.ts": 1,
-    "src/ui/commands/taskBoardActions.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 1,
     "src/ui/state/assistantTools.ts": 2,
     "src/ui/state/calendarState.ts": 2,
@@ -424,10 +382,6 @@ export default {
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
-    "src/ui/commands/noteVisits.ts": 1,
-    "src/ui/commands/savedSearchHome.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/commands/tidyPreferences.ts": 1,
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
     "src/ui/state/outlineState.ts": 1,

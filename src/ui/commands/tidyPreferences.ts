@@ -52,6 +52,11 @@ export function listStale(stale: StalePreferences): string {
   ].join('\n');
 }
 
+/**
+ * Deckard: Tidy Preferences. Says what points at nothing and removes it once
+ * the reader agrees in a modal that lists each item; with nothing stale it
+ * says so and asks nothing.
+ */
 export async function tidyPreferences(
   indexer: TidyIndexSource,
   preferences: TidyStore,
@@ -75,8 +80,9 @@ export async function tidyPreferences(
     { modal: true, detail: listStale(stale) },
     'Remove',
   );
-  if (confirm === 'Remove') {
-    await preferences.removeStale(stale);
-    void vscode.window.showInformationMessage(`Removed ${lines.join(', ')}.`);
+  if (confirm !== 'Remove') {
+    return;
   }
+  await preferences.removeStale(stale);
+  void vscode.window.showInformationMessage(`Removed ${lines.join(', ')}.`);
 }

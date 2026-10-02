@@ -20,17 +20,22 @@ import { reportError } from '../../shared/timing';
  * is never a toast.
  */
 
+/** The global-state key of the version last run on this machine. */
 export const LAST_SEEN_VERSION = 'deckard.lastSeenVersion';
+/** The global-state key of the update Home has a What's new line for, from and to. */
 export const WHATS_NEW_PENDING = 'deckard.whatsNewPending';
 /** The last version before Deckard tracked the version seen. */
 export const FIRST_TRACKED_FROM = '1.22.0';
 
+/** The update Home's line is about: the version run before it, and the one it brought. */
 interface PendingUpdate {
   from: string;
   to: string;
 }
 
+/** Where WhatsNew keeps what it has seen, and how it reads the version and the changelog. */
 export interface WhatsNewOptions {
+  /** Global rather than the workspace's: an update happens once per machine. */
   globalState: vscode.Memento;
   /** The running version, from the manifest. */
   version: string;
@@ -42,12 +47,17 @@ export interface WhatsNewOptions {
   isShown?: () => boolean;
 }
 
+/**
+ * Tracks the version run on this machine, and keeps Home's What's new line
+ * from a feature update until it is opened or dismissed.
+ */
 export class WhatsNew implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   /** Fires when the line Home shows appears or goes. */
   public readonly onDidChange = this.changeEmitter.event;
   private cached: Promise<Release[]> | undefined;
 
+  /** Reads and stores nothing until it is asked. */
   public constructor(private readonly options: WhatsNewOptions) {}
 
   /** Every release in the shipped changelog, read once. */
@@ -62,23 +72,35 @@ export class WhatsNew implements vscode.Disposable {
   /** Records the version run, and notes a feature update that has Highlights. */
   public async onActivate(): Promise<void> {
     const { globalState, version } = this.options;
-    let seen = globalState.get<string>(LAST_SEEN_VERSION);
-    if (seen === undefined) {
-      if (!this.options.existingUser) {
-        await globalState.update(LAST_SEEN_VERSION, version);
-        return;
-      }
-      seen = FIRST_TRACKED_FROM;
+    const stored = globalState.get<string>(LAST_SEEN_VERSION);
+    // A new install has nothing to catch up on; the walkthrough is its welcome.
+    if (stored === undefined && !this.options.existingUser) {
+      await globalState.update(LAST_SEEN_VERSION, version);
+      return;
     }
-    if (compareVersions(version, seen) > 0 && isFeatureUpdate(seen, version)) {
-      const fresh = releasesWithHighlights(await this.releases(), seen, version);
-      if (fresh.length > 0) {
-        const pending = globalState.get<PendingUpdate>(WHATS_NEW_PENDING);
-        await globalState.update(WHATS_NEW_PENDING, { from: pending?.from ?? seen, to: version });
-        this.changeEmitter.fire();
-      }
-    }
+    const seen = stored ?? FIRST_TRACKED_FROM;
+    await this.notePendingUpdate(seen, version);
     await globalState.update(LAST_SEEN_VERSION, version);
+  }
+
+  /**
+   * Keeps Home's line for an update from `seen` to `version` when it is a
+   * feature update with Highlights to show. An update while a line is still
+   * pending keeps the version it was from, so What's new covers both.
+   */
+  private async notePendingUpdate(seen: string, version: string): Promise<void> {
+    const isNewer = compareVersions(version, seen) > 0;
+    if (!isNewer || !isFeatureUpdate(seen, version)) {
+      return;
+    }
+    const fresh = releasesWithHighlights(await this.releases(), seen, version);
+    if (fresh.length === 0) {
+      return;
+    }
+    const { globalState } = this.options;
+    const pending = globalState.get<PendingUpdate>(WHATS_NEW_PENDING);
+    await globalState.update(WHATS_NEW_PENDING, { from: pending?.from ?? seen, to: version });
+    this.changeEmitter.fire();
   }
 
   /** The line Home shows, while there is one and the setting allows it. */
@@ -104,6 +126,7 @@ export class WhatsNew implements vscode.Disposable {
     this.changeEmitter.fire();
   }
 
+  /** Stops onDidChange; what was stored stays. */
   public dispose(): void {
     this.changeEmitter.dispose();
   }

@@ -35,6 +35,7 @@ export type RowActionId =
   | 'removeRecent'
   | 'putInBox';
 
+/** One entry in a row's action list, as Cmd+. shows it. */
 export interface RowAction {
   id: RowActionId;
   label: string;
@@ -42,11 +43,13 @@ export interface RowAction {
   description?: string;
 }
 
+/** A titled group of actions, shown under its own separator. */
 export interface RowActionGroup {
   label: string;
   actions: RowAction[];
 }
 
+/** What buildRowActions needs to know beyond the row, to pick the right wording. */
 export interface RowActionContext {
   /** Whether the row's note is pinned to Home. */
   pinned?: boolean;
@@ -54,6 +57,7 @@ export interface RowActionContext {
   favorite?: boolean;
   /** Whether a task can be moved from here, once Move to… exists. */
   canMove?: boolean;
+  /** Whose key names to show; this machine's when not given. */
   platform?: NodeJS.Platform;
 }
 
@@ -336,40 +340,110 @@ export function rowKey(item: QuickFindItem): string {
   }
 }
 
+/**
+ * The actions a row offers, in the groups Cmd+. lists them under, by what
+ * the row is. A condition or a message offers none.
+ */
 export function buildRowActions(
   item: QuickFindItem,
   context: RowActionContext = {},
 ): RowActionGroup[] {
   const key = (value: string) => keyLabel(value, context.platform);
-  const groups: RowActionGroup[] = [];
-  const add = (label: string, actions: RowAction[]) => {
-    if (actions.length > 0) {
-      groups.push({ label, actions });
-    }
-  };
+  return rowActionGroups(item, context, key).filter((group) => group.actions.length > 0);
+}
+
+/** The groups for each kind of row, before empty ones are dropped. */
+function rowActionGroups(
+  item: QuickFindItem,
+  context: RowActionContext,
+  key: (value: string) => string,
+): RowActionGroup[] {
   switch (item.kind) {
     case 'note':
-      add('Open', [
+      return noteActionGroups(context, key);
+    case 'task':
+      return taskActionGroups(item, context, key);
+    case 'tag':
+      return [tagActionGroup(context)];
+    case 'recent':
+      return [
+        {
+          label: 'Search',
+          actions: [
+            { id: 'search', label: 'Search for it', description: 'Enter' },
+            { id: 'saveSearch', label: 'Save search' },
+            { id: 'removeRecent', label: 'Remove from recent searches' },
+          ],
+        },
+      ];
+    case 'savedView':
+      return [
+        {
+          label: 'Saved search',
+          actions: [
+            { id: 'open', label: 'Open', description: 'Enter' },
+            { id: 'putInBox', label: 'Put its search in the box', description: 'Tab' },
+          ],
+        },
+      ];
+    case 'condition':
+    case 'message':
+      return [];
+  }
+}
+
+/** A note row: open it, link to it, and pin or unpin it, whichever it is not. */
+function noteActionGroups(
+  context: RowActionContext,
+  key: (value: string) => string,
+): RowActionGroup[] {
+  return [
+    {
+      label: 'Open',
+      actions: [
         { id: 'open', label: 'Open', description: 'Enter' },
         { id: 'openBeside', label: 'Open to the side', description: key('cmd+enter') },
-      ]);
-      add('Link', [
+      ],
+    },
+    {
+      label: 'Link',
+      actions: [
         { id: 'insertLink', label: 'Insert a link at the cursor', description: key('alt+enter') },
         { id: 'copyLink', label: 'Copy a link' },
-      ]);
-      add('Home', [
+      ],
+    },
+    {
+      label: 'Home',
+      actions: [
         context.pinned
           ? { id: 'unpin', label: 'Unpin from Home' }
           : { id: 'pin', label: 'Pin to Home' },
-      ]);
-      break;
-    case 'task':
-      add('Open', [
+      ],
+    },
+  ];
+}
+
+/**
+ * A task row: open or edit it, complete or reopen it, date it while it is
+ * open, move it when Move to… exists, and link to its heading.
+ */
+function taskActionGroups(
+  item: QuickFindItem,
+  context: RowActionContext,
+  key: (value: string) => string,
+): RowActionGroup[] {
+  return [
+    {
+      label: 'Open',
+      actions: [
         { id: 'open', label: 'Open', description: 'Enter' },
         { id: 'openBeside', label: 'Open to the side', description: key('cmd+enter') },
         { id: 'editTask', label: 'Edit task…' },
-      ]);
-      add('Task', [
+      ],
+    },
+    {
+      label: 'Task',
+      actions: [
         item.completed
           ? { id: 'reopen', label: 'Reopen' }
           : { id: 'complete', label: 'Complete' },
@@ -381,39 +455,29 @@ export function buildRowActions(
               { id: 'dueDate' as const, label: 'Due on a date…' },
               { id: 'noDue' as const, label: 'No due date' },
             ]),
-      ]);
-      if (context.canMove) {
-        add('Move', [{ id: 'moveTo', label: 'Move to…' }]);
-      }
-      add('Link', [
+      ],
+    },
+    ...(context.canMove ? [{ label: 'Move', actions: [{ id: 'moveTo' as const, label: 'Move to…' }] }] : []),
+    {
+      label: 'Link',
+      actions: [
         { id: 'insertLink', label: 'Insert a link to its heading', description: key('alt+enter') },
-      ]);
-      break;
-    case 'tag':
-      add('Tag', [
-        { id: 'openTag', label: 'Open its page', description: 'Enter' },
-        { id: 'addToSearch', label: 'Add to the search', description: 'Tab' },
-        context.favorite
-          ? { id: 'unfavorite', label: 'Remove from favorites' }
-          : { id: 'favorite', label: 'Add to favorites' },
-        { id: 'renameTag', label: 'Rename tag…' },
-      ]);
-      break;
-    case 'recent':
-      add('Search', [
-        { id: 'search', label: 'Search for it', description: 'Enter' },
-        { id: 'saveSearch', label: 'Save search' },
-        { id: 'removeRecent', label: 'Remove from recent searches' },
-      ]);
-      break;
-    case 'savedView':
-      add('Saved search', [
-        { id: 'open', label: 'Open', description: 'Enter' },
-        { id: 'putInBox', label: 'Put its search in the box', description: 'Tab' },
-      ]);
-      break;
-    default:
-      break;
-  }
-  return groups;
+      ],
+    },
+  ];
+}
+
+/** A tag row: open its page, add it to the search, favorite or unfavorite it, rename it. */
+function tagActionGroup(context: RowActionContext): RowActionGroup {
+  return {
+    label: 'Tag',
+    actions: [
+      { id: 'openTag', label: 'Open its page', description: 'Enter' },
+      { id: 'addToSearch', label: 'Add to the search', description: 'Tab' },
+      context.favorite
+        ? { id: 'unfavorite', label: 'Remove from favorites' }
+        : { id: 'favorite', label: 'Add to favorites' },
+      { id: 'renameTag', label: 'Rename tag…' },
+    ],
+  };
 }

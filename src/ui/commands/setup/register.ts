@@ -43,6 +43,7 @@ async function reindexWorkspace(indexer: IndexRoles<vscode.Uri>): Promise<void> 
   // Reindexing looked like it did nothing: a status-bar spinner, then
   // silence. Asked for by hand, it says what it found.
   const index = indexer.getSnapshot();
+  /** A count and its noun, with an s for any count but one. */
   const plural = (count: number, noun: string): string =>
     `${count} ${noun}${count === 1 ? '' : 's'}`;
   void vscode.window.showInformationMessage(

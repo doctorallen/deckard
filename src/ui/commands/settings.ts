@@ -59,7 +59,7 @@ export function settingTarget(
   key: string,
   configuration: Pick<vscode.WorkspaceConfiguration, 'inspect'> = vscode.workspace.getConfiguration('deckard'),
 ): vscode.ConfigurationTarget {
-  return configuration.inspect(key)?.workspaceValue !== undefined
-    ? vscode.ConfigurationTarget.Workspace
-    : vscode.ConfigurationTarget.Global;
+  return configuration.inspect(key)?.workspaceValue === undefined
+    ? vscode.ConfigurationTarget.Global
+    : vscode.ConfigurationTarget.Workspace;
 }
