@@ -261,6 +261,17 @@ test('only Home is sent its widgets', async () => {
   );
 });
 
+test('a Dashboard opened on the Tags tab tells Related Notes what Home can add', async () => {
+  const { view } = await openDashboard(createIndex(), (preferences) =>
+    preferences.homeWidgets.setDashboardMode('browse'),
+  );
+  const sent = view.posted.filter((message) => message.type === 'widgetChoices');
+  assert.strictEqual(sent.length, 1, 'told once, before Home is shown');
+  const offered = sent[0].choices.map((choice) => choice.value);
+  assert.ok(offered.includes('stats'), 'a widget Home does not hold is offered');
+  assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
+});
+
 test('Home\'s search box opens a search page, and its links lead on', async () => {
   const { view, navigation, preferences } = await openDashboard();
   const bar = view.find('.home-widget[data-widget-id="search"] [data-action="query-input"]');

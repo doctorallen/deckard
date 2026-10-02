@@ -446,11 +446,13 @@ function revealNewWidget(): void {
 /** The last list of what + Add widget offers that the host was told, as JSON. */
 let sentChoices = '';
 
-/** Tells the host what can be added, when that has changed, so Related Notes can offer it too. */
+/**
+ * Tells the host what can be added, when that has changed, so Related Notes
+ * can offer it too. It is worked out from Home's settings, which every
+ * snapshot carries, so a Dashboard opened on the Tags tab, sent no widgets
+ * yet, tells it as well.
+ */
 function sendWidgetChoices(snapshot: DashboardPageState): void {
-  if (!snapshot.widgets) {
-    return;
-  }
   const choices = widgetChoices(widgetConfig(snapshot), snapshot.savedFilters);
   const key = JSON.stringify(choices);
   if (key === sentChoices) {
