@@ -222,6 +222,32 @@ suite('Dashboard host', () => {
     }
   });
 
+  test('two quick tab or column choices end on the last, with no flip back', async () => {
+    const home = openHome();
+    try {
+      // The page does not wait for one save before sending the next choice.
+      const before = home.states().length;
+      await Promise.all([
+        home.send({ type: 'setDashboardMode', mode: 'browse' }),
+        home.send({ type: 'setDashboardMode', mode: 'home' }),
+      ]);
+      const modes = home.states().slice(before).map((state) => state.data.viewState.mode);
+      assert.deepStrictEqual(modes.slice(modes.indexOf('home')).filter((mode) => mode !== 'home'), [], `${modes}`);
+      assert.strictEqual(home.preferences.reader.value.dashboardViewState.mode, 'home');
+
+      const next = home.states().length;
+      await Promise.all([
+        home.send({ type: 'setDashboardColumns', section: 'tags', columns: 3 }),
+        home.send({ type: 'setDashboardColumns', section: 'tags', columns: 4 }),
+      ]);
+      const columns = home.states().slice(next).map((state) => state.data.tagColumns);
+      assert.deepStrictEqual(columns.slice(columns.indexOf(4)).filter((count) => count !== 4), [], `${columns}`);
+      assert.strictEqual(home.preferences.reader.value.dashboardTagColumns, 4);
+    } finally {
+      home.dispose();
+    }
+  });
+
   test('is sent nothing while hidden, one snapshot when shown, and one when shown on a new day', () => {
     const home = openHome();
     try {

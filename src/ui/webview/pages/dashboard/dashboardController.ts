@@ -121,6 +121,12 @@ export class DashboardController implements PageController<DashboardPageState, D
   private sourceNotePath: string | undefined;
   /** The day the widgets were built for: Today goes stale when it turns. */
   private publishedOn = startOfToday();
+  /**
+   * How many saves of the tab, and of the tag columns, are still being
+   * written. A save's change event carries what was stored then, which an
+   * earlier save can make older than the reader's last choice.
+   */
+  private readonly pendingWrites = { mode: 0, columns: 0 };
 
   /** Reads Home's tab and columns as they were saved; nothing is drawn until the host asks. */
   public constructor(private readonly home: DashboardControllerOptions) {
@@ -222,9 +228,16 @@ export class DashboardController implements PageController<DashboardPageState, D
           page.refresh();
         }
       }),
+      // A tab or column choice still being saved is the newest the page
+      // knows; the stored one can be the choice before it, and taking it
+      // would flip Home back for a moment.
       preferences.reader.onDidChange((nextPreferences) => {
-        this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
-        this.dashboardMode = nextPreferences.dashboardViewState.mode;
+        if (this.pendingWrites.columns === 0) {
+          this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
+        }
+        if (this.pendingWrites.mode === 0) {
+          this.dashboardMode = nextPreferences.dashboardViewState.mode;
+        }
         page.refresh();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -380,13 +393,13 @@ export class DashboardController implements PageController<DashboardPageState, D
       setDashboardMode: async (message, page) => {
         this.dashboardMode = message.mode;
         page.refresh();
-        await preferences.homeWidgets.setDashboardMode(message.mode);
+        await this.whileWriting('mode', () => preferences.homeWidgets.setDashboardMode(message.mode));
       },
       setDashboardSearch: (message) => preferences.homeWidgets.setDashboardSearch(message.field, message.query),
       setDashboardColumns: async (message, page) => {
         this.dashboardTagColumns = message.columns;
         page.refresh();
-        await preferences.display.setDashboardColumns(message.section, message.columns);
+        await this.whileWriting('columns', () => preferences.display.setDashboardColumns(message.section, message.columns));
       },
       reorderTags: (message) => this.reorderTags(message.tagKeys, message.tagKey, message.isFavorite),
       reorderEntities: async (message) => {
@@ -518,6 +531,16 @@ export class DashboardController implements PageController<DashboardPageState, D
       snoozeTryNext: (message) => this.handleTryNext(message.type, message.key),
       retireTryNext: (message) => this.handleTryNext(message.type, message.key),
     };
+  }
+
+  /** Runs a save of the tab or the tag columns, counted as pending until it settles. */
+  private async whileWriting(field: 'mode' | 'columns', write: () => Promise<void>): Promise<void> {
+    this.pendingWrites[field] += 1;
+    try {
+      await write();
+    } finally {
+      this.pendingWrites[field] -= 1;
+    }
   }
 
   /**
