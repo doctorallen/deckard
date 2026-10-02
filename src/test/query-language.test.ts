@@ -182,6 +182,27 @@ suite('Deckard query language', () => {
     assert.deepStrictEqual(parseQuery(formatted).diagnostics, []);
   });
 
+  test('quotes a value that is a word joining terms, so the query still reads', () => {
+    for (const [source, written] of [
+      ['"not"', 'text ~ "not"'],
+      ['"or" #work', 'text ~ "or" AND tag = #work'],
+      ['text ~ "AND"', 'text ~ "AND"'],
+      ['file = "Or"', 'file = "Or"'],
+      ['text ~ "&&"', 'text ~ "&&"'],
+      ['text ~ "||x"', 'text ~ "||x"'],
+    ]) {
+      const parsed = parseQuery(source);
+      assert.strictEqual(formatQuery(parsed.node), written, source);
+      assert.deepStrictEqual(parseQuery(written).diagnostics, [], written);
+      assert.strictEqual(
+        formatQuery(parseQuery(fromBuilderTree(toBuilderTree(parsed.node))).node),
+        written,
+        `${source} through the builder`,
+      );
+    }
+    assert.strictEqual(formatQuery(parseQuery('text ~ "band"').node), 'text ~ band');
+  });
+
   test('expresses a tag intersection as the query the chips imply', () => {
     const query = buildTagIntersectionQuery(['#project/atlas', '@ren-kade']);
     assert.strictEqual(query, 'tag = #project/atlas AND tag = @ren-kade');

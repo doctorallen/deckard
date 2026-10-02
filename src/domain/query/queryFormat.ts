@@ -70,15 +70,30 @@ export function formatCondition(condition: QueryConditionNode): string {
 }
 
 /**
- * Quotes a value when it contains characters the tokenizer treats specially.
+ * Quotes a value when it contains characters the tokenizer treats
+ * specially, or when unquoted it would read as a word that joins terms.
  */
 export function quoteValue(value: string): string {
-  // `[[x]]` unquoted would read back as a link rather than the characters.
-  if (value.length > 0 && !/[\s:=<>~!()"']/.test(value) && !value.includes('[[')) {
+  // `[[x]]` unquoted would read back as a link rather than the characters,
+  // and `and`, `or`, `not`, `&&`, and `||` as the words that join terms.
+  if (
+    value.length > 0 &&
+    !/[\s:=<>~!()"']/.test(value) &&
+    !value.includes('[[') &&
+    !JOINING_WORD.test(value)
+  ) {
     return value;
   }
   return `"${value.replace(/(["\\])/g, '\\$1')}"`;
 }
+
+/**
+ * A value the tokenizer would read as AND, OR, or NOT rather than as a
+ * word: one of the keywords in any case, or one that starts with `&&` or
+ * `||`. The parser's own list cannot be imported here, since the format
+ * never imports the parser.
+ */
+const JOINING_WORD = /^(?:and|or|not)$|^(?:&&|\|\|)/i;
 
 /**
  * Builds the canonical query for an intersection of tags.
