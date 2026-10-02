@@ -317,6 +317,8 @@ module.exports = {
     file: fileUri,
   },
   ViewColumn: { Active: -1, Beside: -2, One: 1 },
+  EndOfLine: { LF: 1, CRLF: 2 },
+  QuickPickItemKind: { Separator: -1, Default: 0 },
   TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
   window: {
     createWebviewPanel,
