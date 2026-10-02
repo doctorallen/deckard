@@ -12,7 +12,7 @@
 import { render } from 'preact';
 
 import { announce } from './status';
-import { isMenuKey, returnFocusFromMenu } from './menuKeys';
+import { isMenuKey, returnFocusFromMenu, walkMenu } from './menuKeys';
 
 /** One kind of ranked row: its selector, the dataset key that names a row, and the menu's two edge labels. */
 export interface RankedRowKind {
@@ -89,6 +89,26 @@ export function closeRankMenu(): void {
   if (wasOpen) {
     returnFocusFromMenu();
   }
+}
+
+/**
+ * A key while the rank menu is open: Escape closes it, and with focus in
+ * it, the arrows, Home, and End walk it, as they walk every menu. Returns
+ * whether the key was the menu's, so a row does not answer it too.
+ */
+function answerRankMenuKey(event: KeyboardEvent): boolean {
+  if (!rankMenu || rankMenu.hidden) {
+    return false;
+  }
+  if (event.key === 'Escape') {
+    closeRankMenu();
+    return true;
+  }
+  if (event.target instanceof Node && rankMenu.contains(event.target)) {
+    walkMenu(rankMenu, event, '[data-context-action]');
+    return true;
+  }
+  return false;
 }
 
 /** Where a menu opens: where the pointer was, or under the row the keyboard opened it from. */
@@ -400,10 +420,9 @@ class RankedRows {
     event.stopImmediatePropagation();
   }
 
-  /** Escape closes the menu; Alt+Up and Alt+Down move a row; the menu keys open its menu. */
+  /** The open menu's keys; Alt+Up and Alt+Down move a row; the menu keys open its menu. */
   private onKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) {
-      closeRankMenu();
+    if (answerRankMenuKey(event)) {
       return;
     }
     const target = event.target instanceof Element ? event.target : null;

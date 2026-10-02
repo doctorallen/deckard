@@ -33,17 +33,20 @@ export function isTaskColumnId(value: unknown): value is TaskColumnId {
 
 /**
  * A status a board column stands for, as `deckard.board.statuses` allows
- * one: letters, digits, `-` and `_`, starting with a letter or digit, so it
- * can be written as a tag.
+ * one: letters and digits of any script, the marks that accent them, `-`
+ * and `_`, starting with a letter or digit, so it can be written as a tag.
+ * These are the parser's characters for a part of a tag's name
+ * (`TAG_WORD_CHARACTERS`), written out here because a page imports this
+ * module and must not bundle the parser.
  */
-const STATUS_COLUMN_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const STATUS_COLUMN_NAME = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*$/u;
 
 /**
  * A namespace as the board takes one, the status tag's as
  * `deckard.board.statusNamespace` allows it, or the one a board is grouped
- * by: letters, digits, `-` and `_`, starting with a letter.
+ * by: the characters of a status, starting with a letter.
  */
-const BOARD_NAMESPACE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+const BOARD_NAMESPACE = /^\p{L}[\p{L}\p{N}\p{M}_-]*$/u;
 
 /** The most status columns the board's gear may set. */
 export const MAX_STATUS_COLUMNS = 50;
