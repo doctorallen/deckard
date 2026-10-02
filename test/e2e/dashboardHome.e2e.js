@@ -272,6 +272,20 @@ test('a Dashboard opened on the Tags tab tells Related Notes what Home can add',
   assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
 });
 
+test('a widget Related Notes adds while the Tags tab shows is added on Home, in view', async () => {
+  const { view, panel, preferences } = await openDashboard(createIndex(), (store) =>
+    store.homeWidgets.setDashboardMode('browse'),
+  );
+  panel._deliver({ type: 'addWidget', value: 'stats' });
+  await delay(20);
+  assert.strictEqual(view.find('#home-panel').hidden, false, 'Home is shown');
+  assert.ok(view.find('.home-edit-bar'), 'being customized');
+  assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'home');
+  const added = view.find('.home-widget[data-widget-id^="stats-"]');
+  assert.ok(added, 'with the new widget drawn');
+  assert.strictEqual(view.document.activeElement, added, 'and focused');
+});
+
 test('Home\'s search box opens a search page, and its links lead on', async () => {
   const { view, navigation, preferences } = await openDashboard();
   const bar = view.find('.home-widget[data-widget-id="search"] [data-action="query-input"]');

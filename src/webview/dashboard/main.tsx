@@ -865,10 +865,14 @@ document.addEventListener('input', (event) => {
 
 // ----- What the host sends ---------------------------------------------------
 
-// A widget chosen in Related Notes: Home goes into customizing, and adds it.
+// A widget chosen in Related Notes: Home is shown, goes into customizing,
+// and adds it. On the Tags tab the new widget would be added out of sight.
 onHostMessage<{ type: 'addWidget'; value: unknown }>('addWidget', (message) => {
   if (typeof message.value !== 'string') {
     return;
+  }
+  if (view.mode !== 'home') {
+    setDashboardMode('home', false);
   }
   if (!view.editingHome) {
     setEditingHome(true);
