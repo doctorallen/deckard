@@ -3,6 +3,7 @@ import { fileExists } from './fs';
 
 import { getPersonMarker } from '../../domain/markdown/parser';
 import { matchesPerson } from '../../domain/query/queryEvaluator';
+import { readFolderSetting } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
 import { WorkspaceScanner } from '../../core/workspace/scanner';
 import { UnreadableNote, WorkspaceIndex } from '../../domain/model';
@@ -69,19 +70,7 @@ export async function collectSetupFacts(
   const configuration = vscode.workspace.getConfiguration('deckard');
   const folders: SetupFolder[] = [];
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
-    const notesFolder = scanner.getNotesFolder(folder);
-    const templatesUri = scanner.getTemplatesFolderUri(folder);
-    folders.push({
-      name: folder.name,
-      notesFolder,
-      notesFolderExists: await fileExists(scanner.getNotesFolderUri(folder)),
-      ...(templatesUri
-        ? {
-            templatesFolder: configuration.get<string>('templatesFolder', 'templates'),
-            templatesFolderExists: await fileExists(templatesUri),
-          }
-        : {}),
-    });
+    folders.push(await collectSetupFolder(folder, scanner));
   }
   const excludeSetting = configuration.get<Record<string, unknown>>('exclude', {});
   const personMarker = getPersonMarker(configuration.get<unknown>('personMarker'));
@@ -114,6 +103,32 @@ export async function collectSetupFacts(
     me,
     meIsKnown,
     tasksForMe,
+  };
+}
+
+/**
+ * One workspace folder's notes and templates folders, read in that folder's
+ * scope as the scanner reads them: a templates folder setting that is not
+ * text is the default `templates`, as the scanner takes it.
+ */
+export async function collectSetupFolder(
+  folder: vscode.WorkspaceFolder,
+  scanner: Pick<WorkspaceScanner<vscode.Uri>, 'getNotesFolder' | 'getNotesFolderUri' | 'getTemplatesFolderUri'>,
+): Promise<SetupFolder> {
+  const templatesUri = scanner.getTemplatesFolderUri(folder);
+  return {
+    name: folder.name,
+    notesFolder: scanner.getNotesFolder(folder),
+    notesFolderExists: await fileExists(scanner.getNotesFolderUri(folder)),
+    ...(templatesUri
+      ? {
+          templatesFolder: readFolderSetting(
+            vscode.workspace.getConfiguration('deckard', folder.uri).get<unknown>('templatesFolder', 'templates'),
+            'templates',
+          ),
+          templatesFolderExists: await fileExists(templatesUri),
+        }
+      : {}),
   };
 }
 

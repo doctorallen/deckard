@@ -1,6 +1,7 @@
 import * as assert from 'assert';
+import * as vscode from 'vscode';
 
-import { buildSetupReport, SetupFacts } from '../ui/commands/checkSetup';
+import { buildSetupReport, collectSetupFolder, SetupFacts } from '../ui/commands/checkSetup';
 
 /** A workspace where everything is as it should be. */
 const healthy = (): SetupFacts => ({
@@ -77,5 +78,25 @@ suite('Setup check', () => {
     const untagged = buildSetupReport({ ...healthy(), indexed: { files: 5, sections: 5, tasks: 0, tags: 0 } }, at);
     assert.match(untagged, /⚠️ No tags were found in any note/);
     assert.match(untagged, /Tags are what Deckard connects notes by/);
+  });
+
+  test('a templates folder setting that is not text is reported as the default the scanner takes', async () => {
+    // A hand-edited settings.json can hold a number, null, or false here; the
+    // scanner reads each as `templates`, so the report must name that folder.
+    const configuration = () => vscode.workspace.getConfiguration('deckard');
+    await configuration().update('templatesFolder', 42, vscode.ConfigurationTarget.Global);
+    try {
+      const uri = vscode.Uri.file('/nowhere/notes');
+      const folder: vscode.WorkspaceFolder = { name: 'notes', uri, index: 0 };
+      const scanner = {
+        getNotesFolder: () => '',
+        getNotesFolderUri: () => uri,
+        getTemplatesFolderUri: () => vscode.Uri.file('/nowhere/notes/templates'),
+      };
+      const described = await collectSetupFolder(folder, scanner);
+      assert.strictEqual(described.templatesFolder, 'templates');
+    } finally {
+      await configuration().update('templatesFolder', undefined, vscode.ConfigurationTarget.Global);
+    }
   });
 });
