@@ -106,7 +106,10 @@ suite('ReviewService', () => {
 
     assert.strictEqual(result.kind === 'written' && result.title, '2026-09-14 to 2026-09-20');
     assert.strictEqual(seen.summarized?.range, range);
-    assert.strictEqual(seen.summarized?.options.next.title, '2026-09-20 to 2026-09-26', 'the week after its last day');
+    // Weeks start on Sunday here, but the week looked ahead at starts the
+    // day after the note's own last day, so no day is in both.
+    assert.strictEqual(seen.summarized?.options.next.title, '2026-09-21 to 2026-09-27', 'the week after its last day');
+    assert.strictEqual(seen.summarized?.options.next.start, range?.end);
   });
 
   test('looks ahead at next month from a month', async () => {
