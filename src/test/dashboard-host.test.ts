@@ -158,6 +158,21 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Dashboard host', () => {
+  test('is kept running while hidden, for arranging Home and its search box, and opens on its loading line', () => {
+    // Q1 of docs/implementation/20-webviews.md: the Dashboard keeps retain,
+    // so a search half built in Home's box and a widget's open gear outlive
+    // a hide. Its snapshot takes 394 ms to build on 5,000 notes, over Q3's
+    // 50 ms, so it is posted, never carried in the page's HTML.
+    const home = openHome();
+    try {
+      assert.strictEqual(home.controller.options.retainContextWhenHidden, true);
+      assert.strictEqual(home.controller.options.readsInertState, undefined);
+      assert.strictEqual(home.controller.options.embedsSnapshot, undefined);
+    } finally {
+      home.dispose();
+    }
+  });
+
   test('an edit to the theme and the agenda at once resets the HTML before either sends a snapshot', () => {
     const { result: home, fire } = withConfigurationEvents(() => openHome());
     try {

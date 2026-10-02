@@ -126,6 +126,9 @@ async function bench(size) {
   // every note, timed by the line its host writes ("Search page").
   row('Search page snapshot, one tag (median of 5)', ms(timeSearchPageSnapshot(index, now, '#project/t0')));
   row('Search page snapshot, every note (median of 5)', ms(timeSearchPageSnapshot(index, now, '')));
+  // Home's snapshot with the widgets it starts with, timed by the line its
+  // host writes ("Dashboard"), for the same rule.
+  row('Dashboard snapshot, Home (median of 5)', ms(timeDashboardSnapshot(index, now)));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -448,6 +451,46 @@ function timeSearchPageSnapshot(index, now, query) {
     log.lines.length = 0;
     measure('Search page', () => createSearchPageSnapshot(index, preferences, query, options));
     return readTiming(log.lines, ['Search page']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
+}
+
+/**
+ * Home's snapshot, as its host builds it with nothing configured: the tags,
+ * the tiles, and the widgets Home starts with, timed by the line the host
+ * writes ("Dashboard"), which decides whether the page's HTML carries it
+ * (docs/implementation/20-webviews.md, Q3: under 50 ms, it is embedded).
+ * The host's line also times the post, which a bench has no page to make,
+ * so this is the least that line can say.
+ */
+function timeDashboardSnapshot(index, now) {
+  const { createDashboardSnapshot } = load('dashboardState');
+  const { createDashboardWidgets } = load('dashboardWidgets');
+  const { createQueryContext } = load('queryContext');
+  const { createPreferences } = load('preferenceServices');
+  if (!createDashboardSnapshot || !createDashboardWidgets || !createQueryContext || !createPreferences || !measure) {
+    return NaN;
+  }
+  const values = new Map();
+  const preferences = createPreferences({
+    get: (key, fallback) => (values.has(key) ? values.get(key) : fallback),
+    keys: () => [...values.keys()],
+    update: async (key, value) => void values.set(key, value),
+  }).reader.value;
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Dashboard', () => {
+      // One moment for the whole page, as the host reads it once.
+      const queryContext = createQueryContext(now);
+      return {
+        ...createDashboardSnapshot({ index, preferences, tagTitleDisplayMode: 'inline', agendaQuery: '', queryContext }),
+        widgets: createDashboardWidgets(index, preferences, { queryContext, upcomingDays: 7, agendaQuery: '', tagTitleDisplayMode: 'inline' }),
+      };
+    });
+    return readTiming(log.lines, ['Dashboard']);
   });
   setTimingLog(undefined);
   return median(timings.filter((value) => value !== undefined));
