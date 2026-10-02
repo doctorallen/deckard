@@ -480,8 +480,15 @@ function stepHistoryByKey(event: KeyboardEvent, element: Element | null): boolea
   return true;
 }
 
-/** Enter or Space on a card or a task row, not on a control in it, opens where it is written. */
+/**
+ * Enter or Space on a card or a task row, not on a control in it, opens
+ * where it is written. Alt+Enter is the menu's key, and a key something
+ * else already took, such as that menu, opens nothing.
+ */
 function openEntryByKey(event: KeyboardEvent, element: Element | null): void {
+  if (event.defaultPrevented || event.altKey) {
+    return;
+  }
   if ((event.key !== 'Enter' && event.key !== ' ') || !element || element.closest('[data-action], button, input, a')) {
     return;
   }

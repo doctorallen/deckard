@@ -395,6 +395,18 @@ test('the match count is said when the search changes, and not on every redraw',
   assert.strictEqual(status.textContent, '1 note and 0 tasks match this search.');
 });
 
+test('Alt+Enter on a card opens its menu and not the note', async () => {
+  const { view } = await openOverview();
+  const card = view.find('.card');
+  card.focus();
+  vscode._test.executedCommands.length = 0;
+  view.posted.length = 0;
+  view.fire('keydown', card, { key: 'Enter', altKey: true });
+  await settle();
+  assert.strictEqual(view.find('#tag-context-menu').hidden, false, 'the menu is open');
+  assert.deepStrictEqual(view.posted.filter((message) => message.type === 'openSource'), [], 'the note is not opened');
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
