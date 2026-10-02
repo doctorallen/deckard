@@ -20,8 +20,8 @@ import { reportFailure } from './notify';
 import { WriteHandle } from './workspaceWrites';
 import { getPeriodicNote } from '../../domain/notes/periodicNotes';
 import { findSameSection } from '../../domain/capture/captureLines';
-import { createPinForLine } from '../../domain/notes/pins';
-import { Section, Task, WorkspaceIndex } from '../../domain/model';
+import { createPinForSection } from '../../domain/notes/pins';
+import { PinnedNote, Section, Task, WorkspaceIndex } from '../../domain/model';
 import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
@@ -107,7 +107,7 @@ export async function moveTasks(
 /** Where a move writes, once chosen and found again, and the heading it names. */
 interface ResolvedTarget extends MoveTarget<vscode.Uri> {
   /** The heading to remember as recent. */
-  heading?: { filePath: string; line: number };
+  recent?: PinnedNote;
 }
 
 /**
@@ -137,11 +137,8 @@ async function moveBlocks(
     void reportFailure({ outcome: 'Deckard could not move it, so nothing was written.' });
     return;
   }
-  if (target.heading) {
-    const pin = createPinForLine(indexer.getSnapshot(), target.heading.filePath, target.heading.line);
-    if (pin?.heading) {
-      await preferences.usage.recordRecentHeading(pin);
-    }
+  if (target.recent) {
+    await preferences.usage.recordRecentHeading(target.recent);
   }
   announceMove(sources, target, result.created, result.handle);
 }
@@ -261,7 +258,7 @@ async function resolveSection(
     link: found.link,
     name: `${noteTitle(destination.filePath)} › ${heading}`,
     section: { startLine: found.section.startLine, endLine: found.section.bodyEndLine },
-    heading: { filePath: destination.filePath, line: destination.section.startLine },
+    recent: found.recent,
   };
 }
 
@@ -271,12 +268,15 @@ export interface SectionTarget {
   section: Section;
   /** What a link left behind names, `Note#Heading`, without its brackets. */
   link: string;
+  /** The heading to remember as recent, for the next Move to… or capture. */
+  recent: PinnedNote;
 }
 
 /**
  * Finds `chosen`, a heading chosen from `index`, again among `live`, the
- * sections of `filePath` as the note is now, and the link a move leaves
- * behind to it. Undefined when the note no longer holds the heading.
+ * sections of `filePath` as the note is now, with the link a move leaves
+ * behind to it and the heading to remember as recent. Undefined when the
+ * note no longer holds the heading.
  */
 export function readSectionTarget(
   index: WorkspaceIndex,
@@ -290,9 +290,10 @@ export function readSectionTarget(
     return undefined;
   }
   // From the heading as the note holds it: the index may have read the note
-  // again since the heading was chosen, and no longer know it by its id.
+  // again since the heading was chosen, and no longer know it by its id or
+  // hold it at the line it was chosen at.
   const link = createWikiLinkToSection(index, filePath, section).text.slice(2, -2);
-  return { section, link };
+  return { section, link, recent: createPinForSection(filePath, live, section) };
 }
 
 /** The first eight words of a line, without its marker, tags, or metadata. */

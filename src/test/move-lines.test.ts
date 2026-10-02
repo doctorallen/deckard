@@ -130,4 +130,18 @@ suite('What Move to… moves', () => {
     assert.strictEqual(target?.section.startLine, 4);
     assert.strictEqual(target?.link, 'plan#Calls', 'the link left behind names the heading');
   });
+
+  test('remembers the heading chosen, not the one at its old line, after the index has read its note again', () => {
+    const before = parseMarkdown('plan.md', '# Plan\n\n## Calls\n- [ ] Ren\n');
+    const chosen = before.sections.find((section) => section.heading === 'Calls');
+    assert.ok(chosen);
+    const now = parseMarkdown('plan.md', '# Plan\nA line added.\n\n## Calls\n- [ ] Ren\n');
+    const index = buildWorkspaceIndex(new Map([[now.filePath, now]]));
+    assert.deepStrictEqual(readSectionTarget(index, 'plan.md', chosen, now.sections)?.recent, {
+      filePath: 'plan.md',
+      heading: 'Calls',
+      headingLevel: 2,
+      occurrence: 0,
+    });
+  });
 });
