@@ -143,8 +143,7 @@ export interface TagOverviewHub {
   fileName: string;
   /** The note's body after its front matter. */
   rawContent: string;
-  renderedHtml: string;
-  /** The body as block tokens, which a Preact page draws in place of `renderedHtml`. */
+  /** The body as block tokens, which the page draws as elements and text. */
   bodyTokens: BlockToken[];
   properties: FrontmatterProperty[];
   /** Other notes that also describe the tag. */

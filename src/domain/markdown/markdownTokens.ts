@@ -7,10 +7,11 @@ import MarkdownIt = require('markdown-it');
  * and the tree a page draws as elements and text nodes is the boundary
  * (decision 0015).
  *
- * The options are `src/ui/webview/rendering.ts`'s: no HTML, so `<b>` in a
- * note is text; no linkify, so a bare URL is text; and every line break a
- * break. One rule is added: `[[wiki links]]`, which markdown-it does not
- * know, read before links so their brackets are never a link's label.
+ * The options are the ones the pages' HTML was rendered with until Phase 6
+ * retired that HTML: no HTML, so `<b>` in a note is text; no linkify, so a
+ * bare URL is text; and every line break a break. One rule is added:
+ * `[[wiki links]]`, which markdown-it does not know, read before links so
+ * their brackets are never a link's label.
  */
 
 /** One markdown-it token, as the mappers read it. */

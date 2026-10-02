@@ -75,9 +75,7 @@ export function getTaskColumn(id: TaskColumnId): TaskColumn {
 /** What a table needs to know about a task, whichever shape it arrived in. */
 export interface TableTask {
   title: string;
-  /** `title` as rendered inline Markdown, sanitized. */
-  renderedTitle?: string;
-  /** `title` as inline Markdown tokens; given with `renderedTitle`. */
+  /** `title` as inline Markdown tokens, for a table that draws its Markdown. */
   titleTokens?: InlineToken[];
   completed: boolean;
   dueAt?: number;
@@ -119,8 +117,7 @@ export function createTaskCells(
       case 'title':
         return {
           text: task.title,
-          ...(task.renderedTitle ? { html: task.renderedTitle } : {}),
-          ...(task.renderedTitle && task.titleTokens ? { tokens: task.titleTokens } : {}),
+          ...(task.titleTokens?.length ? { tokens: task.titleTokens } : {}),
         };
       case 'due':
         // An open task's due date reads beside today; a done one keeps its date.

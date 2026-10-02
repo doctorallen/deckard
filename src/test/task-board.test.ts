@@ -251,11 +251,16 @@ suite('Task board', () => {
       .columns.flatMap((column) => column.cards)
       .find((candidate) => candidate.taskId === 'read');
     assert.ok(card);
-    assert.match(card.renderedTitle, /<strong>the brief<\/strong>/);
-    assert.match(card.renderedTitle, /<code>notes\.md<\/code>/);
-    assert.match(card.renderedTitle, /<a href="https:\/\/example\.com">the spec<\/a>/);
-    // Raw HTML in a task line stays text.
-    assert.doesNotMatch(card.renderedTitle, /<b>/);
+    assert.deepStrictEqual(card.titleTokens, [
+      { kind: 'text', text: 'Read ' },
+      { kind: 'strong', children: [{ kind: 'text', text: 'the brief' }] },
+      { kind: 'text', text: ', ' },
+      { kind: 'code', text: 'notes.md' },
+      { kind: 'text', text: ', and ' },
+      { kind: 'link', url: 'https://example.com', children: [{ kind: 'text', text: 'the spec' }] },
+      // Raw HTML in a task line stays text.
+      { kind: 'text', text: ' <b>now</b>' },
+    ]);
     assert.match(card.title, /\*\*the brief\*\*/, 'the plain title is kept for search');
     assert.deepStrictEqual(card.titleTokens, tokenizeInline(card.title), 'and its tokens, for the page to draw');
   });
@@ -367,19 +372,21 @@ suite('Task board', () => {
 
     // The cell draws the Markdown, as every other surface that shows a task
     // title already does.
-    assert.strictEqual(
-      row?.cells[0].html,
-      'Review the <strong>shell-camera</strong> rig with <code>ivo.sh</code> '
-        + 'before <a href="https://example.com">the dispatch</a>',
-    );
+    assert.deepStrictEqual(row?.cells[0].tokens, [
+      { kind: 'text', text: 'Review the ' },
+      { kind: 'strong', children: [{ kind: 'text', text: 'shell-camera' }] },
+      { kind: 'text', text: ' rig with ' },
+      { kind: 'code', text: 'ivo.sh' },
+      { kind: 'text', text: ' before ' },
+      { kind: 'link', url: 'https://example.com', children: [{ kind: 'text', text: 'the dispatch' }] },
+    ]);
     // And keeps the written form, which is what a label and a sort read.
     assert.match(row?.cells[0].text ?? '', /\*\*shell-camera\*\*/);
     assert.deepStrictEqual(row?.cells[0].tokens, tokenizeInline(row?.cells[0].text ?? ''), 'and its tokens, for the page to draw');
 
     // A title with nothing to render comes back as its own words.
     const plain = table?.rows.find((entry) => entry.taskId === 'call');
-    assert.strictEqual(plain?.cells[0].html, plain?.cells[0].text);
-    assert.doesNotMatch(plain?.cells[0].html ?? '', /</, 'no markup to insert');
+    assert.deepStrictEqual(plain?.cells[0].tokens, [{ kind: 'text', text: plain?.cells[0].text }]);
   });
 
   test('changes a status tag where it is written', () => {

@@ -27,33 +27,5 @@
       "severity": "error",
       "name": "core-not-to-ui"
     }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/dashboardState.ts",
-    "to": "src/ui/webview/rendering.ts",
-    "unresolvedTo": "../webview/rendering",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/ui/state/taskBoardState.ts",
-    "to": "src/ui/webview/rendering.ts",
-    "unresolvedTo": "../webview/rendering",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "state-not-to-commands-views-or-webview"
-    }
   }
 ]

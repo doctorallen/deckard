@@ -12,7 +12,7 @@ import type { Task } from '../../domain/model/tasks';
 export type { TagReference, TagTitleDisplayMode } from '../../domain/model/tags';
 
 /**
- * A task as a list draws it: the task, its title rendered, and where it
+ * A task as a list draws it: the task, its title as tokens, and where it
  * sits.
  */
 export interface DashboardTask {
@@ -21,8 +21,7 @@ export interface DashboardTask {
   via?: 'hubLink';
   /** In a parked folder or under a parked tag: listed last, and said so. */
   parked?: true;
-  renderedTitle: string;
-  /** The title as inline Markdown tokens, which a Preact page draws in place of `renderedTitle`. */
+  /** The title as inline Markdown tokens, which a page draws as elements and text. */
   titleTokens: InlineToken[];
   titleTags: TagReference[];
   sectionHeading?: string;
@@ -76,8 +75,7 @@ export interface TagOverviewCard {
   titleTags: TagReference[];
   tags: TagReference[];
   rawContent: string;
-  renderedHtml: string;
-  /** The body as block tokens, which a Preact page draws in place of `renderedHtml`. */
+  /** The body as block tokens, which a page draws as elements and text. */
   bodyTokens: BlockToken[];
   startLine: number;
   createdAt?: number;
@@ -90,7 +88,7 @@ export interface TagOverviewCard {
    * word sits below the three lines a card shows. `line` is its first line
    * in the note.
    */
-  snippet?: { rawContent: string; renderedHtml: string; bodyTokens: BlockToken[]; line: number };
+  snippet?: { rawContent: string; bodyTokens: BlockToken[]; line: number };
   /** Whether the body runs past three lines, so a card offers Show all. */
   long?: boolean;
 }

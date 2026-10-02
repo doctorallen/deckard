@@ -190,11 +190,10 @@ suite('Search page host', () => {
       await page.preferences.display.setRenderMode('markdown');
       page.host.refresh();
       assert.ok(page.last().sections.length > 0);
-      assert.ok(page.last().sections.every((card) => card.renderedHtml === '' && card.bodyTokens.length === 0));
+      assert.ok(page.last().sections.every((card) => card.bodyTokens.length === 0));
       await page.preferences.display.setRenderMode('html');
       page.host.refresh();
-      assert.ok(page.last().sections.some((card) => card.renderedHtml !== ''));
-      assert.ok(page.last().sections.some((card) => card.bodyTokens.length > 0), 'as tokens too');
+      assert.ok(page.last().sections.some((card) => card.bodyTokens.length > 0));
     } finally {
       page.dispose();
     }

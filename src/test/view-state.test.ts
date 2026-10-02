@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 
+import * as blockExcerpt from '../domain/markdown/blockExcerpt';
 import { buildBlockExcerpt } from '../domain/markdown/blockExcerpt';
 import { tokenizeInline } from '../domain/markdown/inline';
 
@@ -24,7 +25,6 @@ import {
   sortRelatedNotes,
 } from '../ui/state/relatedNotesRanking';
 import { createEntryScope } from '../ui/state/entryScope';
-import * as rendering from '../ui/webview/rendering';
 import {
   ParsedFile,
   Entity,
@@ -400,9 +400,9 @@ suite('Dashboard state', () => {
       parseMarkdown(`notes/fresh-${number}.md`, `# Fresh ${number}\n\nBody ${number}.\n\n## More ${number}\n\nText.`),
     );
     const index = createFileIndex(files);
-    const original = rendering.renderMarkdown;
+    const original = blockExcerpt.buildBlockExcerpt;
     let calls = 0;
-    (rendering as { renderMarkdown: typeof original }).renderMarkdown = (text: string) => {
+    (blockExcerpt as { buildBlockExcerpt: typeof original }).buildBlockExcerpt = (text: string) => {
       calls += 1;
       return original(text);
     };
@@ -411,7 +411,7 @@ suite('Dashboard state', () => {
       assert.strictEqual(page.notePaging.total, 600);
       assert.ok(calls > 0 && calls <= 31, `rendered ${calls} bodies for a page of 30`);
     } finally {
-      (rendering as { renderMarkdown: typeof original }).renderMarkdown = original;
+      (blockExcerpt as { buildBlockExcerpt: typeof original }).buildBlockExcerpt = original;
     }
   });
 
@@ -462,7 +462,6 @@ suite('Dashboard state', () => {
             titleTags: [],
             tags: [],
             rawContent: '',
-            renderedHtml: '',
             bodyTokens: [],
             startLine: section.startLine,
             createdAt: section.createdAt,
@@ -592,14 +591,12 @@ suite('Dashboard state', () => {
     const index = createIndex([createTask(title, false, 1)]);
     const item = createDashboardTask([...index.tasks.values()][0], index.sections, createQueryContext(Date.now()));
 
-    assert.ok(
-      item.renderedTitle.includes(
-        '<a href="https://example.com/docs">Read the docs</a>',
-      ),
-    );
-    assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
-    assert.strictEqual(item.renderedTitle.includes(title), false);
-    assert.deepStrictEqual(item.titleTokens, tokenizeInline(title), 'and as tokens, for a page to draw');
+    assert.deepStrictEqual(item.titleTokens, [
+      { kind: 'link', url: 'https://example.com/docs', children: [{ kind: 'text', text: 'Read the docs' }] },
+      { kind: 'text', text: ' ' },
+      { kind: 'strong', children: [{ kind: 'text', text: 'now' }] },
+    ]);
+    assert.deepStrictEqual(item.titleTokens, tokenizeInline(title), 'as tokens, for a page to draw');
   });
 
   test('words an open task\'s due date beside today, and leaves a done one its date', () => {
@@ -629,12 +626,8 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(item.titleTags, [
       { key: 'project/atlas', label: '#project/atlas' },
     ]);
-    assert.ok(
-      item.renderedTitle.includes(
-        '<a href="https://example.com/plan">Review the plan</a>',
-      ),
-    );
-    assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
+    assert.deepStrictEqual(item.titleTokens[0], { kind: 'link', url: 'https://example.com/plan', children: [{ kind: 'text', text: 'Review the plan' }] });
+    assert.deepStrictEqual(item.titleTokens.at(-1), { kind: 'strong', children: [{ kind: 'text', text: 'now' }] });
   });
 
   test('sorts tasks by rank, creation date, and update date', () => {
@@ -1924,7 +1917,6 @@ function createCard(
     titleTags: [],
     tags: [],
     rawContent: '',
-    renderedHtml: '',
     bodyTokens: [],
     startLine: 1,
     createdAt,

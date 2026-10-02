@@ -44,9 +44,7 @@ export interface TaskBoardCard {
   title: string;
   /** Tags written inside the title, rendered as controls where they appear. */
   titleTags: TagReference[];
-  /** The title as sanitized inline Markdown, as the task list shows it. */
-  renderedTitle: string;
-  /** The title as inline Markdown tokens, which the page draws in place of `renderedTitle`. */
+  /** The title as inline Markdown tokens, which the page draws as elements and text, as the task list does. */
   titleTokens: InlineToken[];
   completed: boolean;
   filePath: string;
@@ -188,12 +186,11 @@ export interface TaskBoardSettings {
 export interface TableCell {
   text: string;
   /**
-   * The cell's Markdown, already rendered and sanitized by the host, for a
-   * column whose source is prose rather than a value. `text` stays the plain
-   * form, which is what a label or a sort reads.
+   * The cell's Markdown as inline tokens, which the page draws in place of
+   * `text`, for a column whose source is prose rather than a value and that
+   * draws as something. `text` stays the plain form, which is what a label
+   * or a sort reads.
    */
-  html?: string;
-  /** `html`'s Markdown as inline tokens, which the page draws in its place; set with it. */
   tokens?: InlineToken[];
   kind?: 'overdue' | 'muted';
 }

@@ -4,8 +4,8 @@ import { tokenizeInline } from '../domain/markdown/inline';
 import type { Task } from '../domain/model/tasks';
 import type { DashboardTask } from '../ui/protocol/shared';
 import { getComponentScript } from '../ui/webview/components';
-import { renderMarkdownInline } from '../ui/webview/rendering';
 import { normalizeBody } from '../../test/harness/domSnapshot';
+import { renderMarkdownInline } from './legacyMarkdown';
 import { bundleShared } from './sharedBundle';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
@@ -53,8 +53,11 @@ function task(title: string, extra: Partial<Task> = {}): Task {
   };
 }
 
-/** A task as a list draws it, its title rendered both ways. */
-function listed(title: string, extra: Partial<Task> = {}, item: Partial<DashboardTask> = {}): DashboardTask {
+/**
+ * A task as a list draws it, its title rendered both ways: as tokens for
+ * the shared row, and as the HTML the template script's row set.
+ */
+function listed(title: string, extra: Partial<Task> = {}, item: Partial<DashboardTask> = {}): DashboardTask & { renderedTitle: string } {
   return {
     task: task(title, extra),
     renderedTitle: renderMarkdownInline(title),

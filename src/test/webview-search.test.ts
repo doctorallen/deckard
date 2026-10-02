@@ -7,9 +7,9 @@ import { createQueryContext } from '../domain/query/queryContext';
 import type { ParsedFile } from '../core/types';
 import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/dashboardState';
 import { getComponentScript } from '../ui/webview/components';
-import { renderMarkdown } from '../ui/webview/rendering';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import * as corpus from './indexCorpus';
+import { renderMarkdown } from './legacyMarkdown';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { bundleShared } from './sharedBundle';
 import { openWebviewPage, WebviewPage } from './webviewPage';
@@ -17,7 +17,8 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
 /**
  * The search page's shared parts (src/webview/shared: blockExcerpt and
  * tagMenu) against what they replace: a note excerpt drawn from its block
- * tokens must be the DOM markdown-it and the sanitizer made of it, over every
+ * tokens must be the DOM markdown-it and the sanitizer made of it (as
+ * legacyMarkdown.ts writes it, since the sanitizer left), over every
  * excerpt the sample workspace, the development notes, and the fixtures
  * hold, and the tag menu the one the template script opened, as test:dom
  * normalizes both. The cards were held to the search page's template here
@@ -29,7 +30,7 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  * `~~strikethrough~~`, which the sanitizer stripped to its words, draws its
  * line; and Markdown inside a `[[wiki link]]` stays as written. They are
  * undone before comparing: markdown-it is shown the wiki links with their
- * punctuation escaped, as scripts/compare-card-markdown.js shows it.
+ * punctuation escaped.
  */
 
 /** The template script's tag menu, by name, with the tag it is open on. */

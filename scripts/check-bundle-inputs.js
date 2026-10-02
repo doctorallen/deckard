@@ -9,10 +9,10 @@
 // out/extension-meta.json and out/webview-meta.json) and fails on any package
 // a bundle takes in that is not listed for it here:
 //
-// - The host bundles may take in only the packages they took in when this
-//   check arrived, in Phase 6 step 3. The list only shrinks: step 6 removes
-//   sanitize-html and the packages it brings, which leaves markdown-it's
-//   packages, the parser of note Markdown (decision 0015), and picomatch.
+// - The host bundles may take in only markdown-it's packages, the parser of
+//   note Markdown (decision 0015), and picomatch. The list only shrinks: it
+//   held 23 packages when this check arrived in Phase 6 step 3, and step 6
+//   removed sanitize-html and the 15 it brought.
 // - A page's script may take in only Preact, and a page's style sheet nothing.
 const path = require('node:path');
 const { existsSync, readFileSync } = require('node:fs');
@@ -20,17 +20,13 @@ const { existsSync, readFileSync } = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 
 /**
- * The packages the host bundles took in when this check arrived, as
- * out/extension-meta.json listed them: the three dependencies and the
- * packages they bring (markdown-it's argparse serves only its command line).
+ * The packages the host bundles may take in, as out/extension-meta.json
+ * lists them: the two dependencies and the packages they bring
+ * (markdown-it's argparse serves only its command line).
  */
 const HOST_PACKAGES = [
   // markdown-it and its dependencies
   'entities', 'linkify-it', 'markdown-it', 'mdurl', 'punycode.js', 'uc.micro',
-  // sanitize-html and its dependencies, dayjs by way of launder
-  'deepmerge', 'dom-serializer', 'domelementtype', 'domhandler', 'domutils',
-  'escape-string-regexp', 'htmlparser2', 'is-plain-object', 'launder', 'nanoid',
-  'parse-srcset', 'picocolors', 'postcss', 'sanitize-html', 'source-map-js', 'dayjs',
   // the exclude globs
   'picomatch',
 ];

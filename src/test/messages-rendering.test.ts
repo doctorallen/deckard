@@ -5,7 +5,6 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createDashboardSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
-import { renderMarkdown } from '../ui/webview/rendering';
 import { deckardThemes, getDeckardTheme } from '../ui/webview/themes';
 import { createPreferences } from './preferenceServices';
 import { openWebviewPage, WebviewPage } from './webviewPage';
@@ -98,16 +97,6 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('child items start at two levels'), true);
-  });
-
-  test('renders safe Markdown without executable HTML or unsafe links', () => {
-    const rendered = renderMarkdown(
-      '[bad](javascript:alert(1))\n\n<script>alert(1)</script>\n\n**safe**',
-    );
-
-    assert.strictEqual(rendered.includes('<script'), false);
-    assert.strictEqual(rendered.includes('href="javascript:'), false);
-    assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
   });
 
   test('renders accessible Home and Tags dashboard modes with focused controls', () => {

@@ -95,7 +95,6 @@ import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import type { BlockToken } from '../../domain/model/blocks';
 import type { InlineToken } from '../../domain/model/inline';
-import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 import { createPinForLine, pinKey } from './pinnedNotes';
@@ -749,7 +748,6 @@ function withPreview(
       ? undefined
       : {
           rawContent: lines.slice(start).join('\n'),
-          renderedHtml: renderMarkdown(lines.slice(start).join('\n')),
           bodyTokens: buildBlockExcerpt(lines.slice(start).join('\n')),
           line: card.startLine + 1 + start,
         };
@@ -1606,7 +1604,7 @@ export function sortEntities(
 }
 
 /**
- * Adds rendered task text and source context without changing the domain task.
+ * Adds the title as tokens and the source context without changing the domain task.
  * An open task's due date is worded against the context's today and policy.
  */
 export function createDashboardTask(
@@ -1620,7 +1618,6 @@ export function createDashboardTask(
       : undefined;
   return {
     task,
-    renderedTitle: renderTaskTitle(task),
     titleTokens: tokenizeTaskTitle(task),
     titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
     sectionHeading: task.sectionId
@@ -1668,7 +1665,6 @@ function createTagOverviewCard(
       label: section.tagLabels[key] ?? `#${key}`,
     })),
     rawContent: getSectionBody(section.rawContent),
-    renderedHtml: renderSectionBody(section),
     bodyTokens: tokenizeSectionBody(section),
     startLine: section.startLine,
     createdAt: section.createdAt,
@@ -1687,7 +1683,6 @@ function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
     titleTags: [],
     tags: file.frontmatterTags.map((tag) => ({ ...tag })),
     rawContent,
-    renderedHtml: renderMarkdown(rawContent),
     bodyTokens: buildBlockExcerpt(rawContent),
     startLine: 1,
     createdAt: file.createdAt,
@@ -1708,7 +1703,6 @@ function createTagOverviewHub(
     filePath: file.filePath,
     fileName: getFileName(file.filePath) ?? file.filePath,
     rawContent,
-    renderedHtml: renderMarkdown(rawContent),
     bodyTokens: buildBlockExcerpt(rawContent),
     properties: (file.hub?.properties ?? []).map((property) => ({
       name: property.name,
@@ -1886,25 +1880,14 @@ function compareDatesDescending(
  * Keeps overview cards focused on body content instead of repeating their title.
  */
 /**
- * Sanitized HTML is the costliest part of a card, and an entry's text never
- * changes after it is parsed, so each body and title is rendered once. A
+ * Reading Markdown is the costliest part of a card, and an entry's text
+ * never changes after it is parsed, so each body and title is read once. A
  * reparsed note brings new entries, and the old ones are let go with them.
  */
-const renderedSectionBodies = new WeakMap<Section, string>();
-const renderedTaskTitles = new WeakMap<Task, string>();
 const sectionBodyTokens = new WeakMap<Section, BlockToken[]>();
 const taskTitleTokens = new WeakMap<Task, InlineToken[]>();
 
-function renderSectionBody(section: Section): string {
-  let html = renderedSectionBodies.get(section);
-  if (html === undefined) {
-    html = renderMarkdown(getSectionBody(section.rawContent));
-    renderedSectionBodies.set(section, html);
-  }
-  return html;
-}
-
-/** A section's body as block tokens, read once per section as its HTML is. */
+/** A section's body as block tokens, read once per section. */
 function tokenizeSectionBody(section: Section): BlockToken[] {
   let tokens = sectionBodyTokens.get(section);
   if (tokens === undefined) {
@@ -1914,7 +1897,7 @@ function tokenizeSectionBody(section: Section): BlockToken[] {
   return tokens;
 }
 
-/** A task's title as inline tokens, read once per task as its HTML is. */
+/** A task's title as inline tokens, read once per task. */
 function tokenizeTaskTitle(task: Task): InlineToken[] {
   let tokens = taskTitleTokens.get(task);
   if (tokens === undefined) {
@@ -1922,15 +1905,6 @@ function tokenizeTaskTitle(task: Task): InlineToken[] {
     taskTitleTokens.set(task, tokens);
   }
   return tokens;
-}
-
-function renderTaskTitle(task: Task): string {
-  let html = renderedTaskTitles.get(task);
-  if (html === undefined) {
-    html = renderMarkdownInline(task.title);
-    renderedTaskTitles.set(task, html);
-  }
-  return html;
 }
 
 function getSectionBody(rawContent: string): string {

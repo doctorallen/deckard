@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import { tokenizeInline } from '../domain/markdown/inline';
 import { getComponentScript } from '../ui/webview/components';
 import { helpIcon } from '../ui/webview/icons';
-import { renderMarkdownInline } from '../ui/webview/rendering';
+import { renderMarkdownInline } from './legacyMarkdown';
 import { bundleShared } from './sharedBundle';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 

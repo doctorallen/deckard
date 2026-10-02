@@ -50,7 +50,6 @@ import {
   Section,
 } from '../../core/types';
 import { tokenizeInline } from '../../domain/markdown/inline';
-import { renderMarkdownInline } from '../webview/rendering';
 import {
   createDashboardTask,
   createQueryViewState,
@@ -289,7 +288,6 @@ function toTableTask(task: Task, statusNamespace: string): TableTask {
     title,
     // A task title is prose, and is written as Markdown everywhere else it is
     // shown. The table drew its source until now.
-    renderedTitle: renderMarkdownInline(title),
     titleTokens: tokenizeInline(title),
     completed: task.completed,
     dueAt: task.dueAt,
@@ -859,7 +857,6 @@ function createCard(
   return {
     taskId: task.id,
     title,
-    renderedTitle: renderMarkdownInline(title),
     titleTokens: tokenizeInline(title),
     titleTags: task.tags
       .map((key) => ({ key, label: task.tagLabels[key] ?? key }))
