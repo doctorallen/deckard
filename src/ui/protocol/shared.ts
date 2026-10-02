@@ -3,11 +3,13 @@
  * drawn, a page of results, the search the sidebar refines, and the messages
  * several pages send.
  */
+import type { BlockToken } from '../../domain/model/blocks';
+import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
 import type { Task } from '../../domain/model/tasks';
 
-export type { TagTitleDisplayMode } from '../../domain/model/tags';
+export type { TagReference, TagTitleDisplayMode } from '../../domain/model/tags';
 
 /**
  * A task as a list draws it: the task, its title rendered, and where it
@@ -20,6 +22,8 @@ export interface DashboardTask {
   /** In a parked folder or under a parked tag: listed last, and said so. */
   parked?: true;
   renderedTitle: string;
+  /** The title as inline Markdown tokens, which a Preact page draws in place of `renderedTitle`. */
+  titleTokens: InlineToken[];
   titleTags: TagReference[];
   sectionHeading?: string;
   /** The headings above the task, top down, tags stripped. */
@@ -73,6 +77,8 @@ export interface TagOverviewCard {
   tags: TagReference[];
   rawContent: string;
   renderedHtml: string;
+  /** The body as block tokens, which a Preact page draws in place of `renderedHtml`. */
+  bodyTokens: BlockToken[];
   startLine: number;
   createdAt?: number;
   updatedAt?: number;
@@ -84,7 +90,7 @@ export interface TagOverviewCard {
    * word sits below the three lines a card shows. `line` is its first line
    * in the note.
    */
-  snippet?: { rawContent: string; renderedHtml: string; line: number };
+  snippet?: { rawContent: string; renderedHtml: string; bodyTokens: BlockToken[]; line: number };
   /** Whether the body runs past three lines, so a card offers Show all. */
   long?: boolean;
 }

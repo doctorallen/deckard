@@ -118,6 +118,17 @@ async function recordOpens(run: () => Promise<void>): Promise<string[]> {
 }
 
 suite('Task Board host', () => {
+  test('is kept running while hidden, for a card being dragged, and opens on its loading line', () => {
+    // Q1 of docs/implementation/20-webviews.md: the board keeps retain.
+    const board = openBoard();
+    try {
+      assert.strictEqual(board.controller.options.retainContextWhenHidden, true);
+      assert.strictEqual(board.controller.options.readsInertState, undefined, 'its snapshot is posted, not carried in its HTML');
+    } finally {
+      board.dispose();
+    }
+  });
+
   test('an edit to the theme and the board at once reloads the page before the board is sent', () => {
     const { result: board, fire } = withConfigurationEvents(() => openBoard());
     try {

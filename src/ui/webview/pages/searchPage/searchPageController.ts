@@ -268,14 +268,16 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       ...snapshot,
       parkedTags: listedParkedTags(this.search.indexer),
       // The Markdown view shows each note's source, which the page's
-      // search also reads, so only the HTML view is sent each note rendered.
+      // search also reads, so only the HTML view is sent each note rendered,
+      // as HTML or as tokens.
       sections:
         snapshot.renderMode === 'html'
           ? snapshot.sections
           : snapshot.sections.map((card) => ({
               ...card,
               renderedHtml: '',
-              ...(card.snippet ? { snippet: { ...card.snippet, renderedHtml: '' } } : {}),
+              bodyTokens: [],
+              ...(card.snippet ? { snippet: { ...card.snippet, renderedHtml: '', bodyTokens: [] } } : {}),
             })),
     };
   }

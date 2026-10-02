@@ -91,6 +91,10 @@ import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { getFileName } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
+import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
+import { tokenizeInline } from '../../domain/markdown/inline';
+import type { BlockToken } from '../../domain/model/blocks';
+import type { InlineToken } from '../../domain/model/inline';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
@@ -746,6 +750,7 @@ function withPreview(
       : {
           rawContent: lines.slice(start).join('\n'),
           renderedHtml: renderMarkdown(lines.slice(start).join('\n')),
+          bodyTokens: buildBlockExcerpt(lines.slice(start).join('\n')),
           line: card.startLine + 1 + start,
         };
   const long =
@@ -1616,6 +1621,7 @@ export function createDashboardTask(
   return {
     task,
     renderedTitle: renderTaskTitle(task),
+    titleTokens: tokenizeTaskTitle(task),
     titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
     sectionHeading: task.sectionId
       ? sections.get(task.sectionId)?.heading
@@ -1663,6 +1669,7 @@ function createTagOverviewCard(
     })),
     rawContent: getSectionBody(section.rawContent),
     renderedHtml: renderSectionBody(section),
+    bodyTokens: tokenizeSectionBody(section),
     startLine: section.startLine,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
@@ -1681,6 +1688,7 @@ function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
     tags: file.frontmatterTags.map((tag) => ({ ...tag })),
     rawContent,
     renderedHtml: renderMarkdown(rawContent),
+    bodyTokens: buildBlockExcerpt(rawContent),
     startLine: 1,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
@@ -1883,6 +1891,8 @@ function compareDatesDescending(
  */
 const renderedSectionBodies = new WeakMap<Section, string>();
 const renderedTaskTitles = new WeakMap<Task, string>();
+const sectionBodyTokens = new WeakMap<Section, BlockToken[]>();
+const taskTitleTokens = new WeakMap<Task, InlineToken[]>();
 
 function renderSectionBody(section: Section): string {
   let html = renderedSectionBodies.get(section);
@@ -1891,6 +1901,26 @@ function renderSectionBody(section: Section): string {
     renderedSectionBodies.set(section, html);
   }
   return html;
+}
+
+/** A section's body as block tokens, read once per section as its HTML is. */
+function tokenizeSectionBody(section: Section): BlockToken[] {
+  let tokens = sectionBodyTokens.get(section);
+  if (tokens === undefined) {
+    tokens = buildBlockExcerpt(getSectionBody(section.rawContent));
+    sectionBodyTokens.set(section, tokens);
+  }
+  return tokens;
+}
+
+/** A task's title as inline tokens, read once per task as its HTML is. */
+function tokenizeTaskTitle(task: Task): InlineToken[] {
+  let tokens = taskTitleTokens.get(task);
+  if (tokens === undefined) {
+    tokens = tokenizeInline(task.title);
+    taskTitleTokens.set(task, tokens);
+  }
+  return tokens;
 }
 
 function renderTaskTitle(task: Task): string {

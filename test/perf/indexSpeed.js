@@ -118,6 +118,7 @@ async function bench(size) {
   // with its day panel.
   row('Calendar snapshot, sidebar (median of 5)', ms(timeCalendarSnapshot(index, now, {})));
   row('Calendar snapshot, page (median of 5)', ms(timeCalendarSnapshot(index, now, { layout: 'page', dayPanel: true })));
+  row('Task Board snapshot (median of 5)', ms(timeTaskBoardSnapshot(index, now)));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -345,6 +346,39 @@ function timeCalendarSnapshot(index, now, options) {
     log.lines.length = 0;
     measure('Calendar', () => createCalendar(index, month, createQueryContext(now), { showRepeats: true, showWeekends: true, ...options }));
     return readTiming(log.lines, ['Calendar']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
+}
+
+/**
+ * The Task Board's snapshot, on the search it opens with, `is:open`, drawn as
+ * a board, timed by the line its host writes ("Task board"), which decides
+ * whether the page's HTML carries it (docs/implementation/20-webviews.md,
+ * Q3: under 50 ms, it is embedded).
+ */
+function timeTaskBoardSnapshot(index, now) {
+  const { createTaskBoard } = load('taskBoardState');
+  const { createQueryContext } = load('queryContext');
+  const { createPreferences } = load('preferenceServices');
+  if (!createTaskBoard || !createQueryContext || !createPreferences || !measure) {
+    return NaN;
+  }
+  const values = new Map();
+  const preferences = createPreferences({
+    get: (key, fallback) => (values.has(key) ? values.get(key) : fallback),
+    keys: () => [...values.keys()],
+    update: async (key, value) => void values.set(key, value),
+  }).reader.value;
+  // The host's options when nothing is configured: deckard.board.statuses,
+  // its namespace, and the emoji task format.
+  const options = { queryContext: createQueryContext(now), statusNamespace: 'status', statuses: ['todo', 'doing', 'waiting'], format: 'emoji', limits: {} };
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Task board', () => createTaskBoard({ index, preferences, search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' }));
+    return readTiming(log.lines, ['Task board']);
   });
   setTimingLog(undefined);
   return median(timings.filter((value) => value !== undefined));

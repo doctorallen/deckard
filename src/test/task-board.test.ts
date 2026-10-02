@@ -1,5 +1,7 @@
 import * as assert from 'assert';
 
+import { tokenizeInline } from '../domain/markdown/inline';
+
 import { createPreferences } from './preferenceServices';
 import {
   PersistedPreferences,
@@ -255,6 +257,7 @@ suite('Task board', () => {
     // Raw HTML in a task line stays text.
     assert.doesNotMatch(card.renderedTitle, /<b>/);
     assert.match(card.title, /\*\*the brief\*\*/, 'the plain title is kept for search');
+    assert.deepStrictEqual(card.titleTokens, tokenizeInline(card.title), 'and its tokens, for the page to draw');
   });
 
   test('searches tasks with the shared search box, and keeps one that does not parse', () => {
@@ -371,6 +374,7 @@ suite('Task board', () => {
     );
     // And keeps the written form, which is what a label and a sort read.
     assert.match(row?.cells[0].text ?? '', /\*\*shell-camera\*\*/);
+    assert.deepStrictEqual(row?.cells[0].tokens, tokenizeInline(row?.cells[0].text ?? ''), 'and its tokens, for the page to draw');
 
     // A title with nothing to render comes back as its own words.
     const plain = table?.rows.find((entry) => entry.taskId === 'call');
