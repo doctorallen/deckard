@@ -53,6 +53,36 @@ export async function resolveSourceUri(
   return candidates[0];
 }
 
+/**
+ * The file a stored source key names, worked out from the key and the
+ * workspace folders alone, without checking the disk: enough to read the
+ * settings of the folder that holds it. A multi-root key names its folder
+ * first. Undefined when no open folder can hold a relative key.
+ */
+export function sourceScopeUri(
+  filePath: string,
+  workspaceFolders: readonly vscode.WorkspaceFolder[] | undefined = vscode
+    .workspace.workspaceFolders,
+): vscode.Uri | undefined {
+  if (isAbsoluteFilePath(filePath)) {
+    return vscode.Uri.file(filePath);
+  }
+  if (hasUriScheme(filePath)) {
+    try {
+      return vscode.Uri.parse(filePath);
+    } catch {
+      return undefined;
+    }
+  }
+  const pathParts = filePath.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
+  const folders = workspaceFolders ?? [];
+  if (folders.length > 1) {
+    const folder = folders.find((candidate) => candidate.name === pathParts[0]);
+    return folder ? vscode.Uri.joinPath(folder.uri, ...pathParts.slice(1)) : undefined;
+  }
+  return folders[0] ? vscode.Uri.joinPath(folders[0].uri, ...pathParts) : undefined;
+}
+
 /** A source line to open, and how to open it. */
 export interface OpenSourceOptions {
   filePath: string;

@@ -20,7 +20,7 @@ import {
   TagWriteDescription,
   TagWriteOutcome,
 } from '../../services/tagService';
-import { resolveSourceUri } from './navigation';
+import { resolveSourceUri, sourceScopeUri } from './navigation';
 import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 import { TagInfo, TagReference, WorkspaceIndex } from '../../domain/model';
@@ -213,6 +213,12 @@ function reportRewrite(
         outcome: `Deckard could not find ${sourceTag.label} in any note as the notes are now, so nothing was written.`,
       });
       return undefined;
+    case 'unopened':
+      void reportFailure({
+        outcome: `Deckard could not open ${result.filePath}, so nothing was written.`,
+        error: result.error,
+      });
+      return undefined;
     case 'rejected':
       void reportFailure({
         outcome: `VS Code did not accept the change to ${result.filePaths.length === 1 ? noteName(notes.uriOf(result.filePaths[0])) : `${result.filePaths.length} notes`}, so nothing was written.`,
@@ -266,10 +272,10 @@ function reportWritten(
 }
 
 /**
- * The notes one rename reads and writes, through VS Code. Each note's file
- * is found once and its document opened once, and the write is made on
- * those same documents, so the offsets planned against their text land
- * where they were planned.
+ * The notes one rename reads and writes, through VS Code. Only a note the
+ * rename changes has its file found, once, and its document opened, once,
+ * and the write is made on those same documents, so the offsets planned
+ * against their text land where they were planned.
  */
 class TagNoteDocuments implements TagNotes<WriteHandle> {
   private readonly uris = new Map<string, vscode.Uri>();
@@ -277,24 +283,28 @@ class TagNoteDocuments implements TagNotes<WriteHandle> {
 
   public constructor(private readonly history: WorkspaceWriteHistory) {}
 
-  /** The note's parse options, as the settings of its folder say. */
-  public async optionsFor(filePath: string): Promise<Required<RenameTagOptions>> {
+  /**
+   * The note's parse options, as the settings of its folder say. The folder
+   * is read from the note's path without finding its file, since every
+   * indexed note is asked and most are not changed.
+   */
+  public optionsFor(filePath: string): Promise<Required<RenameTagOptions>> {
+    return Promise.resolve(getParseOptions(sourceScopeUri(filePath)));
+  }
+
+  /** The note's text as its document holds it now; rejects when its file cannot be found or opened. */
+  public async contentOf(filePath: string): Promise<string> {
     const uri = await resolveSourceUri(filePath);
     if (!uri) {
       throw new Error(`Deckard could not resolve source file: ${filePath}`);
     }
     this.uris.set(filePath, uri);
-    return getParseOptions(uri);
-  }
-
-  /** The note's text as its document holds it now. */
-  public async contentOf(filePath: string): Promise<string> {
-    const document = await vscode.workspace.openTextDocument(this.uriOf(filePath));
+    const document = await vscode.workspace.openTextDocument(uri);
     this.documents.set(filePath, document);
     return document.getText();
   }
 
-  /** The note's URI, as found when its options were read. */
+  /** The note's URI, as found when its text was read. */
   public uriOf(filePath: string): vscode.Uri {
     const uri = this.uris.get(filePath);
     if (!uri) {

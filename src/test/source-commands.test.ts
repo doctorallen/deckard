@@ -16,7 +16,8 @@ import {
 } from '../ui/commands/hubNote';
 import { summarizeTagMerge } from '../domain/index/tagMerge';
 import { replaceIndexedTag } from '../domain/markdown/tagRename';
-import { parseRenameTag } from '../ui/commands/renameTag';
+import { parseRenameTag, renameIndexedTag } from '../ui/commands/renameTag';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { toggleTask } from '../ui/commands/taskActions';
 import { createTaskWrites } from './taskWrites';
 import { getExtractedNoteFileName } from '../domain/markdown/noteNames';
@@ -334,6 +335,40 @@ suite('Source commands', () => {
     const personNote = applyHubTemplate({ template: '# {title}\nRole: \n', tag: person, title: 'Dana', now });
     assert.ok(personNote.startsWith('---\ndescribes: "@dana"\n---\n'));
     assert.deepStrictEqual(parseMarkdown('notes/dana.md', personNote).hub?.describes, [person]);
+  });
+
+  test('renames a tag in the notes it changes when a note it does not change has no file', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const tagged = vscode.Uri.joinPath(temporaryRoot, 'tagged.md');
+    await vscode.workspace.fs.writeFile(tagged, Buffer.from('# Alpha #apollo\n', 'utf8'));
+    // A relative path, which no workspace folder of the test host holds.
+    const untouched = 'notes/untouched.md';
+    assert.strictEqual(await resolveSourceUri(untouched), undefined, 'the test host has no workspace folder');
+    const index = buildWorkspaceIndex(new Map([
+      [tagged.fsPath, parseMarkdown(tagged.fsPath, '# Alpha #apollo\n')],
+      [untouched, parseMarkdown(untouched, '# Gamma\n')],
+    ]));
+    const indexer = {
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+      refresh: async () => undefined,
+    } as unknown as Parameters<typeof renameIndexedTag>[0];
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const originals = [window.showInputBox, window.showInformationMessage, window.showErrorMessage];
+    const errors: unknown[] = [];
+    window.showInputBox = async () => '#hermes';
+    window.showInformationMessage = async () => undefined;
+    window.showErrorMessage = async (message: unknown) => void errors.push(message);
+    try {
+      const renamed = await renameIndexedTag(indexer, '#apollo', { history: new WorkspaceWriteHistory() });
+
+      assert.deepStrictEqual(errors, []);
+      assert.strictEqual(renamed?.key, '#hermes');
+      assert.strictEqual((await vscode.workspace.openTextDocument(tagged)).getText(), '# Alpha #hermes\n');
+    } finally {
+      [window.showInputBox, window.showInformationMessage, window.showErrorMessage] = originals;
+      await deleteTemporaryRoot(temporaryRoot);
+    }
   });
 
   test('opens a source document at the requested one-based line', async () => {
