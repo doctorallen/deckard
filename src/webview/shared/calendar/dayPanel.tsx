@@ -192,7 +192,11 @@ function runPanelAction(target: Element, handlers: DayPanelHandlers): void {
   } else if (action === 'search-created') {
     handlers.send({ type: 'searchCreated', date: value('data-date') });
   } else if (action === 'show-group') {
+    const group = target.closest('.day-group');
     handlers.showGroup(value('data-group'));
+    // Show more is gone once its group is whole, so the focus goes on to
+    // the first row it showed rather than falling to the page.
+    group?.querySelectorAll<HTMLElement>('.task-row')[DAY_ROWS]?.focus();
   } else if (action === 'open-tag' && handlers.opensTags) {
     handlers.send({ type: 'openTag', tagKey: value('data-tag-key') });
   }

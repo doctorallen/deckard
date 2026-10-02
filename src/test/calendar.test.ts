@@ -514,4 +514,41 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('the sidebar\'s Today hands the focus to today when it goes', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    for (const dayPanel of [false, true]) {
+      const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-12', createQueryContext(now), { dayPanel }));
+      try {
+        const today = page.findAll('[data-action="show-month"]').find((button) => button.textContent === 'Today') as HTMLElement;
+        today.focus();
+        today.click();
+        assert.deepStrictEqual(page.lastPosted('showMonth'), dayPanel ? { type: 'showMonth', month: '2026-09', date: '2026-09-13' } : { type: 'showMonth', month: '2026-09' });
+        page.send(createCalendar(index, '2026-09', createQueryContext(now), { dayPanel }));
+        assert.strictEqual((page.document.activeElement as HTMLElement).dataset.date, '2026-09-13', `panel ${dayPanel ? 'on' : 'off'}: on today, not dropped to the page`);
+      } finally {
+        page.dispose();
+      }
+    }
+  });
+
+  test('Show more in the day panel hands the focus to the first row it shows', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const busy = note('notes/busy.md', Array.from({ length: 8 }, (_, number) => `- [ ] Task ${number} 📅 2026-09-13`).join('\n'));
+    const busyIndex = buildWorkspaceIndex(new Map([[busy.filePath, busy]]));
+    for (const [id, layout] of [['calendar', 'sidebar'], ['calendarPage', 'page']] as const) {
+      const page = openWebviewPage(renderPage(id), createCalendar(busyIndex, '2026-09', createQueryContext(now), { dayPanel: true, layout }));
+      try {
+        const more = page.find('.day-panel [data-action="show-group"][data-group="due"]') as HTMLElement;
+        assert.strictEqual(more.textContent, 'Show 3 more');
+        more.focus();
+        more.click();
+        const rows = page.findAll('.day-panel [aria-label="Due"] .task-row');
+        assert.strictEqual(rows.length, 8);
+        assert.strictEqual(page.document.activeElement, rows[5], `${id}: on the sixth row, not dropped to the page`);
+      } finally {
+        page.dispose();
+      }
+    }
+  });
 });

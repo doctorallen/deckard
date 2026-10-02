@@ -87,6 +87,11 @@ export class CalendarSession<S extends CalendarState> {
   private focusDate: string | undefined;
   /** The day a keyboard step into another month lands on, focused once that month is drawn. */
   private pendingFocusDate: string | undefined;
+  /**
+   * A month control that had the focus when it asked for a step, until the
+   * step is drawn; Today goes once the calendar is on today.
+   */
+  private stepControl: Element | undefined;
   /** The chosen day's message to the host, sent after a pause. */
   private selectTimer: ReturnType<typeof setTimeout> | undefined;
   /** The chosen day still waiting for that pause, to be sent. */
@@ -239,6 +244,7 @@ export class CalendarSession<S extends CalendarState> {
   /** Draws a snapshot from the host whole, then focuses a day a step was waiting on. */
   private receive(snapshot: CalendarSnapshot | undefined): void {
     this.redraw({ snapshot, chosen: undefined } as Partial<S>);
+    this.focusAfterControl();
     if (!this.pendingFocusDate) {
       return;
     }
@@ -248,6 +254,29 @@ export class CalendarSession<S extends CalendarState> {
     }
     this.pendingFocusDate = undefined;
     stepped.focus();
+  }
+
+  /**
+   * When the draw took away the month control that asked for the step, as
+   * it takes Today away once the calendar is on today, the focus goes to
+   * the day that takes Tab rather than falling to the page.
+   */
+  private focusAfterControl(): void {
+    const control = this.stepControl;
+    if (!control) {
+      return;
+    }
+    if (control.isConnected) {
+      // Still drawn: a draw before the step's own, or the focus moved on.
+      if (document.activeElement !== control) {
+        this.stepControl = undefined;
+      }
+      return;
+    }
+    this.stepControl = undefined;
+    if (document.activeElement === document.body || document.activeElement === null) {
+      document.querySelector<HTMLElement>('.calendar-grid .day[tabindex="0"]')?.focus();
+    }
   }
 
   /** Moves the tab stop and focus to a day drawn, and chooses it: selection follows focus. */
@@ -316,6 +345,7 @@ export class CalendarSession<S extends CalendarState> {
       'show-month': (element) => {
         const month = element.getAttribute('data-month') as string;
         const date = element.getAttribute('data-date');
+        this.stepControl = element === document.activeElement ? element : undefined;
         this.sendStep(date ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
       },
       'open-note': (element) => send({ type: 'openNote', filePath: element.getAttribute('data-file-path') as string }),
