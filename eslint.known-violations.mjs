@@ -78,9 +78,6 @@ export default {
     "src/ui/state/quickFindState.ts": 1
   },
   complexity: {
-    "scripts/capture-dashboard-screenshot.mjs": [
-      "capture"
-    ],
     "src/core/mcp/mcpProtocol.ts": [
       "handleMcpMessage"
     ],
@@ -247,8 +244,6 @@ export default {
     "src/ui/webview/searchPage.ts": 2
   },
   "max-depth": {
-    "scripts/build-walkthrough-images.mjs": 1,
-    "scripts/capture-dashboard-screenshot.mjs": 4,
     "src/domain/markdown/captureWords.ts": 1,
     "src/domain/markdown/tagTarget.ts": 1,
     "src/domain/markdown/wordCount.ts": 1,
@@ -256,10 +251,6 @@ export default {
     "src/test/naming.test.ts": 1
   },
   "max-lines-per-function": {
-    "scripts/capture-dashboard-screenshot.mjs": [
-      "capture",
-      "writeCompanionExtension"
-    ],
     "src/domain/index/indexState.ts": [
       "rank"
     ],

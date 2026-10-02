@@ -18,6 +18,25 @@ function read(name) {
   return PNG.sync.read(readFileSync(join(images, name)));
 }
 
+/**
+ * The summed red, green, and blue of the source pixels from (x0, y0) up to
+ * (x1, y1), and how many there are.
+ */
+function sumBox(source, [x0, y0], [x1, y1]) {
+  const sum = [0, 0, 0];
+  let count = 0;
+  for (let sy = y0; sy < y1; sy++) {
+    for (let sx = x0; sx < x1; sx++) {
+      const at = (sy * source.width + sx) * 4;
+      sum[0] += source.data[at];
+      sum[1] += source.data[at + 1];
+      sum[2] += source.data[at + 2];
+      count++;
+    }
+  }
+  return { sum, count };
+}
+
 /** A box-filtered downscale to `width`, keeping the aspect ratio. */
 function downscale(source, width, step = 4) {
   const scale = source.width / width;
@@ -29,17 +48,7 @@ function downscale(source, width, step = 4) {
       const y0 = Math.floor(y * scale);
       const x1 = Math.min(source.width, Math.floor((x + 1) * scale));
       const y1 = Math.min(source.height, Math.floor((y + 1) * scale));
-      const sum = [0, 0, 0];
-      let count = 0;
-      for (let sy = y0; sy < y1; sy++) {
-        for (let sx = x0; sx < x1; sx++) {
-          const at = (sy * source.width + sx) * 4;
-          sum[0] += source.data[at];
-          sum[1] += source.data[at + 1];
-          sum[2] += source.data[at + 2];
-          count++;
-        }
-      }
+      const { sum, count } = sumBox(source, [x0, y0], [x1, y1]);
       const to = (y * width + x) * 4;
       // Rounded to steps of 4 (8 for a busy shot), which the eye does not
       // see and deflate likes.
@@ -52,6 +61,7 @@ function downscale(source, width, step = 4) {
   return target;
 }
 
+/** Writes an image to the walkthrough's folder as an RGB PNG and prints its size. */
 function write(name, png) {
   const path = join(out, name);
   writeFileSync(path, PNG.sync.write(png, { colorType: 2, deflateLevel: 9 }));
