@@ -36,6 +36,24 @@ suite('Tag completion context', () => {
     });
   });
 
+  test('reads a tag being typed with letters beyond A to Z whole', () => {
+    assert.deepStrictEqual(getTagCompletionContext('Trip #caf', 9), {
+      marker: '#',
+      query: 'caf',
+      startColumn: 5,
+      endColumn: 9,
+    });
+    assert.deepStrictEqual(getTagCompletionContext('Trip #café', 10), {
+      marker: '#',
+      query: 'café',
+      startColumn: 5,
+      endColumn: 10,
+    });
+    assert.deepStrictEqual(getTagCompletionContext('Trip #ca later', 8, '@')?.endColumn, 8);
+    assert.deepStrictEqual(getTagCompletionContext('Trip #caté', 8)?.endColumn, 10, 'the word after the cursor is replaced too');
+    assert.strictEqual(getTagCompletionContext('See https://x.example/#ins', 26), undefined);
+  });
+
   test('completes no tag in code, in a link, or inside an unclosed [[', () => {
     assert.strictEqual(getTagCompletionContext('Run `#build` now', 11), undefined);
     assert.strictEqual(getTagCompletionContext('See [[Atlas#Dec', 15), undefined);

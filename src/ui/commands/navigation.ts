@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { reindexAction, reportFailure } from './notify';
+import { findWorkspaceFolderByKey } from '../../shared/paths';
 
 /**
  * Resolves a stored source key across absolute paths, URI schemes, and roots.
@@ -24,19 +25,20 @@ export async function resolveSourceUri(
     return vscode.Uri.parse(filePath);
   }
 
-  const pathParts = filePath.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
-  const folders = workspaceFolders ?? [];
-  // A multi-root key names its folder first, so that folder is tried, and
-  // is the fallback, before the path is read inside each folder in turn,
-  // as sourceScopeUri reads it.
-  const candidates: vscode.Uri[] = [
-    ...(folders.length > 1
-      ? folders
-          .filter((workspaceFolder) => pathParts[0] === workspaceFolder.name)
-          .map((workspaceFolder) => vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts.slice(1)))
-      : []),
-    ...folders.map((workspaceFolder) => vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts)),
-  ];
+  const normalizedPath = filePath.replaceAll('\\', '/').replace(/^\.\//, '');
+  const pathParts = normalizedPath.split('/');
+  // The folder a multi-root key names comes first, so it is also the
+  // fallback when no candidate exists yet.
+  const named =
+    workspaceFolders && workspaceFolders.length > 1
+      ? findWorkspaceFolderByKey(workspaceFolders, pathParts[0])
+      : undefined;
+  const candidates: vscode.Uri[] = named
+    ? [vscode.Uri.joinPath(named.uri, ...pathParts.slice(1))]
+    : [];
+  for (const workspaceFolder of workspaceFolders ?? []) {
+    candidates.push(vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts));
+  }
 
   for (const candidate of candidates) {
     try {
@@ -74,7 +76,7 @@ export function sourceScopeUri(
   const pathParts = filePath.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
   const folders = workspaceFolders ?? [];
   if (folders.length > 1) {
-    const folder = folders.find((candidate) => candidate.name === pathParts[0]);
+    const folder = findWorkspaceFolderByKey(folders, pathParts[0]);
     return folder ? vscode.Uri.joinPath(folder.uri, ...pathParts.slice(1)) : undefined;
   }
   return folders[0] ? vscode.Uri.joinPath(folders[0].uri, ...pathParts) : undefined;

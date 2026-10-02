@@ -18,7 +18,7 @@ Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people
 - A task is its own entry under every setting.
 - Changing the setting reindexes the workspace automatically, and writes nothing to your notes.
 
-**Links.** A `[[link]]` names a note by its file name without `.md`, or by any name in its `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
+**Links.** A `[[link]]` names a note by its file name without `.md`, or by any name in its `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. `[[Atlas.md]]` works too, and opens `Atlas`. A name two notes share opens neither. A link in fenced code or inline code, such as `` `[[Atlas]]` ``, is an example: it links nothing. A link to an image or other attachment, such as `![[diagram.png]]`, is not a note, so it is never a missing one.
 
 After `#`, a link can name a heading, as `[[Check-in#Vendor review]]` does, or one line, as `[[Check-in#^lift-slip]]` does. A line is named by the `^marker` at its end ([Obsidian](https://obsidian.md) block-reference style):
 
@@ -63,6 +63,7 @@ Met with @alex-smith about [[Q3 planning]].
 - `#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs.
 - Any other namespaced tag, such as `#management/performance`, creates a namespace and appears as `Management: Performance`.
 - Unnamespaced tags such as `#follow-up` work too. All tags appear in the Dashboard's **Tags** catalog.
+- A tag's name is letters and digits of any language, `_`, and `-`, so `#café` and `#日本` are tags. A tag starts a word: the `#` in `café#latte` or in a web address such as `https://example.com/#install` is not one.
 - `@alex` and `#alex` are different tags.
 - Namespace aliases map a custom namespace to any built-in or custom namespace. You can change the people marker; `@name` then becomes a lightweight tag.
 

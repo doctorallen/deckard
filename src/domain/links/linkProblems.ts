@@ -1,12 +1,11 @@
-import { getExtractedNoteFileName } from '../markdown/noteNames';
+import { ATTACHMENT, getExtractedNoteFileName } from '../markdown/noteNames';
 import { WorkspaceIndex } from '../model';
 import {
   createNoteTitleMap,
   findWikiTargetPaths,
   parseWikiTarget,
-  WIKI_LINK,
 } from '../index/backlinks';
-import { findFencedLines } from '../markdown/lineShapes';
+import { findWikiLinkSpans } from '../markdown/wikiLinks';
 
 /** A `[[link]]` that opens no note. */
 export interface LinkProblem {
@@ -24,9 +23,9 @@ export interface LinkProblem {
 
 /**
  * The links in a note that open no note: a name no note has, or one several
- * notes share. Links in code fences and `[[#Heading]]` links into the note
- * itself are left alone, as is a heading a note lacks, since the link still
- * opens the note.
+ * notes share. Links in code, links to attachments, and `[[#Heading]]`
+ * links into the note itself are left alone, as is a heading a note lacks,
+ * since the link still opens the note.
  */
 export function findLinkProblems(
   content: string,
@@ -34,33 +33,26 @@ export function findLinkProblems(
   sourcePath: string,
 ): LinkProblem[] {
   const titles = createNoteTitleMap(index);
-  const lines = content.split(/\r?\n/);
-  const fenced = findFencedLines(lines);
   const problems: LinkProblem[] = [];
-  lines.forEach((text, line) => {
-    if (fenced.has(line)) {
-      return;
+  for (const span of findWikiLinkSpans(content)) {
+    const { note } = parseWikiTarget(span.target);
+    // An attachment, such as an embedded image, is not a note.
+    if (!note || ATTACHMENT.test(note)) {
+      continue;
     }
-    for (const match of text.matchAll(WIKI_LINK)) {
-      const { note } = parseWikiTarget(match[1]);
-      if (!note) {
-        continue;
-      }
-      const paths = findWikiTargetPaths(titles, note, sourcePath);
-      if (paths.length === 1) {
-        continue;
-      }
-      const startColumn = match.index ?? 0;
-      problems.push({
-        line,
-        startColumn,
-        endColumn: startColumn + match[0].length,
-        name: note,
-        kind: paths.length === 0 ? 'missing' : 'ambiguous',
-        paths: [...paths].sort(),
-      });
+    const paths = findWikiTargetPaths(titles, note, sourcePath);
+    if (paths.length === 1) {
+      continue;
     }
-  });
+    problems.push({
+      line: span.line,
+      startColumn: span.startColumn,
+      endColumn: span.endColumn,
+      name: note,
+      kind: paths.length === 0 ? 'missing' : 'ambiguous',
+      paths: [...paths].sort(),
+    });
+  }
   return problems;
 }
 

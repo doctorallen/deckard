@@ -86,7 +86,7 @@ The first runs once, at the first start in a workspace, in `PreferencesRepositor
 
 ## Pruning
 
-Pruning is a garbage collection of what Deckard derived. After each index update, a housekeeping view calls `PreferencesMaintenance.prune(index)` with the index snapshot, and the prune after start does the same. It reads the keys of the snapshot's tags, tasks, sections, entities, and files. `pruneKeys` takes the key lists by name for a caller without an index. It removes counts, orders, and times for entries that no longer exist, and it updates when each tag was first seen. Before that, `carrySectionAccess` moves a heading's view count to its new id when a line above it changed.
+Pruning is a garbage collection of what Deckard derived. After each index update, a housekeeping view calls `PreferencesMaintenance.prune(index)` with the index snapshot, and the prune after start does the same. It reads the keys of the snapshot's tags, tasks, sections, entities, and files. `pruneKeys` takes the key lists by name for a caller without an index. It removes counts, orders, and times for entries that no longer exist, and it updates when each tag was first seen. Before that, `carrySectionAccess` moves a heading's view count to its new id when a line above it changed. And when a second workspace folder is added or removed, every note's path gains or loses its folder's key, and every id in it changes: `tidyAfterUpdate` in `src/composition/tidyPreferences.ts` matches each note to its new path with `findRekeyedNotes`, and carries its task order, view counts, Find choices, recent headings, and pins to the new path and ids before the prune.
 
 Three rules keep pruning from destroying data:
 

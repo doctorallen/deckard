@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -14,9 +15,47 @@ import {
 import { SearchWorkerClient } from './searchStoreWorkerClient';
 import { decodeParsedFile, encodeParsedFile } from './parsedFileCodec';
 import { ParsedFile } from '../../domain/model';
+import { reportError } from '../../shared/timing';
 
 /** How many cached notes are read between turns of the extension host. */
 const PARSED_PAGE_SIZE = 500;
+
+/** SQLite's codes for a file that is damaged (`SQLITE_CORRUPT`) or is not a database (`SQLITE_NOTADB`). */
+const DAMAGED_CODES = new Set([11, 26]);
+
+/**
+ * Opens the cache at `databasePath`: as it is, made again when the file is
+ * damaged, or in memory when it cannot be opened. Answers the database and
+ * where it is, `:memory:` when it fell back.
+ */
+function openCache(databasePath: string): { database: DatabaseSync; databasePath: string } {
+  try {
+    return { database: openSearchDatabase(databasePath), databasePath };
+  } catch (error) {
+    if (databasePath === ':memory:') {
+      throw error;
+    }
+    if (isDamaged(error)) {
+      reportError('The search cache was damaged, so it is being rebuilt from the notes', error);
+      try {
+        // The write-ahead log and shared memory belong to the damaged file.
+        ['', '-wal', '-shm'].forEach((suffix) => rmSync(`${databasePath}${suffix}`, { force: true }));
+        return { database: openSearchDatabase(databasePath), databasePath };
+      } catch (retryError) {
+        error = retryError;
+      }
+    }
+    reportError('Could not open the search cache, so it is kept in memory for this session', error);
+    return { database: openSearchDatabase(':memory:'), databasePath: ':memory:' };
+  }
+}
+
+/** Whether SQLite refused a file because it is damaged or not a database at all. */
+function isDamaged(error: unknown): boolean {
+  const code = (error as { errcode?: unknown } | undefined)?.errcode;
+  // An extended code carries the primary one in its low byte.
+  return typeof code === 'number' && DAMAGED_CODES.has(code & 0xff);
+}
 
 /** What a scan found and kept out, as `WorkspaceScanner.lastScan` says. */
 export interface ScanCounts {
@@ -113,12 +152,17 @@ export class SearchStore implements Disposable {
    * file-system path (VS Code's `storageUri.fsPath`), as
    * `deckard-search.sqlite`; with no folder, a window with none open, the
    * cache is in memory and lasts the session.
+   *
+   * A cache file that is damaged is deleted and made again, and one that
+   * cannot be opened at all, such as in a folder that cannot be written, is
+   * kept in memory for the session instead, so neither stops Deckard from
+   * starting. Either is logged.
    */
   public constructor(storagePath: string | undefined) {
-    const databasePath = storagePath
-      ? join(storagePath, 'deckard-search.sqlite')
-      : ':memory:';
-    this.database = openSearchDatabase(databasePath);
+    const { database, databasePath } = openCache(
+      storagePath ? join(storagePath, 'deckard-search.sqlite') : ':memory:',
+    );
+    this.database = database;
     this.writer = new SearchWriter(this.database);
     if (databasePath !== ':memory:') {
       // A thread that died may have taken batches with it, so what the cache

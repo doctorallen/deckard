@@ -20,7 +20,7 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 | 🆔 ⛔ | A task's id, and the ids of the tasks it waits for. |
 
 - Markers and a trailing block id such as `^a1b2` are left out of titles and shown as details. A marker can be anywhere on the line.
-- Without a 📅 date, Deckard reads `2026-09-12`, `Sep 12`, or `next Friday` from the text, counting from the note's date (a daily note's name or top heading, else a `date:`, `created:`, or `updated:` front-matter date, else the last save).
+- Without a 📅 date, Deckard reads `2026-09-12`, `Sep 12`, or `next Friday` from the text, counting from the note's date (a daily note's name or top heading, else a `date:`, `created:`, or `updated:` front-matter date, else the last save). `Sep 12` is in that date's year, unless the same day in the year before or after is nearer and within two months: `Jan 5` in the note for December 28 is the coming January.
 - Completing a task adds ✅ with today's date; reopening removes it. `deckard.tasks.addDoneDate` set to `false` changes only the checkbox.
 - Completing a 🔁 task anywhere writes its next occurrence on the line above. The due date (else scheduled or start) moves by the rule and the other dates keep their distance; `when done` counts from today. The new task drops ✅, 🆔, and any block id, and its [steps](#breaking-a-task-into-steps) return unchecked. A bulk edit writes the next occurrence alone.
 - Repeat rules:

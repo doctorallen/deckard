@@ -57,7 +57,7 @@ export function findListParents(
   const stack: Array<{ width: number; line: number }> = [];
   const fenced = fencedLines ?? findFencedLines(lines);
   lines.forEach((line, index) => {
-    if (fenced.has(index) || isHeadingLine(line, { allowBare: true })) {
+    if (fenced.has(index) || isHeadingLine(line)) {
       stack.length = 0;
       return;
     }

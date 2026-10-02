@@ -28,6 +28,8 @@ None of the modules in `src/core` imports `vscode`. The scanner reads folders, f
 
 The scanner, and the roles that hand back its URIs, are generic in the URI type they are given: `WorkspaceScanner<U>`, `NoteFiles<U>`, `IndexReader<U>`, and `IndexRoles<U>`. The extension gives them `vscode.Uri`, so every URI they hand back, such as `getUri` or `getNotesFolderUri`, is a `vscode.Uri` the UI passes to VS Code as it is. A UI function that does so names its parameter `IndexReader<vscode.Uri>`. A test gives them plain objects from `src/test/fakeWorkspace.ts`, so the scanner, index, and cache suites run under `test:unit`.
 
+A note's index path is relative to its workspace folder. With more than one folder open, it starts with the folder's key: the folder's name, or, for a later folder with a name an earlier one has, the name and a count, such as `notes (2)`. `workspaceFolderKey` and `findWorkspaceFolderByKey` in `src/shared/paths.ts` are the one rule for it, which the scanner, opening a note, and parking all read.
+
 ## The roles callers take
 
 No caller holds the pieces. Each is typed by the roles it uses, from `indexReader.ts`, and is handed the one value `createWorkspaceIndex` returns, or in a test a fake with only those members.
@@ -85,9 +87,11 @@ What each change requires is decided by `reactionsTo(change)`, a pure function w
 
 The queue is keyed by URI and keeps only the newest change for each. It flushes 200 ms after the first change it holds, since a later change joins the batch without putting the flush off, and applies the whole batch at once, so no listener sees half a batch.
 
+Scans and batches can overlap, and the one that finishes last is not always the newest. So the `IndexService` numbers each as it begins. A scan that a newer scan has begun since drops what it found and resolves when the newer one does, since it read under settings or folders that have changed. A note a batch applied after a scan began stays as the batch left it when the scan finishes, whether saved, created, or deleted. A batch that finishes reading after a newer batch has applied the same note drops its older read.
+
 ## The cache and its fingerprint
 
-The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. On a warm start the `IndexService` reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
+The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. A file SQLite calls damaged or not a database is deleted and made again, and one that cannot be opened at all is kept in memory for the session; both are logged, so neither stops activation. A write that fails, such as on a full disk, is logged too, and the scan or save it followed still reaches the views. On a warm start the `IndexService` reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
 
 The cache is trusted only when it was written under the same fingerprint. The fingerprint joins these parts:
 

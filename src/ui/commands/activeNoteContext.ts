@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { Debouncer } from '../../shared/debounce';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
+import { findFencedLines } from '../../domain/markdown/lineShapes';
 import { findDailyNoteDate } from '../../domain/markdown/parser';
 
 /** What the context needs to know about the index. */
@@ -23,24 +24,17 @@ const setContext: ContextSetter = (key, value) => {
  */
 export function readTopHeadings(lines: readonly string[]): string[] {
   const headings: string[] = [];
-  let fence: string | undefined;
   const start = (findFrontmatterEnd(lines) ?? -1) + 1;
+  // Fenced code is found as the parser finds it, so the two agree on which
+  // headings are examples.
+  const fenced = findFencedLines(lines);
   for (let at = start; at < lines.length; at += 1) {
-    const line = lines[at];
-    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-    if (marker) {
-      if (fence === undefined) {
-        fence = marker;
-      } else if (marker[0] === fence[0] && marker.length >= fence.length) {
-        fence = undefined;
-      }
+    if (fenced.has(at)) {
       continue;
     }
-    if (fence === undefined) {
-      const heading = /^#[ \t]+(.+?)[ \t#]*$/.exec(line);
-      if (heading) {
-        headings.push(heading[1]);
-      }
+    const heading = /^#[ \t]+(.+?)[ \t#]*$/.exec(lines[at]);
+    if (heading) {
+      headings.push(heading[1]);
     }
   }
   return headings;

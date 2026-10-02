@@ -23,6 +23,7 @@ import {
   TaskLineShape,
 } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
+import { findWikiLinkSpans } from './wikiLinks';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
@@ -76,7 +77,6 @@ function getTagField(field: string): string {
 const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
-const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
 const monthDatePattern =
   /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i;
@@ -391,13 +391,14 @@ export function extractTags(
 
 /**
  * Extracts workspace-local Wiki link targets without treating their labels as
- * paths. Resolution happens against the current workspace index.
+ * paths. Resolution happens against the current workspace index. A link in
+ * fenced code or an inline code span is an example, not a link.
  */
 export function extractWikiLinks(text: string): string[] {
   const links = new Set<string>();
 
-  for (const match of text.matchAll(wikiLinkPattern)) {
-    const target = match[1].trim();
+  for (const span of findWikiLinkSpans(text)) {
+    const target = span.target.trim();
     if (target.length > 0) {
       links.add(target);
     }
@@ -410,18 +411,18 @@ export function extractWikiLinks(text: string): string[] {
  * Identifies the entity class encoded by a canonical tag.
  *
  * Internally normalized @ tags are people. Namespaced # tags name workspace
- * entities, while unnamespaced # tags remain lightweight labels.
+ * entities, while unnamespaced # tags remain lightweight labels. The kind is
+ * read from the key as {@link getEntityNamespace} reads it.
  */
 export function getEntityKind(
   tag: TagReference,
-  entityNamespaceAliases?: EntityNamespaceAliases,
+  _entityNamespaceAliases?: EntityNamespaceAliases,
 ): EntityKind | undefined {
-  const key = normalizeTagKey(tag.key, entityNamespaceAliases);
-  if (key.startsWith('@')) {
+  if (tag.key.startsWith('@')) {
     return 'person';
   }
 
-  const namespace = getEntityNamespace(tag, entityNamespaceAliases);
+  const namespace = getEntityNamespace(tag);
   return namespace === 'org' || namespace === 'organization'
     ? 'organization'
     : namespace;
@@ -433,12 +434,18 @@ export function getEntityKind(
  * Every namespace creates an entity on first use. The internal `tag-at`
  * namespace remains excluded because it represents a generic `@` tag when the
  * people marker is customized.
+ *
+ * A tag's key is canonical: the parse that made it resolved its namespace's
+ * alias already, so the namespace is read from the key as it is. Aliasing it
+ * again, with aliases other than the parse's, such as after `org` is
+ * remapped to `company`, named a namespace the key does not have. The
+ * aliases are taken, and left alone, so callers need not change.
  */
 export function getEntityNamespace(
   tag: TagReference,
-  entityNamespaceAliases?: EntityNamespaceAliases,
+  _entityNamespaceAliases?: EntityNamespaceAliases,
 ): string | undefined {
-  return readTagNamespace(normalizeTagKey(tag.key, entityNamespaceAliases))?.toLowerCase();
+  return readTagNamespace(tag.key)?.toLowerCase();
 }
 
 /**
@@ -509,14 +516,16 @@ function readFrontmatterValues(
   let currentKey: string | undefined;
   lines.slice(1, end).forEach((line, lineIndex) => {
     const lineNumber = lineIndex + 2;
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    // YAML allows spaces before the colon, as `tags : [parked]`.
+    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*)([ \t]*:)\s*(.*)$/);
     if (property) {
+      const value = property[3];
       currentKey = property[1].toLowerCase();
-      values.set(currentKey, splitFrontmatterValues(property[2], { keepEmptyValue: true }));
-      const valueStart = line.indexOf(property[2], property[1].length + 1);
+      values.set(currentKey, splitFrontmatterValues(value, { keepEmptyValue: true }));
+      const valueStart = line.indexOf(value, property[1].length + property[2].length);
       tagSpans.push(
         ...createFrontmatterTagSpans(
-          { field: currentKey, rawValue: property[2], lineNumber, valueStart },
+          { field: currentKey, rawValue: value, lineNumber, valueStart },
           settings,
         ),
       );
@@ -750,7 +759,7 @@ function toSlug(value: string): string | undefined {
   const slug = value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/[^\p{L}\p{N}\p{M}_-]+/gu, '-')
     .replace(/^-+|-+$/g, '');
   return slug || undefined;
 }
@@ -813,7 +822,7 @@ function collectTagSpans(
       return [];
     }
 
-    const heading = matchHeading(line, 'kept');
+    const heading = matchHeading(line);
     if (heading) {
       const headingTextStart = line.indexOf(heading.text);
       return createTagSpans(
@@ -1101,12 +1110,29 @@ function tagKeyFor(
   return normalizeTagKey(`${marker}${rawName.toLowerCase()}`, entityNamespaceAliases);
 }
 
+/**
+ * The characters a tag's name is made of besides `-` and `/`: letters and
+ * digits of any script, the marks that accent them, and `_`. Text for a
+ * character class, for a pattern with the `u` flag.
+ */
+export const TAG_WORD_CHARACTERS = '\\p{L}\\p{N}\\p{M}_';
+
+/**
+ * A tag's name after its marker, as pattern text for the `u` flag: parts
+ * separated by `/`, each starting with a letter or digit and going on with
+ * letters, digits, `_`, and `-`. So `#café`, `#日本`, and `#org/acme` are
+ * tags, read whole.
+ */
+export const TAG_NAME_SOURCE = `[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*(?:\\/[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*)*`;
+
 /** The tag pattern for one people marker, compiled. */
 function compileTagPattern(personMarker: string): RegExp {
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+  // The name ends on a letter, digit, or `_`, and the next character is none
+  // of those, so `#tag-` is `#tag` and `#café` is not cut short at the `é`.
   return new RegExp(
-    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
-    'g',
+    `(^|[^${TAG_WORD_CHARACTERS}#])([#@${escapedMarker}])(${TAG_NAME_SOURCE})(?<=[${TAG_WORD_CHARACTERS}])(?![${TAG_WORD_CHARACTERS}])`,
+    'gu',
   );
 }
 
@@ -1724,13 +1750,13 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   const monthDate = text.match(monthDatePattern);
   if (monthDate && anchor !== undefined) {
     const month = MONTH_NUMBERS[monthDate[1].toLowerCase()];
-    const year = monthDate[3]
-      ? Number(monthDate[3])
-      : new Date(anchor).getFullYear();
-    const at =
-      month === undefined
-        ? undefined
-        : makeDay(year, month, Number(monthDate[2]));
+    if (month === undefined) {
+      return undefined;
+    }
+    const day = Number(monthDate[2]);
+    const at = monthDate[3]
+      ? makeDay(Number(monthDate[3]), month, day)
+      : placeMonthDay(month, day, anchor);
     return at === undefined ? undefined : { at, text: monthDate[0] };
   }
 
@@ -1745,6 +1771,31 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   }
 
   return undefined;
+}
+
+/** How near New Year a month and day must be to be read in the year before or after: two months. */
+const ACROSS_NEW_YEAR_MS = 61 * 24 * 60 * 60 * 1000;
+
+/**
+ * The day a month and day with no year names, from the day the note is
+ * anchored to: in the anchor's year, unless the same day in the year before
+ * or after is nearer the anchor and within two months of it. So `Jan 5` in
+ * the note for December 28 is the coming January 5, and `Dec 20` in the
+ * note for January 3 the December just gone, while `Mar 1` in a note saved
+ * in May stays this year's, overdue rather than a year off. Undefined for a
+ * day the month does not have.
+ */
+function placeMonthDay(month: number, day: number, anchor: number): number | undefined {
+  const year = new Date(anchor).getFullYear();
+  const sameYear = makeDay(year, month, day);
+  const distance = (at: number): number => Math.abs(at - anchor);
+  const across = [makeDay(year - 1, month, day), makeDay(year + 1, month, day)]
+    .filter((at): at is number => at !== undefined && distance(at) <= ACROSS_NEW_YEAR_MS)
+    .sort((left, right) => distance(left) - distance(right))[0];
+  if (across !== undefined && (sameYear === undefined || distance(across) < distance(sameYear))) {
+    return across;
+  }
+  return sameYear;
 }
 
 /**
@@ -1883,7 +1934,7 @@ function mergeTagLabels(
  * Tells completion whether a trailing hash belongs to ATX syntax, not a tag.
  */
 export function hasAtxHeadingClosingHashes(line: string): boolean {
-  const match = matchHeading(line, 'kept');
+  const match = matchHeading(line);
   if (!match) {
     return false;
   }

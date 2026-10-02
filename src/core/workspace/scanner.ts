@@ -15,6 +15,8 @@ import {
   parseMarkdown,
   PARSE_FORMAT,
 } from '../../domain/markdown/parser';
+import { findWorkspaceFolderByKey, readFolderSetting, workspaceFolderKey } from '../../shared/paths';
+import { decodeUtf8Text } from '../../shared/text';
 import { reportError } from '../../shared/timing';
 import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
 import { ParsedFile, UnreadableNote } from '../../domain/model';
@@ -214,7 +216,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       this.access.readFile(uri),
       this.metadataFor(uri, stamp),
     ]);
-    const content = Buffer.from(bytes).toString('utf8');
+    const content = decodeUtf8Text(bytes);
     return parseMarkdown(
       this.getFilePath(uri, workspaceFolder),
       content,
@@ -300,7 +302,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       this.getConfiguration(folder).get<unknown>('parked.folders', {}),
     );
     const matchers = folders.map((folder, index) => ({
-      prefix: multiRoot ? `${folder.name}/` : '',
+      prefix: multiRoot ? `${workspaceFolderKey(folders, folder) ?? folder.name}/` : '',
       isParked: createExcludeMatcher(folderSettings[index]),
     }));
     const hasFolders = folderSettings.some(
@@ -349,7 +351,9 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
   }
 
   /**
-   * Produces a stable index key and prefixes multi-root paths to avoid clashes.
+   * Produces a stable index key and prefixes multi-root paths to avoid
+   * clashes: with the folder's name, or, for a second folder of the same
+   * name, the name and a count, as `notes (2)`.
    */
   public getFilePath(
     uri: U,
@@ -365,7 +369,8 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       return relativePath.replaceAll('\\', '/');
     }
 
-    return `${folder.name}/${relativePath.replaceAll('\\', '/')}`;
+    const folders = this.access.workspaceFolders ?? [];
+    return `${workspaceFolderKey(folders, folder) ?? folder.name}/${relativePath.replaceAll('\\', '/')}`;
   }
 
   /**
@@ -378,7 +383,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       return this.access.joinPath(folders[0].uri, ...filePath.split('/'));
     }
     const [name, ...rest] = filePath.split('/');
-    const folder = folders.find((candidate) => candidate.name === name);
+    const folder = findWorkspaceFolderByKey(folders, name);
     return folder && rest.length > 0 ? this.access.joinPath(folder.uri, ...rest) : undefined;
   }
 
@@ -400,11 +405,10 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    * Normalizes user configuration before it is used in VS Code glob/path APIs.
    */
   public getNotesFolder(workspaceFolder?: WorkspaceFolder<U>): string {
-    const configuration = this.getConfiguration(workspaceFolder);
-    const configuredFolder = configuration
-      .get<string>('notesFolder', '')
-      .trim();
-    return configuredFolder.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
+    return readFolderSetting(
+      this.getConfiguration(workspaceFolder).get<unknown>('notesFolder', ''),
+      '',
+    );
   }
 
   /**
@@ -414,11 +418,10 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
   public getTemplatesFolderUri(
     workspaceFolder: WorkspaceFolder<U>,
   ): U | undefined {
-    const folder = this.getConfiguration(workspaceFolder)
-      .get<string>('templatesFolder', 'templates')
-      .trim()
-      .replaceAll('\\', '/')
-      .replace(/^\/+|\/+$/g, '');
+    const folder = readFolderSetting(
+      this.getConfiguration(workspaceFolder).get<unknown>('templatesFolder', 'templates'),
+      'templates',
+    );
     return folder && folder !== '.'
       ? this.access.joinPath(workspaceFolder.uri, ...folder.split('/'))
       : undefined;

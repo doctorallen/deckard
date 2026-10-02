@@ -13,7 +13,8 @@ import { TagRenames } from '../core/storage/preferencesTagRenames';
 import { TaskLayoutService } from '../core/storage/preferencesTaskLayout';
 import { UsageService } from '../core/storage/preferencesUsage';
 import { SearchStore } from '../core/storage/searchStore';
-import { setTimingLog } from '../shared/timing';
+import { reportError, setTimingLog } from '../shared/timing';
+import { tidyAfterUpdate } from './tidyPreferences';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import type { IndexRoles } from '../core/workspace/indexReader';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -96,7 +97,6 @@ import { ThemePreview } from '../ui/webview/themePreview';
 import { TryNextLedger } from '../ui/commands/tryNext';
 import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
-import { carrySectionIds } from '../domain/ranking/frecency';
 import { findUnlinkedMentions } from '../domain/search/mentions';
 import { evaluateSearchPage } from '../ui/state/searchPageState';
 import { getCaptureInsertion } from '../domain/capture/captureLines';
@@ -380,9 +380,13 @@ export function startServices(services: Services): void {
   // the index starts; each index update redraws it after that.
   services.views.taskStatusBar.refresh();
 
-  void services.indexer.start().then(async () => {
-    await services.preferences.maintenance.prune(services.indexer.getSnapshot());
-  });
+  // Nothing awaits this, so a failure is logged here rather than lost.
+  void services.indexer
+    .start()
+    .then(async () => {
+      await services.preferences.maintenance.prune(services.indexer.getSnapshot());
+    })
+    .catch((error: unknown) => reportError('Could not finish the first index', error));
 }
 
 /**
@@ -1005,22 +1009,22 @@ function warnOfUnreadableNotes(context: vscode.ExtensionContext, indexer: IndexR
 }
 
 /**
- * Keeps the derived counts in step with the index: a heading's view count
- * follows it to a new id, and what names a note gone from the index is
- * pruned. Also starts counting visits to notes.
+ * Keeps the derived counts in step with the index, as `tidyAfterUpdate`
+ * does after each update. Also starts counting visits to notes.
  */
 function tidyPreferencesOnUpdate(
   context: vscode.ExtensionContext,
   indexer: IndexRoles<vscode.Uri>,
   preferences: PreferenceParts,
 ): void {
-  // A heading's id changes when a line above it does; its view count follows
-  // it to the new id before anything is pruned.
+  // A heading's id changes when a line above it does, and every id in a
+  // note changes when its path does; what names them follows them to the
+  // new ids before anything is pruned.
   let previousIndex = indexer.getSnapshot();
   /**
-   * Carries moved headings' view counts to their new ids, then prunes what
-   * names a note gone from the index; nothing is done while the index is
-   * stale or unchanged.
+   * Carries what names a moved heading or note to its new id, then prunes
+   * what names a note gone from the index; nothing is done while the index
+   * is stale or unchanged.
    */
   const tidy = (): void => {
     const index = indexer.getSnapshot();
@@ -1030,14 +1034,11 @@ function tidyPreferencesOnUpdate(
     if (indexer.isStale || index === previousIndex) {
       return;
     }
-    const moved = carrySectionIds(previousIndex, index);
+    const previous = previousIndex;
     previousIndex = index;
-    void (async () => {
-      if (moved.size > 0) {
-        await preferences.usage.carrySectionAccess(moved);
-      }
-      await preferences.maintenance.prune(index);
-    })();
+    void tidyAfterUpdate(previous, index, preferences).catch((error: unknown) =>
+      reportError('Could not tidy the preferences after an index update', error),
+    );
   };
   context.subscriptions.push(
     indexer.onDidUpdateView(tidy, {

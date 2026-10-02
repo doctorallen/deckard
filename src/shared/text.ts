@@ -67,3 +67,16 @@ export function escapeMarkdown(value: string, set: MarkdownEscapeSet = 'punctuat
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+/** How many bytes a UTF-8 byte order mark takes at the start of a file. */
+export const UTF8_BOM_BYTES = 3;
+
+/**
+ * A file's bytes as UTF-8 text, without the byte order mark some Windows
+ * editors write first. Left in, the mark is the first character of the
+ * first line, so a heading or front matter there is not read as one.
+ */
+export function decodeUtf8Text(bytes: Uint8Array): string {
+  // TextDecoder drops a leading byte order mark; Buffer's toString keeps it.
+  return new TextDecoder('utf-8').decode(bytes);
+}

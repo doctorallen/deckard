@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { countTagMatches } from '../../domain/query/queryEvaluator';
+import { findWorkspaceFolderByKey } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
 import { noteTitle } from '../../domain/index/backlinks';
 import { listExcludedFolders } from '../../domain/index/excludeKeys';
@@ -393,7 +394,7 @@ function folderUri(folder: string): vscode.Uri | undefined {
     return vscode.Uri.joinPath(folders[0].uri, ...folder.split('/'));
   }
   const [name, ...rest] = folder.split('/');
-  const root = folders.find((candidate) => candidate.name === name);
+  const root = findWorkspaceFolderByKey(folders, name);
   return root ? vscode.Uri.joinPath(root.uri, ...rest) : undefined;
 }
 
