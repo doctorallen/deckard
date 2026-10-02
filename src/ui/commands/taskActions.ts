@@ -258,13 +258,13 @@ export function describeStepsCompletion(
   const plain = said.text === `Completed ${quoteTitle(task.title)}.`;
   if (family.lastStepOf) {
     const parent = quoteTitle(family.lastStepOf.title);
-    const { line } = family.lastStepOf;
+    const { line, text } = family.lastStepOf;
     return {
       ...said,
       text: plain
         ? `Completed ${quoteTitle(task.title)}, the last open step of ${parent}.`
         : `${said.text} It was the last open step of ${parent}.`,
-      action: { label: 'Complete Task', run: () => completeTaskAtLine(writes, family.uri, family.filePath, line) },
+      action: { label: 'Complete Task', run: () => completeTaskAtLine(writes, family.uri, family.filePath, { line, text }) },
     };
   }
   if (family.openSteps > 0) {
@@ -274,7 +274,12 @@ export function describeStepsCompletion(
       text: `${said.text} ${count} of its steps ${count === 1 ? 'is' : 'are'} still open.`,
       action: {
         label: 'Complete Steps',
-        run: () => completeOpenSteps(writes, family.uri, family.writtenLine, task.title),
+        run: () =>
+          completeOpenSteps(writes, family.uri, {
+            line: family.writtenLine,
+            lineText: family.writtenText,
+            title: task.title,
+          }),
       },
     };
   }
@@ -282,18 +287,19 @@ export function describeStepsCompletion(
 }
 
 /**
- * Completes the task written on a line, through the usual completion. A
- * note that cannot be read is said as the completion itself would say it.
+ * Completes the task written on a line, through the usual completion, when
+ * the line still reads as it did when the button was offered. A note that
+ * cannot be read is said as the completion itself would say it.
  */
 async function completeTaskAtLine(
   writes: TaskWrites,
   uri: vscode.Uri,
   filePath: string,
-  line: number,
+  at: { line: number; text: string },
 ): Promise<void> {
   let task: Task | undefined;
   try {
-    task = await writes.tasks.findOpenTaskAt(uri, filePath, line);
+    task = await writes.tasks.findOpenTaskAt(uri, filePath, at.line, at.text);
   } catch (error) {
     reportTaskFailure(uri, error);
     return;
@@ -307,15 +313,16 @@ async function completeTaskAtLine(
 
 /**
  * Completes the open steps written directly under a task, in one change
- * that Undo takes back.
+ * that Undo takes back, when the task's line still reads as it did when the
+ * button was offered.
  */
 async function completeOpenSteps(
   writes: TaskWrites,
   uri: vscode.Uri,
-  taskLine: number,
-  title: string,
+  task: { line: number; lineText: string; title: string },
 ): Promise<void> {
-  const result = await writes.tasks.completeSteps(uri, taskLine, title);
+  const { title } = task;
+  const result = await writes.tasks.completeSteps(uri, task);
   if (result.kind === 'stale') {
     void reportStale([uri]);
     return;

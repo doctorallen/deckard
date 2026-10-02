@@ -228,8 +228,8 @@ async function resolveNewNote(
     return undefined;
   }
   const title = noteTitle(uri.path);
-  const eol = '\n';
-  return { uri, link: title, name: title, create: `# ${name.trim()}${eol}${eol}` };
+  // The move writes the new note in its source's line ending.
+  return { uri, link: title, name: title, create: `# ${name.trim()}\n\n` };
 }
 
 /** A heading the index knows, found again in its note as the note is now. */

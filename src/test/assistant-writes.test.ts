@@ -1,6 +1,9 @@
 import * as assert from 'assert';
 
-import { addedTaskLine, addTask, changeTaskLine, describeChange } from '../ui/commands/assistantWrites';
+import * as vscode from 'vscode';
+
+import { parseMarkdown } from '../domain/markdown/parser';
+import { addedTaskLine, addTask, changeTask, changeTaskLine, describeChange } from '../ui/commands/assistantWrites';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { readAddTaskInput, readChangeTaskInput } from '../ui/state/assistantWriteInput';
@@ -70,6 +73,49 @@ suite('Assistant writes', () => {
       changeTaskLine({ line, changes: { complete: true }, now: NOW, fallbackFormat: 'emoji', eol: '\n', addDoneDate: false }).text.split('\n')[1],
       '- [x] Water the plants 🔁 every week 📅 2026-09-21',
       'no done date when the setting is off',
+    );
+  });
+
+  test('completing a repeating task gives the next one its steps back, unchecked', async () => {
+    const note = '/notes/review.md';
+    const lines = [
+      '# Review',
+      '- [ ] Weekly review 🔁 every week 📅 2026-09-21',
+      '  - [ ] Inbox zero',
+      '  - [x] Clear the desk ✅ 2026-09-14',
+      '',
+    ];
+    const index = buildWorkspaceIndex(new Map([[note, parseMarkdown(note, lines.join('\n'))]]));
+    const document = {
+      eol: vscode.EndOfLine.LF,
+      getText: () => lines.join('\n'),
+      lineAt: (line: number) => ({ text: lines[line], range: new vscode.Range(line, 0, line, lines[line].length) }),
+    };
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const { openTextDocument } = workspace;
+    workspace.openTextDocument = async () => document;
+    let answer;
+    try {
+      answer = await changeTask(
+        { ready: Promise.resolve(), getSnapshot: () => index },
+        { write: async () => ({ applied: true }) } as unknown as WorkspaceWriteHistory,
+        { note, line: 2, complete: true },
+        NOW,
+      );
+    } finally {
+      workspace.openTextDocument = openTextDocument;
+    }
+    assert.strictEqual(answer.isError, undefined);
+    assert.ok(
+      answer.text.includes(
+        [
+          '- [ ] Weekly review 🔁 every week 📅 2026-09-28',
+          '  - [ ] Inbox zero',
+          '  - [ ] Clear the desk',
+          '- [x] Weekly review 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
+        ].join('\n'),
+      ),
+      answer.text,
     );
   });
 

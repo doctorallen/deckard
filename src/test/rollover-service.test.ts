@@ -97,6 +97,32 @@ function planOf(text = yesterday, mode: 'move' | 'migrate' = 'move'): RolloverPl
   return plan;
 }
 
+suite('Rollover plan', () => {
+  test('looks back in calendar days, across a clock change', () => {
+    // Clocks in New York go forward on 2026-03-08, so the week before
+    // 2026-03-10 is an hour short of seven days of 24 hours.
+    const zone = process.env.TZ;
+    process.env.TZ = 'America/New_York';
+    try {
+      const plan = planRollover(
+        indexOf({
+          'notes/2026-03-02.md': '# 2026-03-02\n\n- [ ] Eight days back\n',
+          'notes/2026-03-03.md': '# 2026-03-03\n\n- [ ] Seven days back\n',
+        }),
+        '2026-03-10',
+        7,
+      );
+      assert.deepStrictEqual(plan?.fromDates, ['2026-03-03']);
+    } finally {
+      if (zone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = zone;
+      }
+    }
+  });
+});
+
 suite('RolloverService', () => {
   test('moves each task with everything under it, and takes the block out of its note', async () => {
     const notes = new FakeNotes(new Map([[FROM, yesterday]]), '# 2026-09-19\n');
@@ -125,6 +151,22 @@ suite('RolloverService', () => {
         ['/ws/notes/2026-09-18.md', { start: { line: 2, character: 0 }, end: { line: 5, character: 0 } }, ''],
         ['/ws/notes/2026-09-18.md', { start: { line: 5, character: 22 }, end: { line: 6, character: 17 } }, ''],
       ],
+    );
+  });
+
+  test('takes tasks that end a note with no final line break out as one stretch', async () => {
+    const ending = '# 2026-09-18\n\n- [ ] Call Ren\n- [ ] Pay rent';
+    const notes = new FakeNotes(new Map([[FROM, ending]]), '# 2026-09-19\n');
+    const { service } = rolloverWith(notes);
+
+    const result = await service.apply({ plan: planOf(ending), todayUri: TODAY, mode: 'move' });
+
+    assert.strictEqual(result.kind, 'carried');
+    // Two stretches would overlap on the break between the tasks, which the
+    // first takes after it and the last, ending the note, before it.
+    assert.deepStrictEqual(
+      notes.writes[0].edits.slice(1).map((edit) => [edit.uri.path, edit.range, edit.text]),
+      [['/ws/notes/2026-09-18.md', { start: { line: 1, character: 0 }, end: { line: 3, character: 14 } }, '']],
     );
   });
 

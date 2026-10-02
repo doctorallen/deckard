@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { describeRejectedEdit, noteName, reportFailure } from './notify';
+import { describeRejectedEdit, describeStale, noteName, reportFailure } from './notify';
 
 import {
   extractTags,
@@ -535,6 +535,9 @@ export async function editTaskCommand(
   if (!edited) {
     return undefined;
   }
+  if (!lineStillReads(editor.document, line, existing ? 'Edit Task' : 'Add Task')) {
+    return undefined;
+  }
 
   const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
   const completion = writeEditedTask({
@@ -569,22 +572,52 @@ export async function editTaskCommand(
     ),
   );
   editor.selection = new vscode.Selection(caret, caret);
-  if (completion.next !== undefined || completion.unreadRule !== undefined) {
-    const said = describeCompletion(
-      edited.description,
-      completion.next,
-      completion.unreadRule,
-    );
-    // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
-    // a next one started is said in passing; a rule that could not be read
-    // is worth stopping for.
-    if (said.severity === 'warning') {
-      void vscode.window.showWarningMessage(said.text);
-    } else {
-      vscode.window.setStatusBarMessage(said.text, 5000);
-    }
-  }
+  sayCompletion(edited, completion);
   return written;
+}
+
+/**
+ * Whether the line still reads as it did when the editor opened, and says
+ * so when it does not. The box stays open while the reader works elsewhere,
+ * so the note may have changed under it, and writing to the line number
+ * alone would overwrite whatever line now sits there.
+ */
+function lineStillReads(
+  document: vscode.TextDocument,
+  line: vscode.TextLine,
+  command: string,
+): boolean {
+  if (
+    line.lineNumber < document.lineCount &&
+    document.lineAt(line.lineNumber).text === line.text
+  ) {
+    return true;
+  }
+  void reportFailure({
+    outcome: describeStale([noteName(document.uri)]),
+    fix: `Run ${command} on the line again.`,
+  });
+  return false;
+}
+
+/** Says what completing a repeating task started, or what it could not read. */
+function sayCompletion(edited: TaskDraft, completion: CompletionWrite): void {
+  if (completion.next === undefined && completion.unreadRule === undefined) {
+    return;
+  }
+  const said = describeCompletion(
+    edited.description,
+    completion.next,
+    completion.unreadRule,
+  );
+  // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
+  // a next one started is said in passing; a rule that could not be read
+  // is worth stopping for.
+  if (said.severity === 'warning') {
+    void vscode.window.showWarningMessage(said.text);
+  } else {
+    vscode.window.setStatusBarMessage(said.text, 5000);
+  }
 }
 
 /** Whether the cursor is on a task line, which names the command. */

@@ -117,7 +117,7 @@ export function planCarriedTasks(
     sourceEdits:
       options.mode === 'migrate'
         ? migrateMarks(carried, options.target)
-        : blocks.map((block) => moveDeletion(block, sources)),
+        : moveDeletions(blocks, sources),
     notes: new Set(carried.map((task) => task.filePath)).size,
   };
 }
@@ -206,12 +206,45 @@ function migrateMarks(carried: readonly Task[], target: string): SourceEdit[] {
 }
 
 /**
- * The stretch a move takes out of the note a block came from: its lines and
- * the break after them, or, for a block that ends the note, the break before.
+ * The stretches a move takes out of the notes the blocks came from, note by
+ * note, top to bottom. Blocks that touch, one starting on the line after
+ * another ends, go as one stretch: at the end of a note with no final line
+ * break, the last block takes the break before it, which the block above
+ * already takes, and an editor refuses two changes that overlap.
  */
-function moveDeletion(block: CarriedBlock, sources: ReadonlyMap<string, readonly string[]>): SourceEdit {
-  const lines = sources.get(block.root.filePath) ?? [];
-  const { first, last } = block;
+function moveDeletions(
+  blocks: readonly CarriedBlock[],
+  sources: ReadonlyMap<string, readonly string[]>,
+): SourceEdit[] {
+  const spansBy = new Map<string, { first: number; last: number }[]>();
+  for (const block of blocks) {
+    const spans = spansBy.get(block.root.filePath) ?? [];
+    spans.push({ first: block.first, last: block.last });
+    spansBy.set(block.root.filePath, spans);
+  }
+  return [...spansBy].flatMap(([filePath, spans]) => {
+    const merged: { first: number; last: number }[] = [];
+    for (const span of [...spans].sort((left, right) => left.first - right.first)) {
+      const previous = merged[merged.length - 1];
+      if (previous && span.first <= previous.last + 1) {
+        previous.last = Math.max(previous.last, span.last);
+      } else {
+        merged.push({ ...span });
+      }
+    }
+    return merged.map((span) => moveDeletion(filePath, span, sources.get(filePath) ?? []));
+  });
+}
+
+/**
+ * The stretch a move takes out of a note: the lines and the break after
+ * them, or, for lines that end the note, the break before.
+ */
+function moveDeletion(
+  filePath: string,
+  { first, last }: { first: number; last: number },
+  lines: readonly string[],
+): SourceEdit {
   const range: NoteRange =
     last + 1 < lines.length
       ? { start: { line: first, character: 0 }, end: { line: last + 1, character: 0 } }
@@ -219,7 +252,7 @@ function moveDeletion(block: CarriedBlock, sources: ReadonlyMap<string, readonly
           start: { line: Math.max(first - 1, 0), character: first > 0 ? lines[first - 1].length : 0 },
           end: { line: last, character: lines[last].length },
         };
-  return { filePath: block.root.filePath, range, text: '' };
+  return { filePath, range, text: '' };
 }
 
 /**

@@ -31,11 +31,13 @@ class Range {
 
 /**
  * An edit across notes, as VS Code's is made: replacements kept per note,
- * and `entries` to read them back. Nothing applies it here.
+ * and `entries` to read them back; `replaces` holds each one in order.
+ * Nothing applies it here.
  */
 class WorkspaceEdit {
   constructor() {
     this.edits = new Map();
+    this.replaces = [];
   }
 
   replace(uri, range, newText) {
@@ -43,6 +45,7 @@ class WorkspaceEdit {
     const entry = this.edits.get(key) ?? [uri, []];
     entry[1].push({ range, newText });
     this.edits.set(key, entry);
+    this.replaces.push({ uri, range, newText });
   }
 
   entries() {
@@ -319,8 +322,8 @@ module.exports = {
   EventEmitter,
   Range,
   Position,
-  WorkspaceEdit,
   Selection,
+  WorkspaceEdit,
   DocumentLink,
   MarkdownString,
   ThemeColor,
@@ -339,6 +342,8 @@ module.exports = {
     file: fileUri,
   },
   ViewColumn: { Active: -1, Beside: -2, One: 1 },
+  EndOfLine: { LF: 1, CRLF: 2 },
+  QuickPickItemKind: { Separator: -1, Default: 0 },
   TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
   window: {
     createWebviewPanel,

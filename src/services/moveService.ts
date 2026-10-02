@@ -46,7 +46,10 @@ export interface MoveTarget<U> {
   name: string;
   /** Under a heading: its own lines. Absent: the end of the note. */
   section?: Pick<Section, 'startLine' | 'endLine'>;
-  /** A note to create, with what it starts with before the moved lines. */
+  /**
+   * A note to create, with what it starts with before the moved lines. It is
+   * written in the move's line ending, whichever it is given in.
+   */
   create?: string;
 }
 
@@ -103,6 +106,26 @@ interface NoteSplices<U> {
 }
 
 /**
+ * The sources without any whose block lies inside another's in the same
+ * note, as a step's does inside its task's: taking both out would splice the
+ * note twice over the same lines. Of two equal blocks, the first is kept.
+ */
+function dropNested<U extends ResourceUri>(sources: readonly MoveSource<U>[]): MoveSource<U>[] {
+  const holds = (outer: MoveSource<U>, inner: MoveSource<U>): boolean =>
+    outer.uri.toString() === inner.uri.toString() &&
+    outer.block.start <= inner.block.start &&
+    inner.block.end <= outer.block.end;
+  return sources.filter((source, index) =>
+    sources.every(
+      (other, otherIndex) =>
+        otherIndex === index ||
+        !holds(other, source) ||
+        (holds(source, other) && index < otherIndex),
+    ),
+  );
+}
+
+/**
  * Moves blocks of lines between notes, over the notes as the editor holds
  * them. Made once, where the extension starts; see the module comment.
  */
@@ -114,6 +137,8 @@ export class MoveService<U extends ResourceUri, H = unknown> {
    * Reads tasks the index knows, each with its steps, as blocks to move from
    * wherever they are written. A task whose note no folder holds is left
    * out; one whose line changed since the index read it makes the move stale.
+   * A task chosen with the task it is a step of moves with that task, so it
+   * is read once, as part of that task's block.
    */
   public async readTasks(tasks: readonly Task[]): Promise<TaskSources<U>> {
     const sources: MoveSource<U>[] = [];
@@ -134,7 +159,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       }
       sources.push({ uri, filePath: task.filePath, block: read, task });
     }
-    return { kind: 'sources', sources };
+    return { kind: 'sources', sources: dropNested(sources) };
   }
 
   /**
@@ -161,7 +186,10 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       : undefined;
     const edits = await this.toEdits(splicesBy);
 
-    const created = target.create === undefined ? undefined : await this.create(target.uri, `${target.create}${moved}${eol}`);
+    const created =
+      target.create === undefined
+        ? undefined
+        : await this.create(target.uri, `${target.create.replace(/\r?\n/g, eol)}${moved}${eol}`);
     const deleteCreated = (): Promise<void> => this.deleteCreated(created);
     const write = await this.options.history.write(edits, {
       label: 'Move to…',

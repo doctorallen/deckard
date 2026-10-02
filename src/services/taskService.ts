@@ -280,34 +280,46 @@ export class TaskService<U extends ResourceUri, H = unknown> {
 
   /**
    * The open task written on a zero-based line of a note, read from the note
-   * as it is now; undefined when the line holds no open task. Rejects when
-   * the note cannot be read.
+   * as it is now; undefined when the line no longer reads `lineText`, which
+   * a line added or taken away above it would do, or holds no open task.
+   * Rejects when the note cannot be read.
    */
-  public async findOpenTaskAt(uri: U, filePath: string, line: number): Promise<Task | undefined> {
+  public async findOpenTaskAt(uri: U, filePath: string, line: number, lineText: string): Promise<Task | undefined> {
     const note = await this.options.notes.open(uri);
     const task = parseMarkdown(filePath, note.getText()).tasks.find(
       (candidate) => candidate.lineNumber === line + 1,
     );
-    return task && !task.completed ? task : undefined;
+    return task && !task.completed && task.sourceLineText === lineText ? task : undefined;
   }
 
   /**
    * Completes the open steps written directly under the task on a zero-based
-   * line, in one write that Undo takes back. `stale` when none is open any
-   * more; `failed` when the note cannot be read or written.
+   * line, in one write that Undo takes back. `stale` when the line no longer
+   * reads `lineText`, which a line added or taken away above it would do, or
+   * when none of its steps is open any more; `failed` when the note cannot
+   * be read or written.
    */
-  public async completeSteps(uri: U, taskLine: number, title: string): Promise<StepsWrite<U, H>> {
+  public async completeSteps(
+    uri: U,
+    task: { line: number; lineText: string; title: string },
+  ): Promise<StepsWrite<U, H>> {
     try {
-      return await this.writeCompletedSteps(uri, taskLine, title);
+      return await this.writeCompletedSteps(uri, task);
     } catch (error) {
       return { kind: 'failed', uri, error };
     }
   }
 
   /** {@link completeSteps}, rejecting when the note cannot be read or written. */
-  private async writeCompletedSteps(uri: U, taskLine: number, title: string): Promise<StepsWrite<U, H>> {
+  private async writeCompletedSteps(
+    uri: U,
+    { line: taskLine, lineText, title }: { line: number; lineText: string; title: string },
+  ): Promise<StepsWrite<U, H>> {
     const note = await this.options.notes.open(uri);
     const lines = note.getText().split(/\r?\n/);
+    if (lines[taskLine] !== lineText) {
+      return { kind: 'stale', uri };
+    }
     const open = findStepFamily(lines, taskLine).steps.filter((line) => !isCheckedTaskLine(lines[line]));
     if (open.length === 0) {
       return { kind: 'stale', uri };
