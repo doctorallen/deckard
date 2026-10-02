@@ -27,7 +27,7 @@ A record is not edited to change its decision. A new record supersedes it instea
 | [0003](0003-no-vscode-elements.md) | No `@vscode-elements/elements` | Accepted |
 | [0004](0004-hand-written-message-narrowing.md) | Hand-written message narrowing, one table, no validation library | Accepted |
 | [0005](0005-inert-json-for-initial-state.md) | Inert JSON for initial state | Accepted |
-| [0006](0006-retain-context-only-for-live-editing-state.md) | `retainContextWhenHidden` only where live editing state exists | Accepted |
+| [0006](0006-retain-context-only-for-live-editing-state.md) | `retainContextWhenHidden` only where live editing state exists | Superseded by 0017 |
 | [0007](0007-fast-unit-tier-under-plain-mocha.md) | A fast unit tier under plain mocha | Accepted |
 | [0008](0008-architecture-docs-as-a-separate-folder.md) | Architecture docs as a separate folder, not guide pages | Accepted |
 | [0009](0009-constructor-injection-and-result-objects.md) | Constructor injection into a plain `Services` object, and result objects | Accepted |
@@ -38,3 +38,4 @@ A record is not edited to change its decision. A new record supersedes it instea
 | [0014](0014-pages-render-synchronously-from-one-store.md) | Pages render synchronously from one store | Accepted |
 | [0015](0015-note-markdown-tokenized-by-markdown-it.md) | Note Markdown is tokenized by `markdown-it`, not by our own parser | Accepted: amends 0011 |
 | [0016](0016-one-bundle-per-page.md) | Each Preact page loads one bundle of its own | Accepted: open question 3, measured at Search |
+| [0017](0017-retain-context-on-four-pages.md) | `retainContextWhenHidden` on four pages: the Dashboard, Search, the Task Board, and the Notes Graph | Accepted: open question 1; supersedes 0006 |

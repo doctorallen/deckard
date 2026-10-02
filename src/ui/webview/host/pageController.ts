@@ -55,7 +55,7 @@ export interface SnapshotTiming {
 
 /** What a page needs from the webview it is shown in. */
 export interface PageOptions {
-  /** Keep the page running while its tab is hidden; see decision 0006. */
+  /** Keep the page running while its tab is hidden; see decision 0017, which superseded 0006. */
   readonly retainContextWhenHidden: boolean;
   /** Offer VS Code's find widget on the page. */
   readonly enableFindWidget: boolean;
