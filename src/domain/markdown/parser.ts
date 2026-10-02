@@ -411,18 +411,18 @@ export function extractWikiLinks(text: string): string[] {
  * Identifies the entity class encoded by a canonical tag.
  *
  * Internally normalized @ tags are people. Namespaced # tags name workspace
- * entities, while unnamespaced # tags remain lightweight labels.
+ * entities, while unnamespaced # tags remain lightweight labels. The kind is
+ * read from the key as {@link getEntityNamespace} reads it.
  */
 export function getEntityKind(
   tag: TagReference,
-  entityNamespaceAliases?: EntityNamespaceAliases,
+  _entityNamespaceAliases?: EntityNamespaceAliases,
 ): EntityKind | undefined {
-  const key = normalizeTagKey(tag.key, entityNamespaceAliases);
-  if (key.startsWith('@')) {
+  if (tag.key.startsWith('@')) {
     return 'person';
   }
 
-  const namespace = getEntityNamespace(tag, entityNamespaceAliases);
+  const namespace = getEntityNamespace(tag);
   return namespace === 'org' || namespace === 'organization'
     ? 'organization'
     : namespace;
@@ -434,12 +434,18 @@ export function getEntityKind(
  * Every namespace creates an entity on first use. The internal `tag-at`
  * namespace remains excluded because it represents a generic `@` tag when the
  * people marker is customized.
+ *
+ * A tag's key is canonical: the parse that made it resolved its namespace's
+ * alias already, so the namespace is read from the key as it is. Aliasing it
+ * again, with aliases other than the parse's, such as after `org` is
+ * remapped to `company`, named a namespace the key does not have. The
+ * aliases are taken, and left alone, so callers need not change.
  */
 export function getEntityNamespace(
   tag: TagReference,
-  entityNamespaceAliases?: EntityNamespaceAliases,
+  _entityNamespaceAliases?: EntityNamespaceAliases,
 ): string | undefined {
-  return readTagNamespace(normalizeTagKey(tag.key, entityNamespaceAliases))?.toLowerCase();
+  return readTagNamespace(tag.key)?.toLowerCase();
 }
 
 /**

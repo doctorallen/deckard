@@ -8,6 +8,7 @@ import {
   extractWikiLinks,
   getEntityNamespaceAliases,
   getEntityKind,
+  getEntityNamespace,
   getPersonMarker,
   legacyIdOf,
   parseMarkdown,
@@ -267,17 +268,27 @@ suite('Markdown parser', () => {
       ),
       ['#project/atlas'],
     );
-    assert.strictEqual(
-      getEntityKind({ key: '#client/acme', label: '#client/acme' }, aliases),
-      'organization',
-    );
-    assert.strictEqual(
-      getEntityKind(
-        { key: '#leadership/performance', label: '#leadership/performance' },
-        aliases,
-      ),
-      'management',
-    );
+    const [client] = extractTags('#client/acme', aliases);
+    assert.strictEqual(client.key, '#org/acme');
+    assert.strictEqual(getEntityKind(client, aliases), 'organization');
+    const [leadership] = extractTags('#leadership/performance', aliases);
+    assert.strictEqual(getEntityKind(leadership, aliases), 'management');
+  });
+
+  test('reads an entity\'s namespace from its key, which the parse already resolved, never aliasing it twice', () => {
+    // Indexed before `org` was remapped to `company`, or in a folder that
+    // does not remap it: the key says org.
+    const [indexed] = extractTags('#org/acme');
+    const remapped = getEntityNamespaceAliases({ org: 'company' });
+    assert.strictEqual(getEntityNamespace(indexed, remapped), 'org');
+    assert.strictEqual(getEntityKind(indexed, remapped), 'organization');
+
+    // Indexed under the remap: the key says company, with the aliases or without.
+    const [underRemap] = extractTags('#organization/acme', remapped);
+    assert.strictEqual(underRemap.key, '#company/acme');
+    assert.strictEqual(getEntityNamespace(underRemap, remapped), 'company');
+    assert.strictEqual(getEntityNamespace(underRemap), 'company');
+    assert.strictEqual(getEntityKind(underRemap), 'company');
   });
 
   test('a namespace or block id named after a property of every object is read as written', () => {
