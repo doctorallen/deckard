@@ -15,6 +15,7 @@ import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import {
   createExport,
   describePreferences,
+  importPreferences,
   readExport,
 } from '../ui/commands/preferenceBackups';
 
@@ -133,6 +134,71 @@ suite('Preference backups', () => {
     assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/new']);
     assert.strictEqual(store.reader.value.tagSortMode, 'alphabetical');
     assert.strictEqual(told, 1);
+    store.repository.dispose();
+  });
+});
+
+suite('Importing preferences', () => {
+  /**
+   * Stands in for the reader importing `file`: the open dialog picks it, the
+   * modal is answered Replace, and every message is kept in `said`, with
+   * the modal's detail in `details`; until `restore` puts VS Code back.
+   */
+  function importing(file: unknown) {
+    const said: string[] = [];
+    const details: string[] = [];
+    const answer = async (text: string, options?: { detail?: string }) => {
+      said.push(text);
+      if (options?.detail) {
+        details.push(options.detail);
+      }
+      return text.startsWith('Replace ') ? 'Replace' : undefined;
+    };
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const replaced: [Record<string, unknown>, string, unknown][] = [
+      [window, 'showOpenDialog', async () => [vscode.Uri.file('/imports/deckard-preferences.json')]],
+      [window, 'showWarningMessage', answer],
+      [window, 'showInformationMessage', answer],
+      [window, 'showErrorMessage', answer],
+      [workspace, 'fs', { readFile: async () => Buffer.from(JSON.stringify(file), 'utf8') }],
+    ];
+    const kept = replaced.map(([owner, key]) => Object.getOwnPropertyDescriptor(owner, key));
+    replaced.forEach(([owner, key, value]) =>
+      Object.defineProperty(owner, key, { configurable: true, get: () => value }),
+    );
+    const restore = () =>
+      replaced.forEach(([owner, key], at) => {
+        const descriptor = kept[at];
+        if (descriptor) {
+          Object.defineProperty(owner, key, descriptor);
+        } else {
+          delete owner[key];
+        }
+      });
+    return { said, details, restore };
+  }
+
+  test('a file that leaves lists out is described, and imported, as the lists it has', async () => {
+    const store = createPreferences(new MemoryMemento());
+    await store.pins.pinNote({ filePath: 'notes/relay.md' });
+    for (const file of [
+      { version: 1, favoriteTags: ['#project/atlas'] },
+      { deckard: { kind: 'preferences', version: 1 }, preferences: { favoriteTags: ['#project/atlas'] } },
+    ]) {
+      assert.strictEqual(describePreferences(readExport(file).preferences), '1 favorite tag');
+      const reader = importing(file);
+      try {
+        await importPreferences(store);
+      } finally {
+        reader.restore();
+      }
+      assert.strictEqual(reader.said[0], 'Replace what this workspace remembers with the file /imports/deckard-preferences.json?');
+      assert.match(reader.details[0], /^It holds 1 favorite tag\. /);
+      assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/atlas']);
+      assert.deepStrictEqual(store.reader.value.pinnedNotes ?? [], [], 'a list the file leaves out is emptied');
+      await store.pins.pinNote({ filePath: 'notes/relay.md' });
+    }
     store.repository.dispose();
   });
 });

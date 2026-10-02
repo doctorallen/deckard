@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { PreferenceSnapshots } from '../../core/storage/preferenceSnapshots';
+import { normalizePreferences } from '../../core/storage/preferencesSchema';
 import { isRecord } from '../../shared/guards';
 import { pluralize } from '../../shared/text';
 import { reportFailure } from './notify';
@@ -56,6 +57,11 @@ export function createExport(
 /**
  * Reads an export, or a snapshot, back. A snapshot is the bare preference
  * blob; an export wraps it. Anything else is refused with a reason.
+ *
+ * What it returns is normalized, as every blob the repository keeps is: a
+ * file written by hand, or by an older Deckard, can leave a list out, and
+ * describing it before the confirm would otherwise read a list that is not
+ * there.
  */
 export function readExport(value: unknown): {
   preferences: PersistedPreferences;
@@ -73,12 +79,12 @@ export function readExport(value: unknown): {
         ? new Date(value.deckard.exportedAt)
         : undefined;
     return {
-      preferences: value.preferences as unknown as PersistedPreferences,
+      preferences: normalizePreferences(value.preferences as Partial<PersistedPreferences>),
       exportedAt,
     };
   }
   if (value.version === 1 && Array.isArray(value.favoriteTags)) {
-    return { preferences: value as unknown as PersistedPreferences };
+    return { preferences: normalizePreferences(value as Partial<PersistedPreferences>) };
   }
   throw new NotPreferencesError();
 }
