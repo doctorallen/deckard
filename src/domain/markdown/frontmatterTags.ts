@@ -8,6 +8,10 @@ import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatt
  * these read the shapes people write: `tags: [a, b]`, `tags: a`, a YAML
  * block list under `tags:`, `tag:` as the field's name, quoted values, and
  * values written with their `#`. Line endings are kept as the note has them.
+ *
+ * An empty value, such as `tags: ''` or a block list's `- ''`, names no tag,
+ * as the parser reads it: it is never read as a tag, and a rewrite of the
+ * field drops it rather than leave it behind.
  */
 
 /**
@@ -37,6 +41,11 @@ function sameTag(written: string, tag: string): boolean {
 const TAGS_FIELD = /^(tags?)[ \t]*:[ \t]*(.*?)[ \t]*$/i;
 /** One item of a YAML block list: its indentation and its value. */
 const LIST_ITEM = /^([ \t]+)-[ \t]+(.*?)[ \t]*$/;
+
+/** Whether a block list's item is empty once unquoted, and so names no tag. */
+function isEmptyItem(item: { value: string }): boolean {
+  return item.value.trim() === '';
+}
 
 /** The tags field as written. */
 interface TagsField {
@@ -119,7 +128,9 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
     }
     const last = field.items[field.items.length - 1];
     lines.splice(last.line + 1, 0, `${last.indent}- ${value}`);
-    return lines.join(eol);
+    // The empty items all sit above the new one, so their lines are unmoved.
+    const empty = new Set(field.items.filter((item) => isEmptyItem(item)).map((item) => item.line));
+    return lines.filter((_, index) => !empty.has(index)).join(eol);
   }
   const values = splitValues(field.inline);
   if (values.some((written) => sameTag(written, value))) {
@@ -166,15 +177,18 @@ export function removeFrontmatterTags(
 
 /**
  * The lines to drop to take tags out of a block list: each item that goes,
- * and the field's own line when every item goes. Undefined when none goes.
+ * with the empty items, which name no tag, and the field's own line when no
+ * tag is left in it. Undefined when no tag goes.
  */
 function dropFromBlockList(field: TagsField, removes: (written: string) => boolean): Set<number> | undefined {
-  const gone = field.items.filter((item) => removes(item.value));
+  const gone = field.items.filter((item) => !isEmptyItem(item) && removes(item.value));
   if (gone.length === 0) {
     return undefined;
   }
-  const drop = new Set(gone.map((item) => item.line));
-  if (gone.length === field.items.length) {
+  const drop = new Set(
+    field.items.filter((item) => isEmptyItem(item) || gone.includes(item)).map((item) => item.line),
+  );
+  if (drop.size === field.items.length) {
     drop.add(field.line);
   }
   return drop;
@@ -216,5 +230,7 @@ export function readFrontmatterTagValues(content: string): string[] | undefined 
   if (field.kind === 'none') {
     return [];
   }
-  return field.items.length > 0 ? field.items.map((item) => item.value) : splitValues(field.inline);
+  return field.items.length > 0
+    ? field.items.filter((item) => !isEmptyItem(item)).map((item) => item.value)
+    : splitValues(field.inline);
 }
