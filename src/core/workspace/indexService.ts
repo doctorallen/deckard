@@ -99,7 +99,12 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   private changeClock = 0;
   /** For each note a change batch has applied, when that batch began. */
   private readonly changedAt = new Map<string, number>();
-  /** How many scans and change batches are under way; at none, `changedAt` is forgotten. */
+  /**
+   * For each note a scan has applied what it read from disk, when that scan
+   * began, kept only while a change batch is under way to read it.
+   */
+  private readonly scannedAt = new Map<string, number>();
+  /** How many scans and change batches are under way; at none, `changedAt` and `scannedAt` are forgotten. */
   private underWay = 0;
 
   /** `searchStore` is the full-text cache, absent in a test that needs none. */
@@ -263,6 +268,7 @@ export class IndexService<U extends ResourceUri = ResourceUri>
           // A save, creation, or deletion applied after this scan began
           // reading is newer than what the scan read, so it stands.
           const parsedFiles = this.keepNewerChanges(scan.files, begunAt);
+          this.markScanned(parsedFiles, begunAt);
           let changed = true;
           if (checking) {
             changed = this.applyCheck(parsedFiles);
@@ -323,8 +329,18 @@ export class IndexService<U extends ResourceUri = ResourceUri>
         return;
       }
       // A batch that began after this one may have finished reading first;
-      // its read of a note is the newer one, so this batch's is dropped.
-      const changes = read.filter((change) => (this.changedAt.get(change.filePath) ?? 0) < begunAt);
+      // its read of a note is the newer one, so this batch's is dropped. So
+      // is its read from disk of a note a scan begun after it has applied,
+      // which read the disk later; text an editor holds is newer than the
+      // disk, so that stands.
+      const fromEditor = new Set(
+        updates.filter((update) => update.content !== undefined).map((update) => this.scanner.getFilePath(update.uri)),
+      );
+      const changes = read.filter(
+        (change) =>
+          (this.changedAt.get(change.filePath) ?? 0) < begunAt &&
+          (fromEditor.has(change.filePath) || (this.scannedAt.get(change.filePath) ?? 0) < begunAt),
+      );
       changes.forEach((change) => {
         this.changedAt.set(change.filePath, begunAt);
         this.unreadable.delete(change.filePath);
@@ -364,14 +380,31 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   }
 
   /**
+   * Records the notes a scan begun at `begunAt` is about to apply, those it
+   * read and those it leaves out, so a change batch begun before it and still
+   * reading drops its older read of them. With nothing else under way, there
+   * is no such batch, and nothing is recorded.
+   */
+  private markScanned(parsedFiles: readonly ParsedFile[], begunAt: number): void {
+    if (this.underWay <= 1) {
+      return;
+    }
+    for (const filePath of [...this.state.files.keys(), ...parsedFiles.map((file) => file.filePath)]) {
+      this.scannedAt.set(filePath, begunAt);
+    }
+  }
+
+  /**
    * Marks a scan or batch finished. With none under way, no later read can
    * be older than a change applied, so what was applied when is forgotten.
    */
   private end(): void {
     this.underWay -= 1;
-    if (this.underWay === 0) {
-      this.changedAt.clear();
+    if (this.underWay > 0) {
+      return;
     }
+    this.changedAt.clear();
+    this.scannedAt.clear();
   }
 
   /**

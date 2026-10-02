@@ -131,6 +131,74 @@ suite('The index keeps the newest of what lands while it scans', () => {
     assert.deepStrictEqual(taskTitles(service), ['Third']);
   });
 
+  test('a batch begun before a scan and finished after it does not replace what the scan read', async () => {
+    const folder = fakeFolder('/ws', 'ws');
+    const plan = joinUri(folder.uri, 'plan.md');
+    let disk = '# Plan\n- [ ] First\n';
+    let held: ReturnType<typeof gate> | undefined;
+    const access = createFakeAccess({
+      workspaceFolders: [folder],
+      findFiles: async () => [plan],
+      readFile: async () => {
+        const text = disk;
+        await held?.wait;
+        return Buffer.from(text);
+      },
+    });
+    const service = new IndexService(new WorkspaceScanner(access), undefined, {
+      publish: () => undefined,
+    });
+    await service.start();
+
+    held = gate();
+    disk = '# Plan\n- [ ] Second\n';
+    const batch = service.applyQueued([{ uri: plan, deleted: false }]);
+    await settle();
+    const batchRead = held;
+    held = undefined;
+    // Saved again; the scan begun now reads the newer note and lands first.
+    disk = '# Plan\n- [ ] Third\n';
+    await service.refresh({ reuse: 'none' });
+    assert.deepStrictEqual(taskTitles(service), ['Third']);
+    batchRead.open();
+    await batch;
+    assert.deepStrictEqual(taskTitles(service), ['Third'], 'the older read is dropped');
+  });
+
+  test("a batch begun before a scan keeps what an editor held, which is newer than the scan's read of the disk", async () => {
+    const folder = fakeFolder('/ws', 'ws');
+    const plan = joinUri(folder.uri, 'plan.md');
+    const other = joinUri(folder.uri, 'other.md');
+    let held: ReturnType<typeof gate> | undefined;
+    const access = createFakeAccess({
+      workspaceFolders: [folder],
+      findFiles: async () => [plan, other],
+      readFile: async (uri) => {
+        const text = uri.path.endsWith('plan.md') ? '# Plan\n- [ ] Saved\n' : '# Other\n';
+        await held?.wait;
+        return Buffer.from(text);
+      },
+    });
+    const service = new IndexService(new WorkspaceScanner(access), undefined, {
+      publish: () => undefined,
+    });
+    await service.start();
+
+    held = gate();
+    // The batch reads the other note from disk first, then the plan as its editor holds it.
+    const batch = service.applyQueued([
+      { uri: other, deleted: false },
+      { uri: plan, content: '# Plan\n- [ ] Typed\n', deleted: false },
+    ]);
+    await settle();
+    const batchRead = held;
+    held = undefined;
+    await service.refresh({ reuse: 'none' });
+    batchRead.open();
+    await batch;
+    assert.deepStrictEqual(taskTitles(service), ['Typed']);
+  });
+
   test('a setting changed during a scan leaves the index under the new setting, and ready waits for it', async () => {
     const folder = fakeFolder('/ws', 'ws');
     const keep = joinUri(folder.uri, 'keep.md');

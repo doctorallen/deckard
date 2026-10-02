@@ -87,7 +87,7 @@ What each change requires is decided by `reactionsTo(change)`, a pure function w
 
 The queue is keyed by URI and keeps only the newest change for each. It flushes 200 ms after the first change it holds, since a later change joins the batch without putting the flush off, and applies the whole batch at once, so no listener sees half a batch.
 
-Scans and batches can overlap, and the one that finishes last is not always the newest. So the `IndexService` numbers each as it begins. A scan that a newer scan has begun since drops what it found and resolves when the newer one does, since it read under settings or folders that have changed. A note a batch applied after a scan began stays as the batch left it when the scan finishes, whether saved, created, or deleted. A batch that finishes reading after a newer batch has applied the same note drops its older read.
+Scans and batches can overlap, and the one that finishes last is not always the newest. So the `IndexService` numbers each as it begins. A scan that a newer scan has begun since drops what it found and resolves when the newer one does, since it read under settings or folders that have changed. A note a batch applied after a scan began stays as the batch left it when the scan finishes, whether saved, created, or deleted. A batch that finishes reading after a newer batch has applied the same note drops its older read. So does a batch that finishes reading a note from disk after a scan begun later has applied it, since the scan read the disk later; a note's text taken from its editor stands, since it is newer than what the disk holds.
 
 ## The cache and its fingerprint
 
