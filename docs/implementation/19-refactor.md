@@ -283,7 +283,7 @@ Deckard adopts all seven, with these choices:
 | Dependency | Where it runs | What for | Target |
 | --- | --- | --- | --- |
 | `markdown-it` (7 packages inlined) | Host: `rendering.ts` renders note excerpts and task titles to HTML for the pages; `guide.ts` renders `docs/guide/*.md` for Help; `preview/*` only *type* it, since VS Code's preview passes its own instance to `extendMarkdownIt` | Card excerpts, titles, Help | **Removed.** |
-| `sanitize-html` (about 12 packages inlined, including `postcss` and `htmlparser2`) | Host: the second boundary after `markdown-it`, since note content is untrusted and lands in a scripted page | Same two sites | **Removed.** |
+| `sanitize-html` (about 12 packages inlined, including `postcss` and `htmlparser2`) | Host: the second boundary after `markdown-it`, since note content is untrusted and lands in a scripted page | Same two sites | **Removed.** Done in Phase 6 step 6 ([20-webviews.md](20-webviews.md), step 6): with the 15 packages it brought, it took 200,563 bytes off the production `dist/extension.js`, now 969,343. |
 | `picomatch` (1 package) | Host: `scanner.ts:655` matches `deckard.exclude` globs | Excluding folders from the index | **Removed if Node's `path.matchesGlob` proves equivalent** (below). |
 | `preact` (1 package, 0 transitive) | Webview sandbox only: no file system, no network, `postMessage` to the host | Page rendering | **Added.** The one third-party runtime left, in the lower-privilege context. |
 
