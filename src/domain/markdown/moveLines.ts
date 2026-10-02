@@ -1,8 +1,7 @@
 import { findFrontmatterEnd } from './frontmatter';
 import {
   findFencedLines,
-  HeadingShape,
-  isHeadingLine,
+  isHeading,
   isTaskLineOf,
   matchTaskLine,
   TaskLineMatch,
@@ -50,8 +49,6 @@ export interface MoveSelection {
   isEmpty: boolean;
 }
 
-/** A heading a move refuses to take: hashes alone, `#`, are not one here. */
-const HEADING: HeadingShape = { allowBare: false };
 /** An open task, which a move can leave behind marked `[>]`. */
 const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ' };
 /** A task of any kind: open, done, or migrated. */
@@ -103,7 +100,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
 
 /** Why the line under a cursor cannot be moved alone: a heading, or a blank line. */
 function refuseAtCursor(text: string): MoveRefusal | undefined {
-  if (isHeadingLine(text, HEADING)) {
+  if (isHeading(text)) {
     return { refused: 'heading' };
   }
   if (!text.trim()) {
@@ -145,7 +142,7 @@ function trimTrailingBlanks(lines: readonly string[], start: number, end: number
  * where the block starts or ends inside a fence it does not hold whole.
  */
 function refuseBlock(lines: readonly string[], start: number, end: number): MoveRefusal | undefined {
-  if (rangeOf(start, end).some((line) => isHeadingLine(lines[line] ?? '', HEADING))) {
+  if (rangeOf(start, end).some((line) => isHeading(lines[line] ?? ''))) {
     return { refused: 'heading' };
   }
   const fenced = findFencedLines([...lines]);

@@ -281,6 +281,17 @@ suite('Editor lenses', () => {
       ]);
     });
 
+    test('reads a heading as the parser does, so a hash and a no-break space is prose', () => {
+      const odd = createIndex({
+        'notes/Atlas.md': '# Atlas',
+        'notes/Odd.md': '#\u00a0Atlas is prose.\n   # Atlas heading\n#',
+      });
+      assert.deepStrictEqual(
+        findUnlinkedMentions(odd.files.get('notes/Atlas.md') as ParsedFile, odd).map((mention) => [mention.line, mention.text]),
+        [[0, 'Atlas']],
+      );
+    });
+
     test('does not look for a name another note shares, or a short one', () => {
       assert.deepStrictEqual(mentionsOf('notes/a/Plan.md'), []);
       assert.deepStrictEqual(mentionsOf('notes/AI.md'), []);

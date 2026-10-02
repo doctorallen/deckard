@@ -201,6 +201,31 @@ export function matchHeading(line: string, closingHashes: HeadingClosingHashes):
   return match ? { level: match[1].length, text: match[2] ?? '' } : undefined;
 }
 
+/**
+ * Whether a line is a heading as the parser reads one: up to three spaces,
+ * one to six `#`, then a space, a tab, or nothing, so `#` alone is an empty
+ * heading, as CommonMark and the preview read it. A feature that asks
+ * whether a line is a heading asks this, so none of them disagrees with the
+ * Outline about where a section starts.
+ */
+export function isHeading(line: string): boolean {
+  return matchHeading(line, 'kept') !== undefined;
+}
+
+/**
+ * A heading's level and words as the parser reads them, the optional
+ * closing hashes off, or undefined for a line that is not a heading.
+ */
+export function readHeading(line: string): HeadingMatch | undefined {
+  const match = matchHeading(line, 'kept');
+  return match ? { level: match.level, text: stripClosingHeadingHashes(match.text.trim()) } : undefined;
+}
+
+/** Takes the optional closing hashes of an ATX heading off its words. */
+export function stripClosingHeadingHashes(text: string): string {
+  return text.replace(/[ \t]+#+[ \t]*$/, '').trim();
+}
+
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
 /**
