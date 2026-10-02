@@ -491,9 +491,10 @@ suite('Related Notes controller', () => {
       assert.strictEqual(page.states().length, sent + 1, 'once when shown');
       page.surface.setVisible(false);
       page.surface.setVisible(true);
-      assert.strictEqual(page.states().length, sent + 2, 'and again, though nothing changed');
+      assert.strictEqual(page.states().length, sent + 1, 'not again when nothing changed: the view draws its last state from its HTML');
       await page.send({ type: 'ready' });
-      assert.strictEqual(page.states().length, sent + 3, 'and when the page asks');
+      assert.strictEqual(page.states().length, sent + 2, 'and is sent it when the page asks');
+      assert.deepStrictEqual(page.states()[sent + 1], page.states()[sent], 'the same state, not ranked again');
     } finally {
       page.dispose();
     }
@@ -518,7 +519,73 @@ suite('Related Notes controller', () => {
       assert.ok(carried, 'the hidden view\'s HTML carries a state');
       assert.deepStrictEqual(JSON.parse(carried[1]), page.states()[sent - 1], 'the last it posted');
       page.surface.setVisible(true);
-      assert.strictEqual(page.states().length, sent + 1, 'shown, it is posted its state, as before');
+      assert.strictEqual(page.states().length, sent, 'shown with nothing changed, it draws that state, and is not ranked or posted again');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('a reveal ranks once when the editor changed while the view was hidden, and not at all when nothing changed', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.surface.htmlWebview = pageWebview as vscode.Webview;
+      page.host.attach(page.surface);
+      await settle();
+      /** Shows the view, as VS Code does, and the page it loads again says it is ready; what was ranked meanwhile. */
+      const reveal = async (): Promise<string[]> => {
+        let ready: Promise<void> = Promise.resolve();
+        const lines = captureTimingLog(() => {
+          page.surface.setVisible(true);
+          ready = page.send({ type: 'ready' });
+        });
+        await ready;
+        return lines.filter((line) => line.startsWith('Related Notes:'));
+      };
+      const sent = page.states().length;
+      page.surface.setVisible(false);
+      assert.deepStrictEqual(await reveal(), [], 'nothing changed while hidden: nothing is ranked');
+      assert.strictEqual(page.states().length, sent + 1, 'the page that says ready is sent its last state');
+
+      page.surface.setVisible(false);
+      const document = await vscode.workspace.openTextDocument({ language: 'markdown', content: '# Elsewhere\n' });
+      await vscode.window.showTextDocument(document);
+      for (let tries = 0; tries < 50 && vscode.window.activeTextEditor?.document !== document; tries += 1) {
+        await settle();
+      }
+      await settle();
+      assert.strictEqual((await reveal()).length, 1, 'the editor changed while hidden: ranked once, for the reveal, and not again for ready');
+      assert.strictEqual(page.states().length, sent + 3, 'the ranked state, then the same again for the page that says ready');
+      assert.deepStrictEqual(page.states()[sent + 2], page.states()[sent + 1]);
+    } finally {
+      page.dispose();
+      await closeEditors();
+    }
+  });
+
+  test('a page loaded again is sent its state ranked anew once anything the ranking reads has changed', async () => {
+    await closeEditors();
+    const { result: page, fire } = withConfigurationEvents(() => openController());
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      /** How many times the page that says ready, after `change`, is ranked for. */
+      const count = async (change: () => unknown): Promise<number> => {
+        await change();
+        await settle();
+        let ready: Promise<void> = Promise.resolve();
+        const lines = captureTimingLog(() => {
+          ready = page.send({ type: 'ready' });
+        });
+        await ready;
+        return lines.filter((line) => line.startsWith('Related Notes:')).length;
+      };
+      assert.strictEqual(await count(() => undefined), 0, 'nothing changed');
+      assert.strictEqual(await count(() => fire('deckard.board.statusNamespace')), 1, 'a setting the ranking reads');
+      assert.strictEqual(await count(() => page.preferences.usage.recordSectionAccess('anything')), 1, 'a visit the ranking counts');
+      assert.strictEqual(await count(() => page.preferences.display.setHideDailyNotes(true)), 1, 'a preference');
+      page.updateIndex(UPDATED);
+      assert.strictEqual(await count(() => undefined), 0, 'an index update while shown was sent at once, so ready finds it current');
     } finally {
       page.dispose();
     }
