@@ -238,6 +238,11 @@ interface OpenFence {
  */
 export function findFencedLines(lines: readonly string[]): Set<number> {
   const fencedLines = new Set<number>();
+  // A fence is a run of three backticks or tildes, so lines holding neither
+  // open none, and most notes need no more reading than this.
+  if (!lines.some((line) => line.includes('```') || line.includes('~~~'))) {
+    return fencedLines;
+  }
   // The column each open list item's text starts at, innermost last.
   const items: number[] = [];
   let fence: OpenFence | undefined;
