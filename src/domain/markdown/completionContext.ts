@@ -1,4 +1,5 @@
 import { isInCodeOrLink } from './inlineRanges';
+import { TAG_NAME_SOURCE, TAG_WORD_CHARACTERS } from './parser';
 
 /**
  * What the editor's completions are being asked to complete, read from the
@@ -65,8 +66,10 @@ export function getTagCompletionContext(
 ): TagCompletionContext | undefined {
   const linePrefix = line.slice(0, character);
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+  // The tag's name as the parser reads one, so `#caf` is completed toward `#café`.
   const tagTokenPattern = new RegExp(
-    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)?$`,
+    `(^|[^${TAG_WORD_CHARACTERS}#])([#@${escapedMarker}])(${TAG_NAME_SOURCE})?$`,
+    'u',
   );
   const match = linePrefix.match(tagTokenPattern);
   if (!match) {
@@ -75,7 +78,7 @@ export function getTagCompletionContext(
 
   const marker = match[2];
   const query = match[3] ?? '';
-  const suffix = line.slice(character).match(/^[A-Za-z0-9_/-]*/)?.[0] ?? '';
+  const suffix = line.slice(character).match(/^[\p{L}\p{N}\p{M}_/-]*/u)?.[0] ?? '';
   const startColumn = (match.index ?? 0) + match[0].lastIndexOf(marker);
   // A `#` or `@` in inline code or a link is text, so it is not completed
   // as a tag; nor is one after a `[[` not closed yet, where the link's own

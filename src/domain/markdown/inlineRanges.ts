@@ -1,7 +1,8 @@
 /**
  * The parts of a line that are code or a link, where a `#` or `@` is text
- * and never a tag: inline code spans, `[[wiki links]]` (embeds included), and
- * the target of a Markdown link, `[text](target)`.
+ * and never a tag: inline code spans, `[[wiki links]]` (embeds included),
+ * the target of a Markdown link, `[text](target)`, and a bare web address,
+ * such as `https://example.com/#install`.
  *
  * Every place that finds, colors, completes, or rewrites tags asks this, so a
  * tag the index holds is a tag the editor shows and Rename Tag changes, and a
@@ -28,7 +29,7 @@ export interface InlineRange {
  */
 export function findCodeAndLinkRanges(text: string): InlineRange[] {
   const ranges: InlineRange[] = [];
-  if (!/[`\]]/.test(text)) {
+  if (!/[`\]:]/.test(text)) {
     return ranges;
   }
   let index = 0;
@@ -58,6 +59,12 @@ export function findCodeAndLinkRanges(text: string): InlineRange[] {
         continue;
       }
     }
+    const address = readBareAddress(text, index);
+    if (address > 0) {
+      ranges.push({ start: index, end: index + address });
+      index += address;
+      continue;
+    }
     if (character === ']' && text[index + 1] === '(') {
       const close = findOnLine(text, ')', index + 2);
       if (close !== undefined) {
@@ -69,6 +76,21 @@ export function findCodeAndLinkRanges(text: string): InlineRange[] {
     index += 1;
   }
   return ranges;
+}
+
+/** A web address's scheme, `://`, and the rest up to a space or an angle bracket. */
+const BARE_ADDRESS = /[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s<>`]*/y;
+
+/**
+ * How long the bare web address starting at `start` is, or 0 when none
+ * starts there. A scheme starts a word, so the `s://` inside `xs://` is none.
+ */
+function readBareAddress(text: string, start: number): number {
+  if (!/[A-Za-z]/.test(text[start]) || (start > 0 && /[A-Za-z0-9+.-]/.test(text[start - 1]))) {
+    return 0;
+  }
+  BARE_ADDRESS.lastIndex = start;
+  return BARE_ADDRESS.exec(text)?.[0].length ?? 0;
 }
 
 /** Whether a column falls inside one of the ranges. */

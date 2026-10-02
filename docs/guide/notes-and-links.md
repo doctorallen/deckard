@@ -63,6 +63,7 @@ Met with @alex-smith about [[Q3 planning]].
 - `#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs.
 - Any other namespaced tag, such as `#management/performance`, creates a namespace and appears as `Management: Performance`.
 - Unnamespaced tags such as `#follow-up` work too. All tags appear in the Dashboard's **Tags** catalog.
+- A tag's name is letters and digits of any language, `_`, and `-`, so `#café` and `#日本` are tags. A tag starts a word: the `#` in `café#latte` or in a web address such as `https://example.com/#install` is not one.
 - `@alex` and `#alex` are different tags.
 - Namespace aliases map a custom namespace to any built-in or custom namespace. You can change the people marker; `@name` then becomes a lightweight tag.
 

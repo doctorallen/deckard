@@ -751,7 +751,7 @@ function toSlug(value: string): string | undefined {
   const slug = value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/[^\p{L}\p{N}\p{M}_-]+/gu, '-')
     .replace(/^-+|-+$/g, '');
   return slug || undefined;
 }
@@ -1102,12 +1102,29 @@ function tagKeyFor(
   return normalizeTagKey(`${marker}${rawName.toLowerCase()}`, entityNamespaceAliases);
 }
 
+/**
+ * The characters a tag's name is made of besides `-` and `/`: letters and
+ * digits of any script, the marks that accent them, and `_`. Text for a
+ * character class, for a pattern with the `u` flag.
+ */
+export const TAG_WORD_CHARACTERS = '\\p{L}\\p{N}\\p{M}_';
+
+/**
+ * A tag's name after its marker, as pattern text for the `u` flag: parts
+ * separated by `/`, each starting with a letter or digit and going on with
+ * letters, digits, `_`, and `-`. So `#café`, `#日本`, and `#org/acme` are
+ * tags, read whole.
+ */
+export const TAG_NAME_SOURCE = `[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*(?:\\/[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*)*`;
+
 /** The tag pattern for one people marker, compiled. */
 function compileTagPattern(personMarker: string): RegExp {
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+  // The name ends on a letter, digit, or `_`, and the next character is none
+  // of those, so `#tag-` is `#tag` and `#café` is not cut short at the `é`.
   return new RegExp(
-    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
-    'g',
+    `(^|[^${TAG_WORD_CHARACTERS}#])([#@${escapedMarker}])(${TAG_NAME_SOURCE})(?<=[${TAG_WORD_CHARACTERS}])(?![${TAG_WORD_CHARACTERS}])`,
+    'gu',
   );
 }
 

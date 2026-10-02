@@ -38,6 +38,34 @@ suite('Markdown parser', () => {
     ]);
   });
 
+  test('reads a tag with letters beyond A to Z whole, and none inside a word', () => {
+    assert.deepStrictEqual(extractTags('Trip #café #naïve #über #日本 @José'), [
+      { key: '#café', label: '#café' },
+      { key: '#naïve', label: '#naïve' },
+      { key: '#über', label: '#über' },
+      { key: '#日本', label: '#日本' },
+      { key: '@josé', label: '@José' },
+    ]);
+    assert.deepStrictEqual(extractTags('café#latte and über@home'), []);
+    assert.deepStrictEqual(extractTags('#tag- #end_ #a/b/'), [
+      { key: '#tag', label: '#tag' },
+      { key: '#end_', label: '#end_' },
+      { key: '#a/b', label: '#a/b' },
+    ]);
+    assert.strictEqual(stripTags('Café trip #café'), 'Café trip');
+    const parsed = parseMarkdown('notes/trip.md', '---\ntags: [café]\n---\n# Trip');
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#café']);
+  });
+
+  test('a # in a bare web address is part of the address, not a tag', () => {
+    assert.deepStrictEqual(extractTags('Docs at https://docs.example.com/#install today'), []);
+    assert.deepStrictEqual(
+      extractTags('See http://x.example/page#part, then #real.').map((tag) => tag.key),
+      ['#real'],
+    );
+    assert.strictEqual(stripTags('Read https://x.example/#top #work'), 'Read https://x.example/#top');
+  });
+
   test('ignores tags made only of numbers', () => {
     assert.deepStrictEqual(extractTags('#3 #42 @3 #3d #2-step #release'), [
       { key: '@3', label: '@3' },
