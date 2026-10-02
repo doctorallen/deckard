@@ -31,7 +31,7 @@ The research read the official guide and samples and the webview source of GitLe
 | `ViewAdapter` | `viewAdapter.ts` | Shows a page in a side-bar view: `resolveWebviewView(view)` |
 | `PanelSurface`, `ViewSurface` | `surface.ts` | What the host needs of a panel or a view: its webview, visibility, events, redraw priority, and how to close it |
 | `PageController` | `pageController.ts` | What a page supplies: its `name`, `options`, `html()`, `buildSnapshot()`, `narrow()`, `handlers`, and optional hooks; see the next section |
-| `PageContext` | `pageController.ts` | What a handler or hook may ask of the host: `refresh()`, `post(message)`, `renderHtml()`, and `surface` |
+| `PageContext` | `pageController.ts` | What a handler or hook may ask of the host: `refresh()`, `post(message)`, `postState(data)` (a snapshot the controller built, timed, and logged itself, kept as the last sent), `renderHtml()`, and `surface` |
 | `narrowWith`, the shared narrowers | `narrowing.ts` | Turns a page's table into its narrowing function. Holds the checks that two or more pages make identically today, `narrowAs(type, narrow)`, which lists a check that serves two types under one of them, and `isRequestId`. |
 | The shared handlers | `sharedHandlers.ts` | Factories for the handlers that two or more pages run identically today: `chooseTheme`, `setZenMode`, `openHelp(section?)`, `ready`, `renameTag`, `parkTag` (both types), `toggleTask`, `openSource`, and `openTag` |
 | `ActiveSource<T>` | `activeSource.ts` | Which page of a kind is in front, and whether the sidebar shows its part. It is the one shape of `ActiveSearch`, `ActiveCalendar`, and `ActiveHome`. |
