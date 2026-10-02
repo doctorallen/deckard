@@ -235,3 +235,16 @@ export function answerQuickPicks(
     window.showQuickPick = original;
   });
 }
+
+/**
+ * Answers every information message the extension shows with `answer`,
+ * until disposed.
+ */
+export function answerMessages(answer: string | undefined): vscode.Disposable {
+  const window = vscode.window as { showInformationMessage: unknown };
+  const original = window.showInformationMessage;
+  window.showInformationMessage = async () => answer;
+  return new vscode.Disposable(() => {
+    window.showInformationMessage = original;
+  });
+}
