@@ -324,6 +324,45 @@ suite('Editor lenses', () => {
         await vscode.workspace.fs.delete(root, { recursive: true });
       }
     });
+
+    test('links the mentions in the notes it can open, and says how many it could not', async () => {
+      const root = vscode.Uri.file(
+        path.join(os.tmpdir(), `deckard-mentions-${Date.now()}`),
+      );
+      const atlas = vscode.Uri.joinPath(root, 'Atlas.md');
+      const log = vscode.Uri.joinPath(root, 'Log.md');
+      // Indexed, but gone from disk, so it cannot be opened.
+      const gone = vscode.Uri.joinPath(root, 'Gone.md');
+      await vscode.workspace.fs.writeFile(atlas, Buffer.from('# Atlas\n', 'utf8'));
+      await vscode.workspace.fs.writeFile(log, Buffer.from('The atlas plan.\n', 'utf8'));
+      const snapshot = createIndex({
+        [atlas.fsPath]: '# Atlas\n',
+        [gone.fsPath]: 'An atlas, once.\n',
+        [log.fsPath]: 'The atlas plan.\n',
+      });
+      const window = vscode.window as unknown as Record<string, unknown>;
+      const original = window.showInformationMessage;
+      const shown: unknown[] = [];
+      window.showInformationMessage = async (message: unknown) => void shown.push(message);
+      try {
+        await linkMentions(
+          {
+            ready: Promise.resolve(),
+            getSnapshot: () => snapshot,
+            parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+            refresh: async () => undefined,
+          },
+          new WorkspaceWriteHistory(),
+          atlas,
+        );
+        const written = (await vscode.workspace.openTextDocument(log)).getText();
+        assert.strictEqual(written, 'The [[atlas]] plan.\n');
+        assert.deepStrictEqual(shown, ['Linked the mentions of Atlas in 1 note. 1 note could not be opened.']);
+      } finally {
+        window.showInformationMessage = original;
+        await vscode.workspace.fs.delete(root, { recursive: true });
+      }
+    });
   });
 });
 

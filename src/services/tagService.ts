@@ -46,12 +46,15 @@ export type TagWriteOutcome<Handle> =
  */
 export interface TagNotes<Handle> {
   /**
-   * How the note reads its tags, as its folder's settings say. Rejects when
-   * the note's file cannot be found, which fails the whole rewrite before
-   * anything is written.
+   * How the note reads its tags, as its folder's settings say. Every indexed
+   * note is asked, so this does not need the note's file.
    */
   optionsFor(filePath: string): Promise<RenameTagOptions>;
-  /** The note's text as it is now: its editor's, or the disk's. */
+  /**
+   * The note's text as it is now: its editor's, or the disk's. Asked only of
+   * a note the rewrite changes. Rejects when the note cannot be found or
+   * opened, which stops the rewrite before anything is written.
+   */
   contentOf(filePath: string): Promise<string>;
   /** Writes every note's edits as one write, which Undo takes back. */
   write(files: readonly TagFileEdits[], description: TagWriteDescription): Promise<TagWriteOutcome<Handle>>;
@@ -82,6 +85,7 @@ export interface TagRewriteRequest<Handle> {
  *
  * - `refused`, `same`: the new tag is the old one, however it was typed.
  * - `stale`: a note changed after the index read it.
+ * - `unopened`: a note the rewrite changes could not be found or opened.
  * - `not-found`: no note holds the tag as the notes are now.
  * - `rejected`: VS Code did not accept the edit to these notes.
  * - `unchanged`: the write landed and changed no note.
@@ -91,6 +95,7 @@ export interface TagRewriteRequest<Handle> {
 export type TagRewriteOutcome<Handle> =
   | { kind: 'refused'; reason: 'same' }
   | { kind: 'stale'; filePath: string }
+  | { kind: 'unopened'; filePath: string; error: unknown }
   | { kind: 'not-found' }
   | { kind: 'rejected'; filePaths: string[] }
   | { kind: 'unchanged' }
@@ -113,9 +118,10 @@ export type TagRewriteResult<Handle> =
   | TagRewriteOutcome<Handle>
   | { kind: 'confirm-merge'; summary: TagMergeSummary; merge: () => Promise<TagRewriteOutcome<Handle>> };
 
-/** The rewrite planned against the index, or the note that no longer matches it. */
+/** The rewrite planned against the index, or the note that no longer matches it or cannot be opened. */
 type TagRewritePlan =
   | { kind: 'stale'; filePath: string }
+  | { kind: 'unopened'; filePath: string; error: unknown }
   | { kind: 'planned'; files: TagFileEdits[]; occurrenceCount: number };
 
 /** What TagService works through besides the notes each rewrite is handed. */
@@ -167,7 +173,7 @@ export class TagService {
   ): Promise<TagRewriteOutcome<Handle>> {
     const { source, replacement, notes } = request;
     const plan = await this.plan(request);
-    if (plan.kind === 'stale') {
+    if (plan.kind !== 'planned') {
       return plan;
     }
     if (plan.occurrenceCount === 0) {
@@ -209,7 +215,8 @@ export class TagService {
    * The edits each note needs, planned from the text the index read, as
    * long as each note it touches still reads that way. The first note that
    * does not stops the plan, since a rename written over a note that changed
-   * would rewrite what the reader never saw.
+   * would rewrite what the reader never saw, and so does the first that
+   * cannot be opened. A note the rename does not change is never opened.
    */
   private async plan<Handle>({
     index,
@@ -229,7 +236,13 @@ export class TagService {
       if (planned.edits.length === 0) {
         continue;
       }
-      if ((await notes.contentOf(filePath)) !== file.content) {
+      let content: string;
+      try {
+        content = await notes.contentOf(filePath);
+      } catch (error) {
+        return { kind: 'unopened', filePath, error };
+      }
+      if (content !== file.content) {
         return { kind: 'stale', filePath };
       }
       occurrenceCount += planned.occurrenceCount;

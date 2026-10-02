@@ -342,7 +342,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   > {
     const { taskLayout, reader } = this.board.preferences;
     return {
-      exportResults: () => this.exportTasks(),
+      exportResults: (message) => (message.kind === 'notes' ? this.exportNotes() : this.exportTasks()),
       setBoardGroup: (message) => {
         // A different grouping is a different board, so every column goes
         // back to its short form.
@@ -453,6 +453,14 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     };
     page.post(refused);
     page.refresh();
+  }
+
+  /**
+   * Exports every note the board's search finds, as a search page of the
+   * same search exports them, with the search as its live block.
+   */
+  private async exportNotes(): Promise<void> {
+    await presentExport(this.board.exports.fromSearch(this.query, 'notes'));
   }
 
   /**

@@ -46,21 +46,22 @@ class FakeNotes implements TagNotes<string> {
     notes: files.length,
     handle: 'handle',
   });
+  /** The notes whose file cannot be found, which reading rejects. */
   public missing = new Set<string>();
 
   public constructor(notes: Record<string, string>) {
     this.texts = new Map(Object.entries(notes));
   }
 
-  public optionsFor(filePath: string): Promise<{ personMarker: string }> {
-    return this.missing.has(filePath)
-      ? Promise.reject(new Error(`no file for ${filePath}`))
-      : Promise.resolve({ personMarker: '@' });
+  public optionsFor(): Promise<{ personMarker: string }> {
+    return Promise.resolve({ personMarker: '@' });
   }
 
   public contentOf(filePath: string): Promise<string> {
     this.read.push(filePath);
-    return Promise.resolve(this.texts.get(filePath) ?? '');
+    return this.missing.has(filePath)
+      ? Promise.reject(new Error(`no file for ${filePath}`))
+      : Promise.resolve(this.texts.get(filePath) ?? '');
   }
 
   public write(files: readonly TagFileEdits[], description: TagWriteDescription): Promise<TagWriteOutcome<string>> {
@@ -262,16 +263,40 @@ suite('TagService', () => {
     });
   });
 
-  test('fails the whole rewrite, writing nothing, when a note cannot be found', async () => {
+  test('a note the rename does not change is never read, so one that cannot be found does not stop it', async () => {
     const index = indexOf(notes);
     const fake = new FakeNotes(notes);
     fake.missing.add('notes/c.md');
     const { service } = serviceWith();
 
-    await assert.rejects(
-      service.rewrite({ index, source: tagOf(index, '#apollo'), replacement: { key: '#hermes', label: '#hermes' }, notes: fake }),
-      /no file for notes\/c\.md/,
-    );
+    const result = await service.rewrite({
+      index,
+      source: tagOf(index, '#apollo'),
+      replacement: { key: '#hermes', label: '#hermes' },
+      notes: fake,
+    });
+
+    assert.deepStrictEqual(result, { kind: 'written', merge: false, notes: 2, handle: 'handle' });
+    assert.deepStrictEqual(fake.read, ['notes/a.md', 'notes/b.md']);
+  });
+
+  test('stops, writing nothing, at a note it changes that cannot be found or opened', async () => {
+    const index = indexOf(notes);
+    const fake = new FakeNotes(notes);
+    fake.missing.add('notes/b.md');
+    const { service, moved } = serviceWith();
+
+    const result = await service.rewrite({
+      index,
+      source: tagOf(index, '#apollo'),
+      replacement: { key: '#hermes', label: '#hermes' },
+      notes: fake,
+    });
+
+    assert.strictEqual(result.kind, 'unopened');
+    assert.strictEqual(result.kind === 'unopened' && result.filePath, 'notes/b.md');
+    assert.match(String(result.kind === 'unopened' && result.error), /no file for notes\/b\.md/);
     assert.strictEqual(fake.writes.length, 0);
+    assert.deepStrictEqual(moved, []);
   });
 });

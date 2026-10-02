@@ -191,7 +191,11 @@ async function chooseReviewNote(
   return { note: () => ensurePeriodicNote(folder, period, day), scope: folder.uri };
 }
 
-/** Says a review was written, unless `silent`, and returns its title; undefined when nothing was written. */
+/**
+ * Says a review was written, or that the note already holds it as it would
+ * be written, unless `silent`, and returns its title; undefined when nothing
+ * was written.
+ */
 function reportReview(
   result: ReviewResult<vscode.Uri, WriteHandle, ReviewSummary>,
   silent: boolean | undefined,
@@ -199,6 +203,9 @@ function reportReview(
 ): string | undefined {
   switch (result.kind) {
     case 'unchanged':
+      if (!silent) {
+        void vscode.window.showInformationMessage(`The review of ${result.title} is already up to date.`);
+      }
       return result.title;
     case 'not-applied':
       return undefined;
@@ -294,6 +301,8 @@ async function pickReviewPeriod(): Promise<Exclude<NotePeriod, 'day'> | undefine
 
 /**
  * Opens the note for a period, writing its review in when the note is new.
+ * The folder is chosen once, and the review is written into the note that
+ * opens.
  */
 export async function openPeriodicNoteWithReview(
   indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
@@ -304,10 +313,13 @@ export async function openPeriodicNoteWithReview(
   if (!folder) {
     return undefined;
   }
-  const isNew = !(await findExistingPeriodicNote(folder, period, new Date()));
-  const noteUri = await ensurePeriodicNote(folder, period, new Date());
+  const day = new Date();
+  const isNew = !(await findExistingPeriodicNote(folder, period, day));
+  const noteUri = await ensurePeriodicNote(folder, period, day);
   if (isNew && isReviewOnCreateEnabled(folder.uri)) {
-    await writeReview(indexer, writes, { period, day: new Date(), silent: true });
+    // Handed the note, the review asks for no folder of its own: a second
+    // ask in a multi-root workspace could pick another folder's note.
+    await writeReview(indexer, writes, { period, day, silent: true, noteUri });
   }
   const document = await vscode.workspace.openTextDocument(noteUri);
   await vscode.window.showTextDocument(document, { preview: false });

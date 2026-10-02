@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { getIsoWeekStart, getReviewRange } from '../domain/notes/reviewPeriods';
-import { findOpenPeriod } from '../ui/commands/review';
+import { findOpenPeriod, openPeriodicNoteWithReview, ReviewWrites, writeReviewCommand } from '../ui/commands/review';
 import {
   formatReview,
   REVIEW_END,
@@ -264,6 +264,81 @@ suite('Periodic review', () => {
     assert.deepStrictEqual(period('2026-09'), ['month', '2026-09-01']);
     assert.strictEqual(findOpenPeriod('2026-09-13'), undefined, 'a daily note');
     assert.strictEqual(findOpenPeriod('Atlas'), undefined);
+  });
+
+  test('a new weekly note asks for its folder once, and its review goes into the note that opens', async () => {
+    const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-review-folders-${Date.now()}`));
+    const folders: vscode.WorkspaceFolder[] = ['first', 'second'].map((name, at) => ({
+      uri: vscode.Uri.joinPath(root, name),
+      name,
+      index: at,
+    }));
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const kept = Object.getOwnPropertyDescriptor(workspace, 'workspaceFolders');
+    const showQuickPick = window.showQuickPick;
+    const asked: unknown[] = [];
+    // Each ask for a folder gets the next one, as a reader might pick.
+    window.showQuickPick = async (items: readonly { folder: vscode.WorkspaceFolder }[]) => {
+      asked.push(items);
+      return items[(asked.length - 1) % items.length];
+    };
+    Object.defineProperty(workspace, 'workspaceFolders', { configurable: true, get: () => folders });
+    const reviewed: string[] = [];
+    const writes = {
+      reviews: {
+        write: async (request: { note: () => Promise<vscode.Uri> }) => {
+          reviewed.push((await request.note()).toString());
+          return { kind: 'not-applied' };
+        },
+      },
+    } as unknown as ReviewWrites;
+    try {
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      const opened = await openPeriodicNoteWithReview(
+        { ready: Promise.resolve(), getSnapshot: () => indexOf({}), refresh: async () => undefined },
+        writes,
+        'week',
+      );
+
+      assert.strictEqual(asked.length, 1, 'the folder is asked for once');
+      assert.ok(opened?.toString().startsWith(folders[0].uri.toString()));
+      assert.deepStrictEqual(reviewed, [opened?.toString()], 'the review goes into the note that opens');
+    } finally {
+      if (kept) {
+        Object.defineProperty(workspace, 'workspaceFolders', kept);
+      }
+      window.showQuickPick = showQuickPick;
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('says so when the review in the note is already up to date', async () => {
+    const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-review-current-${Date.now()}`));
+    const noteUri = vscode.Uri.joinPath(root, `${range.name}.md`);
+    await vscode.workspace.fs.writeFile(noteUri, Buffer.from('# Week\n', 'utf8'));
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showInformationMessage = window.showInformationMessage;
+    const shown: unknown[] = [];
+    window.showInformationMessage = async (message: unknown) => void shown.push(message);
+    const writes = {
+      reviews: { write: async () => ({ kind: 'unchanged', title: range.title, noteUri }) },
+    } as unknown as ReviewWrites;
+    try {
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(noteUri));
+      const title = await writeReviewCommand(
+        { ready: Promise.resolve(), getSnapshot: () => index, refresh: async () => undefined },
+        writes,
+      );
+
+      assert.strictEqual(title, range.title);
+      assert.deepStrictEqual(shown, ['The review of 2026-09-14 to 2026-09-20 is already up to date.']);
+    } finally {
+      window.showInformationMessage = showInformationMessage;
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
   });
 
   test('writes the review into the note on disk', async () => {

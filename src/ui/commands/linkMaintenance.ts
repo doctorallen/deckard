@@ -38,27 +38,53 @@ export async function createLinkRewriteEdit(
   return { edit: toWorkspaceEdit(edits), applied };
 }
 
+/** The two rename events LinkMaintenance follows: VS Code's, or a test's. */
+export type RenameEvents = Pick<typeof vscode.workspace, 'onWillRenameFiles' | 'onDidRenameFiles'>;
+
+/** One rename's files, the same whether VS Code is about to make it or has made it. */
+type RenamedFiles = readonly { readonly oldUri: vscode.Uri; readonly newUri: vscode.Uri }[];
+
 /**
  * Follows note renames, rewriting the links that named the note by its old
  * title.
  *
  * The edit is handed back to VS Code as part of the rename, so the links and
- * the rename land together and one Undo takes back both.
+ * the rename land together and one Undo takes back both. How many links it
+ * rewrote is said once the rename is made, so a rename that is cancelled or
+ * fails says nothing.
  */
 export class LinkMaintenance implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
+  /**
+   * What each planned rename's message will say, by its files, until VS Code
+   * says the rename is made. A rename that is never made leaves its entry,
+   * which the same rename planned again replaces.
+   */
+  private readonly unreported = new Map<string, string>();
 
-  /** Listens for renames; `links` plans the rewrites, over `indexer`'s notes by default. */
+  /**
+   * Listens for renames on `events`, VS Code's by default; `links` plans the
+   * rewrites, over `indexer`'s notes by default.
+   */
   public constructor(
     private readonly indexer: IndexSource,
     private readonly links: LinkService<vscode.Uri> = createLinkService(indexer),
+    events: RenameEvents = vscode.workspace,
   ) {
     this.disposables.push(
-      vscode.workspace.onWillRenameFiles((event) => {
+      events.onWillRenameFiles((event) => {
         if (!isEnabled()) {
           return;
         }
         event.waitUntil(this.planRenames(event.files));
+      }),
+      events.onDidRenameFiles((event) => {
+        const key = renameKey(event.files);
+        const message = this.unreported.get(key);
+        this.unreported.delete(key);
+        if (message) {
+          void vscode.window.showInformationMessage(message);
+        }
       }),
     );
   }
@@ -70,11 +96,10 @@ export class LinkMaintenance implements vscode.Disposable {
 
   /**
    * The edit that keeps links pointing at the notes being renamed, for the
-   * renames that change a note's title, and a word on how many it rewrote.
+   * renames that change a note's title. How many it rewrote is kept, to be
+   * said once VS Code has made the rename.
    */
-  public async planRenames(
-    files: readonly { readonly oldUri: vscode.Uri; readonly newUri: vscode.Uri }[],
-  ): Promise<vscode.WorkspaceEdit> {
+  public async planRenames(files: RenamedFiles): Promise<vscode.WorkspaceEdit> {
     await this.indexer.ready;
     const renames = files
       .filter(
@@ -90,14 +115,18 @@ export class LinkMaintenance implements vscode.Disposable {
     const plan = await this.links.planNoteRenames(renames, (filePath) =>
       this.readOpenNote(filePath),
     );
+    const key = renameKey(files);
     if (plan.rewritten > 0) {
-      void vscode.window.showInformationMessage(
+      this.unreported.set(
+        key,
         `Deckard updated ${pluralize(plan.rewritten, 'link', 'links')} in ${pluralize(
           plan.notes,
           'note',
           'notes',
         )}.`,
       );
+    } else {
+      this.unreported.delete(key);
     }
     return toWorkspaceEdit(plan.edits);
   }
@@ -230,6 +259,11 @@ function reportHeadingRenamed(heading: string, others: number): void {
           'other notes',
         )}.`,
   );
+}
+
+/** One rename's files as text, so the rename VS Code made is matched to the one planned. */
+function renameKey(files: RenamedFiles): string {
+  return files.map(({ oldUri, newUri }) => `${oldUri.toString()} ${newUri.toString()}`).join('\n');
 }
 
 /** Whether renaming a note carries its links along, as the setting says. */
