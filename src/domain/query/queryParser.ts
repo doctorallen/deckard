@@ -972,14 +972,21 @@ function listAlternatives(values: readonly string[]): string {
 
 /**
  * Accepts absolute dates, relative windows such as `30d`, and named days.
+ * A day in words is accepted when some year has it, so `"feb 29"` is a
+ * date: the evaluator finds the leap day nearest the moment it is asked.
  */
 export function isDateValue(value: string): boolean {
   // Whether a value reads does not depend on the day, or on the day a week
-  // starts, so any fixed day and Sunday will do.
+  // starts, except that February 29th reads only near a leap day. So the
+  // future is read from a day with one just ahead, the past from a day
+  // with one just behind, and Sunday will do for the week.
   return (
-    resolveDateRange(value, DATE_CHECK_DAY, 'past', 0) !== undefined &&
-    resolveDateRange(value, DATE_CHECK_DAY, 'future', 0) !== undefined
+    resolveDateRange(value, DATE_CHECK_DAY_PAST, 'past', 0) !== undefined &&
+    resolveDateRange(value, DATE_CHECK_DAY_FUTURE, 'future', 0) !== undefined
   );
 }
 
-const DATE_CHECK_DAY = new Date(2026, 0, 15, 12).getTime();
+/** A day with a leap day ahead of it, in January 2028, where a future date value is read. */
+const DATE_CHECK_DAY_FUTURE = new Date(2028, 0, 15, 12).getTime();
+/** A day with a leap day behind it, in December 2028, where a past date value is read. */
+const DATE_CHECK_DAY_PAST = new Date(2028, 11, 15, 12).getTime();

@@ -562,6 +562,20 @@ suite('Deckard search page state', () => {
     assert.deepStrictEqual(parseQuery('due = 2026-12-31').diagnostics, []);
   });
 
+  test('takes "feb 29" as a date, since some years have it, and refuses a day no year has', () => {
+    for (const text of ['due <= "feb 29"', 'due = "29 february"', 'created >= "feb 29"', 'done = "feb 29"']) {
+      assert.deepStrictEqual(parseQuery(text).diagnostics, [], text);
+    }
+    assert.strictEqual(
+      parseQuery('due <= "feb 30"').diagnostics[0]?.message,
+      parseQuery('due = soon').diagnostics[0]?.message,
+    );
+    // In a leap year it is that year's leap day, read on the moment asked.
+    const january2028 = new Date(2028, 0, 20, 12).getTime();
+    const range = resolveDateRange('feb 29', january2028, 'future', 0);
+    assert.strictEqual(range && formatIsoDate(range.start), '2028-02-29');
+  });
+
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {
     // Friday 2026-09-25, noon.
     const now = new Date(2026, 8, 25, 12).getTime();
