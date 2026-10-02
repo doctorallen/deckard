@@ -98,6 +98,16 @@ export interface PageOptions {
    */
   readonly readsInertState?: boolean;
   /**
+   * Whether a page that `readsInertState` has a snapshot built into its
+   * HTML whenever the HTML is set while the page is shown and the index has
+   * notes to show, so it draws them on its first frame rather than its
+   * loading line: for a page whose snapshot is cheap to build (Q3 of
+   * docs/implementation/20-webviews.md, under 50 ms median on the
+   * 5,000-note bench). The snapshot is built and timed as one sent is, and
+   * is the last the page was sent; a hidden page is built nothing.
+   */
+  readonly embedsSnapshot?: boolean;
+  /**
    * Reads what VS Code kept for a panel across a reload, before the panel
    * is drawn again. The value is whatever the page last saved, so it is
    * checked here.
