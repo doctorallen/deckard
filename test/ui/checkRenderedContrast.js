@@ -16,13 +16,20 @@
 //
 //   npm run test:layout
 //   CONTRAST_ONLY=fellowship:taskBoardByTag   one surface, a theme, or a page
+//   UI_CONCURRENCY=<n>                        how many Chromes draw at once
+//
+// The pages are drawn by several Chromes at once, half the logical cores'
+// worth and at most four unless UI_CONCURRENCY says otherwise (chromePool.js),
+// and each surface is reported in the same order, with the same lines, as
+// when they were drawn one at a time; UI_CONCURRENCY=1 draws them so.
 const path = require('node:path');
 const os = require('node:os');
 const { mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 
 const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
-const { chrome, createSurfaces, buildPage, measure, passes } = require('./checkLayout.js');
+const { chrome, createSurfaces, buildPage, measureAsync, passes } = require('./checkLayout.js');
+const { runInOrder } = require('./chromePool.js');
 const { pickSurfaces } = require('../harness/surfacePicks.js');
 
 if (!chrome) {
@@ -231,9 +238,9 @@ const PROBE = `
  * What a surface draws below AA, less what Corpo's field edges and the known
  * list excuse; a Chrome that fails is one failure of kind `error`.
  */
-function surfaceFailures(file, surface, theme) {
+async function surfaceFailures(file, surface, theme, log) {
   try {
-    return measure(file, surface.viewport)[0].failures
+    return (await measureAsync(file, surface.viewport, {}, log))[0].failures
       // Corpo draws a field's edge in VS Code's own input border, the
       // editor theme's choice and the edge its own fields have; its
       // text is still Deckard's to get right.
@@ -252,44 +259,67 @@ function describeFailure(failure) {
 }
 
 /**
- * Draws every surface CONTRAST_ONLY picks in every theme, with zen off and
- * on, writing each page into `dir`, and prints what each draws below AA.
- *
- * @returns {number} How many surfaces failed.
+ * Every surface CONTRAST_ONLY picks in every theme, with zen off and on, in
+ * the order they are reported. A pass's pages are rendered only when its
+ * first surface is taken.
  */
-function checkSurfaces(dir) {
-  let failed = 0;
+function* contrastJobs() {
   for (const [theme, zen] of passes()) {
     const label = zen ? `${theme}+zen` : theme;
-    const rendered = new Map(renderPagesForTheme(theme, { zen }));
     // Named by surface, not page: the Task Board's two surfaces share a page.
-    for (const { surface, name } of pickSurfaces(createSurfaces(), process.env.CONTRAST_ONLY, label)) {
-      const file = path.join(dir, `${label}-${name}.html`);
-      writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE));
-      const failures = surfaceFailures(file, surface, theme);
-      if (failures.length === 0) {
-        console.log(`  ok   ${label.padEnd(16)} ${name}`);
-        continue;
-      }
-      failed += 1;
-      console.log(`  FAIL ${label.padEnd(16)} ${name}`);
-      for (const failure of failures) {
-        console.log(describeFailure(failure));
-      }
+    const picked = pickSurfaces(createSurfaces(), process.env.CONTRAST_ONLY, label);
+    if (picked.length === 0) {
+      continue;
+    }
+    const rendered = new Map(renderPagesForTheme(theme, { zen }));
+    for (const { surface, name } of picked) {
+      yield { surface, name, label, theme, zen, rendered };
     }
   }
-  return failed;
 }
 
-const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-contrast-'));
-let failed = 0;
-try {
-  failed = checkSurfaces(dir);
-} finally {
-  rmSync(dir, { recursive: true, force: true });
+/**
+ * Draws every surface CONTRAST_ONLY picks in every theme, with zen off and
+ * on, writing each page into `dir`, several at once (UI_CONCURRENCY), and
+ * prints what each draws below AA, in turn.
+ *
+ * @returns {Promise<number>} How many surfaces failed.
+ */
+async function checkSurfaces(dir) {
+  const verdicts = await runInOrder(contrastJobs(), async ({ surface, name, label, theme, zen, rendered }, log) => {
+    const file = path.join(dir, `${label}-${name}.html`);
+    writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE));
+    const failures = await surfaceFailures(file, surface, theme, log);
+    if (failures.length === 0) {
+      log(`  ok   ${label.padEnd(16)} ${name}`);
+      return false;
+    }
+    log(`  FAIL ${label.padEnd(16)} ${name}`);
+    for (const failure of failures) {
+      log(describeFailure(failure));
+    }
+    return true;
+  });
+  return verdicts.filter(Boolean).length;
 }
-if (failed) {
-  console.log(`\n${failed} surface(s) with text, edges, or icons below WCAG AA`);
+
+/** The check: every surface drawn and measured, exiting 1 when any fails. */
+async function run() {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-contrast-'));
+  let failed = 0;
+  try {
+    failed = await checkSurfaces(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  if (failed) {
+    console.log(`\n${failed} surface(s) with text, edges, or icons below WCAG AA`);
+    process.exit(1);
+  }
+  console.log('\nevery surface meets WCAG AA contrast as drawn');
+}
+
+run().catch((error) => {
+  console.error(error);
   process.exit(1);
-}
-console.log('\nevery surface meets WCAG AA contrast as drawn');
+});

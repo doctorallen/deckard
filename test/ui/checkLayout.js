@@ -19,6 +19,15 @@
 //   LAYOUT_DEBUG=1                                       the measurements themselves
 //   LAYOUT_KEEP=/tmp/pages LAYOUT_DRY=1                  write the pages to open by hand
 //   LAYOUT_TIMING=1 LAYOUT_ONLY=stats                    time each surface's first render instead
+//   UI_CONCURRENCY=<n>                                   how many Chromes lay pages out at once
+//
+// The pages are laid out by several Chromes at once, half the logical cores'
+// worth and at most four unless UI_CONCURRENCY says otherwise
+// (test/ui/chromePool.js), each with a profile of its own: one at a time,
+// this check and the rendered contrast check that follows it took 24
+// minutes. Each surface is still reported in the same order, with the same
+// lines, as when they were laid out in turn, which UI_CONCURRENCY=1 still
+// does.
 //
 // LAYOUT_TIMING=1 measures nothing about layout: it opens each surface ten
 // times (LAYOUT_TIMING_RUNS) in real time, without --virtual-time-budget,
@@ -30,6 +39,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
+const { runChromeAsync, runInOrder } = require('./chromePool.js');
 
 const compiled = path.join(__dirname, '..', '..', 'out');
 if (!existsSync(compiled)) {
@@ -329,6 +339,11 @@ ${state}${interactionScript(surface)}setTimeout(function () { ${probe} }, 50);
     .replace(/<script/, () => `${bridge}<script`)
     .replace(/<\/body>/, () => `${drive}</body>`);
   const [width, height] = surface.viewport;
+  // The parent copies the page's report out for the dump once the page has
+  // written it: at 0.4 s, or every 0.05 s after that until it has. Time is
+  // virtual, and it runs on while Chrome loads the frame, so with several
+  // Chromes drawing at once the report has come as late as 2.3 s; one at a
+  // time it comes by 0.3 s and is copied at 0.4 s, as it always was.
   return `<!DOCTYPE html><html><head><meta charset="utf-8">${policy}<style${nonced}>
 html, body { margin: 0; padding: 0; background: #888; }
 iframe { display: block; border: 0; width: ${width}px; height: ${height}px; }
@@ -336,10 +351,14 @@ iframe { display: block; border: 0; width: ${width}px; height: ${height}px; }
 <iframe id="page" srcdoc="${inner.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></iframe>
 <pre id="layout-probe"></pre>
 <script${nonced}>
-setTimeout(function () {
+setTimeout(function copy() {
   var doc = document.getElementById('page').contentDocument;
   var probe = doc && doc.getElementById('layout-probe');
-  document.getElementById('layout-probe').textContent = probe ? probe.textContent : '';
+  if (probe) {
+    document.getElementById('layout-probe').textContent = probe.textContent;
+  } else {
+    setTimeout(copy, 50);
+  }
 }, 400);
 </script></body></html>`;
 }
@@ -352,16 +371,23 @@ setTimeout(function () {
 const MEASURE_TIMEOUT_MS = 60000;
 
 /**
- * Opens a page in headless Chrome once and returns the finished process,
- * killed if it runs past MEASURE_TIMEOUT_MS. Time is virtual, with a budget
- * of three seconds, unless `options.realTime` is set.
+ * What Chrome is run with to open a page: time is virtual, with a budget of
+ * three seconds, unless `options.realTime` is set.
  */
-function runChrome(file, viewport, options = {}) {
-  return spawnSync(chrome, [
+function chromeArgs(file, viewport, options = {}) {
+  return [
     '--headless=new', '--disable-gpu', '--no-sandbox',
     `--window-size=${Math.max(viewport[0], 800)},${Math.max(viewport[1], 800)}`,
     ...(options.realTime ? [] : ['--virtual-time-budget=3000']), '--dump-dom', `file://${file}`,
-  ], {
+  ];
+}
+
+/**
+ * Opens a page in headless Chrome once and returns the finished process,
+ * killed if it runs past MEASURE_TIMEOUT_MS.
+ */
+function runChrome(file, viewport, options = {}) {
+  return spawnSync(chrome, chromeArgs(file, viewport, options), {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
     timeout: MEASURE_TIMEOUT_MS,
@@ -369,9 +395,25 @@ function runChrome(file, viewport, options = {}) {
   });
 }
 
+/** What a page's probe reported, read from the DOM Chrome dumped. */
+function readProbe(result) {
+  const match = /<pre id="layout-probe">([\s\S]*?)<\/pre>/.exec(result.stdout ?? '');
+  if (!match) {
+    throw new Error(`no probe output (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 400)}`);
+  }
+  return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+}
+
+/** The error for a page Chrome wedged on twice. */
+function wedgedTwice(file) {
+  return new Error(`chrome wedged twice, ${MEASURE_TIMEOUT_MS / 1000}s each, on ${path.basename(file)}`);
+}
+
 /**
  * Opens a page in Chrome and returns what its probe reported. With
- * `options.realTime`, time is not virtual, as LAYOUT_TIMING=1 needs.
+ * `options.realTime`, time is not virtual, as LAYOUT_TIMING=1 needs. One at
+ * a time: test:dom and LAYOUT_TIMING=1 use it, the latter so its runs do not
+ * compete.
  */
 function measure(file, viewport, options = {}) {
   let result = runChrome(file, viewport, options);
@@ -380,15 +422,27 @@ function measure(file, viewport, options = {}) {
     result = runChrome(file, viewport, options);
   }
   if (result.signal === 'SIGKILL') {
-    throw new Error(
-      `chrome wedged twice, ${MEASURE_TIMEOUT_MS / 1000}s each, on ${path.basename(file)}`,
-    );
+    throw wedgedTwice(file);
   }
-  const match = /<pre id="layout-probe">([\s\S]*?)<\/pre>/.exec(result.stdout ?? '');
-  if (!match) {
-    throw new Error(`no probe output (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 400)}`);
+  return readProbe(result);
+}
+
+/**
+ * measure, for a pool of Chromes (chromePool.js): it resolves with what the
+ * probe reported, and the retry's line goes to `log`, which holds it until
+ * the page's turn to print.
+ */
+async function measureAsync(file, viewport, options = {}, log = console.log) {
+  const open = () => runChromeAsync(chrome, chromeArgs(file, viewport, options), { timeout: MEASURE_TIMEOUT_MS });
+  let result = await open();
+  if (result.signal === 'SIGKILL') {
+    log(`       chrome wedged after ${MEASURE_TIMEOUT_MS / 1000}s, retrying once`);
+    result = await open();
   }
-  return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+  if (result.signal === 'SIGKILL') {
+    throw wedgedTwice(file);
+  }
+  return readProbe(result);
 }
 
 /** The Chrome to lay pages out in: CHROME_PATH, or the first of the usual names found, or undefined. */
@@ -415,7 +469,7 @@ function findChrome() {
 
 // The surfaces, the page builder and the browser are shared with the visual
 // check, which draws the same pages and compares the pixels instead.
-module.exports = { chrome, createSurfaces, buildPage, findChrome, isPicked, measure, medianFirstRender, passes, probeScript, timingProbe };
+module.exports = { chrome, createSurfaces, buildPage, findChrome, isPicked, measure, measureAsync, medianFirstRender, passes, probeScript, timingProbe };
 
 /**
  * The median of `runs` first renders of a page in Chrome, in milliseconds,
@@ -516,19 +570,20 @@ function describeClipping(run) {
 /**
  * Measures one surface's page, unless LAYOUT_DRY is set, and returns the
  * probe's runs with what they found wrong. A Chrome that fails is a problem
- * of the surface's rather than of the whole check.
+ * of the surface's rather than of the whole check. `log` takes the lines
+ * printed on the way, LAYOUT_DEBUG's among them.
  */
-function checkSurface(file, surface, label) {
+async function checkSurface(file, surface, label, log) {
   const problems = [];
   let runs;
   try {
-    runs = process.env.LAYOUT_DRY ? [] : measure(file, surface.viewport);
+    runs = process.env.LAYOUT_DRY ? [] : await measureAsync(file, surface.viewport, {}, log);
   } catch (error) {
     problems.push(error.message);
     runs = [];
   }
   if (process.env.LAYOUT_DEBUG) {
-    console.log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
+    log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
   }
   if (runs[0] && (runs[0].viewport[0] !== surface.viewport[0] || runs[0].viewport[1] !== surface.viewport[1])) {
     problems.push(`viewport is ${runs[0].viewport.join('x')}, not ${surface.viewport.join('x')}`);
@@ -543,50 +598,66 @@ function checkSurface(file, surface, label) {
 }
 
 /**
- * Prints how one surface laid out, or the page written under LAYOUT_DRY.
+ * Prints how one surface laid out, or the page written under LAYOUT_DRY,
+ * to `log`.
  *
  * @returns {boolean} Whether the surface failed.
  */
-function reportSurface({ file, label, surfaceName, runs, problems }) {
+function reportSurface({ file, label, surfaceName, runs, problems }, log) {
   if (process.env.LAYOUT_DRY) {
-    console.log(`  wrote ${file}`);
+    log(`  wrote ${file}`);
     return false;
   }
   if (problems.length === 0) {
     const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
-    console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
+    log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
     return false;
   }
-  console.log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
-  problems.forEach((problem) => console.log(`         ${problem}`));
+  log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
+  problems.forEach((problem) => log(`         ${problem}`));
   return true;
 }
 
 /**
- * Lays out every surface LAYOUT_ONLY picks in every theme, with zen off and
- * on, writing each page into `dir`.
- *
- * @returns {number} How many surfaces failed.
+ * Every surface LAYOUT_ONLY picks in every theme, with zen off and on, in
+ * the order they are reported. A pass's pages are rendered only when its
+ * first surface is taken, so the pool's Chromes start at once.
  */
-function checkSurfaces(dir) {
-  let failed = 0;
+function* layoutJobs() {
   for (const [theme, zen] of passes()) {
     const label = zen ? `${theme}+zen` : theme;
+    const picked = createSurfaces().filter((entry) => isPicked(process.env.LAYOUT_ONLY, label, entry.name || entry.page));
+    if (picked.length === 0) {
+      continue;
+    }
     const rendered = new Map(renderPagesForTheme(theme, { zen }));
-    for (const surface of createSurfaces().filter((entry) => isPicked(process.env.LAYOUT_ONLY, label, entry.name || entry.page))) {
-      const surfaceName = surface.name || surface.page;
-      const html = surfaceHtml(surface, rendered, { theme, zen });
-      const file = path.join(dir, `${label}-${surfaceName}.html`);
-      writeFileSync(file, buildPage(html, surface));
-      const { runs, problems } = checkSurface(file, surface, label);
-      failed += reportSurface({ file, label, surfaceName, runs, problems }) ? 1 : 0;
+    for (const surface of picked) {
+      yield { surface, label, theme, zen, rendered };
     }
   }
-  return failed;
+}
+
+/**
+ * Lays out every surface LAYOUT_ONLY picks in every theme, with zen off and
+ * on, writing each page into `dir`, several at once (UI_CONCURRENCY), and
+ * reports each in turn.
+ *
+ * @returns {Promise<number>} How many surfaces failed.
+ */
+async function checkSurfaces(dir) {
+  const verdicts = await runInOrder(layoutJobs(), async ({ surface, label, theme, zen, rendered }, log) => {
+    const surfaceName = surface.name || surface.page;
+    const html = surfaceHtml(surface, rendered, { theme, zen });
+    const file = path.join(dir, `${label}-${surfaceName}.html`);
+    writeFileSync(file, buildPage(html, surface));
+    const { runs, problems } = await checkSurface(file, surface, label, log);
+    return reportSurface({ file, label, surfaceName, runs, problems }, log);
+  });
+  return verdicts.filter(Boolean).length;
 }
 
 /** The layout check: every surface laid out and measured, exiting 1 when any fails. */
-function run() {
+async function run() {
   // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
   const keep = process.env.LAYOUT_KEEP;
   const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
@@ -595,7 +666,7 @@ function run() {
   }
   let failed = 0;
   try {
-    failed = checkSurfaces(dir);
+    failed = await checkSurfaces(dir);
   } finally {
     if (!keep) {
       rmSync(dir, { recursive: true, force: true });
@@ -616,5 +687,8 @@ if (require.main === module && process.env.LAYOUT_TIMING === '1') {
     rmSync(dir, { recursive: true, force: true });
   }
 } else if (require.main === module) {
-  run();
+  run().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }
