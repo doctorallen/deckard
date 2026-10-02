@@ -11,6 +11,7 @@ import {
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
 import { planNoteRenameRewrites } from '../domain/links/linkRewrites';
+import type { LinkService } from '../services/linkService';
 import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
@@ -118,6 +119,52 @@ suite('Link maintenance', () => {
     } finally {
       maintenance.dispose();
       await deleteTemporaryRoot(root);
+    }
+  });
+
+  test('says how many links it updated only once the rename is made, and nothing for one cancelled', async () => {
+    const willRename = new vscode.EventEmitter<vscode.FileWillRenameEvent>();
+    const didRename = new vscode.EventEmitter<vscode.FileRenameEvent>();
+    const links = {
+      planNoteRenames: async () => ({ edits: [], rewritten: 2, notes: 1 }),
+    } as unknown as LinkService<vscode.Uri>;
+    const snapshot = indexOf({});
+    const maintenance = new LinkMaintenance(
+      { ready: Promise.resolve(), getSnapshot: () => snapshot, getFilePath: (uri) => uri.fsPath, isNotesFile: () => true },
+      links,
+      { onWillRenameFiles: willRename.event, onDidRenameFiles: didRename.event },
+    );
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showInformationMessage = window.showInformationMessage;
+    const shown: unknown[] = [];
+    window.showInformationMessage = async (message: unknown) => void shown.push(message);
+    const files = [{ oldUri: vscode.Uri.file('/notes/Vendor review.md'), newUri: vscode.Uri.file('/notes/Supplier review.md') }];
+    /** Asks for the rename as VS Code does, and waits on the edit it is handed. */
+    const plan = async (): Promise<void> => {
+      const waited: Thenable<unknown>[] = [];
+      willRename.fire({
+        files,
+        token: new vscode.CancellationTokenSource().token,
+        waitUntil: (thenable: Thenable<unknown>) => void waited.push(thenable),
+      } as vscode.FileWillRenameEvent);
+      await Promise.all(waited);
+    };
+    try {
+      await plan();
+      assert.deepStrictEqual(shown, [], 'nothing is said while VS Code waits on the edit');
+      // The reader cancels the rename, so VS Code never says it was made.
+      await plan();
+      didRename.fire({ files: [{ oldUri: files[0].oldUri, newUri: vscode.Uri.file('/notes/Other.md') }] });
+      assert.deepStrictEqual(shown, [], 'nor for another rename made meanwhile');
+      didRename.fire({ files });
+      assert.deepStrictEqual(shown, ['Deckard updated 2 links in 1 note.']);
+      didRename.fire({ files });
+      assert.strictEqual(shown.length, 1, 'it is said once');
+    } finally {
+      window.showInformationMessage = showInformationMessage;
+      maintenance.dispose();
+      willRename.dispose();
+      didRename.dispose();
     }
   });
 });
