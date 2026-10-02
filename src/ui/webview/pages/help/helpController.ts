@@ -8,7 +8,7 @@ import { getHelpHtml } from '../../helpHtml';
 import { guideUnavailableHtml, renderGuidePage, warmGuideRenderer } from './guidePage';
 import { HelpManifest, isRunnableFromHelp } from './helpManifest';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowHelpMessage } from './messages';
 
 /** What Help is drawn from. */
@@ -89,13 +89,13 @@ export class HelpController implements PageController<never, HelpPageToHost> {
   }
 
   /** Help's HTML, at the section asked for while one is. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
     const newSince = this.help.whatsNew?.newSince();
     return getHelpHtml(webview, this.help.extensionUri, this.help.manifest, {
       releases: this.releases,
       ...(newSince ? { newSince } : {}),
       ...(this.anchor ? { anchor: this.anchor } : {}),
-      theme,
+      chrome,
     });
   }
 

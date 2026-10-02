@@ -25,18 +25,18 @@ import { openSourceAt, resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
-import { createEntryScope, EntryTagContext, findTaggedEntry } from '../../../state/entryScope';
+import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
-import { createSidebarSnapshot } from '../../../state/relatedNotesRanking';
+import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
 import type { ActiveCalendar } from '../../activeCalendar';
 import type { ActiveHome } from '../../activeHome';
 import type { ActiveSearch } from '../../activeSearch';
-import { onDidChangePageChrome } from '../../components';
+import { onDidChangePageChrome } from '../../host/pageChrome';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers';
 import { ViewSurface, WebviewSurface } from '../../host/surface';
 import { getSidebarNotesHtml } from '../../sidebarNotesHtml';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
 import { RelatedNotesRankingOptions } from '../../../../domain/ranking/relatedNotesContext';
@@ -132,9 +132,9 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   }
 
   /** The sidebar's HTML, carrying `state` when the host hands it one, which is logged each time it is set. */
-  public html(webview: vscode.Webview, theme: DeckardTheme, state?: SidebarNotesPageState): string {
+  public html(webview: vscode.Webview, chrome: PageChrome, state?: SidebarNotesPageState): string {
     logRelatedNotes('Rendering Related Notes webview HTML.');
-    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, { theme, snapshot: state });
+    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, { chrome, snapshot: state });
   }
 
   /** Narrows a message the page sent, after logging that it came. */
@@ -1048,20 +1048,6 @@ export function findMatchingEntryLine(liveFile: ParsedFile, liveLine: number, sa
 /** An entry's title: its first heading, or its first task's. */
 function getEntryTitle(file: ParsedFile): string | undefined {
   return file.sections[0]?.heading ?? file.tasks[0]?.title;
-}
-
-/** How Related Notes ranks for one entry, as the debug page shows it. */
-export interface EntryRelatedNotesDiagnostic {
-  filePath: string;
-  sourceLine: number;
-  title: string;
-  tags: Array<{
-    key: string;
-    weight: number;
-    context: EntryTagContext;
-    source: string;
-  }>;
-  snapshot: SidebarNotesSnapshot;
 }
 
 /**

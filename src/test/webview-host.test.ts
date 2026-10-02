@@ -27,7 +27,7 @@ function createController(options: Partial<PageOptions> = {}) {
   const controller: PageController<{ count: number }, TestPageToHost> = {
     name: 'Test page',
     options: { retainContextWhenHidden: false, enableFindWidget: false, ...options },
-    html: (_webview, theme) => `<p>${theme}</p>`,
+    html: (_webview, chrome) => `<p>${chrome.theme}</p>`,
     buildSnapshot: () => snapshot && { count: snapshot.count++ },
     narrow: narrowWith<TestPageToHost>({ openTag: narrowOpenTag, reload: exactlyType('reload') }),
     handlers: {
@@ -157,7 +157,7 @@ suite('WebviewHost', () => {
       const { controller } = createController(options);
       const themePreview = new ThemePreview();
       const host = new WebviewHost(
-        { ...controller, html: (_webview, theme, state) => `<p>${theme}</p>${state === undefined ? '' : JSON.stringify(state)}` },
+        { ...controller, html: (_webview, chrome, state) => `<p>${chrome.theme}</p>${state === undefined ? '' : JSON.stringify(state)}` },
         { themePreview },
       );
       const surface = new FakeSurface();
@@ -254,7 +254,7 @@ suite('WebviewHost', () => {
       const { indexer } = createIndexer();
       const themePreview = new ThemePreview();
       const host = new WebviewHost(
-        { ...controller, ...controllerOptions, html: (_webview, theme, state) => `<p>${theme}</p>${state === undefined ? '' : JSON.stringify(state)}` },
+        { ...controller, ...controllerOptions, html: (_webview, chrome, state) => `<p>${chrome.theme}</p>${state === undefined ? '' : JSON.stringify(state)}` },
         { indexer, themePreview },
       );
       const surface = new FakeSurface();

@@ -72,7 +72,7 @@ async function openStats(files = []) {
   const stats = new StatsPanel({
     indexer,
     preferences,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     onOpenTag: (tagKey) => {
       openedTags.push(tagKey);
     },

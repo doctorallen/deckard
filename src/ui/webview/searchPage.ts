@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { describeMissingTag, reportFailure } from '../commands/notify';
-import { onDidChangePageChrome } from './components';
+import { onDidChangePageChrome } from './host/pageChrome';
 import { ThemePreview } from './themePreview';
 
 import { parseQuery } from '../../domain/query/queryParser';
@@ -13,7 +13,7 @@ import type { ExportService } from '../../services/exportService';
 import { NavigationService } from '../../services/navigationService';
 import type { SearchPagePageToHost, SearchPageState } from '../protocol/searchPage';
 import type { SearchRefineState } from '../protocol/shared';
-import { pageResourceRoots } from './host/pageShell';
+import { pageResourceRoots } from './host/surface';
 import { PanelSurface } from './host/surface';
 import { WebviewHost } from './host/webviewHost';
 import {

@@ -2,11 +2,10 @@ import * as vscode from 'vscode';
 
 import { NavigationService } from '../../services/navigationService';
 import type { SidebarNotesPageState, SidebarNotesPageToHost } from '../protocol/sidebarNotes';
-import { pageResourceRoots } from './host/pageShell';
-import { ViewSurface } from './host/surface';
+import { pageResourceRoots, ViewSurface } from './host/surface';
 import { WebviewHost } from './host/webviewHost';
+import type { EntryRelatedNotesDiagnostic } from '../state/relatedNotesRanking';
 import {
-  EntryRelatedNotesDiagnostic,
   logRelatedNotes,
   SidebarNotesController,
   SidebarNotesControllerOptions,

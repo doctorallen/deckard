@@ -1,12 +1,7 @@
-import * as vscode from 'vscode';
-
-import { createNonce } from './components';
-import { buildPageShell } from './host/pageShell';
+import { createNonce, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 import { escapeHtml } from '../../shared/html';
-import { getDeckardTheme } from './themes';
-import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme } from './themeNames';
-import { EntryRelatedNotesDiagnostic } from './pages/sidebarNotes/sidebarNotesController';
+import type { EntryRelatedNotesDiagnostic } from '../state/relatedNotesRanking';
 
 /** What each term on the page means, shown above the candidates. */
 const DIAGNOSTIC_GUIDE = `<section class="guide" aria-labelledby="debug-guide-title">
@@ -26,12 +21,12 @@ const DIAGNOSTIC_GUIDE = `<section class="guide" aria-labelledby="debug-guide-ti
  * checked by hand.
  */
 export function getRelatedNotesDebugHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheet is under. */
-  extensionUri: vscode.Uri,
+  extensionUri: ShellUri,
   diagnostic: EntryRelatedNotesDiagnostic,
-  /** The theme its host read, preview and all; the configured one without. */
-  theme?: DeckardTheme,
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome,
 ): string {
   const selectedTags = diagnostic.tags.map((tag) =>
     `<tr><td>${escapeHtml(tag.key)}</td><td>${tag.weight.toFixed(2)}</td><td>${escapeHtml(getTagContextLabel(tag.context))}</td><td>${escapeHtml(tag.source)}</td></tr>`,
@@ -43,8 +38,8 @@ export function getRelatedNotesDebugHtml(
     extensionUri,
     page: 'relatedNotesDebug',
     nonce: createNonce(),
-    theme: theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: chrome.theme,
+    zen: chrome.zen,
     // The page runs no script, so its policy names none.
     csp: { scripts: false },
     body: `<main><p class="lead">Deckard / Related Notes diagnostic</p><h1>${escapeHtml(diagnostic.title)}</h1>

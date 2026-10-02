@@ -1,11 +1,6 @@
-import * as vscode from 'vscode';
-
 import type { CalendarSnapshot } from '../protocol/calendar';
-import { createNonce, loadingHtml } from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
-import { getDeckardTheme } from './themes';
-import { type DeckardTheme } from './themeNames';
+import { createNonce, loadingHtml, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 
 /**
  * A calendar's shell: the sidebar Calendar, whose bundle,
@@ -19,17 +14,17 @@ import { type DeckardTheme } from './themeNames';
  * without one, it shows its loading line until the host posts one.
  */
 export function getCalendarHtml(
-  webview: vscode.Webview,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheets and script are under. */
-  extensionUri: vscode.Uri,
+  extensionUri: ShellUri,
   options: {
     /** The calendar page, rather than the sidebar's. */
     page?: boolean;
-    /** The theme its host read, preview and all; the configured one without. */
-    theme?: DeckardTheme;
+    /** The look its host read: the theme, preview and all, and zen. */
+    chrome: PageChrome;
     /** The snapshot to draw at once, if the shell is to carry one. */
     state?: CalendarSnapshot;
-  } = {},
+  },
 ): string {
   return buildPageShell({
     webview,
@@ -37,8 +32,8 @@ export function getCalendarHtml(
     page: options.page ? 'calendarPage' : 'calendar',
     title: 'Deckard Calendar',
     nonce: createNonce(),
-    theme: options.theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: options.chrome.theme,
+    zen: options.chrome.zen,
     bundle: true,
     state: options.state,
     body: `

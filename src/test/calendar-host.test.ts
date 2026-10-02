@@ -13,7 +13,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
-import { pageExtensionUri, pageWebview } from './pageWebview';
+import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
 import { formatLocalDate } from '../domain/notes/periodicNotes';
 
 /** Today, and the month it is in, as the calendar starts on. */
@@ -42,7 +42,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     indexer,
     writes: createTaskWrites(),
     refresh: () => host?.refresh(),
-    extensionUri: pageExtensionUri(),
+    extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();

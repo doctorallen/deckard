@@ -19,7 +19,7 @@ import { CalendarOptions, clampToMonth, createCalendar } from '../../../state/ca
 import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { ready } from '../../host/sharedHandlers';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowCalendarMessage } from './messages';
 import {
   findPeriodicNoteNames,
@@ -302,8 +302,8 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
   }
 
   /** The sidebar Calendar's HTML, carrying the month when given one. */
-  public html(webview: vscode.Webview, theme: DeckardTheme, state?: CalendarSnapshot): string {
-    return getCalendarHtml(webview, this.view.extensionUri, { theme, state });
+  public html(webview: vscode.Webview, chrome: PageChrome, state?: CalendarSnapshot): string {
+    return getCalendarHtml(webview, this.view.extensionUri, { chrome, state });
   }
 
   /** The month as it is now. */

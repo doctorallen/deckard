@@ -14,7 +14,7 @@ import { ThemePreview } from '../ui/webview/themePreview';
 import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { createPreferences } from './preferenceServices';
-import { pageExtensionUri } from './pageWebview';
+import { REPOSITORY_ROOT } from './pageWebview';
 
 /** An in-memory store for the preferences. */
 function createStore() {
@@ -66,7 +66,7 @@ function openBoard() {
     exports: {} as never,
     navigation: new NavigationService(),
     source,
-    extensionUri: pageExtensionUri(),
+    extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();

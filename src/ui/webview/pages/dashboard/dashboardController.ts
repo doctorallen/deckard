@@ -34,7 +34,7 @@ import {
   setZenMode,
   toggleTask,
 } from '../../host/sharedHandlers';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowDashboardMessage } from './messages';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { isDefaultHomeLayout } from '../../../../core/storage/preferencesSchema';
@@ -142,8 +142,8 @@ export class DashboardController implements PageController<DashboardPageState, D
   }
 
   /** The page's template, in the reader's theme, with the heart icons it loads from the extension. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getDashboardHtml(webview, this.home.extensionUri, theme);
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
+    return getDashboardHtml(webview, this.home.extensionUri, chrome);
   }
 
   /**

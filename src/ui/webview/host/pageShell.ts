@@ -1,8 +1,36 @@
-import * as vscode from 'vscode';
+import { posix } from 'path';
 
 import { escapeHtml } from '../../../shared/html';
 import { getPageTailCss } from '../components';
 import { type DeckardTheme, deckardThemeNames } from '../themeNames';
+
+/**
+ * A URI as the shell joins and writes it: a `vscode.Uri`, or the stand-in a
+ * test renders with. The shell names no `vscode` type, so a page builds
+ * without the extension host.
+ */
+export interface ShellUri {
+  readonly path: string;
+  with(change: { path: string }): ShellUri;
+  toString(): string;
+}
+
+/** The webview a page is written for, as much of it as the shell reads. */
+export interface ShellWebview {
+  /** The origin the page's policy lets its sheets and images load from. */
+  readonly cspSource: string;
+  asWebviewUri(uri: ShellUri): ShellUri;
+}
+
+/**
+ * A file under the extension's folder, joined as `vscode.Uri.joinPath`
+ * joins one: the segments are joined onto the URI's path, and the rest of
+ * the URI is kept. (On Windows VS Code joins a `file` URI through its file
+ * path, which gives the same path for the plain segments a page names.)
+ */
+export function joinUnder(base: ShellUri, ...segments: string[]): ShellUri {
+  return base.with({ path: posix.join(base.path, ...segments) });
+}
 
 /**
  * What a page's Content Security Policy grants beyond scripts by nonce and
@@ -16,18 +44,6 @@ export interface ContentSecurityExtras {
   readonly fonts?: boolean;
   /** False for a page that runs no script, whose policy then names no `script-src`. */
   readonly scripts?: boolean;
-}
-
-/**
- * The folders under the extension a page may load from, its webview's
- * `localResourceRoots`: the built pages, and the icons and images in
- * `resources/`.
- */
-export function pageResourceRoots(extensionUri: vscode.Uri): vscode.Uri[] {
-  return [
-    vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
-    vscode.Uri.joinPath(extensionUri, 'resources'),
-  ];
 }
 
 /**
@@ -61,9 +77,9 @@ export function getContentSecurityPolicy(
 
 /** What a page's document is built from. */
 export interface PageShellOptions {
-  readonly webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>;
+  readonly webview: ShellWebview;
   /** The extension's folder, which `dist/webview/` is under. */
-  readonly extensionUri: vscode.Uri;
+  readonly extensionUri: ShellUri;
   /** The page's name in `dist/webview/`, where its sheet is `<page>.css`. */
   readonly page: string;
   /** The document's title, for a page that has one. */
@@ -112,7 +128,7 @@ function bundleTail(options: PageShellOptions): string {
   if (!options.bundle) {
     return '';
   }
-  const script = options.webview.asWebviewUri(vscode.Uri.joinPath(options.extensionUri, 'dist', 'webview', `${options.page}.js`));
+  const script = options.webview.asWebviewUri(joinUnder(options.extensionUri, 'dist', 'webview', `${options.page}.js`));
   const state = options.state === undefined ? '' : inertJson(options.state);
   return `${state}<script nonce="${options.nonce}" src="${escapeHtml(script.toString())}"></script>\n`;
 }
@@ -148,6 +164,6 @@ export function buildPageShell(options: PageShellOptions): string {
 }
 
 /** A file under `dist/webview/`, such as `help.js` or `themes/cooper.css`, as the page loads it. */
-function pageAsset(webview: PageShellOptions['webview'], extensionUri: vscode.Uri, file: string): string {
-  return webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview', ...file.split('/'))).toString();
+function pageAsset(webview: ShellWebview, extensionUri: ShellUri, file: string): string {
+  return webview.asWebviewUri(joinUnder(extensionUri, 'dist', 'webview', ...file.split('/'))).toString();
 }

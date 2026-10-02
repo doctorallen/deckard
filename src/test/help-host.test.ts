@@ -305,8 +305,8 @@ suite('Help host', () => {
       host.refresh();
       assert.deepStrictEqual(surface.webview.posted, []);
       const webview = { cspSource: 'x', asWebviewUri: (uri: vscode.Uri) => uri } as unknown as vscode.Webview;
-      assert.strictEqual(anchorOf(controller.drawingAt('settings', () => controller.html(webview, 'corpo'))), 'settings');
-      assert.strictEqual(anchorOf(controller.html(webview, 'corpo')), undefined);
+      assert.strictEqual(anchorOf(controller.drawingAt('settings', () => controller.html(webview, { theme: 'corpo', zen: false }))), 'settings');
+      assert.strictEqual(anchorOf(controller.html(webview, { theme: 'corpo', zen: false })), undefined);
     } finally {
       host.dispose();
     }

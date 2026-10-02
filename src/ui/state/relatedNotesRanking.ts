@@ -15,6 +15,7 @@ import {
 } from '../../domain/ranking/similarWording';
 import { RelatedNotesRankingAt, RelatedNotesRankingOptions } from '../../domain/ranking/relatedNotesContext';
 import { SidebarTag, SidebarNotesSnapshot } from '../protocol/sidebarNotes';
+import type { EntryTagContext } from './entryScope';
 import {
   ParsedFile,
   RankedNote,
@@ -223,4 +224,18 @@ export function rankSimilarWording({
     { filePath: activeFilePath, file: activeFile, tagTitleDisplayMode, listed },
     ranking,
   );
+}
+
+/** How Related Notes ranks for one entry, as the debug page shows it. */
+export interface EntryRelatedNotesDiagnostic {
+  filePath: string;
+  sourceLine: number;
+  title: string;
+  tags: Array<{
+    key: string;
+    weight: number;
+    context: EntryTagContext;
+    source: string;
+  }>;
+  snapshot: SidebarNotesSnapshot;
 }

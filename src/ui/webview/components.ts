@@ -1,15 +1,38 @@
 /**
  * What the webview hosts share when they write a page's HTML: the loading
  * line a page shows before its state arrives, the sheets every page links
- * after its own, the event that redraws a page in another look, and the
- * nonce. The pages themselves are bundles built from src/webview, and what
- * they share is the Preact core in src/webview/shared (docs/components.md).
+ * after its own, and the nonce. The pages themselves are bundles built from
+ * src/webview, and what they share is the Preact core in src/webview/shared
+ * (docs/components.md). Nothing here reads the settings: the event that
+ * redraws a page in another look is in host/pageChrome.ts.
  */
 
-import * as vscode from 'vscode';
-import { deckardThemeCss } from './themes';
-import type { ThemePreview } from './themePreview';
 import { DeckardTheme } from './themeNames';
+
+/**
+ * The look a page is written in: the theme its host read, preview and all,
+ * and whether zen mode is on. The host reads both as it writes the page;
+ * a page builder is given them.
+ */
+export interface PageChrome {
+  theme: DeckardTheme;
+  zen: boolean;
+}
+
+/**
+ * Each theme's sheet, under dist/webview: the tokens and surfaces a theme
+ * lays after a page's own rules, built from src/webview/shared/themes.
+ */
+export const deckardThemeCss: Readonly<Record<DeckardTheme, string>> = {
+  corpo: 'themes/corpo.css',
+  replicant: 'themes/replicant.css',
+  oblivion: 'themes/oblivion.css',
+  lcars: 'themes/lcars.css',
+  synthwave: 'themes/synthwave.css',
+  tomcat: 'themes/tomcat.css',
+  fellowship: 'themes/fellowship.css',
+  cooper: 'themes/cooper.css',
+};
 
 /**
  * What a page shows before its first state arrives: `#app`, busy, holding
@@ -38,38 +61,11 @@ export interface PageTail {
  * is the one the page's host read, preview and all, and `zen` whether zen
  * mode is on; neither is read from the settings here.
  */
-export function getPageTailCss(chrome: { theme: DeckardTheme; zen: boolean }): PageTail {
+export function getPageTailCss(chrome: PageChrome): PageTail {
   return {
     sheets: [deckardThemeCss[chrome.theme], 'tail.css'],
     bodyAttribute: chrome.zen ? ' class="zen"' : '',
   };
-}
-
-/** Whether a settings change alters how a page is drawn rather than what it says. */
-export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boolean {
-  return (
-    event.affectsConfiguration('deckard.theme') ||
-    event.affectsConfiguration('deckard.zenMode')
-  );
-}
-
-/**
- * Calls back when a page has to be drawn again in another look: the theme or
- * zen setting changed, or Choose Theme… is previewing a theme on
- * `themePreview`. A page that redraws on this needs no configuration
- * listener of its own for it.
- */
-export function onDidChangePageChrome(
-  listener: () => void,
-  themePreview: Pick<ThemePreview, 'onDidChange'>,
-): vscode.Disposable {
-  const configuration = vscode.workspace.onDidChangeConfiguration((event) => {
-    if (affectsPageChrome(event)) {
-      listener();
-    }
-  });
-  const preview = themePreview.onDidChange(listener);
-  return { dispose: () => { configuration.dispose(); preview.dispose(); } };
 }
 
 /**

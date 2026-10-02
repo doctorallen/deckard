@@ -34,7 +34,7 @@ import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { chooseTheme, openHelp, openSource, openTag, ready, setZenMode } from '../../host/sharedHandlers';
 import { getTaskBoardHtml } from '../../taskBoardHtml';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowTaskBoardMessage } from './messages';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
@@ -136,8 +136,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /** The board's template page, in a theme; it asks for its state when it loads. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getTaskBoardHtml(webview, this.board.extensionUri, theme);
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
+    return getTaskBoardHtml(webview, this.board.extensionUri, chrome);
   }
 
   /**

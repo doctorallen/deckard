@@ -1,7 +1,18 @@
 import * as vscode from 'vscode';
 
-import { pageResourceRoots } from './pageShell';
 import { panelPriority, viewPriority } from './panelPriority';
+
+/**
+ * The folders under the extension a page may load from, its webview's
+ * `localResourceRoots`: the built pages, and the icons and images in
+ * `resources/`.
+ */
+export function pageResourceRoots(extensionUri: vscode.Uri): vscode.Uri[] {
+  return [
+    vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
+    vscode.Uri.joinPath(extensionUri, 'resources'),
+  ];
+}
 
 /**
  * What a page's host talks to the page through: the two members a

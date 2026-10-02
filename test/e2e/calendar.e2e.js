@@ -50,7 +50,7 @@ async function openCalendar() {
     getSnapshot: () => index,
     onDidUpdate: updates.event,
   };
-  const calendar = new CalendarView(indexer, modules.taskWrites.createTaskWrites(), new ThemePreview(), { fsPath: '/ext' });
+  const calendar = new CalendarView(indexer, modules.taskWrites.createTaskWrites(), new ThemePreview(), vscode.Uri.file('/ext'));
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;

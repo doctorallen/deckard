@@ -1,11 +1,6 @@
-import * as vscode from 'vscode';
-
 import type { DeckardStatsSnapshot } from '../protocol/stats';
-import { createNonce, loadingHtml } from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
-import { getDeckardTheme } from './themes';
-import { type DeckardTheme } from './themeNames';
+import { createNonce, loadingHtml, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 
 /**
  * The Stats page's shell: its bundle, `dist/webview/stats.js`, draws the
@@ -16,11 +11,11 @@ import { type DeckardTheme } from './themeNames';
  * opens the tag overview or note entry that row counts.
  */
 export function getStatsHtml(
-  webview: vscode.Webview,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheets and script are under. */
-  extensionUri: vscode.Uri,
-  /** The theme its host read, preview and all; the configured one without. */
-  theme?: DeckardTheme,
+  extensionUri: ShellUri,
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome,
   /** The snapshot to draw at once, if the shell is to carry one. */
   snapshot?: DeckardStatsSnapshot,
 ): string {
@@ -30,8 +25,8 @@ export function getStatsHtml(
     page: 'stats',
     title: 'Deckard Stats',
     nonce: createNonce(),
-    theme: theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: chrome.theme,
+    zen: chrome.zen,
     bundle: true,
     state: snapshot,
     body: `

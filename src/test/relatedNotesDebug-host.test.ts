@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
 import type { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { ThemePreview } from '../ui/webview/themePreview';
-import type { EntryRelatedNotesDiagnostic } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
+import type { EntryRelatedNotesDiagnostic } from '../ui/state/relatedNotesRanking';
 
 /** An entry's evidence, with nothing ranked, under a title the tab names. */
 function diagnosticFor(title: string): EntryRelatedNotesDiagnostic {

@@ -4,9 +4,8 @@ import { onIndexUpdateInTurn, VIEW_PRIORITY, ViewUpdateSource, whenPublished } f
 import type { IndexScanStatus } from '../../../core/workspace/indexReader';
 import { measure } from '../../../shared/timing';
 import type { MessageMap, MessageOf, PageMessage, StateMessage } from '../../protocol/messaging';
-import { onDidChangePageChrome } from '../components';
+import { onDidChangePageChrome, readPageChrome } from './pageChrome';
 import { followIndexing } from '../indexingProgress';
-import { getDeckardTheme } from '../themes';
 import type { ThemePreview } from '../themePreview';
 import type { MessageHandler, PageContext, PageController } from './pageController';
 import type { WebviewSurface } from './surface';
@@ -152,7 +151,7 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
       return;
     }
     const state = this.stateForHtml(surface);
-    surface.render((webview) => this.controller.html(webview, getDeckardTheme(this.themePreview), state));
+    surface.render((webview) => this.controller.html(webview, readPageChrome(this.themePreview), state));
   }
 
   /**

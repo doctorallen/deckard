@@ -257,6 +257,20 @@ function getConfiguration(section) {
 
 /** The path of this stub, which `require('vscode')` loads once it is installed. */
 const STUB = __filename;
+/**
+ * A file URI for a path: its path and file are the value as given, and
+ * `with` gives the file URI at another path, as VS Code's does.
+ */
+function fileUri(value) {
+  return {
+    scheme: 'file',
+    fsPath: value,
+    path: value,
+    toString: () => `file://${value}`,
+    with: (change) => fileUri(change.path ?? value),
+  };
+}
+
 /** Whether install() has already put the hook in place. */
 let installed = false;
 
@@ -299,8 +313,8 @@ module.exports = {
     }),
     /** A URI whose path and text are the value as given, with no scheme. */
     parse: (value) => ({ fsPath: value, path: value, toString: () => value }),
-    /** A file URI for a path. */
-    file: (value) => ({ scheme: 'file', fsPath: value, path: value, toString: () => `file://${value}` }),
+    /** A file URI for a path, which a page builder joins onto with `with`. */
+    file: fileUri,
   },
   ViewColumn: { Active: -1, Beside: -2, One: 1 },
   TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },

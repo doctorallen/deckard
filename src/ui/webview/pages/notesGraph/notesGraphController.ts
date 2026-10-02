@@ -21,7 +21,7 @@ import type { MessageHandlers, PageContext, PageController, PageOptions } from '
 import { openSource, openTag } from '../../host/sharedHandlers';
 import { PanelSurface } from '../../host/surface';
 import { getNotesGraphHtml } from '../../notesGraphHtml';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowNotesGraphMessage } from './messages';
 import { graphInputsChanged } from '../../../../domain/graph/graphChanges';
 import { createNotesGraphSnapshot } from '../../../../domain/graph/notesGraph';
@@ -130,8 +130,8 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
   }
 
   /** The Notes Graph page's HTML. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getNotesGraphHtml(webview, this.graph.extensionUri, theme);
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
+    return getNotesGraphHtml(webview, this.graph.extensionUri, chrome);
   }
 
   /**

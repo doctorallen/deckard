@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { MessageMap } from '../../protocol/messaging';
-import { pageResourceRoots } from './pageShell';
-import { PanelSurface, scriptOptions } from './surface';
+import { pageResourceRoots, PanelSurface, scriptOptions } from './surface';
 import type { WebviewHost } from './webviewHost';
 
 /** The panel a page opens in: its type, its tab's title, and its tab's icon. */

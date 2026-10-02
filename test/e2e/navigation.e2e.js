@@ -108,11 +108,11 @@ async function openPage(name) {
     tags.push(tagKey);
   };
   const pages = {
-    stats: () => new StatsPanel({ indexer, preferences, extensionUri: { fsPath: '/ext' }, onOpenTag: openTag, themePreview }),
+    stats: () => new StatsPanel({ indexer, preferences, extensionUri: vscode.Uri.file('/ext'), onOpenTag: openTag, themePreview }),
     home: () => new DashboardPanel({
       indexer,
       preferences,
-      extensionUri: { fsPath: '/ext' },
+      extensionUri: vscode.Uri.file('/ext'),
       navigation: { openTag, openSearch: () => undefined, openTaskBoard: () => undefined },
       writes: modules.taskWrites.createTaskWrites(),
       themePreview,
@@ -120,13 +120,13 @@ async function openPage(name) {
     board: () => new TaskBoardPanel({
       indexer,
       preferences,
-      extensionUri: { fsPath: '/ext' },
+      extensionUri: vscode.Uri.file('/ext'),
       openTag,
       activeSearch: new ActiveSearch(),
       writes: modules.taskWrites.createTaskWrites(),
       themePreview,
     }),
-    graph: () => new NotesGraphPanel({ indexer, extensionUri: { fsPath: '/ext' }, onGraphContext: () => undefined, themePreview }),
+    graph: () => new NotesGraphPanel({ indexer, extensionUri: vscode.Uri.file('/ext'), onGraphContext: () => undefined, themePreview }),
   };
   const page = pages[name]();
   await page.show();

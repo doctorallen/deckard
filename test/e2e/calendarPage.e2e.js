@@ -52,7 +52,7 @@ async function openPage() {
   const updates = new vscode.EventEmitter();
   const page = new CalendarPanel({
     indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
@@ -154,7 +154,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   const activeCalendar = new ActiveCalendar();
   const sidebar = new SidebarNotesView({
     indexer,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     preferences: createPreferences(globalState),
     activeSearch: new ActiveSearch(),
     onOpenTag: () => undefined,
@@ -171,7 +171,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
 
   const page = new CalendarPanel({
     indexer,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
     activeCalendar,

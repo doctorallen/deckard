@@ -11,8 +11,10 @@ import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import type { ShellUri, ShellWebview } from '../ui/webview/host/pageShell';
 import { pageExtensionUri, pageWebview } from './pageWebview';
-import type { EntryRelatedNotesDiagnostic } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
+import type { EntryRelatedNotesDiagnostic } from '../ui/state/relatedNotesRanking';
+import type { PageChrome } from '../ui/webview/components';
 
 /**
  * What a page is rendered with besides the stand-in webview: what Help reads
@@ -20,7 +22,13 @@ import type { EntryRelatedNotesDiagnostic } from '../ui/webview/pages/sidebarNot
  * page diagnoses.
  */
 export interface PageOptions {
-  help?: { manifest?: HelpManifest; options?: HelpOptions };
+  /**
+   * The look the page is written in, which a host reads from the settings
+   * and the theme preview; Corpo with zen off, the settings' defaults, when
+   * omitted.
+   */
+  chrome?: PageChrome;
+  help?: { manifest?: HelpManifest; options?: Omit<HelpOptions, 'chrome'> };
   diagnostic?: EntryRelatedNotesDiagnostic;
   /**
    * The snapshot the shell carries as inert JSON, for a page that reads
@@ -30,22 +38,14 @@ export interface PageOptions {
 }
 
 /**
- * The webview a page builder is given, read from a builder's own signature
- * so the catalog names no `vscode` type: the import graph counts even a
- * type-only import of `vscode` as reaching it.
- */
-type PageBuilderWebview = Parameters<typeof getDashboardHtml>[0];
-
-/** The extension's folder as a page builder takes it, read the same way. */
-type PageBuilderUri = Parameters<typeof getDashboardHtml>[1];
-
-/**
  * What a page is rendered against: the stand-in webview of `pageWebview.ts`,
- * the repository as the extension's folder, and the page's own options.
+ * the repository as the extension's folder, the look, and the page's own
+ * options.
  */
 export interface PageContext extends PageOptions {
-  webview: PageBuilderWebview;
-  extensionUri: PageBuilderUri;
+  webview: ShellWebview;
+  extensionUri: ShellUri;
+  chrome: PageChrome;
 }
 
 /** The name of every page in the catalog. */
@@ -76,6 +76,9 @@ export interface CatalogPage {
   readsInertState?: true;
 }
 
+/** The look a page is written in when a test names none: the settings' defaults. */
+const DEFAULT_CHROME: PageChrome = { theme: 'corpo', zen: false };
+
 /** The Related Notes debug page needs an entry to diagnose; this is an empty one. */
 const EMPTY_DIAGNOSTIC = {
   filePath: 'notes/a.md',
@@ -90,43 +93,43 @@ const EMPTY_DIAGNOSTIC = {
  * and every check that walks the pages covers it.
  */
 export const PAGES: readonly CatalogPage[] = [
-  { id: 'dashboard', title: 'Dashboard', render: (context) => getDashboardHtml(context.webview, context.extensionUri) },
-  { id: 'searchPage', title: 'search page', render: (context) => getSearchPageHtml(context.webview, context.extensionUri) },
+  { id: 'dashboard', title: 'Dashboard', render: (context) => getDashboardHtml(context.webview, context.extensionUri, context.chrome) },
+  { id: 'searchPage', title: 'search page', render: (context) => getSearchPageHtml(context.webview, context.extensionUri, context.chrome) },
   {
     id: 'sidebarNotes',
     title: 'Related Notes',
-    render: (context) => getSidebarNotesHtml(context.webview, context.extensionUri, '1.0.0', { snapshot: context.state as SidebarNotesPageState | undefined }),
+    render: (context) => getSidebarNotesHtml(context.webview, context.extensionUri, '1.0.0', { chrome: context.chrome, snapshot: context.state as SidebarNotesPageState | undefined }),
     readsInertState: true,
   },
-  { id: 'notesGraph', title: 'Notes Graph', render: (context) => getNotesGraphHtml(context.webview, context.extensionUri) },
+  { id: 'notesGraph', title: 'Notes Graph', render: (context) => getNotesGraphHtml(context.webview, context.extensionUri, context.chrome) },
   {
     id: 'help',
     title: 'Help',
-    render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, context.help?.options),
+    render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, { ...context.help?.options, chrome: context.chrome }),
   },
   {
     id: 'stats',
     title: 'Stats',
-    render: (context) => getStatsHtml(context.webview as Parameters<typeof getStatsHtml>[0], context.extensionUri, undefined, context.state as DeckardStatsSnapshot | undefined),
+    render: (context) => getStatsHtml(context.webview, context.extensionUri, context.chrome, context.state as DeckardStatsSnapshot | undefined),
     readsInertState: true,
   },
-  { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as Parameters<typeof getTaskBoardHtml>[0], context.extensionUri) },
+  { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview, context.extensionUri, context.chrome) },
   {
     id: 'calendar',
     title: 'Calendar',
-    render: (context) => getCalendarHtml(context.webview as Parameters<typeof getCalendarHtml>[0], context.extensionUri, { state: context.state as CalendarSnapshot | undefined }),
+    render: (context) => getCalendarHtml(context.webview, context.extensionUri, { chrome: context.chrome, state: context.state as CalendarSnapshot | undefined }),
     readsInertState: true,
   },
   {
     id: 'calendarPage',
     title: 'Calendar page',
-    render: (context) => getCalendarHtml(context.webview as Parameters<typeof getCalendarHtml>[0], context.extensionUri, { page: true, state: context.state as CalendarSnapshot | undefined }),
+    render: (context) => getCalendarHtml(context.webview, context.extensionUri, { page: true, chrome: context.chrome, state: context.state as CalendarSnapshot | undefined }),
     readsInertState: true,
   },
   {
     id: 'relatedNotesDebug',
     title: 'Related Notes debug',
-    render: (context) => getRelatedNotesDebugHtml(context.webview, context.extensionUri, context.diagnostic ?? EMPTY_DIAGNOSTIC),
+    render: (context) => getRelatedNotesDebugHtml(context.webview, context.extensionUri, context.diagnostic ?? EMPTY_DIAGNOSTIC, context.chrome),
   },
 ];
 
@@ -141,7 +144,7 @@ export function renderPage(id: PageId, options: PageOptions = {}): string {
   if (!page) {
     throw new Error(`The page catalog has no page ${id}.`);
   }
-  return page.render({ webview: pageWebview, extensionUri: pageExtensionUri(), ...options });
+  return page.render({ webview: pageWebview, extensionUri: pageExtensionUri(), ...options, chrome: options.chrome ?? DEFAULT_CHROME });
 }
 
 /**

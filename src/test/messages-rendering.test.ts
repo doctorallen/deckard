@@ -6,6 +6,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { getDeckardTheme } from '../ui/webview/themes';
+import { readPageChrome } from '../ui/webview/host/pageChrome';
 import { createPreferences } from './preferenceServices';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
@@ -617,7 +618,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {
-    const css = pageSheets(renderPage('dashboard'));
+    const css = pageSheets(renderPage('dashboard', { chrome: readPageChrome() }));
 
     // The shared shell centers main without a frame; the Dashboard widens it.
     assert.strictEqual(
@@ -862,7 +863,7 @@ suite('Webview contracts', () => {
     assert.ok(!/#[0-9a-f]{3,6}\b/i.test(block[1]), 'the block names no color of its own');
     assert.ok(contrast.includes('@media (forced-colors: active)'), 'forced colors are tidied too');
     // Laid down after the theme, and before zen, which stays the last layer.
-    const page = renderPage('stats');
+    const page = renderPage('stats', { chrome: readPageChrome() });
     assert.ok(pageSheets(page).includes(contrast), 'every page carries the block');
     const linked = linkedSheets(page);
     assert.ok(linked.indexOf('tail.css') > linked.indexOf(`themes/${getDeckardTheme()}.css`), 'after the theme');
