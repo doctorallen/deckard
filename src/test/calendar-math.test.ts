@@ -12,6 +12,7 @@ import {
   isWeekend,
   parseIsoDate,
   sameDayIn,
+  sameShownDayIn,
   shiftDate,
   skipWeekend,
   startOfDay,
@@ -139,5 +140,32 @@ suite('Calendar page steps', () => {
       { month: '2026-08', date: '2026-08-31' },
       'Sunday the 30th goes on to Monday',
     );
+  });
+
+  test('stepCalendar keeps a month step in the month it names when the weekends are hidden', () => {
+    // January 2027 ends on a Sunday, and October 2026 on a Saturday.
+    const from = { date: '2026-12-31', previousMonth: '2026-11', nextMonth: '2027-01', hideWeekends: true };
+    assert.deepStrictEqual(stepCalendar('month', 1, from), { month: '2027-01', date: '2027-01-29' }, 'back to Friday the 29th, not on into February');
+    assert.deepStrictEqual(
+      stepCalendar('month', -1, { date: '2026-12-31', previousMonth: '2026-10', nextMonth: '2027-01', hideWeekends: true }),
+      { month: '2026-10', date: '2026-10-30' },
+      'Saturday the 31st back to Friday, not on into November',
+    );
+    assert.deepStrictEqual(
+      stepCalendar('month', 1, { date: '2026-09-30', previousMonth: '2026-08', nextMonth: '2026-10', hideWeekends: true }),
+      { month: '2026-10', date: '2026-10-30' },
+    );
+    assert.deepStrictEqual(
+      stepCalendar('month', 1, { date: '2026-09-30', previousMonth: '2026-08', nextMonth: '2026-10', hideWeekends: false }),
+      { month: '2026-10', date: '2026-10-30' },
+    );
+  });
+
+  test('sameShownDayIn finds a weekday of the month it names when the weekends are hidden', () => {
+    assert.strictEqual(sameShownDayIn('2026-12-31', '2027-01', true), '2027-01-29', 'Sunday the 31st back to Friday');
+    assert.strictEqual(sameShownDayIn('2026-12-31', '2026-10', true), '2026-10-30', 'Saturday the 31st back to Friday');
+    assert.strictEqual(sameShownDayIn('2026-09-12', '2026-08', true), '2026-08-12');
+    assert.strictEqual(sameShownDayIn('2026-09-01', '2026-08', true), '2026-08-03', 'Saturday the 1st on to Monday');
+    assert.strictEqual(sameShownDayIn('2026-12-31', '2027-01', false), '2027-01-31', 'a weekend day when they are drawn');
   });
 });

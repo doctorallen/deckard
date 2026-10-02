@@ -317,7 +317,7 @@ Lane B's shared components are in `src/webview/shared/calendar/`, written with t
 | `dayPanel.tsx` | `<DayPanel day shownGroups>`, the chosen day as the calendars and Related Notes show it, and `installDayPanel({ send, showGroup })`, which wires every panel on the page once; Related Notes' `send` wraps each message in its `calendarDay` envelope. `src/test/calendar-day-panel.test.ts` held it to the template script it replaced, `calendarDay.ts`, until Related Notes moved and that script went. Its tasks are lane A's `<TaskListRow>` (step 6; the panel's own row, which set the host's sanitized `renderedTitle`, is gone) |
 | `events.ts` | `eventElement(event)` |
 
-The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `shiftDate`, `isWeekend`, `skipWeekend`, `stepDate`, `sameDayIn`, `chooseFocusDay`, and `stepCalendar`.
+The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `shiftDate`, `isWeekend`, `skipWeekend`, `stepDate`, `sameDayIn`, `sameShownDayIn`, `chooseFocusDay`, and `stepCalendar`.
 
 ### The task and search parts
 
