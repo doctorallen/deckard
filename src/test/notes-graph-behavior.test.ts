@@ -210,6 +210,23 @@ suite('Notes Graph behavior', () => {
     );
   });
 
+  test('a tag filter checkbox says what it does in the page\'s tip, not a native title', () => {
+    page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
+    page.send(graphState(
+      [note('a', { tagKeys: ['project/atlas'] }), { id: 'tag:#project/atlas', kind: 'tag', title: '#project/atlas', tagKeys: [], degree: 1 }],
+      [{ source: 'section:a', target: 'tag:#project/atlas', weight: 1, types: ['tag-membership'] }],
+    ));
+    const box = page.find('#tag-list input[type="checkbox"]') as HTMLInputElement;
+    assert.strictEqual(box.getAttribute('data-tip'), 'Filter to nodes carrying the #project/atlas tag.');
+    assert.deepStrictEqual(page.findAll('#tag-list [title]').map((element) => element.outerHTML.slice(0, 80)), [], 'no native title on a row or its checkbox');
+
+    page.document.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    box.focus();
+    const tip = page.document.getElementById('deckard-tip');
+    assert.ok(tip && !tip.hidden, 'the tip shows on keyboard focus');
+    assert.strictEqual(tip?.textContent, 'Filter to nodes carrying the #project/atlas tag.');
+  });
+
   test('lays out its controls in the order they are read, each with a tip, and Reset after the zoom', () => {
     const page = open();
     const controls = page.findAll('input[id], select[id], button[id]');

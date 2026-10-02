@@ -290,19 +290,6 @@ function FiltersGroup(props: ControlsProps) {
   );
 }
 
-/**
- * Carries the row's title onto its checkbox, as the list has always drawn
- * it. That native title is a known issue, left for after the refactor
- * (components-primitives' "no control on any page carries a native title"
- * names it), so it is written here rather than as a prop the lint rule
- * forbids.
- */
-function copyRowTitle(input: HTMLInputElement | null): void {
-  if (input && input.parentElement) {
-    input.title = input.parentElement.title;
-  }
-}
-
 /** The tag checklist: the first 200 tags under the filter, then how many more, or that none match. */
 function TagRows({ ui, settings, on }: ControlsProps) {
   if (!ui.tagList) {
@@ -324,8 +311,8 @@ function TagRows({ ui, settings, on }: ControlsProps) {
       continue;
     }
     rows.push(
-      <label class="toggle-row" title={`Filter to nodes carrying the ${label} tag.`} key={key}>
-        <input type="checkbox" checked={Boolean(selected[key])} ref={copyRowTitle} onChange={(event) => on.tagToggle(key, event)} />
+      <label class="toggle-row" key={key}>
+        <input type="checkbox" checked={Boolean(selected[key])} data-tip={`Filter to nodes carrying the ${label} tag.`} onChange={(event) => on.tagToggle(key, event)} />
         <span>{label}</span>
         <span class="tag-count">{String(count)}</span>
       </label>,

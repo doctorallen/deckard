@@ -355,14 +355,9 @@ suite('Component primitives', () => {
         [...element.attributes].some((attribute) => /(^|[^\w])title$/.test(attribute.name));
       const tabbable = (element: Element): boolean =>
         [...element.attributes].some((attribute) => /(^|[^\w])tabindex$/.test(attribute.name));
-      // Known, and left for after the refactor, since it changes nothing a
-      // reader sees: the Notes Graph's tag filter writes each checkbox a
-      // native title from its script, which no text check could read.
-      const known = (surface: string, element: Element): boolean =>
-        /^notesGraph(\+zen)?$/.test(surface) && element.localName === 'input' && Boolean(element.closest('#tag-list'));
       const read = readGoldens((surface, body) => {
         const found = [...body.querySelectorAll('*')].find((element) =>
-          titled(element) && !known(surface, element)
+          titled(element)
           && (/^(button|summary|input|select|textarea|a)$/.test(element.localName) || tabbable(element)));
         assert.strictEqual(found, undefined, `${surface} (as drawn): ${found?.outerHTML.slice(0, 120)}`);
       });
