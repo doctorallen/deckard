@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
-import { pluralize } from '../../shared/text';
+import { pluralize, withoutByteOrderMark } from '../../shared/text';
 import { LinkRewrite } from '../../domain/links/linkRewrites';
 import { noteTitle } from '../../domain/index/backlinks';
 import { findHeadingAtLine } from '../../domain/notes/headingLookup';
@@ -276,9 +276,4 @@ function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('updateLinksOnRename', true);
-}
-
-/** `text` without a leading UTF-8 byte order mark, as VS Code's document holds it. */
-function withoutByteOrderMark(text: string): string {
-  return text.startsWith('\uFEFF') ? text.slice(1) : text;
 }

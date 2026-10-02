@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { pluralize } from '../../shared/text';
+import { decodeUtf8Text, pluralize, startsWithUtf8Bom, UTF8_BOM } from '../../shared/text';
 import { WriteHistory, WriteMark } from '../../core/workspace/writeHistory';
 import { Failure, noteName, reportFailure, reportStale } from './notify';
 
@@ -444,7 +444,7 @@ async function applyUndo(plan: UndoPlan): Promise<boolean> {
     const text = Buffer.from(note.text, 'utf8');
     await vscode.workspace.fs.writeFile(
       note.uri,
-      note.byteOrderMark ? Buffer.concat([BYTE_ORDER_MARK, text]) : text,
+      note.byteOrderMark ? Buffer.concat([UTF8_BOM, text]) : text,
     );
   }
   return true;
@@ -580,9 +580,6 @@ function isOpenInEditor(uri: vscode.Uri): boolean {
   );
 }
 
-/** The three bytes of a UTF-8 byte order mark. */
-const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
-
 /**
  * A note as it stands on disk, or nothing when it cannot be read. Its text
  * leaves out a byte order mark, as VS Code's document does, so a note saved
@@ -592,17 +589,13 @@ const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
 async function readFile(
   uri: vscode.Uri,
 ): Promise<{ text: string; byteOrderMark: boolean } | undefined> {
-  let bytes: Buffer;
+  let bytes: Uint8Array;
   try {
-    bytes = Buffer.from(await vscode.workspace.fs.readFile(uri));
+    bytes = await vscode.workspace.fs.readFile(uri);
   } catch {
     return undefined;
   }
-  const byteOrderMark = bytes.subarray(0, 3).equals(BYTE_ORDER_MARK);
-  return {
-    text: (byteOrderMark ? bytes.subarray(3) : bytes).toString('utf8'),
-    byteOrderMark,
-  };
+  return { text: decodeUtf8Text(bytes), byteOrderMark: startsWithUtf8Bom(bytes) };
 }
 
 /** The range that replaces a note's whole text. */

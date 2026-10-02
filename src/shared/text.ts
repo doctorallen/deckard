@@ -68,8 +68,25 @@ export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** The bytes of a UTF-8 byte order mark, which some Windows editors write first in a file. */
+export const UTF8_BOM = Uint8Array.of(0xef, 0xbb, 0xbf);
+
 /** How many bytes a UTF-8 byte order mark takes at the start of a file. */
-export const UTF8_BOM_BYTES = 3;
+export const UTF8_BOM_BYTES = UTF8_BOM.length;
+
+/** Whether a file's bytes start with a UTF-8 byte order mark. */
+export function startsWithUtf8Bom(bytes: Uint8Array): boolean {
+  return UTF8_BOM.every((byte, index) => bytes[index] === byte);
+}
+
+/**
+ * `text` without a leading byte order mark, as decodeUtf8Text and VS Code's
+ * document hold a note's text, for text that may have been read some other
+ * way.
+ */
+export function withoutByteOrderMark(text: string): string {
+  return text.startsWith('\uFEFF') ? text.slice(1) : text;
+}
 
 /**
  * A file's bytes as UTF-8 text, without the byte order mark some Windows

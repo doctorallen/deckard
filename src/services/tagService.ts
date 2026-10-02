@@ -2,6 +2,7 @@ import { summarizeTagMerge, TagMergeSummary } from '../domain/index/tagMerge';
 import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
 import { planTagEdits, RenameTagOptions, TagEdit } from '../domain/markdown/tagRename';
 import type { TagInfo, TagReference, WorkspaceIndex } from '../domain/model';
+import { withoutByteOrderMark } from '../shared/text';
 
 /**
  * Renaming a tag, and merging one tag into another: which notes change, how,
@@ -283,14 +284,4 @@ export class TagService {
       return { error };
     }
   }
-}
-
-/**
- * `text` without a leading UTF-8 byte order mark. The index can hold a
- * note's text as read from disk, mark and all, while VS Code's document
- * leaves the mark out, so a note saved with one read as changed since it
- * was indexed, and every rename that reached it was refused.
- */
-function withoutByteOrderMark(text: string): string {
-  return text.startsWith('\uFEFF') ? text.slice(1) : text;
 }
