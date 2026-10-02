@@ -139,7 +139,7 @@ export function findLastDescendantLine(lines: readonly string[], lineIndex: numb
     if (line.trim() === '') {
       continue;
     }
-    if (lineIndent(line) <= indent || isHeadingLine(line, { allowBare: true })) {
+    if (lineIndent(line) <= indent || isHeadingLine(line)) {
       break;
     }
     last = index;

@@ -147,24 +147,15 @@ export function matchTaskLine(line: string, shape: TaskLineShape): TaskLineMatch
   };
 }
 
+const OPENS_HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
+
 /**
- * Which lines open an ATX heading. Half the callers take `#` alone, or `##`
- * alone, as a heading and half do not, so the choice is the caller's.
+ * Whether a line opens an ATX heading, read from its start alone: up to
+ * three spaces, one to six `#`, then a space, a tab, or the end of the
+ * line, so `#` alone is one and `#tag` is not.
  */
-export interface HeadingShape {
-  /**
-   * Whether hashes with nothing after them are a heading. Either way, hashes
-   * followed by a space or a tab are, and `#tag` is not.
-   */
-  allowBare: boolean;
-}
-
-const BARE_HEADING = /^ {0,3}#{1,6}(?:[ \t]|$)/;
-const SPACED_HEADING = /^ {0,3}#{1,6}[ \t]+/;
-
-/** Whether a line opens an ATX heading of the given shape: up to three spaces, then one to six `#`. */
-export function isHeadingLine(line: string, shape: HeadingShape): boolean {
-  return (shape.allowBare ? BARE_HEADING : SPACED_HEADING).test(line);
+export function isHeadingLine(line: string): boolean {
+  return OPENS_HEADING.test(line);
 }
 
 /** A heading's level and its words, as `matchHeading` reads them. */
@@ -175,29 +166,21 @@ export interface HeadingMatch {
 }
 
 /**
- * How a heading's words are read. Words need a space or a tab between them
- * and the hashes, and neither reads words with a line terminator (`\r`,
- * U+2028, U+2029) inside them.
- *
- * - `kept`: the words run to the end of the line, closing hashes included,
- *   with trailing whitespace off (a trailing `\r` counts as whitespace).
- *   The words may be empty: `#`, `# `, and `#  ` are each a heading with no
- *   words, as CommonMark and so the preview read them. The parser reads
- *   headings this way and strips closing hashes itself.
- * - `dropped`: closing hashes and the spaces and tabs around them are off,
- *   and the words may be empty, so `# ` and `# #` are headings with no
- *   words; a trailing `\r` makes the line not a heading.
+ * A heading as the parser reads one. The words need a space or a tab
+ * between them and the hashes, and run to the end of the line, closing
+ * hashes included, with trailing whitespace off (a trailing `\r` counts as
+ * whitespace); they never hold a line terminator (`\r`, U+2028, U+2029).
+ * The words may be empty: `#`, `# `, and `#  ` are each a heading with no
+ * words, as CommonMark and so the preview read them.
  */
-export type HeadingClosingHashes = 'kept' | 'dropped';
+const HEADING_TEXT = /^ {0,3}(#{1,6})(?:[ \t]+(.*?)\s*|\r?)$/;
 
-const HEADING_TEXT_PATTERNS: Readonly<Record<HeadingClosingHashes, RegExp>> = {
-  kept: /^ {0,3}(#{1,6})(?:[ \t]+(.*?)\s*|\r?)$/,
-  dropped: /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*(?:#+[ \t]*)?$/,
-};
-
-/** A heading line's level and words, or undefined for a line that is not one. */
-export function matchHeading(line: string, closingHashes: HeadingClosingHashes): HeadingMatch | undefined {
-  const match = HEADING_TEXT_PATTERNS[closingHashes].exec(line);
+/**
+ * A heading line's level and words, closing hashes kept, or undefined for a
+ * line that is not one. The parser strips the closing hashes itself.
+ */
+export function matchHeading(line: string): HeadingMatch | undefined {
+  const match = HEADING_TEXT.exec(line);
   return match ? { level: match[1].length, text: match[2] ?? '' } : undefined;
 }
 
@@ -209,7 +192,7 @@ export function matchHeading(line: string, closingHashes: HeadingClosingHashes):
  * Outline about where a section starts.
  */
 export function isHeading(line: string): boolean {
-  return matchHeading(line, 'kept') !== undefined;
+  return matchHeading(line) !== undefined;
 }
 
 /**
@@ -217,7 +200,7 @@ export function isHeading(line: string): boolean {
  * closing hashes off, or undefined for a line that is not a heading.
  */
 export function readHeading(line: string): HeadingMatch | undefined {
-  const match = matchHeading(line, 'kept');
+  const match = matchHeading(line);
   return match ? { level: match.level, text: stripClosingHeadingHashes(match.text.trim()) } : undefined;
 }
 

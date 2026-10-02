@@ -51,7 +51,7 @@ export function readProseLines(markdown: string, options: { personMarker?: strin
     if (
       fenced.has(index) ||
       line.trim() === '' ||
-      isHeadingLine(line, { allowBare: true }) ||
+      isHeadingLine(line) ||
       TABLE_ROW.test(line) ||
       RULE.test(line) ||
       IMAGE_ONLY.test(line)

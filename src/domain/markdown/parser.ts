@@ -814,7 +814,7 @@ function collectTagSpans(
       return [];
     }
 
-    const heading = matchHeading(line, 'kept');
+    const heading = matchHeading(line);
     if (heading) {
       const headingTextStart = line.indexOf(heading.text);
       return createTagSpans(
@@ -1926,7 +1926,7 @@ function mergeTagLabels(
  * Tells completion whether a trailing hash belongs to ATX syntax, not a tag.
  */
 export function hasAtxHeadingClosingHashes(line: string): boolean {
-  const match = matchHeading(line, 'kept');
+  const match = matchHeading(line);
   if (!match) {
     return false;
   }
