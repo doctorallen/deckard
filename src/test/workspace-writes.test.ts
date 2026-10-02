@@ -467,6 +467,36 @@ suite('An Undo offered on a message', () => {
       });
   }
 
+  test('when what the write changed outside the notes cannot be put back, the notes still are, the write is spent, and the reader is told', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.joinPath(root, 'note.md');
+    await write(note, 'One #a tag.\n');
+    const history = new WorkspaceWriteHistory();
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(note, lineRange(0, 4, 6), '#b');
+    const written = await history.write(edit, {
+      label: 'the rename of #a',
+      preview: 'never',
+      restore: async () => {
+        throw new Error('the preferences are busy');
+      },
+    });
+    assert.ok(written.applied);
+    const messages = listen();
+    try {
+      await written.handle.takeBack({ guard: 'latest', done: 'Renamed #b back to #a in 1 note.' });
+      assert.strictEqual(await read(note), 'One #a tag.\n');
+      assert.strictEqual(history.lastWrite, undefined, 'the notes are back, so the write is spent');
+      assert.deepStrictEqual(messages.said, [
+        "Renamed #b back to #a in 1 note. Deckard could not put back what the change did outside the notes, such as a tag's favorites or a note it created.",
+      ]);
+    } finally {
+      messages.restore();
+      await deleteTemporaryRoot(root);
+    }
+  });
+
   const REFUSED =
     'VS Code did not accept the undo in plan.md, so the note keeps the edit. Check that the note is not read-only, then try again.';
 

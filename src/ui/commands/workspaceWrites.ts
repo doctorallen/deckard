@@ -50,6 +50,12 @@ export interface UndoResult {
    * written then, and the write is kept, so the Undo can be tried again.
    */
   refused?: vscode.Uri[];
+  /**
+   * What the write's `restore` threw, when putting back what it changed
+   * outside the notes failed. The notes are back by then, so the write is
+   * spent all the same.
+   */
+  unrestored?: { error: unknown };
 }
 
 /**
@@ -116,11 +122,24 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       };
     }
     const restored = plan.documents.length + plan.quiet.length;
+    let unrestored: UndoResult['unrestored'];
     if (restored > 0) {
-      await write.restore?.();
+      try {
+        await write.restore?.();
+      } catch (error) {
+        // The notes are back, so the write is spent; the reader is told
+        // what else did not go back.
+        unrestored = { error };
+      }
     }
     this.clear();
-    return { label: write.label, restored, skipped: plan.skippedUris.length, skippedUris: plan.skippedUris };
+    return {
+      label: write.label,
+      restored,
+      skipped: plan.skippedUris.length,
+      skippedUris: plan.skippedUris,
+      ...(unrestored ? { unrestored } : {}),
+    };
   }
 
   /**
@@ -547,16 +566,30 @@ export function reportUndo(result: UndoResult | undefined, done: string): void {
     void reportStale(result.skippedUris);
     return;
   }
+  const said =
+    result.skipped === 0
+      ? done
+      : `${done} ${pluralize(result.skipped, 'note')} changed after Deckard last read ${
+          result.skipped === 1 ? 'it and was' : 'them and were'
+        } left as ${result.skipped === 1 ? 'it is' : 'they are'}.`;
+  if (result.unrestored) {
+    void reportFailure({
+      outcome: `${said} ${UNRESTORED}`,
+      error: result.unrestored.error,
+      severity: 'warning',
+    });
+    return;
+  }
   if (result.skipped === 0) {
     void vscode.window.showInformationMessage(done);
     return;
   }
-  void vscode.window.showWarningMessage(
-    `${done} ${pluralize(result.skipped, 'note')} changed after Deckard last read ${
-      result.skipped === 1 ? 'it and was' : 'them and were'
-    } left as ${result.skipped === 1 ? 'it is' : 'they are'}.`,
-  );
+  void vscode.window.showWarningMessage(said);
 }
+
+/** What an Undo says when the notes went back but what the write changed outside them did not. */
+const UNRESTORED =
+  'Deckard could not put back what the change did outside the notes, such as a tag\'s favorites or a note it created.';
 
 /**
  * VS Code refused an Undo's edit to the notes in `refused`, so none of the
