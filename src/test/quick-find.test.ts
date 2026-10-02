@@ -5,19 +5,20 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
 import { SearchStore } from '../core/storage/searchStore';
-import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createQuerySuggestions } from '../ui/state/dashboardState';
 import {
   buildQuickFindResults,
   findChoiceKey,
   fuzzyScore,
   QuickFindResults,
 } from '../ui/state/quickFindState';
-import { findDailyNoteRow, isNoteName, keyLabel, toPickItems } from '../ui/commands/quickFind';
+import { findDailyNoteRow, isNoteName, toPickItems } from '../ui/commands/quickFind';
 import { formatCapture } from '../ui/commands/capture';
 import { parseDatePhrase } from '../domain/markdown/dates';
 import { createQueryContext } from '../domain/query/queryContext';
+import { keyLabel } from '../ui/commands/quickFindKeys';
+import { createQuerySuggestions } from '../ui/state/querySuggestions';
+import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

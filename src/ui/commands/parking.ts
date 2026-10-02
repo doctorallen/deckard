@@ -4,7 +4,6 @@ import * as vscode from 'vscode';
 
 import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { pluralize } from '../../shared/text';
-import { WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
 import { listExcludedFolders } from '../../domain/index/excludeKeys';
 import { ParkedRules } from '../../domain/index/parked';
@@ -25,6 +24,7 @@ import {
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { writeSetting } from './settings';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
+import { WorkspaceIndex } from '../../domain/model';
 
 /**
  * Park Note, Park Folder, and Park Tag, and their Unpark counterparts.

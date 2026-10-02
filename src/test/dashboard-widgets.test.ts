@@ -4,13 +4,9 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  DashboardWidgetConfig,
-  PersistedPreferences,
-  WorkspaceIndex,
-} from '../core/types';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createQueryContext } from '../domain/query/queryContext';
+import { DashboardWidgetConfig, PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date(2026, 8, 16, 12).getTime();

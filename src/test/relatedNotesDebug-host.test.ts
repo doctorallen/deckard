@@ -3,8 +3,9 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
-import type { EntryRelatedNotesDiagnostic, SidebarNotesView } from '../ui/webview/sidebarNotes';
+import type { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { ThemePreview } from '../ui/webview/themePreview';
+import type { EntryRelatedNotesDiagnostic } from '../ui/state/relatedNotesRanking';
 
 /** An entry's evidence, with nothing ranked, under a title the tab names. */
 function diagnosticFor(title: string): EntryRelatedNotesDiagnostic {

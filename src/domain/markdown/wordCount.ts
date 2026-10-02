@@ -1,6 +1,6 @@
 import { findFrontmatterEnd } from './frontmatter';
 import { findFencedLines, matchTaskLine, TaskLineShape } from './lineShapes';
-import { findTaskMetadataSpans } from './taskMetadata';
+import { findTaskMetadataSpans } from './taskFields';
 
 /**
  * Counting a note's words the way a reader would: the sentences, not the

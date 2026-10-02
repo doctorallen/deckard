@@ -1,7 +1,7 @@
-// Where callers import the preferences from: the schema's helpers and
-// limits, the maintenance types, and the set of services a caller picks the
-// ones it uses from. Each service lives in a module of its own beside this
-// one, over PreferencesRepository.
+// The set of preference services a caller picks the ones it uses from. Each
+// service lives in a module of its own beside this one, over
+// PreferencesRepository, and the schema's helpers and limits are imported
+// from preferencesSchema.ts.
 import type { DisplayService } from './preferencesDisplay';
 import type { FavoritesService } from './preferencesFavorites';
 import type { HomeWidgetsService } from './preferencesHomeWidgets';
@@ -12,26 +12,6 @@ import type { PreferencesMaintenance } from './preferencesMaintenance';
 import type { TagRenames } from './preferencesTagRenames';
 import type { TaskLayoutService } from './preferencesTaskLayout';
 import type { UsageService } from './preferencesUsage';
-
-export {
-  carryLegacyIds,
-  DASHBOARD_WIDGET_COUNT_LIMIT,
-  DASHBOARD_WIDGET_DAYS_LIMIT,
-  DEFAULT_DASHBOARD_WIDGETS,
-  FIND_CHOICE_LIMIT,
-  findChoiceFilePath,
-  isDefaultHomeLayout,
-  normalizeDashboardWidgets,
-  normalizeFindInput,
-  normalizePinnedNotes,
-  PINNED_NOTE_LIMIT,
-  pinKey,
-  RECENT_HEADING_LIMIT,
-  RECENT_QUERY_LIMIT,
-} from './preferencesSchema';
-
-export type { PruneIndex, PruneKeys, StalePreferences } from './preferencesMaintenance';
-export type { PreferencesReader } from './preferencesRepository';
 
 /**
  * Every preference capability, one service each, as the extension builds

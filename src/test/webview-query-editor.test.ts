@@ -5,11 +5,11 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import type { QueryFacet, QueryViewState } from '../domain/model/query';
 import { createQueryContext } from '../domain/query/queryContext';
 import { parseQuery } from '../domain/query/queryParser';
-import { createQueryViewState } from '../ui/state/dashboardState';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import { bundleShared } from './sharedBundle';
 import { templateRecords } from './templateRecords';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createQueryViewState } from '../ui/state/querySuggestions';
 
 /**
  * The shared search box (src/webview/shared/queryEditor.tsx) against the

@@ -5,7 +5,6 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
-import type { NotesGraphWireSnapshot, SidebarGraphContext } from '../core/types';
 import { NavigationService } from '../services/navigationService';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import {
@@ -16,7 +15,8 @@ import {
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
-import { pageExtensionUri } from './pageWebview';
+import { REPOSITORY_ROOT } from './pageWebview';
+import type { NotesGraphWireSnapshot, SidebarGraphContext } from '../ui/protocol/notesGraph';
 
 /** A note with an entry, a plain line, a task, and a link; one that only links; one that does neither. */
 const NOTES: Array<[string, string]> = [
@@ -50,7 +50,7 @@ function openGraph() {
     indexer,
     onGraphContext: (context, reveal) => void contexts.push({ context, reveal }),
     navigation: new NavigationService(),
-    extensionUri: pageExtensionUri(),
+    extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();

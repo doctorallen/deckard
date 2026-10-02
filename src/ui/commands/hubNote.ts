@@ -3,15 +3,12 @@ import { fileExists } from './fs';
 import { describeMissingTag, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 
 import { getTagKind } from '../../domain/query/queryEvaluator';
-import { TagInfo, TagReference, WorkspaceIndex } from '../../core/types';
 import type { IndexReader } from '../../core/workspace/indexReader';
-import { getExtractedNoteFileName } from './extractHeading';
 import { resolveSourceUri } from './navigation';
-import {
-  askTemplateQuestions,
-  fillTemplate,
-  getTemplateVariables,
-} from './templates';
+import { askTemplateQuestions } from './templates';
+import { fillTemplate, getTemplateVariables } from '../../domain/notes/templates';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { TagInfo, TagReference, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Names a hub note after what it describes: `#project/skybridge-signal`

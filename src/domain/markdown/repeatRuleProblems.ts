@@ -1,10 +1,6 @@
-import { matchTaskLine, TaskLineShape } from './lineShapes';
-import { findFencedLines } from './parser';
-import {
-  findTaskMetadataSpans,
-  parseRecurrence,
-  suggestRecurrence,
-} from './taskMetadata';
+import { matchTaskLine, TaskLineShape, findFencedLines } from './lineShapes';
+import { parseRecurrence, suggestRecurrence } from './recurrence';
+import { findTaskMetadataSpans } from './taskFields';
 
 /**
  * Which repeat rules on a note's open tasks Deckard cannot read, and what

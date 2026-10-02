@@ -1,4 +1,3 @@
-import { BLOCK_ID_PATTERN } from '../../domain/markdown/parser';
 import {
   BacklinkIndex,
   createNoteTitleMap,
@@ -9,9 +8,9 @@ import {
   WikiLinkOccurrence,
   WikiLinkTarget,
 } from '../../domain/index/backlinks';
-import { ParsedFile, Section, Task, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from '../../domain/ranking/entryLabels';
-import { stripTrailingTags } from './queryBlockState';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { ParsedFile, Section, Task, WorkspaceIndex } from '../../domain/model';
+import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 
 /**
  * What the editor shows about a note's connections: how often it and its

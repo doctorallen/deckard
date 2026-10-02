@@ -17,16 +17,6 @@ import type { EmphasisToken, InlineToken, LinkToken } from '../model/inline';
  * they are exported here too.
  */
 
-export type {
-  BreakToken,
-  CodeToken,
-  EmphasisToken,
-  InlineToken,
-  LinkToken,
-  TextToken,
-  WikiLinkToken,
-} from '../model/inline';
-
 /**
  * Reads a line of inline Markdown, such as a task title, into tokens, as
  * markdown-it's `renderInline` read it: no blocks, and line breaks as breaks.

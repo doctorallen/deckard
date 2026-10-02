@@ -5,16 +5,15 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  createDashboardSnapshot,
-  createSearchPageSnapshot,
-} from '../ui/state/dashboardState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { readPageChrome } from '../ui/webview/host/pageChrome';
 import { pageSheets, readSheet } from './sheets';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
 class MemoryMemento implements vscode.Memento {
@@ -109,7 +108,7 @@ suite('Zen mode', () => {
       }),
     };
     const page = openWebviewPage(
-      renderPage('dashboard'),
+      renderPage('dashboard', { chrome: readPageChrome() }),
       snapshot,
     );
     pages.push(page);
@@ -119,7 +118,7 @@ suite('Zen mode', () => {
   const searchPage = () => {
     store = createPreferences(new MemoryMemento());
     const page = openWebviewPage(
-      renderPage('searchPage'),
+      renderPage('searchPage', { chrome: readPageChrome() }),
       createSearchPageSnapshot(index(), store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }),
     );
     pages.push(page);
@@ -150,9 +149,9 @@ suite('Zen mode', () => {
   });
 
   test('marks the body only when it is on, and always ships its sheet', async () => {
-    const off = renderPage('dashboard');
+    const off = renderPage('dashboard', { chrome: readPageChrome() });
     await setZen(true);
-    const on = renderPage('dashboard');
+    const on = renderPage('dashboard', { chrome: readPageChrome() });
 
     const zenOf = (html: string): boolean => {
       const page = openWebviewPage(html);

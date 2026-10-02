@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-import type { WorkspaceIndex } from '../../core/types';
 import {
   LinkNoteService,
   LinkService,
@@ -8,8 +7,9 @@ import {
   NoteEdit,
   NoteFiles,
 } from '../../services/linkService';
-import { findUnlinkedMentions } from '../state/editorLensState';
 import { resolveSourceUri } from './navigation';
+import { findUnlinkedMentions } from '../../domain/search/mentions';
+import type { WorkspaceIndex } from '../../domain/model';
 
 /**
  * What the link services read and write through, in VS Code: the notes as

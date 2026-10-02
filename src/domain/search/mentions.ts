@@ -4,9 +4,9 @@
  */
 import { createNoteTitleMap, noteTitle } from '../index/backlinks';
 import { findCodeAndLinkRanges } from '../markdown/inlineRanges';
-import { findFencedLines } from '../markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../model';
 import { escapeRegExp } from '../../shared/text';
+import { findFencedLines } from '../markdown/lineShapes';
 
 /** A note's name written in another note's prose, where a link could go. */
 export interface UnlinkedMention {

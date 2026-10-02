@@ -1,7 +1,5 @@
-import { formatIsoDate } from '../../domain/markdown/taskMetadata';
 import { isObject } from '../../shared/guards';
 import { pluralize } from '../../shared/text';
-import { TagInfo, WorkspaceIndex } from '../../core/types';
 import { QueryContext } from '../../domain/query/queryContext';
 import {
   getQueryBlockSnapshot,
@@ -16,6 +14,8 @@ import {
   readAddTaskInput,
   readChangeTaskInput,
 } from './assistantWriteInput';
+import { TagInfo, WorkspaceIndex } from '../../domain/model';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 
 /**
  * What Deckard answers when an AI assistant in VS Code calls one of its

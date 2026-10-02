@@ -4,7 +4,7 @@ import type { IndexReader, IndexUpdates } from '../../../../core/workspace/index
 import { isMarkdownFile } from '../../../../core/workspace/scanner';
 import { noteTitle } from '../../../../domain/index/backlinks';
 import { findDailyNoteDate, isPeriodicNoteFile, isPeriodicNotePath } from '../../../../domain/markdown/parser';
-import type { WorkspaceIndex } from '../../../../domain/model';
+import type { WorkspaceIndex, NotesGraphSnapshot } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
 import { logTrace, measure } from '../../../../shared/timing';
 import type { MessageOf } from '../../../protocol/messaging';
@@ -12,27 +12,21 @@ import type {
   NotesGraphHostToPage,
   NotesGraphNode,
   NotesGraphPageToHost,
-  NotesGraphSnapshot,
   NotesGraphWireSnapshot,
   SidebarGraphContext,
 } from '../../../protocol/notesGraph';
 import { openSourceAt } from '../../../commands/navigation';
-import {
-  createLocalGraphSnapshot,
-  createNotesGraphConnections,
-  createNotesGraphSnapshot,
-  findNoteNodeIds,
-  graphInputsChanged,
-  MAXIMUM_LOCAL_GRAPH_DEPTH,
-  NotesGraphKinds,
-  toWire,
-} from '../../../state/notesGraphState';
+import { NotesGraphKinds, toWire } from '../../../state/notesGraphState';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { openSource, openTag } from '../../host/sharedHandlers';
 import { PanelSurface } from '../../host/surface';
 import { getNotesGraphHtml } from '../../notesGraphHtml';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowNotesGraphMessage } from './messages';
+import { graphInputsChanged } from '../../../../domain/graph/graphChanges';
+import { createNotesGraphSnapshot } from '../../../../domain/graph/notesGraph';
+import { createNotesGraphConnections } from '../../../../domain/graph/graphConnections';
+import { createLocalGraphSnapshot, findNoteNodeIds, MAXIMUM_LOCAL_GRAPH_DEPTH } from '../../../../domain/graph/localGraph';
 
 /** What the Notes Graph reads, and whom it tells what it is showing. */
 export interface NotesGraphControllerOptions {
@@ -136,8 +130,8 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
   }
 
   /** The Notes Graph page's HTML. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getNotesGraphHtml(webview, this.graph.extensionUri, theme);
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
+    return getNotesGraphHtml(webview, this.graph.extensionUri, chrome);
   }
 
   /**

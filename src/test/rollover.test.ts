@@ -5,17 +5,12 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { markMigrated } from '../domain/markdown/taskMetadata';
-import {
-  applyRollover,
-  describeRollover,
-  getRolloverLookbackDays,
-  placeCarriedOver,
-  planRollover,
-} from '../ui/commands/rollover';
+import { applyRollover, describeRollover, getRolloverLookbackDays, placeCarriedOver } from '../ui/commands/rollover';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { planRollover } from '../domain/notes/rolloverPlan';
+import { markMigrated } from '../domain/markdown/taskLineEdits';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(

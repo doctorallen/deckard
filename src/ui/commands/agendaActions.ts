@@ -1,18 +1,10 @@
 import * as vscode from 'vscode';
 
-import {
-  addDays,
-  formatIsoDate,
-  setTaskDate,
-  startOfDay,
-  TASK_PRIORITY_RANKS,
-} from '../../domain/markdown/taskMetadata';
 import { AgendaGroupBy, readAgendaQuery, readUpcomingDays } from '../../domain/tasks/agendaGroups';
 import { DayLoad, DueChoice, dueDateFor, RescheduleContext } from '../../domain/tasks/reschedule';
 import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
 import { PreferenceServices } from '../../core/storage/preferences';
-import { Task, WorkspaceIndex } from '../../core/types';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { AgendaService } from '../../services/agendaService';
 import { AGENDA_GROUPINGS, AgendaGroup, selectOverdueTasks } from '../state/agendaState';
@@ -30,6 +22,10 @@ import {
   updateTaskLine,
 } from './taskActions';
 import { registerCommand } from './runCommand';
+import { Task, WorkspaceIndex } from '../../domain/model';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
+import { setTaskDate } from '../../domain/markdown/taskLineEdits';
+import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * Dating tasks from where they are listed.
@@ -40,11 +36,6 @@ import { registerCommand } from './runCommand';
  * group takes one date for everything in it, which is how a morning's
  * overdue tasks are cleared without editing each.
  */
-
-// The reschedule rules moved to domain/tasks; their names stay here for the
-// modules that import them from the command.
-export { countLoad, dueDateFor } from '../../domain/tasks/reschedule';
-export type { DayLoad, DueChoice, RescheduleContext } from '../../domain/tasks/reschedule';
 
 /**
  * Asks for a date in plain words: `friday`, `oct 3`, `in 3 days`.
@@ -165,13 +156,11 @@ export async function setTaskDateField(
     writes,
     task,
     (line, { uri }) =>
-      setTaskDate(
-        line,
-        task.checkboxColumn,
+      setTaskDate(line, task.checkboxColumn, {
         field,
         date,
-        readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
-      ),
+        preferredFormat: readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
+      }),
     describeDateChange(quoteTaskTitle(task), field, date),
   );
 }
@@ -209,13 +198,11 @@ export async function setTasksDue(
       writes,
       task,
       (line, { uri }) =>
-        setTaskDate(
-          line,
-          task.checkboxColumn,
-          'due',
+        setTaskDate(line, task.checkboxColumn, {
+          field: 'due',
           date,
-          readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
-        ),
+          preferredFormat: readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
+        }),
       describeDateChange(quoteTaskTitle(task), 'due', date),
     );
     return;

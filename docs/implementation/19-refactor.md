@@ -362,6 +362,17 @@ Each phase is one branch off `dev` and one pull request, sized against `origin/m
 
 Phases 1–3 unblock everything else. Phase 4 can run feature by feature alongside Phase 6(a–b). Phase 6(c–e) waits for 6(b), because pages need the protocol types to compile against.
 
+**Status.** Every phase is done:
+
+- Phase 0: done, on `refactor/00-guardrails`.
+- Phase 1: done, on `refactor/01-helpers-and-model`.
+- Phase 2: done, on `refactor/02-ports-and-context`.
+- Phase 3: done, on `refactor/03-split-stores`.
+- Phase 4: done, on `refactor/04-services`.
+- Phase 5: done, on `refactor/05-composition`.
+- Phase 6: done, on `refactor/06-webviews`.
+- Phase 7: done, on `refactor/07-sweep` (the four area sweeps) and `refactor/07final` (the last known lint violation, the re-export shims, the page suites under `test:unit`, and the docs checked against the code).
+
 ## 6. What is not changing
 
 - **No behavior changes, no settings changes, no new features.** Nothing about how anything looks changes either, which `test:visual` enforces, now on CI as well.

@@ -3,14 +3,12 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { IndexReader, IndexUpdates } from '../core/workspace/indexReader';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  PersistedPreferences,
-  SidebarGraphContext,
-  SidebarNotesSnapshot,
-} from '../core/types';
-import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { openingScope } from '../ui/webview/pages/notesGraph/notesGraphController';
 import { SidebarNotesController, SidebarNotesPreferences } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
+import { createNotesGraphSnapshot } from '../domain/graph/notesGraph';
+import { SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
+import { SidebarGraphContext } from '../ui/protocol/notesGraph';
+import { PersistedPreferences } from '../domain/model';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,

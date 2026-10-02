@@ -1,5 +1,5 @@
-// The rendered HTML of every Deckard webview, built from the compiled sources
-// with VS Code replaced by the e2e stub. The pages are the ones the mocha
+// The rendered HTML of every Deckard webview, built from the compiled sources,
+// which write a page without VS Code. The pages are the ones the mocha
 // suites walk, from src/test/pages.ts, and each comes through the shared page
 // loader, so the webview checks see one self-contained page, with the bundle
 // and the sheets its shell links inlined. A new page is added once, in the
@@ -12,23 +12,16 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const vscodeStub = require('../e2e/vscodeStub.js');
-vscodeStub.install();
 /**
- * The page builders read the theme and zen mode from the settings when they
- * run, so the pages are given them through the stub's settings, as a
- * reader's settings would give them. The contrast check walks every theme,
- * and the layout check walks zen on and off.
+ * The theme a page is drawn in when a check names none. The page builders
+ * are given the theme and zen mode, as a host gives them what it read from
+ * the settings; the contrast check walks every theme, and the layout check
+ * walks zen on and off. The layout checks describe the pages under
+ * Replicant, which declares no tokens of its own. Every other theme, the
+ * default Corpo included, re-declares the tokens and restyles surfaces on
+ * purpose, so the pages render as Replicant.
  */
-const { settings } = vscodeStub._test;
-/** Where the theme and zen mode are set, by their full names. */
-const THEME = 'deckard.theme';
-const ZEN = 'deckard.zenMode';
-// The layout checks describe the pages under Replicant, which declares no
-// tokens of its own. Every other theme, the default Corpo included, re-declares
-// the tokens and restyles surfaces on purpose, so the pages render as Replicant.
-settings.set(THEME, 'replicant');
-settings.set(ZEN, false);
+const DEFAULT_THEME = 'replicant';
 const modules = require('../harness/modules.js');
 const { loadPage } = require('../harness/loadPage.js');
 
@@ -48,32 +41,22 @@ const pageOptions = {
     },
   },
 };
-const pages = modules.pageCatalog.PAGES.map((page) => [page.id, () => loadPage(modules.pageCatalog.renderPage(page.id, pageOptions))]);
+const pages = modules.pageCatalog.PAGES.map((page) => [
+  page.id,
+  (chrome = { theme: DEFAULT_THEME, zen: false }) => loadPage(modules.pageCatalog.renderPage(page.id, { ...pageOptions, chrome })),
+]);
 
 /** Every theme Deckard ships, read from the manifest the themes declare. */
-const { deckardThemes } = modules.themes;
+const { deckardThemes } = modules.themeNames;
 
 /**
- * Renders every page with one theme applied, as [name, html] pairs. The page
- * functions read the theme when they run, so the pages are built again for
+ * Renders every page with one theme applied, as [name, html] pairs. A page
+ * is written in the theme it is given, so the pages are built again for
  * each one rather than restyled after the fact.
  */
 function renderPagesForTheme(theme, options) {
-  return withLook(theme, Boolean(options && options.zen), () => pages.map(([name, render]) => [name, render()]));
-}
-
-/** Runs `render` with the theme and zen mode set, and sets them back after. */
-function withLook(theme, zen, render) {
-  const previousTheme = settings.get(THEME);
-  const previousZen = settings.get(ZEN);
-  settings.set(THEME, theme);
-  settings.set(ZEN, zen);
-  try {
-    return render();
-  } finally {
-    settings.set(THEME, previousTheme);
-    settings.set(ZEN, previousZen);
-  }
+  const chrome = { theme, zen: Boolean(options && options.zen) };
+  return pages.map(([name, render]) => [name, render(chrome)]);
 }
 
 /**
@@ -85,8 +68,8 @@ function renderPage(name, options = {}) {
   if (!pages.some(([pageName]) => pageName === name)) {
     throw new Error(`No such page: ${name}`);
   }
-  return withLook(options.theme || settings.get(THEME), Boolean(options.zen), () =>
-    loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions })));
+  const chrome = { theme: options.theme || DEFAULT_THEME, zen: Boolean(options.zen) };
+  return loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions, chrome }));
 }
 
 /**

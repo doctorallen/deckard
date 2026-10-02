@@ -4,15 +4,16 @@ import * as vscode from 'vscode';
 
 import { createPreferences } from './preferenceServices';
 import { SearchStore } from '../core/storage/searchStore';
-import { PersistedPreferences } from '../core/types';
 import { formatCapture } from '../ui/commands/capture';
 import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
-import { createQuerySuggestions, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { buildQuickFindResults } from '../ui/state/quickFindState';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createQuerySuggestions } from '../ui/state/querySuggestions';
+import { PersistedPreferences } from '../domain/model';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
   const store = createPreferences({

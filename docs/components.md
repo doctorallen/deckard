@@ -27,9 +27,11 @@ built and loaded, and why; this page says what there is to reuse and how.
 | `src/webview/shared/*.css`, `shared/themes/`, `shared/calendar/calendar.css` | The sheets every page links, and the component sheets two or more import |
 | `src/ui/protocol/<page>.ts` | The page's snapshot and messages, imported by the page and by its host |
 | `src/domain/…` | The pure domain modules a page may import (D1 in [layers.md](architecture/layers.md)) |
-| `src/ui/webview/<page>Html.ts` | The host's builder for the page's shell |
-| `src/ui/webview/host/pageShell.ts` | `buildPageShell`, which writes every shell; the shared Content Security Policy; the folders a page may load from |
-| `src/ui/webview/components.ts` | What the host shares when it writes a shell: the nonce, the loading line, the sheets after a page's own, and the event that redraws a page in another look |
+| `src/ui/webview/<page>Html.ts` | The host's builder for the page's shell, given the look (`PageChrome`: the theme and zen) its host read |
+| `src/ui/webview/host/pageShell.ts` | `buildPageShell`, which writes every shell; the shared Content Security Policy; `ShellWebview` and `ShellUri`, the webview and URI a shell is written against, and `joinUnder`, which joins a file onto the extension's folder. It names no `vscode` type, so a page builds without the extension host |
+| `src/ui/webview/components.ts` | What the host shares when it writes a shell: the nonce, the loading line, `PageChrome`, and the sheets after a page's own (`deckardThemeCss`, `getPageTailCss`) |
+| `src/ui/webview/host/pageChrome.ts` | What reads the look from the settings: `readPageChrome`, which `WebviewHost` calls each time it writes a page, and the event that redraws a page in another look |
+| `src/ui/webview/host/surface.ts` | Among the panel and view surfaces, `pageResourceRoots`: the folders a page may load from |
 
 ## How a page is assembled
 
@@ -42,7 +44,7 @@ is one, then the script:
 // src/ui/webview/statsHtml.ts
 return buildPageShell({
   webview, extensionUri, page: 'stats', title: 'Deckard Stats',
-  nonce: createNonce(), theme: theme ?? getDeckardTheme(), zen: isZenModeEnabled(),
+  nonce: createNonce(), theme: chrome.theme, zen: chrome.zen,
   bundle: true,
   state: snapshot,
   body: `
@@ -87,7 +89,9 @@ page's sheet, then its theme, then `tail.css`, which imports everything from
 control edges to zen, so no page has to remember the order.
 
 The page's `<body>` carries `class="zen"` when zen is on, written by the
-shell from `getPageTailCss({ theme, zen })`. See **Zen mode** below.
+shell from `getPageTailCss({ theme, zen })`. The builder reads neither: its
+host reads both with `readPageChrome(themePreview)` as it writes the page,
+and passes them in as `chrome`. See **Zen mode** below.
 
 **A page keeps its own layout.** The base sheet and a page use the same
 selector names — `main`, `header`, `.metrics`, `.cards` — so a base rule can
@@ -578,7 +582,7 @@ without their cards.
 | `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
 | `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
 | `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
-| `.board-steps` | A card whose task has steps: one `.source` line under the details, `.board-steps-label` (`2 of 5 steps`) then `.board-steps-next` (` · next: Draft the email`); the line is one line with an ellipsis, so in a narrow column the next step gives way first. Host-worded by `describeStepParts()` in `taskSteps.ts` as `card.steps`; the card's `aria-label` gains the label. Muted like the details, so no color of its own. |
+| `.board-steps` | A card whose task has steps: one `.source` line under the details, `.board-steps-label` (`2 of 5 steps`) then `.board-steps-next` (` · next: Draft the email`); the line is one line with an ellipsis, so in a narrow column the next step gives way first. Host-worded by `describeStepParts()` in `domain/markdown/taskSteps.ts` as `card.steps`; the card's `aria-label` gains the label. Muted like the details, so no color of its own. |
 | `<TaskBoard snapshot isVisible>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. `isVisible` hides cards the page filters locally. |
 | `<GroupSwitch snapshot>` (`board.tsx`) | The Status / Priority / Due date / Person / Tag… `.segmented` switch. **Tag…** (`data-action="pick-board-namespace"`) opens a menu of the namespaces open tasks carry and, grouped by one, reads `#context`, pressed; with none in use it is `aria-disabled` and says why. |
 | `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys, its move menu, its checkbox, opening it, dragging it between columns, and the group switch's Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
@@ -602,7 +606,7 @@ Board's list layout.
 | Piece | What it is |
 | --- | --- |
 | `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
-| `<TaskListRow item draggable titleDisplay leading trailing entry afterSource>` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `taskMetadata.ts` so every list, the board, the table, and query blocks say it the same way. `draggable` marks a row that can be ranked; `titleDisplay` is the `tagTitleDisplayMode`. A parked task (`item.parked`) says **Parked** first in its meta line. A task with steps has a `.task-detail.task-steps` span after Repeats, the host's `stepsLabel` (`2 of 5 steps · next: Draft the email`). `trailing` is drawn after the words, such as the calendar panel's **Tomorrow** button, and `leading` in place of the checkbox, for a row that cannot be completed from there. Its checkbox posts through `data-action="toggle-task"`. |
+| `<TaskListRow item draggable titleDisplay leading trailing entry afterSource>` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `domain/markdown/dueWording.ts` so every list, the board, the table, and query blocks say it the same way. `draggable` marks a row that can be ranked; `titleDisplay` is the `tagTitleDisplayMode`. A parked task (`item.parked`) says **Parked** first in its meta line. A task with steps has a `.task-detail.task-steps` span after Repeats, the host's `stepsLabel` (`2 of 5 steps · next: Draft the email`). `trailing` is drawn after the words, such as the calendar panel's **Tomorrow** button, and `leading` in place of the checkbox, for a row that cannot be completed from there. Its checkbox posts through `data-action="toggle-task"`. |
 | `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
@@ -696,9 +700,10 @@ not have, so a `:hover` nested in an `@media` block is never tested.
 | Host-side helper | Purpose |
 | --- | --- |
 | `zen.css` | The sheet, last in `tail.css`, which every page links whether zen is on or not. |
-| `getPageTailCss({ theme, zen })` | The sheets after the page's own, its theme then `tail.css`, and the body's ` class="zen"` or nothing. `buildPageShell` writes both. |
-| `onDidChangePageChrome(listener, themePreview)` | Calls back when a page must be drawn in another look: `deckard.theme` or `deckard.zenMode` changed, or Choose Theme… is previewing a theme on the `ThemePreview` (`themePreview.ts`), which `getDeckardTheme(preview)` reads first. `WebviewHost` listens to it for every page, and a page's `onChromeChange` says what it then does ([webviews.md](architecture/webviews.md#what-a-controller-tells-its-host)). |
-| `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn; `onDidChangePageChrome` asks it. |
+| `getPageTailCss({ theme, zen })` | The sheets after the page's own, its theme then `tail.css`, and the body's ` class="zen"` or nothing. `buildPageShell` writes both. In `components.ts`. |
+| `readPageChrome(themePreview)` | The look a page is written in, read now: `getDeckardTheme(preview)` and the `deckard.zenMode` setting. `WebviewHost` calls it each time it sets a page's HTML and passes it to the controller's `html(webview, chrome, state)`. In `host/pageChrome.ts`. |
+| `onDidChangePageChrome(listener, themePreview)` | Calls back when a page must be drawn in another look: `deckard.theme` or `deckard.zenMode` changed, or Choose Theme… is previewing a theme on the `ThemePreview` (`themePreview.ts`), which `getDeckardTheme(preview)` reads first. `WebviewHost` listens to it for every page, and a page's `onChromeChange` says what it then does ([webviews.md](architecture/webviews.md#what-a-controller-tells-its-host)). In `host/pageChrome.ts`. |
+| `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn; `onDidChangePageChrome` asks it. In `host/pageChrome.ts`. |
 
 ---
 
@@ -781,7 +786,7 @@ today, and how many tasks need a new date as a `.text-button` that opens
 | --- | --- | --- |
 | `buildPageShell(options)` | `host/pageShell.ts` | A page's document: its policy, its sheets in cascade order, its body, and, with `bundle`, its snapshot as inert JSON and its script. Every builder returns it. |
 | `getContentSecurityPolicy(cspSource, nonce, extras)` | `host/pageShell.ts` | The one policy. `extras.images` adds images from the extension and the origins it lists, or any HTTPS origin for `true`; `fonts` adds fonts from the extension; `scripts: false` names no `script-src`, for a page that runs none. |
-| `pageResourceRoots(extensionUri)` | `host/pageShell.ts` | The folders a page may load from: `dist/webview` and `resources`. |
+| `pageResourceRoots(extensionUri)` | `host/surface.ts` | The folders a page may load from: `dist/webview` and `resources`. |
 | `createNonce()` | `components.ts` | One nonce per page, gating its script. |
 | `loadingHtml(label, attributes)` | `components.ts` | A page's `<main id="app">` before its first state: busy, with one `.loading` line. |
 | `followIndexing(indexer, post)` | `indexingProgress.ts` | Posts the first scan's progress to a page as it goes (**Loading** above). |

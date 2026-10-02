@@ -1,5 +1,5 @@
-import { SearchRefineState } from '../../core/types';
 import { ActiveSource } from './host/activeSource';
+import { SearchRefineState } from '../protocol/shared';
 
 /**
  * A page whose search the Related Notes sidebar can refine: a search page or

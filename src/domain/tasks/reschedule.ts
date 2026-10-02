@@ -1,5 +1,5 @@
 import { Task } from '../model';
-import { addDays, formatIsoDate, startOfDay } from '../markdown/taskMetadata';
+import { addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
 
 /**
  * Rescheduling tasks from where they are listed: the dates a choice names,

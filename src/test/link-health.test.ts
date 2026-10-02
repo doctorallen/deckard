@@ -6,13 +6,9 @@ import { tmpdir } from 'node:os';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import {
-  CREATE_LINKED_NOTE_COMMAND,
-  createNoteNamed,
-  findLinkProblems,
-  LinkHealth,
-} from '../ui/commands/linkHealth';
+import { CREATE_LINKED_NOTE_COMMAND, createNoteNamed, LinkHealth } from '../ui/commands/linkHealth';
+import { findLinkProblems } from '../domain/links/linkProblems';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return {

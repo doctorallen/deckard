@@ -1,17 +1,17 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
+import { fillPeriodicTemplate } from '../ui/commands/dailyNote';
+import { buildDailyNotePicks } from '../ui/commands/dailyNoteForDate';
 import {
-  fillPeriodicTemplate,
   findAdjacentDailyNote,
   findPeriodicNoteNames,
   getIsoWeek,
   getPeriodicNote,
   isPeriodicNoteName,
   listDailyNotes,
-} from '../ui/commands/dailyNote';
-import { buildDailyNotePicks } from '../ui/commands/dailyNoteForDate';
+} from '../domain/notes/periodicNotes';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return {

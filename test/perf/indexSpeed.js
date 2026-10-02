@@ -43,11 +43,14 @@ const load = (name) => {
   }
 };
 const { parseMarkdown } = load('parser');
-const { buildWorkspaceIndex, createWorkspaceIndex, WorkspaceIndexer } = load('indexer');
+const { buildWorkspaceIndex } = load('indexState');
+const { createWorkspaceIndex, WorkspaceIndexer } = load('indexer');
 const { WorkspaceScanner } = load('scanner');
 const { SearchStore } = load('searchStore');
 const { measure, setTimingLog } = load('timing');
-const graphState = load('notesGraphState');
+// The graph is built and compared in domain/graph; what the page is sent is
+// trimmed in ui/state.
+const graphState = { ...load('graphBuild'), ...load('graphChanges'), ...load('notesGraphState') };
 const codec = load('parsedFileCodec');
 
 const sizes = process.argv.slice(2).map(Number).filter((n) => n > 0);
@@ -366,7 +369,7 @@ async function save(session, file) {
  * An older checkout without the state builder prints a dash.
  */
 function timeStatsSnapshot(index, now) {
-  const { createDeckardStatsSnapshot } = load('dashboardState');
+  const { createDeckardStatsSnapshot } = load('statsState');
   const { createPreferences } = load('preferenceServices');
   if (!createDeckardStatsSnapshot || !createPreferences || !measure) {
     return NaN;
@@ -473,7 +476,7 @@ function timeGraphSnapshot(index) {
  * 20-webviews.md, Q3: under 50 ms, it is embedded).
  */
 function timeSearchPageSnapshot(index, now, query) {
-  const { createSearchPageSnapshot } = load('dashboardState');
+  const { createSearchPageSnapshot } = load('searchPageState');
   const { createQueryContext } = load('queryContext');
   const { createPreferences } = load('preferenceServices');
   if (!createSearchPageSnapshot || !createQueryContext || !createPreferences || !measure) {

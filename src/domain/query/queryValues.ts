@@ -16,5 +16,3 @@ export function normalizeFolder(value: string): string {
   return value.replace(/^\.\//, '').replace(/\/+$/, '');
 }
 
-// The one copy lives in core/text, beside the other text helpers.
-export { escapeRegExp } from '../../shared/text';

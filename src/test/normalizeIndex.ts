@@ -1,4 +1,4 @@
-import { WorkspaceIndex } from '../core/types';
+import { WorkspaceIndex } from '../domain/model';
 
 /**
  * An index as plain data: every map as its entries in order, associations

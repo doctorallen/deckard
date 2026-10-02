@@ -9,8 +9,6 @@ import {
 } from '../../domain/capture/captureLines';
 import { readDateOptions } from './datePrompt';
 import { getPersonMarker } from '../../domain/markdown/parser';
-import { Section } from '../../core/types';
-import { PreferencesReader } from '../../core/storage/preferences';
 import { pickDestination } from './destinationPicker';
 import { captureSeed, withSourceLink } from './selectionSeed';
 import type { IndexReader } from '../../core/workspace/indexReader';
@@ -26,17 +24,8 @@ import {
   HeadingCaptureResult,
 } from '../../services/captureService';
 import { CaptureAnswer, CaptureBox, CaptureButton, CaptureRow } from './captureBox';
-
-export {
-  findSameSection,
-  formatCaptureLine,
-  formatNoteLine,
-  getCaptureInsertion,
-} from '../../domain/capture/captureLines';
-export type { CaptureInsertion } from '../../domain/capture/captureLines';
-export { CaptureDrafts } from '../../services/captureService';
-export type { CaptureDraft, CaptureTarget } from '../../services/captureService';
-export { completeLastWord, getTagSuggestions } from './captureBox';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
+import { Section } from '../../domain/model';
 
 interface CaptureItem extends vscode.QuickPickItem {
   action: CaptureRow['action'];

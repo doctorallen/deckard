@@ -15,24 +15,6 @@ import {
 import { readWeekStart } from './datePrompt';
 import { resolveSourceUri } from './navigation';
 
-export {
-  findAdjacentDailyNote,
-  findPeriodicNoteNames,
-  formatLocalDate,
-  getIsoWeek,
-  getPeriodEnd,
-  getPeriodicNote,
-  getPeriodStart,
-  isPeriodicNoteName,
-  listDailyNotes,
-  parseLocalDate,
-} from '../../domain/notes/periodicNotes';
-export type {
-  DailyNoteEntry,
-  NotePeriod,
-  PeriodicNoteVariables,
-} from '../../domain/notes/periodicNotes';
-
 /**
  * Opens the daily note before or after the one in the editor, or before or
  * after today when the editor is not on a daily note.

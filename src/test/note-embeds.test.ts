@@ -3,14 +3,10 @@ import * as assert from 'assert';
 import MarkdownIt = require('markdown-it');
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  addNoteEmbedRenderer,
-  createSourceParser,
-  resolveEmbed,
-  withoutFrontmatter,
-} from '../ui/preview/noteEmbeds';
+import { addNoteEmbedRenderer } from '../ui/preview/noteEmbeds';
+import { createSourceParser, resolveEmbed, withoutFrontmatter } from '../domain/notes/embeds';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(

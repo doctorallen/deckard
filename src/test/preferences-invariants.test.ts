@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { pinKey } from '../core/storage/preferences';
 import { createPreferences, TestPreferences } from './preferenceServices';
+import { pinKey } from '../core/storage/preferencesSchema';
 
 /**
  * A property, not an example: over any sequence of the store's operations,

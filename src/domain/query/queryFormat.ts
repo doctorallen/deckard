@@ -4,15 +4,10 @@ import {
   describeOperator,
   QUERY_OPERATOR_INVERSES,
   QUERY_SHORTHAND_FIELDS,
-  QueryBuilderGroup,
-  QueryBuilderItem,
-  QueryBuilderRow,
   QueryConditionNode,
-  QueryField,
   QueryNode,
 } from './queryTypes';
-
-export { isWildcard } from './queryValues';
+import { QueryBuilderGroup, QueryBuilderItem, QueryBuilderRow, QueryField } from '../model';
 
 /**
  * Renders an AST back into canonical DQL text.

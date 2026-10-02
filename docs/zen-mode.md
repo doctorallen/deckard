@@ -275,14 +275,11 @@ Three shared helpers in `components.ts` cut the per-file duplication:
 class is on `<body>`, the page script reads
 `document.body.classList.contains('zen')` directly — so there is **no
 `types.ts` state change and no state-builder change**, only the new
-webview→host message. `renderZenOption()` goes in `getComponentScript()` and
-each of the three pages adds one array element to its existing
-`renderViewOptions([...])` call; the `set-zen-mode` click case goes inside the
-existing `installViewOptions()` listener and posts via `vscode` (not the
-page-local `post`/`send`, which differ between `taskBoardHtml.ts:77` and
-`dashboardHtml.ts:303`). That is zero per-page handler code. Add
-`renderZenOption` to `SHARED_HELPERS` in `verifyWebviews.js` so no page can
-redeclare it.
+webview→host message. The row is `zenOption()` in
+`src/webview/shared/viewOptions.tsx`, which each page with a gear puts in its
+`ViewOptions`; the `set-zen-mode` click is handled once, in
+`installViewOptions()` in the same module, which posts `setZenMode` through
+the page's one handle. That is zero per-page handler code.
 
 ## What the suites cover
 

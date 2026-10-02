@@ -3,8 +3,6 @@ import * as assert from 'assert';
 import { parseQuery } from '../domain/query/queryParser';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { formatQuery, fromBuilderTree, toBuilderTree } from '../domain/query/queryFormat';
-import { createQuerySuggestions } from '../ui/state/dashboardState';
-import { WorkspaceIndex } from '../core/types';
 import {
   computeParked,
   mentionsParked,
@@ -14,6 +12,8 @@ import {
 } from '../domain/index/parked';
 import { indexWithParking, parkedRules } from './parkedFixture';
 import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
+import { createQuerySuggestions } from '../ui/state/querySuggestions';
 
 /** A task title without its tags. */
 function bare(title: string): string {

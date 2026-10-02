@@ -1,12 +1,8 @@
 import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../markdown/lineShapes';
-import {
-  formatIsoDate,
-  parseTaskMetadata,
-  setTaskLineCompletion,
-  TaskMetadataFormat,
-  writeCompletion,
-} from '../markdown/taskMetadata';
 import { readStepsForNextOccurrence } from '../markdown/taskSteps';
+import { setTaskLineCompletion, writeCompletion } from '../markdown/taskLineEdits';
+import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
+import { formatIsoDate } from '../markdown/calendar';
 
 /**
  * Toggle Task Done's rule, the way Toggle Line Comment decides: which lines
@@ -84,25 +80,21 @@ export function toggleTaskLines(
       continue;
     }
     const checkboxColumn = match.opening.length;
-    const marked = setTaskLineCompletion(
-      text,
-      checkboxColumn,
+    const marked = setTaskLineCompletion(text, checkboxColumn, {
       completed,
-      options.addDoneDate ? formatIsoDate(now) : undefined,
-      options.format,
-    );
+      doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
+      preferredFormat: options.format,
+    });
     const title = parseTaskMetadata(text.slice(checkboxColumn + 2)).title;
     if (!completed) {
       toggled.push({ line, before: text, after: marked, title });
       continue;
     }
-    const completion = writeCompletion(
-      marked,
-      checkboxColumn,
+    const completion = writeCompletion(marked, checkboxColumn, {
       now,
-      options.eol,
-      options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],
-    );
+      eol: options.eol,
+      steps: options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],
+    });
     toggled.push({
       line,
       before: text,

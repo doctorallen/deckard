@@ -14,22 +14,23 @@ import {
   visitConditions,
 } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
-import { QueryNode, QuerySuggestion } from '../../domain/query/queryTypes';
+import { QueryNode } from '../../domain/query/queryTypes';
 import { EntrySearchResult } from '../../core/storage/searchStore';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { describeTagMatches } from './querySuggestions';
+import { normalizeFindInput, pinKey } from '../../core/storage/preferencesSchema';
+import { createPinForLine, findPinnedSection, resolvePin } from '../../domain/notes/pins';
+import { frecencyScore } from '../../domain/ranking/frecency';
 import {
+  QuerySuggestion,
   ParsedFile,
   PersistedPreferences,
   Section,
   TagInfo,
   Task,
   WorkspaceIndex,
-} from '../../core/types';
-import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
-import { getHeadingPath } from '../../domain/ranking/entryLabels';
-import { describeTagMatches } from './querySuggestions';
-import { frecencyScore } from './frecency';
-import { createPinForLine, findPinnedSection, resolvePin } from './pinnedNotes';
-import { normalizeFindInput, pinKey } from '../../core/storage/preferences';
+} from '../../domain/model';
 
 /**
  * Ranks what Quick Find shows for what has been typed so far.

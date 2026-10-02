@@ -1,10 +1,10 @@
 # Indexing
 
-**Status: current and target.** The first part of this page describes the index as it works now, which behaves as it did at v1.23.1. The last part describes what [the refactor plan](../implementation/19-refactor.md) changes; each phase rewrites this page to describe what then exists.
+**Status: current.** This page describes the index as it works after the last phase of [the refactor plan](../implementation/19-refactor.md), which behaves as it did at v1.23.1. The last part records what the plan changed.
 
 The index is what every Deckard surface reads: tags, tasks, sections, entities, backlinks, and parking. The Markdown files are always the source of truth. Everything below is a cache of them.
 
-## Where it lives today
+## Where it lives
 
 | File | What it does |
 | --- | --- |
@@ -24,7 +24,7 @@ The index is what every Deckard surface reads: tags, tasks, sections, entities, 
 | [`src/ports/`](../../src/ports/) | The interfaces the index reads VS Code through: `uri.ts`, `workspace.ts`, `fileSystem.ts`, `configuration.ts`, `workspaceEvents.ts`, `progress.ts`, and `events.ts` |
 | [`src/platform/`](../../src/platform/) | Their VS Code implementations: `vscodeWorkspace.ts`, `vscodeWorkspaceEvents.ts`, and `vscodeProgress.ts`, which `createServices` in [`src/composition/services.ts`](../../src/composition/services.ts) builds and passes in |
 
-None of the modules in `src/core` imports `vscode`. The scanner reads folders, files, and settings through one `WorkspaceFileAccess` made of the workspace, file-system, and configuration ports. The `ChangeWatcher` hears about changes through the `WorkspaceEvents` port, the `IndexService` shows a scan's progress through the `Progress` port, and the `ViewPublisher` announces updates with core's own `Emitter`. `SearchStore` takes the storage folder as a path, and `PreferenceSnapshots` writes through the file-system port. Each port call goes to the same VS Code API with the same arguments as before, so nothing a reader sees changed.
+None of the modules in `src/core` imports `vscode`. The scanner reads folders, files, and settings through one `WorkspaceFileAccess` made of the workspace, file-system, and configuration ports. The `ChangeWatcher` hears about changes through the `WorkspaceEvents` port, the `IndexService` shows a scan's progress through the `Progress` port, and the `ViewPublisher` announces updates with the `Emitter` in `src/shared/emitter.ts`. `SearchStore` takes the storage folder as a path, and `PreferenceSnapshots` writes through the file-system port. Each port call goes to the same VS Code API with the same arguments as before, so nothing a reader sees changed.
 
 The scanner, and the roles that hand back its URIs, are generic in the URI type they are given: `WorkspaceScanner<U>`, `NoteFiles<U>`, `IndexReader<U>`, and `IndexRoles<U>`. The extension gives them `vscode.Uri`, so every URI they hand back, such as `getUri` or `getNotesFolderUri`, is a `vscode.Uri` the UI passes to VS Code as it is. A UI function that does so names its parameter `IndexReader<vscode.Uri>`. A test gives them plain objects from `src/test/fakeWorkspace.ts`, so the scanner, index, and cache suites run under `test:unit`.
 
@@ -126,13 +126,14 @@ The `ViewPublisher` does this. A publish first resolves `published`, then fires 
 
 A surface that only displays notes waits for `published`, which a warm start reaches at once. A surface that writes, or answers for the whole workspace, waits for `ready`, which follows the check against the files.
 
-## What the plan changes
+## What the plan changed
 
-The mechanism above stays. The cache format and the fingerprint do not change, since a code move must not force every user to rebuild. What changes is where the code lives and what it can reach.
+The mechanism above stayed. The cache format and the fingerprint did not change, since a code move must not force every user to rebuild. What changed is where the code lives and what it can reach.
 
 | Phase | Change |
 | --- | --- |
-| 1 | `buildWorkspaceIndex` moves to `domain/index`, and `panelPriority` and `viewPriority` move to the webview host. |
+| 1 | Done: `buildWorkspaceIndex` moved to `domain/index/indexState.ts`, and `panelPriority` and `viewPriority` to the webview host. |
 | 2 | Done: the scanner and indexer take the workspace, `FileSystem`, `Configuration`, `WorkspaceEvents`, and `Progress` ports; their `EventEmitter`s and `withProgress` left core. `SearchStore` takes a path instead of a `Uri`. The workspace, warm-start, index-publishing, search-store, and preference-snapshots suites run under `test:unit`. |
-| 3 | Done: `WorkspaceIndexer` split into an `IndexService`, a `ChangeWatcher` with its pure `reactionsTo` table, and a `ViewPublisher`, and the two association walks became one `collectAssociationEvidence`. The watcher stayed in core, since it needs only the `WorkspaceEvents` port. `WorkspaceIndexer` is a facade with its old surface. |
+| 3 | Done: `WorkspaceIndexer` split into an `IndexService`, a `ChangeWatcher` with its pure `reactionsTo` table, and a `ViewPublisher`, and the two association walks became one `collectAssociationEvidence`. The watcher stayed in core, since it needs only the `WorkspaceEvents` port. `WorkspaceIndexer` was kept as a facade with its old surface for one phase. |
 | 4 | Done: callers take the roles of the index they use, `IndexService` and `ViewPublisher` implement the roles they own, and the `WorkspaceIndexer` facade is gone. `createWorkspaceIndex` builds the pieces in the facade's order and returns every role as one value. |
+| 7 | Done: `core/workspace/indexer.ts` no longer re-exports `buildWorkspaceIndex`; every importer, the harnesses' catalog included, takes it from `domain/index/indexState`. |

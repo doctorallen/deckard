@@ -5,9 +5,9 @@ import {
   getPersonMarker,
   stripTags,
 } from '../../domain/markdown/parser';
-import { Entity, EntityKind } from '../../core/types';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { Entity, EntityKind } from '../../domain/model';
 
 /** A picker row: an entity the index knows, or the row that makes a new one. */
 interface EntityChoice extends vscode.QuickPickItem {

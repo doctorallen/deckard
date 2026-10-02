@@ -2,12 +2,12 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
-import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),

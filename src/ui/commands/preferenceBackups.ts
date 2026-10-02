@@ -2,14 +2,11 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import {
-  PreferenceSnapshot,
-  PreferenceSnapshots,
-} from '../../core/storage/preferenceSnapshots';
+import { PreferenceSnapshots } from '../../core/storage/preferenceSnapshots';
 import { isRecord } from '../../shared/guards';
 import { pluralize } from '../../shared/text';
-import { PersistedPreferences } from '../../core/types';
 import { reportFailure } from './notify';
+import { PersistedPreferences } from '../../domain/model';
 
 /**
  * Taking what a workspace remembers out, and putting it back.
@@ -231,4 +228,3 @@ function describeAge(at: Date, now = Date.now()): string {
   return `${Math.round(hours / 24)} days ago`;
 }
 
-export type { PreferenceSnapshot };

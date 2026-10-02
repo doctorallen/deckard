@@ -1,9 +1,5 @@
-import * as vscode from 'vscode';
-
-import { createNonce, loadingHtml } from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { createNonce, loadingHtml, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 
 /**
  * The Task Board page's shell: its bundle, `dist/webview/taskBoard.js`,
@@ -14,11 +10,11 @@ import { type DeckardTheme, getDeckardTheme } from './themes';
  * is ready.
  */
 export function getTaskBoardHtml(
-  webview: vscode.Webview,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheets and script are under. */
-  extensionUri: vscode.Uri,
-  /** The theme its host read, preview and all; the configured one without. */
-  theme?: DeckardTheme,
+  extensionUri: ShellUri,
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome,
 ): string {
   return buildPageShell({
     webview,
@@ -26,8 +22,8 @@ export function getTaskBoardHtml(
     page: 'taskBoard',
     title: 'Deckard Task Board',
     nonce: createNonce(),
-    theme: theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: chrome.theme,
+    zen: chrome.zen,
     bundle: true,
     body: `
 ${loadingHtml('Loading tasks…')}

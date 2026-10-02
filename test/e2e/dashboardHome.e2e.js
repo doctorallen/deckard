@@ -12,7 +12,7 @@ const modules = require('../harness/modules.js');
 const { DashboardPanel } = modules.dashboard;
 const { createPreferences } = modules.preferenceServices;
 const { parseMarkdown } = modules.parser;
-const { buildWorkspaceIndex } = modules.indexer;
+const { buildWorkspaceIndex } = modules.indexState;
 const { ThemePreview } = modules.themePreview;
 
 /** Longer than the page's search debounce. */
@@ -67,7 +67,7 @@ async function openDashboard(
   const dashboard = new DashboardPanel({
     indexer,
     preferences,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     navigation,
     whatsNew,
     tryNext,
@@ -145,7 +145,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     const dashboard = new DashboardPanel({
       indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
       preferences: createPreferences(globalState),
-      extensionUri: { fsPath: '/ext' },
+      extensionUri: vscode.Uri.file('/ext'),
       navigation: createNavigation(),
       writes: modules.taskWrites.createTaskWrites(),
       themePreview: new ThemePreview(),

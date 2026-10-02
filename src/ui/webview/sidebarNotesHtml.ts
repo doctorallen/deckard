@@ -1,10 +1,6 @@
-import * as vscode from 'vscode';
-
 import type { SidebarNotesPageState } from '../protocol/sidebarNotes';
-import { createNonce, loadingHtml } from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { createNonce, loadingHtml, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 
 /**
  * The Related Notes sidebar's shell: its bundle, `dist/webview/sidebarNotes.js`,
@@ -16,31 +12,30 @@ import { type DeckardTheme, getDeckardTheme } from './themes';
  * Keeping the view state-driven lets the host choose between active-note and
  * active-tag contexts while this document remains a simple navigation surface.
  *
- * The page no longer shows the extension's version. The parameter stays until
- * the view takes an options object (19-refactor.md, Phase 5), so its callers
- * and the harnesses that pin them do not change before then.
+ * The page no longer shows the extension's version, so the parameter that
+ * carries it is unused; it is kept so the hosts that pass it are unchanged.
  */
 export function getSidebarNotesHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheets and script are under. */
-  extensionUri: vscode.Uri,
+  extensionUri: ShellUri,
   _extensionVersion: string,
   options: {
-    /** The theme its host read, preview and all; the configured one without. */
-    theme?: DeckardTheme;
+    /** The look its host read: the theme, preview and all, and zen. */
+    chrome: PageChrome;
     /** The snapshot to draw at once, if the shell is to carry one. */
     snapshot?: SidebarNotesPageState;
-  } = {},
+  },
 ): string {
-  const { theme, snapshot } = options;
+  const { chrome, snapshot } = options;
   return buildPageShell({
     webview,
     extensionUri,
     page: 'sidebarNotes',
     title: 'Deckard Context',
     nonce: createNonce(),
-    theme: theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: chrome.theme,
+    zen: chrome.zen,
     bundle: true,
     state: snapshot,
     body: `

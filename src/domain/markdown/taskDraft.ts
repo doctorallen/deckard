@@ -6,7 +6,7 @@ import {
   parseTaskMetadata,
   TaskDateField,
   TaskMetadataFormat,
-} from './taskMetadata';
+} from './taskFields';
 
 /**
  * A task line taken apart, so each part can be edited on its own and the

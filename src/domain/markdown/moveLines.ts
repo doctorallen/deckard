@@ -9,7 +9,7 @@ import {
   TaskLineShape,
 } from './lineShapes';
 import { findListItemEndLine, listItemIndentation } from './parser';
-import { markMigrated } from './taskMetadata';
+import { markMigrated } from './taskLineEdits';
 
 /**
  * What Move to… takes out of a note, and what it leaves behind: pure, so

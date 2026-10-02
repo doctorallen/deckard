@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 
 import { setTimingLog } from '../shared/timing';
-import type { WorkspaceIndex } from '../core/types';
 import { ViewPublisher } from '../core/workspace/viewPublisher';
+import type { WorkspaceIndex } from '../domain/model';
 
 /** A publisher whose view turns a test steps through, one `step` per host turn. */
 function createPublisher() {

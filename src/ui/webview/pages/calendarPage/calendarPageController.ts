@@ -12,7 +12,7 @@ import type { ActiveCalendar, CalendarDaySource } from '../../activeCalendar';
 import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { chooseTheme, openHelp, setZenMode } from '../../host/sharedHandlers';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import {
   CalendarController,
   CalendarIndex,
@@ -108,8 +108,8 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
   }
 
   /** The calendar's HTML, laid out as a page rather than for the sidebar, carrying the month when given one. */
-  public html(webview: vscode.Webview, theme: DeckardTheme, state?: CalendarSnapshot): string {
-    return getCalendarHtml(webview, this.calendarPage.extensionUri, { page: true, theme, state });
+  public html(webview: vscode.Webview, chrome: PageChrome, state?: CalendarSnapshot): string {
+    return getCalendarHtml(webview, this.calendarPage.extensionUri, { page: true, chrome, state });
   }
 
   /**

@@ -1,4 +1,3 @@
-import { TaskMetadataFormat } from '../domain/markdown/taskMetadata';
 import { Task, WorkspaceIndex } from '../domain/model';
 import { QueryContext } from '../domain/query/queryContext';
 import {
@@ -14,6 +13,7 @@ import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
 import type { Configuration } from '../ports/configuration';
+import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
 /**
  * The Tasks view's decisions: what it lists and how it is grouped, which of

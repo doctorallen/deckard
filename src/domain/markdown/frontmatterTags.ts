@@ -1,7 +1,5 @@
 import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
 
-export { unquote } from './frontmatter';
-
 /**
  * Adding a tag to a note's front matter, and taking tags out of it, without
  * touching anything else the front matter says.

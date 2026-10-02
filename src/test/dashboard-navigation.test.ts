@@ -4,14 +4,15 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { DashboardMessage, PersistedPreferences } from '../core/types';
 import { NavigationService } from '../services/navigationService';
-import { DashboardNavigation, DashboardPanelOptions, DashboardPreferences } from '../ui/webview/dashboard';
+import { DashboardPanelOptions } from '../ui/webview/dashboard';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
-import { DashboardController } from '../ui/webview/pages/dashboard/dashboardController';
+import { DashboardController, DashboardNavigation, DashboardPreferences } from '../ui/webview/pages/dashboard/dashboardController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { createTaskWrites } from './taskWrites';
+import { PersistedPreferences } from '../domain/model';
+import { DashboardMessage } from '../ui/protocol/dashboard';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,

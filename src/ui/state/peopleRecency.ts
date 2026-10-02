@@ -1,11 +1,11 @@
 import { isPersonTag } from '../../domain/markdown/parser';
-import { TagInfo, WorkspaceIndex } from '../../core/types';
 import {
   isParkedFile,
   isParkedOnlyTag,
   isParkedSection,
   isParkedTask,
 } from '../../domain/index/parked';
+import { TagInfo, WorkspaceIndex } from '../../domain/model';
 
 /**
  * When each person, or any tag of a namespace, was last written about, and
@@ -15,8 +15,6 @@ import {
  * appeared. That is the question a 1:1 or a standing meeting asks: who have
  * I not written about since the spring, and what is still open with them.
  */
-
-export { isPersonTag };
 
 /** One person, and when their name was last written. */
 export interface PersonRecency {

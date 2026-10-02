@@ -2,19 +2,17 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
-import { PersistedPreferences } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseQueryBlockInfo } from '../ui/state/queryBlockState';
-import {
-  createDashboardSnapshot,
-  createSearchPageSnapshot,
-} from '../ui/state/dashboardState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { PersistedPreferences } from '../domain/model';
 
 /**
  * A contract, held across every surface at once: a task's title is Markdown

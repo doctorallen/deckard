@@ -18,7 +18,7 @@ import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
-import { pageExtensionUri } from './pageWebview';
+import { REPOSITORY_ROOT } from './pageWebview';
 
 /** An in-memory store for the preferences. */
 function createStore() {
@@ -75,7 +75,7 @@ function openSearchPage(queryText = '#project/atlas', options: { hasIndexed?: bo
     exports: {} as SearchPageControllerOptions['exports'],
     navigation: new NavigationService(),
     openTag: async (tagKey) => void openedTags.push(tagKey),
-    extensionUri: pageExtensionUri(),
+    extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
     setTitle: (title) => log.push(`title ${title}`),
     onDidClose: () => {
       closed += 1;

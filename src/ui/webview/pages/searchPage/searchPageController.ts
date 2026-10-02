@@ -23,21 +23,17 @@ import { readQueryContext } from '../../../commands/queryContext';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
-import {
-  createQueryViewState,
-  createSearchPageSnapshot,
-  evaluateSearchPage,
-  normalizeTagTitleDisplayMode,
-  resolveQueryTagIntersection,
-} from '../../../state/dashboardState';
 import { formatQueryBlock } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { chooseTheme, openHelp, openTag, parkTag, renameTag, setZenMode, toggleTask } from '../../host/sharedHandlers';
 import { getSearchPageHtml } from '../../searchPageHtml';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
+import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
+import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
+import { createQueryViewState } from '../../../state/querySuggestions';
 
 /**
  * The preference services a search page reads and writes: the blob it
@@ -206,8 +202,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   }
 
   /** The page as its template draws it, in a theme. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getSearchPageHtml(webview, this.search.extensionUri, theme);
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
+    return getSearchPageHtml(webview, this.search.extensionUri, chrome);
   }
 
   /** What names the page's search, so the same search reached two ways finds this page. */

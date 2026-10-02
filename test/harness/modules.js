@@ -28,17 +28,21 @@ const MODULES = {
   parsedFileCodec: 'core/storage/parsedFileCodec.js',
   timing: 'shared/timing.js',
   indexer: 'core/workspace/indexer.js',
+  periodicNotes: 'domain/notes/periodicNotes.js',
+  graphBuild: 'domain/graph/notesGraph.js',
+  graphChanges: 'domain/graph/graphChanges.js',
   scanner: 'core/workspace/scanner.js',
   // ui/state
   calendarState: 'ui/state/calendarState.js',
   dashboardState: 'ui/state/dashboardState.js',
+  searchPageState: 'ui/state/searchPageState.js',
+  statsState: 'ui/state/statsState.js',
   dashboardWidgets: 'ui/state/dashboardWidgets.js',
   noteLinks: 'ui/state/noteLinks.js',
   notesGraphState: 'ui/state/notesGraphState.js',
   relatedNotesRanking: 'ui/state/relatedNotesRanking.js',
   taskBoardState: 'ui/state/taskBoardState.js',
-  // ui/commands
-  dailyNote: 'ui/commands/dailyNote.js',
+  // ui/commands and ui/providers
   tagDecorations: 'ui/providers/tagDecorations.js',
   workspaceWrites: 'ui/commands/workspaceWrites.js',
   // The task writes a harness hands to a page host, as the extension builds them.
@@ -68,7 +72,7 @@ const MODULES = {
   sidebarNotesHtml: 'ui/webview/sidebarNotesHtml.js',
   statsHtml: 'ui/webview/statsHtml.js',
   taskBoardHtml: 'ui/webview/taskBoardHtml.js',
-  themes: 'ui/webview/themes.js',
+  themeNames: 'ui/webview/themeNames.js',
   themePreview: 'ui/webview/themePreview.js',
   // src/test: the page catalog the mocha suites share
   pageCatalog: 'test/pages.js',

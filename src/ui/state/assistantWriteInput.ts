@@ -1,5 +1,5 @@
 import { isRecord } from '../../shared/guards';
-import { TaskPriority } from '../../core/types';
+import { TaskPriority } from '../../domain/model';
 
 /**
  * What an assistant may send to the two write tools, read and checked

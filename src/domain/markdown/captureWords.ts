@@ -1,7 +1,8 @@
 import { TaskPriority } from '../model';
 import { DatePhraseOptions, parseDatePhrase } from './dates';
 import { parseTaskDraft, formatTaskDraft } from './taskDraft';
-import { parseRecurrence, TaskMetadataFormat } from './taskMetadata';
+import { TaskMetadataFormat } from './taskFields';
+import { parseRecurrence } from './recurrence';
 
 /** What a captured task says about itself in plain words at its end, and the line it becomes. */
 export interface CaptureReading {

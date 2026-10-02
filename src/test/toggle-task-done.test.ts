@@ -2,13 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import {
-  describeToggle,
-  selectedLines,
-  toggleTaskDoneCommand,
-  toggleTaskLines,
-} from '../ui/commands/toggleTaskDone';
+import { describeToggle, toggleTaskDoneCommand } from '../ui/commands/toggleTaskDone';
 import { createTaskWrites } from './taskWrites';
+import { selectedLines, toggleTaskLines } from '../domain/tasks/toggleLines';
 
 /** Friday 2026-09-25, mid-morning. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();

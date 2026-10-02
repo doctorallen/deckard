@@ -4,8 +4,8 @@ import { fileExists } from './fs';
 import { getPersonMarker } from '../../domain/markdown/parser';
 import { matchesPerson } from '../../domain/query/queryEvaluator';
 import { pluralize } from '../../shared/text';
-import { UnreadableNote, WorkspaceIndex } from '../../core/types';
 import { WorkspaceScanner } from '../../core/workspace/scanner';
+import { UnreadableNote, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Deckard has forty-nine settings, and the effect of most of them is that

@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 
 import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
 import { parseTaskDraft, formatTaskDraft } from '../../domain/markdown/taskDraft';
-import { TaskMetadataFormat } from '../../domain/markdown/taskMetadata';
-import { WorkspaceIndex } from '../../core/types';
-import { createPinForLine, findPinnedSection } from '../state/pinnedNotes';
 import { createWikiLink } from './insertLink';
+import { createPinForLine, findPinnedSection } from '../../domain/notes/pins';
+import { WorkspaceIndex } from '../../domain/model';
+import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
 
 /** The longest selection, in characters, that Find and Capture start from. */
 export const SHORT_SELECTION_LIMIT = 120;

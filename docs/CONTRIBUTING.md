@@ -65,8 +65,9 @@ what it does but not why it is shaped that way.
 exports, class methods, and exported types need a block; parameter names
 must match; a block that documents some parameters documents them all; and
 a block that only repeats its name fails. Code written before these rules
-is listed in `eslint.known-violations.mjs` and is brought up to them as it
-is touched. Whether a comment explains why is for a reviewer to judge, so a
+was listed in `eslint.known-violations.mjs` until it was brought up to
+them; the list is empty now, and a new violation is fixed rather than
+recorded there. Whether a comment explains why is for a reviewer to judge, so a
 review asks it of every block and comment the change adds.
 
 ## Webview components

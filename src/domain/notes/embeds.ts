@@ -1,8 +1,4 @@
-import {
-  BLOCK_ID_PATTERN,
-  findFencedLines,
-  parseMarkdown,
-} from '../markdown/parser';
+import { parseMarkdown } from '../markdown/parser';
 import { createPreviewSourceHref } from '../markdown/sourceLinks';
 import { ParsedFile, WorkspaceIndex } from '../model';
 import {
@@ -12,6 +8,8 @@ import {
   parseWikiTarget,
   resolveWikiTarget,
 } from '../index/backlinks';
+import { findFencedLines } from '../markdown/lineShapes';
+import { BLOCK_ID_PATTERN } from '../markdown/taskFields';
 
 /**
  * What a `![[Note]]`, `![[Note#Heading]]`, or `![[Note#^id]]` embed names:

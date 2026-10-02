@@ -7,19 +7,14 @@ import {
   formatShortDay,
   parseDatePhrase,
 } from '../../domain/markdown/dates';
-import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../domain/markdown/taskMetadata';
 import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
-import {
-  chooseWorkspaceFolder,
-  DailyNoteEntry,
-  ensurePeriodicNote,
-  listDailyNotes,
-  parseLocalDate,
-} from './dailyNote';
+import { chooseWorkspaceFolder, ensurePeriodicNote } from './dailyNote';
 import { DATE_INPUT_ERROR, readDateOptions } from './datePrompt';
 import { openSourceAt } from './navigation';
 import { createDailyNoteWithRollover } from './rollover';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { DailyNoteEntry, listDailyNotes, parseLocalDate } from '../../domain/notes/periodicNotes';
+import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * Opening the daily note for any day named in words.

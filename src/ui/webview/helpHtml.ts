@@ -1,16 +1,10 @@
 import { GUIDE_PAGES, HELP_READ_MORE } from './guide';
-import * as vscode from 'vscode';
-
-import {
-  createNonce,
-} from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
+import { createNonce, type PageChrome } from './components';
+import { buildPageShell, joinUnder, type ShellUri, type ShellWebview } from './host/pageShell';
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
 import { escapeHtml } from '../../shared/html';
 import { GUIDE_IMAGE_BASE } from './pages/help/guideLinks';
 import { describeHelpCommands, type HelpManifest, linkCommandNames, renderCommandName } from './pages/help/helpManifest';
-import { type DeckardTheme, getDeckardTheme } from './themes';
 
 /** A short line for what a command is for, beyond the name it goes by. */
 const COMMAND_NOTES: Readonly<Record<string, string>> = {
@@ -170,7 +164,7 @@ function renderReadMore(section: string): string {
   return `<p class="read-more"><a href="#" data-guide-page="${target.page}"${target.anchor ? ` data-guide-anchor="${target.anchor}"` : ''}>Read more: ${escapeHtml(GUIDE_PAGES[target.page])} →</a></p>`;
 }
 
-/** What a Help page is drawn for, beyond the manifest; each is optional. */
+/** What a Help page is drawn for, beyond the manifest: the look it is drawn in, and what else it is given. */
 export interface HelpOptions {
   /** The platform whose key bindings the command table shows; the running one without. */
   platform?: NodeJS.Platform;
@@ -180,8 +174,8 @@ export interface HelpOptions {
   newSince?: string;
   /** A section to scroll to once the page has loaded. */
   anchor?: string;
-  /** The theme its host read, preview and all; the configured one without. */
-  theme?: DeckardTheme;
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome;
 }
 
 /**
@@ -190,10 +184,10 @@ export interface HelpOptions {
  * linked to what the manifest says they do.
  */
 export function getHelpHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
-  extensionUri: vscode.Uri,
+  webview: ShellWebview,
+  extensionUri: ShellUri,
   manifest: HelpManifest = {},
-  options: HelpOptions = {},
+  options: HelpOptions,
 ): string {
   const platform = options.platform ?? process.platform;
   return linkCommandNames(
@@ -228,8 +222,8 @@ export function renderWhatsNew(releases: readonly Release[], newSince?: string):
 
 /** What buildHelpHtml draws the page from. */
 interface HelpPageInputs {
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>;
-  extensionUri: vscode.Uri;
+  webview: ShellWebview;
+  extensionUri: ShellUri;
   manifest: HelpManifest;
   /** The platform already resolved from the options, so both tables agree on it. */
   platform: NodeJS.Platform;
@@ -240,7 +234,7 @@ interface HelpPageInputs {
 function buildHelpHtml({ webview, extensionUri, manifest, platform, options }: HelpPageInputs): string {
   const nonce = createNonce();
   const logoUri = webview
-    .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
+    .asWebviewUri(joinUnder(extensionUri, 'resources', 'deckard.svg'))
     .toString();
 
   return buildPageShell({
@@ -249,8 +243,8 @@ function buildHelpHtml({ webview, extensionUri, manifest, platform, options }: H
     page: 'help',
     title: 'Deckard Help',
     nonce,
-    theme: options.theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: options.chrome.theme,
+    zen: options.chrome.zen,
     csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
     bodyAttributes: options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : '',
     // src/webview/help/main.ts: the rail, the guide view, and the way back.

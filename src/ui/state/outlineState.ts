@@ -1,5 +1,5 @@
 import { stripTags } from '../../domain/markdown/parser';
-import { ParsedFile, Section, TagReference } from '../../core/types';
+import { ParsedFile, Section, TagReference } from '../../domain/model';
 
 /**
  * One heading in the document outline.

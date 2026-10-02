@@ -11,7 +11,7 @@ import { StatsController, StatsControllerOptions } from '../ui/webview/pages/sta
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { createPreferences } from './preferenceServices';
-import { pageExtensionUri, pageWebview } from './pageWebview';
+import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
 import { openWebviewPage } from './webviewPage';
 
 /** An in-memory store for the preferences. */
@@ -48,7 +48,7 @@ function openStats(options: { drawHtml?: boolean } = {}) {
     preferences,
     onOpenTag: (tagKey) => void openedTags.push(tagKey),
     navigation: new NavigationService(),
-    extensionUri: pageExtensionUri(),
+    extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();

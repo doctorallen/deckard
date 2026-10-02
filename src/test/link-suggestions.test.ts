@@ -6,9 +6,9 @@ import { findWikiLinkTargets } from '../domain/index/wikiLinkTargets';
 import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { describeDay, parseDatePhrase } from '../domain/markdown/dates';
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createWikiLink } from '../ui/commands/insertLink';
+import { WorkspaceIndex } from '../domain/model';
 
 suite('Wiki link suggestions', () => {
   test('completes workspace note titles inside Wiki links', async () => {

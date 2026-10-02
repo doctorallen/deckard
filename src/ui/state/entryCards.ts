@@ -1,18 +1,5 @@
 import { describeSteps } from '../../domain/markdown/taskSteps';
-import {
-  DashboardNote,
-  DashboardTask,
-  ParsedFile,
-  Section,
-  Task,
-  TagTitleDisplayMode,
-  TagOverviewCard,
-  TagOverviewHub,
-  TagOverviewSortMode,
-  TaskSortMode,
-} from '../../core/types';
 import { QueryContext } from '../../domain/query/queryContext';
-import { describeDueDate } from '../../domain/markdown/taskMetadata';
 import { getFileName } from '../../shared/paths';
 import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
 import { tokenizeInline } from '../../domain/markdown/inline';
@@ -24,6 +11,11 @@ import {
   getNoteTitle,
   getTitleTags,
 } from '../../domain/ranking/entryLabels';
+import { describeDueDate } from '../../domain/markdown/dueWording';
+import { TagOverviewHub } from '../protocol/searchPage';
+import { ParsedFile, Section, Task, TagTitleDisplayMode, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
+import { DashboardTask, TagOverviewCard } from '../protocol/shared';
+import { DashboardNote } from '../protocol/dashboard';
 
 /**
  * The cards and task rows every page draws an entry as, and the orders they

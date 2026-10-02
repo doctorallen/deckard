@@ -1,6 +1,5 @@
 import type MarkdownIt from 'markdown-it';
 
-import { WorkspaceIndex } from '../../core/types';
 import { parseWikiTarget } from '../../domain/index/backlinks';
 import {
   ATTACHMENT,
@@ -9,14 +8,7 @@ import {
   resolveEmbed,
 } from '../../domain/notes/embeds';
 import { escapeHtml } from '../../shared/html';
-
-export {
-  createSourceParser,
-  findEmbedLines,
-  resolveEmbed,
-  withoutFrontmatter,
-} from '../../domain/notes/embeds';
-export type { ResolvedEmbed, SourceParser } from '../../domain/notes/embeds';
+import { WorkspaceIndex } from '../../domain/model';
 
 /** How deep an embed inside an embed is drawn before it becomes a link. */
 const MAX_DEPTH = 3;

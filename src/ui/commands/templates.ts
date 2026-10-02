@@ -4,10 +4,8 @@ import type { NoteFiles } from '../../core/workspace/indexReader';
 import { findTemplatePrompts } from '../../domain/notes/templates';
 import { TemplateNoteResult, TemplateService } from '../../services/templateService';
 import { chooseTargetFolder } from './dailyNote';
-import { getExtractedNoteFileName } from './extractHeading';
 import { openNoteAction, openSettingAction, reportFailure, settingLabel } from './notify';
-
-export { fillTemplate, findTemplatePrompts, getTemplateVariables } from '../../domain/notes/templates';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 
 /**
  * New Note from Template: the prompts, and what they came to. Filling the

@@ -1,6 +1,10 @@
+import { QueryContext } from '../../domain/query/queryContext';
+import { parseQuery } from '../../domain/query/queryParser';
+import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
+import { baseCollator } from './entryCards';
+import { resolveQueryTags } from './querySuggestions';
+import { listFrontmatterOnlyFiles } from './searchPageState';
 import {
-  DashboardSavedFilter,
-  DashboardSnapshot,
   Entity,
   PersistedPreferences,
   TagInfo,
@@ -8,66 +12,8 @@ import {
   TagTitleDisplayMode,
   TagReference,
   WorkspaceIndex,
-  TaskGlance,
-} from '../../core/types';
-import { QueryContext } from '../../domain/query/queryContext';
-import { parseQuery } from '../../domain/query/queryParser';
-import { getFileName } from '../../shared/paths';
-import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
-import {
-  getHeadingPath,
-  getInlineSource,
-  getNoteTitle,
-  getTitleTags,
-} from '../../domain/ranking/entryLabels';
-import { findTagAssociation } from '../../domain/ranking/tagAssociations';
-import { baseCollator } from './entryCards';
-import { resolveQueryTags } from './querySuggestions';
-import { listFrontmatterOnlyFiles } from './searchPageState';
-
-// dashboardWidgets.ts still imports getFileName from here; the re-export
-// keeps that path compiling until it imports core/paths itself.
-export { getFileName };
-// The entry labels and the association lookup moved to domain/ranking with
-// the Related Notes engine; these keep their importers here compiling.
-export { findTagAssociation, getHeadingPath, getInlineSource, getNoteTitle, getTitleTags };
-// The search page, Stats, the query bar's suggestions, and the cards and
-// sorts they share each have a module of their own; these keep the names
-// importers found here compiling.
-export {
-  sortTasks,
-  sortTagOverviewCards,
-  sortDashboardNotes,
-  createDashboardTask,
-  normalizeTagTitleDisplayMode,
-} from './entryCards';
-export {
-  createQueryViewState,
-  describeTagMatches,
-  createQuerySuggestions,
-  describeQueryField,
-} from './querySuggestions';
-export type {
-  QueryViewStateOptions,
-} from './querySuggestions';
-export {
-  createDeckardStatsSnapshot,
-  createStatsTrends,
-  createTagPairs,
-  createTagUsage,
-} from './statsState';
-export {
-  createSearchPageSnapshot,
-  tagMentionWord,
-  evaluateSearchPage,
-  resolveQueryTagIntersection,
-  describeAssociation,
-  findSnippetStart,
-} from './searchPageState';
-export type {
-  SearchPageOptions,
-  SearchPageResults,
-} from './searchPageState';
+} from '../../domain/model';
+import { DashboardSavedFilter, DashboardSnapshot, TaskGlance } from '../protocol/dashboard';
 
 /** What the dashboard model is projected from. */
 export interface DashboardSnapshotOptions {

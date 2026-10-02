@@ -1,23 +1,13 @@
 import { escapeRegExp } from '../../shared/text';
-import { SHORT_WEEKDAY_NAMES } from '../markdown/calendar';
+import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
 import { findCodeAndLinkRanges, isInRanges } from '../markdown/inlineRanges';
 import { parseMarkdown, readPerson } from '../markdown/parser';
-import {
-  addDays,
-  appendToTaskText,
-  formatIsoDate,
-  parseTaskMetadata,
-  setTaskAssignee,
-  setTaskDate,
-  setTaskLineCompletion,
-  setTaskPriority,
-  startOfDay,
-  TaskMetadataFormat,
-} from '../markdown/taskMetadata';
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
 import { isStatusColumnName } from './taskColumns';
+import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
+import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
 
 /**
  * What dropping a task on a board column means for its line.
@@ -106,7 +96,7 @@ export function resolveTaskMove(
   const value = separator < 0 ? '' : columnId.slice(separator + 1);
   const column = task.checkboxColumn;
   const reopen = (line: string): string =>
-    task.completed ? setTaskLineCompletion(line, column, false) : line;
+    task.completed ? setTaskLineCompletion(line, column, { completed: false }) : line;
 
   if (kind === 'tag') {
     return moveToTag(value, reopen);
@@ -183,7 +173,7 @@ function moveToDue(request: MoveRequest): TaskMove {
       kind: 'edit',
       label: value === 'today' ? 'Due today' : 'Due tomorrow',
       edit: (line) =>
-        setTaskDate(reopen(line), column, 'due', date, options.format),
+        setTaskDate(reopen(line), column, { field: 'due', date, preferredFormat: options.format }),
     };
   }
   if (value === '') {
@@ -197,7 +187,7 @@ function moveToDue(request: MoveRequest): TaskMove {
     return {
       kind: 'edit',
       label: 'No due date',
-      edit: (line) => setTaskDate(reopen(line), column, 'due', undefined),
+      edit: (line) => setTaskDate(reopen(line), column, { field: 'due', date: undefined }),
     };
   }
   return refuseMove(
@@ -215,7 +205,11 @@ function moveToDate({ task, value, options, reopen }: MoveRequest): TaskMove {
   return {
     kind: 'edit',
     label: `Due ${weekday} ${value}`,
-    edit: (line) => setTaskDate(reopen(line), task.checkboxColumn, 'due', value, options.format),
+    edit: (line) => setTaskDate(reopen(line), task.checkboxColumn, {
+      field: 'due',
+      date: value,
+      preferredFormat: options.format,
+    }),
   };
 }
 

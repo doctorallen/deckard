@@ -3,16 +3,16 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { noteTitle } from '../../domain/index/backlinks';
-import { PersistedPreferences, WorkspaceIndex } from '../../core/types';
 import { Weekday } from '../../domain/markdown/dates';
-import { findTagMergeCandidates } from '../state/tagHygiene';
 import {
   chooseTryNext,
   TRY_NEXT_SNOOZE_MS,
   TryNextInput,
   TryNextSuggestion,
 } from '../state/tryNext';
-import { findPeriodicNoteNames, listDailyNotes } from './dailyNote';
+import { findPeriodicNoteNames, listDailyNotes } from '../../domain/notes/periodicNotes';
+import { findTagMergeCandidates } from '../../domain/ranking/tagHygiene';
+import { PersistedPreferences, WorkspaceIndex } from '../../domain/model';
 
 /**
  * What Home's Try next has been told: suggestions retired for good, and ones

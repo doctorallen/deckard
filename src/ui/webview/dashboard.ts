@@ -16,8 +16,6 @@ import {
 } from './pages/dashboard/dashboardController';
 import type { ThemePreview } from './themePreview';
 
-export type { DashboardNavigation, DashboardPreferences } from './pages/dashboard/dashboardController';
-
 /** What Home is built from. */
 export interface DashboardPanelOptions {
   indexer: IndexReader & IndexScanStatus & IndexUpdates & IndexControl;

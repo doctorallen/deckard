@@ -1,9 +1,9 @@
 import type { Disposable, Event } from '../../ports/events';
 import { Emitter } from '../../shared/emitter';
 import { measure, reportError } from '../../shared/timing';
-import type { WorkspaceIndex } from '../types';
 import type { IndexUpdates } from './indexReader';
 import type { ViewUpdateOptions } from './publishing';
+import type { WorkspaceIndex } from '../../domain/model';
 
 /** A view waiting for its turn to redraw from the index. */
 interface ViewSubscription {

@@ -1,4 +1,4 @@
-import { ParsedFile, Section, Task } from '../types';
+import { ParsedFile, Section, Task } from '../../domain/model';
 
 /**
  * A parsed note as text for the local cache, and back, exactly.

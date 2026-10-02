@@ -6,7 +6,6 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { NavigationService } from '../services/navigationService';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
@@ -15,7 +14,8 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
-import { pageExtensionUri } from './pageWebview';
+import { REPOSITORY_ROOT } from './pageWebview';
+import { WorkspaceIndex } from '../domain/model';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -73,7 +73,7 @@ suite('Adding a suggested tag', () => {
       history,
       themePreview,
       navigation: new NavigationService(),
-      extensionUri: pageExtensionUri(),
+      extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
     });
     const view = new WebviewHost(controller, { indexer: indexer as never, themePreview });
     // A hidden sidebar ranks nothing until it is shown, so only the

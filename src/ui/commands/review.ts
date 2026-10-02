@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-import { PreferencesReader } from '../../core/storage/preferences';
 import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import {
   parsePeriodicNoteName,
@@ -23,16 +22,13 @@ import {
   summarizeReview,
   writeReviewInto,
 } from '../state/reviewState';
-import {
-  chooseTargetFolder,
-  ensurePeriodicNote,
-  findExistingPeriodicNote,
-  NotePeriod,
-} from './dailyNote';
+import { chooseTargetFolder, ensurePeriodicNote, findExistingPeriodicNote } from './dailyNote';
 import { readWeekStart } from './datePrompt';
 import { readQueryContext } from './queryContext';
 import { revealLine } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
+import { NotePeriod } from '../../domain/notes/periodicNotes';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
  * Write Review, and the review a new weekly or monthly note starts with.

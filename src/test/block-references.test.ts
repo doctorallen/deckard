@@ -2,8 +2,7 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { findBlockIds, findFencedLines, parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
+import { findBlockIds, parseMarkdown } from '../domain/markdown/parser';
 import {
   buildBacklinkIndex,
   parseWikiTarget,
@@ -11,6 +10,8 @@ import {
 import { findWikiLinkTargets } from '../domain/index/wikiLinkTargets';
 import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { createLinkPreview } from '../ui/state/referenceState';
+import { WorkspaceIndex } from '../domain/model';
+import { findFencedLines } from '../domain/markdown/lineShapes';
 
 /**
  * Links that name one line of a note rather than the whole note or one of its

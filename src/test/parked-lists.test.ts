@@ -1,8 +1,6 @@
 import * as assert from 'assert';
 
 import { createPreferences } from './preferenceServices';
-import { DashboardWidgetConfig, PersistedPreferences } from '../core/types';
-import { planRollover } from '../ui/commands/rollover';
 import { selectAgendaTasks } from '../ui/state/agendaState';
 import { createCalendar } from '../ui/state/calendarState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
@@ -12,6 +10,8 @@ import { createTaskBoard } from '../ui/state/taskBoardState';
 import { countDueTasks } from '../ui/views/taskStatusBar';
 import { indexWithParking } from './parkedFixture';
 import { createQueryContext } from '../domain/query/queryContext';
+import { planRollover } from '../domain/notes/rolloverPlan';
+import { DashboardWidgetConfig, PersistedPreferences } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Noon on Wednesday 2026-09-16. */

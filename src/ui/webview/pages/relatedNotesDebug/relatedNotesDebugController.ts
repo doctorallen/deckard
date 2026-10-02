@@ -3,9 +3,9 @@ import type * as vscode from 'vscode';
 import type { RelatedNotesDebugPageToHost } from '../../../protocol/relatedNotesDebug';
 import type { MessageHandlers, PageController, PageOptions } from '../../host/pageController';
 import { getRelatedNotesDebugHtml } from '../../relatedNotesDebugHtml';
-import type { EntryRelatedNotesDiagnostic } from '../../sidebarNotes';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowRelatedNotesDebugMessage } from './messages';
+import type { EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
 
 /**
  * The Related Notes debug page: the full evidence calculation for one
@@ -47,8 +47,8 @@ export class RelatedNotesDebugController implements PageController<never, Relate
    * The page's HTML, drawing the evidence kept last. Only `show` draws it,
    * after keeping the evidence, so it is never empty on screen.
    */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return this.diagnostic ? getRelatedNotesDebugHtml(webview, this.extensionUri, this.diagnostic, theme) : '';
+  public html(webview: vscode.Webview, chrome: PageChrome): string {
+    return this.diagnostic ? getRelatedNotesDebugHtml(webview, this.extensionUri, this.diagnostic, chrome) : '';
   }
 
   /** The evidence is drawn whole in the HTML, so there is never a snapshot to send. */

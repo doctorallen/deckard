@@ -5,9 +5,10 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { chooseTheme, ChooseThemeDeps, ThemeItem } from '../ui/commands/chooseTheme';
-import { onDidChangePageChrome } from '../ui/webview/components';
-import { DeckardTheme, getDeckardTheme } from '../ui/webview/themes';
+import { onDidChangePageChrome } from '../ui/webview/host/pageChrome';
+import { getDeckardTheme } from '../ui/webview/themes';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { DeckardTheme } from '../ui/webview/themeNames';
 
 const manifest = (
   JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8')) as {

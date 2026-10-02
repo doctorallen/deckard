@@ -16,7 +16,7 @@ const VSCODE = 'vscode';
  * Cruises `src` and returns every module with the modules it imports.
  *
  * @returns {Map<string, string[]>} Each module's repository-relative path,
- *   such as `src/core/types.ts`, mapped to what it resolves its imports to;
+ *   such as `src/domain/model/tasks.ts`, mapped to what it resolves its imports to;
  *   `vscode` and Node's own modules appear by name.
  */
 function readImportGraph() {

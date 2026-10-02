@@ -1,10 +1,4 @@
-import {
-  ParsedFile,
-  Section,
-  Task,
-  TagAssociation,
-  WorkspaceIndex,
-} from '../../core/types';
+import { ParsedFile, Section, Task, TagAssociation, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Whether an entry carries a tag the way a multi-tag overview counts it, and

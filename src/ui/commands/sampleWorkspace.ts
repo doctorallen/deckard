@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { formatLocalDate } from './dailyNote';
 import { fileExists } from './fs';
 import { reportFailure } from './notify';
+import { formatLocalDate } from '../../domain/notes/periodicNotes';
 
 /**
  * Somewhere to start.

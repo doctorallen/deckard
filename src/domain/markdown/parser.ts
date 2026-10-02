@@ -8,11 +8,6 @@ import {
   TagReference,
   Task,
 } from '../model';
-import {
-  BLOCK_ID_PATTERN,
-  MIGRATED_TASK_LINE,
-  parseTaskMetadata,
-} from './taskMetadata';
 import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
 import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
 import { findListParents, findParentTaskLine } from './listNesting';
@@ -26,9 +21,8 @@ import {
 } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
-
-export { BLOCK_ID_PATTERN } from './taskMetadata';
-export { findFencedLines } from './lineShapes';
+import { MIGRATED_TASK_LINE } from './taskLineEdits';
+import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds

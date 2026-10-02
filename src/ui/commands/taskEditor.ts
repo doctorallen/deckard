@@ -13,20 +13,16 @@ import {
   parseTaskDraft,
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  parseRecurrence,
-  suggestRecurrence,
-  TaskDateField,
-  writeCompletion,
-} from '../../domain/markdown/taskMetadata';
-import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { askForDate } from './datePrompt';
 import { showQuickPickUntilHidden } from './prompts';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
+import { TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { TaskDateField } from '../../domain/markdown/taskFields';
+import { parseRecurrence, suggestRecurrence } from '../../domain/markdown/recurrence';
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { CompletionWrite, writeCompletion } from '../../domain/markdown/taskLineEdits';
 
 /**
  * Editing a whole task at once: its words, its dates, its priority, its
@@ -241,7 +237,7 @@ export function writeEditedTask({ before, edited, now, eol, steps = [] }: Edited
   if (before.completed || !edited.completed) {
     return { text: line };
   }
-  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol, steps);
+  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, { now, eol, steps });
 }
 
 /** A draft, the date field to set on it, and the words written for it. */

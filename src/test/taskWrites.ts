@@ -7,7 +7,6 @@ import { createVscodeEditApplier, createVscodeHistoryWriter } from '../platform/
 import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import { MoveService } from '../services/moveService';
 import { TaskRankKeeper, TaskService } from '../services/taskService';
-import { getCaptureInsertion } from '../ui/commands/capture';
 import { resolveSourceUri } from '../ui/commands/navigation';
 import { TaskWrites } from '../ui/commands/taskActions';
 import { WorkspaceWriteHistory, WriteHandle } from '../ui/commands/workspaceWrites';
@@ -21,6 +20,7 @@ import { isNamespaceName } from '../ui/state/tagGrouping';
 import { resolveTaskMove } from '../ui/state/taskBoardState';
 import { AgendaTreeServices } from '../ui/views/agendaTree';
 import { countDueTasks } from '../ui/views/taskStatusBar';
+import { getCaptureInsertion } from '../domain/capture/captureLines';
 
 /**
  * Task writes over `history`, carrying ranks to `keepRank`, which drops them

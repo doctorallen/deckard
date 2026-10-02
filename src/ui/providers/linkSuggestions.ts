@@ -1,11 +1,10 @@
 import { isParkedFile } from '../../domain/index/parked';
 import * as vscode from 'vscode';
 
-import { BLOCK_ID_PATTERN, stripTags } from '../../domain/markdown/parser';
+import { stripTags } from '../../domain/markdown/parser';
 import { describeDay, parseDatePhrase } from '../../domain/markdown/dates';
 import { readDateOptions } from '../commands/datePrompt';
 import { measureAsync } from '../../shared/timing';
-import { ParsedFile, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   noteTitle,
@@ -19,9 +18,11 @@ import {
 } from '../../domain/markdown/completionContext';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from '../commands/navigation';
-import { frecencyScore } from '../state/frecency';
 import { scoreTitle } from '../state/quickFindState';
 import { whenPublished } from '../../core/workspace/publishing';
+import { frecencyScore } from '../../domain/ranking/frecency';
+import { ParsedFile, WorkspaceIndex } from '../../domain/model';
+import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 
 /** How often and how lately each entry was opened, which ranks the notes. */
 interface AccessSource {

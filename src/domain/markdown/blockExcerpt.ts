@@ -1,6 +1,7 @@
-import { InlineToken, mapInlineTokens } from './inline';
+import { mapInlineTokens } from './inline';
 import { MarkdownToken, parseBlockMarkdown } from './markdownTokens';
 import type { BlockToken, HeadingBlock, ListBlock } from '../model/blocks';
+import { InlineToken } from '../model';
 
 /**
  * A note excerpt as a block token tree, the way a card shows it: paragraphs,
@@ -13,17 +14,6 @@ import type { BlockToken, HeadingBlock, ListBlock } from '../model/blocks';
  * link reference definitions included; this maps its tokens into the tree.
  * HTML blocks never arise, since `html: false` reads them as paragraphs.
  */
-
-export type {
-  BlockToken,
-  CodeBlock,
-  HeadingBlock,
-  ListBlock,
-  ParagraphBlock,
-  QuoteBlock,
-  RuleBlock,
-  TableBlock,
-} from '../model/blocks';
 
 /**
  * Reads Markdown, a card's excerpt, into blocks as markdown-it's `render`

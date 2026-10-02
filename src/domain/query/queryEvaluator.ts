@@ -1,7 +1,6 @@
 import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../tasks/taskPolicy';
 import { DAY_MS, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../../shared/paths';
-import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
@@ -22,10 +21,9 @@ import {
 import { QueryContext } from './queryContext';
 import { DateDirection, resolveDateRange } from './queryDates';
 import { compareByOperator, QueryConditionNode, QueryNode } from './queryTypes';
-import { escapeRegExp, isWildcard, normalizeFolder } from './queryValues';
-
-export type { DateDirection } from './queryDates';
-export { resolveDateRange } from './queryDates';
+import { isWildcard, normalizeFolder } from './queryValues';
+import { escapeRegExp } from '../../shared/text';
+import { TASK_PRIORITY_RANKS } from '../markdown/taskFields';
 
 /** What a search finds, by kind, each list in index order. */
 export interface QueryResults {

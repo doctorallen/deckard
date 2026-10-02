@@ -10,8 +10,8 @@ const { mountWebview } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { CalendarView } = modules.calendar;
 const { parseMarkdown } = modules.parser;
-const { buildWorkspaceIndex } = modules.indexer;
-const { formatLocalDate, getPeriodicNote } = modules.dailyNote;
+const { buildWorkspaceIndex } = modules.indexState;
+const { formatLocalDate, getPeriodicNote } = modules.periodicNotes;
 const { ThemePreview } = modules.themePreview;
 
 // The stub has no editor, so record what the host tries to open instead.
@@ -50,7 +50,7 @@ async function openCalendar() {
     getSnapshot: () => index,
     onDidUpdate: updates.event,
   };
-  const calendar = new CalendarView(indexer, modules.taskWrites.createTaskWrites(), new ThemePreview(), { fsPath: '/ext' });
+  const calendar = new CalendarView(indexer, modules.taskWrites.createTaskWrites(), new ThemePreview(), vscode.Uri.file('/ext'));
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;

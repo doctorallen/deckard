@@ -36,8 +36,6 @@ import { scoreReference } from './relatedNotesScore';
 import { createAssociationMatcher, TagAssociationMatches } from './tagAssociations';
 import { createLexicalModel, getSectionLexicalContent } from './wordSimilarity';
 
-export type { RelatedNotesRankingAt, RelatedNotesRankingOptions } from './relatedNotesContext';
-
 /** The note ranked against, and how its tags and titles count. */
 export interface RelatedNotesSubject {
   /** Its path, or undefined for a note not saved in the workspace. */

@@ -1,12 +1,11 @@
 import { isParkedTask } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
-import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
-import { formatIsoDate } from '../../domain/markdown/taskMetadata';
+import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
-import { Task, WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
+import { Task, WorkspaceIndex } from '../../domain/model';
 
 /**
  * What a week or a month came to, written into its periodic note.

@@ -1,8 +1,10 @@
 /**
  * Escaping for the HTML the extension host writes as text: the Markdown
- * preview's plugins, the Help page, and the Related Notes diagnostic. Page
- * scripts keep their own copy until they become modules (19-refactor.md,
- * §2.4), since they cannot import host code.
+ * preview's plugins, the page shells, the Help page, and the Related Notes
+ * diagnostic. The pages draw with Preact, which escapes what it renders;
+ * `src/webview/shared/markWords.ts`, which writes text as HTML to mark the
+ * words a search matched, keeps its own copy, since a page cannot import
+ * host code.
  */
 
 /**

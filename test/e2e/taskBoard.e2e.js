@@ -59,7 +59,7 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
   const board = new TaskBoardPanel({
     indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     preferences,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     openTag: async () => undefined,
     activeSearch,
     writes: modules.taskWrites.createTaskWrites(),
@@ -89,7 +89,7 @@ async function reopenBoard(state) {
   const board = new TaskBoardPanel({
     indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
     preferences,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     openTag: async () => undefined,
     activeSearch: new ActiveSearch(),
     writes: modules.taskWrites.createTaskWrites(),
@@ -379,7 +379,7 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   const dashboard = new DashboardPanel({
     indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
     preferences,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     navigation: {
       openTag: () => undefined,
       openSearch: (query) => opened.push(`search ${query}`),

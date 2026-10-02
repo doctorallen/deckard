@@ -6,7 +6,6 @@ import {
   getPersonMarker,
   stripTags,
 } from '../../domain/markdown/parser';
-import { Section, Task } from '../../core/types';
 import {
   applyBulkEdit,
   BulkEdit,
@@ -15,6 +14,7 @@ import {
 } from './bulkEdit';
 import { askForDate } from './datePrompt';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { Section, Task } from '../../domain/model';
 
 /**
  * Asking what to do to a search's results, and to which of them.

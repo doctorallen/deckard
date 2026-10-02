@@ -1,21 +1,10 @@
-import { TagInfo, TagReference, WorkspaceIndex } from '../../core/types';
 import { isPersonTag } from '../../domain/markdown/parser';
 import { canAppendTerm, getTopLevelJoin, getTopLevelTerms } from '../../domain/query/queryEdit';
 import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { collectQueryTagKeys, quoteValue, toBuilderTree } from '../../domain/query/queryFormat';
 import { FIELD_ALIASES, parseQuery } from '../../domain/query/queryParser';
-import {
-  ParsedQuery,
-  QueryFacet,
-  QuerySuggestion,
-  QuerySuggestions,
-  QueryViewState,
-  QUERY_FIELD_OPERATORS,
-  QUERY_FIELDS,
-  QUERY_PRIORITY_VALUES,
-} from '../../domain/query/queryTypes';
-import { addDays } from '../../domain/markdown/taskMetadata';
+import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES } from '../../domain/query/queryTypes';
 import {
   formatMonthDay,
   formatMonthName,
@@ -27,6 +16,16 @@ import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getFileName } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
+import { addDays } from '../../domain/markdown/calendar';
+import {
+  TagInfo,
+  TagReference,
+  WorkspaceIndex,
+  QueryFacet,
+  QuerySuggestion,
+  QuerySuggestions,
+  QueryViewState,
+} from '../../domain/model';
 
 /**
  * What the query bar and its builder offer: the state of one parsed search,

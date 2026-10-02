@@ -1,9 +1,5 @@
-import * as vscode from 'vscode';
-
-import { createNonce, loadingHtml } from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { createNonce, loadingHtml, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 
 /**
  * The Dashboard's shell: its bundle, `dist/webview/dashboard.js`, draws Home
@@ -12,11 +8,11 @@ import { type DeckardTheme, getDeckardTheme } from './themes';
  * posts its state; the favorite heart is an image from `resources/`.
  */
 export function getDashboardHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheets and script are under. */
-  extensionUri: vscode.Uri,
-  /** The theme its host read, preview and all; the configured one without. */
-  theme?: DeckardTheme,
+  extensionUri: ShellUri,
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome,
 ): string {
   return buildPageShell({
     webview,
@@ -24,8 +20,8 @@ export function getDashboardHtml(
     page: 'dashboard',
     title: 'Deckard Dashboard',
     nonce: createNonce(),
-    theme: theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: chrome.theme,
+    zen: chrome.zen,
     csp: { images: [] },
     bundle: true,
     body: `

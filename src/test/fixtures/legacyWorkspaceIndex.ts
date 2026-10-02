@@ -15,7 +15,7 @@ import {
   TagReference,
   Task,
   WorkspaceIndex,
-} from '../../core/types';
+} from '../../domain/model';
 
 /** The maps the legacy build fills as it reads each note. */
 interface LegacyCollections {

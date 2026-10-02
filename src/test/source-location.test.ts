@@ -5,10 +5,10 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

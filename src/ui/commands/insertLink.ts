@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 
 import { stripTags } from '../../domain/markdown/parser';
-import { Section, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   findWikiTargetPaths,
   noteTitle,
   normalizeHeading,
 } from '../../domain/index/backlinks';
+import { Section, WorkspaceIndex } from '../../domain/model';
 
 /** A link to write, and what to say about it when it will not resolve. */
 export interface WikiLinkToInsert {

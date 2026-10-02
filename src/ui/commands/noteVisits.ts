@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { PreferenceServices } from '../../core/storage/preferences';
-import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
+import { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
 
 /** What NoteVisits reads from the index: the notes it may count and the headings in them. */
 export interface NoteVisitSource {

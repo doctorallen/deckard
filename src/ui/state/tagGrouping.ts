@@ -1,7 +1,7 @@
 import { stripTags } from '../../domain/markdown/parser';
 import { readTaskTagKeys } from '../../domain/query/queryEvaluator';
-import { Task, WorkspaceIndex } from '../../core/types';
 import { withoutParked } from '../../domain/index/parked';
+import { Task, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Grouping tasks by the tags of one namespace: `#project/…`, `#context/…`,

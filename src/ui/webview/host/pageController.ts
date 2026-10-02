@@ -1,7 +1,7 @@
 import type * as vscode from 'vscode';
 
 import type { MessageMap, MessageOf, PageMessage } from '../../protocol/messaging';
-import type { DeckardTheme } from '../themeNames';
+import type { PageChrome } from '../components';
 import type { ContentSecurityExtras } from './pageShell';
 import type { PageScripts, WebviewSurface } from './surface';
 
@@ -145,10 +145,11 @@ export interface PageController<TSnapshot, TPageToHost extends MessageMap<TPageT
   readonly name: string;
   readonly options: PageOptions;
   /**
-   * The page's HTML, for a webview, in a theme, carrying `state` as inert
-   * JSON when given one, which only a page that `readsInertState` is.
+   * The page's HTML, for a webview, in the look its host read, carrying
+   * `state` as inert JSON when given one, which only a page that
+   * `readsInertState` is.
    */
-  html(webview: vscode.Webview, theme: DeckardTheme, state?: TSnapshot): string;
+  html(webview: vscode.Webview, chrome: PageChrome, state?: TSnapshot): string;
   /** Everything the page draws, or undefined while there is nothing to send. */
   buildSnapshot(): TSnapshot | undefined;
   /** The page's narrowing table: a message it may send, or undefined. */

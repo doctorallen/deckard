@@ -1,7 +1,7 @@
 import { findFrontmatterEnd } from './frontmatter';
 import { findFencedLines, isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
-import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskMetadata';
+import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 
 /**
  * Markdown as preview text: the one place a note's words are turned into the

@@ -4,18 +4,4 @@
  * domain model's; the pages take them from here, since they import the
  * protocol and not the domain.
  */
-export type {
-  QueryBuilderGroup,
-  QueryBuilderItem,
-  QueryBuilderJoin,
-  QueryBuilderRow,
-  QueryDiagnostic,
-  QueryFacet,
-  QueryFacetValue,
-  QueryField,
-  QueryOperator,
-  QuerySuggestion,
-  QuerySuggestions,
-  QueryTermChip,
-  QueryViewState,
-} from '../../domain/model/query';
+export type { QueryBuilderJoin, QueryFacet, QueryFacetValue, QueryTermChip, QueryViewState } from '../../domain/model/query';

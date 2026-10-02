@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
-import { InlineToken, tokenizeInline, tokenizeInlineWithoutWikiLinks } from '../domain/markdown/inline';
+import { tokenizeInline, tokenizeInlineWithoutWikiLinks } from '../domain/markdown/inline';
+import { InlineToken } from '../domain/model';
 
 /**
  * Tokens in a compact notation a test can state in one line: text as a JSON

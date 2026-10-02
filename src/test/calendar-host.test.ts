@@ -6,7 +6,6 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
 import type { CalendarPageToHost, CalendarSnapshot } from '../ui/protocol/calendar';
-import { formatLocalDate } from '../ui/commands/dailyNote';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { CalendarViewController } from '../ui/webview/pages/calendar/calendarController';
 import { ThemePreview } from '../ui/webview/themePreview';
@@ -14,7 +13,8 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
-import { pageExtensionUri, pageWebview } from './pageWebview';
+import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
+import { formatLocalDate } from '../domain/notes/periodicNotes';
 
 /** Today, and the month it is in, as the calendar starts on. */
 const today = formatLocalDate(new Date());
@@ -42,7 +42,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     indexer,
     writes: createTaskWrites(),
     refresh: () => host?.refresh(),
-    extensionUri: pageExtensionUri(),
+    extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
   host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();

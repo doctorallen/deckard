@@ -1,11 +1,7 @@
 import * as assert from 'assert';
 
-import { TagInfo, WorkspaceIndex } from '../core/types';
-import {
-  findTagLookalikes,
-  findTagMergeCandidates,
-  isWithinDistance,
-} from '../ui/state/tagHygiene';
+import { findTagLookalikes, findTagMergeCandidates, isWithinDistance } from '../domain/ranking/tagHygiene';
+import { TagInfo, WorkspaceIndex } from '../domain/model';
 
 /** An index holding only the tags a pair is read from. */
 function indexOfTags(counts: Record<string, number>): WorkspaceIndex {

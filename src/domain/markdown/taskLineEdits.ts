@@ -23,6 +23,16 @@ import {
  * as written.
  */
 
+/** The checkbox state setTaskLineCompletion writes, and the done date that goes with it. */
+export interface CompletionChange {
+  /** Whether the task is completed (`[x]`) or reopened (`[ ]`). */
+  completed: boolean;
+  /** The done date a completion adds; none is added when it is omitted. */
+  doneDate?: string;
+  /** The format of a new done date on a line with no metadata yet; emoji when omitted. */
+  preferredFormat?: TaskMetadataFormat;
+}
+
 /**
  * Sets a task line's checkbox and keeps its done date in step: added when the
  * task is completed, removed when it is reopened.
@@ -35,9 +45,7 @@ import {
 export function setTaskLineCompletion(
   line: string,
   checkboxColumn: number,
-  completed: boolean,
-  doneDate?: string,
-  preferredFormat: TaskMetadataFormat = 'emoji',
+  { completed, doneDate, preferredFormat = 'emoji' }: CompletionChange,
 ): string {
   const [prefix, text] = splitTaskLine(line, checkboxColumn, completed ? 'x' : ' ');
   const withoutDone = removeDates(text, 'done');
@@ -127,6 +135,16 @@ export function setTaskAssignee(
   return setTaskField(line, checkboxColumn, 'assignee', { value: person, preferredFormat });
 }
 
+/** The date setTaskDate writes: which field, its value or undefined to clear it, and the format for a line that has none. */
+export interface DateChange {
+  /** The date field to set or clear. */
+  field: TaskDateField;
+  /** The date, `YYYY-MM-DD`, or undefined to clear the field. */
+  date: string | undefined;
+  /** The format of a new date on a line with no metadata yet; emoji when omitted. */
+  preferredFormat?: TaskMetadataFormat;
+}
+
 /**
  * Sets or clears one of a task's dates. An existing date changes where it is
  * written; a new one is added in the line's format.
@@ -134,9 +152,7 @@ export function setTaskAssignee(
 export function setTaskDate(
   line: string,
   checkboxColumn: number,
-  field: TaskDateField,
-  date: string | undefined,
-  preferredFormat: TaskMetadataFormat = 'emoji',
+  { field, date, preferredFormat = 'emoji' }: DateChange,
 ): string {
   const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
   if (date === undefined) {
@@ -214,6 +230,20 @@ export interface CompletionWrite {
   unreadRule?: string;
 }
 
+/** When and how writeCompletion writes: the moment of completion, the line ending, and the steps the next occurrence takes. */
+export interface CompletionContext {
+  /** The moment the task was completed, which a "when done" rule advances from. */
+  now: number;
+  /** The line ending the next occurrence and its steps are joined with. */
+  eol: string;
+  /**
+   * The task's steps as its next occurrence takes them: unchecked, written
+   * under it, so a routine checklist comes back fresh. The completed
+   * occurrence keeps its own. None when omitted.
+   */
+  steps?: readonly string[];
+}
+
 /**
  * What a completed task line becomes, wherever it was completed: a repeating
  * task gets its next occurrence on the line above, where Tasks puts it.
@@ -225,14 +255,7 @@ export interface CompletionWrite {
 export function writeCompletion(
   completedLine: string,
   checkboxColumn: number,
-  now: number,
-  eol: string,
-  /**
-   * The task's steps as its next occurrence takes them: unchecked, written
-   * under it, so a routine checklist comes back fresh. The completed
-   * occurrence keeps its own.
-   */
-  steps: readonly string[] = [],
+  { now, eol, steps = [] }: CompletionContext,
 ): CompletionWrite {
   const next = createNextOccurrence(completedLine, checkboxColumn, now);
   if (next !== undefined) {

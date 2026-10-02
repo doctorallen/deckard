@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import { pluralize } from '../../shared/text';
-import { WorkspaceIndex } from '../../core/types';
 import { LinkRewrite } from '../../domain/links/linkRewrites';
 import { noteTitle } from '../../domain/index/backlinks';
 import { findHeadingAtLine } from '../../domain/notes/headingLookup';
@@ -10,19 +9,13 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import { checkRewrites, LinkService } from '../../services/linkService';
 import { createLinkService, toWorkspaceEdit, vscodeLiveNotes } from './linkMaintenancePorts';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { WorkspaceIndex } from '../../domain/model';
 
 /**
  * The commands and the rename listener that keep `[[links]]` pointing where
  * they pointed before a note or a heading was renamed. Which links follow
  * is LinkService's decision; these ask, write, and report.
  */
-
-export {
-  countRewrittenNotes,
-  planHeadingRenameRewrites,
-  planNoteRenameRewrites,
-} from '../../domain/links/linkRewrites';
-export type { LinkRewrite } from '../../domain/links/linkRewrites';
 
 interface IndexSource {
   readonly ready: Promise<void>;

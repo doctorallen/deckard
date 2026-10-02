@@ -3,7 +3,6 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { evaluateQuery, readTaskTagKeys } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
-import { Task, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   formatNamespaceValue,
@@ -14,9 +13,11 @@ import { resolveTaskMove, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { createAgenda } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
-import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider, groupColumnId } from '../ui/views/agendaTree';
+import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createAgendaTreeServices } from './taskWrites';
+import { groupColumnId } from '../domain/tasks/agendaGroups';
+import { Task, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),

@@ -3,18 +3,6 @@ import { needsNewDateBefore } from '../../domain/tasks/taskPolicy';
 import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
 import { QueryContext } from '../../domain/query/queryContext';
-import { projectRepeats, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskMetadata';
-import {
-  CalendarDay,
-  CalendarDayDetail,
-  CalendarEntry,
-  CalendarSnapshot,
-  CalendarWeek,
-  DashboardTask,
-  ParsedFile,
-  Task,
-  WorkspaceIndex,
-} from '../../core/types';
 import { createDashboardTask } from './entryCards';
 import {
   findPeriodicNoteNames,
@@ -23,11 +11,14 @@ import {
   isPeriodicNoteName,
   listDailyNotes,
 } from '../../domain/notes/periodicNotes';
+import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
+import { DashboardTask } from '../protocol/shared';
+import { CalendarDay, CalendarDayDetail, CalendarEntry, CalendarSnapshot, CalendarWeek } from '../protocol/calendar';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
+import { projectRepeats } from '../../domain/markdown/recurrence';
 
 /** How many tasks and headings a day's tooltip names. */
 const TOOLTIP_ITEMS = 5;
-
-export type { CalendarDay, CalendarDayDetail, CalendarEntry, CalendarSnapshot, CalendarWeek } from '../../core/types';
 
 /** How many of a day's tasks, and of its new notes, the panel lists at once. */
 const PANEL_NOTES = 5;

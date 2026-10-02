@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 
-import { Task, WorkspaceIndex } from '../core/types';
 import {
   createAgenda,
   normalizeAgendaQuery,
@@ -11,9 +10,11 @@ import * as vscode from 'vscode';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { createTaskGlance } from '../ui/state/dashboardState';
-import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
+import { AgendaNode, AgendaTreeProvider, OVERDUE_ROWS } from '../ui/views/agendaTree';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createAgendaTreeServices } from './taskWrites';
+import { groupColumnId } from '../domain/tasks/agendaGroups';
+import { Task, WorkspaceIndex } from '../domain/model';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();

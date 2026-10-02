@@ -10,7 +10,7 @@ const { ActiveSearch } = modules.activeSearch;
 const { createPreferences } = modules.preferenceServices;
 const { SidebarNotesView } = modules.sidebarNotes;
 const { parseMarkdown } = modules.parser;
-const { buildWorkspaceIndex } = modules.indexer;
+const { buildWorkspaceIndex } = modules.indexState;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
 const { ThemePreview } = modules.themePreview;
 
@@ -60,7 +60,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
   const panels = new SearchPanels({
     indexer,
     preferences,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     activeSearch,
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
@@ -78,7 +78,7 @@ async function openPanel(open, { sidebarVisible = false, index = createIndex() }
   sidebarHost._onWebviewMessage = sidebarHost._fromWebview;
   const sidebarView = new SidebarNotesView({
     indexer,
-    extensionUri: { fsPath: '/ext' },
+    extensionUri: vscode.Uri.file('/ext'),
     preferences,
     activeSearch,
     onOpenTag: (tagKey) => panels.show(tagKey),

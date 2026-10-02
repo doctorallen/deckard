@@ -1,9 +1,5 @@
-import * as vscode from 'vscode';
-
-import { createNonce } from './components';
-import { buildPageShell } from './host/pageShell';
-import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { createNonce, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
 
 /**
  * The Notes Graph's shell: its bundle, `dist/webview/notesGraph.js`, draws
@@ -17,11 +13,11 @@ import { type DeckardTheme, getDeckardTheme } from './themes';
  * Its body is empty; the page draws everything in it.
  */
 export function getNotesGraphHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
+  webview: ShellWebview,
   /** The extension's folder, which the page's style sheets and script are under. */
-  extensionUri: vscode.Uri,
-  /** The theme its host read, preview and all; the configured one without. */
-  theme?: DeckardTheme,
+  extensionUri: ShellUri,
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome,
 ): string {
   return buildPageShell({
     webview,
@@ -29,8 +25,8 @@ export function getNotesGraphHtml(
     page: 'notesGraph',
     title: 'Deckard Notes Graph',
     nonce: createNonce(),
-    theme: theme ?? getDeckardTheme(),
-    zen: isZenModeEnabled(),
+    theme: chrome.theme,
+    zen: chrome.zen,
     bundle: true,
     body: '',
   });

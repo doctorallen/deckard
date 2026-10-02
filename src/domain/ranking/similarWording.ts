@@ -27,7 +27,6 @@ import {
   getTaskHeadingPath,
   getTitleTags,
 } from './entryLabels';
-import type { RelatedNotesRankingOptions } from './relatedNotes';
 import {
   createMoreLikeThisModel,
   getEntryTerms,
@@ -37,6 +36,7 @@ import {
   LexicalEvidence,
   LexicalModel,
 } from './wordSimilarity';
+import type { RelatedNotesRankingOptions } from './relatedNotesContext';
 
 /** What a wording-only result needs: two shared terms, or one rare one. */
 const WORDING_MIN_TERMS = 2;

@@ -1,22 +1,16 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
-import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
-import {
-  addDays,
-  formatIsoDate,
-  formatTaskMetadata,
-  startOfDay,
-  TASK_PRIORITY_RANKS,
-} from '../../domain/markdown/taskMetadata';
+import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
 import { readLineStatus } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
-import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { Task, TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
  * The Agenda is a list of open tasks — the ones a query chose, or every one
@@ -45,8 +39,6 @@ import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLab
  * `priority:high` or `tag:context/phone`.
  */
 export type AgendaGroupId = string;
-
-export type { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 
 /** The ways the Agenda can be grouped, in the order the picker offers them. */
 export const AGENDA_GROUPINGS: readonly {

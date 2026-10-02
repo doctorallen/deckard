@@ -9,16 +9,6 @@ import type { ExportPlan } from '../../services/exportService';
  * them are in `domain/export`.
  */
 
-export {
-  csv,
-  formatNotes,
-  formatTasks,
-  markdownTable,
-  noteRows,
-  taskRows,
-} from '../../domain/export/exportFormats';
-export type { ExportFormat, NoteRow, TaskRow } from '../../domain/export/exportFormats';
-
 /** A format, and whether it is copied or saved. */
 export interface ExportChoice {
   format: ExportFormat;

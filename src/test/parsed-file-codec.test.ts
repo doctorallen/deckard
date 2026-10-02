@@ -2,7 +2,6 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { decodeParsedFile, encodeParsedFile } from '../core/storage/parsedFileCodec';
-import { ParsedFile } from '../core/types';
 import {
   developmentNotes,
   edgeCaseNotes,
@@ -10,6 +9,7 @@ import {
   randomNotes,
   sampleNotes,
 } from './indexCorpus';
+import { ParsedFile } from '../domain/model';
 
 /** Encoded and decoded through fresh text, so no memo answers for it. */
 function roundTrip(file: ParsedFile): ParsedFile {

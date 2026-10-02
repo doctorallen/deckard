@@ -6,19 +6,14 @@ import {
   getPersonMarker,
   hasAtxHeadingClosingHashes,
 } from '../../domain/markdown/parser';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  setTaskDate,
-  setTaskLineCompletion,
-  writeCompletion,
-} from '../../domain/markdown/taskMetadata';
 import { pluralize } from '../../shared/text';
-import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
+import { Section, Task } from '../../domain/model';
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { CompletionWrite, setTaskDate, setTaskLineCompletion, writeCompletion } from '../../domain/markdown/taskLineEdits';
 
 /**
  * One edit made to many results at once.
@@ -312,32 +307,34 @@ function rewrite(
   const task = entry.task;
   if (edit.kind === 'due') {
     return {
-      text: setTaskDate(line, task.checkboxColumn, 'due', edit.date, options.format),
+      text: setTaskDate(line, task.checkboxColumn, {
+        field: 'due',
+        date: edit.date,
+        preferredFormat: options.format,
+      }),
     };
   }
   if (edit.kind === 'dueEach') {
     const date = edit.dates.get(task.id);
     return date === undefined
       ? undefined
-      : { text: setTaskDate(line, task.checkboxColumn, 'due', date, options.format) };
+      : { text: setTaskDate(line, task.checkboxColumn, { field: 'due', date, preferredFormat: options.format }) };
   }
   if (task.completed === edit.completed) {
     return undefined;
   }
   const now = Date.now();
-  const completed = setTaskLineCompletion(
-    line,
-    task.checkboxColumn,
-    edit.completed,
-    options.addDoneDate ? formatIsoDate(now) : undefined,
-    options.format,
-  );
+  const completed = setTaskLineCompletion(line, task.checkboxColumn, {
+    completed: edit.completed,
+    doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
+    preferredFormat: options.format,
+  });
   if (!edit.completed) {
     return { text: completed };
   }
   // A repeating task is replaced by its next occurrence here too, so a bulk
   // completion leaves the same notes behind as one checkbox would.
-  return writeCompletion(completed, task.checkboxColumn, now, options.eol);
+  return writeCompletion(completed, task.checkboxColumn, { now, eol: options.eol });
 }
 
 /** A section's heading line, which is what the index recorded for it. */

@@ -16,7 +16,6 @@ import {
   RolloverSource,
   RolloverWriteOutcome,
 } from '../../services/rolloverService';
-import { getCaptureInsertion } from './capture';
 import {
   chooseTargetFolder,
   chooseWorkspaceFolder,
@@ -26,9 +25,7 @@ import {
 } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
-
-export { planRollover } from '../../domain/notes/rolloverPlan';
-export type { RolloverMode, RolloverPlan } from '../../domain/notes/rolloverPlan';
+import { getCaptureInsertion } from '../../domain/capture/captureLines';
 
 /**
  * Roll Tasks Forward, and the rollover a new daily note starts with.

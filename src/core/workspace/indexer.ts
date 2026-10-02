@@ -8,8 +8,6 @@ import { IndexService, IndexServiceOptions } from './indexService';
 import type { IndexRoles, RefreshOptions } from './indexReader';
 import { ViewPublisher } from './viewPublisher';
 
-export { buildWorkspaceIndex } from '../../domain/index/indexState';
-
 /** What {@link createWorkspaceIndex} builds the index from. */
 export interface WorkspaceIndexOptions<U extends ResourceUri = ResourceUri> extends IndexServiceOptions {
   /** Finds, reads, and parses the notes, and names their paths and URIs. */

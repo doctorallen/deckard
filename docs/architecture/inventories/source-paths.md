@@ -203,40 +203,44 @@ Of the 757, 35 are `out/` or `dist/` paths, and 28 of those are in the two `19-`
 
 ## 2. Test harnesses
 
-This section is as of the end of Phase 6 (`030ee64`), and counts `test/ui/checkWebviewScripts.js` as deleted, as it is at the end of that phase. It names no path in it.
+This section is as of the end of Phase 6 (`030ee64`), and counts `test/ui/checkWebviewScripts.js` as deleted, as it is at the end of that phase. It names no path in it. The catalog's entries, and what each harness takes from them, are as of the end of Phase 7 (`refactor/07final`), which deleted the re-export shims the harnesses took five names through; the line numbers elsewhere in the section are as of Phase 6.
 
 The Node harnesses in `test/e2e`, `test/ui`, and `test/perf` load the `tsc` output in `out/`, with a stub standing in for `vscode`. `tsconfig.json` sets `rootDir` to `src`, so `out/` mirrors `src/` exactly, and any move under `src/` moves the compiled file with it. The mocha suites keep passing, because their imports are compiler-checked. The harnesses fail instead, and only when their own npm script runs.
 
-Since Phase 0 the harnesses no longer name `out/` paths themselves. They take each module by name from the catalog in `test/harness/modules.js`, which maps the name to its path under `out/` once, so a move is one edit there. Since Phase 6 none goes around it: `test/ui/surfaces.js`, which took the layout harness's state builders over, takes `queryContext` from the catalog too. The page builders reach the harnesses through `out/test/pages.js`, the catalog of `src/test/pages.ts`, whose imports the compiler checks.
+Since Phase 0 the harnesses no longer name `out/` paths themselves. They take each module by name from the catalog in `test/harness/modules.js`, which maps the name to its path under `out/` once, so a move is one edit there. Since Phase 6 none goes around it: `test/ui/surfaces.js`, which took the layout harness's state builders over, takes `queryContext` from the catalog too. The page builders reach the harnesses through `out/test/pages.js`, the catalog of `src/test/pages.ts`, whose imports the compiler checks. Since Phase 7 the builders are given the theme and zen mode (`chrome`) rather than reading the settings, so `test/ui/pages.js` passes them in `renderPage`'s options instead of setting them in the stub's settings, and, since the catalog loads no `vscode`, installs no stub; the checks that draw surfaces still have it, through `test/e2e/support.js`.
 
 Since Phase 6 a page is a shell that loads its bundle and style sheets from `dist/webview/` by URI. Every harness, and the mocha suites through `src/test/webviewPage.ts`, passes the page through `test/harness/loadPage.js`, which reads each file the page names under the repository's root and inlines it, so each harness's npm script runs `npm run build:webview` after `npm run compile-tests`, and a bundle not built fails with the URI it named. Those paths are written by the shells' own code (`src/ui/webview/host/pageShell.ts`) and by `esbuild.js`, so a page moved under `src/webview` keeps them in step without any harness edit.
 
 ### Distinct `out/` modules
 
-The catalog names 46 modules. The harnesses take something from 34 of them at 104 sites in 13 files. `test/perf/indexSpeed.js` loads its twelve through `load('…')`, which resolves the name through the catalog's `pathOf`. `src/test/extension.test.ts` reads two more compiled files as text, `out/extension.js` and `out/composition/services.js`, listed under "Reads by path in `src/test`" below.
+The catalog names 50 modules. The harnesses take something from 38 of them in 13 files. `test/perf/indexSpeed.js` loads its twelve through `load('…')`, which resolves the name through the catalog's `pathOf`. `src/test/extension.test.ts` reads two more compiled files as text, `out/extension.js` and `out/composition/services.js`, listed under "Reads by path in `src/test`" below.
 
 | `out/` module | Catalog name | What the harness takes from it | Used at | On a move |
 | --- | --- | --- | --- | --- |
 | `core/changelog.js` | `changelog` | `parseChangelog` | `test/ui/pages.js:56` | Breaks |
 | `core/storage/parsedFileCodec.js` | `parsedFileCodec` | `encodeParsedFile`, `decodeParsedFile` | `test/perf/indexSpeed.js:55` | Degrades silently |
 | `core/storage/searchStore.js` | `searchStore` | `SearchStore` | `test/perf/indexSpeed.js:52` | Degrades silently |
-| `core/workspace/indexer.js` | `indexer` | `buildWorkspaceIndex`; perf also takes `createWorkspaceIndex` | `test/ui/surfaces.js:25`, `test/e2e/calendar.e2e.js:13`, `test/e2e/calendarPage.e2e.js:13`, `test/e2e/dashboardHome.e2e.js:15`, `test/e2e/searchPage.e2e.js:13`, `test/e2e/sidebarNotes.e2e.js:13`, `test/perf/indexSpeed.js:50` | Breaks |
+| `core/workspace/indexer.js` | `indexer` | `createWorkspaceIndex` | `test/perf/indexSpeed.js:47` | Breaks |
 | `core/workspace/scanner.js` | `scanner` | `WorkspaceScanner` | `test/perf/indexSpeed.js:51` | Breaks |
-| `domain/index/indexState.js` | `indexState` | `buildWorkspaceIndex` | `test/e2e/navigation.e2e.js:66` | Breaks |
+| `domain/graph/graphChanges.js` | `graphChanges` | `graphInputsChanged` | `test/perf/indexSpeed.js:53` | Degrades silently |
+| `domain/graph/notesGraph.js` | `graphBuild` | `createNotesGraphSnapshot` | `test/ui/surfaces.js:25`, `test/perf/indexSpeed.js:53` | Breaks |
+| `domain/index/indexState.js` | `indexState` | `buildWorkspaceIndex` | `test/ui/surfaces.js:29`, `test/e2e/calendar.e2e.js:13`, `test/e2e/calendarPage.e2e.js:13`, `test/e2e/dashboardHome.e2e.js:15`, `test/e2e/navigation.e2e.js:66`, `test/e2e/searchPage.e2e.js:13`, `test/e2e/sidebarNotes.e2e.js:13`, `test/perf/indexSpeed.js:46` | Breaks |
 | `domain/markdown/parser.js` | `parser` | `parseMarkdown` | `test/ui/surfaces.js:24`, `test/e2e/calendar.e2e.js:12`, `test/e2e/calendarPage.e2e.js:12`, `test/e2e/dashboardHome.e2e.js:14`, `test/e2e/navigation.e2e.js:65`, `test/e2e/searchPage.e2e.js:12`, `test/e2e/sidebarNotes.e2e.js:12`, `test/e2e/stats.e2e.js:156`, `test/e2e/stats.e2e.js:181`, `test/perf/indexSpeed.js:49` | Breaks |
+| `domain/notes/periodicNotes.js` | `periodicNotes` | `formatLocalDate`, `getPeriodicNote` | `test/e2e/calendar.e2e.js:14`, `test/e2e/calendarPage.e2e.js:14` | Breaks |
 | `domain/query/queryContext.js` | `queryContext` | `createQueryContext` | `test/ui/surfaces.js:28`, `test/perf/indexSpeed.js:352`, `:376`, `:430`, `:474` | Breaks |
 | `shared/timing.js` | `timing` | `measure`, `setTimingLog` | `test/perf/indexSpeed.js:53` | Degrades silently |
 | `test/pages.js` | `pageCatalog` | `PAGES` and `renderPage`, which render every page's shell | `test/ui/pages.js:63`, `:100`, `test/ui/checkDom.js:146` | Breaks |
 | `test/preferenceServices.js` | `preferenceServices` | `createPreferences` | `test/ui/surfaces.js:26`, `test/e2e/calendarPage.e2e.js:18`, `test/e2e/dashboardHome.e2e.js:13`, `test/e2e/navigation.e2e.js:63`, `test/e2e/searchPage.e2e.js:10`, `test/e2e/sidebarNotes.e2e.js:11`, `test/e2e/stats.e2e.js:11`, `test/e2e/taskBoard.e2e.js:11`, `test/perf/indexSpeed.js:323`, `:377`, `:431`, `:475` | Breaks |
 | `test/taskWrites.js` | `taskWrites` | `createTaskWrites` | `test/e2e/calendar.e2e.js:53`, `test/e2e/calendarPage.e2e.js:56`, `:176`, `test/e2e/dashboardHome.e2e.js:74`, `:150`, `test/e2e/navigation.e2e.js:117`, `:126`, `test/e2e/searchPage.e2e.js:65`, `test/e2e/taskBoard.e2e.js:77`, `:107`, `:400` | Breaks |
-| `ui/commands/dailyNote.js` | `dailyNote` | `formatLocalDate`, `getPeriodicNote`, which it re-exports from `domain/notes/periodicNotes` | `test/e2e/calendar.e2e.js:14`, `test/e2e/calendarPage.e2e.js:14` | Breaks |
 | `ui/commands/workspaceWrites.js` | `workspaceWrites` | `WorkspaceWriteHistory` | `test/e2e/calendarPage.e2e.js:19`, `test/e2e/searchPage.e2e.js:14`, `test/e2e/sidebarNotes.e2e.js:14` | Breaks |
 | `ui/providers/tagDecorations.js` | `tagDecorations` | `EditorTagDecorations` | `test/e2e/editorDecorations.e2e.js:9` | Breaks |
 | `ui/state/calendarState.js` | `calendarState` | `createCalendar` | `test/ui/surfaces.js:23`, `test/perf/indexSpeed.js:351` | Breaks |
-| `ui/state/dashboardState.js` | `dashboardState` | `createDashboardSnapshot`, `createSearchPageSnapshot`, `createDeckardStatsSnapshot` | `test/ui/surfaces.js:20`, `test/perf/indexSpeed.js:322`, `:429`, `:472` | Breaks |
+| `ui/state/dashboardState.js` | `dashboardState` | `createDashboardSnapshot` | `test/ui/surfaces.js:21`, `test/perf/indexSpeed.js:522` | Breaks |
 | `ui/state/dashboardWidgets.js` | `dashboardWidgets` | `createDashboardWidgets` | `test/ui/surfaces.js:21`, `test/perf/indexSpeed.js:473` | Breaks |
 | `ui/state/noteLinks.js` | `noteLinks` | `collectNoteLinks` | `test/perf/indexSpeed.js:512` | Degrades silently |
-| `ui/state/notesGraphState.js` | `notesGraphState` | `createNotesGraphSnapshot`, `toWire`; perf also takes `graphInputsChanged` | `test/ui/surfaces.js:22`, `test/perf/indexSpeed.js:54` | Breaks |
+| `ui/state/notesGraphState.js` | `notesGraphState` | `toWire` | `test/ui/surfaces.js:26`, `test/perf/indexSpeed.js:53` | Breaks |
+| `ui/state/searchPageState.js` | `searchPageState` | `createSearchPageSnapshot` | `test/ui/surfaces.js:22`, `test/perf/indexSpeed.js:479` | Breaks |
+| `ui/state/statsState.js` | `statsState` | `createDeckardStatsSnapshot` | `test/ui/surfaces.js:23`, `test/perf/indexSpeed.js:372` | Breaks |
 | `ui/state/relatedNotesRanking.js` | `relatedNotesRanking` | `createSidebarSnapshot` | `test/ui/surfaces.js:19`, `test/perf/indexSpeed.js:511` | Breaks |
 | `ui/state/taskBoardState.js` | `taskBoardState` | `createTaskBoard` | `test/ui/surfaces.js:18`, `test/perf/indexSpeed.js:375` | Breaks |
 | `ui/webview/activeCalendar.js` | `activeCalendar` | `ActiveCalendar` | `test/e2e/calendarPage.e2e.js:15` | Breaks |
@@ -250,13 +254,13 @@ The catalog names 46 modules. The harnesses take something from 34 of them at 10
 | `ui/webview/stats.js` | `stats` | `StatsPanel` | `test/e2e/navigation.e2e.js:58`, `test/e2e/stats.e2e.js:10` | Breaks |
 | `ui/webview/taskBoard.js` | `taskBoard` | `TaskBoardPanel` | `test/e2e/navigation.e2e.js:60`, `test/e2e/taskBoard.e2e.js:10` | Breaks |
 | `ui/webview/themePreview.js` | `themePreview` | `ThemePreview` | `test/e2e/calendar.e2e.js:15`, `test/e2e/calendarPage.e2e.js:20`, `test/e2e/dashboardHome.e2e.js:16`, `test/e2e/navigation.e2e.js:64`, `test/e2e/searchPage.e2e.js:15`, `test/e2e/sidebarNotes.e2e.js:15`, `test/e2e/stats.e2e.js:12`, `test/e2e/taskBoard.e2e.js:14` | Breaks |
-| `ui/webview/themes.js` | `themes` | `deckardThemes` | `test/ui/pages.js:66` | Breaks |
+| `ui/webview/themeNames.js` | `themeNames` | `deckardThemes` | `test/ui/pages.js:51` | Breaks |
 
-Every source file behind these 34 modules exists at the end of Phase 6, as does every one the catalog names. Twelve catalog entries have no harness user: `preferences` (`core/storage/preferences.js`), `components`, `guide`, and the nine page shells from `calendarHtml` to `taskBoardHtml`. The page shells reach the harnesses through `test/pages.js`. `components` lost its one user in Phase 6, when `test/ui/verifyWebviews.js` stopped taking `getZenCss` from it and began reading `src/webview/shared/zen.css` by path (see "Reads by path" below).
+Every source file behind these 38 modules exists at the end of Phase 7, as does every one the catalog names. Twelve catalog entries have no harness user: `preferences` (`core/storage/preferences.js`), `components`, `guide`, and the nine page shells from `calendarHtml` to `taskBoardHtml`. The page shells reach the harnesses through `test/pages.js`. `components` lost its one user in Phase 6, when `test/ui/verifyWebviews.js` stopped taking `getZenCss` from it and began reading `src/webview/shared/zen.css` by path (see "Reads by path" below).
 
 "Breaks" means the catalog entry must follow the move, and until it does every harness that names it fails.
 
-"Degrades silently" means the harness does not fail. `load()` in `test/perf/indexSpeed.js:39-48` returns `{}` when a module is not found, and the run prints a dash for a step it cannot measure, the mark it uses for a step the code cannot do yet. It guards 19 of its 23 loads: the cache (`SearchStore`, line 226), the codec (138), the timing log (152, and `measure` in each snapshot timing), and every module the snapshot timings Phase 6 added load (lines 321 to 539, each guarded by its own `if (!…)`). A move of `searchStore.js` makes it time every start without the cache, with no warning; a move of `timing.js` blanks every snapshot timing; a move of any module the snapshot timings load blanks that timing alone. `npm run bench:index` is not a test suite, so nothing fails. The loads of the parser, the indexer, the scanner, and the graph state are used without a guard, and the run stops with a `TypeError`. The run also takes `WorkspaceIndexer` from `indexer.js` for an older checkout; that export is gone, and the run builds through `createWorkspaceIndex` (line 232).
+"Degrades silently" means the harness does not fail. `load()` in `test/perf/indexSpeed.js:39-48` returns `{}` when a module is not found, and the run prints a dash for a step it cannot measure, the mark it uses for a step the code cannot do yet. It guards 19 of its 23 loads: the cache (`SearchStore`, line 226), the codec (138), the timing log (152, and `measure` in each snapshot timing), and every module the snapshot timings Phase 6 added load (lines 321 to 539, each guarded by its own `if (!…)`). A move of `searchStore.js` makes it time every start without the cache, with no warning; a move of `timing.js` blanks every snapshot timing; a move of any module the snapshot timings load blanks that timing alone. `npm run bench:index` is not a test suite, so nothing fails. The loads of the parser, the indexer, the scanner, and the graph state are used without a guard, and the run stops with a `TypeError`. The run also takes `WorkspaceIndexer` from `indexer.js` for an older checkout; that export is gone, and the run builds through `createWorkspaceIndex` (line 232). Since Phase 7 it takes `buildWorkspaceIndex` from `indexState.js`, and the graph state is three loads spread into one object (`graphBuild`, `graphChanges`, `notesGraphState`, line 53), so a move of `graphChanges.js` blanks the save check alone, while a move of `notesGraph.js` stops the run as the graph state's did.
 
 The export names in the third column are part of the same contract. Renaming an export breaks the harness just as moving its file does.
 
@@ -280,7 +284,6 @@ A move under `src/` leaves these alone. They break when a harness file moves.
 
 | File | Line | Path | On a move |
 | --- | --- | --- | --- |
-| `test/ui/pages.js` | 19, 26 | `test/e2e/vscodeStub.js` | Breaks if the stub moves |
 | `test/e2e/support.js` | 26 | `./vscodeStub.js` | Breaks if the stub moves |
 | `test/perf/indexSpeed.js` | 28 | `test/e2e/vscodeStub.js` | Breaks if the stub moves |
 | `test/e2e/run.js` | 19-29, 45, 50 | the nine suite file names, passed to mocha beside `support.js` as its `--require` | Breaks if a suite or `support.js` is renamed |
@@ -309,7 +312,7 @@ Most of `src/test` imports through TypeScript, which the compiler checks. These 
 | File | Line | Path it builds | On a move |
 | --- | --- | --- | --- |
 | `src/test/extension.test.ts` | 336, 337 | `out/extension.js` and `out/composition/services.js`, read as text; line 347 asserts `'setContext', '<key>'` for each walkthrough `onContext:` key | Breaks when those `setContext` calls leave the two files, or when either is renamed |
-| `src/test/pageWebview.ts` | 19 | the repository's root, as the extension URI every page shell in the mocha suites is rendered against, so `loadPage` finds `dist/webview` under it | Breaks on a depth change |
+| `src/test/pageWebview.ts` | 19 | the repository's root, as the stand-in file URI every page shell in the mocha suites is rendered against, so `loadPage` finds `dist/webview` under it; the host suites that hand the folder to VS Code itself make `vscode.Uri.file(REPOSITORY_ROOT)` from it | Breaks on a depth change |
 | `src/test/sheets.ts` | 12 | `src/webview`, from which the suites read a page's style sheets by name | Breaks on a depth change, or if a sheet moves |
 | `src/test/graphBundle.ts`, `src/test/sharedBundle.ts` | 8, 8 | the repository's root, as esbuild's `resolveDir` for `./src/webview/notesGraph/<module>` and `./src/webview/shared/<module>` | Breaks on a depth change, or if a module named moves |
 | `src/test/naming.test.ts` | 10, 11 | the repository root, then `src/ui/webview`; line 96 lists every `.ts` file there and line 98 reads it | Breaks on a depth change; a page shell moved out of the folder drops out of the check silently |

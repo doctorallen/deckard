@@ -2,9 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { RECENT_QUERY_LIMIT } from '../core/storage/preferences';
-import { frecencyScore } from '../ui/state/frecency';
 import { createPreferences } from './preferenceServices';
+import { frecencyScore } from '../domain/ranking/frecency';
+import { RECENT_QUERY_LIMIT } from '../core/storage/preferencesSchema';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

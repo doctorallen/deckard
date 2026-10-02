@@ -1,18 +1,15 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { ParsedFile } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createEntityKindMemo, IndexState, NoteChange } from '../domain/index/indexState';
 import { getEntityKind } from '../domain/markdown/parser';
-import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { buildLegacyWorkspaceIndex } from './fixtures/legacyWorkspaceIndex';
 import {
   createRandom,
   developmentNotes,
   editNote,
   edgeCaseNotes,
-  normalizeIndex,
   parseNotes,
   pick,
   randomNote,
@@ -20,6 +17,9 @@ import {
   sampleNotes,
   toFileMap,
 } from './indexCorpus';
+import { normalizeIndex } from './normalizeIndex';
+import { createNotesGraphSnapshot } from '../domain/graph/notesGraph';
+import { ParsedFile } from '../domain/model';
 
 /**
  * The index is a fold of each note's own contribution. These tests hold it

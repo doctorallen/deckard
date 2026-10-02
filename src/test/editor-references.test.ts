@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import {
   buildBacklinkIndex,
   findWikiLinkAt,
@@ -18,6 +17,7 @@ import {
   createReferenceSummary,
   createTagSummary,
 } from '../ui/state/referenceState';
+import { WorkspaceIndex } from '../domain/model';
 
 suite('Editor references', () => {
   const index = createIndex();

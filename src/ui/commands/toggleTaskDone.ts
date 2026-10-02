@@ -4,12 +4,8 @@ import { selectedLines, ToggleResult } from '../../domain/tasks/toggleLines';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { TaskService } from '../../services/taskService';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
-import { describeCompletion, quoteTitle } from './taskActions';
-
-// Toggle Task Done's rule moved to domain/tasks; its names stay here for the
-// modules that import them from the command.
-export { selectedLines, toggleTaskLines } from '../../domain/tasks/toggleLines';
-export type { ToggledLine, ToggleResult } from '../../domain/tasks/toggleLines';
+import { describeCompletion } from './taskActions';
+import { quoteTitle } from '../../domain/tasks/taskLines';
 
 /** The sentence a toggle says in the status bar, or as a warning. */
 export function describeToggle(result: ToggleResult): { text: string; severity: 'info' | 'warning' } {

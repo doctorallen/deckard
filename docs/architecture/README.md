@@ -1,6 +1,6 @@
 # How Deckard is built
 
-**Status: target.** This section describes the design of [the refactor plan](../implementation/19-refactor.md), not the code as it stands; each phase rewrites it to describe what then exists. Where a page describes today's code, it says so.
+**Status: current.** This section describes the code as it stands after the last phase of [the refactor plan](../implementation/19-refactor.md). Where a page describes the code as it was before, it says so.
 
 This section is for contributors. The [guide](../guide/README.md) explains how to use Deckard. These pages explain how it works and why it is shaped that way.
 
@@ -25,13 +25,13 @@ The extension host is shared with every other extension. Slow work there delays 
 
 **The pages.** Each page is a webview. The host builds a snapshot of what the page shows and posts it; the page draws it and posts back what the reader did. See [webviews.md](webviews.md).
 
-**The host code.** Pure rules live in `domain`, application logic in `services`, VS Code calls behind `ports` in `platform`, and thin adapters in `ui`. The dependency rule points one way, and lint enforces it. See [layers.md](layers.md) and [services.md](services.md).
+**The host code.** Pure rules live in `domain`, the index and the stores in `core`, application logic in `services`, VS Code calls behind `ports` in `platform`, and thin adapters in `ui`. The dependency rule points one way, and lint enforces it. See [layers.md](layers.md) and [services.md](services.md).
 
 **Tests.** Seven suites, each catching something the others cannot. See [testing.md](testing.md).
 
-## Where it is today
+## Where it started
 
-At v1.23.1 the code is disciplined line by line but badly placed. `activate()` in [`src/extension.ts`](../../src/extension.ts) builds about 45 objects and registers 102 commands. Domain logic lives in `src/ui/state`, and `src/core` imports both `vscode` and `ui`. Each page is one template literal with its script inlined. The plan moves the code into the layers above in eight behavior-preserving phases. No user-visible change ships with it.
+At v1.23.1 the code was disciplined line by line but badly placed. `activate()` in [`src/extension.ts`](../../src/extension.ts) built about 45 objects and registered 102 commands. Domain logic lived in `src/ui/state`, and `src/core` imported both `vscode` and `ui`. Each page was one template literal with its script inlined. The plan moved the code into the layers above in eight behavior-preserving phases, and no user-visible change shipped with it.
 
 ## Pages in this section
 

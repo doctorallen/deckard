@@ -14,14 +14,6 @@ import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
 import { needsNewDate } from '../../domain/tasks/taskPolicy';
 import { QueryContext } from '../../domain/query/queryContext';
-import {
-  addDays,
-  formatIsoDate,
-  startOfDay,
-  TASK_PRIORITY_RANKS,
-  TaskMetadataFormat,
-  describeDueDate,
-} from '../../domain/markdown/taskMetadata';
 import { extractTags } from '../../domain/markdown/parser';
 import {
   formatStatusLabel,
@@ -34,46 +26,34 @@ import {
 } from '../../domain/tasks/boardMoves';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
+import { tokenizeInline } from '../../domain/markdown/inline';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { createDashboardTask, sortTasks } from './entryCards';
+import { createQueryViewState } from './querySuggestions';
+import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn, TableTask } from './resultTable';
+import { buildSearchFacets } from '../../domain/search/facets';
+import { TASK_COLUMNS } from '../../domain/tasks/taskColumns';
+import {
+  TaskBoardCard,
+  TaskBoardColumn,
+  TaskBoardLayout,
+  TaskBoardSnapshot,
+  TaskMenuState,
+  TaskTable,
+} from '../protocol/taskBoard';
 import {
   PersistedPreferences,
   TagTitleDisplayMode,
   Task,
-  TaskBoardCard,
-  TaskBoardColumn,
   TaskBoardGroupBy,
-  TaskBoardLayout,
-  TaskBoardSnapshot,
   TaskPriority,
   WorkspaceIndex,
-  TaskMenuState,
-  TaskTable,
   Section,
-} from '../../core/types';
-import { tokenizeInline } from '../../domain/markdown/inline';
-import { getHeadingPath } from '../../domain/ranking/entryLabels';
-import { createDashboardTask, sortTasks } from './entryCards';
-import { createQueryViewState } from './querySuggestions';
-import { stripTrailingTags } from './queryBlockState';
-import {
-  compareTasksByColumn,
-  createTaskCells,
-  DEFAULT_TASK_COLUMNS,
-  getTaskColumn,
-  TableTask,
-  TASK_COLUMNS,
   TaskColumnId,
-} from './resultTable';
-import { buildSearchFacets } from './searchFacets';
-
-// The board's task rules moved to domain/tasks; their old names stay here
-// for the modules that import them from the board.
-export {
-  isValidStatusName,
-  readTaskStatus,
-  setTaskNamespaceTags,
-  setTaskStatusTag,
-} from '../../domain/tasks/boardMoves';
-export type { TaskMove } from '../../domain/tasks/boardMoves';
+} from '../../domain/model';
+import { describeDueDate } from '../../domain/markdown/dueWording';
+import { TASK_PRIORITY_RANKS, TaskMetadataFormat } from '../../domain/markdown/taskFields';
+import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * The task board lays tasks out as a Kanban board. Its columns come from what

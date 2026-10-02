@@ -5,22 +5,5 @@
  * ships"). The trees are the domain model's; the pages take their types
  * from here, since they import the protocol and not the domain.
  */
-export type {
-  BreakToken,
-  CodeToken,
-  EmphasisToken,
-  InlineToken,
-  LinkToken,
-  TextToken,
-  WikiLinkToken,
-} from '../../domain/model/inline';
-export type {
-  BlockToken,
-  CodeBlock,
-  HeadingBlock,
-  ListBlock,
-  ParagraphBlock,
-  QuoteBlock,
-  RuleBlock,
-  TableBlock,
-} from '../../domain/model/blocks';
+export type { InlineToken } from '../../domain/model/inline';
+export type { BlockToken } from '../../domain/model/blocks';

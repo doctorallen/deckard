@@ -4,23 +4,6 @@ import {
   isParkedTask,
   parkedLast,
 } from '../../domain/index/parked';
-import {
-  Entity,
-  SearchPageEntity,
-  SearchPreview,
-  ParsedFile,
-  PersistedPreferences,
-  ResultPaging,
-  SEARCH_PAGE_SIZES,
-  SearchPageSnapshot,
-  Section,
-  TagInfo,
-  Task,
-  TagTitleDisplayMode,
-  TagOverviewCard,
-  TagAssociation,
-  WorkspaceIndex,
-} from '../../core/types';
 import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/query/queryEdit';
 import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -31,9 +14,6 @@ import { noteTitle } from '../../domain/index/backlinks';
 import { getFileName } from '../../shared/paths';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
-import { buildSearchFacets, SearchFacetValue } from './searchFacets';
-import { createPinForLine, pinKey } from './pinnedNotes';
-import { findTagLookalikes } from './tagHygiene';
 import { getNoteTitle } from '../../domain/ranking/entryLabels';
 import {
   baseCollator,
@@ -53,6 +33,25 @@ import {
   taskIncludesTag,
 } from './tagMatching';
 import { createQueryViewState } from './querySuggestions';
+import { findTagLookalikes } from '../../domain/ranking/tagHygiene';
+import { pinKey } from '../../core/storage/preferencesSchema';
+import { createPinForLine } from '../../domain/notes/pins';
+import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
+import { ResultPaging, TagOverviewCard } from '../protocol/shared';
+import { SearchPageEntity, SearchPageSnapshot } from '../protocol/searchPage';
+import {
+  Entity,
+  SearchPreview,
+  ParsedFile,
+  PersistedPreferences,
+  SEARCH_PAGE_SIZES,
+  Section,
+  TagInfo,
+  Task,
+  TagTitleDisplayMode,
+  TagAssociation,
+  WorkspaceIndex,
+} from '../../domain/model';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards

@@ -1,6 +1,6 @@
 import { findCheckboxColumn, findStepFamily, isCheckedTaskLine } from '../markdown/taskSteps';
-import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskMetadata';
 import { Task } from '../model';
+import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 
 /**
  * Rules about a task's own line in its note: whether it still reads as the

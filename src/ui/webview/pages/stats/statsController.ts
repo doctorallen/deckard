@@ -9,12 +9,12 @@ import type { NavigationService } from '../../../../services/navigationService';
 import type { DeckardStatsSnapshot, StatsPageToHost } from '../../../protocol/stats';
 import { createMissingNotes, reportCreatedNotes } from '../../../commands/linkHealth';
 import { resolveSourceUri } from '../../../commands/navigation';
-import { createDeckardStatsSnapshot } from '../../../state/dashboardState';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { openSource, openTag } from '../../host/sharedHandlers';
 import { getStatsHtml } from '../../statsHtml';
-import type { DeckardTheme } from '../../themeNames';
+import type { PageChrome } from '../../components';
 import { narrowStatsMessage } from './messages';
+import { createDeckardStatsSnapshot } from '../../../state/statsState';
 
 /** What the Stats page reads, and whom it asks to open a tag. */
 export interface StatsControllerOptions {
@@ -75,8 +75,8 @@ export class StatsController implements PageController<DeckardStatsSnapshot, Sta
   }
 
   /** The Stats page's HTML, carrying `state` for the page to draw at once when given one. */
-  public html(webview: vscode.Webview, theme: DeckardTheme, state?: DeckardStatsSnapshot): string {
-    return getStatsHtml(webview, this.stats.extensionUri, theme, state);
+  public html(webview: vscode.Webview, chrome: PageChrome, state?: DeckardStatsSnapshot): string {
+    return getStatsHtml(webview, this.stats.extensionUri, chrome, state);
   }
 
   /** The totals, trends, and lists, drawn at this moment, which the trends end on. */

@@ -1,10 +1,5 @@
 import { parseMarkdown } from '../domain/markdown/parser';
 import {
-  formatIsoDate,
-  setTaskLineCompletion,
-  writeCompletion,
-} from '../domain/markdown/taskMetadata';
-import {
   findCheckboxColumn,
   findStepFamily,
   formatStepLines,
@@ -27,6 +22,8 @@ import type { Clock } from '../ports/clock';
 import type { Configuration } from '../ports/configuration';
 import type { EditApplier, HistoryWriter, NoteText, TextRange } from '../ports/editApplier';
 import type { ResourceUri } from '../ports/uri';
+import { setTaskLineCompletion, writeCompletion } from '../domain/markdown/taskLineEdits';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 /**
  * Every edit Deckard makes to a task: rewriting its line, from its checkbox
@@ -225,23 +222,19 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       const now = this.options.clock.now();
       const configuration = this.options.configuration.getConfiguration('deckard', uri);
       const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
-      const replacement = setTaskLineCompletion(
-        line,
-        task.checkboxColumn,
+      const replacement = setTaskLineCompletion(line, task.checkboxColumn, {
         completed,
-        addDoneDate ? formatIsoDate(now) : undefined,
-        readMetadataFormat(configuration),
-      );
+        doneDate: addDoneDate ? formatIsoDate(now) : undefined,
+        preferredFormat: readMetadataFormat(configuration),
+      });
       if (!completed || task.completed) {
         return { text: replacement };
       }
-      const completion = writeCompletion(
-        replacement,
-        task.checkboxColumn,
+      const completion = writeCompletion(replacement, task.checkboxColumn, {
         now,
         eol,
-        readStepsForNextOccurrence(lines, lineIndex),
-      );
+        steps: readStepsForNextOccurrence(lines, lineIndex),
+      });
       return {
         text: completion.text,
         outcome: {
@@ -319,7 +312,11 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       const text = lines[line];
       return {
         range: lineRange(line, note.lineAt(line)),
-        text: setTaskLineCompletion(text, findCheckboxColumn(text), true, doneDate, format),
+        text: setTaskLineCompletion(text, findCheckboxColumn(text), {
+          completed: true,
+          doneDate,
+          preferredFormat: format,
+        }),
       };
     });
     const result = await this.options.history.write([{ uri, replacements }], {

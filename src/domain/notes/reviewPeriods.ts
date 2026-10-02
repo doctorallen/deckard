@@ -1,6 +1,6 @@
 import type { Weekday } from '../markdown/dates';
-import { formatIsoDate } from '../markdown/taskMetadata';
 import { getPeriodEnd, getPeriodicNote, getPeriodStart, NotePeriod, parseLocalDate } from './periodicNotes';
+import { formatIsoDate } from '../markdown/calendar';
 
 /**
  * Which days a week's or a month's review covers: the period a day falls

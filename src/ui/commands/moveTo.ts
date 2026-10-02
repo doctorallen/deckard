@@ -5,13 +5,10 @@ import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLine
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { stripTags } from '../../domain/markdown/parser';
-import { PreferenceServices, PreferencesReader } from '../../core/storage/preferences';
-import { Task } from '../../core/types';
+import { PreferenceServices } from '../../core/storage/preferences';
 import { noteTitle } from '../../domain/index/backlinks';
 import type { IndexReader } from '../../core/workspace/indexReader';
-import { createPinForLine } from '../state/pinnedNotes';
-import { findSameSection } from './capture';
-import { chooseTargetFolder, ensureDailyNote, getPeriodicNote } from './dailyNote';
+import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { readWeekStart } from './datePrompt';
 import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
@@ -21,6 +18,11 @@ import { createWikiLink } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
 import { WriteHandle } from './workspaceWrites';
+import { getPeriodicNote } from '../../domain/notes/periodicNotes';
+import { findSameSection } from '../../domain/capture/captureLines';
+import { createPinForLine } from '../../domain/notes/pins';
+import { Task } from '../../domain/model';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
  * Deckard: Move to… — a line, a task and its steps, or a selection, taken

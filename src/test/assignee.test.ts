@@ -3,10 +3,10 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { layoutTaskBoard, resolveTaskMove } from '../ui/state/taskBoardState';
 import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 const notes = {
   'notes/atlas.md': [

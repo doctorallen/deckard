@@ -5,10 +5,10 @@ import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { formatQuery } from '../domain/query/queryFormat';
 import { parseQuery } from '../domain/query/queryParser';
 import { QueryConditionNode } from '../domain/query/queryTypes';
-import { WorkspaceIndex } from '../core/types';
 import { findMissingLinkTargets, getBacklinkIndex } from '../domain/index/backlinks';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 function condition(text: string): QueryConditionNode {
   const parsed = parseQuery(text);

@@ -5,14 +5,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { formatIsoDate } from '../domain/markdown/taskMetadata';
 import { createDailyNote } from '../ui/commands/dailyNote';
-import {
-  describeExtractFailure,
-  extractHeadingNote,
-  findHeadingAtLine,
-  getExtractedNoteFileName,
-} from '../ui/commands/extractHeading';
+import { describeExtractFailure, extractHeadingNote } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
@@ -25,6 +19,9 @@ import { replaceIndexedTag } from '../domain/markdown/tagRename';
 import { parseRenameTag } from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
 import { createTaskWrites } from './taskWrites';
+import { getExtractedNoteFileName } from '../domain/markdown/noteNames';
+import { findHeadingAtLine } from '../domain/notes/headingLookup';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 suite('Source commands', () => {
   // The history these edits write to, which no other suite shares.

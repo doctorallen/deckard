@@ -3,17 +3,18 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createDeckardStatsSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { createCalendar } from '../ui/state/calendarState';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 import { ENABLED } from '../ui/webview/selectors';
-import { deckardThemes } from '../ui/webview/themes';
 import { PAGES, renderablePages, renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { readGoldens } from '../../test/harness/domGoldens';
 import { createQueryContext } from '../domain/query/queryContext';
+import { deckardThemes } from '../ui/webview/themeNames';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createDeckardStatsSnapshot } from '../ui/state/statsState';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,

@@ -2,12 +2,7 @@ import * as assert from 'assert';
 
 import MarkdownIt = require('markdown-it');
 
-import { Section, TagInfo, Task, WorkspaceIndex } from '../core/types';
-import {
-  addQueryBlockRenderer,
-  createPreviewSourceHref,
-  renderQueryBlockHtml,
-} from '../ui/preview/queryBlockHtml';
+import { addQueryBlockRenderer, renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
 import {
   createQueryBlockSnapshot,
   describeQueryBlockCounts,
@@ -16,6 +11,8 @@ import {
   parseQueryBlockInfo,
 } from '../ui/state/queryBlockState';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createPreviewSourceHref } from '../domain/markdown/sourceLinks';
+import { Section, TagInfo, Task, WorkspaceIndex } from '../domain/model';
 
 suite('Deckard query blocks', () => {
   test('recognizes only deckard fences and reads their options', () => {

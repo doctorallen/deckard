@@ -1,4 +1,4 @@
-import { findFencedLines, stripTags } from '../markdown/parser';
+import { stripTags } from '../markdown/parser';
 import { WorkspaceIndex } from '../model';
 import {
   createNoteTitleMap,
@@ -7,6 +7,7 @@ import {
   resolveWikiTarget,
   WIKI_LINK_WITH_TEXT,
 } from '../index/backlinks';
+import { findFencedLines } from '../markdown/lineShapes';
 
 /**
  * Keeps `[[links]]` pointing where they pointed before a note or a heading was

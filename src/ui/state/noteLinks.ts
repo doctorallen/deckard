@@ -1,19 +1,12 @@
 import { isParkedFile } from '../../domain/index/parked';
 import { describeDistance, formatShortDay } from '../../domain/markdown/dates';
-import { formatIsoDate } from '../../domain/markdown/taskMetadata';
 import { isPeriodicNoteFile, stripTags } from '../../domain/markdown/parser';
-import {
-  NoteLinkEntry,
-  NoteLinkGroup,
-  NoteLinks,
-  NoteMention,
-  ParsedFile,
-  Section,
-  WorkspaceIndex,
-} from '../../core/types';
 import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
-import { findUnlinkedMentions } from './editorLensState';
+import { findUnlinkedMentions } from '../../domain/search/mentions';
+import { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
+import { NoteLinkEntry, NoteLinkGroup, NoteLinks, NoteMention } from '../protocol/sidebarNotes';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 
 /**
  * What points at a note: the notes that link to it, each line in context

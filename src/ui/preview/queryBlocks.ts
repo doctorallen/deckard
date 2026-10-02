@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 
 import { QueryContext } from '../../domain/query/queryContext';
 import { measure } from '../../shared/timing';
-import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   onIndexUpdateInTurn,
@@ -18,6 +17,7 @@ import {
 import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
+import { WorkspaceIndex } from '../../domain/model';
 
 /** The one thing the blocks need from the indexer: its published snapshots. */
 interface IndexSource {

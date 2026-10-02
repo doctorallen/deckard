@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 
 import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
-import { WorkspaceIndex } from '../../core/types';
 import { createAgenda } from '../state/agendaState';
 import { openSettingAction, settingLabel } from './notify';
 import { readQueryContext } from './queryContext';
+import { WorkspaceIndex } from '../../domain/model';
 
 /**
  * What a workspace's first index found, said once.

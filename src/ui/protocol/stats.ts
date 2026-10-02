@@ -12,7 +12,7 @@ import type {
   OpenTagMessage,
 } from './shared';
 
-export type { TagMergeCandidate, TagMergeReason } from '../../domain/model/tags';
+export type { TagMergeCandidate } from '../../domain/model/tags';
 
 /** A tag, entity, or entry the Stats page lists by how often it was opened. */
 export interface StatsAccessItem {

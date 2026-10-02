@@ -2,25 +2,19 @@ import * as vscode from 'vscode';
 
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
-import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import {
-  findDailyNoteActions,
-  findEmbedProblems,
-  findTaskDependencies,
-  findUnlinkedMentions,
-} from '../state/editorLensState';
-import { formatLocalDate, getPeriodicNoteUri } from '../commands/dailyNote';
-import {
-  CREATE_MISSING_NOTES_COMMAND,
-  findLinkProblems,
-  findMissingNoteNames,
-} from '../commands/linkHealth';
+import { findDailyNoteActions, findEmbedProblems, findTaskDependencies } from '../state/editorLensState';
+import { getPeriodicNoteUri } from '../commands/dailyNote';
+import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
 import { getRolloverLookbackDays, getRolloverMode } from '../commands/rollover';
 import { LINK_MENTIONS_COMMAND } from '../commands/unlinkedMentions';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { whenPublished } from '../../core/workspace/publishing';
+import { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkProblems';
+import { formatLocalDate } from '../../domain/notes/periodicNotes';
+import { findUnlinkedMentions } from '../../domain/search/mentions';
+import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
 
 /** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {

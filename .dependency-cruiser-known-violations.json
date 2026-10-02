@@ -2,8 +2,8 @@
   {
     "type": "dependency",
     "from": "src/ui/commands/chooseTheme.ts",
-    "to": "src/ui/webview/themes.ts",
-    "unresolvedTo": "../webview/themes",
+    "to": "src/ui/webview/themeNames.ts",
+    "unresolvedTo": "../webview/themeNames",
     "dependencyTypes": [
       "local",
       "import"
@@ -15,17 +15,16 @@
   },
   {
     "type": "dependency",
-    "from": "src/core/types.ts",
-    "to": "src/ui/protocol/index.ts",
-    "unresolvedTo": "../ui/protocol",
+    "from": "src/ui/commands/chooseTheme.ts",
+    "to": "src/ui/webview/themes.ts",
+    "unresolvedTo": "../webview/themes",
     "dependencyTypes": [
       "local",
-      "type-only",
-      "export"
+      "import"
     ],
     "rule": {
       "severity": "error",
-      "name": "core-not-to-ui"
+      "name": "commands-not-to-webview"
     }
   }
 ]

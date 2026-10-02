@@ -1,23 +1,13 @@
 import { isParkedFile } from '../../domain/index/parked';
-import {
-  PersistedPreferences,
-  StatsAccessItem,
-  TagInfo,
-  WorkspaceIndex,
-  DeckardStatsSnapshot,
-  StatsTrend,
-  StatsTagUsage,
-  StatsTagPairs,
-  TagMergeCandidate,
-  UnreadableNote,
-} from '../../core/types';
 import { isPeriodicNoteFile, stripTags } from '../../domain/markdown/parser';
 import { findMissingLinkTargets, getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { getFileName } from '../../shared/paths';
-import { findTagMergeCandidates } from './tagHygiene';
 import { baseCollator, defaultCollator } from './entryCards';
 import { sectionIncludesTag, taskIncludesTag } from './tagMatching';
+import { findTagMergeCandidates } from '../../domain/ranking/tagHygiene';
+import { StatsAccessItem, DeckardStatsSnapshot, StatsTrend, StatsTagUsage, StatsTagPairs } from '../protocol/stats';
+import { PersistedPreferences, TagInfo, WorkspaceIndex, TagMergeCandidate, UnreadableNote } from '../../domain/model';
 
 /**
  * The Stats page: what the workspace holds, how it has grown week by week,

@@ -2,11 +2,11 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { NoteBoundaries } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 /**
  * Where one note ends and the next begins.

@@ -1,14 +1,11 @@
 import * as vscode from 'vscode';
 
 import { describeMissingTag, reportFailure } from '../commands/notify';
-import { onDidChangePageChrome } from './components';
+import { onDidChangePageChrome } from './host/pageChrome';
 import { ThemePreview } from './themePreview';
 
 import { parseQuery } from '../../domain/query/queryParser';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
-import { WorkspaceIndex } from '../../core/types';
-import { resolveQueryTagIntersection } from '../state/dashboardState';
-import { isWritten } from '../state/searchFacets';
 import { TaskWrites } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { whenPublished } from '../../core/workspace/publishing';
@@ -16,7 +13,7 @@ import type { ExportService } from '../../services/exportService';
 import { NavigationService } from '../../services/navigationService';
 import type { SearchPagePageToHost, SearchPageState } from '../protocol/searchPage';
 import type { SearchRefineState } from '../protocol/shared';
-import { pageResourceRoots } from './host/pageShell';
+import { pageResourceRoots } from './host/surface';
 import { PanelSurface } from './host/surface';
 import { WebviewHost } from './host/webviewHost';
 import {
@@ -25,9 +22,9 @@ import {
   SearchPageController,
   SearchPreferences,
 } from './pages/searchPage/searchPageController';
-
-export { getSearchKey };
-export type { SearchPreferences };
+import { isWritten } from '../../domain/search/facets';
+import { resolveQueryTagIntersection } from '../state/searchPageState';
+import { WorkspaceIndex } from '../../domain/model';
 
 /** What the search pages are built from. */
 export interface SearchPanelsOptions {

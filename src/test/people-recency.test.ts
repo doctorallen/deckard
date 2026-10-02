@@ -1,17 +1,12 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../domain/markdown/parser';
-import { PersistedPreferences, WorkspaceIndex } from '../core/types';
+import { isPersonTag, parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import {
-  isPersonTag,
-  listPeopleRecency,
-  listQuietPeople,
-  listQuietTags,
-} from '../ui/state/peopleRecency';
-import { normalizeDashboardWidgets } from '../core/storage/preferences';
+import { listPeopleRecency, listQuietPeople, listQuietTags } from '../ui/state/peopleRecency';
 import { createQueryContext } from '../domain/query/queryContext';
+import { normalizeDashboardWidgets } from '../core/storage/preferencesSchema';
+import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 /** Only what a widget reads; the rest of Home is not in play here. */
 const preferences: PersistedPreferences = {

@@ -9,29 +9,6 @@
 
 import type { QueryDiagnostic, QueryField, QueryOperator } from '../model/query';
 
-/**
- * The query shapes a page's snapshot carries live in the domain model, where
- * `ui/protocol` can reach them; they are re-exported so the query modules
- * keep importing everything from here.
- */
-export type {
-  QueryBuilderGroup,
-  QueryBuilderItem,
-  QueryBuilderJoin,
-  QueryBuilderRow,
-  QueryDiagnostic,
-  QueryDiagnosticSeverity,
-  QueryFacet,
-  QueryFacetValue,
-  QueryField,
-  QueryOperator,
-  QuerySuggestion,
-  QuerySuggestions,
-  QueryTermChip,
-  QueryViewState,
-  TagReferenceLike,
-} from '../model/query';
-
 /** Every field a query can name, in the order the query bar suggests them. */
 export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',

@@ -1,12 +1,12 @@
 import * as assert from 'assert';
 
 import { createPreferences } from './preferenceServices';
-import { PersistedPreferences } from '../core/types';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { PersistedPreferences } from '../domain/model';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
   const store = createPreferences({

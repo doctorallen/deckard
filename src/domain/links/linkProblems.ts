@@ -1,4 +1,3 @@
-import { findFencedLines } from '../markdown/parser';
 import { getExtractedNoteFileName } from '../markdown/noteNames';
 import { WorkspaceIndex } from '../model';
 import {
@@ -7,6 +6,7 @@ import {
   parseWikiTarget,
   WIKI_LINK,
 } from '../index/backlinks';
+import { findFencedLines } from '../markdown/lineShapes';
 
 /** A `[[link]]` that opens no note. */
 export interface LinkProblem {

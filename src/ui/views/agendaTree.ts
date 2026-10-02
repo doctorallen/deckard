@@ -2,21 +2,14 @@ import * as vscode from 'vscode';
 
 import { describeSteps } from '../../domain/markdown/taskSteps';
 import { escapeMarkdown } from '../../shared/text';
-import { Task, WorkspaceIndex } from '../../core/types';
 import { AgendaService, AgendaStatus } from '../../services/agendaService';
-import { stripTrailingTags } from '../state/queryBlockState';
 import { resolveSourceUri } from '../commands/navigation';
 import { TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
 import { mergeOrder } from '../state/dashboardState';
-import {
-  AgendaEntry,
-  AgendaGroup,
-  AgendaGroupBy,
-} from '../state/agendaState';
-
-// Which board column a group stands for is a task rule in domain/tasks; its
-// name stays here for the modules that import it from the view.
-export { groupColumnId } from '../../domain/tasks/agendaGroups';
+import { AgendaEntry, AgendaGroup } from '../state/agendaState';
+import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
+import { stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { Task, WorkspaceIndex } from '../../domain/model';
 
 /** What the Tasks view reads from the indexer, and when it redraws. */
 interface AgendaIndexSource {

@@ -14,24 +14,13 @@ import {
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
 } from '../domain/query/queryTypes';
-import {
-  evaluateQuery,
-  resolveDateRange,
-} from '../domain/query/queryEvaluator';
-import { formatIsoDate, startOfDay } from '../domain/markdown/taskMetadata';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { startOfWeek, Weekday } from '../domain/markdown/dates';
-import {
-  ParsedFile,
-  PersistedPreferences,
-  Section,
-  TagInfo,
-  Task,
-  WorkspaceIndex,
-} from '../core/types';
-import {
-  createSearchPageSnapshot,
-} from '../ui/state/dashboardState';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { ParsedFile, PersistedPreferences, Section, TagInfo, Task, WorkspaceIndex } from '../domain/model';
+import { formatIsoDate, startOfDay } from '../domain/markdown/calendar';
+import { resolveDateRange } from '../domain/query/queryDates';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
