@@ -81,9 +81,6 @@ export default {
     "scripts/capture-dashboard-screenshot.mjs": [
       "capture"
     ],
-    "src/core/mcp/mcpProtocol.ts": [
-      "handleMcpMessage"
-    ],
     "src/domain/markdown/captureWords.ts": [
       "readCaptureText"
     ],
@@ -182,14 +179,6 @@ export default {
     "src/test/components-primitives.test.ts": 1
   },
   "jsdoc/require-jsdoc": {
-    "src/core/changelog.ts": 1,
-    "src/core/mcp/mcpProtocol.ts": 4,
-    "src/core/storage/preferenceSnapshots.ts": 4,
-    "src/core/storage/searchDatabase.ts": 6,
-    "src/core/storage/searchStore.ts": 6,
-    "src/core/storage/searchStoreWorker.ts": 1,
-    "src/core/storage/searchStoreWorkerClient.ts": 2,
-    "src/core/workspace/scanner.ts": 3,
     "src/domain/index/backlinks.ts": 3,
     "src/domain/index/indexState.ts": 9,
     "src/domain/index/parked.ts": 5,
@@ -396,7 +385,6 @@ export default {
     ]
   },
   "no-nested-ternary": {
-    "src/core/workspace/scanner.ts": 1,
     "src/domain/index/indexState.ts": 2,
     "src/domain/markdown/dates.ts": 1,
     "src/domain/markdown/parser.ts": 1,

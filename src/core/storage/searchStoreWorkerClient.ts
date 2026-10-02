@@ -23,6 +23,7 @@ export class SearchWorkerClient {
   private readonly pending = new Set<number>();
   private readonly idleWaiters: Array<() => void> = [];
 
+  /** Writes into the cache at `databasePath` once a batch is sent; nothing opens until then. */
   public constructor(
     private readonly databasePath: string,
     /** Called when batches were lost, so their caller can take stock. */
@@ -53,6 +54,10 @@ export class SearchWorkerClient {
       : new Promise<void>((resolve) => this.idleWaiters.push(resolve));
   }
 
+  /**
+   * Stops the thread and releases whoever waits on whenIdle; batches not yet
+   * written are dropped, and the next scan writes them.
+   */
   public dispose(): void {
     this.available = false;
     const worker = this.worker;
@@ -61,6 +66,7 @@ export class SearchWorkerClient {
     void worker?.terminate();
   }
 
+  /** The running thread, started on first use; undefined once starting it has failed. */
   private open(): Worker | undefined {
     if (this.worker || !this.available) {
       return this.worker;
@@ -99,6 +105,7 @@ export class SearchWorkerClient {
     }
   }
 
+  /** Marks one batch done, and wakes the whenIdle waiters when it was the last. */
   private settle(id: number): void {
     this.pending.delete(id);
     if (this.pending.size === 0) {
@@ -106,6 +113,7 @@ export class SearchWorkerClient {
     }
   }
 
+  /** Forgets every batch in flight and wakes the whenIdle waiters. */
   private settleAll(): void {
     this.pending.clear();
     this.idleWaiters.splice(0).forEach((resolve) => resolve());

@@ -22,6 +22,7 @@ import {
  */
 
 /** What the host sends this thread when it opens it. */
+/** What the host passes the thread as workerData: the cache to open. */
 interface WorkerSetup {
   databasePath: string;
 }
@@ -35,6 +36,7 @@ export interface SearchWorkerRequest {
   clear: boolean;
 }
 
+/** The thread's answer to one batch: how many notes it wrote, or why it could not. */
 export type SearchWorkerReply =
   | { id: number; written: number }
   | { id: number; error: string };
@@ -62,6 +64,7 @@ parentPort?.on('message', (request: SearchWorkerRequest) => {
   }
 });
 
+/** Applies one batch in order: clear, then erase, then write in commits of COMMIT_EVERY; returns the notes written. */
 function run(request: SearchWorkerRequest): number {
   if (request.clear) {
     writer.transaction(() => writer.clear());
