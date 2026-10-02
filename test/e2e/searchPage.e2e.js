@@ -331,6 +331,30 @@ test('plain words narrow the whole search as they are typed', async () => {
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
 });
 
+test('Save keeps the words typed and not yet run, as the box shows them', async () => {
+  const { view, preferences } = await openOverview();
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, 'planning');
+  // The pointer goes down on Save, inside the box, which keeps what was typed.
+  const save = view.find('[data-action="save-filter"]');
+  vscode._test.setInputBoxResponse('Atlas planning');
+  view.press(save);
+  await settle();
+  vscode._test.setInputBoxResponse(undefined);
+  const [saved] = preferences.reader.value.savedFilters;
+  assert.ok(saved, 'the search was saved');
+  assert.deepStrictEqual({ name: saved.name, query: saved.query }, { name: 'Atlas planning', query: '#project/atlas AND planning' });
+});
+
+test('Save on a search that does not parse runs it, so the box says why', async () => {
+  const { view, preferences } = await openOverview();
+  view.type(view.find('[data-action="query-input"]'), 'due <');
+  view.press(view.find('[data-action="save-filter"]'));
+  await settle();
+  assert.deepStrictEqual(preferences.reader.value.savedFilters, [], 'nothing is kept');
+  assert.ok(view.find('.query-error'), 'the box shows the error');
+});
+
 test('opening a search a page already shows reveals that page', async () => {
   const { panels } = await openOverview();
   const count = vscode._test.createdPanels.length;

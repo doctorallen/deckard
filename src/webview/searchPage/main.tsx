@@ -338,7 +338,9 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'open-help': () => send({ type: 'openHelp' }),
   'history-back': () => send({ type: 'navigateSearchHistory', direction: 'back' }),
   'history-forward': () => send({ type: 'navigateSearchHistory', direction: 'forward' }),
-  'save-filter': () => send({ type: 'saveTagOverviewFilter' }),
+  // What the box holds, words typed and not yet run among it, is what the
+  // reader sees and so what Save keeps.
+  'save-filter': () => send({ type: 'saveTagOverviewFilter', query: editor.currentText() }),
   'create-hub': () => send({ type: 'createHubNote' }),
   'exclude-hub-links': () => send({ type: 'excludeHubLinks' }),
   'unpark-tag': (target) => {

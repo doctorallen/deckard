@@ -9,6 +9,7 @@ import type {
   NavigateSearchHistoryMessage,
   ParkNoteMessage,
   PreviewSearchMessage,
+  SaveTagOverviewFilterMessage,
   SearchPagePageToHost,
   SetOverviewQueryMessage,
   SetRenderModeMessage,
@@ -61,6 +62,12 @@ const narrowSetOverviewQuery: Narrower<SetOverviewQueryMessage> = (value) =>
   value.query.length <= MAX_QUERY_LENGTH &&
   (value.remember === undefined || typeof value.remember === 'boolean')
     ? { type: 'setOverviewQuery', query: value.query, remember: value.remember !== false }
+    : undefined;
+
+/** A search to keep under a name, as the box holds it: no longer than a search may be, and nothing else. */
+const narrowSaveTagOverviewFilter: Narrower<SaveTagOverviewFilterMessage> = (value) =>
+  Object.keys(value).length === 2 && typeof value.query === 'string' && value.query.length <= MAX_QUERY_LENGTH
+    ? { type: 'saveTagOverviewFilter', query: value.query }
     : undefined;
 
 /** A step back or forward through the searches the page has shown, and nothing else. */
@@ -181,7 +188,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   parkNote: narrowParkNote('parkNote'),
   unparkNote: narrowParkNote('unparkNote'),
   mergeTags: narrowMergeTags,
-  saveTagOverviewFilter: exactlyType('saveTagOverviewFilter'),
+  saveTagOverviewFilter: narrowSaveTagOverviewFilter,
   createHubNote: exactlyType('createHubNote'),
   excludeHubLinks: exactlyType('excludeHubLinks'),
   clearOverviewQuery: exactlyType('clearOverviewQuery'),

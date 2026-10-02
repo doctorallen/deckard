@@ -600,6 +600,7 @@ suite('Search page behavior', () => {
 
     assert.deepStrictEqual(page.lastPosted('saveTagOverviewFilter'), {
       type: 'saveTagOverviewFilter',
+      query: '#project/atlas',
     });
   });
 
