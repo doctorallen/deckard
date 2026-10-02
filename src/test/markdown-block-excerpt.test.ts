@@ -180,6 +180,10 @@ suite('Block excerpt: lists', () => {
   test('empty items', () => {
     assert.strictEqual(outline(buildBlockExcerpt('- a\n-\n- c')), 'ul(tight [p(a)][][p(c)])');
   });
+
+  test('a list whose items hold no paragraph counts as tight, since it shows the same either way', () => {
+    assert.strictEqual(outline(buildBlockExcerpt('1.\n\n2.')), 'ol(tight [][])');
+  });
 });
 
 suite('Block excerpt: tables', () => {
@@ -193,5 +197,27 @@ suite('Block excerpt: tables', () => {
 
   test('a delimiter row that does not match the header makes no table', () => {
     assert.strictEqual(outline(buildBlockExcerpt('| a | b |\n|---|\n')), 'p(| a | b |/|---|)');
+  });
+});
+
+suite('Block excerpt: link reference definitions', () => {
+  test('a definition shows nothing, and a reference to it is a link', () => {
+    const blocks = buildBlockExcerpt('See [the docs][d] and [d].\n\n[d]: https://x.org "Docs"');
+    assert.deepStrictEqual(blocks, [
+      {
+        kind: 'paragraph',
+        children: [
+          { kind: 'text', text: 'See ' },
+          { kind: 'link', url: 'https://x.org', title: 'Docs', children: [{ kind: 'text', text: 'the docs' }] },
+          { kind: 'text', text: ' and ' },
+          { kind: 'link', url: 'https://x.org', title: 'Docs', children: [{ kind: 'text', text: 'd' }] },
+          { kind: 'text', text: '.' },
+        ],
+      },
+    ]);
+  });
+
+  test('a reference to a note by path is its words', () => {
+    assert.strictEqual(outline(buildBlockExcerpt('[Tasks][t]\n\n[t]: <01 Tasks.md>')), 'p(Tasks)');
   });
 });
