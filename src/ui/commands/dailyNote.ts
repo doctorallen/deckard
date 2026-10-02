@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { reportNeedsFolder } from './notify';
+import { readFolderSetting } from '../../shared/paths';
 
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { Weekday } from '../../domain/markdown/dates';
@@ -109,12 +110,12 @@ export function getPeriodicNoteUri(
   /** A name to use instead of the one this period would be given. */
   name = getPeriodicNote(period, day, readWeekStart()).name,
 ): vscode.Uri {
-  const notesFolder = vscode.workspace
-    .getConfiguration('deckard', targetFolder.uri)
-    .get<string>('notesFolder', 'notes')
-    .trim()
-    .replaceAll('\\', '/')
-    .replace(/^\/+|\/+$/g, '');
+  // A value that is not text reads as the setting's default, the workspace
+  // folder, as the scanner reads it.
+  const notesFolder = readFolderSetting(
+    vscode.workspace.getConfiguration('deckard', targetFolder.uri).get<unknown>('notesFolder', 'notes'),
+    '',
+  );
   const notesUri = notesFolder
     ? vscode.Uri.joinPath(
         targetFolder.uri,

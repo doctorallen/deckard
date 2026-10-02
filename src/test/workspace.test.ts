@@ -338,6 +338,33 @@ suite('Workspace scanner and index', () => {
     }
   });
 
+  test('reads a notes or templates folder setting that is not text as its default', async () => {
+    const workspaceUri = fileUri('/tmp/deckard-wrong-type');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-wrong-type', index: 0 };
+    const noteUri = joinUri(workspaceUri, 'case.md');
+    const templateUri = joinUri(workspaceUri, 'templates', 'meeting.md');
+    for (const [name, value] of [
+      ['notesFolder', null],
+      ['notesFolder', 5],
+      ['notesFolder', false],
+      ['templatesFolder', null],
+      ['templatesFolder', false],
+      ['templatesFolder', ['templates']],
+    ] as const) {
+      const scanner = new WorkspaceScanner(createFakeAccess({
+        workspaceFolders: [workspaceFolder],
+        settings: new FakeSettings({ [`deckard.${name}`]: value }),
+        findFiles: async () => [noteUri, templateUri],
+        readFile: async () => Buffer.from('# Case #project/atlas', 'utf8'),
+      }));
+      const written = `deckard.${name} = ${JSON.stringify(value)}`;
+      assert.deepStrictEqual((await scanner.scan()).map((file) => file.filePath), ['case.md'], written);
+      assert.strictEqual(scanner.isNotesFile(noteUri), true, written);
+      assert.strictEqual(scanner.isNotesFile(templateUri), false, written);
+      assert.strictEqual(scanner.getNotesFolderUri(workspaceFolder).path, workspaceUri.path, written);
+    }
+  });
+
   test('leaves the templates folder out of the notes', async () => {
     const workspaceUri = fileUri('/tmp/deckard-scanner');
     const noteUri = joinUri(workspaceUri, 'case.md');

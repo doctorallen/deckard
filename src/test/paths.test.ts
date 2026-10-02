@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { getFileName, getFolder } from '../shared/paths';
+import { getFileName, getFolder, readFolderSetting } from '../shared/paths';
 
 suite('Index paths', () => {
   test('getFileName keeps the last segment and its extension', () => {
@@ -33,5 +33,14 @@ suite('Index paths', () => {
     assert.strictEqual(getFolder('inbox.md'), '');
     assert.strictEqual(getFolder(''), '');
     assert.strictEqual(getFolder('/inbox.md'), '');
+  });
+
+  test('readFolderSetting trims a folder setting to a relative path, and reads one that is not text as the default', () => {
+    assert.strictEqual(readFolderSetting(' /notes\\daily/ ', ''), 'notes/daily');
+    assert.strictEqual(readFolderSetting('', 'templates'), '');
+    assert.strictEqual(readFolderSetting(null, 'templates'), 'templates');
+    assert.strictEqual(readFolderSetting(5, ''), '');
+    assert.strictEqual(readFolderSetting(false, ''), '');
+    assert.strictEqual(readFolderSetting(['notes'], ''), '');
   });
 });

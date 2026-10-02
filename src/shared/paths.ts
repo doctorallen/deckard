@@ -1,8 +1,8 @@
 /**
  * Names taken from an index path: the workspace-relative, `/`-separated path
- * the index keys every note by, as `projects/atlas.md`. They are string
- * operations on that form only, not on OS paths, and nothing here reaches
- * `vscode`.
+ * the index keys every note by, as `projects/atlas.md`, and folder settings
+ * read into that form. They are string operations on that form only, not on
+ * OS paths, and nothing here reaches `vscode`.
  */
 
 /**
@@ -24,4 +24,16 @@ export function getFileName(filePath: string | undefined): string | undefined {
  */
 export function getFolder(filePath: string): string {
   return filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : '';
+}
+
+/**
+ * A folder setting, such as `deckard.notesFolder`, as a workspace-relative
+ * path with `/` separators and no slash at either end; '' for the workspace
+ * folder itself. A value that is not text, which a hand-edited settings.json
+ * can hold, reads as `fallback`, the setting's default, rather than failing
+ * every reader of it.
+ */
+export function readFolderSetting(value: unknown, fallback: string): string {
+  const folder = typeof value === 'string' ? value : fallback;
+  return folder.trim().replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
 }

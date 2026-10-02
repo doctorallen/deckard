@@ -15,6 +15,7 @@ import {
   parseMarkdown,
   PARSE_FORMAT,
 } from '../../domain/markdown/parser';
+import { readFolderSetting } from '../../shared/paths';
 import { reportError } from '../../shared/timing';
 import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
 import { ParsedFile, UnreadableNote } from '../../domain/model';
@@ -400,11 +401,10 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    * Normalizes user configuration before it is used in VS Code glob/path APIs.
    */
   public getNotesFolder(workspaceFolder?: WorkspaceFolder<U>): string {
-    const configuration = this.getConfiguration(workspaceFolder);
-    const configuredFolder = configuration
-      .get<string>('notesFolder', '')
-      .trim();
-    return configuredFolder.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
+    return readFolderSetting(
+      this.getConfiguration(workspaceFolder).get<unknown>('notesFolder', ''),
+      '',
+    );
   }
 
   /**
@@ -414,11 +414,10 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
   public getTemplatesFolderUri(
     workspaceFolder: WorkspaceFolder<U>,
   ): U | undefined {
-    const folder = this.getConfiguration(workspaceFolder)
-      .get<string>('templatesFolder', 'templates')
-      .trim()
-      .replaceAll('\\', '/')
-      .replace(/^\/+|\/+$/g, '');
+    const folder = readFolderSetting(
+      this.getConfiguration(workspaceFolder).get<unknown>('templatesFolder', 'templates'),
+      'templates',
+    );
     return folder && folder !== '.'
       ? this.access.joinPath(workspaceFolder.uri, ...folder.split('/'))
       : undefined;
