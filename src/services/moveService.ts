@@ -46,7 +46,10 @@ export interface MoveTarget<U> {
   name: string;
   /** Under a heading: its own lines. Absent: the end of the note. */
   section?: Pick<Section, 'startLine' | 'endLine'>;
-  /** A note to create, with what it starts with before the moved lines. */
+  /**
+   * A note to create, with what it starts with before the moved lines. It is
+   * written in the move's line ending, whichever it is given in.
+   */
   create?: string;
 }
 
@@ -183,7 +186,10 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       : undefined;
     const edits = await this.toEdits(splicesBy);
 
-    const created = target.create === undefined ? undefined : await this.create(target.uri, `${target.create}${moved}${eol}`);
+    const created =
+      target.create === undefined
+        ? undefined
+        : await this.create(target.uri, `${target.create.replace(/\r?\n/g, eol)}${moved}${eol}`);
     const deleteCreated = (): Promise<void> => this.deleteCreated(created);
     const write = await this.options.history.write(edits, {
       label: 'Move to…',

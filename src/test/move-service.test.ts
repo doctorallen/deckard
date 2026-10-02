@@ -108,6 +108,22 @@ suite('Move service', () => {
     assert.strictEqual(files.files.has('Call Ren.md'), false, 'Undo deletes the note it made');
   });
 
+  test('writes a new note from a CRLF note in CRLF throughout', async () => {
+    const crlf = '# Inbox\r\n- [ ] Call Ren\r\n  - [ ] Find number\r\n';
+    const { files, service } = setup({ 'inbox.md': crlf });
+    const result = await service.move([{ uri: noteUri('inbox.md'), filePath: 'inbox.md', block: blockAt(crlf, 1) }], {
+      uri: noteUri('Call Ren.md'),
+      link: 'Call Ren',
+      name: 'Call Ren',
+      create: '# Call Ren\n\n',
+    });
+    assert.strictEqual(result.kind, 'moved');
+    assert.strictEqual(
+      new TextDecoder().decode(files.files.get('Call Ren.md')),
+      '# Call Ren\r\n\r\n- [ ] Call Ren\r\n  - [ ] Find number\r\n',
+    );
+  });
+
   test('writes nothing when what moves changed, and deletes a note it made for a failed write', async () => {
     const changed = setup({ 'inbox.md': inbox, 'plan.md': plan });
     const block = blockAt(inbox, 1);
