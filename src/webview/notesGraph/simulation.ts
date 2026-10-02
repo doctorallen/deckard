@@ -28,11 +28,14 @@ export function isPhysicalNode(state: SimulationState, index: number): boolean {
  * One step of the simulation: the group anchors move, each drawn link pulls
  * its ends together, nodes push apart, each note and task is drawn to its
  * group, and untagged ones to the middle; then every node moves by its
- * velocity, but the one being dragged, and the heat falls.
+ * velocity, but the one being dragged, and the heat falls. A graph with no
+ * nodes has nothing to move, so it is at rest at once.
  */
 export function tick(state: SimulationState, settings: GraphSettings): void {
   const count = state.nodes.length;
   if (count === 0) {
+    // The frame loop runs while the graph is hot, and only a tick cools it.
+    state.alpha = 0;
     return;
   }
 

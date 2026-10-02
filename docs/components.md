@@ -827,7 +827,7 @@ Buttons, menu items, and command titles follow one table, and
 - **Host data is text.** Snapshot values are drawn as text nodes and
   attribute values, which Preact writes as such; a note's Markdown arrives
   as tokens and is drawn as elements (`<Inline>`, `<BlockExcerpt>`). No
-  page sets HTML from a snapshot: `markWords` escapes the text it marks, and
+  page sets HTML from a snapshot: `markWords` marks text as text nodes, and
   Help's guide page, which the host renders from the guide the VSIX ships,
   is the one piece of HTML a page is handed.
 - **Post intent, do not mutate.** A control carries `data-action` and posts a

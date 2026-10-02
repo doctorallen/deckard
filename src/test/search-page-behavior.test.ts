@@ -681,6 +681,18 @@ suite('Search page behavior', () => {
     assert.match(page.text('.card') ?? '', /The lift is stuck\./, 'the text reads as before');
   });
 
+  test('marks a searched word that a pattern would read specially as written, and keeps its search', () => {
+    const { page } = open(
+      { 'notes/a.md': '# Languages\nLearning c++ and cxx.' },
+      'c++',
+    );
+
+    const marked = page.findAll('#app mark').map((mark) => String(mark.textContent));
+    assert.ok(marked.length > 0, 'the word is marked where it is written');
+    assert.ok(marked.every((word) => word === 'c++'), `only "c++" is marked: ${marked.join(', ')}`);
+    assert.deepStrictEqual(page.savedState(), { query: 'c++', origin: '' }, 'the state that marked it is kept for a window reload');
+  });
+
   test('opens the page of a tag written on a card, not the note', () => {
     const { page } = open(
       { 'notes/atlas.md': '# Atlas #project/atlas #risk/vendor\nProse.' },

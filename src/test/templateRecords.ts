@@ -17,7 +17,9 @@ const FOLDER = path.resolve(__dirname, '..', '..', 'src', 'test', 'fixtures', 't
  * it, or a value, under the name the suite gives the case. Asking for a name
  * that was never recorded fails, so a case cannot pass by having nothing to
  * compare with. The recordings are never rewritten: they are the template's,
- * and the template is gone.
+ * and the template is gone. The one exception is a case that recorded a bug
+ * of the template's, corrected when the bug was fixed, and the suite that
+ * reads it says so where it does.
  * @param suite The suite's file name without `.test.ts`, which names its recording.
  * @returns The recording of a case, by name.
  */

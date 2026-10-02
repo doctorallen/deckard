@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 
+import { narrowNotesGraphMessage } from '../ui/webview/pages/notesGraph/messages';
 import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { readSheet } from './sheets';
@@ -209,6 +210,23 @@ suite('Notes Graph behavior', () => {
     );
   });
 
+  test('a tag filter checkbox says what it does in the page\'s tip, not a native title', () => {
+    page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
+    page.send(graphState(
+      [note('a', { tagKeys: ['project/atlas'] }), { id: 'tag:#project/atlas', kind: 'tag', title: '#project/atlas', tagKeys: [], degree: 1 }],
+      [{ source: 'section:a', target: 'tag:#project/atlas', weight: 1, types: ['tag-membership'] }],
+    ));
+    const box = page.find('#tag-list input[type="checkbox"]') as HTMLInputElement;
+    assert.strictEqual(box.getAttribute('data-tip'), 'Filter to nodes carrying the #project/atlas tag.');
+    assert.deepStrictEqual(page.findAll('#tag-list [title]').map((element) => element.outerHTML.slice(0, 80)), [], 'no native title on a row or its checkbox');
+
+    page.document.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    box.focus();
+    const tip = page.document.getElementById('deckard-tip');
+    assert.ok(tip && !tip.hidden, 'the tip shows on keyboard focus');
+    assert.strictEqual(tip?.textContent, 'Filter to nodes carrying the #project/atlas tag.');
+  });
+
   test('lays out its controls in the order they are read, each with a tip, and Reset after the zoom', () => {
     const page = open();
     const controls = page.findAll('input[id], select[id], button[id]');
@@ -356,12 +374,21 @@ suite('Notes Graph behavior', () => {
       const page = openCanvas();
       page.send(threeKinds());
       const words = () => page.findAll('#graph-legend .legend-word').filter((word) => !(word as HTMLElement).hidden).map((word) => word.textContent);
+      // A sample line is an SVG element, which has no hidden property: the
+      // sheet hides it by its attribute.
+      const lines = () => page.findAll('#graph-legend svg.legend-line').filter((line) => !line.hasAttribute('hidden')).map((line) => line.getAttribute('data-legend'));
       assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag']);
+      assert.deepStrictEqual(lines(), ['wiki', 'heading', 'tag']);
       assert.strictEqual(page.findAll('#graph-legend svg.legend-line[aria-hidden="true"]').length, 4);
 
       page.send(graphState([note('a'), note('b')], [{ source: 'section:a', target: 'section:b', weight: 0.5, types: [] }]));
       assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag', 'Through a daily note']);
+      assert.deepStrictEqual(lines(), ['wiki', 'heading', 'tag', 'joined'], 'its sample line shows with its words');
       assert.deepStrictEqual(strokes(page), [[8, 3, 1, 3]]);
+
+      page.send(threeKinds());
+      assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag']);
+      assert.deepStrictEqual(lines(), ['wiki', 'heading', 'tag'], 'and goes with them');
     });
 
     test('the host can turn Only links I wrote on', () => {
@@ -416,6 +443,70 @@ suite('Notes Graph behavior', () => {
       assert.match(page.text('#status-counts') ?? '', /^3 notes · 1 tasks · 3 of 3 links drawn · \d+ groups?$/);
     });
 
+    test('Escape clears the selection, and tells the host so it clears Related Notes too', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const strokes = () => lastFrame(page).filter((call) => call.op === 'stroke').length;
+      const before = strokes();
+      const canvas = page.find('#graph');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      page.flushFrames(1);
+      assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:a' });
+      assert.strictEqual(strokes(), before + 2, 'ringed');
+
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      page.flushFrames(1);
+      assert.strictEqual(strokes(), before, 'the ring and the highlight go');
+      const cleared = page.posted.at(-1);
+      assert.deepStrictEqual(cleared, { type: 'clearSelection' });
+      assert.deepStrictEqual(narrowNotesGraphMessage(cleared), { type: 'clearSelection' }, 'a message the host takes');
+      assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
+    });
+
+    test('Enter opens the selected node, and Alt+Enter opens it beside the graph, as Alt-click does', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const canvas = page.find('#graph');
+      const key = (init: KeyboardEventInit) => canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+      key({ key: 'ArrowRight' });
+      const at = { type: 'openSource', filePath: 'notes/a.md', line: 1 };
+
+      key({ key: 'Enter' });
+      assert.deepStrictEqual(page.lastPosted('openSource'), at);
+      key({ key: 'Enter', altKey: true });
+      assert.deepStrictEqual(page.lastPosted('openSource'), { ...at, beside: true });
+      key({ key: ' ', altKey: true });
+      assert.deepStrictEqual(page.lastPosted('openSource'), { ...at, beside: true });
+      for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+        key({ key: 'Enter', ...modifier });
+        assert.deepStrictEqual(page.lastPosted('openSource'), at, 'Cmd/Ctrl opens it, as Cmd/Ctrl-click does');
+      }
+    });
+
+    test('the status line counts the search\'s matches as the search is typed', async () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const status = () => page.text('#status-counts') ?? '';
+      assert.match(status(), /^3 notes · /, 'no count before a search');
+      const box = page.find('#search') as HTMLInputElement;
+      const type = async (text: string) => {
+        box.value = text;
+        box.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+        // The graph follows typing once it pauses for 150 ms.
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      };
+
+      await type('call');
+      assert.match(status(), /^1 match · 3 notes · /);
+      await type('c');
+      assert.match(status(), /^2 matches · 3 notes · /, 'c and call');
+      await type('');
+      assert.match(status(), /^3 notes · /, 'and none once the box is empty');
+    });
+
     test('a node Related Notes hovers is ringed with its neighbors bright, until the hover ends', () => {
       const page = openCanvas();
       page.send(chain());
@@ -458,6 +549,46 @@ suite('Notes Graph behavior', () => {
       tasks.dispatchEvent(new page.window.Event('change', { bubbles: true }));
       settle(page);
       assert.strictEqual(arcs(), 3, 'the notes');
+    });
+
+    test('a graph with no nodes is at rest, and Reset does not set it running', () => {
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true, clockStep: 1 });
+      page.send(graphState([], []));
+      page.flushFrames(1);
+      assert.strictEqual(page.flushFrames(100), 0, 'no frame is asked for');
+      assert.strictEqual((page.find('#sim-note') as HTMLElement).hidden, true, 'not Simulating');
+
+      page.click('#reset-graph-settings');
+      page.flushFrames(1);
+      assert.strictEqual(page.flushFrames(100), 0, 'Reset draws once, and asks for no more');
+      assert.strictEqual((page.find('#sim-note') as HTMLElement).hidden, true);
+    });
+
+    test('the zoom buttons zoom about the middle of the canvas, wherever it sits on the page', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const canvas = page.find('#graph');
+      // The canvas as if it sat below and to the right of the page's corner.
+      Object.defineProperty(canvas, 'getBoundingClientRect', {
+        value: () => ({ left: 100, top: 50, right: 900, bottom: 650, width: 800, height: 600, x: 100, y: 50 }),
+      });
+      const camera = () => (page.savedState() as { camera: { x: number; y: number; k: number } }).camera;
+      /** The world under the middle of the canvas, 400 by 300 into it. */
+      const middle = () => {
+        const { x, y, k } = camera();
+        return { x: (400 - x) / k, y: (300 - y) / k };
+      };
+      const before = middle();
+      const k = camera().k;
+      const stays = (what: string) => assert.ok(Math.abs(middle().x - before.x) < 1e-9 && Math.abs(middle().y - before.y) < 1e-9, what);
+
+      page.click('#zoom-out');
+      assert.ok(Math.abs(camera().k - k / 1.3) < 1e-9, 'zoomed out');
+      stays('the middle stays where it was');
+      page.click('#zoom-in');
+      assert.ok(Math.abs(camera().k - k) < 1e-9, 'and in again');
+      stays('and stays there');
     });
 
     test('Reset lays the graph out afresh and heats it, then frames it again', () => {

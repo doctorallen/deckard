@@ -99,7 +99,7 @@ export function GraphBody(props: ControlsProps) {
         id="graph"
         tabIndex={0}
         role="application"
-        aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Escape to clear."
+        aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear."
         aria-describedby="graph-legend"
         ref={refs.canvas}
       />
@@ -290,19 +290,6 @@ function FiltersGroup(props: ControlsProps) {
   );
 }
 
-/**
- * Carries the row's title onto its checkbox, as the list has always drawn
- * it. That native title is a known issue, left for after the refactor
- * (components-primitives' "no control on any page carries a native title"
- * names it), so it is written here rather than as a prop the lint rule
- * forbids.
- */
-function copyRowTitle(input: HTMLInputElement | null): void {
-  if (input && input.parentElement) {
-    input.title = input.parentElement.title;
-  }
-}
-
 /** The tag checklist: the first 200 tags under the filter, then how many more, or that none match. */
 function TagRows({ ui, settings, on }: ControlsProps) {
   if (!ui.tagList) {
@@ -324,8 +311,8 @@ function TagRows({ ui, settings, on }: ControlsProps) {
       continue;
     }
     rows.push(
-      <label class="toggle-row" title={`Filter to nodes carrying the ${label} tag.`} key={key}>
-        <input type="checkbox" checked={Boolean(selected[key])} ref={copyRowTitle} onChange={(event) => on.tagToggle(key, event)} />
+      <label class="toggle-row" key={key}>
+        <input type="checkbox" checked={Boolean(selected[key])} data-tip={`Filter to nodes carrying the ${label} tag.`} onChange={(event) => on.tagToggle(key, event)} />
         <span>{label}</span>
         <span class="tag-count">{String(count)}</span>
       </label>,
@@ -513,10 +500,10 @@ function LegendLine({ kind, dash, hidden }: { readonly kind: string; readonly da
 }
 
 /**
- * The legend, the status line, and Simulating. The legend names lines
- * through a daily note only while there are any; its sample line keeps its
- * hidden attribute even then, as the template's `hidden` on an SVG element
- * never changed it.
+ * The legend, the status line, and Simulating. The legend shows lines
+ * through a daily note, the sample and its words, only while there are
+ * any. The sample is an SVG element, which has no `hidden` property, so
+ * it is hidden by its attribute, which the page's sheet reads.
  */
 function StatusLine({ ui, refs }: ControlsProps) {
   return (
@@ -531,7 +518,7 @@ function StatusLine({ ui, refs }: ControlsProps) {
         <span class="legend-word">Heading</span>
         <LegendLine kind="tag" dash="1 3" />
         <span class="legend-word">Tag</span>
-        <LegendLine kind="joined" dash="8 3 1 3" hidden />
+        <LegendLine kind="joined" dash="8 3 1 3" hidden={!ui.status.joinedShown} />
         <span class="legend-word" data-legend="joined" hidden={!ui.status.joinedShown}>Through a daily note</span>
       </span>
       <span id="status-counts">{ui.status.text}</span>

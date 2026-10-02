@@ -9,16 +9,6 @@
  * the template's draws did.
  */
 
-/** Escapes text as the template's escapeHtml did, apostrophe included. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
 /** One text node marked, and the nodes it was replaced with. */
 interface Marked {
   readonly original: Text;
@@ -29,13 +19,18 @@ interface Marked {
 export type Unmark = () => void;
 
 /**
- * The words as one pattern. The words go in as written: the template meant
- * to escape what a pattern reads specially, but the escape it wrote was
- * lost to its own template literal, so `a.b` matches `axb`, and a word such
- * as `c++` throws, as it always has.
+ * A word as a pattern that matches it as written. Every character a pattern
+ * reads specially is escaped, so `a.b` matches only `a.b`, and `c++` is a
+ * word rather than a pattern that throws. Each is a syntax character, which
+ * may be escaped under the `u` flag as well.
  */
+function literal(word: string): string {
+  return word.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
+/** The words as one pattern, each matched as written. */
 function patternOf(words: readonly string[], wordStart: boolean): RegExp {
-  return new RegExp(`${wordStart ? '(?<![\\p{L}\\p{N}])' : ''}(${words.join('|')})`, wordStart ? 'giu' : 'gi');
+  return new RegExp(`${wordStart ? '(?<![\\p{L}\\p{N}])' : ''}(${words.map(literal).join('|')})`, wordStart ? 'giu' : 'gi');
 }
 
 /** The text nodes under `root` that a pattern finds, outside controls, tags, code, and marks. */
@@ -55,6 +50,34 @@ function textToMark(root: Element, pattern: RegExp): Text[] {
 }
 
 /**
+ * A text's words marked: the text as the reader sees it, cut where the
+ * pattern finds a word, each word in a `<mark>` and the text between as
+ * text. Matching the text itself, never its HTML, keeps a word such as
+ * "amp" or "lt" from being found inside `&amp;` or `&lt;`, the HTML a `&`
+ * or `<` is written as, which marked half of it and showed the reader the
+ * entity as text.
+ */
+function markedNodes(text: string, pattern: RegExp): ChildNode[] {
+  const nodes: ChildNode[] = [];
+  let from = 0;
+  // matchAll starts where the pattern's last search left off.
+  pattern.lastIndex = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index > from) {
+      nodes.push(document.createTextNode(text.slice(from, match.index)));
+    }
+    const mark = document.createElement('mark');
+    mark.textContent = match[0];
+    nodes.push(mark);
+    from = match.index + match[0].length;
+  }
+  if (from < text.length) {
+    nodes.push(document.createTextNode(text.slice(from)));
+  }
+  return nodes;
+}
+
+/**
  * Marks each word of two letters or more where it appears under `root`, in
  * `<mark>`. `wordStart` marks a word only where one starts, so "route"
  * marks "routes" but "art" does not mark "start". Returns what takes the
@@ -67,12 +90,7 @@ export function markWords(root: Element | null, words: readonly unknown[] | unde
   }
   const pattern = patternOf(wanted, Boolean(options && options.wordStart));
   const marked: Marked[] = textToMark(root, pattern).map((node) => {
-    // The template marked the escaped text and read it back as HTML, so a
-    // word is matched against `&amp;` and its kin as well; nothing but the
-    // marks can come of it, since the text is escaped first.
-    const holder = document.createElement('span');
-    holder.innerHTML = escapeHtml(String(node.nodeValue)).replace(pattern, '<mark>$1</mark>');
-    const replacement = Array.from(holder.childNodes);
+    const replacement = markedNodes(String(node.nodeValue), pattern);
     node.replaceWith(...replacement);
     return { original: node, replacement };
   });
