@@ -389,8 +389,9 @@ function getFrontmatterField(
     if (isFrontmatterClose(lines[lineIndex] ?? '')) {
       return undefined;
     }
+    // YAML allows spaces before the colon, as `tags : [a]`.
     const property = lines[lineIndex]?.match(
-      /^\s*([A-Za-z][A-Za-z0-9_-]*):/,
+      /^\s*([A-Za-z][A-Za-z0-9_-]*)[ \t]*:/,
     );
     if (property) {
       currentField = property[1].toLowerCase();

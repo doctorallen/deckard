@@ -101,4 +101,12 @@ suite('Move inline tags to front matter', () => {
     );
     assert.strictEqual(moveInlineTagsToFrontmatterContent('# Plan #atlas\r\n'), '---\r\ntags: [atlas]\r\n---\r\n# Plan\r\n');
   });
+
+  test('reads a tag field written with a space before its colon, as YAML and the parser do', () => {
+    assert.strictEqual(
+      moveInlineTagsToFrontmatterContent('---\ntitle: Plan\ntags : [a]\n---\n# Plan #atlas\n'),
+      '---\ntitle: Plan\ntags: [a, atlas]\n---\n# Plan\n',
+    );
+    assert.strictEqual(findCommentedTagField('---\ntags : [a] # mine\n---\n'), 'tags');
+  });
 });

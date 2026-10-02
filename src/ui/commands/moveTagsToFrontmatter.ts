@@ -173,6 +173,13 @@ export function moveInlineTagsToFrontmatterContent(
 }
 
 /**
+ * A front-matter field's line: its name, and its value after the colon.
+ * YAML allows spaces before the colon, as `tags : [a]`, and so does the
+ * parser.
+ */
+const FIELD_LINE = /^([A-Za-z][A-Za-z0-9_-]*)[ \t]*:\s*(.*)$/;
+
+/**
  * The first tag field, as written, whose line or list item ends in a YAML
  * comment, or undefined when none does. Moving tags writes every tag field
  * again, which would lose the comment or read it as a tag.
@@ -185,7 +192,7 @@ export function findCommentedTagField(content: string): string | undefined {
   }
   let current: string | undefined;
   for (const line of lines.slice(1, frontmatter.end)) {
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    const property = line.match(FIELD_LINE);
     if (property) {
       current = getFrontmatterGroupForField(property[1]) ? property[1] : undefined;
       if (current && endsInComment(property[2])) {
@@ -213,7 +220,7 @@ function collectFrontmatterValues(
 
   let currentGroup: FrontmatterTagGroup | undefined;
   lines.slice(1, frontmatter.end).forEach((line) => {
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    const property = line.match(FIELD_LINE);
     if (property) {
       currentGroup = getFrontmatterGroupForField(property[1]);
       if (currentGroup) {
@@ -244,7 +251,7 @@ function getRetainedFrontmatterLines(lines: string[]): string[] {
   let skippingSupportedField = false;
 
   lines.forEach((line) => {
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    const property = line.match(FIELD_LINE);
     if (property) {
       skippingSupportedField = getFrontmatterGroupForField(property[1]) !== undefined;
       if (!skippingSupportedField) {

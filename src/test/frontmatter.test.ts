@@ -146,4 +146,13 @@ suite('Rename Tag in front matter', () => {
     );
     assert.strictEqual(rename('---\ntags: [old, #old]\n---\n', '#old', '#new'), '---\ntags: [new, #new]\n---\n', 'a value written with its # keeps its shape');
   });
+
+  test('reads a field written with a space before its colon, as YAML and the parser do', () => {
+    assert.strictEqual(rename('---\ntags : [atlas]\n---\n# H\n', '#atlas', '#beta'), '---\ntags : [beta]\n---\n# H\n');
+    assert.strictEqual(
+      rename('---\nproject\t: atlas\n---\n', '#project/atlas', '#project/hermes'),
+      '---\nproject\t: hermes\n---\n',
+    );
+    assert.strictEqual(rename('---\ntags : [atlas, beta]\n---\n', '#atlas', '#beta'), '---\ntags : [beta]\n---\n', 'a merge in one list leaves one');
+  });
 });
