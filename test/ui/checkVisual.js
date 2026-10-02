@@ -19,10 +19,18 @@
 //                                     baseline rather than record one
 //   VISUAL_ONLY=cooper+zen:taskBoard  one surface
 //   VISUAL_KEEP=<dir>                 leave the screenshots and diffs there
+//   UI_CONCURRENCY=<n>                how many Chromes draw at once
+//
+// The screenshots are taken by several Chromes at once, half the logical cores'
+// worth and at most four unless UI_CONCURRENCY says otherwise
+// (test/ui/chromePool.js), each with a profile of its own. Each surface is
+// still reported in the same order, with the same lines, as when they were
+// drawn one at a time, which UI_CONCURRENCY=1 still does. Drawing at once
+// changes no pixel: time in each Chrome is virtual, and the screenshots
+// compare with the same baselines.
 const path = require('node:path');
 const os = require('node:os');
 const { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
-const { spawnSync } = require('node:child_process');
 const { PNG } = require('pngjs');
 const pixelmatchModule = require('pixelmatch');
 const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
@@ -30,6 +38,7 @@ const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
 const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
 const { chrome, createSurfaces, buildPage, isPicked, passes } = require('./checkLayout.js');
+const { runChromeAsync, runInOrder } = require('./chromePool.js');
 
 /** How different one pixel may be before it counts, 0 to 1. */
 const PIXEL_THRESHOLD = 0.1;
@@ -107,23 +116,24 @@ if (keep) {
 mkdirSync(BASELINES, { recursive: true });
 
 /**
- * Takes a screenshot of a page at a surface's size and returns it as a PNG,
- * retrying once if Chrome wedges.
+ * Takes a screenshot of a page at a surface's size and resolves with it as
+ * a PNG, retrying once if Chrome wedges. `log` takes the retry's line.
  */
-function screenshot(file, viewport, out, attempt = 1) {
-  const result = spawnSync(chrome, [
+async function screenshot(file, viewport, out, log) {
+  const take = () => runChromeAsync(chrome, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
     '--force-device-scale-factor=1',
     `--window-size=${viewport[0]},${viewport[1]}`,
     '--virtual-time-budget=3000', `--screenshot=${out}`, `file://${file}`,
-  ], { encoding: 'utf8', timeout: 60000, killSignal: 'SIGKILL' });
+  ], { timeout: 60000 });
+  let result = await take();
   // Headless Chrome occasionally wedges at 0% CPU and never returns. Once is
   // a flake and is retried, as the layout check does; twice is a fault.
   if (result.signal === 'SIGKILL') {
-    if (attempt === 1) {
-      console.log('       chrome wedged after 60s, retrying once');
-      return screenshot(file, viewport, out, 2);
-    }
+    log('       chrome wedged after 60s, retrying once');
+    result = await take();
+  }
+  if (result.signal === 'SIGKILL') {
     throw new Error('chrome wedged twice, 60s each');
   }
   if (!existsSync(out)) {
@@ -134,13 +144,14 @@ function screenshot(file, viewport, out, attempt = 1) {
 
 /**
  * Compares a surface's screenshot with its baseline, counting it as
- * compared, and as failed when more of it differs than its share allows.
+ * compared, and as failed when more of it differs than its share allows,
+ * and says which to `log`.
  */
-function compareShot({ label, surfaceName, name }, drawn, baseline, tally) {
+function compareShot({ label, surfaceName, name }, drawn, baseline, { tally, log }) {
   const expected = PNG.sync.read(readFileSync(baseline));
   if (expected.width !== drawn.width || expected.height !== drawn.height) {
     tally.failed += 1;
-    console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
+    log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
     return;
   }
   const diff = new PNG({ width: drawn.width, height: drawn.height });
@@ -151,17 +162,17 @@ function compareShot({ label, surfaceName, name }, drawn, baseline, tally) {
     tally.failed += 1;
     const diffFile = path.join(dir, `${name}.diff.png`);
     writeFileSync(diffFile, PNG.sync.write(diff));
-    console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
+    log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
   } else {
-    console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
+    log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
   }
 }
 
 /**
  * Draws one surface and compares it with its baseline, or records the
- * baseline when updating or when there is none.
+ * baseline when updating or when there is none, saying which to `log`.
  */
-function drawSurface(surface, { label, theme, zen, rendered }, tally) {
+async function drawSurface(surface, { label, theme, zen, rendered }, tally, log) {
   const surfaceName = surface.name || surface.page;
   const name = `${label}-${surfaceName}`;
   const file = path.join(dir, `${name}.html`);
@@ -170,19 +181,19 @@ function drawSurface(surface, { label, theme, zen, rendered }, tally) {
   const baseline = path.join(BASELINES, `${name}.png`);
   let drawn;
   try {
-    drawn = screenshot(file, surface.viewport, shot);
+    drawn = await screenshot(file, surface.viewport, shot, log);
   } catch (error) {
     tally.failed += 1;
-    console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${error.message}`);
+    log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${error.message}`);
     return;
   }
   if (updating || !existsSync(baseline)) {
     writeFileSync(baseline, readFileSync(shot));
     tally.recorded += 1;
-    console.log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surfaceName}`);
+    log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surfaceName}`);
     return;
   }
-  compareShot({ label, surfaceName, name }, drawn, baseline, tally);
+  compareShot({ label, surfaceName, name }, drawn, baseline, { tally, log });
 }
 
 /**
@@ -202,38 +213,59 @@ function checkStaleBaselines(seen, tally) {
   }
 }
 
-/** What the run has counted so far, kept as it goes so a crash leaves the screenshots of a failure. */
-const tally = { failed: 0, recorded: 0, compared: 0 };
-const seen = new Set();
-try {
+/**
+ * Every surface VISUAL_ONLY picks in every theme, with zen off and on, in
+ * the order they are reported, each named in `seen` as it is taken. A
+ * pass's pages are rendered only when its first surface is taken.
+ */
+function* visualJobs(seen) {
   for (const [theme, zen] of passes()) {
     const label = zen ? `${theme}+zen` : theme;
+    const picked = createSurfaces().filter((entry) => isPicked(process.env.VISUAL_ONLY, label, entry.name || entry.page));
+    if (picked.length === 0) {
+      continue;
+    }
     const rendered = new Map(renderPagesForTheme(theme, { zen }));
-    for (const surface of createSurfaces().filter((entry) => isPicked(process.env.VISUAL_ONLY, label, entry.name || entry.page))) {
+    for (const surface of picked) {
       seen.add(`${label}-${surface.name || surface.page}.png`);
-      drawSurface(surface, { label, theme, zen, rendered }, tally);
+      yield { surface, label, theme, zen, rendered };
     }
   }
-  if (!process.env.VISUAL_ONLY) {
-    checkStaleBaselines(seen, tally);
-  }
-} finally {
-  if (!keep && tally.failed === 0) {
-    rmSync(dir, { recursive: true, force: true });
-  }
 }
-let { failed } = tally;
-const { recorded, compared } = tally;
-if (recorded) {
-  console.log(`\n${recorded} baseline(s) ${updating ? 'updated' : 'recorded'} under test/ui/visual-baseline/${process.platform}; commit them.`);
-  if (ci && !updating) {
-    failed += recorded;
-    console.log('--ci: a surface without a baseline was recorded rather than compared, so this run fails.');
+
+/** The check: every surface drawn and compared, exiting 1 when any differs. */
+async function run() {
+  /** What the run has counted so far, kept as it goes so a crash leaves the screenshots of a failure. */
+  const tally = { failed: 0, recorded: 0, compared: 0 };
+  const seen = new Set();
+  try {
+    await runInOrder(visualJobs(seen), ({ surface, ...pass }, log) => drawSurface(surface, pass, tally, log));
+    if (!process.env.VISUAL_ONLY) {
+      checkStaleBaselines(seen, tally);
+    }
+  } finally {
+    if (!keep && tally.failed === 0) {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
+  let { failed } = tally;
+  const { recorded, compared } = tally;
+  if (recorded) {
+    console.log(`\n${recorded} baseline(s) ${updating ? 'updated' : 'recorded'} under test/ui/visual-baseline/${process.platform}; commit them.`);
+    if (ci && !updating) {
+      failed += recorded;
+      console.log('--ci: a surface without a baseline was recorded rather than compared, so this run fails.');
+    }
+  }
+  if (failed) {
+    console.log(`\n${failed} surface(s) look different${keep ? '' : `; screenshots and diffs are in ${dir}`}`);
+    console.log('If the change is meant, record it with "npm run test:visual -- --update".');
+    process.exit(1);
+  }
+  console.log(compared ? `\nevery surface looks as it did` : '\nnothing to compare yet');
 }
-if (failed) {
-  console.log(`\n${failed} surface(s) look different${keep ? '' : `; screenshots and diffs are in ${dir}`}`);
-  console.log('If the change is meant, record it with "npm run test:visual -- --update".');
+
+run().catch((error) => {
+  console.error(error);
   process.exit(1);
-}
-console.log(compared ? `\nevery surface looks as it did` : '\nnothing to compare yet');
+});

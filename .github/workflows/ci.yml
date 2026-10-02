@@ -54,6 +54,11 @@ jobs:
       - name: Run end-to-end webview tests
         run: npm run test:e2e
 
+      # The layout and visual checks draw several pages at once, one Chrome
+      # each: half the runner's four cores' worth, so two (UI_CONCURRENCY,
+      # test/ui/chromePool.js). Each Chrome takes more than a core, so two
+      # keep all four busy without pushing a page's draw toward the end of
+      # its virtual time.
       - name: Lay the webviews out in Chrome
         run: npm run test:layout
 
