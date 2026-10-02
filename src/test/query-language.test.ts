@@ -23,6 +23,7 @@ import { formatIsoDate, startOfDay } from '../domain/markdown/calendar';
 import { resolveDateRange } from '../domain/query/queryDates';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
+import { buildSearchFacets } from '../domain/search/facets';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
@@ -606,6 +607,92 @@ suite('Deckard search page state', () => {
     }
   });
 
+  test('counts named days and windows in calendar days, across a daylight-saving change', () => {
+    // New York moves its clocks forward on Sunday 2026-03-08 and back on
+    // Sunday 2026-11-01, so a day there is not always 24 hours.
+    inTimeZone('America/New_York', () => {
+      const midnight = (day: string) => startOfDay(new Date(`${day}T12:00`).getTime());
+      const index = buildWorkspaceIndex(
+        new Map([
+          [
+            'notes/a.md',
+            parseMarkdown(
+              'notes/a.md',
+              [
+                '- [ ] Sunday 📅 2026-03-08',
+                '- [ ] Monday 📅 2026-03-09',
+                '- [ ] Thursday 📅 2026-03-12',
+                '- [ ] Starts Monday 🛫 2026-03-09',
+                '- [ ] Fall 📅 2026-11-01',
+                '',
+              ].join('\n'),
+            ),
+          ],
+        ]),
+      );
+      const titles = (text: string, now: number) =>
+        evaluateQuery(index, parseQuery(text).node, createQueryContext(now)).tasks.map((task) => task.title);
+
+      const springDay = new Date(2026, 2, 8, 9).getTime();
+      assert.deepStrictEqual(titles('due = today', springDay), ['Sunday']);
+      assert.deepStrictEqual(titles('is:today', springDay), ['Sunday']);
+      assert.deepStrictEqual(titles('due = tomorrow', springDay), ['Monday']);
+      assert.ok(!titles('is:available', springDay).includes('Starts Monday'), 'it starts tomorrow');
+
+      const nov2 = new Date(2026, 10, 2, 12).getTime();
+      assert.deepStrictEqual(titles('due = yesterday', nov2), ['Fall']);
+
+      const march5 = new Date(2026, 2, 5, 12).getTime();
+      assert.strictEqual(resolveDateRange('7d', march5, 'future', 0)?.end, midnight('2026-03-12'));
+      assert.ok(!titles('due = 7d', march5).includes('Thursday'), 'seven days, not eight');
+      assert.ok(!titles('is:due', march5).includes('Thursday'), 'seven days, not eight');
+      const march10 = new Date(2026, 2, 10, 12).getTime();
+      assert.strictEqual(resolveDateRange('7d', march10, 'past', 0)?.start, midnight('2026-03-04'));
+
+      const due = buildSearchFacets(
+        buildWorkspaceIndex(new Map()),
+        {
+          sections: [],
+          files: [],
+          tasks: [
+            createTask({ id: 'a', dueAt: midnight('2026-03-05') }),
+            createTask({ id: 'b', dueAt: midnight('2026-03-12') }),
+          ],
+        },
+        '',
+        { now: march5 },
+      ).find((facet) => facet.id === 'due');
+      assert.deepStrictEqual(
+        due?.values.map((value) => [value.label, value.count]),
+        [
+          ['Next 7 days', 1],
+          ['Later', 1],
+        ],
+        'the facet counts the days its clause finds',
+      );
+      const updated = buildSearchFacets(
+        buildWorkspaceIndex(new Map()),
+        {
+          sections: [
+            createSection({ id: 'old', updatedAt: new Date(2026, 2, 3, 23, 30).getTime() }),
+            createSection({ id: 'new', updatedAt: new Date(2026, 2, 4, 9).getTime() }),
+          ],
+          files: [],
+          tasks: [],
+        },
+        '',
+        { now: march10 },
+      ).find((facet) => facet.id === 'updated');
+      assert.deepStrictEqual(
+        updated?.values.map((value) => [value.label, value.count]),
+        [
+          ['Last 7 days', 1],
+          ['1–4 weeks ago', 1],
+        ],
+      );
+    });
+  });
+
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {
     // Friday 2026-09-25, noon.
     const now = new Date(2026, 8, 25, 12).getTime();
@@ -843,4 +930,19 @@ function createTask(values: Partial<Task> & { id: string }): Task {
     sourceLineText: '- [ ] task',
     ...values,
   };
+}
+
+/** Runs `run` with the process's time zone set to `zone`, and puts it back after. */
+function inTimeZone(zone: string, run: () => void): void {
+  const saved = process.env.TZ;
+  process.env.TZ = zone;
+  try {
+    run();
+  } finally {
+    if (saved === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = saved;
+    }
+  }
 }

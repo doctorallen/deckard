@@ -1,4 +1,4 @@
-import { addDays, DAY_MS, parseIsoDate, startOfDay } from '../markdown/calendar';
+import { addDays, parseIsoDate, startOfDay } from '../markdown/calendar';
 import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
 
 /**
@@ -68,13 +68,16 @@ const NAMED_DAY_OFFSETS: Readonly<Record<string, number>> = {
   tomorrow: 1,
 };
 
-/** `yesterday`, `today`, or `tomorrow`, as that one day. */
+/**
+ * `yesterday`, `today`, or `tomorrow`, as that one day, counted in calendar
+ * days: a day is 23 or 25 hours on a daylight-saving change.
+ */
 function readNamedDay(normalized: string, { now }: RangeContext): RangeReading {
   if (!Object.hasOwn(NAMED_DAY_OFFSETS, normalized)) {
     return undefined;
   }
-  const start = startOfDay(now) + NAMED_DAY_OFFSETS[normalized] * DAY_MS;
-  return { range: { start, end: start + DAY_MS, isWindow: false } };
+  const start = addDays(startOfDay(now), NAMED_DAY_OFFSETS[normalized]);
+  return { range: { start, end: addDays(start, 1), isWindow: false } };
 }
 
 /** How many days each window unit counts: a month is 30 and a year 365. */
@@ -83,7 +86,9 @@ const DAYS_PER_UNIT: Readonly<Record<string, number>> = { d: 1, w: 7, m: 30, y: 
 /**
  * A relative window, `7d`, `2w`, `3m`, `1y`. A window counts today as its
  * first day: `updated = 7d` is the last seven days including today, and
- * `due = 7d` is today and the six after it.
+ * `due = 7d` is today and the six after it. It counts calendar days, so
+ * one that spans a daylight-saving change still begins and ends at
+ * midnight.
  */
 function readWindow(normalized: string, { now, direction }: RangeContext): RangeReading {
   const relative = /^(\d+)([dwmy])$/.exec(normalized);
@@ -91,21 +96,10 @@ function readWindow(normalized: string, { now, direction }: RangeContext): Range
     return undefined;
   }
   const days = Number(relative[1]) * DAYS_PER_UNIT[relative[2]];
+  const today = startOfDay(now);
   return direction === 'past'
-    ? {
-        range: {
-          start: startOfDay(now) - (days - 1) * DAY_MS,
-          end: startOfDay(now) + DAY_MS,
-          isWindow: true,
-        },
-      }
-    : {
-        range: {
-          start: startOfDay(now),
-          end: startOfDay(now) + days * DAY_MS,
-          isWindow: true,
-        },
-      };
+    ? { range: { start: addDays(today, -(days - 1)), end: addDays(today, 1), isWindow: true } }
+    : { range: { start: today, end: addDays(today, days), isWindow: true } };
 }
 
 /**

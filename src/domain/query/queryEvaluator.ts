@@ -1,5 +1,5 @@
 import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../tasks/taskPolicy';
-import { DAY_MS, startOfDay } from '../markdown/calendar';
+import { addDays, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../../shared/paths';
 import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
@@ -758,7 +758,7 @@ function isForToday(unit: QueryUnit, open: boolean, { now }: QueryContext): bool
     return false;
   }
   const today = startOfDay(now);
-  const tomorrow = today + DAY_MS;
+  const tomorrow = addDays(today, 1);
   if (unit.dueAt !== undefined && unit.dueAt < today) {
     return false;
   }
@@ -793,7 +793,7 @@ function isAvailable(unit: QueryUnit, open: boolean, context: QueryContext): boo
     open &&
     unit.parked !== true &&
     unit.blocked !== true &&
-    (unit.startAt === undefined || unit.startAt < startOfDay(context.now) + DAY_MS) &&
+    (unit.startAt === undefined || unit.startAt < addDays(startOfDay(context.now), 1)) &&
     !context.taskPolicy.onHoldStatuses.includes(unit.status ?? '')
   );
 }
@@ -821,7 +821,7 @@ const TASK_IS_PREDICATES: ReadonlyMap<string, IsPredicate> = new Map<string, IsP
   [
     'due',
     (unit, open, { now }) =>
-      open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now) + 7 * DAY_MS,
+      open && unit.dueAt !== undefined && unit.dueAt < addDays(startOfDay(now), 7),
   ],
   ['needs-date', (unit, open, context) => open && needsNewDate(unit.dueAt, context.now, context.taskPolicy)],
   ['today', isForToday],
