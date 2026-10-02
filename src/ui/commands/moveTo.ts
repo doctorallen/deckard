@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
 import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLines';
-import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
@@ -296,12 +296,15 @@ export function readSectionTarget(
   return { section, link, recent: createPinForSection(filePath, live, section) };
 }
 
-/** The first eight words of a line, without its marker, tags, or metadata. */
+/**
+ * The first eight words of a line, without its marker, tags, or metadata,
+ * nor any character a file name or the link left behind cannot hold.
+ */
 export function suggestNoteName(line: string): string {
   const draft = parseTaskDraft(line.replace(/^\s*(?:[-*+]|\d+[.)])\s+(?!\[)/, ''));
   const words = stripTags(draft.description)
     .replace(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, '$1')
-    .replace(/[/\\<>:"|?*#]/g, ' ')
+    .replace(/[/\\<>:"|?*#^[\]]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 8);
@@ -311,14 +314,14 @@ export function suggestNoteName(line: string): string {
 /**
  * Where a new note named `name` goes: the notes folder of the workspace
  * folder `from` is in, or else of the first one. Undefined when the name
- * cannot be a file name or no folder is open.
+ * cannot be a file name the link left behind opens, or no folder is open.
  */
 async function newNoteUri(
   indexer: IndexReader<vscode.Uri>,
   from: vscode.Uri,
   name: string,
 ): Promise<vscode.Uri | undefined> {
-  const fileName = getExtractedNoteFileName(name);
+  const fileName = getLinkableNoteFileName(name);
   const folder = vscode.workspace.getWorkspaceFolder(from) ?? vscode.workspace.workspaceFolders?.[0];
   return fileName && folder ? vscode.Uri.joinPath(indexer.getNotesFolderUri(folder), fileName) : undefined;
 }

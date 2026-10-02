@@ -11,6 +11,7 @@ import {
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { readSectionTarget, suggestNoteName } from '../ui/commands/moveTo';
+import { validateExtractedNoteName } from '../ui/commands/extractHeading';
 
 const cursor = (line: number) => ({ start: { line, character: 0 }, end: { line, character: 0 }, isEmpty: true });
 const select = (from: [number, number], to: [number, number]) => ({
@@ -116,6 +117,14 @@ suite('What Move to… moves', () => {
   test('names a new note from the first eight words of the line', () => {
     assert.strictEqual(suggestNoteName('- [ ] Ask about the #project/atlas budget before the end of the month 📅 2026-10-02'), 'Ask about the budget before the end of');
     assert.strictEqual(suggestNoteName('Budget questions'), 'Budget questions');
+  });
+
+  test('suggests a new note name the link left behind can open', () => {
+    for (const line of ['- [ ] Plan [draft] for Q3', 'Notes on a^b and [x]', '- Issue #42 follow-up']) {
+      const name = suggestNoteName(line);
+      assert.strictEqual(validateExtractedNoteName(name), undefined, `${line} → ${name}`);
+    }
+    assert.strictEqual(suggestNoteName('- [ ] Plan [draft] for Q3'), 'Plan draft for Q3');
   });
 
   test('links to the heading chosen even after the index has read its note again', () => {
