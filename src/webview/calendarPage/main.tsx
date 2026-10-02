@@ -15,14 +15,14 @@ import { installKeySheet } from '../shared/keySheet';
 import { type ActionHandler, dispatchAction, readEmbeddedState } from '../shared/page';
 import { installDayPanel } from '../shared/calendar/dayPanel';
 import { eventElement } from '../shared/calendar/events';
-import { selectedDateOf, withGroupShown } from '../shared/calendar/model';
+import { isDrawn, selectedDateOf, withGroupShown } from '../shared/calendar/model';
 import { CalendarSession, send } from '../shared/calendar/session';
 import { announce } from '../shared/status';
 import { installViewOptions } from '../shared/viewOptions';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { clearDragMarks, installTaskDrag } from './drag';
-import { CalendarPage, type CalendarLayout, type CalendarPageState, type DrawnCalendarPage } from './view';
+import { CalendarPage, type CalendarLayout, type CalendarPageState, chosenWeek, type DrawnCalendarPage } from './view';
 
 /** Sends the host one of the messages only the calendar page sends. */
 function sendPage(message: CalendarPageMessage): void {
@@ -61,12 +61,26 @@ function setLayout(next: string | null): void {
   announce(next === 'week' ? 'Week layout' : 'Month layout');
 }
 
+/**
+ * Where the page steps from: the chosen day, or in the Week layout, when
+ * the week drawn does not hold it, that week's first day of the month.
+ */
+function stepFrom(state: CalendarPageState): string {
+  const snapshot = state.snapshot as CalendarSnapshot;
+  const chosen = selectedDateOf(state) || snapshot.today;
+  const week = state.layout === 'week' ? chosenWeek(state as DrawnCalendarPage) : undefined;
+  if (!week || week.days.some((day) => day.date === chosen)) {
+    return chosen;
+  }
+  return (week.days.find((day) => day.inMonth && isDrawn(snapshot, day)) ?? week.days[0]).date;
+}
+
 /** Steps the page a month or a week, keeping the chosen day's place. */
 function step(by: number): void {
   const state = session.store.state;
   const snapshot = state.snapshot as CalendarSnapshot;
   const next = stepCalendar(state.layout, by, {
-    date: selectedDateOf(state) || snapshot.today,
+    date: stepFrom(state),
     previousMonth: snapshot.previousMonth,
     nextMonth: snapshot.nextMonth,
     hideWeekends: Boolean(snapshot.hideWeekends),

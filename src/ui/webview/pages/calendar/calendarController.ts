@@ -141,18 +141,30 @@ export class CalendarController {
     }
   }
 
-  /** Steps to another month, taking the day the step chose or keeping the chosen day's place in it. */
-  private showMonth(message: CalendarShowMonthMessage): void {
-    this.month = message.month;
-    // A new month keeps the chosen day's place in it.
-    if (message.date) {
-      this.selectedDate = message.date;
-    } else if (this.selectedDate || this.host.dayPanel()) {
-      this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
+  /**
+   * Shows another month, drawn at the next refresh, with a day of it
+   * chosen: `date` when it is in that month, else the place in it of
+   * `date`, of the chosen day, or, with the panel on, of today. With the
+   * panel off and no day chosen, none is.
+   */
+  public moveToMonth(month: string, date?: string): void {
+    this.month = month;
+    const today = formatLocalDate(new Date());
+    const from = date ?? this.selectedDate ?? (this.host.dayPanel() ? today : undefined);
+    // The chosen day is always one of the month shown: a day outside it
+    // would leave the page's Week layout drawing one week while it stepped
+    // from another.
+    if (from !== undefined) {
+      this.selectedDate = from.slice(0, 7) === month ? from : clampToMonth(from, month);
     }
-    if (this.selectedDate === formatLocalDate(new Date())) {
+    if (this.selectedDate === today) {
       this.selectedDate = undefined;
     }
+  }
+
+  /** Steps to another month, taking the day the step chose or keeping the chosen day's place in it. */
+  private showMonth(message: CalendarShowMonthMessage): void {
+    this.moveToMonth(message.month, message.date);
     this.host.refresh();
   }
 

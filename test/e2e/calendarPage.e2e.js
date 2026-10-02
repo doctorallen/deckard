@@ -46,7 +46,7 @@ function createIndex() {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-async function openPage() {
+async function openPage(...shown) {
   vscode._test.createdPanels.length = 0;
   const index = createIndex();
   const updates = new vscode.EventEmitter();
@@ -56,7 +56,7 @@ async function openPage() {
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
-  await page.show();
+  await page.show(...shown);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
   panel._toWebview.forEach((message) => panel._deliver(message));
@@ -104,6 +104,23 @@ test('the Week layout draws one row, and ] steps a week through the host', async
   assert.ok(view.find(`.day-cell[data-drop-date="${shift(7)}"]`), 'the week after is drawn');
   view.keydown(view.document.body, 'm');
   assert.ok(view.findAll('.calendar-grid .day-cell').length >= 28, 'm goes back to the month');
+});
+
+test('opened on the sidebar\'s next month with no day chosen there, the page chooses a day of that month, and steps a week from it', async () => {
+  const at = new Date();
+  const nextMonth = formatLocalDate(new Date(at.getFullYear(), at.getMonth() + 1, 1)).slice(0, 7);
+  const { panel, view } = await openPage(nextMonth);
+  const chosen = panel._toWebview.filter((message) => message.type === 'state').pop().data.selectedDate;
+  assert.strictEqual(chosen.slice(0, 7), nextMonth, 'the chosen day is one of the month shown');
+  view.click(view.find('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]'));
+  assert.ok(view.find(`.calendar-grid .day[data-date="${chosen}"]`), 'and its week is drawn');
+  view.click(view.find('[data-action="step-calendar"][data-by="1"]'));
+  const [year, month, day] = chosen.split('-').map(Number);
+  assert.deepStrictEqual(
+    view.posted.filter((message) => message.type === 'selectDay').pop(),
+    { type: 'selectDay', date: formatLocalDate(new Date(year, month - 1, day + 7)) },
+    'Next week is the week after it, not a week after today',
+  );
 });
 
 test('a task dragged to another day asks the host to move it, and a refusal is said', async () => {

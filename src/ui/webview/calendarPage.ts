@@ -72,16 +72,14 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
   }
 
   /**
-   * Opens the page, on a month and a day when given, such as the sidebar's.
-   * An open page is brought forward and drawn at once; a new one is drawn
-   * once the index has notes to show.
+   * Opens the page, on a month and a day when given, such as the sidebar's;
+   * on a month alone, with the chosen day's place in it. An open page is
+   * brought forward and drawn at once; a new one is drawn once the index
+   * has notes to show.
    */
   public async show(month?: string, date?: string): Promise<void> {
     if (month) {
-      this.controller.month = month;
-    }
-    if (date) {
-      this.controller.selectedDate = date;
+      this.controller.moveToMonth(month, date);
     }
     const open = this.page.panel;
     if (open) {

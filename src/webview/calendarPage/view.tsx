@@ -34,8 +34,12 @@ export type DrawnCalendarPage = CalendarPageState & DrawnCalendar;
 /** How many of a day's tasks a month's day names before +N more. */
 const MONTH_CHIPS = 4;
 
-/** The week the chosen day is in: the row the Week layout draws. */
-function chosenWeek(state: DrawnCalendarPage): CalendarWeek | undefined {
+/**
+ * The row the Week layout draws: the week the chosen day is in, or, when
+ * the month holds no such week, as after midnight turns today into the
+ * next month, the month's first.
+ */
+export function chosenWeek(state: DrawnCalendarPage): CalendarWeek | undefined {
   const snapshot = state.snapshot;
   const date = state.drawnSelected || snapshot.today;
   return snapshot.weeks.find((week) => week.days.some((day) => day.date === date))
@@ -81,7 +85,8 @@ function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; reado
   const snapshot = state.snapshot;
   const monthLabel = snapshot.title + (snapshot.notePath ? ', monthly note' : '');
   const step = state.layout === 'week' ? 'week' : 'month';
-  const onToday = state.drawnSelected === snapshot.today && (state.layout === 'week' || snapshot.month === snapshot.currentMonth);
+  const onToday = state.drawnSelected === snapshot.today &&
+    (shown.week ? shown.week.days.some((day) => day.date === snapshot.today) : snapshot.month === snapshot.currentMonth);
   return (
     <header class="calendar-page-header">
       <div>

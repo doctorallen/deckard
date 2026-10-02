@@ -444,4 +444,21 @@ suite('Calendar', () => {
       sidebar.dispose();
     }
   });
+
+  test('the Week layout steps on from the week it draws, and offers Today, when the chosen day is in another month', () => {
+    // Just after midnight turns today into the next month, the host still
+    // shows the month before, with today chosen.
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const snapshot = createCalendar(index, '2026-11', createQueryContext(now), { dayPanel: true, layout: 'page' });
+    assert.strictEqual(snapshot.selectedDate, '2026-09-13');
+    const page = openWebviewPage(renderPage('calendarPage'), snapshot, { savedState: { layout: 'week' } });
+    try {
+      assert.strictEqual(page.text('.calendar-title'), '2026-11-01 to 2026-11-07');
+      assert.ok(page.find('[data-action="go-today"]'), 'the week drawn is not today\'s, so Today is offered');
+      page.click('[data-action="step-calendar"][data-by="1"]');
+      assert.deepStrictEqual(page.lastPosted('selectDay'), { type: 'selectDay', date: '2026-11-08' }, 'the week after the one drawn');
+    } finally {
+      page.dispose();
+    }
+  });
 });
