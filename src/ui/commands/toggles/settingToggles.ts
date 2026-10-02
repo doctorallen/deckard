@@ -8,17 +8,18 @@
  */
 
 /**
- * Where a toggle writes its setting, and what follows the write, as each
- * pair always wrote it.
+ * Where a toggle writes its setting, and what follows the write. Each is
+ * written where the value in force is set.
  *
  * - `where-set`: the workspace's settings when they set it, since they
  *   outrank the user's, else the user's.
- * - `user`: the user's settings, for every window; the context key that
- *   picks which command the palette offers follows (setOutlineFollowCursor).
+ * - `outline`: where set, through the Outline's own setter, which also sets
+ *   the context key that picks which button the view's title offers
+ *   (setOutlineFollowCursor).
  * - `zen`: where set, through zen's own setter, which also sets the
  *   context key that picks which command the palette offers (setZenMode).
  */
-export type ToggleTarget = 'where-set' | 'user' | 'zen';
+export type ToggleTarget = 'where-set' | 'outline' | 'zen';
 
 /** One setting, and the two commands that turn it on and off. */
 export interface SettingToggle {
@@ -62,7 +63,7 @@ export const SETTING_TOGGLES: readonly SettingToggle[] = [
     disable: 'deckard.outline.disableFollowCursor',
     setting: 'outline.followCursor',
     values: { enable: true, disable: false },
-    target: 'user',
+    target: 'outline',
   },
   {
     enable: 'deckard.enableZenMode',
