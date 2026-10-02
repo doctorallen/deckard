@@ -54,9 +54,6 @@ export default {
     ],
     "src/ui/state/taskBoardState.ts": [
       "createCard"
-    ],
-    "src/ui/webview/helpHtml.ts": [
-      "buildHelpHtml"
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
@@ -131,12 +128,6 @@ export default {
     "src/ui/state/taskLineMarks.ts": [
       "(arrow function)"
     ],
-    "src/ui/webview/pages/calendar/calendarController.ts": [
-      "handle"
-    ],
-    "src/ui/webview/searchPage.ts": [
-      "readSerializedSearch"
-    ],
     "test/ui/checkContrast.js": [
       "parseColor"
     ]
@@ -194,9 +185,6 @@ export default {
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
-    "src/ui/webview/helpHtml.ts": 1,
-    "src/ui/webview/relatedNotesDebugHtml.ts": 1,
-    "src/ui/webview/searchPage.ts": 2,
     "test/e2e/vscodeStub.js": 17
   },
   "max-depth": {
@@ -277,21 +265,6 @@ export default {
     "src/ui/state/reviewState.ts": [
       "formatReview",
       "summarizeReview"
-    ],
-    "src/ui/webview/helpHtml.ts": [
-      "buildHelpHtml"
-    ],
-    "src/ui/webview/searchPageHtml.ts": [
-      "getSearchPageHtml"
-    ],
-    "src/ui/webview/sidebarNotesHtml.ts": [
-      "getSidebarNotesHtml"
-    ],
-    "src/ui/webview/statsHtml.ts": [
-      "getStatsHtml"
-    ],
-    "src/ui/webview/taskBoardHtml.ts": [
-      "getTaskBoardHtml"
     ],
     "test/perf/indexSpeed.js": [
       "bench"

@@ -375,7 +375,8 @@ export function startServices(services: Services): void {
     void services.pages.dashboard.showOnStartup();
   }
 
-  // The bar draws as soon as there is an index to count.
+  // The bar's constructor only listens, so its first draw is here, before
+  // the index starts; each index update redraws it after that.
   services.views.taskStatusBar.refresh();
 
   void services.indexer.start().then(async () => {
@@ -607,8 +608,11 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   // Which entry a line of a note pins, and whether it is pinned, for the
   // hover and Find's rows alike.
   const pins = new PinService({ index: indexer, store: preferences.pins });
-  // The hover on an entry offers to pin it, so it has to know which entries
-  // are pinned; PinService answers, and a change redraws the hovers.
+  /**
+   * Hands the hover a fresh way to ask whether a line is pinned. The hover
+   * on an entry offers to pin it, so it has to know which entries are
+   * pinned; PinService answers, and a change redraws the hovers.
+   */
   const readPinned = (): void => {
     tagDecorations.setPinnedReader((filePath, line) =>
       pins.isLinePinned(indexer.getFilePath(vscode.Uri.file(filePath)), line),
@@ -936,7 +940,6 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
     { reader: preferences.repository, taskLayout: preferences.taskLayout },
   );
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
-  // What was typed into Capture and not yet written, for this workspace.
   const captureDrafts = new CaptureDrafts(context.workspaceState);
   // Where a capture goes once it is typed, and when its draft is let go.
   const capture: CaptureContext = {
@@ -952,6 +955,12 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
   };
   return { outline, queryBlocks, agendaService, agenda, taskStatusBar, capture };
 }
+
+/** The command each button on the unreadable-notes warning runs. */
+const UNREADABLE_NOTE_ACTIONS: Readonly<Record<string, string>> = {
+  'Open Stats': 'deckard.showStats',
+  'Open Log': 'deckard.showLog',
+};
 
 /**
  * A note that could not be read is missing from every search, which looks
@@ -976,10 +985,9 @@ function warnOfUnreadableNotes(context: vscode.ExtensionContext, indexer: IndexR
             'Open Log',
           )
           .then((choice) => {
-            if (choice === 'Open Stats') {
-              void vscode.commands.executeCommand('deckard.showStats');
-            } else if (choice === 'Open Log') {
-              void vscode.commands.executeCommand('deckard.showLog');
+            const command = choice && UNREADABLE_NOTE_ACTIONS[choice];
+            if (command) {
+              void vscode.commands.executeCommand(command);
             }
           });
       }
@@ -1001,6 +1009,11 @@ function tidyPreferencesOnUpdate(
   // A heading's id changes when a line above it does; its view count follows
   // it to the new id before anything is pruned.
   let previousIndex = indexer.getSnapshot();
+  /**
+   * Carries moved headings' view counts to their new ids, then prunes what
+   * names a note gone from the index; nothing is done while the index is
+   * stale or unchanged.
+   */
   const tidy = (): void => {
     const index = indexer.getSnapshot();
     // The cache's notes at a warm start are not checked yet: a note gone

@@ -2,7 +2,13 @@ import * as vscode from 'vscode';
 
 import type { WorkspaceIndex } from '../../../../domain/model';
 import { measure } from '../../../../shared/timing';
-import type { CalendarMessage, CalendarPageToHost, CalendarSnapshot } from '../../../protocol/calendar';
+import type {
+  CalendarMessage,
+  CalendarMoveTaskMessage,
+  CalendarPageToHost,
+  CalendarShowMonthMessage,
+  CalendarSnapshot,
+} from '../../../protocol/calendar';
 import { setTaskDateField } from '../../../commands/agendaActions';
 import {
   chooseTargetFolder,
@@ -84,25 +90,10 @@ export class CalendarController {
         this.host.refresh();
         return;
       case 'showMonth':
-        this.month = message.month;
-        // A new month keeps the chosen day's place in it.
-        if (message.date) {
-          this.selectedDate = message.date;
-        } else if (this.selectedDate || this.host.dayPanel()) {
-          this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
-        }
-        if (this.selectedDate === formatLocalDate(new Date())) {
-          this.selectedDate = undefined;
-        }
-        this.host.refresh();
+        this.showMonth(message);
         return;
       case 'selectDay':
-        // Today is held as no choice, so after midnight it is the new today.
-        this.selectedDate = message.date === formatLocalDate(new Date()) ? undefined : message.date;
-        if (message.date.slice(0, 7) !== this.month) {
-          this.month = message.date.slice(0, 7);
-        }
-        this.host.refresh();
+        this.selectDay(message.date);
         return;
       case 'createDay': {
         const day = parseLocalDate(message.date);
@@ -133,25 +124,12 @@ export class CalendarController {
         }
         return;
       }
-      case 'moveTask': {
-        const task = this.indexer.getSnapshot().tasks.get(message.taskId);
-        const moved = task && !task.completed ? await setTaskDateField(this.writes, task, message.field, message.date) : false;
-        if (!moved) {
-          this.host.refused?.(message.taskId);
-        }
+      case 'moveTask':
+        await this.moveTask(message);
         return;
-      }
-      case 'openDay': {
-        const note = listDailyNotes(this.indexer.getSnapshot()).find(
-          (entry) => entry.date === message.date,
-        );
-        if (note) {
-          await openSourceAt({ filePath: note.filePath, line: 1 });
-          return;
-        }
-        await this.openPeriod('day', message.date);
+      case 'openDay':
+        await this.openDay(message.date);
         return;
-      }
       case 'openWeek':
         await this.openPeriod('week', message.date);
         return;
@@ -159,6 +137,55 @@ export class CalendarController {
         await this.openPeriod('month', `${this.month}-01`);
         return;
     }
+  }
+
+  /** Steps to another month, taking the day the step chose or keeping the chosen day's place in it. */
+  private showMonth(message: CalendarShowMonthMessage): void {
+    this.month = message.month;
+    // A new month keeps the chosen day's place in it.
+    if (message.date) {
+      this.selectedDate = message.date;
+    } else if (this.selectedDate || this.host.dayPanel()) {
+      this.selectedDate = clampToMonth(this.selectedDate ?? formatLocalDate(new Date()), message.month);
+    }
+    if (this.selectedDate === formatLocalDate(new Date())) {
+      this.selectedDate = undefined;
+    }
+    this.host.refresh();
+  }
+
+  /** Chooses a day, moving to its month when it lies in another. */
+  private selectDay(date: string): void {
+    // Today is held as no choice, so after midnight it is the new today.
+    this.selectedDate = date === formatLocalDate(new Date()) ? undefined : date;
+    if (date.slice(0, 7) !== this.month) {
+      this.month = date.slice(0, 7);
+    }
+    this.host.refresh();
+  }
+
+  /**
+   * Moves an open task to the day it was dropped on; a completed or vanished
+   * task, or a write that did not land, is handed back to the page as refused.
+   */
+  private async moveTask(message: CalendarMoveTaskMessage): Promise<void> {
+    const task = this.indexer.getSnapshot().tasks.get(message.taskId);
+    const moved = task && !task.completed ? await setTaskDateField(this.writes, task, message.field, message.date) : false;
+    if (!moved) {
+      this.host.refused?.(message.taskId);
+    }
+  }
+
+  /** Opens the daily note the index has for a day, or offers to create one. */
+  private async openDay(date: string): Promise<void> {
+    const note = listDailyNotes(this.indexer.getSnapshot()).find(
+      (entry) => entry.date === date,
+    );
+    if (note) {
+      await openSourceAt({ filePath: note.filePath, line: 1 });
+      return;
+    }
+    await this.openPeriod('day', date);
   }
 
   /**

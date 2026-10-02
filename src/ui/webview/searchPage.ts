@@ -68,6 +68,11 @@ export class SearchPanels implements vscode.Disposable {
   /** What a tag a page names may open. */
   private readonly navigation = new NavigationService();
 
+  /**
+   * Starts listening for index updates, preference and settings changes, and
+   * the page chrome, so every page open follows them; a page is only made
+   * when a search is shown.
+   */
   public constructor(options: SearchPanelsOptions) {
     this.indexer = options.indexer;
     this.preferences = options.preferences;
@@ -188,6 +193,7 @@ export class SearchPanels implements vscode.Disposable {
     this.createPanel(saved.origin, saved.query).restore(webviewPanel);
   }
 
+  /** Stops listening, then closes every search page still open. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     [...this.panels].forEach((panel) => panel.dispose());
@@ -279,17 +285,30 @@ function readSerializedSearch(
     return undefined;
   }
   const saved = state as Record<string, unknown>;
-  const text = (value: unknown): string | undefined =>
-    typeof value === 'string' ? value.trim() : undefined;
-  const query = text(saved.query);
+  const query = readTrimmed(saved.query);
   if (query !== undefined && typeof saved.origin === 'string') {
     return { query, origin: saved.origin.trim() };
   }
+  return readLegacySearch(index, saved, query);
+}
 
-  // A page saved before search pages: a tag, the tags added to it, and a
-  // search typed after them, which held the tags too once they moved into
-  // the box.
-  const tagKey = text(saved.tagKey);
+/** A saved field's text, trimmed; undefined when it is not text. */
+function readTrimmed(value: unknown): string | undefined {
+  return typeof value === 'string' ? value.trim() : undefined;
+}
+
+/**
+ * A page saved before search pages: a tag, the tags added to it, and a
+ * search typed after them, which held the tags too once they moved into
+ * the box. Undefined when the tag is gone from the index, or when nothing
+ * was saved to search for.
+ */
+function readLegacySearch(
+  index: WorkspaceIndex,
+  saved: Record<string, unknown>,
+  query: string | undefined,
+): { query: string; origin: string } | undefined {
+  const tagKey = readTrimmed(saved.tagKey);
   const canonicalTagKey = tagKey
     ? resolveIndexedTagKey(index.tags, tagKey)
     : undefined;
@@ -304,7 +323,7 @@ function readSerializedSearch(
   const tags = [canonicalTagKey, ...filterTagKeys]
     .filter((key): key is string => Boolean(key))
     .join(' AND ');
-  const legacy = query ?? text(saved.refinement);
+  const legacy = query ?? readTrimmed(saved.refinement);
   const search =
     legacy && canonicalTagKey && !isWritten(legacy, canonicalTagKey)
       ? `${tags} ${legacy}`
