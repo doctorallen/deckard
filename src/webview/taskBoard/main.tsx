@@ -316,8 +316,17 @@ function toggleColumn(id: string, on: boolean): void {
   post({ type: 'setTableColumns', columns: next });
 }
 
-/** Undo for a status column removed from the gear. */
-const statusUndo = createUndoNotice<{ status: string; index: number; after: string[] }>(() => redraw());
+/**
+ * Undo for a status column removed from the gear. Taken or withdrawn with
+ * focus on it, focus goes back to the removed column's ×, or, when the
+ * column has gone, to the column now where it was, or to the gear when it
+ * has closed.
+ */
+const statusUndo = createUndoNotice<{ status: string; index: number; after: string[] }>(() => redraw(), (removed) => {
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.board-status'));
+  const row = rows[Math.min(removed.index, rows.length - 1)];
+  return row && !row.closest('details:not([open])') ? row : document.querySelector<HTMLElement>('.view-options > summary');
+});
 
 /** Adds the status typed in the gear as a column, or says why it cannot be one. */
 function addStatus(snapshot: TaskBoardSnapshot): void {

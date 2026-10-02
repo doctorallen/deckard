@@ -858,11 +858,15 @@ first button in its row, and it is never filled at rest.
 | Reset graph | Acts at once, with **Graph reset.** and **Undo**. |
 
 `<UndoNotice message action buttonClass>` draws the `.undo-notice` line;
-`createUndoNotice(redraw)` keeps one offer at a time, drawn in its own
-`#undo-toast` layer of the body: `show(message, action, payload)` draws it
-and moves focus to Undo, `take()` hands back the payload and withdraws it,
-and `clear()` withdraws it. The offer lapses after 8 seconds or at the next
-removal. Both are in `shared/undoToast.tsx`.
+`createUndoNotice(redraw, returnFocus)` keeps one offer at a time, drawn in
+its own `#undo-toast` layer of the body: `show(message, action, payload)`
+draws it and moves focus to Undo, `take()` hands back the payload and
+withdraws it, and `clear()` withdraws it. The offer lapses after 8 seconds
+or at the next removal. Withdrawn with focus on Undo, it gives focus back
+to where the removal was made, found as a redraw finds it, again once the
+page has drawn what Undo put back; when that is gone, to what
+`returnFocus(payload)` names, such as the board's status column now where
+the removed one was. Both are in `shared/undoToast.tsx`.
 
 ### Messages
 

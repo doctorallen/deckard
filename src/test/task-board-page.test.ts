@@ -483,4 +483,42 @@ suite('Task Board page', () => {
     press(shown, card, 'Enter');
     assert.deepStrictEqual(shown.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'Enter alone opens it in place');
   });
+
+  test('focus on Undo goes back to the status columns when Undo is taken or withdrawn', () => {
+    const files = { 'notes/a.md': '- [ ] Alpha #status/todo\n' };
+    const withStatuses = (statuses: string[]) => {
+      const index = buildWorkspaceIndex(new Map(Object.entries(files).map(([path, text]) => [path, parseMarkdown(path, text)])));
+      const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      try {
+        return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options: { ...options, statuses }, tagTitleDisplayMode: 'inline' });
+      } finally {
+        preferences.repository.dispose();
+      }
+    };
+    const shown = show(withStatuses(['todo', 'doing']));
+    // The page's timers are held, so the offer's end can be run when the test says.
+    const timers: (() => void)[] = [];
+    shown.window.setTimeout = ((callback: () => void) => timers.push(callback)) as never;
+    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
+    const undo = () => shown.find('.undo-notice [data-action="undo-remove-status"]') as HTMLElement;
+    /** Removes the Doing column with its ×, which a click focuses first, as the browser's does. */
+    const removeDoing = (): void => {
+      const remove = shown.find('[data-action="remove-status"][data-status="doing"]') as HTMLElement;
+      remove.focus();
+      remove.click();
+    };
+
+    removeDoing();
+    assert.strictEqual(shown.document.activeElement, undo(), 'focus is on Undo');
+    undo().click();
+    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="remove-status"][data-status="doing"]'), 'taken, it goes back to the column\'s remove button');
+
+    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
+    removeDoing();
+    shown.send(withStatuses(['todo']));
+    assert.strictEqual(shown.document.activeElement, undo());
+    timers.splice(0).forEach((run) => run());
+    assert.strictEqual(shown.findAll('.undo-notice').length, 0, 'the offer is withdrawn');
+    assert.strictEqual(shown.document.activeElement, shown.find('.board-status[data-status="todo"]'), 'withdrawn, it goes to the status column where the removed one was');
+  });
 });
