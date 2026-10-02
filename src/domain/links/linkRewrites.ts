@@ -8,7 +8,7 @@ import {
   resolveWikiTarget,
   WIKI_LINK_WITH_TEXT,
 } from '../index/backlinks';
-import { findFencedLines } from '../markdown/lineShapes';
+import { findWikiLinkSpans } from '../markdown/wikiLinks';
 
 /**
  * Keeps `[[links]]` pointing where they pointed before a note or a heading was
@@ -167,8 +167,8 @@ export function findHeadingTextColumns(
 
 /**
  * Walks every note's links once and keeps the ones a caller rewrites. Links
- * inside code fences are left alone, the way every other pass over note
- * source leaves them.
+ * in fenced code and inline code are examples, not links, and are left
+ * alone, as every other reader of a note's links leaves them.
  */
 function findRewrites(
   index: WorkspaceIndex,
@@ -186,36 +186,22 @@ function findRewrites(
   return rewrites;
 }
 
-/** The rewrites one note's text holds, its fenced lines left out. */
+/** The rewrites one note's text holds, read through findWikiLinkSpans. */
 function findRewritesIn(
   content: string,
   sourcePath: string,
   rewrite: (parts: LinkParts, sourcePath: string) => LinkParts | undefined,
 ): LinkRewrite[] {
-  const rewrites: LinkRewrite[] = [];
   const lines = content.split(/\r?\n/);
-  const fenced = findFencedLines(lines);
-  lines.forEach((text, line) => {
-    if (fenced.has(line)) {
-      return;
-    }
-    for (const match of text.matchAll(WIKI_LINK_WITH_TEXT)) {
-      const parts = readLinkParts(match[1], match[2]);
-      const next = rewrite(parts, sourcePath);
-      if (!next || match.index === undefined) {
-        continue;
-      }
-      rewrites.push({
-        filePath: sourcePath,
-        line,
-        startColumn: match.index,
-        endColumn: match.index + match[0].length,
-        from: match[0],
-        text: writeLink(next),
-      });
-    }
+  return findWikiLinkSpans(content).flatMap((span): LinkRewrite[] => {
+    const from = lines[span.line].slice(span.startColumn, span.endColumn);
+    // The span is one whole link, so this reads it again with its display text.
+    const [match] = from.matchAll(WIKI_LINK_WITH_TEXT);
+    const next = match ? rewrite(readLinkParts(match[1], match[2]), sourcePath) : undefined;
+    return next
+      ? [{ filePath: sourcePath, line: span.line, startColumn: span.startColumn, endColumn: span.endColumn, from, text: writeLink(next) }]
+      : [];
   });
-  return rewrites;
 }
 
 /** A link's target and display text, split into the parts a rewrite changes. */

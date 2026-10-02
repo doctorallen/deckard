@@ -166,6 +166,32 @@ suite('Link rewrites', () => {
     );
   });
 
+  test('leaves a link written in code alone, as every reader of links does', () => {
+    const index = indexOf({
+      'notes/Vendor review.md': '# Vendor review\n\n## Terms\n',
+      'notes/Log.md': [
+        'Read [[Vendor review]]; write a link as `[[Vendor review]]`.',
+        'A heading link: [[Vendor review#Terms]], written ``[[Vendor review#Terms]]``.',
+        '~~~',
+        '[[Vendor review]] in a tilde fence',
+        '~~~',
+      ].join('\n'),
+    });
+    assert.deepStrictEqual(
+      rewritten(planNoteRenameRewrites(index, 'notes/Vendor review.md', 'Supplier review')),
+      [
+        'notes/Log.md: [[Vendor review]] -> [[Supplier review]]',
+        'notes/Log.md: [[Vendor review#Terms]] -> [[Supplier review#Terms]]',
+      ],
+    );
+    assert.deepStrictEqual(
+      rewritten(
+        planHeadingRenameRewrites(index, { filePath: 'notes/Vendor review.md', startLine: 3, from: 'Terms', to: 'Payment terms' }),
+      ),
+      ['notes/Log.md: [[Vendor review#Terms]] -> [[Vendor review#Payment terms]]'],
+    );
+  });
+
   test('finds the heading a line sits in', () => {
     const file = parseMarkdown(
       'notes/Atlas.md',
