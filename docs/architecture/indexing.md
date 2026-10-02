@@ -89,7 +89,7 @@ Scans and batches can overlap, and the one that finishes last is not always the 
 
 ## The cache and its fingerprint
 
-The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. On a warm start the `IndexService` reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
+The parsed notes are stored in a SQLite database at `deckard-search.sqlite` in the workspace's storage. A file SQLite calls damaged or not a database is deleted and made again, and one that cannot be opened at all is kept in memory for the session; both are logged, so neither stops activation. A write that fails, such as on a full disk, is logged too, and the scan or save it followed still reaches the views. On a warm start the `IndexService` reads them back in pages of 500, with a host turn between pages, and publishes them at once. The index is marked stale while a scan checks the notes against the files, and that check applies only the differences. The warm start is off in the Development and Test extension modes, where the parser can change without the version changing.
 
 The cache is trusted only when it was written under the same fingerprint. The fingerprint joins these parts:
 

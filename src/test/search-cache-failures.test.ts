@@ -1,6 +1,10 @@
 import * as assert from 'assert';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { SearchStore } from '../core/storage/searchStore';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import { IndexService } from '../core/workspace/indexService';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -104,3 +108,66 @@ suite('The full-text cache failing to write', () => {
     }
   });
 });
+
+suite('Opening a search cache that cannot be used', () => {
+  let base = '';
+  setup(() => {
+    base = mkdtempSync(join(tmpdir(), 'deckard-cache-open-'));
+  });
+  teardown(() => {
+    chmodSync(base, 0o755);
+    readdirSafe(base).forEach((name) => chmodSync(join(base, name), 0o755));
+    rmSync(base, { recursive: true, force: true });
+  });
+
+  test('a damaged cache file is made again, and the log says so', () => {
+    writeFileSync(join(base, 'deckard-search.sqlite'), Buffer.alloc(8192, 0x5a));
+    const log = captureLog();
+    let store: SearchStore | undefined;
+    try {
+      store = new SearchStore(base);
+      store.replace([parseMarkdown('atlas.md', '# Atlas\nStaffing plan.', { updatedAt: 1 })]);
+      assert.deepStrictEqual(store.search('staffing').map((match) => match.filePath), ['atlas.md']);
+      assert.ok(log.lines.some((line) => line.includes('damaged') && line.includes('not a database')));
+    } finally {
+      store?.dispose();
+      log.dispose();
+    }
+    const reopened = new SearchStore(base);
+    try {
+      assert.deepStrictEqual(
+        reopened.search('staffing').map((match) => match.filePath),
+        ['atlas.md'],
+        'the cache made again is a file, kept for the next start',
+      );
+    } finally {
+      reopened.dispose();
+    }
+  });
+
+  test('a cache that cannot be opened is kept in memory, and the log says so', () => {
+    const folder = join(base, 'read-only');
+    mkdirSync(folder);
+    chmodSync(folder, 0o555);
+    const log = captureLog();
+    let store: SearchStore | undefined;
+    try {
+      store = new SearchStore(folder);
+      store.replace([parseMarkdown('atlas.md', '# Atlas\nStaffing plan.', { updatedAt: 1 })]);
+      assert.deepStrictEqual(store.search('staffing').map((match) => match.filePath), ['atlas.md']);
+      assert.ok(log.lines.some((line) => line.includes('kept in memory')));
+    } finally {
+      store?.dispose();
+      log.dispose();
+    }
+  });
+});
+
+/** The names in a folder, or none when it is gone. */
+function readdirSafe(folder: string): string[] {
+  try {
+    return readdirSync(folder);
+  } catch {
+    return [];
+  }
+}
