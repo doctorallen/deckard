@@ -27,8 +27,10 @@
         "noImplicitOverride": true
     },
     "files": [
+        "../domain/dashboard/widgetCatalog.ts",
         "../domain/graph/communities.ts",
         "../domain/markdown/calendar.ts",
+        "../domain/markdown/tagKeys.ts",
         "../domain/tasks/taskColumns.ts"
     ],
     "include": [

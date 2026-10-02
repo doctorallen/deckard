@@ -4,11 +4,11 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createQueryContext } from '../domain/query/queryContext';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { createDashboardSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { deckardThemes, getDeckardTheme } from '../ui/webview/themes';
 import { createPreferences } from './preferenceServices';
-import { openWebviewPage } from './webviewPage';
+import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
 
@@ -25,6 +25,21 @@ function extension(): vscode.Extension<unknown> {
   );
   assert.ok(found, 'Deckard is installed in the test host');
   return found;
+}
+
+/**
+ * The Dashboard on its Tags tab, driven: its tags ranked by hand, and a
+ * search kept from an earlier visit, so the tab is marked.
+ */
+function openDrivenDashboard(): WebviewPage {
+  const index = buildWorkspaceIndex(new Map([
+    ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #risk/vendor\nProse.')],
+  ]));
+  const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+  const preferences = { ...store.reader.value, tagSortMode: 'custom' as const, dashboardViewState: { mode: 'browse' as const, tagSearchQuery: 'atlas' } };
+  const snapshot = createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) });
+  store.repository.dispose();
+  return openWebviewPage(renderPage('dashboard'), { ...snapshot, parkedTags: [] });
 }
 
 suite('Webview contracts', () => {
@@ -137,7 +152,6 @@ suite('Webview contracts', () => {
       html.includes('.tag-namespace { color: var(--muted); }'),
       true,
     );
-            assertWebviewScriptParses(html);
         assert.strictEqual(
       html.includes(
         '.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }',
@@ -147,18 +161,29 @@ suite('Webview contracts', () => {
                                                                 // The mark is a filter icon, and the Search tab keeps it from another tab.
     // It is drawn with a class of its own: the shared icon's class places it
     // absolutely at a select's corner, which in a tab floated it over the page.
-    assert.strictEqual(html.includes('const TAB_MARK_ICON = \'<svg class="tab-search-mark-icon" viewBox="0 0 16 16"'), true);
-    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>\';'), true);
+    const page = openDrivenDashboard();
+    try {
+      const mark = page.find('.dashboard-tabs .tab-search-mark svg');
+      assert.strictEqual(mark.getAttribute('class'), 'tab-search-mark-icon');
+      assert.strictEqual(mark.getAttribute('viewBox'), '0 0 16 16');
+      assert.strictEqual(mark.querySelector('path')?.getAttribute('d'), 'M2 3h12L9 8v4l-2 1V8L2 3Z');
+      // The gear is the one every page draws, after the totals.
+      assert.deepStrictEqual(
+        [...page.find('.dashboard-header-actions').children].map((child) => child.className),
+        ['metrics', 'view-options'],
+      );
+      // Tags in their own rank are ranked rows: dragged, or moved from their menu.
+      const row = page.find('.tag-row[data-tag-key]');
+      assert.ok(row.classList.contains('is-draggable'));
+      row.dispatchEvent(new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      assert.ok(page.find('#rank-context-menu [data-context-action="top"]'));
+    } finally {
+      page.dispose();
+    }
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
     // A tag on a card is written text, not a control chip.
     assert.strictEqual(html.includes('body .card button.tag-open:not(:hover):not(:focus-visible),'), true);
-                                                                                // The gear is the one every page draws, after the totals.
-    assert.strictEqual(
-      html.indexOf("const metrics = '<div class=\"metrics\"") <
-        html.indexOf('const dashboardOptions = renderViewOptions(['),
-      true,
-    );
                     assert.strictEqual(html.includes('.dashboard-header-actions .view-options { order: 2; }'), true);
                                             // A style attribute is refused by the page's policy, so columns are set by script.
     assert.strictEqual(html.includes('style="grid-template-columns: repeat('), false);
@@ -176,7 +201,6 @@ suite('Webview contracts', () => {
       html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }'),
       true,
     );
-                        assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
     // A hue carries one meaning: the state tokens, and the rules that use them.

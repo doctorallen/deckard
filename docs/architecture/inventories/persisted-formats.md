@@ -256,9 +256,9 @@ No test restores a page from saved state. The harness starts its kept state as `
 ### 22. Dashboard
 
 - **Shape:** `{ dashboardMode, tagColumns, browseQuery, tagNamespaceFilter, editingHome, homeHintDismissed }`.
-- **Written:** `saveDashboardViewState`, `src/ui/webview/dashboardHtml.ts:376`.
-- **Read by the page:** `src/ui/webview/dashboardHtml.ts:271` to `:291`. `dashboardMode` is kept only as `'browse'`, and `tagColumns` only as 1 to 4. `browseQuery` is written but never read back. The host's `restore` (`src/ui/webview/dashboard.ts:221`) ignores the state.
-- **Pinned by:** `dashboard-behavior.test.ts:437` asserts `homeHintDismissed` is written. `webview-saved-state.test.ts` loads the page with each field set, and with values it does not know, and asserts the mode, columns, namespace filter, arranging state, and hint it draws and the record it writes back.
+- **Written:** `keepView`, `src/webview/dashboard/keptView.ts` (since Phase 6 step 4.7; before, `saveDashboardViewState` in the template script of `src/ui/webview/dashboardHtml.ts`), the whole record each time the reader changes one of its fields.
+- **Read by the page:** `readKeptView`, `src/webview/dashboard/keptView.ts`. `dashboardMode` is kept only as `'browse'`, and `tagColumns` only as 1 to 4; a kept value that is not a record reads as nothing kept. `browseQuery` is written but never read back. The host's `restore` ignores the state.
+- **Pinned by:** `dashboard-behavior.test.ts:437` asserts `homeHintDismissed` is written. `webview-saved-state.test.ts` loads the page with each field set, with values it does not know, and with kept values that are not a record, and asserts the mode, columns, namespace filter, arranging state, and hint it draws, the record it writes back, and `browseQuery` written as the tag search is typed.
 
 ### 23. Notes graph
 

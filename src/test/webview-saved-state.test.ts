@@ -195,6 +195,28 @@ suite('Webview saved state', () => {
         dashboardMode: 'home', tagColumns: 2, browseQuery: '', tagNamespaceFilter: '', editingHome: false, homeHintDismissed: false,
       });
     });
+
+    test('anything else it was left with reads as nothing kept', () => {
+      for (const saved of [undefined, null, 'browse', 3, ['browse'], { dashboardMode: 'Browse', tagColumns: '3', editingHome: false }]) {
+        const dashboard = openWebviewPage(renderPage('dashboard'), snapshot('home', false), { savedState: saved });
+        keep(dashboard);
+        assert.deepStrictEqual(dashboard.savedState(), {
+          dashboardMode: 'home', tagColumns: 2, browseQuery: '', tagNamespaceFilter: '', editingHome: false, homeHintDismissed: false,
+        }, JSON.stringify(saved));
+        dashboard.dispose();
+      }
+    });
+
+    test('writes the tag search as it is typed, though it never reads it back', () => {
+      page = openWebviewPage(renderPage('dashboard'), snapshot('browse', false), { savedState: { ...SAVED, tagNamespaceFilter: '' } });
+      assert.strictEqual((page.find('[data-action="search-browse"]') as HTMLInputElement).value, '');
+      const search = page.find('[data-action="search-browse"]') as HTMLInputElement;
+      search.value = 'beta';
+      search.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+      assert.deepStrictEqual(page.savedState(), { ...SAVED, tagNamespaceFilter: '', browseQuery: 'beta' });
+      page.click('[data-action="clear-tag-search"]');
+      assert.deepStrictEqual(page.savedState(), { ...SAVED, tagNamespaceFilter: '', browseQuery: '' });
+    });
   });
 
   suite('the Notes Graph (row 23)', () => {

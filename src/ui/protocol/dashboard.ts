@@ -13,6 +13,14 @@ import type {
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind, TagReference } from '../../domain/model/tags';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
+
+export type {
+  DashboardColumnCount,
+  DashboardMode,
+  DashboardWidgetConfig,
+  DashboardWidgetKind,
+  TagSortMode,
+} from '../../domain/model/preferences';
 import type {
   ChooseThemeMessage,
   DashboardTask,
