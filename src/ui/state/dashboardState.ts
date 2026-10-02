@@ -1,3 +1,4 @@
+import { getEntityNamespace } from '../../domain/markdown/parser';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
@@ -29,6 +30,18 @@ export interface DashboardSnapshotOptions {
 }
 
 /**
+ * The namespace the Tags tab shows a tag under, read as the index reads an
+ * entity's kind (getEntityKind, through the parser's getEntityNamespace):
+ * aliases resolved, as `#organization/acme` is `org`, and lowercased. The
+ * page used to read the key's namespace itself, as written, so a key the
+ * parser reads another way was grouped and named apart from its entity.
+ * An @ tag is a person's, as its entity is.
+ */
+function readDashboardTagNamespace(tag: TagReference): string {
+  return tag.key.startsWith('@') ? 'person' : (getEntityNamespace(tag) ?? '');
+}
+
+/**
  * Projects one consistent dashboard model from the index and UI-only state,
  * its task counts taken in `queryContext`.
  */
@@ -49,6 +62,7 @@ export function createDashboardSnapshot({
       label: tag.label,
       count: tag.count,
       isFavorite: tag.isFavorite,
+      namespace: readDashboardTagNamespace(tag),
     })),
     entities: sortEntities(index.entities.values(), preferences).map((entity) => ({
       key: entity.key,

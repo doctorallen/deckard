@@ -1,21 +1,17 @@
 /**
  * How the Tags tab reads its tags: each tag's namespace and the name it is
  * shown by, and which tags a search and a namespace filter leave showing.
- * A key is read with the domain's tag-key reader, as the host reads it.
+ * A tag's namespace is the one the host read with the parser.
  */
-import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
+import { formatKeyWords } from '../../domain/markdown/tagKeys';
 import type { DashboardTag } from '../../ui/protocol/dashboard';
 
 /** The namespace filter's choice for tags with no namespace. A namespace never contains "/", so it cannot clash with one. */
 export const NO_TAG_NAMESPACE = '/';
 
-/** The namespace of a #namespace/name tag, as written in its key; an @ tag names a person. Empty for none. */
-export function tagNamespaceOf(tag: Pick<DashboardTag, 'key'>): string {
-  const key = String(tag.key || '');
-  if (key.startsWith('@')) {
-    return 'person';
-  }
-  return readTagNamespace(key) ?? '';
+/** The namespace the host read the tag's key under; empty for none. */
+export function tagNamespaceOf(tag: Pick<DashboardTag, 'namespace'>): string {
+  return String(tag.namespace || '');
 }
 
 /** A tag's name and its namespace, as its row shows them: dashes and underscores as spaces. */
