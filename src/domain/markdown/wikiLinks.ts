@@ -84,8 +84,11 @@ function readLineLinks(lineText: string, line: number, spans: WikiLinkSpan[]): v
   const code = lineText.includes('`')
     ? findCodeAndLinkRanges(lineText).filter((range) => lineText[range.start] === '`')
     : [];
-  for (const match of lineText.matchAll(WIKI_LINK_ON_LINE)) {
-    const startColumn = match.index ?? 0;
+  // The shared pattern from the line's start, rather than matchAll's copy of
+  // it for each line; nothing else uses it between these calls.
+  WIKI_LINK_ON_LINE.lastIndex = 0;
+  for (let match = WIKI_LINK_ON_LINE.exec(lineText); match; match = WIKI_LINK_ON_LINE.exec(lineText)) {
+    const startColumn = match.index;
     if (!isInRanges(code, startColumn)) {
       spans.push({ line, startColumn, endColumn: startColumn + match[0].length, target: match[1] });
     }
