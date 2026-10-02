@@ -31,7 +31,7 @@ const clicks = (process.env.DECKARD_SCREENSHOT_CLICK ?? '')
   .map((selector) => selector.trim())
   .filter(Boolean);
 
-// A side bar pane, such as a tree view, that is expanded and lists rows.
+/** A check, run in the workbench, that a side bar pane such as a tree view is expanded and lists rows. */
 function expandedPaneWithRows(title) {
   return `[...document.querySelectorAll('.pane')].some((pane) => { const header = pane.querySelector('.pane-header'); return header?.getAttribute('aria-expanded') === 'true' && header.querySelector('.title')?.textContent?.trim() === ${JSON.stringify(title)} && pane.querySelectorAll('.pane-body .monaco-list-row').length > 2; })`;
 }
@@ -187,14 +187,17 @@ const candidate = join(tmpdir(), `deckard-${view}-${Date.now()}.png`);
 let portOwner;
 let succeeded = false;
 
+/** Runs a command and returns its output, trimmed, throwing when it fails. */
 function run(command, args, options = {}) {
   return execFileSync(command, args, { encoding: 'utf8', ...options }).trim();
 }
 
+/** Settles after a number of milliseconds. */
 function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
 }
 
+/** The port for the host's debugger: DECKARD_CDP_PORT, or one the system finds free. */
 function choosePort() {
   return new Promise((resolvePort, rejectPort) => {
     const server = createServer();
@@ -214,6 +217,7 @@ function choosePort() {
   });
 }
 
+/** A JSON answer from the host's debugger endpoint, which fails on any status but OK. */
 async function requestJson(path) {
   const response = await fetch(`http://127.0.0.1:${port}${path}`);
   if (!response.ok) {
@@ -222,6 +226,10 @@ async function requestJson(path) {
   return response.json();
 }
 
+/**
+ * Waits up to 30 seconds for the host's debugger to answer with a socket to
+ * talk to, and fails with whatever holds the port when it does not.
+ */
 async function waitForCdp() {
   let failure;
   for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -248,6 +256,10 @@ async function waitForCdp() {
   );
 }
 
+/**
+ * A client of the debugger socket: `call` sends a method, in a target's
+ * session when one is given, and settles with its result or its error.
+ */
 async function createCdpClient(webSocketDebuggerUrl) {
   const socket = new WebSocket(webSocketDebuggerUrl);
   const pending = new Map();
@@ -288,6 +300,7 @@ async function createCdpClient(webSocketDebuggerUrl) {
   };
 }
 
+/** Writes the workspace's settings for the theme, zen, and color theme asked for, and copies in the development notes. */
 function writeFixture() {
   mkdirSync(join(workspace, '.vscode'));
   writeFileSync(
@@ -416,6 +429,11 @@ module.exports = { activate };
 `;
 }
 
+/**
+ * Builds the extension unless DECKARD_SCREENSHOT_SKIP_BUILD is set, and
+ * starts an isolated VS Code with Deckard and the companion, its debugger on
+ * the chosen port.
+ */
 function launchWorkbench() {
   if (process.env.DECKARD_SCREENSHOT_SKIP_BUILD !== '1') {
     const build = spawnSync(process.execPath, ['esbuild.js'], {
@@ -449,6 +467,7 @@ function launchWorkbench() {
   ).unref();
 }
 
+/** Fails unless the process on the debugger port is the host this capture started. */
 function verifyPortOwner() {
   const listener = run('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN']).split(
     '\n',
@@ -469,6 +488,7 @@ function verifyPortOwner() {
   }
 }
 
+/** Stops the host this capture started, and waits for it to let go of its port. */
 async function stopWorkbench() {
   if (!portOwner) {
     return;
@@ -498,6 +518,7 @@ async function stopWorkbench() {
   throw new Error(`Capture host did not release CDP port ${port}`);
 }
 
+/** The value of an expression evaluated in a target's page. */
 async function evaluate(client, expression, sessionId) {
   const result = await client.call(
     'Runtime.evaluate',
@@ -570,6 +591,7 @@ async function pointAtWebview(client, targets, selector, action) {
   throw new Error(`Nothing to ${action} matches ${selector}`);
 }
 
+/** Whether the view has drawn, by its rendered assertion, in the workbench or in any of its webviews. */
 async function isRendered(client, targets, workbenchSessionId) {
   if (selectedView.target === 'workbench') {
     return Boolean(

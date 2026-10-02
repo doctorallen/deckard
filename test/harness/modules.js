@@ -13,6 +13,7 @@
 //   parser.parseMarkdown(...);
 const path = require('node:path');
 
+/** The compiled sources, which every harness runs. */
 const OUT = path.join(__dirname, '..', '..', 'out');
 
 /** Each module's name, and its path under out/. */

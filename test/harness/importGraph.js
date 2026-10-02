@@ -9,6 +9,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
+/** How the graph names the `vscode` module, which only the extension host provides. */
 const VSCODE = 'vscode';
 
 /**

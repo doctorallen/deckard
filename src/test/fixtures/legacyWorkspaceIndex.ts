@@ -254,6 +254,7 @@ interface MutableTagAssociation extends Omit<TagAssociation,
   sourceUnitIds: Set<string>;
 }
 
+/** Pairs every tag of a group written together with every other, both ways. */
 function addAssociationGroup(
   associations: Map<string, MutableTagAssociation>,
   tags: TagReference[],
@@ -268,6 +269,10 @@ function addAssociationGroup(
   });
 }
 
+/**
+ * Pairs a heading's tags with the tags of every heading above it, both
+ * ways, weighted down by how many levels up each one is.
+ */
 function addHeadingAssociations(
   associations: Map<string, MutableTagAssociation>,
   sourceUnits: Map<string, TagReference[]>,
@@ -350,6 +355,7 @@ function addAssociationEvidence(
   associations.set(key, relationship);
 }
 
+/** Records the tags of one authoring unit once, each tag once, the first time the unit is seen. */
 function registerSourceUnit(
   sourceUnits: Map<string, TagReference[]>,
   unitId: string,
@@ -363,6 +369,7 @@ function registerSourceUnit(
   }
 }
 
+/** How many authoring units each tag appears in. */
 function getTagSourceUnitCounts(
   sourceUnits: ReadonlyMap<string, TagReference[]>,
 ): Map<string, number> {
@@ -397,6 +404,7 @@ function getNormalizedAssociationWeight(
   return rawWeight * prevalence * (0.5 + supportConfidence / 2);
 }
 
+/** Adds an association to a tag's list, starting the list when it has none. */
 function appendAssociation(
   associations: Map<string, TagAssociation[]>,
   tagKey: string,
@@ -479,6 +487,7 @@ function addEntityReference(
   }
 }
 
+/** An entity's name: the last part of its label, without the mark, with hyphens as spaces. */
 function getEntityName(label: string): string {
   const name = label.slice(1).split('/').at(-1) ?? label;
   return name.replaceAll('-', ' ');

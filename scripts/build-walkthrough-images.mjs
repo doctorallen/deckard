@@ -14,6 +14,7 @@ const images = join(root, 'docs', 'images');
 const out = join(root, 'resources', 'walkthrough');
 const WIDTH = 960;
 
+/** A screenshot from docs/images. */
 function read(name) {
   return PNG.sync.read(readFileSync(join(images, name)));
 }

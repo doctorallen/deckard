@@ -249,6 +249,11 @@ async function benchWarmStart({ folder, storage }) {
   return rows;
 }
 
+/**
+ * Starts an indexer over a folder's notes with the real scanner and the
+ * cache in `storage`, and times its first publish and the moment it is
+ * fresh.
+ */
 async function startIndexer(folder, storage) {
   const workspaceFolder = { uri: vscode.Uri.file(folder), name: 'bench', index: 0 };
   // The workspace's ports; the settings are the stub's, which leaves every
@@ -607,10 +612,12 @@ function generate(size) {
   return corpus;
 }
 
+/** The Markdown files in a folder, by path, in name order. */
 function listMarkdown(folder) {
   return fs.readdirSync(folder).filter((name) => name.endsWith('.md')).sort().map((name) => path.join(folder, name));
 }
 
+/** A timing log that keeps every line it is given, for readTiming. */
 function captureLog() {
   const lines = [];
   const push = (line) => lines.push(line);
@@ -628,12 +635,14 @@ function readTiming(lines, operations) {
   return undefined;
 }
 
+/** How many milliseconds a function takes to run. */
 function time(run) {
   const started = performance.now();
   run();
   return performance.now() - started;
 }
 
+/** The middle value, the upper of the two for an even count, or NaN for none. */
 function median(values) {
   if (values.length === 0) {
     return NaN;
@@ -642,10 +651,12 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/** Milliseconds as the table prints them, or a dash for a step that could not run. */
 function ms(value) {
   return Number.isFinite(value) ? `${value.toFixed(value < 10 ? 1 : 0)} ms` : '—';
 }
 
+/** A length in bytes as megabytes. */
 function mb(length) {
   return `${(length / 1048576).toFixed(1)} MB`;
 }
