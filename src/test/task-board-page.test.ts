@@ -534,4 +534,22 @@ suite('Task Board page', () => {
     assert.strictEqual(cards.find('.board-card [data-action="board-toggle-task"]').getAttribute('aria-label'), 'Complete Send the proposal');
     assert.match(cards.find('.board-card').getAttribute('aria-label') ?? '', /^Send the proposal, Todo/);
   });
+
+  test('a card dragged onto the search box puts nothing in it', () => {
+    const shown = show(boardOf(TWO));
+    const transfer = { types: [] as string[], effectAllowed: '', dropEffect: '', setData(type: string) { this.types.push(type); } };
+    /** A drag event at `target`, carrying the card's data as the browser would. */
+    const drag = (type: string, target: Element): Event => {
+      const event = new shown.window.Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: transfer });
+      target.dispatchEvent(event);
+      return event;
+    };
+    drag('dragstart', cardTitled(shown, 'Beta'));
+    // A field takes a drop's plain text as typing; a card carries none.
+    assert.deepStrictEqual(transfer.types, ['application/x-deckard-card'], 'the drag carries no words a field would take');
+    const box = shown.find('[data-action="query-input"]');
+    assert.strictEqual(drag('drop', box).defaultPrevented, true, 'and the page keeps the drop from the field');
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined);
+  });
 });

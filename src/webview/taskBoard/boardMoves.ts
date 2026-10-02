@@ -439,8 +439,11 @@ class BoardMoves {
    */
   private onDrop(event: DragEvent): void {
     const column = dropColumn(event);
-    if (column) {
+    // A card dropped anywhere but a column is no field's to take.
+    if (carriesCard(event)) {
       event.preventDefault();
+    }
+    if (column) {
       const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
         .find((candidate) => board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn);
       if (card && card.closest('.board-column') !== column) {
@@ -493,8 +496,8 @@ class BoardMoves {
 }
 
 /**
- * The type a card's drag carries, besides its plain text, which tells the
- * columns it is a card: words dragged from a note carry plain text too.
+ * The one type a card's drag carries, which tells the columns it is a
+ * card: words dragged from a note carry plain text.
  */
 const CARD_DRAG_TYPE = 'application/x-deckard-card';
 
@@ -543,8 +546,9 @@ function listenForDrags(): void {
     }
 
     event.dataTransfer.effectAllowed = 'move';
+    // The card's own type alone: plain text would be typed into a field it
+    // was dropped on, the search box's included, as its task's id.
     event.dataTransfer.setData(CARD_DRAG_TYPE, String(board.dragId));
-    event.dataTransfer.setData('text/plain', String(board.dragId));
   });
   document.addEventListener('dragend', (event) => {
     boardCard(event.target)?.classList.remove('dragging');
