@@ -15,7 +15,6 @@
 const path = require('node:path');
 const os = require('node:os');
 const fs = require('node:fs');
-const Module = require('node:module');
 const { performance } = require('node:perf_hooks');
 
 const root = path.join(__dirname, '..', '..');
@@ -26,11 +25,8 @@ if (!fs.existsSync(out)) {
 }
 
 const stubPath = path.join(root, 'test', 'e2e', 'vscodeStub.js');
-const resolve = Module._resolveFilename;
-Module._resolveFilename = function (request, ...rest) {
-  return request === 'vscode' ? stubPath : resolve.call(this, request, ...rest);
-};
 const vscode = require(stubPath);
+vscode.install();
 extendStub(vscode);
 
 const { pathOf } = require('../harness/modules.js');
@@ -69,7 +65,48 @@ const keepAlive = setInterval(() => undefined, 1000);
   process.exit(1);
 });
 
+/**
+ * Writes a corpus of a size, measures each step over it in turn, and prints
+ * the timings as one table. Each step returns its [label, value] rows.
+ */
 async function bench(size) {
+  const workspace = writeCorpus(size);
+  console.log(`\n${size.toLocaleString('en-US')} notes, ${(workspace.bytes / 1048576).toFixed(1)} MB of Markdown`);
+  const now = Date.UTC(2026, 8, 1);
+  const build = benchBuild(workspace.corpus, now);
+  const rows = [
+    ...build.rows,
+    ...benchGraph(build.index),
+    ...benchSnapshots(build.index, now),
+    ...benchCodec(build.files, workspace.bytes),
+  ];
+
+  // A start over the real scanner and cache, cold, then one save at a time.
+  const log = captureLog();
+  setTimingLog?.(log);
+  const cold = await startIndexer(workspace.folder, workspace.storage);
+  rows.push(['Start, cold: first display', ms(cold.firstPublish)], ['Start, cold: fresh', ms(cold.ready)]);
+  // Saves are timed once the first build's cache is written, as in a session
+  // that has settled.
+  await cold.store?.whenIdle();
+  rows.push(...await benchSaves(cold, workspace, log));
+  rows.push(...await benchProseSave(cold, workspace));
+  rows.push(...await benchRescans(cold));
+  await cold.store?.whenIdle();
+  cold.indexer.dispose();
+
+  rows.push(...await benchWarmStart(workspace));
+  setTimingLog?.(undefined);
+  const width = Math.max(...rows.map(([label]) => label.length));
+  rows.forEach(([label, value]) => console.log(`  ${label.padEnd(width)}  ${value}`));
+  fs.rmSync(workspace.folder, { recursive: true, force: true });
+}
+
+/**
+ * Writes a seeded corpus of a size to a new temporary folder: the notes, and
+ * a storage folder beside them for the cache.
+ */
+function writeCorpus(size) {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'deckard-bench-'));
   const notes = path.join(folder, 'notes');
   const storage = path.join(folder, 'storage');
@@ -80,83 +117,83 @@ async function bench(size) {
     fs.writeFileSync(path.join(notes, name), text);
     bytes += Buffer.byteLength(text);
   });
-  const rows = [];
-  const row = (label, value) => rows.push([label, value]);
-  console.log(`\n${size.toLocaleString('en-US')} notes, ${(bytes / 1048576).toFixed(1)} MB of Markdown`);
+  return { folder, notes, storage, corpus, bytes, size };
+}
 
-  // Parse and build, with nothing else in the way.
-  const now = Date.UTC(2026, 8, 1);
+/** Parse and build, with nothing else in the way; returns the parsed notes and the index too. */
+function benchBuild(corpus, now) {
   const files = new Map();
-  row('Parse every note', ms(time(() => corpus.forEach(([name, text], i) =>
+  const rows = [['Parse every note', ms(time(() => corpus.forEach(([name, text], i) =>
     files.set(`notes/${name}`, parseMarkdown(`notes/${name}`, text, {
       createdAt: now - i * 1e6,
       updatedAt: now - i * 1e5,
     })),
-  ))));
+  )))]];
   const builds = [0, 1, 2].map(() => time(() => buildWorkspaceIndex(new Map(files))));
-  row('Full index build (median of 3)', ms(median(builds)));
-  const index = buildWorkspaceIndex(new Map(files));
+  rows.push(['Full index build (median of 3)', ms(median(builds))]);
+  return { rows, files, index: buildWorkspaceIndex(new Map(files)) };
+}
 
-  // The Notes Graph.
+/** The Notes Graph: its build, and the size of the message that carries it. */
+function benchGraph(index) {
   let graph;
-  row('Notes Graph build', ms(time(() => { graph = graphState.createNotesGraphSnapshot(index); })));
-  row('Notes Graph message, whole', mb(JSON.stringify(graph).length));
-  if (graphState.toWire) {
-    row('Notes Graph message, lighter edges', mb(JSON.stringify(graphState.toWire(graph, { notes: true, tasks: true })).length));
-    row('Notes Graph message, tasks hidden', mb(JSON.stringify(graphState.toWire(graph, { notes: true, tasks: false })).length));
-  } else {
-    row('Notes Graph message, lighter edges', '—');
-    row('Notes Graph message, tasks hidden', '—');
+  const rows = [['Notes Graph build', ms(time(() => { graph = graphState.createNotesGraphSnapshot(index); }))]];
+  rows.push(['Notes Graph message, whole', mb(JSON.stringify(graph).length)]);
+  if (!graphState.toWire) {
+    return [...rows, ['Notes Graph message, lighter edges', '—'], ['Notes Graph message, tasks hidden', '—']];
   }
+  return [
+    ...rows,
+    ['Notes Graph message, lighter edges', mb(JSON.stringify(graphState.toWire(graph, { notes: true, tasks: true })).length)],
+    ['Notes Graph message, tasks hidden', mb(JSON.stringify(graphState.toWire(graph, { notes: true, tasks: false })).length)],
+  ];
+}
 
-  // The Stats page's snapshot, timed by the line its host writes, which
-  // decides whether the page's HTML carries it (docs/implementation/
-  // 20-webviews.md, Q3: under 50 ms, it is embedded).
-  row('Stats snapshot (median of 5)', ms(timeStatsSnapshot(index, now)));
-  // Both calendars' snapshots, timed by the Calendar line their controller
-  // writes, for the same rule: the sidebar's month, and the page's month
-  // with its day panel.
-  row('Calendar snapshot, sidebar (median of 5)', ms(timeCalendarSnapshot(index, now, {})));
-  row('Calendar snapshot, page (median of 5)', ms(timeCalendarSnapshot(index, now, { layout: 'page', dayPanel: true })));
-  row('Task Board snapshot (median of 5)', ms(timeTaskBoardSnapshot(index, now)));
-  // The Notes Graph's whole-workspace snapshot, timed by the Notes Graph
-  // line its controller writes, for the same rule.
-  row('Notes Graph snapshot (median of 5)', ms(timeGraphSnapshot(index)));
-  // A search page's snapshot, on the page a tag opens and on a search of
-  // every note, timed by the line its host writes ("Search page").
-  row('Search page snapshot, one tag (median of 5)', ms(timeSearchPageSnapshot(index, now, '#project/t0')));
-  row('Search page snapshot, every note (median of 5)', ms(timeSearchPageSnapshot(index, now, '')));
-  // Home's snapshot with the widgets it starts with, timed by the line its
-  // host writes ("Dashboard"), for the same rule.
-  row('Dashboard snapshot, Home (median of 5)', ms(timeDashboardSnapshot(index, now)));
-  // Related Notes' snapshot for a note, timed by the line its host writes
-  // ("Related Notes"): the note's related entries ranked over the whole
-  // workspace, and what links to it.
-  row('Related Notes snapshot (median of 5)', ms(timeRelatedNotesSnapshot(index, now, 'notes/n0.md')));
+/** Each page's first snapshot, timed by the line its host or controller writes. */
+function benchSnapshots(index, now) {
+  return [
+    // The Stats page's snapshot, timed by the line its host writes, which
+    // decides whether the page's HTML carries it (docs/implementation/
+    // 20-webviews.md, Q3: under 50 ms, it is embedded).
+    ['Stats snapshot (median of 5)', ms(timeStatsSnapshot(index, now))],
+    // Both calendars' snapshots, timed by the Calendar line their controller
+    // writes, for the same rule: the sidebar's month, and the page's month
+    // with its day panel.
+    ['Calendar snapshot, sidebar (median of 5)', ms(timeCalendarSnapshot(index, now, {}))],
+    ['Calendar snapshot, page (median of 5)', ms(timeCalendarSnapshot(index, now, { layout: 'page', dayPanel: true }))],
+    ['Task Board snapshot (median of 5)', ms(timeTaskBoardSnapshot(index, now))],
+    // The Notes Graph's whole-workspace snapshot, timed by the Notes Graph
+    // line its controller writes, for the same rule.
+    ['Notes Graph snapshot (median of 5)', ms(timeGraphSnapshot(index))],
+    // A search page's snapshot, on the page a tag opens and on a search of
+    // every note, timed by the line its host writes ("Search page").
+    ['Search page snapshot, one tag (median of 5)', ms(timeSearchPageSnapshot(index, now, '#project/t0'))],
+    ['Search page snapshot, every note (median of 5)', ms(timeSearchPageSnapshot(index, now, ''))],
+    // Home's snapshot with the widgets it starts with, timed by the line its
+    // host writes ("Dashboard"), for the same rule.
+    ['Dashboard snapshot, Home (median of 5)', ms(timeDashboardSnapshot(index, now))],
+    // Related Notes' snapshot for a note, timed by the line its host writes
+    // ("Related Notes"): the note's related entries ranked over the whole
+    // workspace, and what links to it.
+    ['Related Notes snapshot (median of 5)', ms(timeRelatedNotesSnapshot(index, now, 'notes/n0.md'))],
+  ];
+}
 
-  // The parsed-note cache's codec.
-  if (codec.encodeParsedFile) {
-    let encoded;
-    row('Encode every parsed note', ms(time(() => { encoded = [...files.values()].map(codec.encodeParsedFile); })));
-    row('Decode every parsed note', ms(time(() => encoded.map(codec.decodeParsedFile))));
-    const encodedBytes = encoded.reduce((sum, text) => sum + Buffer.byteLength(text), 0);
-    row('Cache size against the Markdown', `${(encodedBytes / bytes).toFixed(1)}×`);
-  } else {
-    row('Encode every parsed note', '—');
-    row('Decode every parsed note', '—');
-    row('Cache size against the Markdown', '—');
+/** The parsed-note cache's codec: encoding, decoding, and the size against the Markdown. */
+function benchCodec(files, bytes) {
+  if (!codec.encodeParsedFile) {
+    return [['Encode every parsed note', '—'], ['Decode every parsed note', '—'], ['Cache size against the Markdown', '—']];
   }
+  let encoded;
+  const rows = [['Encode every parsed note', ms(time(() => { encoded = [...files.values()].map(codec.encodeParsedFile); }))]];
+  rows.push(['Decode every parsed note', ms(time(() => encoded.map(codec.decodeParsedFile)))]);
+  const encodedBytes = encoded.reduce((sum, text) => sum + Buffer.byteLength(text), 0);
+  rows.push(['Cache size against the Markdown', `${(encodedBytes / bytes).toFixed(1)}×`]);
+  return rows;
+}
 
-  // A start over the real scanner and cache, cold, then one save at a time.
-  const log = captureLog();
-  setTimingLog?.(log);
-  const cold = await startIndexer(folder, storage);
-  row('Start, cold: first display', ms(cold.firstPublish));
-  row('Start, cold: fresh', ms(cold.ready));
-  // Saves are timed once the first build's cache is written, as in a session
-  // that has settled.
-  await cold.store?.whenIdle();
-
+/** Five saves, each adding a tag to a heading, timed whole and by the index update alone. */
+async function benchSaves(cold, { corpus, notes, size }, log) {
   const saves = [];
   const updates = [];
   for (let i = 0; i < 5; i += 1) {
@@ -167,46 +204,56 @@ async function bench(size) {
     saves.push(await save(cold, file));
     updates.push(readTiming(log.lines, ['Update index', 'Build index']));
   }
-  row('Save: read, index, publish (median of 5)', ms(median(saves)));
-  row('Save: index update alone (median of 5)', ms(median(updates.filter((value) => value !== undefined))));
-
-  // A save that changes words inside a line, which the graph does not draw.
-  if (graphState.graphInputsChanged) {
-    const before = cold.indexer.getSnapshot();
-    const name = corpus[3 % size][0];
-    const file = path.join(notes, name);
-    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('lorem ipsum', 'lorem ipsum ipsum'));
-    await save(cold, file);
-    const after = cold.indexer.getSnapshot();
-    let changed;
-    row('Notes Graph check after a prose-only save', ms(time(() => { changed = graphState.graphInputsChanged(before, after); })) + (changed ? ' (redraws)' : ' (skipped)'));
-  } else {
-    row('Notes Graph check after a prose-only save', '—');
-  }
-  // A rescan, as a change to an exclude setting makes, and Reindex Workspace.
-  let started = performance.now();
-  await cold.indexer.refresh();
-  row('Rescan, nothing changed', ms(performance.now() - started));
-  started = performance.now();
-  await cold.indexer.refresh({ reuse: 'none' });
-  row('Reindex Workspace, every note reread', ms(performance.now() - started));
-  await cold.store?.whenIdle();
-  cold.indexer.dispose();
-
-  // The same workspace again, as the next session opens it.
-  const warm = await startIndexer(folder, storage);
-  row('Start, warm: first display', ms(warm.firstPublish));
-  row('Start, warm: fresh', ms(warm.ready));
-  row('Start, warm: publishes', String(warm.publishes()));
-  await warm.store?.whenIdle();
-  warm.indexer.dispose();
-  setTimingLog?.(undefined);
-
-  const width = Math.max(...rows.map(([label]) => label.length));
-  rows.forEach(([label, value]) => console.log(`  ${label.padEnd(width)}  ${value}`));
-  fs.rmSync(folder, { recursive: true, force: true });
+  return [
+    ['Save: read, index, publish (median of 5)', ms(median(saves))],
+    ['Save: index update alone (median of 5)', ms(median(updates.filter((value) => value !== undefined)))],
+  ];
 }
 
+/** A save that changes words inside a line, which the graph does not draw. */
+async function benchProseSave(cold, { corpus, notes, size }) {
+  if (!graphState.graphInputsChanged) {
+    return [['Notes Graph check after a prose-only save', '—']];
+  }
+  const before = cold.indexer.getSnapshot();
+  const name = corpus[3 % size][0];
+  const file = path.join(notes, name);
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('lorem ipsum', 'lorem ipsum ipsum'));
+  await save(cold, file);
+  const after = cold.indexer.getSnapshot();
+  let changed;
+  return [['Notes Graph check after a prose-only save', ms(time(() => { changed = graphState.graphInputsChanged(before, after); })) + (changed ? ' (redraws)' : ' (skipped)')]];
+}
+
+/** A rescan, as a change to an exclude setting makes, and Reindex Workspace. */
+async function benchRescans(cold) {
+  let started = performance.now();
+  await cold.indexer.refresh();
+  const rows = [['Rescan, nothing changed', ms(performance.now() - started)]];
+  started = performance.now();
+  await cold.indexer.refresh({ reuse: 'none' });
+  rows.push(['Reindex Workspace, every note reread', ms(performance.now() - started)]);
+  return rows;
+}
+
+/** The same workspace again, as the next session opens it. */
+async function benchWarmStart({ folder, storage }) {
+  const warm = await startIndexer(folder, storage);
+  const rows = [
+    ['Start, warm: first display', ms(warm.firstPublish)],
+    ['Start, warm: fresh', ms(warm.ready)],
+    ['Start, warm: publishes', String(warm.publishes())],
+  ];
+  await warm.store?.whenIdle();
+  warm.indexer.dispose();
+  return rows;
+}
+
+/**
+ * Starts an indexer over a folder's notes with the real scanner and the
+ * cache in `storage`, and times its first publish and the moment it is
+ * fresh.
+ */
 async function startIndexer(folder, storage) {
   const workspaceFolder = { uri: vscode.Uri.file(folder), name: 'bench', index: 0 };
   // The workspace's ports; the settings are the stub's, which leaves every
@@ -565,10 +612,12 @@ function generate(size) {
   return corpus;
 }
 
+/** The Markdown files in a folder, by path, in name order. */
 function listMarkdown(folder) {
   return fs.readdirSync(folder).filter((name) => name.endsWith('.md')).sort().map((name) => path.join(folder, name));
 }
 
+/** A timing log that keeps every line it is given, for readTiming. */
 function captureLog() {
   const lines = [];
   const push = (line) => lines.push(line);
@@ -586,12 +635,14 @@ function readTiming(lines, operations) {
   return undefined;
 }
 
+/** How many milliseconds a function takes to run. */
 function time(run) {
   const started = performance.now();
   run();
   return performance.now() - started;
 }
 
+/** The middle value, the upper of the two for an even count, or NaN for none. */
 function median(values) {
   if (values.length === 0) {
     return NaN;
@@ -600,10 +651,12 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/** Milliseconds as the table prints them, or a dash for a step that could not run. */
 function ms(value) {
   return Number.isFinite(value) ? `${value.toFixed(value < 10 ? 1 : 0)} ms` : '—';
 }
 
+/** A length in bytes as megabytes. */
 function mb(length) {
   return `${(length / 1048576).toFixed(1)} MB`;
 }

@@ -64,7 +64,11 @@ function callBodies(source: string, name: RegExp): string[] {
     const start = at;
     while (at < source.length && depth > 0) {
       const char = source[at];
-      depth += char === '(' ? 1 : char === ')' ? -1 : 0;
+      if (char === '(') {
+        depth += 1;
+      } else if (char === ')') {
+        depth -= 1;
+      }
       at++;
     }
     bodies.push(source.slice(start, at - 1));
@@ -230,17 +234,13 @@ suite('Naming', () => {
     test('a message that wrote nothing is an error, and a changed note is said one way', () => {
       const offenders: string[] = [];
       for (const [name, source] of hosts) {
-        for (const body of callBodies(source, /show(?:Information|Warning)Message/)) {
-          if (/could not/.test(body) && /nothing was written/.test(body)) {
-            offenders.push(`${name}: ${body.trim().slice(0, 80)}`);
-          }
-        }
+        offenders.push(...callBodies(source, /show(?:Information|Warning)Message/)
+          .filter((body) => /could not/.test(body) && /nothing was written/.test(body))
+          .map((body) => `${name}: ${body.trim().slice(0, 80)}`));
         if (!name.endsWith('notify.ts')) {
-          for (const literal of literals(source)) {
-            if (/changed after Deckard last read (it|them), so nothing was written/.test(literal)) {
-              offenders.push(`${name}: ${literal.slice(0, 80)} (use describeStale)`);
-            }
-          }
+          offenders.push(...literals(source)
+            .filter((literal) => /changed after Deckard last read (it|them), so nothing was written/.test(literal))
+            .map((literal) => `${name}: ${literal.slice(0, 80)} (use describeStale)`));
         }
       }
       assert.deepStrictEqual(offenders, []);

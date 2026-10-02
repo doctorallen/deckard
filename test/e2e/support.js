@@ -13,20 +13,12 @@
 // With DECKARD_DOM_RECORD=<dir>, each mounted page's normalized body is
 // written after every message the host sends it and every action a reader
 // takes, for test/ui/diffDomRecords.js to compare across commits.
-const Module = require('node:module');
-const path = require('node:path');
 const { JSDOM } = require('jsdom');
 const { loadPage } = require('../harness/loadPage.js');
 const { createDomRecorder } = require('../harness/domRecorder.js');
 
 // The extension imports "vscode", which only exists inside the editor.
-const resolveFilename = Module._resolveFilename;
-Module._resolveFilename = function patched(request, ...rest) {
-  if (request === 'vscode') {
-    return path.join(__dirname, 'vscodeStub.js');
-  }
-  return resolveFilename.call(this, request, ...rest);
-};
+require('./vscodeStub.js').install();
 
 /**
  * A stand-in for VS Code's Memento: an in-memory map with `get` and an

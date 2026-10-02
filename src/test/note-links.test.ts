@@ -13,7 +13,7 @@ function createIndex(notes: Record<string, string>, updated: Record<string, numb
   const files = new Map(
     Object.entries(notes).map(([path, content]) => [
       path,
-      parseMarkdown(path, content, updated[path] !== undefined ? { updatedAt: updated[path] } : undefined),
+      parseMarkdown(path, content, updated[path] === undefined ? undefined : { updatedAt: updated[path] }),
     ]),
   );
   return buildWorkspaceIndex(files);

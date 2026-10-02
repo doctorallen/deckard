@@ -1,5 +1,3 @@
-import type * as vscode from 'vscode';
-
 import type { CalendarSnapshot } from '../ui/protocol/calendar';
 import type { SidebarNotesPageState } from '../ui/protocol/sidebarNotes';
 import type { DeckardStatsSnapshot } from '../ui/protocol/stats';
@@ -32,12 +30,22 @@ export interface PageOptions {
 }
 
 /**
+ * The webview a page builder is given, read from a builder's own signature
+ * so the catalog names no `vscode` type: the import graph counts even a
+ * type-only import of `vscode` as reaching it.
+ */
+type PageBuilderWebview = Parameters<typeof getDashboardHtml>[0];
+
+/** The extension's folder as a page builder takes it, read the same way. */
+type PageBuilderUri = Parameters<typeof getDashboardHtml>[1];
+
+/**
  * What a page is rendered against: the stand-in webview of `pageWebview.ts`,
  * the repository as the extension's folder, and the page's own options.
  */
 export interface PageContext extends PageOptions {
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>;
-  extensionUri: vscode.Uri;
+  webview: PageBuilderWebview;
+  extensionUri: PageBuilderUri;
 }
 
 /** The name of every page in the catalog. */
@@ -99,20 +107,20 @@ export const PAGES: readonly CatalogPage[] = [
   {
     id: 'stats',
     title: 'Stats',
-    render: (context) => getStatsHtml(context.webview as vscode.Webview, context.extensionUri, undefined, context.state as DeckardStatsSnapshot | undefined),
+    render: (context) => getStatsHtml(context.webview as Parameters<typeof getStatsHtml>[0], context.extensionUri, undefined, context.state as DeckardStatsSnapshot | undefined),
     readsInertState: true,
   },
-  { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as vscode.Webview, context.extensionUri) },
+  { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview as Parameters<typeof getTaskBoardHtml>[0], context.extensionUri) },
   {
     id: 'calendar',
     title: 'Calendar',
-    render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri, { state: context.state as CalendarSnapshot | undefined }),
+    render: (context) => getCalendarHtml(context.webview as Parameters<typeof getCalendarHtml>[0], context.extensionUri, { state: context.state as CalendarSnapshot | undefined }),
     readsInertState: true,
   },
   {
     id: 'calendarPage',
     title: 'Calendar page',
-    render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri, { page: true, state: context.state as CalendarSnapshot | undefined }),
+    render: (context) => getCalendarHtml(context.webview as Parameters<typeof getCalendarHtml>[0], context.extensionUri, { page: true, state: context.state as CalendarSnapshot | undefined }),
     readsInertState: true,
   },
   {

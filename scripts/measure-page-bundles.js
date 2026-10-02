@@ -301,7 +301,7 @@ async function measurePage(page, options) {
   // The layout harness, whose LAYOUT_TIMING=1 mode times a first render;
   // it ends the run, saying so, where no Chrome is found.
   const chrome = require('../test/ui/checkLayout.js');
-  const surface = createSurfaces(false).find((entry) => entry.page === page && !entry.drive);
+  const surface = createSurfaces().find((entry) => entry.page === page && !entry.drive);
   let unpacked;
   console.log(`\n${page}`);
   if (options.vsix) {

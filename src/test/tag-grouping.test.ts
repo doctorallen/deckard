@@ -55,7 +55,10 @@ function taskNamed(index: WorkspaceIndex, word: string): Task {
 function moved(index: WorkspaceIndex, word: string, to: string, from?: string): string | undefined {
   const task = taskNamed(index, word);
   const move = resolveTaskMove(task, to, options, { index, from });
-  return move.kind === 'edit' ? move.edit(task.sourceLineText) : move.kind === 'refused' ? `refused: ${move.reason}` : move.kind;
+  if (move.kind === 'edit') {
+    return move.edit(task.sourceLineText);
+  }
+  return move.kind === 'refused' ? `refused: ${move.reason}` : move.kind;
 }
 
 suite('Grouping tasks by a tag namespace', () => {

@@ -78,9 +78,15 @@ function overview(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   tagKey: string,
-  tagTitleDisplayMode: 'inline' | 'separate' = 'inline',
-  enableHeadingTagRelationships = true,
-  addedTagKeys: string[] = [],
+  {
+    tagTitleDisplayMode = 'inline',
+    enableHeadingTagRelationships = true,
+    addedTagKeys = [],
+  }: {
+    tagTitleDisplayMode?: 'inline' | 'separate';
+    enableHeadingTagRelationships?: boolean;
+    addedTagKeys?: string[];
+  } = {},
 ) {
   return createSearchPageSnapshot(
     index,
@@ -310,7 +316,7 @@ suite('Dashboard state', () => {
 
   test('lists the Task Board\'s searched tasks in their explicit order', () => {
     const tasks = [
-      createTask('first', false, 1, ['#work']),
+      createTask('first', false, 1, { tags: ['#work'] }),
       createTask('second', true, 2),
       createTask('third', false, 3),
     ];
@@ -578,9 +584,7 @@ suite('Dashboard state', () => {
         ],
       },
       '#project/atlas',
-      'inline',
-      true,
-      ['#follow-up'],
+      { addedTagKeys: ['#follow-up'] },
     );
 
     assert.strictEqual(snapshot?.savedViewName, 'Atlas follow-up');
@@ -620,7 +624,7 @@ suite('Dashboard state', () => {
 
   test('projects task title tags alongside rendered Markdown', () => {
     const title = '[Review the plan](https://example.com/plan) #project/atlas **now**';
-    const index = createIndex([createTask(title, false, 1, ['project/atlas'])]);
+    const index = createIndex([createTask(title, false, 1, { tags: ['project/atlas'] })]);
     const item = createDashboardTask([...index.tasks.values()][0], index.sections, createQueryContext(Date.now()));
 
     assert.deepStrictEqual(item.titleTags, [
@@ -631,9 +635,9 @@ suite('Dashboard state', () => {
   });
 
   test('sorts tasks by rank, creation date, and update date', () => {
-    const first = createTask('first', false, 1, [], 10, 30);
-    const second = createTask('second', false, 2, [], 30, 10);
-    const third = createTask('third', false, 3, [], 20, 20);
+    const first = createTask('first', false, 1, { createdAt: 10, updatedAt: 30 });
+    const second = createTask('second', false, 2, { createdAt: 30, updatedAt: 10 });
+    const third = createTask('third', false, 3, { createdAt: 20, updatedAt: 20 });
 
     assert.deepStrictEqual(
       sortTasks(
@@ -1393,7 +1397,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
     assert.strictEqual(snapshot.layout, 'tabs');
 
-    const separate = overview(index, preferences, '#work', 'separate');
+    const separate = overview(index, preferences, '#work', { tagTitleDisplayMode: 'separate' });
     assert.strictEqual(separate.sections[0].heading, 'Heading');
   });
 
@@ -1413,9 +1417,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#child',
-      'inline',
-      true,
-      ['#parent'],
+      { addedTagKeys: ['#parent'] },
     );
 
     assert.strictEqual(snapshot.tag, undefined, 'two tags are a search, not one tag');
@@ -1432,9 +1434,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#parent',
-      'inline',
-      true,
-      ['#child'],
+      { addedTagKeys: ['#child'] },
     );
     assert.deepStrictEqual(
       reverse.sections.map((section) => section.heading),
@@ -1465,9 +1465,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#focus',
-      'inline',
-      true,
-      ['#first', '#second', '#first'],
+      { addedTagKeys: ['#first', '#second', '#first'] },
     );
 
     assert.deepStrictEqual(
@@ -1535,9 +1533,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#second',
-      'inline',
-      true,
-      ['#first'],
+      { addedTagKeys: ['#first'] },
     );
 
     assert.deepStrictEqual(
@@ -1578,8 +1574,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#hub/relationship-overview',
-      'inline',
-      false,
+      { enableHeadingTagRelationships: false },
     );
 
     assert.strictEqual(relatedTagKeys(enabled).length, 24);
@@ -1726,7 +1721,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(page.tag?.key, '#work');
 
-    const separate = overview(index, defaultPreferences, '#work', 'separate');
+    const separate = overview(index, defaultPreferences, '#work', { tagTitleDisplayMode: 'separate' });
     assert.deepStrictEqual(
       separate.sections.map((note) => note.heading),
       ['Alpha', 'Beta', 'Zeta'],
@@ -1762,9 +1757,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#focus',
-      'inline',
-      true,
-      ['#task'],
+      { addedTagKeys: ['#task'] },
     );
     assert.strictEqual(narrowed.tag, undefined);
     assert.ok(
@@ -1810,9 +1803,7 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#project/atlas',
-      'inline',
-      true,
-      ['#meeting'],
+      { addedTagKeys: ['#meeting'] },
     );
     assert.strictEqual(filtered.hub, undefined);
     assert.strictEqual(filtered.tag, undefined, 'the header is for one tag only');
@@ -1857,13 +1848,12 @@ function createEntity(key: string, name: string, count: number): Entity {
   };
 }
 
+/** A task in today's note, with its tags written as `#<tag>` and its times as given. */
 function createTask(
   title: string,
   completed: boolean,
   lineNumber: number,
-  tags: string[] = [],
-  createdAt?: number,
-  updatedAt?: number,
+  { tags = [], createdAt, updatedAt }: { tags?: string[]; createdAt?: number; updatedAt?: number } = {},
 ): Task {
   return {
     id: `task-${title}`,

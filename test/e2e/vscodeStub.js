@@ -1,5 +1,8 @@
 // A vscode API surface just large enough to run Deckard's panels, sidebar,
 // and editor features for real.
+const Module = require('node:module');
+
+/** VS Code's event emitter: `event` subscribes a handler, `fire` calls each one. */
 class EventEmitter {
   constructor() {
     this.handlers = [];
@@ -18,6 +21,7 @@ class EventEmitter {
   }
 }
 
+/** A range from four numbers, as VS Code's is made; nothing else of its API. */
 class Range {
   constructor(startLine, startCharacter, endLine, endCharacter) {
     this.start = { line: startLine, character: startCharacter };
@@ -25,6 +29,7 @@ class Range {
   }
 }
 
+/** A line and a character, as VS Code's position holds them. */
 class Position {
   constructor(line, character) {
     this.line = line;
@@ -49,6 +54,7 @@ class Selection {
   }
 }
 
+/** A link a document link provider returns: a range and where it goes. */
 class DocumentLink {
   constructor(range, target) {
     this.range = range;
@@ -56,12 +62,14 @@ class DocumentLink {
   }
 }
 
+/** Markdown text, held as its value. */
 class MarkdownString {
   constructor(value = '') {
     this.value = value;
   }
 }
 
+/** A theme color, held as its id. */
 class ThemeColor {
   constructor(id) {
     this.id = id;
@@ -89,8 +97,24 @@ const activeEditorEmitter = new EventEmitter();
 const visibleEditorsEmitter = new EventEmitter();
 const textDocumentEmitter = new EventEmitter();
 
+/** Every panel the host has created, oldest first, for a test to find its page. */
 const createdPanels = [];
 
+/**
+ * A webview panel, as the host creates one. A harness mounts the host's page
+ * against it (test/e2e/support.js) through a handshake of three fields:
+ *
+ * - `_toWebview` holds every message the host posted, whether or not a page
+ *   was mounted to receive it.
+ * - `_deliver`, which the harness sets when it mounts the page, is called
+ *   with each message the host posts from then on and dispatches it to the
+ *   page's window.
+ * - `_onWebviewMessage` is what the page's `postMessage` calls; it fires the
+ *   panel's `onDidReceiveMessage`, so the host's handler runs.
+ *
+ * `_onHtml`, when a test sets it, is called with each page the host writes,
+ * and `_setVisible` hides or shows the panel as switching editor tabs does.
+ */
 function createWebviewPanel(viewType, title, column, options) {
   const messageEmitter = new EventEmitter();
   const disposeEmitter = new EventEmitter();
@@ -193,12 +217,26 @@ const shown = { info: [], warning: [], error: [] };
 let informationResponse;
 let inputBoxResponse;
 
-// Settings a test sets or the extension writes, by their full name.
+/**
+ * Settings a test sets or the extension writes, by their full name, such as
+ * `deckard.theme`. There is one map for the whole process, so a setting a
+ * suite writes holds for every later test in its process, and test/e2e/run.js
+ * runs each suite in a process of its own.
+ */
 const settings = new Map();
+/** Every setting the extension wrote, with its name, value, and target, in order. */
 const configurationUpdates = [];
+/** Every command the extension ran, with its arguments, in order. */
 const executedCommands = [];
 const configurationEmitter = new EventEmitter();
 
+/**
+ * The settings under a section, read from and written to the one
+ * process-wide settings map. A setting no test set reads as the fallback the
+ * caller gives, never as the manifest's default. An update writes the map,
+ * is recorded in `_test.configurationUpdates`, and fires
+ * `onDidChangeConfiguration` for that name and every section above it.
+ */
 function getConfiguration(section) {
   const fullName = (key) => (section ? `${section}.${key}` : key);
   return {
@@ -217,7 +255,32 @@ function getConfiguration(section) {
   };
 }
 
+/** The path of this stub, which `require('vscode')` loads once it is installed. */
+const STUB = __filename;
+/** Whether install() has already put the hook in place. */
+let installed = false;
+
+/**
+ * Makes `require('vscode')` load this stub from then on, for a harness that
+ * runs the compiled sources outside VS Code, where the real module does not
+ * exist. Installing it again changes nothing.
+ */
+function install() {
+  if (installed) {
+    return;
+  }
+  installed = true;
+  const resolveFilename = Module._resolveFilename;
+  Module._resolveFilename = function patched(request, ...rest) {
+    if (request === 'vscode') {
+      return STUB;
+    }
+    return resolveFilename.call(this, request, ...rest);
+  };
+}
+
 module.exports = {
+  install,
   EventEmitter,
   Range,
   Position,
@@ -226,51 +289,68 @@ module.exports = {
   MarkdownString,
   ThemeColor,
   Uri: {
-    // The path is joined to the base's path, as VS Code's is; the fsPath is
-    // joined as it always was here.
+    /**
+     * A path joined to a base. The path is joined to the base's path, as VS
+     * Code's is; the fsPath is joined as it always was here.
+     */
     joinPath: (base, ...parts) => ({
       fsPath: [base, ...parts].join('/'),
       path: [base && typeof base === 'object' ? base.path ?? base.fsPath : base, ...parts].join('/'),
     }),
+    /** A URI whose path and text are the value as given, with no scheme. */
     parse: (value) => ({ fsPath: value, path: value, toString: () => value }),
+    /** A file URI for a path. */
     file: (value) => ({ scheme: 'file', fsPath: value, path: value, toString: () => `file://${value}` }),
   },
   ViewColumn: { Active: -1, Beside: -2, One: 1 },
   TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
   window: {
     createWebviewPanel,
+    /**
+     * Records the message in `_test.shown.info` and answers with the button a
+     * test picked through `_test.setInformationResponse`, once.
+     */
     showInformationMessage: (message) => {
       shown.info.push(message);
-      // A test says which button the reader picks, once.
       const response = informationResponse;
       informationResponse = undefined;
       return Promise.resolve(response);
     },
+    /** Records the message in `_test.shown.warning`; the reader picks nothing. */
     showWarningMessage: (message) => {
       shown.warning.push(message);
       return Promise.resolve(undefined);
     },
-    // Failures go through reportFailure, which says them as errors.
+    /**
+     * Records the message in `_test.shown.error`; the reader picks nothing.
+     * Failures go through reportFailure, which says them as errors.
+     */
     showErrorMessage: (message) => {
       shown.error.push(message);
       return Promise.resolve(undefined);
     },
+    /** Answers with what a test set through `_test.setInputBoxResponse`, every time. */
     showInputBox: () => Promise.resolve(inputBoxResponse),
+    /** The reader dismisses every quick pick. */
     showQuickPick: () => Promise.resolve(undefined),
     onDidChangeWindowState: new EventEmitter().event,
     onDidChangeActiveTextEditor: activeEditorEmitter.event,
     onDidChangeTextEditorSelection: selectionEmitter.event,
     onDidChangeVisibleTextEditors: visibleEditorsEmitter.event,
     activeTextEditor: undefined,
+    /** Registers nothing; a test makes the view with `_test.createWebviewView`. */
     registerWebviewViewProvider: () => ({ dispose: () => undefined }),
+    /** A channel whose lines go nowhere. */
     createOutputChannel: () => ({
       appendLine: () => undefined,
       dispose: () => undefined,
     }),
+    /** A decoration type that draws nothing. */
     createTextEditorDecorationType: () => ({ dispose: () => undefined }),
     visibleTextEditors: [],
   },
   languages: {
+    /** Registers nothing; no e2e suite follows a document link. */
     registerDocumentLinkProvider: () => ({ dispose: () => undefined }),
   },
   workspace: {
@@ -282,14 +362,20 @@ module.exports = {
     onDidCloseTextDocument: new EventEmitter().event,
     workspaceFolders: [],
     textDocuments: [],
+    /** The value as text, since there is no workspace folder to be relative to. */
     asRelativePath: (value) => String(value),
   },
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
   env: { language: 'en' },
   InputBoxValidationSeverity: { Info: 1, Warning: 2, Error: 3 },
   commands: {
+    /** Registers nothing; no e2e suite runs a command by its id. */
     registerCommand: () => ({ dispose: () => undefined }),
-    // Host code sets context keys through this; a test reads what it set.
+    /**
+     * Records the command and its arguments in `_test.executedCommands` and
+     * runs nothing. Host code sets context keys through this, and a test
+     * reads what it set.
+     */
     executeCommand: (command, ...args) => {
       executedCommands.push({ command, args });
       return Promise.resolve(undefined);
@@ -308,9 +394,11 @@ module.exports = {
       visibleEditors: visibleEditorsEmitter,
       textDocument: textDocumentEmitter,
     },
+    /** Sets what every input box answers from now on. */
     setInputBoxResponse: (value) => {
       inputBoxResponse = value;
     },
+    /** Sets the button the next information message is answered with. */
     setInformationResponse: (value) => {
       informationResponse = value;
     },

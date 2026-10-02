@@ -27,14 +27,6 @@ export default {
     ],
     "src/domain/query/queryParser.ts": [
       "createCondition"
-    ],
-    "src/test/fixtures/legacyWorkspaceIndex.ts": [
-      "addAssociationEvidence",
-      "addEntityReference"
-    ],
-    "src/test/view-state.test.ts": [
-      "createTask",
-      "overview"
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
@@ -43,9 +35,6 @@ export default {
     "src/domain/query/queryEvaluator.ts": 3
   },
   complexity: {
-    "scripts/capture-dashboard-screenshot.mjs": [
-      "capture"
-    ],
     "src/domain/markdown/captureWords.ts": [
       "readCaptureText"
     ],
@@ -73,21 +62,7 @@ export default {
     "src/domain/query/queryParser.ts": [
       "createCondition",
       "tokenize"
-    ],
-    "test/ui/checkContrast.js": [
-      "parseColor"
     ]
-  },
-  curly: {
-    "test/ui/checkContrast.js": 52,
-    "test/ui/checkLayout.js": 6,
-    "test/ui/checkRenderedContrast.js": 1,
-    "test/ui/checkVisual.js": 4,
-    "test/ui/pages.js": 3,
-    "test/ui/verifyWebviews.js": 12
-  },
-  "jsdoc/escape-inline-tags": {
-    "src/test/components-primitives.test.ts": 1
   },
   "jsdoc/require-jsdoc": {
     "src/domain/index/backlinks.ts": 3,
@@ -101,34 +76,15 @@ export default {
     "src/domain/markdown/taskDraft.ts": 1,
     "src/domain/markdown/taskMetadata.ts": 4,
     "src/domain/query/queryLinks.ts": 2,
-    "src/domain/query/queryTypes.ts": 6,
-    "src/test/calendar-day.test.ts": 1,
-    "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
-    "src/test/indexCorpus.ts": 3,
-    "src/test/notes-graph-behavior.test.ts": 1,
-    "src/test/relatedNotesFixture.ts": 1,
-    "src/test/webviewPage.ts": 2,
-    "test/e2e/vscodeStub.js": 17
+    "src/domain/query/queryTypes.ts": 6
   },
   "max-depth": {
-    "scripts/build-walkthrough-images.mjs": 1,
-    "scripts/capture-dashboard-screenshot.mjs": 4,
     "src/domain/markdown/captureWords.ts": 1,
     "src/domain/markdown/tagTarget.ts": 1,
     "src/domain/markdown/wordCount.ts": 1,
-    "src/domain/query/queryParser.ts": 2,
-    "src/test/naming.test.ts": 1,
-    "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 17,
-    "test/ui/checkRenderedContrast.js": 5,
-    "test/ui/checkVisual.js": 7,
-    "test/ui/verifyWebviews.js": 1
+    "src/domain/query/queryParser.ts": 2
   },
   "max-lines-per-function": {
-    "scripts/capture-dashboard-screenshot.mjs": [
-      "capture",
-      "writeCompanionExtension"
-    ],
     "src/domain/index/indexState.ts": [
       "rank"
     ],
@@ -154,29 +110,6 @@ export default {
       "createCondition",
       "parseWordCondition",
       "tokenize"
-    ],
-    "src/test/fixtures/legacyWorkspaceIndex.ts": [
-      "buildLegacyWorkspaceIndex"
-    ],
-    "src/test/webviewPage.ts": [
-      "openWebviewPage"
-    ],
-    "test/perf/indexSpeed.js": [
-      "bench"
-    ],
-    "test/ui/checkLayout.js": [
-      "probeScript"
-    ],
-    "test/ui/surfaces.js": [
-      "createSurfaces"
-    ]
-  },
-  "max-params": {
-    "test/e2e/dashboardHome.e2e.js": [
-      "openDashboard"
-    ],
-    "test/e2e/taskBoard.e2e.js": [
-      "(arrow function)"
     ]
   },
   "no-nested-ternary": {
@@ -186,28 +119,17 @@ export default {
     "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/notes/periodicNotes.ts": 1,
     "src/domain/query/queryDates.ts": 2,
-    "src/domain/query/queryFormat.ts": 1,
-    "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
-    "src/test/naming.test.ts": 1,
-    "src/test/tag-grouping.test.ts": 1
-  },
-  "no-unused-vars": {
-    "test/ui/checkContrast.js": 2,
-    "test/ui/checkLayout.js": 1,
-    "test/ui/surfaces.js": 1
+    "src/domain/query/queryFormat.ts": 1
   },
   "unicorn/no-negated-condition": {
     "src/domain/markdown/parser.ts": 2,
     "src/domain/markdown/taskSteps.ts": 2,
-    "src/domain/query/queryLinks.ts": 1,
-    "src/test/note-links.test.ts": 1,
-    "test/ui/checkContrast.js": 1
+    "src/domain/query/queryLinks.ts": 1
   },
   "unicorn/prefer-early-return": {
     "src/domain/index/indexState.ts": 4,
     "src/domain/index/parked.ts": 1,
     "src/domain/markdown/parser.ts": 1,
-    "src/domain/query/queryEdit.ts": 1,
-    "src/test/webviewPage.ts": 1
+    "src/domain/query/queryEdit.ts": 1
   }
 };

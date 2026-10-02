@@ -184,7 +184,7 @@ function checkEmbedded(entry, posted, options) {
  */
 function surfacesFor(zen) {
   const only = process.env.DOM_ONLY;
-  return createSurfaces(zen)
+  return createSurfaces()
     .map((surface) => ({ surface, name: `${surface.name || surface.page}${zen ? '+zen' : ''}` }))
     .filter(({ surface, name }) => !only || only === name || only === (surface.name || surface.page) || only === surface.page);
 }

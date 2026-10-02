@@ -23,11 +23,13 @@ const importsVscode = (source) => graph.get(source).includes(VSCODE);
 
 /**
  * The folder a module belongs to at the level the layer rules speak at:
- * `src/core/<area>`, `src/domain/<area>`, and `src/ui/<area>`, `src/shared`, or a
- * file directly under `src`, such as `src/extension.ts`, on its own.
+ * `src/core/<area>`, `src/domain/<area>`, `src/ui/<area>`, and
+ * `src/webview/<page>`, with the pages' shared core as one
+ * `src/webview/shared`; `src/shared`; or a file directly under `src`, such
+ * as `src/extension.ts`, on its own.
  */
 function folderOf(source) {
-  const match = /^src\/(core|ui|domain)\/([^/]+)\//.exec(source);
+  const match = /^src\/(core|ui|domain|webview)\/([^/]+)\//.exec(source);
   if (match) {
     return `src/${match[1]}/${match[2]}`;
   }

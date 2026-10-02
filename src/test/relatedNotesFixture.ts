@@ -23,7 +23,9 @@ export interface EvaluationCase {
   never: ReadonlySet<string>;
 }
 
+/** The oversized daily note the evaluation's main cases rank for. */
 export const ACTIVE_NOTE = 'journal/2026-09-20.md';
+/** The daily note with no tags, which only its wording relates to others. */
 export const UNTAGGED_NOTE = 'journal/2026-09-21.md';
 
 /** What a reader would call related to the untagged note, judged by hand. */
@@ -89,6 +91,10 @@ const NOTES: Record<string, string> = {
   ),
 };
 
+/**
+ * The workspace the Related Notes evaluation ranks over, with the cases it
+ * holds the ranking to.
+ */
 export function createEvaluationWorkspace(): {
   index: WorkspaceIndex;
   files: Map<string, ParsedFile>;

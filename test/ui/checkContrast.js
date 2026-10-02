@@ -15,10 +15,12 @@
 //   npm run test:contrast
 const { renderPagesForTheme, themes, vscodePalettes } = require('./pages.js');
 
-/** WCAG AA: 4.5:1 for body text, 3:1 for large text and UI edges. */
+/** WCAG AA: 4.5:1 for body text. */
 const TEXT_RATIO = 4.5;
+/** WCAG AA: 3:1 for large text and UI edges. */
 const LARGE_TEXT_RATIO = 3;
-
+/** The states a pointer or the keyboard can put a control into, at rest first. */
+const STATES = ['base', 'hover', 'focus', 'active'];
 
 /**
  * Controls whose content is a shape rather than words. WCAG asks 3:1 of what
@@ -58,7 +60,9 @@ function parseRules(css) {
   let index = 0;
   while (index < text.length) {
     const open = text.indexOf('{', index);
-    if (open < 0) break;
+    if (open < 0) {
+      break;
+    }
     const prelude = text.slice(index, open).trim();
     if (prelude.startsWith('@')) {
       // A block at-rule holds rules of its own; a statement one has no body.
@@ -77,13 +81,18 @@ function parseRules(css) {
   return rules;
 }
 
+/** The index of the brace that closes the one at `open`, or the text's length when none does. */
 function matchBrace(text, open) {
   let depth = 0;
   for (let index = open; index < text.length; index += 1) {
-    if (text[index] === '{') depth += 1;
+    if (text[index] === '{') {
+      depth += 1;
+    }
     if (text[index] === '}') {
       depth -= 1;
-      if (depth === 0) return index;
+      if (depth === 0) {
+        return index;
+      }
     }
   }
   return text.length;
@@ -99,7 +108,9 @@ function stripWhere(selector) {
   let result = selector;
   for (let start = result.indexOf(':where('); start >= 0; start = result.indexOf(':where(')) {
     const end = matchParen(result, start + 6);
-    if (end < 0) break;
+    if (end < 0) {
+      break;
+    }
     result = result.slice(0, start) + result.slice(end + 1);
   }
   return result;
@@ -111,8 +122,12 @@ function splitSelectors(prelude) {
   let depth = 0;
   let current = '';
   for (const character of prelude) {
-    if (character === '(' || character === '[') depth += 1;
-    if (character === ')' || character === ']') depth -= 1;
+    if (character === '(' || character === '[') {
+      depth += 1;
+    }
+    if (character === ')' || character === ']') {
+      depth -= 1;
+    }
     if (character === ',' && depth === 0) {
       parts.push(current.trim());
       current = '';
@@ -120,10 +135,13 @@ function splitSelectors(prelude) {
     }
     current += character;
   }
-  if (current.trim()) parts.push(current.trim());
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
   return parts;
 }
 
+/** A rule body's declarations by property, the last of each winning. */
 function parseDeclarations(body) {
   const declarations = {};
   let depth = 0;
@@ -133,13 +151,19 @@ function parseDeclarations(body) {
     if (colon > 0) {
       const property = current.slice(0, colon).trim();
       const value = current.slice(colon + 1).trim();
-      if (property && value) declarations[property] = value;
+      if (property && value) {
+        declarations[property] = value;
+      }
     }
     current = '';
   };
   for (const character of body) {
-    if (character === '(') depth += 1;
-    if (character === ')') depth -= 1;
+    if (character === '(') {
+      depth += 1;
+    }
+    if (character === ')') {
+      depth -= 1;
+    }
     if (character === ';' && depth === 0) {
       flush();
       continue;
@@ -158,39 +182,55 @@ function resolveValue(value, tokens, seen = new Set()) {
   for (let pass = 0; pass < 12 && resolved.includes('var('); pass += 1) {
     const start = resolved.indexOf('var(');
     const end = matchParen(resolved, start + 3);
-    if (end < 0) break;
+    if (end < 0) {
+      break;
+    }
     const inner = resolved.slice(start + 4, end);
     const comma = splitTopLevel(inner);
     const name = comma[0].trim();
     const fallback = comma.slice(1).join(',').trim();
-    if (seen.has(name)) return undefined;
-    const next = tokens[name] !== undefined ? tokens[name] : fallback;
-    if (next === undefined || next === '') return undefined;
+    if (seen.has(name)) {
+      return undefined;
+    }
+    const next = tokens[name] === undefined ? fallback : tokens[name];
+    if (next === undefined || next === '') {
+      return undefined;
+    }
     seen.add(name);
     resolved = resolved.slice(0, start) + next + resolved.slice(end + 1);
   }
   return resolved.includes('var(') ? undefined : resolved;
 }
 
+/** The index of the parenthesis that closes the one at `open`, or -1 when none does. */
 function matchParen(text, open) {
   let depth = 0;
   for (let index = open; index < text.length; index += 1) {
-    if (text[index] === '(') depth += 1;
+    if (text[index] === '(') {
+      depth += 1;
+    }
     if (text[index] === ')') {
       depth -= 1;
-      if (depth === 0) return index;
+      if (depth === 0) {
+        return index;
+      }
     }
   }
   return -1;
 }
 
+/** Splits on commas that are not inside parentheses, keeping each part's spaces. */
 function splitTopLevel(text) {
   const parts = [];
   let depth = 0;
   let current = '';
   for (const character of text) {
-    if (character === '(') depth += 1;
-    if (character === ')') depth -= 1;
+    if (character === '(') {
+      depth += 1;
+    }
+    if (character === ')') {
+      depth -= 1;
+    }
     if (character === ',' && depth === 0) {
       parts.push(current);
       current = '';
@@ -204,71 +244,102 @@ function splitTopLevel(text) {
 
 /** A color as {r,g,b,a}, or undefined when it is not a color this can read. */
 function parseColor(value) {
-  if (!value) return undefined;
+  if (!value) {
+    return undefined;
+  }
   const text = String(value).trim().toLowerCase();
-  if (text === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  if (text === 'transparent') {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+  return parseHexColor(text) ?? parseRgbColor(text) ?? parseColorMix(text);
+}
+
+/** A `#rgb`, `#rgba`, `#rrggbb`, or `#rrggbbaa` color, or undefined for any other text. */
+function parseHexColor(text) {
   const hex = text.match(/^#([0-9a-f]{3,8})$/);
-  if (hex) {
-    const digits = hex[1];
-    const expand = (part) => parseInt(part.length === 1 ? part + part : part, 16);
-    if (digits.length === 3 || digits.length === 4) {
-      return {
-        r: expand(digits[0]),
-        g: expand(digits[1]),
-        b: expand(digits[2]),
-        a: digits.length === 4 ? expand(digits[3]) / 255 : 1,
-      };
-    }
-    if (digits.length === 6 || digits.length === 8) {
-      return {
-        r: parseInt(digits.slice(0, 2), 16),
-        g: parseInt(digits.slice(2, 4), 16),
-        b: parseInt(digits.slice(4, 6), 16),
-        a: digits.length === 8 ? parseInt(digits.slice(6, 8), 16) / 255 : 1,
-      };
-    }
+  if (!hex) {
+    return undefined;
   }
-  const rgb = text.match(/^rgba?\(([^)]+)\)$/);
-  if (rgb) {
-    const parts = rgb[1].split(/[\s,/]+/).filter(Boolean);
-    const channel = (part) =>
-      part.endsWith('%') ? Math.round((parseFloat(part) / 100) * 255) : parseFloat(part);
+  const digits = hex[1];
+  const expand = (part) => parseInt(part.length === 1 ? part + part : part, 16);
+  if (digits.length === 3 || digits.length === 4) {
     return {
-      r: channel(parts[0]),
-      g: channel(parts[1]),
-      b: channel(parts[2]),
-      a: parts[3] === undefined ? 1 : parseFloat(parts[3]),
+      r: expand(digits[0]),
+      g: expand(digits[1]),
+      b: expand(digits[2]),
+      a: digits.length === 4 ? expand(digits[3]) / 255 : 1,
     };
   }
-  const mix = text.match(/^color-mix\(in srgb,([\s\S]+)\)$/);
-  if (mix) {
-    const [first, second] = splitTopLevel(mix[1]).map((part) => part.trim());
-    const read = (part) => {
-      const percent = part.match(/(-?[\d.]+)%\s*$/);
-      const color = parseColor(part.replace(/(-?[\d.]+)%\s*$/, '').trim());
-      return { color, weight: percent ? parseFloat(percent[1]) / 100 : undefined };
-    };
-    const left = read(first);
-    const right = read(second);
-    if (!left.color || !right.color) return undefined;
-    const leftWeight = left.weight ?? (right.weight === undefined ? 0.5 : 1 - right.weight);
-    const rightWeight = right.weight ?? 1 - leftWeight;
-    const total = leftWeight + rightWeight || 1;
+  if (digits.length === 6 || digits.length === 8) {
     return {
-      r: (left.color.r * leftWeight + right.color.r * rightWeight) / total,
-      g: (left.color.g * leftWeight + right.color.g * rightWeight) / total,
-      b: (left.color.b * leftWeight + right.color.b * rightWeight) / total,
-      a: (left.color.a * leftWeight + right.color.a * rightWeight) / total,
+      r: parseInt(digits.slice(0, 2), 16),
+      g: parseInt(digits.slice(2, 4), 16),
+      b: parseInt(digits.slice(4, 6), 16),
+      a: digits.length === 8 ? parseInt(digits.slice(6, 8), 16) / 255 : 1,
     };
   }
   return undefined;
 }
 
+/** An `rgb()` or `rgba()` color, with channels as numbers or percentages, or undefined for any other text. */
+function parseRgbColor(text) {
+  const rgb = text.match(/^rgba?\(([^)]+)\)$/);
+  if (!rgb) {
+    return undefined;
+  }
+  const parts = rgb[1].split(/[\s,/]+/).filter(Boolean);
+  const channel = (part) =>
+    part.endsWith('%') ? Math.round((parseFloat(part) / 100) * 255) : parseFloat(part);
+  return {
+    r: channel(parts[0]),
+    g: channel(parts[1]),
+    b: channel(parts[2]),
+    a: parts[3] === undefined ? 1 : parseFloat(parts[3]),
+  };
+}
+
+/**
+ * A `color-mix(in srgb, …)` of two colors this can read, weighted as the
+ * percentages say, or undefined for any other text or a side it cannot read.
+ */
+function parseColorMix(text) {
+  const mix = text.match(/^color-mix\(in srgb,([\s\S]+)\)$/);
+  if (!mix) {
+    return undefined;
+  }
+  const [first, second] = splitTopLevel(mix[1]).map((part) => part.trim());
+  const read = (part) => {
+    const percent = part.match(/(-?[\d.]+)%\s*$/);
+    const color = parseColor(part.replace(/(-?[\d.]+)%\s*$/, '').trim());
+    return { color, weight: percent ? parseFloat(percent[1]) / 100 : undefined };
+  };
+  const left = read(first);
+  const right = read(second);
+  if (!left.color || !right.color) {
+    return undefined;
+  }
+  const leftWeight = left.weight ?? (right.weight === undefined ? 0.5 : 1 - right.weight);
+  const rightWeight = right.weight ?? 1 - leftWeight;
+  const total = leftWeight + rightWeight || 1;
+  return {
+    r: (left.color.r * leftWeight + right.color.r * rightWeight) / total,
+    g: (left.color.g * leftWeight + right.color.g * rightWeight) / total,
+    b: (left.color.b * leftWeight + right.color.b * rightWeight) / total,
+    a: (left.color.a * leftWeight + right.color.a * rightWeight) / total,
+  };
+}
+
 /** Lays a color over what is behind it. */
 function composite(color, behind) {
-  if (!color) return behind;
-  if (color.a >= 1) return color;
-  if (!behind) return undefined;
+  if (!color) {
+    return behind;
+  }
+  if (color.a >= 1) {
+    return color;
+  }
+  if (!behind) {
+    return undefined;
+  }
   const alpha = color.a;
   return {
     r: color.r * alpha + behind.r * (1 - alpha),
@@ -278,6 +349,7 @@ function composite(color, behind) {
   };
 }
 
+/** WCAG's relative luminance of an opaque color, from 0 for black to 1 for white. */
 function relativeLuminance({ r, g, b }) {
   const channel = (value) => {
     const scaled = value / 255;
@@ -286,6 +358,7 @@ function relativeLuminance({ r, g, b }) {
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
+/** WCAG's contrast ratio of two opaque colors, from 1 to 21, whichever is lighter. */
 function contrastRatio(foreground, background) {
   const light = relativeLuminance(foreground);
   const dark = relativeLuminance(background);
@@ -299,16 +372,26 @@ function contrastRatio(foreground, background) {
 /** Whether a rule rules itself out of a state, as `:not(:hover)` does. */
 function excludesState(selector, state) {
   const excluded = [...selector.matchAll(/:not\(([^)]*)\)/g)].map((match) => match[1]);
-  if (state === 'hover') return excluded.some((part) => part.includes(':hover'));
-  if (state === 'focus') return excluded.some((part) => part.includes(':focus'));
-  if (state === 'active') return excluded.some((part) => /\.active(?![\w-])/.test(part));
+  if (state === 'hover') {
+    return excluded.some((part) => part.includes(':hover'));
+  }
+  if (state === 'focus') {
+    return excluded.some((part) => part.includes(':focus'));
+  }
+  if (state === 'active') {
+    return excluded.some((part) => /\.active(?![\w-])/.test(part));
+  }
   return false;
 }
 
 /** Which state a selector describes. */
 function stateOf(selector) {
-  if (/:hover/.test(selector)) return 'hover';
-  if (/:focus-visible|:focus\b/.test(selector)) return 'focus';
+  if (/:hover/.test(selector)) {
+    return 'hover';
+  }
+  if (/:focus-visible|:focus\b/.test(selector)) {
+    return 'focus';
+  }
   if (
     /\.active(?![\w-])|\[aria-selected="true"\]|\[aria-pressed="true"\]|\.is-open(?![\w-])|\[open\]/.test(
       selector,
@@ -319,37 +402,7 @@ function stateOf(selector) {
   return 'base';
 }
 
-/** The compound a selector ends with, without its state, such as `button`. */
-function elementKey(selector) {
-  const compounds = selector
-    .replace(/\s*>\s*|\s*\+\s*|\s*~\s*/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-  const last = compounds[compounds.length - 1] ?? '';
-  const stripped = last
-    .replace(/:{1,2}[a-z-]+(\([^)]*\))?/g, '')
-    .replace(/\[[^\]]*\]/g, '')
-    .replace(/\.active(?![\w-])|\.is-open(?![\w-])/g, '');
-  return stripped || last;
-}
-
-/** The compounds a selector sits inside, nearest first. */
-function ancestorKeys(selector) {
-  const compounds = selector
-    .replace(/\s*>\s*|\s*\+\s*|\s*~\s*/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, -1)
-    .map((compound) =>
-      compound
-        .replace(/:{1,2}[a-z-]+(\([^)]*\))?/g, '')
-        .replace(/\[[^\]]*\]/g, '')
-        .replace(/\.active(?![\w-])|\.is-open(?![\w-])/g, ''),
-    )
-    .filter(Boolean);
-  return compounds.reverse();
-}
-
+/** A selector's specificity as one number, ids weighing most and elements least. */
 function specificity(selector) {
   const ids = (selector.match(/#[\w-]+/g) || []).length;
   const classes = (selector.match(/\.[\w-]+|\[[^\]]*\]|:{1}[a-z-]+(\([^)]*\))?/g) || []).length;
@@ -378,7 +431,9 @@ function compoundsOf(selector) {
  */
 function normalizeAttribute(attribute) {
   const match = attribute.match(/^\[\s*([^\]=~|^$*\s]+)\s*(?:[~|^$*]?=\s*(.*?)\s*)?\]$/);
-  if (!match) return attribute;
+  if (!match) {
+    return attribute;
+  }
   const [, name, value] = match;
   return value === undefined ? `[${name}]` : `[${name}=${value.replace(/^["']|["']$/g, '')}]`;
 }
@@ -394,8 +449,12 @@ function partsOf(compound) {
  * to, which is how `[data-has-query]` reads.
  */
 function carries(parts, wanted) {
-  if (parts.includes(wanted)) return true;
-  if (!wanted.startsWith('[') || wanted.includes('=')) return false;
+  if (parts.includes(wanted)) {
+    return true;
+  }
+  if (!wanted.startsWith('[') || wanted.includes('=')) {
+    return false;
+  }
   const prefix = `${wanted.slice(0, -1)}=`;
   return parts.some((part) => part.startsWith(prefix));
 }
@@ -407,10 +466,14 @@ function carries(parts, wanted) {
  * the element's own.
  */
 function rests(ruleCompounds, elementCompounds) {
-  if (!ruleCompounds.length || !elementCompounds.length) return false;
+  if (!ruleCompounds.length || !elementCompounds.length) {
+    return false;
+  }
   const ruleLast = partsOf(ruleCompounds[ruleCompounds.length - 1]);
   const elementLast = partsOf(elementCompounds[elementCompounds.length - 1]);
-  if (!ruleLast.length || !ruleLast.every((part) => carries(elementLast, part))) return false;
+  if (!ruleLast.length || !ruleLast.every((part) => carries(elementLast, part))) {
+    return false;
+  }
   let index = elementCompounds.length - 2;
   for (let position = ruleCompounds.length - 2; position >= 0; position -= 1) {
     const wanted = partsOf(ruleCompounds[position]);
@@ -423,7 +486,9 @@ function rests(ruleCompounds, elementCompounds) {
         break;
       }
     }
-    if (!found) return false;
+    if (!found) {
+      return false;
+    }
   }
   return true;
 }
@@ -440,7 +505,9 @@ function buildDeclarations(rules, tokens) {
   const declared = [];
   rules.forEach((rule, order) => {
     rule.selectors.forEach((selector) => {
-      if (selector.startsWith(':root') || selector === 'html') return;
+      if (selector.startsWith(':root') || selector === 'html') {
+        return;
+      }
       const declaredColor = rule.declarations.color;
       // `inherit` is a color like any other as far as the cascade goes: it
       // wins its element, and what it takes is settled afterwards. Reading it
@@ -453,7 +520,9 @@ function buildDeclarations(rules, tokens) {
       const background =
         resolveValue(rule.declarations.background, tokens) ??
         resolveValue(rule.declarations['background-color'], tokens);
-      if (!color && !background && !inherits) return;
+      if (!color && !background && !inherits) {
+        return;
+      }
       declared.push({
         selector,
         compounds: compoundsOf(selector),
@@ -478,7 +547,9 @@ function resolveFor(declared, compounds, state, property) {
       !excludesState(entry.selector, state) &&
       rests(entry.compounds, compounds),
   );
-  if (!matches.length) return undefined;
+  if (!matches.length) {
+    return undefined;
+  }
   return matches
     .sort(
       (left, right) =>
@@ -496,10 +567,14 @@ function resolveFor(declared, compounds, state, property) {
  */
 function inheritedColor(declared, compounds, state, pageColor) {
   const winner = resolveFor(declared, compounds, state, 'color');
-  if (!winner?.inherits) return winner;
+  if (!winner?.inherits) {
+    return winner;
+  }
   for (let depth = compounds.length - 1; depth > 0; depth -= 1) {
     const from = inheritedColor(declared, compounds.slice(0, depth), state, pageColor);
-    if (from?.color) return { ...winner, color: from.color };
+    if (from?.color) {
+      return { ...winner, color: from.color };
+    }
   }
   return pageColor ? { ...winner, color: pageColor } : undefined;
 }
@@ -517,9 +592,13 @@ function backgroundBehind(declared, compounds, state, pageBackground) {
   let from;
   for (let index = layers.length - 1; index >= 0; index -= 1) {
     const layer = layers[index];
-    if (!layer?.background) continue;
+    if (!layer?.background) {
+      continue;
+    }
     behind = composite(layer.background, behind);
-    if (layer.background.a > 0) from = layer.selector;
+    if (layer.background.a > 0) {
+      from = layer.selector;
+    }
   }
   return { color: behind, from };
 }
@@ -591,7 +670,7 @@ function drawnShapes(body) {
 function contrastShapes() {
   const { pages } = JSON.parse(readFileSync(SHAPES, 'utf8'));
   const shapes = new Map(Object.entries(pages));
-  const pageOf = new Map(createSurfaces(false).map((surface) => [surface.name || surface.page, surface.page]));
+  const pageOf = new Map(createSurfaces().map((surface) => [surface.name || surface.page, surface.page]));
   readGoldens((name, body) => {
     const page = pageOf.get(name.replace(/\+zen$/, ''));
     if (page) {
@@ -614,99 +693,146 @@ function attributesUsed(rules) {
   return used;
 }
 
+/** Whether a color is decoration rather than text, by its rule or the element's part. */
 function isDecorative(selector, key) {
   return DECORATIVE.some((mark) => selector.includes(mark) || key === mark);
 }
 
-/** Every readability problem a page has in a theme. */
-function findProblems(html, { pageBackgroundToken = '--bg', shapes = [] } = {}, palette) {
+/**
+ * What a page in a theme is judged against: its rules, the tokens they
+ * resolve to, every rule that declares a color or a background, and the
+ * page's own color and ground.
+ */
+function buildContrastModel(html, palette, pageBackgroundToken) {
   const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((match) => match[1])
     .join('\n');
   const rules = parseRules(css);
   const tokens = { ...palette };
   rules.forEach((rule) => {
-    if (!rule.selectors.some((selector) => selector.includes(':root'))) return;
+    if (!rule.selectors.some((selector) => selector.includes(':root'))) {
+      return;
+    }
     Object.entries(rule.declarations).forEach(([property, value]) => {
-      if (property.startsWith('--')) tokens[property] = value;
+      if (property.startsWith('--')) {
+        tokens[property] = value;
+      }
     });
   });
   const pageBackground =
     parseColor(resolveValue(`var(${pageBackgroundToken})`, tokens)) ?? { r: 0, g: 0, b: 0, a: 1 };
   const pageColor = parseColor(resolveValue('var(--text)', tokens));
-  const declared = buildDeclarations(rules, tokens);
+  return { rules, declared: buildDeclarations(rules, tokens), pageBackground, pageColor, pageBackgroundToken };
+}
+
+/**
+ * Judges one element in one state: the problem its text has there, or
+ * undefined when it reads, is decoration, or sits on no declared ground.
+ */
+function judge(model, compounds, state) {
+  const { declared, pageColor, pageBackground, pageBackgroundToken } = model;
+  const colorRule = inheritedColor(declared, compounds, state, pageColor);
+  if (!colorRule?.color) {
+    return undefined;
+  }
+  const { color: background, from } = backgroundBehind(declared, compounds, state, pageBackground);
+  // Only a background something actually declares is judged. Falling back
+  // to the page would guess at what an element sits on, and guessing is
+  // how a check like this ends up crying wolf.
+  if (!background || !from) {
+    return undefined;
+  }
+  const foreground = composite(colorRule.color, background);
+  if (!foreground || foreground.a === 0) {
+    return undefined;
+  }
+  const ratio = contrastRatio(foreground, background);
+  // An element is judged by any of the parts it is made of, since it is
+  // named here as the whole element rather than as one selector: an `h2`
+  // that also carries a class is still large text.
+  const last = compounds[compounds.length - 1] ?? '';
+  const parts = [last, ...partsOf(last)];
+  const required = parts.some((part) => LARGE_TEXT_KEYS.has(part) || ICON_KEYS.has(part))
+    ? LARGE_TEXT_RATIO
+    : TEXT_RATIO;
+  if (ratio >= required) {
+    return undefined;
+  }
+  if (parts.some((part) => isDecorative(colorRule.selector, part))) {
+    return undefined;
+  }
+  return {
+    key: compounds.join(' '),
+    state,
+    ratio: Math.round(ratio * 100) / 100,
+    required,
+    colorFrom: colorRule.selector,
+    backgroundFrom: from ?? `page ${pageBackgroundToken}`,
+  };
+}
+
+/**
+ * Collects the problems of a page, judging each element in each state once
+ * and naming each problem once.
+ */
+function createProblemCollector(model) {
   const problems = [];
   const checked = new Set();
   /** The rule pairs already reported, so one problem is not named twice. */
   const reported = new Set();
+  return {
+    problems,
+    /** Judges one element, described as the compounds it sits in and is. */
+    check(compounds) {
+      // Each element that declares a color is checked in every state something
+      // gives it, since a hover elsewhere may move the ground under it.
+      for (const state of STATES) {
+        // A selector and the same selector with its state pseudo describe one
+        // element, so they are one finding.
+        const key = `${compounds.join(' ')}|${state}`;
+        if (checked.has(key)) {
+          continue;
+        }
+        checked.add(key);
+        const problem = judge(model, compounds, state);
+        if (!problem) {
+          continue;
+        }
+        // The same two rules meeting is one problem however many elements bring
+        // them together, and it is reported under the selectors it was written
+        // as rather than again under every element that carries them.
+        const pair = `${problem.colorFrom}|${problem.backgroundFrom}|${state}`;
+        if (reported.has(pair)) {
+          continue;
+        }
+        reported.add(pair);
+        problems.push(problem);
+      }
+    },
+  };
+}
 
-  /** Judges one element, described as the compounds it sits in and is. */
-  function check(compounds) {
-    // Each element that declares a color is checked in every state something
-    // gives it, since a hover elsewhere may move the ground under it.
-    for (const state of ['base', 'hover', 'focus', 'active']) {
-      // A selector and the same selector with its state pseudo describe one
-      // element, so they are one finding.
-      const key = `${compounds.join(' ')}|${state}`;
-      if (checked.has(key)) continue;
-      checked.add(key);
-      const colorRule = inheritedColor(declared, compounds, state, pageColor);
-      if (!colorRule?.color) continue;
-      const { color: background, from } = backgroundBehind(
-        declared,
-        compounds,
-        state,
-        pageBackground,
-      );
-      // Only a background something actually declares is judged. Falling back
-      // to the page would guess at what an element sits on, and guessing is
-      // how a check like this ends up crying wolf.
-      if (!background || !from) continue;
-      const foreground = composite(colorRule.color, background);
-      if (!foreground || foreground.a === 0) continue;
-      const ratio = contrastRatio(foreground, background);
-      // An element is judged by any of the parts it is made of, since it is
-      // named here as the whole element rather than as one selector: an `h2`
-      // that also carries a class is still large text.
-      const last = compounds[compounds.length - 1] ?? '';
-      const parts = [last, ...partsOf(last)];
-      const required = parts.some((part) => LARGE_TEXT_KEYS.has(part) || ICON_KEYS.has(part))
-        ? LARGE_TEXT_RATIO
-        : TEXT_RATIO;
-      if (ratio >= required) continue;
-      if (parts.some((part) => isDecorative(colorRule.selector, part))) continue;
-      // The same two rules meeting is one problem however many elements bring
-      // them together, and it is reported under the selectors it was written
-      // as rather than again under every element that carries them.
-      const pair = `${colorRule.selector}|${from}|${state}`;
-      if (reported.has(pair)) continue;
-      reported.add(pair);
-      problems.push({
-        key: compounds.join(' '),
-        state,
-        ratio: Math.round(ratio * 100) / 100,
-        required,
-        colorFrom: colorRule.selector,
-        backgroundFrom: from ?? `page ${pageBackgroundToken}`,
-      });
-    }
-  }
-
-  for (const entry of declared) {
+/** Every readability problem a page has in a theme. */
+function findProblems(html, { pageBackgroundToken = '--bg', shapes = [] } = {}, palette) {
+  const model = buildContrastModel(html, palette, pageBackgroundToken);
+  const collector = createProblemCollector(model);
+  for (const entry of model.declared) {
     // An element that declares only a background is checked too: its text
     // comes from a broader rule, and moving the ground under inherited text
     // is exactly how a field ends up black on black.
-    if (!entry.color && !entry.background) continue;
-    check(entry.compounds);
+    if (!entry.color && !entry.background) {
+      continue;
+    }
+    collector.check(entry.compounds);
   }
   // A selector describes one element; the page renders elements that answer to
   // several at once, and that is where a pair of rules meets. A row that is
   // also a button takes its ground from the row rule and its text from the
   // button rule, and neither selector can be read alone to see it.
-  for (const shape of elementShapes(shapes, attributesUsed(rules))) {
-    check([shape]);
+  for (const shape of elementShapes(shapes, attributesUsed(model.rules))) {
+    collector.check([shape]);
   }
-  return problems;
+  return collector.problems;
 }
 
 // ---- the check ------------------------------------------------------------
@@ -720,34 +846,48 @@ const BASELINE = path.join(__dirname, 'contrast-baseline.json');
 /** The element shapes frozen from the page text; see contrastShapes. */
 const SHAPES = path.join(__dirname, 'contrast-shapes.json');
 
+/**
+ * The VS Code palettes a theme is checked against, by name. A theme that
+ * follows VS Code is checked against both a light and a dark VS Code theme,
+ * since it takes its colors from whichever is set; any other theme brings
+ * its own, under no name.
+ */
+function palettesFor(theme) {
+  return theme === 'corpo'
+    ? [
+        ['VS Code dark', vscodePalettes.dark],
+        ['VS Code light', vscodePalettes.light],
+      ]
+    : [['', {}]];
+}
+
+/** Adds a page's problems to those found, keeping the first of each signature. */
+function addProblems(found, problems, { page, where }) {
+  for (const problem of problems) {
+    const signature = `${where} · ${problem.key} · ${problem.state}`;
+    if (found.has(signature)) {
+      continue;
+    }
+    found.set(signature, { ...problem, page, where });
+  }
+}
+
 /** Every problem in every theme, as [signature, problem] pairs. */
 function collect() {
   const found = new Map();
   const shapes = contrastShapes();
   for (const theme of themes) {
-    // A theme that follows VS Code is checked against both a light and a dark
-    // VS Code theme, since it takes its colors from whichever is set.
-    const palettes =
-      theme === 'corpo'
-        ? [
-            ['VS Code dark', vscodePalettes.dark],
-            ['VS Code light', vscodePalettes.light],
-          ]
-        : [['', {}]];
-    for (const [paletteName, palette] of palettes) {
+    for (const [paletteName, palette] of palettesFor(theme)) {
+      const where = paletteName ? `${theme} (${paletteName})` : theme;
       for (const [page, html] of renderPagesForTheme(theme)) {
-        for (const problem of findProblems(html, { shapes: shapes.get(page) }, palette)) {
-          const where = paletteName ? `${theme} (${paletteName})` : theme;
-          const signature = `${where} · ${problem.key} · ${problem.state}`;
-          if (found.has(signature)) continue;
-          found.set(signature, { ...problem, page, where });
-        }
+        addProblems(found, findProblems(html, { shapes: shapes.get(page) }, palette), { page, where });
       }
     }
   }
   return found;
 }
 
+/** One problem as the report prints it: its ratio, and the two rules that meet. */
 function describe(signature, problem) {
   return (
     `  ${signature}: ${problem.ratio}:1, needs ${problem.required}:1  (${problem.page})\n` +
@@ -756,6 +896,10 @@ function describe(signature, problem) {
   );
 }
 
+/**
+ * Compares what is found with the recorded baseline, or records it with
+ * --update, and exits 1 when a problem is new.
+ */
 function run() {
   const found = collect();
   const updating = process.argv.includes('--update');
