@@ -35,8 +35,21 @@ export function createWikiLink(
   filePath: string,
   sectionId: string | undefined,
 ): WikiLinkToInsert {
+  return createWikiLinkToSection(index, filePath, findHeadingSection(index, sectionId));
+}
+
+/**
+ * The `[[Note#Heading]]` link to `section`, a heading of `filePath`, as
+ * createWikiLink writes it, for a heading read from the note as it is now
+ * rather than found in the index by its id, which changes with its line.
+ */
+export function createWikiLinkToSection(
+  index: WorkspaceIndex,
+  filePath: string,
+  section: Section | undefined,
+): WikiLinkToInsert {
   const title = noteTitle(filePath);
-  const heading = headingFor(findHeadingSection(index, sectionId), title);
+  const heading = headingFor(section, title);
   const text = heading ? `[[${title}#${heading}]]` : `[[${title}]]`;
   const paths = findWikiTargetPaths(
     createNoteTitleMap(index),

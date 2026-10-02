@@ -14,14 +14,14 @@ import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
 import { MoveSource as ServiceMoveSource, MoveTarget } from '../../services/moveService';
 import { TaskWrites } from './taskActions';
-import { createWikiLink } from './insertLink';
+import { createWikiLinkToSection } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
 import { WriteHandle } from './workspaceWrites';
 import { getPeriodicNote } from '../../domain/notes/periodicNotes';
 import { findSameSection } from '../../domain/capture/captureLines';
 import { createPinForLine } from '../../domain/notes/pins';
-import { Task } from '../../domain/model';
+import { Section, Task, WorkspaceIndex } from '../../domain/model';
 import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
@@ -243,23 +243,56 @@ async function resolveSection(
     return undefined;
   }
   const document = await vscode.workspace.openTextDocument(uri);
-  const saved = indexer.getSnapshot().files.get(destination.filePath)?.sections ?? [];
-  const live = findSameSection(saved, destination.section, indexer.parse(uri, document.getText()).sections);
+  const found = readSectionTarget(
+    indexer.getSnapshot(),
+    destination.filePath,
+    destination.section,
+    indexer.parse(uri, document.getText()).sections,
+  );
   const heading = stripTags(destination.section.heading).trim() || destination.section.heading;
-  if (!live) {
+  if (!found) {
     void reportFailure({
       outcome: `Deckard did not move it: the heading “${heading}” is no longer in ${destination.filePath.split('/').pop()}.`,
     });
     return undefined;
   }
-  const link = createWikiLink(indexer.getSnapshot(), destination.filePath, destination.section.id).text.slice(2, -2);
   return {
     uri,
-    link,
+    link: found.link,
     name: `${noteTitle(destination.filePath)} › ${heading}`,
-    section: { startLine: live.startLine, endLine: live.bodyEndLine },
+    section: { startLine: found.section.startLine, endLine: found.section.bodyEndLine },
     heading: { filePath: destination.filePath, line: destination.section.startLine },
   };
+}
+
+/** A heading a move writes under, as its note holds it now, and the link to it. */
+export interface SectionTarget {
+  /** The heading, found again among the note's sections as it is now. */
+  section: Section;
+  /** What a link left behind names, `Note#Heading`, without its brackets. */
+  link: string;
+}
+
+/**
+ * Finds `chosen`, a heading chosen from `index`, again among `live`, the
+ * sections of `filePath` as the note is now, and the link a move leaves
+ * behind to it. Undefined when the note no longer holds the heading.
+ */
+export function readSectionTarget(
+  index: WorkspaceIndex,
+  filePath: string,
+  chosen: Section,
+  live: readonly Section[],
+): SectionTarget | undefined {
+  const saved = index.files.get(filePath)?.sections ?? [];
+  const section = findSameSection(saved, chosen, live);
+  if (!section) {
+    return undefined;
+  }
+  // From the heading as the note holds it: the index may have read the note
+  // again since the heading was chosen, and no longer know it by its id.
+  const link = createWikiLinkToSection(index, filePath, section).text.slice(2, -2);
+  return { section, link };
 }
 
 /** The first eight words of a line, without its marker, tags, or metadata. */
