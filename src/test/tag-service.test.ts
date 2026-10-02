@@ -3,6 +3,8 @@ import * as assert from 'assert';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { TagInfo, WorkspaceIndex } from '../domain/model';
+import { createPreferences } from './preferenceServices';
+import type { KeyValueStore } from '../ports/keyValueStore';
 import {
   TagFileEdits,
   TagNotes,
@@ -86,9 +88,28 @@ function serviceWith(options: { refresh?: () => Promise<void> } = {}) {
         moved.push([sourceKey, targetKey]);
         return Promise.resolve();
       },
+      snapshotTagKeys: () => () => Promise.resolve(),
     },
   });
   return { service, moved, refreshes: () => refreshes };
+}
+
+/** Preferences kept in memory, as a window's storage keeps them. */
+class MemoryStore implements KeyValueStore {
+  private readonly values = new Map<string, unknown>();
+
+  public get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.values.get(key) as T | undefined) ?? defaultValue;
+  }
+
+  public keys(): readonly string[] {
+    return [...this.values.keys()];
+  }
+
+  public update(key: string, value: unknown): Promise<void> {
+    this.values.set(key, value);
+    return Promise.resolve();
+  }
 }
 
 /** The outcome, once any merge it waits on is confirmed. */
@@ -147,6 +168,39 @@ suite('TagService', () => {
       ['#apollo'],
       'the edits fall on the tag in the text the editor holds',
     );
+  });
+
+  test('an Undo of a merge gives each tag back its own preferences', async () => {
+    const store = createPreferences(new MemoryStore());
+    await store.favorites.toggleFavorite('#atlas');
+    await store.usage.recordTagAccess('#apollo');
+    await store.usage.recordTagAccess('#apollo');
+    await store.usage.recordTagAccess('#atlas');
+    await store.savedSearches.saveSavedFilter('Both', ['#apollo', '#atlas']);
+    const before = store.reader.value;
+    const index = indexOf(notes);
+    const fake = new FakeNotes(notes);
+    const service = new TagService({ index: { refresh: () => Promise.resolve() }, preferences: store.tagRenames });
+
+    const result = await confirmed(
+      await service.rewrite({
+        index,
+        source: tagOf(index, '#apollo'),
+        replacement: { key: '#atlas', label: '#atlas' },
+        notes: fake,
+      }),
+    );
+    assert.strictEqual(result.kind, 'written');
+    assert.deepStrictEqual(store.reader.value.tagAccessCounts, { '#atlas': 3 }, 'the merge carries #apollo over');
+    await store.favorites.toggleFavorite('#zeta');
+
+    await fake.writes[0].description.restore();
+    const after = store.reader.value;
+    assert.deepStrictEqual(after.favoriteTags, ['#atlas', '#zeta'], '#atlas is still a favorite, and one added since stays');
+    assert.deepStrictEqual(after.tagAccessCounts, before.tagAccessCounts);
+    assert.deepStrictEqual(after.tagAccessOrder, before.tagAccessOrder);
+    assert.deepStrictEqual(after.savedFilters, before.savedFilters, 'the view the merge dropped is back');
+    store.repository.dispose();
   });
 
   test('an Undo puts the preferences back and reads the notes again', async () => {

@@ -18,7 +18,7 @@ import {
   reportFailure,
   reportStale,
 } from './notify';
-import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { Section } from '../../domain/model';
 
 /**
@@ -54,9 +54,9 @@ export async function extractHeadingCommand(
 
 /** Why a name cannot be the new note's, or undefined when it can. */
 export function validateExtractedNoteName(name: string): string | undefined {
-  return getExtractedNoteFileName(name)
+  return getLinkableNoteFileName(name)
     ? undefined
-    : 'Use a name that can be a file name, without / \\ : * ? " < > or |.';
+    : 'Use a name a link can open, without / \\ : * ? " < > | # ^ [ or ].';
 }
 
 /** The heading to extract, where it is, and the note it becomes. */
@@ -211,10 +211,13 @@ function createHeadingChoice(
   };
 }
 
-/** The heading without its tags or characters a file name cannot hold, as the new note's name. */
-function getSuggestedNoteName(heading: string): string {
+/**
+ * The heading without its tags, or the characters a file name or a link to
+ * it cannot hold, as the new note's name.
+ */
+export function getSuggestedNoteName(heading: string): string {
   const suggestion = stripTags(heading)
-    .replace(/[/\\<>:"|?*]/g, ' ')
+    .replace(/[/\\<>:"|?*#^[\]]/g, ' ')
     .replace(/[ \t]+/g, ' ')
     .replace(/[. ]+$/, '')
     .trim();

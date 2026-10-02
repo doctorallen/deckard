@@ -28,6 +28,28 @@ suite('Wiki link suggestions', () => {
     provider.dispose();
   });
 
+  test('replaces the brackets VS Code closed after the cursor rather than doubling them', async () => {
+    const index = indexOf({ 'notes/Atlas Planning.md': '# Atlas Planning\n## Budget\n' });
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+      getFilePath: () => 'notes/case.md',
+    });
+    const pick = async (line: string, character: number) => {
+      const [item] = await provider.provideCompletionItems(
+        createDocument('/tmp/deckard/notes/case.md', line),
+        new vscode.Position(0, character),
+      );
+      const range = item.range as vscode.Range;
+      return line.slice(0, range.start.character) + String(item.insertText) + line.slice(range.end.character);
+    };
+    assert.strictEqual(await pick('See [[atl]] now', 9), 'See [[Atlas Planning]] now');
+    assert.strictEqual(await pick('See [[Atlas Planning#bu]]', 23), 'See [[Atlas Planning#Budget]]');
+    assert.strictEqual(await pick('See [[atl]', 9), 'See [[Atlas Planning]]', 'one bracket closed');
+    assert.strictEqual(await pick('See [[atl', 9), 'See [[Atlas Planning]]', 'none closed');
+    provider.dispose();
+  });
+
   test('offers no links in a Markdown file that is not a note', async () => {
     const provider = new WikiLinkCompletionProvider({
       ready: Promise.resolve(),

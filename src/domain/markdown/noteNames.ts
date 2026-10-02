@@ -19,3 +19,16 @@ export function getExtractedNoteFileName(name: string): string | undefined {
 
   return `${baseName}.md`;
 }
+
+/**
+ * The file name of a note a `[[link]]` must open, as Extract Heading
+ * leaves one in the heading's place, or undefined when the name cannot be
+ * one: what `getExtractedNoteFileName` refuses, and a name holding `#`, `^`,
+ * `[`, or `]`. A link reads `#` and `#^` as the start of a heading or a
+ * line, and `]` as its end, so `[[Issue #42]]` would look for a heading in
+ * a note named "Issue"; Obsidian refuses the four in a linked name too.
+ */
+export function getLinkableNoteFileName(name: string): string | undefined {
+  const fileName = getExtractedNoteFileName(name);
+  return fileName && !/[#^[\]]/.test(fileName) ? fileName : undefined;
+}

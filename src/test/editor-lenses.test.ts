@@ -292,6 +292,36 @@ suite('Editor lenses', () => {
       );
     });
 
+    test('finds none where a link would break or never show, and finds the prose around it', () => {
+      const lines = [
+        'A footnote[^atlas] here.',
+        '[^atlas]: Atlas is the source.',
+        'Ref style [Atlas][1] and [Atlas][] links.',
+        '[atlas]: https://x.test/atlas',
+        'Mail atlas@example.com or <mailto:atlas@example.com> now.',
+        '<span title="Atlas">kept</span>',
+        'Hidden %%Atlas%% here, and <!-- Atlas --> there.',
+        '%%',
+        'Atlas in a comment block.',
+        '%%',
+        'Math $Atlas^2$ inline.',
+        '$$',
+        'Atlas = 1',
+        '$$',
+        'Open notes/Atlas.md, ./Atlas, ~/Atlas, or C:\\Notes\\Atlas.txt.',
+        'It costs $5 for Atlas, $6 for more.',
+      ];
+      const refs = createIndex({ 'notes/Atlas.md': '# Atlas\n', 'notes/Refs.md': lines.join('\n') });
+      assert.deepStrictEqual(
+        findUnlinkedMentions(refs.files.get('notes/Atlas.md') as ParsedFile, refs).map((mention) => [mention.line, mention.startColumn]),
+        [
+          [1, lines[1].indexOf('Atlas')],
+          [15, lines[15].indexOf('Atlas')],
+        ],
+        'the footnote text and the prose between two prices are mentions',
+      );
+    });
+
     test('does not look for a name another note shares, or a short one', () => {
       assert.deepStrictEqual(mentionsOf('notes/a/Plan.md'), []);
       assert.deepStrictEqual(mentionsOf('notes/AI.md'), []);

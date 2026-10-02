@@ -4,6 +4,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { WorkspaceIndex } from '../domain/model';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { LinkRewrite } from '../domain/links/linkRewrites';
+import { getExtractedNoteFileName, getLinkableNoteFileName } from '../domain/markdown/noteNames';
 import type { ResourceUri } from '../ports/uri';
 import {
   checkRewrites,
@@ -300,6 +301,19 @@ suite('LinkNoteService', () => {
       { kind: 'refused', reason: 'invalid-name' },
     );
     assert.strictEqual(files.files.size + files.folders.size, 0, 'nothing is written');
+  });
+
+  test('an extraction refuses a name its link could not open', async () => {
+    const files = new FakeFileSystem();
+    const notes = new LinkNoteService(files);
+    const replace = async (): Promise<ReplaceOutcome> => assert.fail('nothing is swapped');
+    const at = { sourceUri: fileUri('/ws/notes/Log.md'), notesFolderUri: folder, section };
+    for (const name of ['Issue #42 follow-up', 'Plan [draft]', 'Step ^2']) {
+      assert.deepStrictEqual(await notes.extractHeading({ ...at, name }, replace), { kind: 'refused', reason: 'invalid-name' }, name);
+    }
+    assert.strictEqual(files.files.size + files.folders.size, 0, 'nothing is written');
+    assert.strictEqual(getLinkableNoteFileName('Issue 42 follow-up'), 'Issue 42 follow-up.md');
+    assert.strictEqual(getExtractedNoteFileName('Issue #42'), 'Issue #42.md', 'a note made some other way may still have one');
   });
 
   test('an extraction never writes over a note already at the name', async () => {

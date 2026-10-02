@@ -68,6 +68,11 @@ export interface TagIndex {
 /** Where favorites, ranking, and saved views name tags, so they follow a rename. */
 export interface TagPreferences {
   replaceTagKey(sourceKey: string, targetKey: string): Promise<void>;
+  /**
+   * What puts back everything kept under `keys` as it is now, leaving every
+   * other tag as it is then: a merge's Undo.
+   */
+  snapshotTagKeys(keys: readonly string[]): () => Promise<void>;
 }
 
 /** One rename or merge: which tag, what it becomes, and the index both were chosen from. */
@@ -180,6 +185,13 @@ export class TagService {
       return { kind: 'not-found' };
     }
 
+    // A merge adds the source tag's preferences to the kept tag's, and
+    // moving them back afterwards would take the kept tag's own along, so a
+    // merge's Undo puts back what each tag had. A rename's moves them back.
+    const preferences = this.collaborators.preferences;
+    const putBack = merge
+      ? preferences?.snapshotTagKeys([source.key, keptKey])
+      : () => preferences?.replaceTagKey(keptKey, source.key) ?? Promise.resolve();
     // The write is shown first when it reaches more than one note, and kept
     // afterwards, so `Deckard: Undo Last Change` can take the whole of it back.
     const written = await notes.write(plan.files, {
@@ -187,7 +199,7 @@ export class TagService {
       sourceLabel: source.label,
       replacementLabel: replacement.label,
       restore: async () => {
-        await this.collaborators.preferences?.replaceTagKey(keptKey, source.key);
+        await putBack?.();
         await this.collaborators.index.refresh();
       },
     });

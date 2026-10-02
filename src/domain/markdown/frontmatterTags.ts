@@ -14,6 +14,11 @@ import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatt
  * An empty value, such as `tags: ''` or a block list's `- ''`, names no tag,
  * as the parser reads it: it is never read as a tag, and a rewrite of the
  * field drops it rather than leave it behind.
+ *
+ * A value is written in quotes when YAML would read it as something else
+ * unquoted, such as `#atlas`, which YAML reads as a comment, and plain
+ * otherwise. A tags line that ends in a comment is never rewritten, since
+ * the rewrite would either lose the comment or read it as a tag.
  */
 
 /**
@@ -39,10 +44,66 @@ function sameTag(written: string, tag: string): boolean {
   return bare(written) === bare(tag);
 }
 
+/** Characters that make a value something other than text when it opens with one. */
+const YAML_INDICATOR_START = /^[#@&*!|>'"%`[\]{},?]/;
+/** Words YAML reads as a true, a false, or nothing rather than as text. */
+const YAML_KEYWORD = /^(?:true|false|yes|no|on|off|null|~)$/i;
+/** Characters that end a value inside a `[a, b]` list. */
+const FLOW_INDICATOR = /[,[\]{}]/;
+
+/**
+ * A value as YAML reads it back as the same text: in double quotes when it
+ * would be misread unquoted, and as written otherwise. Unquoted, YAML
+ * misreads a value that opens with an indicator such as `#` or `@`, opens
+ * with `- `, `? `, or `: `, holds `: ` or ` #`, ends in a colon, or is a
+ * keyword such as `yes` or `null`; inside a `[a, b]` list, also one that
+ * holds a comma, a bracket, or a brace. A value holding a double quote or a
+ * backslash is written in single quotes, where neither is an escape.
+ */
+export function formatYamlValue(value: string, place: 'list' | 'line'): string {
+  const misread =
+    YAML_INDICATOR_START.test(value) ||
+    /^[-?:](?:[ \t]|$)/.test(value) ||
+    /:(?:[ \t]|$)|[ \t]#/.test(value) ||
+    YAML_KEYWORD.test(value) ||
+    value !== value.trim() ||
+    (place === 'list' && FLOW_INDICATOR.test(value));
+  if (!misread) {
+    return value;
+  }
+  return /["\\]/.test(value) ? `'${value.replace(/'/g, "''")}'` : `"${value}"`;
+}
+
+/**
+ * Whether a value written after a field's colon, or after a list item's
+ * dash, ends in a YAML comment: a `#` after a space or a tab, outside
+ * quotes, or anything after a `[a, b]` list's closing bracket that opens
+ * with `#`. A value that opens with `#` is read as the tag it names, as the
+ * parser reads it, not as a comment.
+ */
+export function endsInComment(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('[')) {
+    const close = trimmed.lastIndexOf(']');
+    return close >= 0 && trimmed.slice(close + 1).trim().startsWith('#');
+  }
+  // A `#` inside a quoted value is text; only what follows the closing quote can be a comment.
+  const quote = /^['"]/.exec(trimmed)?.[0];
+  if (!quote) {
+    return /[ \t]#/.test(trimmed);
+  }
+  const close = trimmed.indexOf(quote, 1);
+  return close >= 0 && /[ \t]#/.test(trimmed.slice(close + 1));
+}
+
 /** The tags field's line: its name, `tag` or `tags` in any case, and what follows the colon. */
 const TAGS_FIELD = /^(tags?)[ \t]*:[ \t]*(.*?)[ \t]*$/i;
-/** One item of a YAML block list: its indentation and its value. */
-const LIST_ITEM = /^([ \t]+)-[ \t]+(.*?)[ \t]*$/;
+/**
+ * One item of a YAML block list: its indentation and its value. YAML lets a
+ * list under a field sit at the field's own column, and the parser reads
+ * `- parked` there, so no indentation is needed.
+ */
+const LIST_ITEM = /^([ \t]*)-[ \t]+(.*?)[ \t]*$/;
 
 /** Whether a block list's item is empty once unquoted, and so names no tag. */
 function isEmptyItem(item: { value: string }): boolean {
@@ -62,10 +123,18 @@ interface TagsField {
 }
 
 /**
- * What the front matter says about tags: a field Deckard cannot safely
- * rewrite, or the fields the parser reads tags from, which may be none.
+ * Why a tags field cannot be rewritten: it ends in a YAML comment, which a
+ * rewrite would lose or read as a tag, or it is a shape Deckard cannot
+ * safely rewrite, such as a list across lines.
  */
-type TagsFieldsReading = { kind: 'unreadable' } | { kind: 'fields'; fields: TagsField[] };
+export type TagsFieldProblem = 'comment' | 'unreadable';
+
+/**
+ * What the front matter says about tags: a field Deckard cannot safely
+ * rewrite, and why, or the fields the parser reads tags from, which may be
+ * none.
+ */
+type TagsFieldsReading = { kind: 'unreadable'; problem: TagsFieldProblem } | { kind: 'fields'; fields: TagsField[] };
 
 /**
  * Reads the tags fields between the front matter's fences, `end` being the
@@ -75,7 +144,7 @@ type TagsFieldsReading = { kind: 'unreadable' } | { kind: 'fields'; fields: Tags
  * when either one Deckard would read is a shape it cannot rewrite.
  */
 function findTagsFields(lines: readonly string[], end: number): TagsFieldsReading {
-  const read = new Map<string, TagsField | 'unreadable'>();
+  const read = new Map<string, TagsField | TagsFieldProblem>();
   for (let line = 1; line < end; line += 1) {
     const match = lines[line].match(TAGS_FIELD);
     if (match) {
@@ -84,8 +153,8 @@ function findTagsFields(lines: readonly string[], end: number): TagsFieldsReadin
   }
   const fields: TagsField[] = [];
   for (const field of read.values()) {
-    if (field === 'unreadable') {
-      return { kind: 'unreadable' };
+    if (typeof field === 'string') {
+      return { kind: 'unreadable', problem: field };
     }
     fields.push(field);
   }
@@ -98,15 +167,20 @@ function readTagsField(
   end: number,
   line: number,
   match: RegExpMatchArray,
-): TagsField | 'unreadable' {
+): TagsField | TagsFieldProblem {
   const inline = match[2];
   const items: TagsField['items'] = [];
+  let commented = endsInComment(inline);
   for (let next = line + 1; next < end; next += 1) {
     const item = lines[next].match(LIST_ITEM);
     if (!item) {
       break;
     }
+    commented ||= endsInComment(item[2]);
     items.push({ line: next, value: unquote(item[2]), indent: item[1] });
+  }
+  if (commented) {
+    return 'comment';
   }
   // A value on the field's line and a list under it is not YAML Deckard
   // can safely rewrite.
@@ -117,7 +191,42 @@ function readTagsField(
   if (inline.startsWith('[') && !inline.endsWith(']')) {
     return 'unreadable';
   }
+  // YAML reads `["a, b"]` as one value, and the parser as two, so neither
+  // reading can be written back.
+  if (inline.startsWith('[') && hasQuotedComma(inline)) {
+    return 'unreadable';
+  }
   return { line, name: match[1], inline, items };
+}
+
+/**
+ * Whether a `[a, b]` list holds a comma inside a quoted value. Only a quote
+ * that opens a value starts one, so the `'` in `it's` does not.
+ */
+function hasQuotedComma(list: string): boolean {
+  let quote: string | undefined;
+  let valueStart = true;
+  for (const character of list) {
+    if (quote) {
+      if (character === ',') {
+        return true;
+      }
+      quote = character === quote ? undefined : quote;
+    } else if (valueStart && (character === '"' || character === "'")) {
+      quote = character;
+      valueStart = false;
+    } else if (character === ',' || character === '[') {
+      valueStart = true;
+    } else if (!/\s/.test(character)) {
+      valueStart = false;
+    }
+  }
+  return false;
+}
+
+/** A field's values written back on its own line, each quoted only where YAML needs it. */
+function writeInlineList(name: string, values: readonly string[]): string {
+  return `${name}: [${values.map((value) => formatYamlValue(value, 'list')).join(', ')}]`;
 }
 
 /** The tags a field names, as written: its block list's items, or its line's values. */
@@ -143,7 +252,7 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
   const lines = content.split(/\r?\n/);
   const bounds = getFrontmatterBounds(lines);
   if (!bounds) {
-    return `---${eol}tags: [${value}]${eol}---${eol}${content}`;
+    return `---${eol}${writeInlineList('tags', [value])}${eol}---${eol}${content}`;
   }
   const reading = findTagsFields(lines, bounds.end);
   if (reading.kind === 'unreadable') {
@@ -156,18 +265,17 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
   // `tag:` list is not the one written; the first field when none does.
   const field = reading.fields.find((each) => fieldValues(each).length > 0) ?? reading.fields[0];
   if (!field) {
-    lines.splice(bounds.end, 0, `tags: [${value}]`);
+    lines.splice(bounds.end, 0, writeInlineList('tags', [value]));
     return lines.join(eol);
   }
   if (field.items.length > 0) {
     const last = field.items[field.items.length - 1];
-    lines.splice(last.line + 1, 0, `${last.indent}- ${value}`);
+    lines.splice(last.line + 1, 0, `${last.indent}- ${formatYamlValue(value, 'line')}`);
     // The empty items all sit above the new one, so their lines are unmoved.
     const empty = new Set(field.items.filter((item) => isEmptyItem(item)).map((item) => item.line));
     return lines.filter((_, index) => !empty.has(index)).join(eol);
   }
-  const values = splitValues(field.inline);
-  lines[field.line] = `${field.name}: [${[...values, value].join(', ')}]`;
+  lines[field.line] = writeInlineList(field.name, [...splitValues(field.inline), value]);
   return lines.join(eol);
 }
 
@@ -246,7 +354,7 @@ function dropFromInline(
   if (kept.length === 0) {
     return new Set([field.line]);
   }
-  lines[field.line] = `${field.name}: [${kept.join(', ')}]`;
+  lines[field.line] = writeInlineList(field.name, kept);
   return new Set();
 }
 
@@ -259,4 +367,18 @@ export function readFrontmatterTagValues(content: string): string[] | undefined 
   }
   const reading = findTagsFields(lines, bounds.end);
   return reading.kind === 'unreadable' ? undefined : reading.fields.flatMap(fieldValues);
+}
+
+/**
+ * Why the front matter's tags cannot be rewritten, or undefined when they
+ * can: what Park Note and Unpark Note say when they leave a note alone.
+ */
+export function findTagsFieldProblem(content: string): TagsFieldProblem | undefined {
+  const lines = content.split(/\r?\n/);
+  const bounds = getFrontmatterBounds(lines);
+  if (!bounds) {
+    return undefined;
+  }
+  const reading = findTagsFields(lines, bounds.end);
+  return reading.kind === 'unreadable' ? reading.problem : undefined;
 }

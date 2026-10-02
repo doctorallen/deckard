@@ -136,6 +136,7 @@ suite('Link rewrites', () => {
       rewritten(
         planHeadingRenameRewrites(headings, {
           filePath: 'notes/Atlas.md',
+          startLine: 3,
           from: 'Decision #project/atlas',
           to: 'Decision to sign',
         }),
@@ -145,6 +146,23 @@ suite('Link rewrites', () => {
         'notes/Log.md: [[Atlas#Decision]] -> [[Atlas#Decision to sign]]',
         'notes/Log.md: [[Atlas#decision|the call]] -> [[Atlas#Decision to sign|the call]]',
       ],
+    );
+  });
+
+  test('leaves a link alone that opens another heading with the same words', () => {
+    const index = indexOf({
+      'Log.md': '# Log\n\n## Monday\n### Notes\nmon\n\n## Tuesday\n### Notes\ntue\n',
+      'other.md': 'See [[Log#Notes]].\n',
+    });
+    assert.deepStrictEqual(
+      planHeadingRenameRewrites(index, { filePath: 'Log.md', startLine: 8, from: 'Notes', to: 'Tuesday notes' }),
+      [],
+      'the link opens the first Notes, not the one renamed',
+    );
+    assert.deepStrictEqual(
+      rewritten(planHeadingRenameRewrites(index, { filePath: 'Log.md', startLine: 4, from: 'Notes', to: 'Monday notes' })),
+      ['other.md: [[Log#Notes]] -> [[Log#Monday notes]]'],
+      'renaming the first Notes carries the link',
     );
   });
 

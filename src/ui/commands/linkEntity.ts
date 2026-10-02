@@ -5,6 +5,7 @@ import {
   getPersonMarker,
   stripTags,
 } from '../../domain/markdown/parser';
+import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { Entity, EntityKind } from '../../domain/model';
@@ -25,7 +26,8 @@ const HEADING_FIRST = 'Put the cursor on a heading in a note to tag it with a pe
 
 /**
  * Lets the user explicitly attach the current heading to a canonical entity:
- * one the index knows, or a new one, written as a tag at the heading's end.
+ * one the index knows, or a new one, written as a tag after the heading's
+ * words.
  * Does nothing when the heading already carries that tag, and says so.
  */
 export async function linkCurrentHeading(
@@ -50,7 +52,8 @@ export async function linkCurrentHeading(
       .getConfiguration('deckard', editor.document.uri)
       .get<unknown>('personMarker', '@'),
   );
-  const headingName = stripTags(heading[1], personMarker);
+  const tagColumn = findHeadingTagColumn(line.text);
+  const headingName = stripTags(line.text.slice(0, tagColumn).replace(/^ {0,3}#{1,6}[ \t]+/, ''), personMarker);
   const entities = [...indexer.getSnapshot().entities.values()];
   const choice = await vscode.window.showQuickPick(
     [
@@ -94,10 +97,29 @@ export async function linkCurrentHeading(
 
   await editor.edit((editBuilder) => {
     editBuilder.insert(
-      new vscode.Position(line.lineNumber, line.text.length),
+      new vscode.Position(line.lineNumber, tagColumn),
       ` ${entity.label}`,
     );
   });
+}
+
+/**
+ * The column a tag goes at on a heading line: after its words, before a
+ * `^block-id` and any closing hashes. The block id must stay last for
+ * `[[Note#^id]]` to find the line, and a tag after closing hashes would
+ * make them words.
+ */
+export function findHeadingTagColumn(text: string): number {
+  let end = text.trimEnd().length;
+  const block = BLOCK_ID_PATTERN.exec(text.slice(0, end));
+  if (block) {
+    end = block.index;
+  }
+  const closing = /[ \t]+#+[ \t]*$/.exec(text.slice(0, end));
+  if (closing) {
+    end = closing.index;
+  }
+  return end;
 }
 
 /**

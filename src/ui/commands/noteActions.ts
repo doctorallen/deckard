@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 
-import { isHeading } from '../../domain/markdown/lineShapes';
 import { isTaskLine } from '../../domain/markdown/taskDraft';
 import { createPinForLine } from '../../domain/notes/pins';
 import { WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
+import { findHeadingLineAbove } from './focusSection';
 import { readIndexAsEdited } from './pinNote';
 
 /** Where the cursor is, which decides what a note's actions are. */
@@ -102,17 +102,14 @@ export function readNoteActionState(
 }
 
 /**
- * Whether a heading is written at or above a line, for a note not yet read:
- * a heading as the parser reads one, so `#` alone and a heading indented by
- * up to three spaces count, as they do for Focus Section.
+ * Whether a heading is written at or above a line, for a note not yet read,
+ * by Focus Section's own rule, so it is offered only where it will act: a
+ * heading as the parser reads one, `#` alone and a heading indented by up
+ * to three spaces included, and never a line in fenced code.
  */
 export function hasHeadingAbove(document: Pick<vscode.TextDocument, 'lineAt'>, line: number): boolean {
-  for (let at = line; at >= 0; at -= 1) {
-    if (isHeading(document.lineAt(at).text)) {
-      return true;
-    }
-  }
-  return false;
+  const lines = Array.from({ length: line + 1 }, (_, at) => document.lineAt(at).text);
+  return findHeadingLineAbove(lines, line) !== undefined;
 }
 
 /**

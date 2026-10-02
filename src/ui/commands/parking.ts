@@ -101,6 +101,13 @@ function chosenNotes(uri?: unknown, uris?: unknown): vscode.Uri[] {
 const quoted = (filePath: string): string => `"${noteTitle(filePath)}"`;
 
 /**
+ * Why Park Note or Unpark Note left a note alone whose tags line ends in a
+ * YAML comment: writing the line again would lose the comment.
+ */
+const COMMENTED_TAGS = (filePath: string): string =>
+  `Deckard did not change ${quoted(filePath)}: its tags line ends in a comment, which rewriting the line would lose.`;
+
+/**
  * One write to the notes, through VS Code: each note's document is opened
  * once, and replaced whole through the editor's copy, so an open note keeps
  * what the reader has not saved.
@@ -234,10 +241,17 @@ async function reportParkedNotes(
     return;
   }
   if (result.kind === 'unreadable') {
-    void reportFailure({
-      outcome: `Deckard could not read the front matter of ${quoted(result.filePath)}, so it did not change it.`,
-      fix: `Add ${result.tag} to its tags by hand.`,
-    });
+    void reportFailure(
+      result.comment
+        ? {
+            outcome: COMMENTED_TAGS(result.filePath),
+            fix: `Move the comment onto a line of its own, or add ${result.tag} to its tags by hand.`,
+          }
+        : {
+            outcome: `Deckard could not read the front matter of ${quoted(result.filePath)}, so it did not change it.`,
+            fix: `Add ${result.tag} to its tags by hand.`,
+          },
+    );
     return;
   }
   if (result.kind === 'not-applied') {
@@ -293,10 +307,17 @@ async function reportUnparkedNotes(commands: ParkingCommands, result: UnparkNote
       await offerUnparkFolder(commands, `${quoted(result.filePath)} is parked by its folder, ${result.folder}.`, result.folder);
       return;
     case 'unreadable':
-      void reportFailure({
-        outcome: `Deckard could not read the front matter of ${quoted(result.filePath)}, so it did not change it.`,
-        fix: 'Take the parked tag out of its tags by hand.',
-      });
+      void reportFailure(
+        result.comment
+          ? {
+              outcome: COMMENTED_TAGS(result.filePath),
+              fix: 'Move the comment onto a line of its own, or take the parked tag out of its tags by hand.',
+            }
+          : {
+              outcome: `Deckard could not read the front matter of ${quoted(result.filePath)}, so it did not change it.`,
+              fix: 'Take the parked tag out of its tags by hand.',
+            },
+      );
       return;
     case 'parked-by-tag':
       await askAboutParkingTag(commands, result);
