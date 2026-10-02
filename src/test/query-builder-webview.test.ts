@@ -2,6 +2,9 @@ import * as assert from 'assert';
 
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { parseQuery } from '../domain/query/queryParser';
+import { MAX_QUERY_LENGTH } from '../ui/webview/host/narrowing';
+import { narrowSearchPageMessage } from '../ui/webview/pages/searchPage/messages';
 
 /**
  * Drives the overview webview's own script in jsdom.
@@ -147,6 +150,21 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.countRows(), 3);
   });
 
+  test('keeps a value being typed in a row across an unrelated refresh', () => {
+    const view = mountTagOverview();
+    view.send(createState());
+    view.click({ action: 'toggle-builder' });
+    const row = { dataset: { action: 'builder-set-value', path: '0' } };
+    view.type(row, '#project/atlas-two');
+
+    // An index update re-sends the same query while the value is typed and
+    // not yet committed.
+    view.send(createState());
+
+    const value = view.find('[data-action="builder-set-value"][data-path="0"]') as HTMLInputElement;
+    assert.strictEqual(value.value, '#project/atlas-two');
+  });
+
   test('rebuilds its rows when the query changes elsewhere', () => {
     const view = mountTagOverview();
     view.send(createState());
@@ -201,6 +219,20 @@ suite('Tag overview query builder', () => {
     const rendered = view.suggestionsFor('p0');
     assert.match(rendered, /open/);
     assert.doesNotMatch(rendered, /#project\/atlas/);
+  });
+
+  test('writes a value that is a word joining terms in quotes, so the search still reads', () => {
+    for (const word of ['not', 'OR', 'And', '&&x', '||']) {
+      const view = mountTagOverview();
+      view.send(createState());
+      view.click({ action: 'toggle-builder' });
+      view.posted.length = 0;
+      view.change({ dataset: { action: 'builder-set-value', path: '0' } }, word);
+
+      const sent = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+      assert.strictEqual(sent?.query, `tag = "${word}"`, word);
+      assert.ok(parseQuery(String(sent?.query)).node, `${word}: the search parses`);
+    }
   });
 
   test('completes a value in the query bar once the field is known', () => {
@@ -542,6 +574,58 @@ suite('Tag overview query builder', () => {
     assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
   });
 
+  test('Tab out of an empty search box moves on, and runs none of its recent searches', () => {
+    const view = mountTagOverview();
+    view.send(
+      createState('', {
+        recent: [{ value: '#project/atlas is:open', label: '#project/atlas is:open', detail: 'Recent search' }],
+      }),
+    );
+    // Tabbing into the box focuses it, which offers the recent searches.
+    view.focus({ dataset: { action: 'query-input', suggestKey: 'query' } }, '');
+    assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
+
+    view.posted.length = 0;
+    const taken = view.key(view.find('[data-suggest-key="query"]'), 'Tab');
+
+    assert.deepStrictEqual(view.posted, [], 'no search runs');
+    assert.strictEqual(taken, false, 'Tab is left to move focus on');
+    assert.strictEqual(view.suggestionsFor('query'), '', 'the list closes');
+  });
+
+  test('holds back a search longer than the host takes, says why, and keeps what was typed', async () => {
+    const view = mountTagOverview();
+    view.send(createState(''));
+    const bar = { dataset: { action: 'query-input', suggestKey: 'query' } };
+
+    view.posted.length = 0;
+    const tooLong = 'x'.repeat(MAX_QUERY_LENGTH + 1);
+    view.key(view.type(bar, tooLong), 'Enter');
+
+    assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setOverviewQuery'), [], 'nothing the host would drop is sent');
+    assert.strictEqual(
+      view.find('.query-error').textContent,
+      'This search is 2,001 characters long, and a search can be at most 2,000. Shorten it to run it.',
+    );
+    assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong, 'what was typed stays');
+    // A search that was never sent never comes back, so nothing says it is
+    // still searching.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    assert.ok(!view.find('.query-workspace').classList.contains('is-searching'));
+    // An index update while the text is still there leaves it there.
+    view.send(createState(''));
+    assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong);
+
+    // As long as the host takes, it runs, and the reason goes with its answer.
+    const longest = 'x'.repeat(MAX_QUERY_LENGTH);
+    view.key(view.type(bar, longest), 'Enter');
+    const sent = view.posted.filter((message) => message.type === 'setOverviewQuery');
+    assert.strictEqual(sent.length, 1);
+    assert.ok(narrowSearchPageMessage(sent[0]), 'the host takes the longest search the page sends');
+    view.send(createState(longest));
+    assert.strictEqual(view.findAll('.query-error').length, 0);
+  });
+
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
@@ -591,7 +675,8 @@ interface MountedView {
   findAll: (selector: string) => Element[];
   send: (state: unknown) => void;
   click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
-  key: (input: Element, key: string) => void;
+  /** Presses a key on an element; true when the page took it, so the browser does nothing more with it. */
+  key: (input: Element, key: string) => boolean;
   focus: (input: ElementDescriptor, value: string) => void;
   change: (input: ElementDescriptor, value: string) => void;
   html: () => string;
@@ -660,9 +745,10 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
     }
     return found;
   };
-  const raise = (target: Element, event: Event): void => {
+  const raise = (target: Element, event: Event): boolean => {
     target.dispatchEvent(event);
     answerHost();
+    return event.defaultPrevented;
   };
   const fill = (target: HTMLElement, value: string): void => {
     (target as HTMLInputElement).value = value;
@@ -673,8 +759,9 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
     find: (selector) => page.find(selector),
     findAll: (selector) => page.findAll(selector),
     send: show,
-    click: (dataset, modifiers = {}) =>
-      raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers })),
+    click: (dataset, modifiers = {}) => {
+      raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers }));
+    },
     key: (input, key) =>
       raise(input, new window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, key })),
     focus: (input, value) => {

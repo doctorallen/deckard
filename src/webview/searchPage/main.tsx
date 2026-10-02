@@ -81,7 +81,19 @@ let fittingMore: Array<{ readonly element: Element; readonly parent: Node; reado
  * the results feel like they are following the typing.
  */
 const PREVIEW_DELAY_MS = 180;
+/**
+ * The most words, and the longest word, the host narrows by; it refuses a
+ * draft past either (`narrowPreviewSearch`), which would leave the results
+ * narrowed by the words before. The words past the first twelve, and a
+ * word too long to be one, only narrow further, so leaving them out shows
+ * a little more rather than something else.
+ */
+const PREVIEW_WORD_LIMIT = 12;
+const PREVIEW_WORD_LENGTH = 100;
+
+/** The words waiting out that delay, until they are sent. */
 let previewHandle: ReturnType<typeof setTimeout> | undefined;
+/** The words the host narrows by, or will once the words waiting are sent. */
 let sentPreview = '';
 
 /** In the tabs layout, the tab with results, until the reader picks one. */
@@ -116,6 +128,25 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   );
 }
 
+/** The search and its counts last said, so a draw that changes neither says nothing. */
+let announcedCounts: string | undefined;
+
+/**
+ * Says how many notes and tasks match, when the search or what it matches
+ * has changed. Most draws change neither, such as a tab, Show all, or a
+ * completed task's answer, and saying it again would talk over what the
+ * reader just did.
+ */
+function announceCounts(snapshot: SearchPageState): void {
+  const counts = resultCounts(snapshot);
+  const said = [(snapshot.query && snapshot.query.text) || '', counts.notes, counts.tasks].join('\u0000');
+  if (said === announcedCounts) {
+    return;
+  }
+  announcedCounts = said;
+  announce(`${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
+}
+
 const store = startPage<SearchStore>({
   initial: { snapshot: undefined },
   ready: (state) => Boolean(state.snapshot),
@@ -125,8 +156,11 @@ const store = startPage<SearchStore>({
     dropFittingMore();
     editor.afterRender();
     window.scrollTo(scrolledTo.x, scrolledTo.y);
-    const counts = resultCounts(store.state.snapshot as SearchPageState);
-    announce(`${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
+    const snapshot = store.state.snapshot as SearchPageState;
+    // Every draw is unmarked first, the page's own redraws included, such
+    // as a tab or Show all, so every draw is marked again.
+    unmark = markWords(document.getElementById('app'), editor.previewWords((snapshot.query && snapshot.query.text) || ''));
+    announceCounts(snapshot);
   },
 });
 installMenuKeys();
@@ -146,13 +180,18 @@ const editor = createQueryEditor({
   // workspace. Sent on a short delay so a word costs one search, not one
   // per letter.
   onDraft: () => {
-    const words = editor.previewWords(editor.currentText());
+    const words = editor.previewWords(editor.currentText())
+      .filter((word) => word.length <= PREVIEW_WORD_LENGTH)
+      .slice(0, PREVIEW_WORD_LIMIT);
     if (words.join(' ') === sentPreview) {
       return;
     }
     sentPreview = words.join(' ');
     clearTimeout(previewHandle);
-    previewHandle = setTimeout(() => send({ type: 'previewSearch', words }), PREVIEW_DELAY_MS);
+    previewHandle = setTimeout(() => {
+      previewHandle = undefined;
+      send({ type: 'previewSearch', words });
+    }, PREVIEW_DELAY_MS);
   },
   placeholder: () => 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…',
   label: 'Search notes and tasks',
@@ -338,7 +377,9 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'open-help': () => send({ type: 'openHelp' }),
   'history-back': () => send({ type: 'navigateSearchHistory', direction: 'back' }),
   'history-forward': () => send({ type: 'navigateSearchHistory', direction: 'forward' }),
-  'save-filter': () => send({ type: 'saveTagOverviewFilter' }),
+  // What the box holds, words typed and not yet run among it, is what the
+  // reader sees and so what Save keeps.
+  'save-filter': () => send({ type: 'saveTagOverviewFilter', query: editor.currentText() }),
   'create-hub': () => send({ type: 'createHubNote' }),
   'exclude-hub-links': () => send({ type: 'excludeHubLinks' }),
   'unpark-tag': (target) => {
@@ -439,8 +480,15 @@ function stepHistoryByKey(event: KeyboardEvent, element: Element | null): boolea
   return true;
 }
 
-/** Enter or Space on a card or a task row, not on a control in it, opens where it is written. */
+/**
+ * Enter or Space on a card or a task row, not on a control in it, opens
+ * where it is written. Alt+Enter is the menu's key, and a key something
+ * else already took, such as that menu, opens nothing.
+ */
 function openEntryByKey(event: KeyboardEvent, element: Element | null): void {
+  if (event.defaultPrevented || event.altKey) {
+    return;
+  }
   if ((event.key !== 'Enter' && event.key !== ' ') || !element || element.closest('[data-action], button, input, a')) {
     return;
   }
@@ -497,11 +545,16 @@ onHostMessage<StateMessage<SearchPageState>>('state', (message) => {
     openedFor = searched;
     openedCards = new Set();
   }
+  // The host lets go of the typed words whenever the search changes, and
+  // says which it still narrows by; typing the same words again must send
+  // them again. Words still waiting to be sent are newer than its answer.
+  if (previewHandle === undefined) {
+    sentPreview = (latest.draftWords || []).join(' ');
+  }
   editor.receive();
   redraw({ snapshot: latest });
   if (first) {
     restoreScroll(kept());
   }
-  unmark = markWords(document.getElementById('app'), editor.previewWords((latest.query && latest.query.text) || ''));
   saveState();
 });

@@ -600,6 +600,7 @@ suite('Search page behavior', () => {
 
     assert.deepStrictEqual(page.lastPosted('saveTagOverviewFilter'), {
       type: 'saveTagOverviewFilter',
+      query: '#project/atlas',
     });
   });
 
@@ -661,7 +662,7 @@ suite('Search page behavior', () => {
     });
   });
 
-  test('marks the searched words in the results, until the page draws itself again', () => {
+  test('marks the searched words in the results, and again after each draw', () => {
     const { page, snapshot } = open(
       { 'notes/a.md': '# Lift #work\nThe lift is stuck.\n- [ ] Fix the lift #work' },
       'lift',
@@ -672,10 +673,10 @@ suite('Search page behavior', () => {
     assert.strictEqual(page.findAll('button mark, [data-tag-key] mark, code mark').length, 0, 'never in a control or a tag');
 
     // A draw of the page's own, such as another tab, draws the results
-    // afresh, without the marks; the next state from the host marks them
-    // again.
+    // afresh and marks them again, as the next state from the host does.
     page.click('[data-action="set-result-tab"][data-tab="tasks"]');
-    assert.deepStrictEqual(marked(), []);
+    assert.ok(marked().length > 0, 'marked after a draw of the page\'s own');
+    assert.ok(marked().every((word) => word.toLowerCase() === 'lift'));
     page.send(snapshot);
     assert.ok(marked().length > 0);
     assert.match(page.text('.card') ?? '', /The lift is stuck\./, 'the text reads as before');

@@ -165,6 +165,17 @@ test('the gear\'s Theme row runs Choose Theme', async () => {
   assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
 });
 
+test('Help opens at Search', async () => {
+  const { view } = await openSearch('planning');
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('.help-button'));
+  await settle();
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.showHelp'),
+    [{ command: 'deckard.showHelp', args: ['search'] }],
+  );
+});
+
 test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   const { view, panel } = await openOverview();
   assert.strictEqual(title(view), 'Project: Atlas');
@@ -351,6 +362,147 @@ test('plain words narrow the whole search as they are typed', async () => {
   ]);
   await settle(300);
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+});
+
+test('the same words typed again after the search changed narrow it again', async () => {
+  const { view } = await openSearch('');
+  const bar = () => view.find('[data-action="query-input"]');
+  view.type(bar(), 'planning');
+  await settle(300);
+  view.keydown(bar(), 'Enter');
+  await settle();
+  // Back to the search before, which the host shows without the words.
+  view.click(view.find('[data-action="history-back"]'));
+  await settle();
+  assert.ok(visibleTitles(view).length > 1, 'every note again');
+
+  view.posted.length = 0;
+  view.type(bar(), 'planning');
+  await settle(300);
+  assert.deepStrictEqual(view.posted, [{ type: 'previewSearch', words: ['planning'] }]);
+  await settle();
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+});
+
+test('a long draft narrows by the words the host takes, never by older ones', async () => {
+  const { view } = await openSearch('');
+  const bar = () => view.find('[data-action="query-input"]');
+  view.type(bar(), 'planning');
+  await settle(300);
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+
+  // Thirteen words: the host takes twelve, so twelve are sent.
+  const missing = Array.from({ length: 12 }, (_, index) => `absent${index}`);
+  view.type(bar(), ['planning', ...missing].join(' '));
+  await settle(300);
+  assert.deepStrictEqual(visibleTitles(view), [], 'narrowed by the new words, which match nothing');
+
+  // A word longer than any word is left out, and the rest still narrow.
+  view.type(bar(), `planning ${'q'.repeat(101)}`);
+  await settle(300);
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+});
+
+test('the searched words stay marked through the page\'s own redraws', async () => {
+  const { view } = await openSearch('sequencing');
+  const marks = () => view.findAll('#app mark').map((mark) => mark.textContent.toLowerCase());
+  assert.deepStrictEqual(marks(), ['sequencing']);
+  view.click(view.find('[data-action="set-result-tab"][data-tab="tasks"]'));
+  view.click(view.find('[data-action="set-result-tab"][data-tab="notes"]'));
+  assert.deepStrictEqual(marks(), ['sequencing'], 'marked again after a tab and back');
+});
+
+test('the match count is said when the search changes, and not on every redraw', async () => {
+  const { view, panel } = await openOverview();
+  const status = view.find('#live-status');
+  assert.strictEqual(status.textContent, '2 notes and 1 task match this search.');
+  status.textContent = '';
+  view.click(view.find('[data-action="set-result-tab"][data-tab="tasks"]'));
+  // The host sends the same state again, as an index update does.
+  const states = panel._toWebview.filter((message) => message.type === 'state');
+  panel._deliver(states[states.length - 1]);
+  assert.strictEqual(status.textContent, '', 'nothing changed, so nothing is said');
+
+  search(view, 'planning');
+  await settle();
+  assert.strictEqual(status.textContent, '1 note and 0 tasks match this search.');
+});
+
+test('Alt+Enter on a card opens its menu and not the note', async () => {
+  const { view } = await openOverview();
+  const card = view.find('.card');
+  card.focus();
+  vscode._test.executedCommands.length = 0;
+  view.posted.length = 0;
+  view.fire('keydown', card, { key: 'Enter', altKey: true });
+  await settle();
+  assert.strictEqual(view.find('#tag-context-menu').hidden, false, 'the menu is open');
+  assert.deepStrictEqual(view.posted.filter((message) => message.type === 'openSource'), [], 'the note is not opened');
+});
+
+/** An index of `count` notes, each tagged #work, for a search of many pages. */
+function createManyNotesIndex(count) {
+  const files = Array.from({ length: count }, (_, at) => {
+    const filePath = `notes/n${String(at).padStart(3, '0')}.md`;
+    return parseMarkdown(filePath, `## Note ${at} #work\nProse.`, { createdAt: 1, updatedAt: 2 }, {});
+  });
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}
+
+test('a page number pressed keeps focus once the numbers around it move', async () => {
+  const { view } = await openSearch('#work', { index: createManyNotesIndex(300) });
+  const focused = () => view.document.activeElement.getAttribute('aria-label');
+  for (const page of [2, 3, 4, 5, 6]) {
+    const label = `Page ${page} of notes`;
+    const button = view.findAll('.pagination button').find((candidate) => candidate.getAttribute('aria-label') === label);
+    assert.ok(button, `${label} is offered`);
+    view.press(button);
+    await settle();
+    assert.strictEqual(view.find('.pagination .is-current').textContent, String(page));
+    assert.strictEqual(focused(), label, `focus stays on ${label}`);
+  }
+});
+
+test('a page size chosen on one search page starts every page from its first page', async () => {
+  const { view, panels } = await openSearch('#work', { index: createManyNotesIndex(300) });
+  await panels.showQuery('#work AND prose');
+  const other = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
+  const otherView = mountWebview(other.webview.html, other);
+  other._toWebview.forEach((message) => other._deliver(message));
+  const current = (page) => page.find('.pagination .is-current').textContent;
+
+  otherView.press(otherView.findAll('.pagination button').find((button) => button.getAttribute('aria-label') === 'Page 2 of notes'));
+  await settle();
+  assert.strictEqual(current(otherView), '2');
+
+  view.change(view.find('[data-action="set-results-per-page"]'), '50');
+  await settle();
+  assert.strictEqual(current(view), '1');
+  assert.strictEqual(current(otherView), '1', 'the second page of thirty is not the second of fifty');
+});
+
+test('Save keeps the words typed and not yet run, as the box shows them', async () => {
+  const { view, preferences } = await openOverview();
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, 'planning');
+  // The pointer goes down on Save, inside the box, which keeps what was typed.
+  const save = view.find('[data-action="save-filter"]');
+  vscode._test.setInputBoxResponse('Atlas planning');
+  view.press(save);
+  await settle();
+  vscode._test.setInputBoxResponse(undefined);
+  const [saved] = preferences.reader.value.savedFilters;
+  assert.ok(saved, 'the search was saved');
+  assert.deepStrictEqual({ name: saved.name, query: saved.query }, { name: 'Atlas planning', query: '#project/atlas AND planning' });
+});
+
+test('Save on a search that does not parse runs it, so the box says why', async () => {
+  const { view, preferences } = await openOverview();
+  view.type(view.find('[data-action="query-input"]'), 'due <');
+  view.press(view.find('[data-action="save-filter"]'));
+  await settle();
+  assert.deepStrictEqual(preferences.reader.value.savedFilters, [], 'nothing is kept');
+  assert.ok(view.find('.query-error'), 'the box shows the error');
 });
 
 test('opening a search a page already shows reveals that page', async () => {
@@ -566,6 +718,48 @@ test('a page saved before search pages reopens on its tag, tags, and words', asy
   const gone = restored({});
   await panels.restore(gone, { tagKey: '#missing' });
   assert.strictEqual(gone.disposed, true, 'a page for a tag that is gone is not restored');
+});
+
+test('a page restored during the first scan shows the scan at once, then its search', async () => {
+  const index = createIndex();
+  let finish;
+  const published = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const updates = new vscode.EventEmitter();
+  const progress = new vscode.EventEmitter();
+  const indexer = {
+    ...createIndexer(index),
+    ready: published,
+    published,
+    hasIndexed: false,
+    scanProgress: { completed: 10, total: 100 },
+    onDidProgress: progress.event,
+    onDidUpdate: updates.event,
+  };
+  const panels = new SearchPanels({
+    indexer,
+    preferences: createPreferences(createGlobalState()),
+    extensionUri: vscode.Uri.file('/ext'),
+    activeSearch: new ActiveSearch(),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  const panel = vscode.window.createWebviewPanel('deckard.tagOverview', 'Saved', -1, {});
+  const restoring = panels.restore(panel, { query: 'kickoff', origin: 'kickoff' });
+  await settle();
+  assert.ok(panel.webview.html.length > 0, 'the page is drawn before the scan ends');
+  const view = mountWebview(panel.webview.html, panel);
+  assert.ok(view.find('#app .loading'), 'and says the scan is under way');
+
+  indexer.hasIndexed = true;
+  finish();
+  updates.fire();
+  await restoring;
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  assert.deepStrictEqual(visibleTitles(view), ['Beta kickoff']);
+  assert.strictEqual(box(view), 'kickoff');
+  panels.dispose();
 });
 
 /**

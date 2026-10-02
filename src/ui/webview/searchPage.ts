@@ -173,6 +173,19 @@ export class SearchPanels implements vscode.Disposable {
     webviewPanel: vscode.WebviewPanel,
     state: unknown,
   ): Promise<void> {
+    // A page kept in the current shape names its search outright, so
+    // before the first scan it is attached at once and shows how far the
+    // scan has got, as a page opened then does, rather than staying blank
+    // until the scan ends. An older shape names a tag, which waits for an
+    // index to look it up in.
+    const kept = this.indexer.hasIndexed === false ? readCurrentSearch(state) : undefined;
+    if (kept) {
+      const early = this.createPanel(kept.origin, kept.query);
+      early.restore(webviewPanel);
+      await whenPublished(this.indexer);
+      this.settle(early, false);
+      return;
+    }
     await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const saved = readSerializedSearch(index, state);
@@ -206,15 +219,20 @@ export class SearchPanels implements vscode.Disposable {
 
   /**
    * A page opened while indexing, once the index is ready: it gives way to
-   * a page already showing its search, or records the visit and draws.
+   * a page already showing its search, or draws, recording the visit when
+   * the reader opened it rather than a reload restoring it.
    */
-  private settle(panel: SearchPanel): void {
+  private settle(panel: SearchPanel, visited = true): void {
     const index = this.indexer.getSnapshot();
     const key = panel.key();
     const other = [...this.panels].find((candidate) => candidate !== panel && candidate.key() === key);
     if (other) {
       panel.dispose();
       other.show();
+      return;
+    }
+    if (!visited) {
+      panel.refresh();
       return;
     }
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()));
@@ -282,11 +300,22 @@ function readSerializedSearch(
     return undefined;
   }
   const saved = state as Record<string, unknown>;
-  const query = readTrimmed(saved.query);
-  if (query !== undefined && typeof saved.origin === 'string') {
-    return { query, origin: saved.origin.trim() };
+  return readCurrentSearch(saved) ?? readLegacySearch(index, saved, readTrimmed(saved.query));
+}
+
+/**
+ * The search a page saved in the current shape held, and the one it was
+ * opened with, which needs no index to read; undefined for any other shape.
+ */
+function readCurrentSearch(state: unknown): { query: string; origin: string } | undefined {
+  if (typeof state !== 'object' || state === null) {
+    return undefined;
   }
-  return readLegacySearch(index, saved, query);
+  const saved = state as Record<string, unknown>;
+  const query = readTrimmed(saved.query);
+  return query !== undefined && typeof saved.origin === 'string'
+    ? { query, origin: saved.origin.trim() }
+    : undefined;
 }
 
 /** A saved field's text, trimmed; undefined when it is not text. */

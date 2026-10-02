@@ -116,6 +116,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private notePage = 1;
   private taskPage = 1;
   /**
+   * The page size those numbers count in. The size is one preference for
+   * every search page, so another page may change it under this one.
+   */
+  private pagedAt: number | undefined;
+  /**
    * The words the reader is typing but has not committed. They narrow the
    * whole search rather than the page of it on screen, so what the box
    * promises while it is typed in is what Enter delivers.
@@ -152,20 +157,16 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         page.refresh();
       },
       previewSearch: (message, page) => this.previewSearch(page, message.words),
-      setResultsPerPage: async (message) => {
-        // A different page size is a different set of pages, and the number
-        // the reader was on means nothing in it, so both lists start again.
-        this.notePage = 1;
-        this.taskPage = 1;
-        await preferences.display.setSearchPageSize(message.size);
-      },
+      // Every open search page starts its lists again at the new size,
+      // when it next draws.
+      setResultsPerPage: (message) => preferences.display.setSearchPageSize(message.size),
       setRenderMode: (message) => preferences.display.setRenderMode(message.mode),
       setTagOverviewSort: (message) => preferences.display.setTagOverviewSortMode(message.mode),
       setTagOverviewLayout: (message) => preferences.display.setTagOverviewLayout(message.layout),
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
-      openHelp: openHelp(),
-      saveTagOverviewFilter: () => this.saveSearch(),
+      openHelp: openHelp('search'),
+      saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
       excludeHubLinks: () => excludeHubLinks(),
       createHubNote: async () => {
@@ -334,6 +335,14 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private createSnapshot(): SearchPageSnapshot {
     const index = this.search.indexer.getSnapshot();
     const preferences = this.search.preferences.reader.value;
+    // A different page size is a different set of pages, and the number
+    // the reader was on means nothing in it, so both lists start again,
+    // whichever page changed the size.
+    if (this.pagedAt !== undefined && this.pagedAt !== preferences.searchPageSize) {
+      this.notePage = 1;
+      this.taskPage = 1;
+    }
+    this.pagedAt = preferences.searchPageSize;
     const queryContext = readQueryContext();
     const snapshot = createSearchPageSnapshot(
       index,
@@ -590,13 +599,20 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   }
 
   /**
-   * Names the page's search and keeps it as a saved view: a search of two
-   * or more tags as that set of tags, and any other as its text.
+   * Names the search the page's box holds and keeps it as a saved view: a
+   * search of two or more tags as that set of tags, and any other as its
+   * text. The box may hold words typed and not yet run, so the search is
+   * the page's to say rather than the one last run. One that does not
+   * parse is run instead, so the box shows why it cannot be kept.
    */
-  private async saveSearch(): Promise<void> {
+  private async saveSearch(page: PageContext, query: string): Promise<void> {
     const index = this.search.indexer.getSnapshot();
-    const text = this.queryText.trim();
+    const text = query.trim();
     if (!text) {
+      return;
+    }
+    if (parseQuery(text).node === undefined) {
+      await this.applyQuery(page, text);
       return;
     }
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));

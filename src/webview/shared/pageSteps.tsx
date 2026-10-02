@@ -67,18 +67,25 @@ export function PageSteps({ paging, action, attributes, noun }: PageStepsProps) 
     return null;
   }
   const step = (page: number, label: string, enabled: boolean) => (
-    <button class="page-step" data-action={action} data-page={page} {...attributes} disabled={!enabled} aria-label={`${label} page of ${noun}`}>{label}</button>
+    <button key={label} class="page-step" data-action={action} data-page={page} {...attributes} disabled={!enabled} aria-label={`${label} page of ${noun}`}>{label}</button>
   );
+  // Each button is keyed by the page it goes to, so the button pressed is
+  // the one still focused after the draw that follows, wherever the
+  // numbers around it moved; by position, focus stayed in its slot and
+  // landed on another number.
+  let before = 0;
   return (
     <>
       {step(paging.page - 1, 'Previous', paging.page > 1)}
       {pageNumbers(paging.page, paging.pageCount).map((page) => {
         if (page === null) {
-          return <span class="page-gap" aria-hidden="true">…</span>;
+          return <span key={`gap-after-${before}`} class="page-gap" aria-hidden="true">…</span>;
         }
+        before = page;
         const current = page === paging.page;
         return (
           <button
+            key={`page-${page}`}
             class={current ? 'page-number is-current' : 'page-number'}
             data-action={action}
             data-page={page}

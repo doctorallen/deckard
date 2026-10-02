@@ -16,8 +16,14 @@ suite('Search page messages', () => {
       },
     );
     assert.deepStrictEqual(
-      narrowSearchPageMessage({ type: 'saveTagOverviewFilter' }),
-      { type: 'saveTagOverviewFilter' },
+      narrowSearchPageMessage({ type: 'saveTagOverviewFilter', query: '#project/atlas planning' }),
+      { type: 'saveTagOverviewFilter', query: '#project/atlas planning' },
+    );
+    // Save names the search the box holds, which the page must say.
+    assert.strictEqual(narrowSearchPageMessage({ type: 'saveTagOverviewFilter' }), undefined);
+    assert.strictEqual(
+      narrowSearchPageMessage({ type: 'saveTagOverviewFilter', query: 'x'.repeat(2001) }),
+      undefined,
     );
     assert.deepStrictEqual(
       narrowSearchPageMessage({ type: 'setResultPage', kind: 'tasks', page: 3 }),
@@ -44,6 +50,7 @@ suite('Search page messages', () => {
     assert.strictEqual(
       narrowSearchPageMessage({
         type: 'saveTagOverviewFilter',
+        query: '#project/atlas',
         tagKeys: ['#untrusted', '#browser-data'],
       }),
       undefined,

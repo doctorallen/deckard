@@ -178,6 +178,11 @@ export interface ParkNoteMessage {
 /** Names a search page's search and keeps it as a saved view. */
 export interface SaveTagOverviewFilterMessage {
   type: 'saveTagOverviewFilter';
+  /**
+   * The search as the box holds it, with any words typed and not yet run,
+   * since that is what the reader sees and means to keep.
+   */
+  query: string;
 }
 
 /**
