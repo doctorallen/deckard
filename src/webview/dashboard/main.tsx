@@ -27,7 +27,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { ModeTabs, PageHeader } from './header';
-import { HomePanel, widgetChoices } from './home';
+import { HOME_FULL_MESSAGE, HomePanel, isHomeFull, widgetChoices } from './home';
 import type { HomeContext } from './homeContext';
 import { keepView, readKeptView } from './keptView';
 import type { DashboardView } from './model';
@@ -371,9 +371,15 @@ function addWidget(value: string): void {
     }
     widget.filterId = value.slice(separator + 1);
   }
+  const widgets = widgetConfig(snapshot);
+  // The host keeps the first widgets Home can hold, so a new one, which
+  // goes first, would push the last off Home with no Undo.
+  if (isHomeFull(widgets)) {
+    announce(HOME_FULL_MESSAGE);
+    return;
+  }
   // A new widget goes first, after Try next, where it is seen without
   // scrolling; it is then shown, marked for a moment, and focused.
-  const widgets = widgetConfig(snapshot);
   widgets.splice(widgets.length && widgets[0].kind === 'tryNext' ? 1 : 0, 0, widget);
   newWidget = { id: widget.id, until: Date.now() + 2400, shown: false };
   sendWidgets(snapshot, widgets);

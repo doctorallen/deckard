@@ -7,7 +7,7 @@
  * format can be tested without a store. `PreferencesRepository` reads and
  * writes through it, and every write passes through `normalizePreferences`.
  */
-import { isWidgetKind, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { HOME_WIDGET_LIMIT, isWidgetKind, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import { legacyIdOf } from '../../domain/markdown/parser';
 import { isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
@@ -127,9 +127,6 @@ export const PINNED_NOTE_LIMIT = 50;
 
 /** The most entries a list widget can show. */
 export const DASHBOARD_WIDGET_COUNT_LIMIT = 20;
-
-/** The most widgets Home keeps. */
-const DASHBOARD_WIDGET_LIMIT = 30;
 
 /** The longest search a tasks widget keeps. */
 const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
@@ -473,7 +470,7 @@ export function normalizeDashboardWidgets(
     ids.add(widget.id);
     kinds.add(widget.kind);
     widgets.push(widget);
-    if (widgets.length >= DASHBOARD_WIDGET_LIMIT) {
+    if (widgets.length >= HOME_WIDGET_LIMIT) {
       break;
     }
   }

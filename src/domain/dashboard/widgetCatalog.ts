@@ -68,6 +68,12 @@ export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
 };
 
 /**
+ * The most widgets Home holds. The page offers no more once it holds this
+ * many, and the host keeps no more than this.
+ */
+export const HOME_WIDGET_LIMIT = 30;
+
+/**
  * The longest task Quick add sends, which the host accepts: its field takes
  * no more, so a task the host would refuse is never typed.
  */

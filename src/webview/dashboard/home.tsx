@@ -4,7 +4,7 @@
  * workspace with no notes, the way in.
  */
 import type { DashboardSavedFilter, DashboardWidget, DashboardWidgetConfig } from '../../ui/protocol/dashboard';
-import { WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { HOME_WIDGET_LIMIT, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import { Loading } from '../shared/loading';
 import type { HomeContext } from './homeContext';
 import type { DashboardDraw } from './model';
@@ -17,12 +17,23 @@ export interface WidgetChoice {
   readonly description?: string;
 }
 
+/** What Home says when it holds as many widgets as it can, and another is asked for. */
+export const HOME_FULL_MESSAGE = `Home is full: it holds ${HOME_WIDGET_LIMIT} widgets at most. Remove one to add another.`;
+
+/** Whether Home holds as many widgets as it can: the host would drop the last to take another. */
+export function isHomeFull(widgets: readonly DashboardWidgetConfig[]): boolean {
+  return widgets.length >= HOME_WIDGET_LIMIT;
+}
+
 /**
  * What + Add widget offers, which Related Notes offers too while Home is in
  * front: every kind Home may hold another of, then a saved search's widget
- * for each saved search, as `savedQuery:<id>`.
+ * for each saved search, as `savedQuery:<id>`. A full Home offers nothing.
  */
 export function widgetChoices(widgets: readonly DashboardWidgetConfig[], savedFilters: readonly DashboardSavedFilter[]): WidgetChoice[] {
+  if (isHomeFull(widgets)) {
+    return [];
+  }
   const present = new Set(widgets.map((widget) => widget.kind));
   const kinds = (Object.keys(WIDGET_KINDS) as Array<keyof typeof WIDGET_KINDS>)
     .filter((kind) => kind !== 'savedQuery' && (WIDGET_KINDS[kind].repeatable || !present.has(kind)))
@@ -30,23 +41,23 @@ export function widgetChoices(widgets: readonly DashboardWidgetConfig[], savedFi
   return [...kinds, ...savedFilters.map((filter): WidgetChoice => ({ value: `savedQuery:${filter.id}`, label: `Saved search: ${filter.name}` }))];
 }
 
-/** + Add widget: a select of what can be added, which always shows its prompt. */
-function AddWidget({ choices }: { readonly choices: readonly WidgetChoice[] }) {
+/** + Add widget: a select of what can be added, which always shows its prompt, and is off while Home is full. */
+function AddWidget({ choices, full }: { readonly choices: readonly WidgetChoice[]; readonly full: boolean }) {
   return (
-    <select data-action="add-widget" aria-label="Add a widget" value="">
+    <select data-action="add-widget" aria-label="Add a widget" value="" disabled={full}>
       <option key="" value="">+ Add widget…</option>
       {choices.map((choice) => <option key={choice.value} value={choice.value} title={choice.description}>{choice.label}</option>)}
     </select>
   );
 }
 
-/** The bar Home is arranged from: + Add widget, Reset widgets…, and Finish. */
-function EditBar({ choices }: { readonly choices: readonly WidgetChoice[] }) {
+/** The bar Home is arranged from: + Add widget, Reset widgets…, and Finish; a full Home says why nothing can be added. */
+function EditBar({ choices, full }: { readonly choices: readonly WidgetChoice[]; readonly full: boolean }) {
   return (
     <div class="home-edit-bar" role="status">
-      <span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span>
+      <span>{full ? HOME_FULL_MESSAGE : 'Customizing Home. Drag a widget to move it, or right-click it to move it first or last.'}</span>
       <div class="home-edit-actions">
-        <AddWidget choices={choices} />
+        <AddWidget choices={choices} full={full} />
         {/* The host asks first, in VS Code's own modal: a reset cannot be undone. */}
         <button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>
         <button type="button" class="active" data-action="finish-customizing">Finish</button>
@@ -135,7 +146,7 @@ function HomeContent(props: HomePanelProps) {
   }
   return (
     <>
-      {view.editingHome ? <EditBar choices={props.choices} /> : <HintBar snapshot={snapshot} view={view} />}
+      {view.editingHome ? <EditBar choices={props.choices} full={isHomeFull(snapshot.widgetConfig || [])} /> : <HintBar snapshot={snapshot} view={view} />}
       {snapshot.totalNoteCount === 0 && !view.editingHome ? <GetStarted /> : null}
       <WidgetGrid widgets={snapshot.widgets} home={props.home} generation={props.generation} />
     </>

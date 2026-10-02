@@ -757,6 +757,27 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
   }
 });
 
+test('a full Home offers no widget to add, and says why, rather than drop its last', async () => {
+  const widgets = Array.from({ length: 30 }, (_, at) => ({ id: `tasks${at}`, kind: 'tasks', width: 'half', count: 3, query: 'is:open' }));
+  const { view, panel, preferences } = await openDashboard(createIndex(), async (store) => {
+    await store.homeWidgets.setDashboardWidgets(widgets);
+  });
+  const choices = view.posted.filter((message) => message.type === 'widgetChoices');
+  assert.deepStrictEqual(choices[choices.length - 1].choices, [], 'Related Notes is offered nothing to add');
+
+  view.click(view.find('[data-action="customize-home"]'));
+  assert.strictEqual(view.find('[data-action="add-widget"]').disabled, true);
+  assert.match(view.find('.home-edit-bar').textContent, /Home is full: it holds 30 widgets at most\. Remove one to add another\./);
+
+  // Related Notes may still ask, from a list it was sent before.
+  panel._deliver({ type: 'addWidget', value: 'stats' });
+  await delay(20);
+  assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setDashboardWidgets'), []);
+  assert.strictEqual(view.find('#live-status').textContent, 'Home is full: it holds 30 widgets at most. Remove one to add another.');
+  assert.strictEqual(preferences.reader.value.dashboardWidgets.length, 30);
+  assert.ok(view.find('.home-widget[data-widget-id="tasks29"]'), 'the last widget is still there');
+});
+
 test('Quick add takes no longer a task than the host adds', async () => {
   const { view, navigation } = await openDashboard(createIndex(), async (store) => {
     await store.homeWidgets.setDashboardWidgets([{ id: 'add', kind: 'quickAdd', width: 'full' }]);
