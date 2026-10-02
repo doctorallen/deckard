@@ -6,7 +6,12 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createDailyNote } from '../ui/commands/dailyNote';
-import { describeExtractFailure, extractHeadingNote } from '../ui/commands/extractHeading';
+import {
+  describeExtractFailure,
+  extractHeadingNote,
+  getSuggestedNoteName,
+  validateExtractedNoteName,
+} from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
@@ -572,6 +577,17 @@ suite('Source commands', () => {
       describeExtractFailure('half', 'remove', 'source.md', 'lead.md'),
       'Deckard wrote lead.md but could not remove the heading from source.md, so the heading is in both notes. source.md is open with the link in its place: save it to finish, or undo the change in it and delete lead.md.',
     );
+  });
+
+  test('suggests and accepts only a name its link can open', () => {
+    assert.ok(validateExtractedNoteName('Issue #42'), 'a # is refused');
+    assert.ok(validateExtractedNoteName('Plan [draft]'), 'brackets are refused');
+    assert.strictEqual(validateExtractedNoteName('Plan draft'), undefined);
+    for (const heading of ['Issue #42 follow-up', 'Plan [draft] ^p1', 'Q3: budget | costs']) {
+      const suggestion = getSuggestedNoteName(heading);
+      assert.strictEqual(validateExtractedNoteName(suggestion), undefined, `${heading} -> ${suggestion}`);
+    }
+    assert.strictEqual(getSuggestedNoteName('Plan [draft]'), 'Plan draft');
   });
 
   test('rejects unsafe extraction names and preserves conflicts', async () => {

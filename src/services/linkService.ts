@@ -7,7 +7,7 @@ import {
   planNoteRenameRewrites,
   rewriteStillFits,
 } from '../domain/links/linkRewrites';
-import { getExtractedNoteFileName } from '../domain/markdown/noteNames';
+import { getExtractedNoteFileName, getLinkableNoteFileName } from '../domain/markdown/noteNames';
 import type { ParsedFile, Section, WorkspaceIndex } from '../domain/model';
 import type { FileSystem } from '../ports/fileSystem';
 import type { ResourceUri } from '../ports/uri';
@@ -400,7 +400,8 @@ export class LinkNoteService<U extends ResourceUri> {
     if (section.isInline) {
       return { kind: 'refused', reason: 'inline' };
     }
-    const fileName = getExtractedNoteFileName(extraction.name);
+    // The link left behind must open the note, so its name holds nothing a link reads as syntax.
+    const fileName = getLinkableNoteFileName(extraction.name);
     if (!fileName) {
       return { kind: 'refused', reason: 'invalid-name' };
     }
