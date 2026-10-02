@@ -315,6 +315,26 @@ suite('Notes Graph behavior', () => {
     );
   });
 
+  test('taking Undo, or the offer running out while Undo has focus, puts the focus back on Reset graph', () => {
+    const page = open();
+    // The page's timers, run when the test says.
+    const timers: Array<() => void> = [];
+    (page.window as unknown as { setTimeout: (run: () => void) => number }).setTimeout = (run) => timers.push(run);
+    /** What has the focus, by its id or its words: elements themselves are too big for an assertion to print. */
+    const focused = () => page.document.activeElement?.id || page.document.activeElement?.textContent;
+    (page.find('#reset-graph-settings') as HTMLElement).focus();
+    page.click('#reset-graph-settings');
+    assert.strictEqual(focused(), 'Undo');
+    page.click('[data-action="undo-graph-reset"]');
+    assert.strictEqual(focused(), 'reset-graph-settings', 'Undo taken');
+
+    page.click('#reset-graph-settings');
+    assert.strictEqual(focused(), 'Undo');
+    timers.splice(0).forEach((run) => run());
+    assert.strictEqual(page.document.querySelector('[data-action="undo-graph-reset"]'), null, 'the offer ran out');
+    assert.strictEqual(focused(), 'reset-graph-settings', 'the offer ran out');
+  });
+
   suite('edge kinds', () => {
     const openCanvas = (): WebviewPage => {
       page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });

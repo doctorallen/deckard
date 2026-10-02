@@ -482,14 +482,21 @@ const RESTORED_MS = 3000;
 
 /**
  * Withdraws Reset's offer of Undo, or the word that it was taken, and draws
- * the controls without it unless `draw` is false.
+ * the controls without it unless `draw` is false. Undo, taken or run out
+ * while it has the focus, would leave the focus nowhere when it goes, so
+ * the focus goes back to Reset graph, where the reset was asked for.
  */
 export function clearResetUndo(page: GraphPage, draw = true): void {
   window.clearTimeout(page.resetUndoTimer);
   page.resetSnapshot = null;
   page.ui = { ...page.ui, resetUndo: 'none' };
-  if (draw) {
-    page.redraw();
+  if (!draw) {
+    return;
+  }
+  const hadFocus = (page.refs.resetUndo.current as HTMLElement).contains(document.activeElement);
+  page.redraw();
+  if (hadFocus) {
+    (document.getElementById('reset-graph-settings') as HTMLElement).focus();
   }
 }
 
