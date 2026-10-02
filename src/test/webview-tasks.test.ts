@@ -144,6 +144,9 @@ suite('The shared task parts draw what the template script drew', () => {
       ['due and stale', listed('Pay rent', {}, { dueLabel: 'Was due 2026-06-01', stale: true })],
       ['due, on time', listed('Pay rent', {}, { dueLabel: 'Due tomorrow · 2026-09-22' })],
       ['due as written', listed('Pay rent', { dueText: 'next week' })],
+      // The template named the checkbox by the title's Markdown, "Toggle
+      // Plan **the trip**"; its recording was corrected to the words a
+      // reader sees when the row was fixed.
       ['scheduled, priority, repeat, steps', listed('Plan **the trip**', { scheduledAt: dated, priority: 'high', recurrence: 'every week' }, { stepsLabel: '2 of 5 steps · next: Book' })],
       ['parked, with a heading path', listed('Tidy', {}, { parked: true, headingPath: ['Atlas', 'Actions', 'Tidy'] })],
       ['a path whose first step is the file', listed('Tidy', {}, { headingPath: ['atlas', 'Actions'] })],

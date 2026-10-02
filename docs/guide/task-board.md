@@ -16,7 +16,7 @@ Run `Deckard: Open Task Board`, or select the board icon in the title bar of the
 
 - Search with the same [search box](search.md#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks. The board opens on `is:open`; clear the box for every task, or search `is:done`.
 - **Can start now** narrows to `is:available`, leaving out tasks that are blocked, not started, or waiting or someday. Press it again for `is:open`.
-- **Save** keeps the search as a saved search that reopens on the board. **List in Tasks view**, in the gear, makes the [Tasks view](tasks.md#tasks-view) list it; select it again to list every open task.
+- **Save** keeps the search in the box, whether or not Enter has run it, as a saved search that reopens on the board. **List in Tasks view**, in the gear, makes the [Tasks view](tasks.md#tasks-view) list it; select it again to list every open task.
 
 ## Cards and columns
 
@@ -41,7 +41,7 @@ The board is one Tab stop. Arrow keys move between cards and columns. On a focus
 - **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words.
 - **1** to **5** set priority; **0** clears it.
 - **[** and **]** move it to the adjacent column.
-- **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line.
+- **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.
 - **?** lists the keys.
 
 ### Contexts, areas, and projects

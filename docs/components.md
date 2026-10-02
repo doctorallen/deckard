@@ -130,7 +130,7 @@ named for what it draws:
 | `taskTitle.tsx` | `<TaskTitle tokens tags>`: a task's title from its `titleTokens`, its tags as controls where they are written |
 | `queryEditor.tsx`, `queryText.ts`, `facets.tsx` | The search box (**The search box** below); query text and the builder's tree, with no page in it; and Refine's values, `<FacetValue>`, `facetValuesShown`, `FACET_VISIBLE`, and the weight rail, `<WeightRail level title>` with `getWeightLevel(weight)`: three steps, three from 0.75, two from 0.375 |
 | `tagMenu.tsx` | `openTagContextMenu(event, target)`, Rename tag and Park tag, or Unpark tag on a tag `setParkedTags(keys)` lists; `openContextMenu(event, items)`, whatever a page offers at the pointer; `closeTagContextMenu()` and `tagContextKey()`. A page passes the host's `parkedTags` to `setParkedTags` with each state |
-| `menuKeys.ts` | `installMenuKeys()`: the menu key, Shift+F10, and Alt+Enter raise a `contextmenu` on the focused tag, card, or row, so no menu needs its own keyboard path; `returnFocusFromMenu()` |
+| `menuKeys.ts` | `installMenuKeys()`: the menu key, Shift+F10, and Alt+Enter raise a `contextmenu` on the focused tag, card, list row, or table row, so no menu needs its own keyboard path; `returnFocusFromMenu()` |
 | `actionMenu.tsx` | `openActionMenu(opener, groups, onChoose)` and `closeActionMenu()`: the menu a card's ⋯ opens (**Popovers and menus** below) |
 | `rankedRows.tsx` | `installRankedRows(options)` (**Task list** below), `closeRankMenu()`, `<ContextMenuItem action label>`, `rankKeys`, and `moveKeyToEdge` |
 | `searchCard.tsx`, `blockExcerpt.tsx` | `<SearchCard card position display opened>`, a note a search found; `<NoteBody rawContent blocks renderMode>`, a body drawn from its block tokens or as its source in a `<pre>`; `<BlockExcerpt blocks>` |
@@ -442,9 +442,13 @@ whose items say `checked` (true or false) is a single choice: its rows are
 `menuitemradio` with `aria-checked`, and every row in the menu keeps a
 `.menu-check` column so labels align. `key` draws a `.menu-key` and sets
 `aria-keyshortcuts`, and the key chooses the row while the menu is open.
-Focus opens on the first checked row. A board card's menu checks the task's
-own status, priority, and due choice from `TaskBoardCard.current`, and
-choosing a checked row posts nothing and says "…is already…".
+Focus opens on the first checked row. The menu takes its keys only while
+focus is in it: Tab closes it and moves on from its control, and focus
+moving anywhere else closes it where focus went. A board card's menu checks
+the task's own status, priority, and due choice from
+`TaskBoardCard.current`, and choosing a checked row posts nothing and says
+"…is already…"; so does a card's key for the same choice. A move the page
+shows at once takes the card's menu with it, the new choice checked.
 
 **The stacking order** is a token scale, and a rule never writes a number:
 
@@ -583,11 +587,11 @@ without their cards.
 | `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
 | `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
 | `.board-steps` | A card whose task has steps: one `.source` line under the details, `.board-steps-label` (`2 of 5 steps`) then `.board-steps-next` (` · next: Draft the email`); the line is one line with an ellipsis, so in a narrow column the next step gives way first. Host-worded by `describeStepParts()` in `domain/markdown/taskSteps.ts` as `card.steps`; the card's `aria-label` gains the label. Muted like the details, so no color of its own. |
-| `<TaskBoard snapshot isVisible>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. `isVisible` hides cards the page filters locally. |
+| `<TaskBoard snapshot>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. Words typed in the search box hide the cards, list rows, and table rows that do not show every word, file and line included, as they are typed and after every draw; `followShownCards()` (`boardMoves.ts`) then counts each column again from the cards left, and moves the Tab stop to the first of them when the words hid it. |
 | `<GroupSwitch snapshot>` (`board.tsx`) | The Status / Priority / Due date / Person / Tag… `.segmented` switch. **Tag…** (`data-action="pick-board-namespace"`) opens a menu of the namespaces open tasks carry and, grouped by one, reads `#context`, pressed; with none in use it is `aria-disabled` and says why. |
-| `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys, its move menu, its checkbox, opening it, dragging it between columns, and the group switch's Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
+| `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys (Enter opens it, Ctrl or Cmd+Enter beside the board), its move menu, its checkbox, opening it, dragging it between columns (a card's drag carries `application/x-deckard-card`, and a column takes no other drag; any drop or new drag lets go of a card a redraw cut short), and the group switch's Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
 | `.board-card` on screen | A card off screen takes `content-visibility: auto` (`contain-intrinsic-size: auto 72px`), so a long column lays out only what shows. A hovered, focused, or dragged card is left out, since the paint containment would clip the file-and-line it carries down; the layout suite's "nothing clipped" check on a hovered card proves it. An open column draws its first 100 cards (`columnLimit`), Done its 20; `showColumnRest` with a column id adds it to the host's `shownColumns` until the grouping or the search changes. |
-| `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." |
+| `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). `x` or the checkbox marks the card `completed` at once the same way, so a second `x` reopens it. A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." A completion or reopening it could not write, from a card, a row, or the table, is followed by `toggleRefused`, said as "… was not completed." or "… was not reopened." |
 
 The card menu ends with a **Note** group holding **Move to…** (`move-to`),
 which posts `{ type: 'moveTaskTo', taskId }`; the host runs Move to… on the
@@ -858,11 +862,15 @@ first button in its row, and it is never filled at rest.
 | Reset graph | Acts at once, with **Graph reset.** and **Undo**. |
 
 `<UndoNotice message action buttonClass>` draws the `.undo-notice` line;
-`createUndoNotice(redraw)` keeps one offer at a time, drawn in its own
-`#undo-toast` layer of the body: `show(message, action, payload)` draws it
-and moves focus to Undo, `take()` hands back the payload and withdraws it,
-and `clear()` withdraws it. The offer lapses after 8 seconds or at the next
-removal. Both are in `shared/undoToast.tsx`.
+`createUndoNotice(redraw, returnFocus)` keeps one offer at a time, drawn in
+its own `#undo-toast` layer of the body: `show(message, action, payload)`
+draws it and moves focus to Undo, `take()` hands back the payload and
+withdraws it, and `clear()` withdraws it. The offer lapses after 8 seconds
+or at the next removal. Withdrawn with focus on Undo, it gives focus back
+to where the removal was made, found as a redraw finds it, again once the
+page has drawn what Undo put back; when that is gone, to what
+`returnFocus(payload)` names, such as the board's status column now where
+the removed one was. Both are in `shared/undoToast.tsx`.
 
 ### Messages
 

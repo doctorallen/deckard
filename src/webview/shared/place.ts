@@ -5,9 +5,10 @@
  * the page itself: tick a card's checkbox, or move it from its menu, and the
  * next Tab started again from the top. What had focus is found again by
  * what it is about (a task, a tag, a widget) and what it does; failing
- * that, the entry it was in; failing that, the entry that took its place in
- * the list, so completing a task leaves focus on the next. An element the
- * redraw kept keeps its focus, and is left alone.
+ * that, the entry it was in; failing that, the entry written where it was
+ * written, since an edit gives a task a new id; failing that, the entry
+ * that took its place in the list, so completing a task leaves focus on the
+ * next. An element the redraw kept keeps its focus, and is left alone.
  */
 
 /** The data attributes that say what a focused element is about and does, in the order a selector names them. */
@@ -27,6 +28,11 @@ export interface Place {
   itemKind?: string;
   /** The entry's own place keys, as a selector. */
   item?: string;
+  /**
+   * Where the entry is written, its file and line, and the column it is
+   * drawn in, if it says: what finds a task an edit gave a new id.
+   */
+  where?: { readonly written: string; readonly column: string };
   /** Whether the focused element was inside the entry rather than the entry itself. */
   inItem?: boolean;
   /** The entry's position among the entries of its kind. */
@@ -67,6 +73,26 @@ function readItem(active: HTMLElement): Pick<Place, 'itemKind' | 'item' | 'inIte
     item: placeSelector(item),
     inItem: item !== active,
     index: Array.prototype.indexOf.call(document.querySelectorAll(itemKind[1]), item),
+    ...readWhere(item),
+  };
+}
+
+/** An attribute selector for one data attribute, its value escaped. */
+function attributeSelector(name: string, value: string): string {
+  return `[data-${name}="${value.replace(/["\\]/g, '\\$&')}"]`;
+}
+
+/** Where an entry is written, when it says both its file and its line. */
+function readWhere(item: HTMLElement): Pick<Place, 'where'> {
+  const { filePath, line, cardColumn } = item.dataset;
+  if (filePath === undefined || line === undefined) {
+    return {};
+  }
+  return {
+    where: {
+      written: attributeSelector('file-path', filePath) + attributeSelector('line', line),
+      column: cardColumn === undefined ? '' : attributeSelector('card-column', cardColumn),
+    },
   };
 }
 
@@ -131,12 +157,25 @@ function findByWhat(place: Place, item: Element | null): HTMLElement | null {
 }
 
 /**
+ * The entry written where a place's entry was, in the same column first: a
+ * task with two tags of the namespace a board is grouped by is two cards.
+ */
+function findWritten(place: Place): Element | null {
+  if (!place.where || !place.itemKind) {
+    return null;
+  }
+  const { written, column } = place.where;
+  return (column ? document.querySelector(place.itemKind + written + column) : null) || document.querySelector(place.itemKind + written);
+}
+
+/**
  * The element a place names after a redraw: by what it was, the entry it
- * was in, or, failing both, the entry now at its index.
+ * was in, the entry written where that one was, or, failing all three, the
+ * entry now at its index.
  */
 function findPlace(place: Place): HTMLElement | null {
   const item = place.item ? document.querySelector(String(place.itemKind) + place.item) : null;
-  const target = findByWhat(place, item);
+  const target = findByWhat(place, item) || findByWhat(place, findWritten(place));
   if (target || !place.itemKind || place.index === undefined || place.index < 0) {
     return target;
   }

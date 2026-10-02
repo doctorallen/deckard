@@ -1,5 +1,5 @@
 import { Task } from '../model';
-import { isBoardNamespace } from './taskColumns';
+import { isBoardNamespace, isStatusColumnName } from './taskColumns';
 
 /**
  * How Deckard reads tasks, from settings.
@@ -44,6 +44,25 @@ export function readStatusNamespace(settings: { get<T>(key: string, defaultValue
   const value = settings.get<unknown>('board.statusNamespace', DEFAULT_TASK_POLICY.statusNamespace);
   const trimmed = typeof value === 'string' ? value.trim() : value;
   return isBoardNamespace(trimmed) ? trimmed.toLowerCase() : DEFAULT_TASK_POLICY.statusNamespace;
+}
+
+/** The status columns a board has when `deckard.board.statuses` says none. */
+const DEFAULT_BOARD_STATUSES: readonly string[] = ['todo', 'doing', 'waiting'];
+
+/**
+ * The board's status columns, from `deckard.board.statuses`, in order. The
+ * Task Board, the Dashboard's board, and a drop in the Tasks view read them
+ * here: the Tasks view used to read the list as it was written, with no
+ * columns when it was unset, while the board checked and lowercased each
+ * one and fell back on todo, doing, and waiting. A value that is not a
+ * list reads as those three, and a status that cannot be written as a tag
+ * is left out.
+ */
+export function readBoardStatuses(settings: { get<T>(key: string, defaultValue: T): T }): string[] {
+  const value = settings.get<unknown>('board.statuses', DEFAULT_BOARD_STATUSES);
+  return (Array.isArray(value) ? value : DEFAULT_BOARD_STATUSES)
+    .filter(isStatusColumnName)
+    .map((status) => status.toLowerCase());
 }
 
 /**

@@ -8,7 +8,7 @@ import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapsh
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { EllipsisIcon } from '../shared/strokeIcons';
-import { formatSourceLocation, HeadingPathSteps, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
+import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
 
@@ -130,7 +130,8 @@ interface CardProps {
 
 /** One task card, with its checkbox and the menu that edits it. */
 function BoardCard({ card, columnId, columns }: CardProps) {
-  const plainTitle = String(card.title || '');
+  // The title as it reads names the card and its controls, not its Markdown.
+  const title = plainTitle(card.titleTokens || []) || String(card.title || '');
   const fileName = String(card.filePath).split('/').pop() || card.filePath;
   // The file and line, then the headings above, fold under the card as they
   // do under a row.
@@ -139,7 +140,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // full otherwise: its title, its column, and when it is due.
   const columnLabel = columns.find((column) => column.id === columnId)?.label;
   const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
-  const cardName = [plainTitle, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
+  const cardName = [title, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
   // The board is one Tab stop: the card last focused, or the first. Arrow
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
@@ -156,7 +157,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       data-file-path={card.filePath}
       data-line={card.line}
     >
-      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${plainTitle}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
+      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${title}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
       <div class="task-summary">
         <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
         <CardDetails card={card} />
@@ -174,7 +175,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
           key="menu"
           action="board-menu"
           className="board-move"
-          label={`Change ${plainTitle}: status, priority, or due date`}
+          label={`Change ${title}: status, priority, or due date`}
           tip="Change this task"
           icon={<EllipsisIcon />}
           attributes={{ tabindex: '-1', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }}
@@ -184,7 +185,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   );
 }
 
-/** One column's draw: the column, its cards as shown, and the board's columns and settings. */
+/** One column's draw: the column, its cards, and the board's columns and settings. */
 interface ColumnProps {
   readonly column: TaskBoardColumn;
   readonly cards: readonly TaskBoardCard[];
@@ -194,8 +195,8 @@ interface ColumnProps {
 /** One column: its title and counts, + Add task, its cards, Show N more, and why it takes no card. */
 function BoardColumn({ column, cards, columns }: ColumnProps) {
   const count = cards.length + column.hiddenCount;
-  // Counted from the cards shown, so typed words that hide cards recount
-  // the overdue ones too. Done and Overdue itself need no such count.
+  // Done and Overdue itself need no count of the overdue. The page counts
+  // again from the cards typed words leave shown.
   const overdueCount = column.id === 'done' || column.id === 'due:overdue'
     ? 0
     : cards.filter((card) => card.overdue && !card.completed).length;
@@ -252,19 +253,18 @@ function StatusHint({ hint, namespace }: { readonly hint: { withoutStatus: numbe
 }
 
 /**
- * The board, from the host's columns. `isVisible` leaves out the cards the
- * words being typed hide. Drawing it makes each drawn card's menu, and
- * keeps the Tab stop on a card that is drawn.
+ * The board, from the host's columns. Drawing it makes each card's menu,
+ * and keeps the Tab stop on a card that is drawn; the page then hides the
+ * cards the words being typed leave out, and counts the columns again.
  */
-export function TaskBoard({ snapshot, isVisible }: { readonly snapshot: TaskBoardSnapshot; readonly isVisible: (card: TaskBoardCard) => boolean }) {
+export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   board.moves = {};
-  const shownBy = new Map(snapshot.columns.map((column) => [column, column.cards.filter(isVisible)]));
-  const shown = snapshot.columns.flatMap((column) => (shownBy.get(column) ?? []).map((card) => boardCardKey(column.id, card.taskId)));
-  if (board.tabStop === undefined || !shown.includes(board.tabStop)) {
-    board.tabStop = shown.length ? shown[0] : undefined;
+  const drawn = snapshot.columns.flatMap((column) => column.cards.map((card) => boardCardKey(column.id, card.taskId)));
+  if (board.tabStop === undefined || !drawn.includes(board.tabStop)) {
+    board.tabStop = drawn.length ? drawn[0] : undefined;
   }
   for (const column of snapshot.columns) {
-    for (const card of shownBy.get(column) ?? []) {
+    for (const card of column.cards) {
       board.moves[boardCardKey(column.id, card.taskId)] = taskCardMoves(card, column.id, snapshot.columns, snapshot.settings);
     }
   }
@@ -272,7 +272,7 @@ export function TaskBoard({ snapshot, isVisible }: { readonly snapshot: TaskBoar
     <>
       {snapshot.statusHint ? <StatusHint key="hint" hint={snapshot.statusHint} namespace={(snapshot.settings && snapshot.settings.statusNamespace) || 'status'} /> : null}
       <div key={`board-${board.generation}`} class="board task-board" aria-label="Task board">
-        {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={shownBy.get(column) ?? []} columns={snapshot.columns} />)}
+        {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={column.cards} columns={snapshot.columns} />)}
       </div>
     </>
   );

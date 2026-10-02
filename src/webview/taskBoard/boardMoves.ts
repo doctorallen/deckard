@@ -72,21 +72,98 @@ function recountColumn(column: HTMLElement | null): void {
   const limit = column.dataset.limit === undefined ? undefined : Number(column.dataset.limit);
   const described = describeBoardColumn(title ? String(title.textContent) : '', count, limit, overdue);
   const counter = column.querySelector('.board-count');
-  if (counter) {
+  // Written only when it changed, so the text the draw made stays the one
+  // the next draw updates.
+  if (counter && counter.textContent !== described.count) {
     counter.textContent = described.count;
   }
   column.setAttribute('aria-label', described.name);
   column.classList.toggle('over-limit', limit !== undefined && count > limit);
 }
 
+/** Where the board was scrolled across, and each of its columns down, by column. */
+export interface BoardScroll {
+  readonly left: number;
+  readonly columns: ReadonlyMap<string, number>;
+}
+
+/** Where the board and its columns are scrolled now, or undefined with no board drawn. */
+export function readBoardScroll(): BoardScroll | undefined {
+  const drawn = document.querySelector<HTMLElement>('.task-board');
+  if (!drawn) {
+    return undefined;
+  }
+  const columns = new Map<string, number>();
+  drawn.querySelectorAll<HTMLElement>('.board-column').forEach((column) => {
+    const cards = column.querySelector<HTMLElement>('.board-cards');
+    if (cards) {
+      columns.set(String(column.dataset.columnId), cards.scrollTop);
+    }
+  });
+  return { left: drawn.scrollLeft, columns };
+}
+
+/**
+ * Scrolls the board and each column it still draws back to where
+ * `readBoardScroll` found them. A move or a completion makes the board
+ * afresh, and a column made afresh starts at its top: moving a card far
+ * down a long column threw the reader back to its first card.
+ */
+export function restoreBoardScroll(scroll: BoardScroll | undefined): void {
+  const drawn = document.querySelector<HTMLElement>('.task-board');
+  if (!scroll || !drawn) {
+    return;
+  }
+  if (drawn.scrollLeft !== scroll.left) {
+    drawn.scrollLeft = scroll.left;
+  }
+  drawn.querySelectorAll<HTMLElement>('.board-column').forEach((column) => {
+    const cards = column.querySelector<HTMLElement>('.board-cards');
+    const top = scroll.columns.get(String(column.dataset.columnId));
+    if (cards && top !== undefined && cards.scrollTop !== top) {
+      cards.scrollTop = top;
+    }
+  });
+}
+
+/**
+ * Keeps the board with the cards the words being typed leave shown: each
+ * column counted again from them, and the Tab stop moved to the first of
+ * them when the words hid the card that held it.
+ */
+export function followShownCards(): void {
+  document.querySelectorAll<HTMLElement>('.task-board .board-column').forEach((column) => recountColumn(column));
+  const stop = document.querySelector<HTMLElement>('.task-board .board-card[tabindex="0"]');
+  const first = document.querySelector<HTMLElement>('.task-board .board-card:not([hidden])');
+  if ((stop && !stop.hidden) || !first) {
+    return;
+  }
+  stop?.setAttribute('tabindex', '-1');
+  first.setAttribute('tabindex', '0');
+  board.tabStop = cardKeyOf(first);
+}
+
+/**
+ * A card's menu once a move shows: the choice it moved to is checked in its
+ * group, as the host's next state will check it.
+ */
+function movedMenu(groups: readonly ActionMenuGroup[], value: string): ActionMenuGroup[] {
+  return groups.map((group) => (group.items.some((item) => item.value === value && item.checked !== undefined)
+    ? { ...group, items: group.items.map((item) => ({ ...item, checked: item.value === value })) }
+    : group));
+}
+
 /**
  * A move shows at once: the card goes to the top of its new column, both
  * counts change, and it is marked pending until the host's next state
  * replaces the board. A move to a column this grouping does not draw, such
- * as a priority on a status board, marks the card where it is.
+ * as a priority on a status board, marks the card where it is. Its menu
+ * goes with it, under the card's new key, so its ⋯ opens before the host
+ * answers.
  */
 function applyMove(card: HTMLElement, columnId: string): void {
   listsChanged();
+  const groups = board.moves[cardKeyOf(card)];
   const from = card.closest<HTMLElement>('.board-column');
   const to = Array.from(document.querySelectorAll<HTMLElement>('.task-board .board-column')).find((column) => column.dataset.columnId === columnId);
   if (to && to !== from) {
@@ -99,9 +176,23 @@ function applyMove(card: HTMLElement, columnId: string): void {
     recountColumn(from);
     recountColumn(to);
   }
+  if (groups) {
+    board.moves[cardKeyOf(card)] = movedMenu(groups, columnId);
+  }
   card.classList.add('is-pending');
   card.setAttribute('aria-busy', 'true');
   focusCard(card);
+}
+
+/**
+ * What a card's menu says when the task already has the move `value`
+ * makes, "Draft spec: Priority is already High.", or undefined when it
+ * does not.
+ */
+function alreadyHas(card: HTMLElement, groups: readonly ActionMenuGroup[], value: string): string | undefined {
+  const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
+  const chosen = group ? group.items.find((item) => item.value === value) : undefined;
+  return chosen && chosen.checked ? `${taskTitleOf(card)}: ${(group && group.label) || 'It'} is already ${chosen.label}.` : undefined;
 }
 
 /** The board's moves, wired once by `installBoardMoves`. */
@@ -112,23 +203,49 @@ class BoardMoves {
     this.options.post(message);
   }
 
-  private openCard(card: HTMLElement, event?: MouseEvent): void {
+  private openCard(card: HTMLElement, event?: MouseEvent | KeyboardEvent): void {
     this.post(openSourceMessage(card, event));
   }
 
+  /**
+   * Completes or reopens a card's task. The card says so at once, as a move
+   * does, so a second x before the host answers reopens it rather than
+   * completing it again.
+   */
   private completeCard(card: HTMLElement, completed: boolean): void {
     this.post({ type: 'toggleTask', taskId: String(card.dataset.taskId), completed });
-    announce(`${completed ? 'Completed ' : 'Reopened '}${taskTitleOf(card)}.`);
-    if (!(completed && !reducedMotion())) {
+    const title = taskTitleOf(card);
+    announce(`${completed ? 'Completed ' : 'Reopened '}${title}.`);
+    listsChanged();
+    card.classList.toggle('completed', completed);
+    const box = card.querySelector<HTMLInputElement>('[data-action="board-toggle-task"]');
+    if (box) {
+      box.checked = completed;
+      box.setAttribute('aria-label', `${completed ? 'Reopen ' : 'Complete '}${title}`);
+      box.setAttribute('data-tip', `${completed ? 'Reopen' : 'Complete'} this task`);
+    }
+    if (!completed) {
+      card.classList.remove('is-completing');
       return;
     }
-
-    listsChanged();
+    if (reducedMotion()) {
+      return;
+    }
     card.classList.add('is-completing');
     board.lingerUntil = Date.now() + 800;
   }
 
+  /**
+   * Moves a card from a key. A key that asks for what the card's menu says
+   * the task already has is answered as the menu answers it, rather than
+   * sent to the host to be refused as a move that was not made.
+   */
   private moveCard(card: HTMLElement, column: string, said: string): void {
+    const already = alreadyHas(card, board.moves[cardKeyOf(card)] || [], column);
+    if (already) {
+      announce(already);
+      return;
+    }
     const from = String(card.dataset.cardColumn);
     applyMove(card, column);
     this.post({ type: 'moveTask', taskId: String(card.dataset.taskId), column, from });
@@ -217,13 +334,14 @@ class BoardMoves {
       this.post({ type: 'breakIntoSteps', taskId });
       return;
     }
+    const already = alreadyHas(card, groups, value);
+    if (already) {
+      announce(already);
+      return;
+    }
     // Said as the menu said it: "Draft spec: Priority, High."
     const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
     const chosen = group ? group.items.find((item) => item.value === value) : undefined;
-    if (chosen && chosen.checked) {
-      announce(`${taskTitleOf(card)}: ${(group && group.label) || 'It'} is already ${chosen.label}.`);
-      return;
-    }
     const from = String(card.dataset.cardColumn);
     applyMove(card, value);
     this.post({ type: 'moveTask', taskId, column: value, from });
@@ -296,11 +414,16 @@ class BoardMoves {
   private onKeydown(event: KeyboardEvent): void {
     const target = event.target instanceof Element ? event.target : null;
     const card = target && target.matches('.task-board .board-card') ? (target as HTMLElement) : undefined;
-    if (!card || event.metaKey || event.ctrlKey || event.altKey) {
+    if (!card) {
       return;
     }
-    if (event.key === 'Enter') {
-      this.openCard(card);
+    // Enter opens the card as a click does, Ctrl or Cmd beside the board;
+    // Alt+Enter is its menu's.
+    if (event.key === 'Enter' && !event.altKey) {
+      this.openCard(card, event);
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) {
       return;
     }
     if (this.handleCardKey(event, card)) {
@@ -308,22 +431,26 @@ class BoardMoves {
     }
   }
 
-  /** The drop: the card dragged, not another copy of its task in another column, moves to the column. */
+  /**
+   * The drop: the card dragged, not another copy of its task in another
+   * column, moves to the column. Any drop ends the drag here, since the
+   * dragend the browser sends to the card it began on never arrives when a
+   * redraw took that card away.
+   */
   private onDrop(event: DragEvent): void {
     const column = dropColumn(event);
-    if (!column) {
-      return;
+    if (column) {
+      event.preventDefault();
+      const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
+        .find((candidate) => board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn);
+      if (card && card.closest('.board-column') !== column) {
+        const from = String(card.dataset.cardColumn);
+        applyMove(card, String(column.dataset.columnId));
+        this.post({ type: 'moveTask', taskId: String(board.dragId), column: String(column.dataset.columnId), from });
+        announce(`Moved ${taskTitleOf(card)} to ${columnTitle(column)}.`);
+      }
     }
-    event.preventDefault();
-    const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
-      .find((candidate) => board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn);
-    if (card && card.closest('.board-column') !== column) {
-      const from = String(card.dataset.cardColumn);
-      applyMove(card, String(column.dataset.columnId));
-      this.post({ type: 'moveTask', taskId: String(board.dragId), column: String(column.dataset.columnId), from });
-      announce(`Moved ${taskTitleOf(card)} to ${columnTitle(column)}.`);
-    }
-    clearDropTargets();
+    endDrag();
   }
 
   public listen(): void {
@@ -365,21 +492,43 @@ class BoardMoves {
   }
 }
 
+/**
+ * The type a card's drag carries, besides its plain text, which tells the
+ * columns it is a card: words dragged from a note carry plain text too.
+ */
+const CARD_DRAG_TYPE = 'application/x-deckard-card';
+
+/** Whether a drag is a card's, by the type its card put on it. */
+function carriesCard(event: DragEvent): boolean {
+  return Boolean(event.dataTransfer && Array.from(event.dataTransfer.types).includes(CARD_DRAG_TYPE));
+}
+
 /** The column under a drag that takes the card being dragged. */
 function dropColumn(event: DragEvent): HTMLElement | undefined {
   const target = event.target instanceof Element ? event.target : null;
   const column = target ? target.closest<HTMLElement>('.task-board .board-column') : null;
-  return column && board.dragId && column.dataset.droppable === 'true' ? column : undefined;
+  return column && board.dragId && carriesCard(event) && column.dataset.droppable === 'true' ? column : undefined;
 }
 
 function clearDropTargets(): void {
   document.querySelectorAll('.board-column.drop-target').forEach((column) => column.classList.remove('drop-target'));
 }
 
+/** Lets go of the card being dragged, if any: its marks, the columns', and which card it was. */
+function endDrag(): void {
+  document.querySelectorAll('.task-board .board-card.dragging').forEach((card) => card.classList.remove('dragging'));
+  document.querySelectorAll('.task-board.is-dragging-card').forEach((element) => element.classList.remove('is-dragging-card'));
+  clearDropTargets();
+  board.dragId = undefined;
+  board.dragColumn = undefined;
+}
+
 /** A card picked up, carried over the columns, and put down; the drop itself is the board's. */
 function listenForDrags(): void {
   document.addEventListener('dragstart', (event) => {
     const card = boardCard(event.target);
+    // A drag of anything else lets go of a card a cut-short drag left held.
+    endDrag();
     if (!card) {
       return;
     }
@@ -394,14 +543,12 @@ function listenForDrags(): void {
     }
 
     event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(CARD_DRAG_TYPE, String(board.dragId));
     event.dataTransfer.setData('text/plain', String(board.dragId));
   });
   document.addEventListener('dragend', (event) => {
     boardCard(event.target)?.classList.remove('dragging');
-    document.querySelectorAll('.task-board.is-dragging-card').forEach((element) => element.classList.remove('is-dragging-card'));
-    clearDropTargets();
-    board.dragId = undefined;
-    board.dragColumn = undefined;
+    endDrag();
   });
   document.addEventListener('dragover', (event) => {
     const column = dropColumn(event);

@@ -5,6 +5,7 @@
  */
 import type { ComponentChildren } from 'preact';
 
+import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { TaskTitle } from './taskTitle';
 
@@ -41,6 +42,30 @@ export function PriorityBadge({ priority }: { readonly priority: unknown }) {
  */
 export function ParkedLabel() {
   return <span class="parked-label" title="Parked: left out of the Tasks view, the Task board, and Related Notes.">Parked</span>;
+}
+
+/**
+ * A title's tokens as the words a reader sees, with no Markdown in them:
+ * what a control that acts on the task is named by. A screen reader read
+ * "Toggle Send **the** [proposal](https://…)" before.
+ */
+export function plainTitle(tokens: readonly InlineToken[]): string {
+  const words = (run: readonly InlineToken[]): string => run.map((token) => {
+    switch (token.kind) {
+      case 'text':
+      case 'wikiLink':
+      case 'code':
+        return token.text;
+      case 'break':
+        return ' ';
+      case 'link':
+      case 'strong':
+      case 'em':
+      case 'del':
+        return words(token.children);
+    }
+  }).join('');
+  return words(tokens).replace(/\s+/g, ' ').trim();
 }
 
 /** A task timestamp as the YYYY-MM-DD form the note uses, in local time. */
@@ -174,7 +199,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
   return (
     <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
       {leading === undefined
-        ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${task.title}`} />
+        ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${plainTitle(item.titleTokens) || task.title}`} />
         : leading}
       <div>
         <div key={item.task.title} class="task-title">

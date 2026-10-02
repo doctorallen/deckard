@@ -34,6 +34,40 @@ suite('Task Board page', () => {
     return { page, taskId: board.columns[0].cards[0].taskId };
   };
 
+  /** The board the host would send for these notes, laid out as `layout` says. */
+  const boardOf = (files: Record<string, string>, layout: Record<string, unknown> = {}, query = '') => {
+    const index = buildWorkspaceIndex(new Map(Object.entries(files).map(([path, text]) => [path, parseMarkdown(path, text)])));
+    const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    try {
+      return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board', ...layout } as never, search: { query }, options, tagTitleDisplayMode: 'inline' });
+    } finally {
+      preferences.repository.dispose();
+    }
+  };
+
+  /** The page, drawing `board`. */
+  const show = (board: unknown): WebviewPage => {
+    page = openWebviewPage(renderPage('taskBoard'), board);
+    return page;
+  };
+
+  /** A key pressed on `target`, as a reader presses it; the event, to read what the page did with it. */
+  const press = (shown: WebviewPage, target: Element, key: string, init: KeyboardEventInit = {}): KeyboardEvent => {
+    const event = new shown.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  /** A card on the page, by the words its title starts with. */
+  const cardTitled = (shown: WebviewPage, title: string): HTMLElement => {
+    const card = shown.findAll('.board-card').find((candidate) => candidate.querySelector('.task-title')?.textContent?.startsWith(title));
+    assert.ok(card, `a card titled ${title}`);
+    return card as HTMLElement;
+  };
+
+  /** Two tasks in one note: Alpha has a status, and Beta has none. */
+  const TWO = { 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta\n' };
+
   test('a column header counts its cards against its limit, and its overdue ones', () => {
     const lines = Array.from({ length: 5 }, (_, number) => `- [ ] Task ${number} #status/doing 📅 2026-09-0${number + 1}`);
     const index = buildWorkspaceIndex(
@@ -243,5 +277,261 @@ suite('Task Board page', () => {
     const { page } = open();
     page.find('.board-card .task-title').dispatchEvent(new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
     assert.strictEqual((page.find('#action-menu') as HTMLElement).hidden, false);
+  });
+
+  test('a card\'s menu closes when Tab or focus leaves it, and keys typed elsewhere stay there', () => {
+    const shown = show(boardOf(TWO));
+    const menu = () => shown.find('#action-menu') as HTMLElement;
+    shown.click('.board-card [data-action="board-menu"]');
+    press(shown, shown.document.activeElement as Element, 'Tab');
+    assert.strictEqual(menu().hidden, true, 'Tab closes the menu');
+
+    shown.click('.board-card [data-action="board-menu"]');
+    assert.strictEqual(menu().hidden, false);
+    const box = shown.find('[data-action="query-input"]') as HTMLInputElement;
+    box.focus();
+    assert.strictEqual(menu().hidden, true, 'focus moving to the search box closes the menu');
+    assert.strictEqual(shown.document.activeElement, box, 'and stays where it went');
+    press(shown, box, 't');
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'a t typed in the search box moves no task');
+  });
+
+  test('after the host confirms a key edit, focus and the next key stay on the task that was edited', () => {
+    const shown = show(boardOf(TWO));
+    cardTitled(shown, 'Beta').focus();
+    press(shown, cardTitled(shown, 'Beta'), ']');
+    // The edit rewrites the task's line, which gives it a new id.
+    const moved = boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n' });
+    shown.send(moved);
+    assert.strictEqual(shown.document.activeElement, cardTitled(shown, 'Beta'), 'focus is on Beta, not the card at its old place');
+    press(shown, shown.document.activeElement as Element, ']');
+    const beta = moved.columns.flatMap((column) => column.cards).find((card) => card.title === 'Beta');
+    assert.strictEqual(shown.lastPosted('moveTask')?.taskId, beta?.taskId, 'the next ] moves Beta');
+
+    // A priority sorts the column again, and focus follows the task.
+    shown.dispose();
+    const sorted = show(boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n' }));
+    cardTitled(sorted, 'Beta').focus();
+    press(sorted, cardTitled(sorted, 'Beta'), '1');
+    sorted.send(boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo 🔺\n' }));
+    assert.strictEqual(sorted.document.activeElement, cardTitled(sorted, 'Beta'));
+  });
+
+  test('a drag cut short by a redraw is let go, and only a card\'s drag is taken by a column', () => {
+    const board = boardOf(TWO);
+    const shown = show(board);
+    /** A drag event at `target`, carrying `transfer` as the browser's data would. */
+    const drag = (type: string, target: Element, transfer: { types: string[] }): Event => {
+      const event = new shown.window.Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: transfer });
+      target.dispatchEvent(event);
+      return event;
+    };
+    const cardDrag = { types: [] as string[], effectAllowed: '', dropEffect: '', setData(type: string) { this.types.push(type); } };
+    const doing = () => shown.find('.board-column[data-column-id="status:doing"]');
+    const beta = cardTitled(shown, 'Beta');
+    drag('dragstart', beta, cardDrag);
+    shown.send(board);
+    // The browser ends the drag at the card it began on, which the redraw took away.
+    drag('dragend', beta, cardDrag);
+
+    const text = { types: ['text/plain'], dropEffect: '' };
+    assert.strictEqual(drag('dragover', doing(), text).defaultPrevented, false, 'a column does not offer to take dragged words');
+    drag('drop', doing(), text);
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'and dropping them moves no card');
+
+    const alpha = { types: [] as string[], effectAllowed: '', dropEffect: '', setData(type: string) { this.types.push(type); } };
+    drag('dragstart', cardTitled(shown, 'Alpha'), alpha);
+    assert.strictEqual(drag('dragover', doing(), alpha).defaultPrevented, true, 'a column takes a card');
+    drag('drop', doing(), alpha);
+    assert.strictEqual(shown.lastPosted('moveTask')?.column, 'status:doing', 'and the card dropped there moves');
+    assert.strictEqual(shown.findAll('.task-board.is-dragging-card, .board-column.drop-target, .board-card.dragging').length, 0, 'nothing is left marked as dragged');
+  });
+
+  test('x pressed twice before the host answers completes the card, then reopens it', () => {
+    const shown = show(boardOf(TWO));
+    const beta = cardTitled(shown, 'Beta');
+    beta.focus();
+    press(shown, beta, 'x');
+    assert.ok(beta.classList.contains('completed'), 'the card shows it is done at once');
+    assert.strictEqual((beta.querySelector('[data-action="board-toggle-task"]') as HTMLInputElement).checked, true, 'and so does its box');
+    press(shown, beta, 'x');
+    assert.deepStrictEqual(shown.posted.filter((message) => message.type === 'toggleTask').map((message) => message.completed), [true, false]);
+    assert.strictEqual(shown.text('#live-status'), 'Reopened Beta.');
+  });
+
+  test('a key that asks for what a card already has says so, and sends nothing', () => {
+    const shown = show(boardOf({ 'notes/a.md': '- [ ] Gamma 📅 2026-09-21\n- [ ] Delta 🔺\n' }));
+    const gamma = cardTitled(shown, 'Gamma');
+    gamma.focus();
+    press(shown, gamma, 't');
+    assert.strictEqual(shown.text('#live-status'), 'Gamma: Due is already Due today.');
+    const delta = cardTitled(shown, 'Delta');
+    delta.focus();
+    press(shown, delta, '1');
+    assert.strictEqual(shown.text('#live-status'), 'Delta: Priority is already Highest.');
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'neither is sent to be refused');
+  });
+
+  test('a card moved at once opens its menu before the host answers, checked where it went', () => {
+    const shown = show(boardOf(TWO));
+    const beta = cardTitled(shown, 'Beta');
+    beta.focus();
+    press(shown, beta, ']');
+    (beta.querySelector('[data-action="board-menu"]') as HTMLElement).click();
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'the menu opens');
+    assert.deepStrictEqual(
+      shown.findAll('#action-menu [aria-checked="true"]').map((item) => item.getAttribute('data-menu-value')),
+      ['status:todo', 'priority:', 'due:'],
+    );
+  });
+
+  test('a completion the host could not write is said, as a move it could not write is', () => {
+    const shown = show(boardOf(TWO));
+    const beta = cardTitled(shown, 'Beta');
+    beta.focus();
+    press(shown, beta, 'x');
+    shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'toggleRefused', taskId: beta.dataset.taskId, completed: true } }));
+    assert.strictEqual(shown.text('#live-status'), 'Beta was not completed.');
+  });
+
+  test('words typed in the box narrow every layout by what each entry shows, and the board recounts', () => {
+    /** Types `words` into the search box without running them. */
+    const type = (shown: WebviewPage, words: string): void => {
+      const box = shown.find('[data-action="query-input"]') as HTMLInputElement;
+      box.focus();
+      box.value = words;
+      box.dispatchEvent(new shown.window.Event('input', { bubbles: true }));
+    };
+    const shownCards = (shown: WebviewPage) => shown.findAll('.board-card').filter((card) => !(card as HTMLElement).hidden);
+    const files = { 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n', 'notes/atlas.md': '- [ ] Send the proposal #status/doing\n' };
+    const board = boardOf(files);
+    const shown = show(board);
+    type(shown, 'beta');
+    assert.deepStrictEqual(shownCards(shown).map((card) => card.querySelector('.task-title')?.textContent), ['Beta']);
+    assert.strictEqual(shown.find('.board-column[data-column-id="status:todo"] .board-count').textContent, '1', 'the column counts what the words leave');
+    assert.match(shown.find('.board-column[data-column-id="status:todo"]').getAttribute('aria-label') ?? '', /^Todo, 1 task/);
+    assert.deepStrictEqual(shownCards(shown).map((card) => card.getAttribute('tabindex')), ['0'], 'a card the words leave is the Tab stop');
+
+    // A card shown by its file's name is still shown once the board is drawn again.
+    type(shown, 'atlas');
+    shown.send(board);
+    assert.deepStrictEqual(shownCards(shown).map((card) => card.querySelector('.task-title')?.textContent), ['Send the proposal']);
+    shown.dispose();
+
+    const table = show(boardOf(files, { taskBoardLayout: 'table' }));
+    type(table, 'beta');
+    assert.strictEqual(table.findAll('.result-row').filter((row) => !(row as HTMLElement).hidden).length, 1, 'the table narrows as the list does');
+  });
+
+  test('the board drawn again after a move keeps where each column and the board were scrolled', () => {
+    const lines = Array.from({ length: 40 }, (_, number) => `- [ ] Task ${number} #status/doing`);
+    const files = { 'notes/a.md': `${lines.join('\n')}\n- [ ] Lone #status/todo\n` };
+    const shown = show(boardOf(files));
+    const cards = () => shown.find('.board-column[data-column-id="status:doing"] .board-cards');
+    cards().scrollTop = 300;
+    shown.find('.task-board').scrollLeft = 120;
+    const card = cardTitled(shown, 'Task 30');
+    card.focus();
+    press(shown, card, '2');
+    shown.send(boardOf({ 'notes/a.md': files['notes/a.md'].replace('Task 30 #status/doing', 'Task 30 #status/doing ⏫') }));
+    assert.strictEqual(cards().scrollTop, 300, 'the Doing column is where it was, not back at its top');
+    assert.strictEqual(shown.find('.task-board').scrollLeft, 120);
+  });
+
+  test('Alt+Enter on a list row opens its menu and leaves its note closed', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'created' }));
+    const row = shown.find('.task-list .task-row') as HTMLElement;
+    row.focus();
+    press(shown, row, 'Enter', { altKey: true });
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'the menu opens');
+    assert.strictEqual(shown.lastPosted('openSource'), undefined, 'and the note does not');
+  });
+
+  test('a right-click on a ranked list row opens one menu', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'rank' }));
+    const title = shown.find('.task-list .task-row .task-title');
+    title.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    const open = ['rank-context-menu', 'action-menu'].filter((id) => {
+      const menu = shown.document.getElementById(id);
+      return menu !== null && !menu.hidden;
+    });
+    assert.strictEqual(open.length, 1, `open: ${open.join(', ')}`);
+  });
+
+  test('Shift+F10 and the menu key on a table row open its menu, as a right-click does', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+    const row = shown.find('.result-row') as HTMLElement;
+    row.focus();
+    press(shown, row, 'F10', { shiftKey: true });
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'Shift+F10 opens it');
+    press(shown, shown.document.activeElement as Element, 'Escape');
+    press(shown, row, 'ContextMenu');
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'so does the menu key');
+  });
+
+  test('Ctrl+Enter or Cmd+Enter on a card opens it beside, as a click with either does', () => {
+    const shown = show(boardOf(TWO));
+    const card = cardTitled(shown, 'Alpha');
+    card.focus();
+    press(shown, card, 'Enter', { ctrlKey: true });
+    assert.strictEqual(shown.lastPosted('openSource')?.beside, true);
+    shown.posted.length = 0;
+    press(shown, card, 'Enter', { metaKey: true });
+    assert.strictEqual(shown.lastPosted('openSource')?.beside, true);
+    shown.posted.length = 0;
+    press(shown, card, 'Enter');
+    assert.deepStrictEqual(shown.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'Enter alone opens it in place');
+  });
+
+  test('focus on Undo goes back to the status columns when Undo is taken or withdrawn', () => {
+    const files = { 'notes/a.md': '- [ ] Alpha #status/todo\n' };
+    const withStatuses = (statuses: string[]) => {
+      const index = buildWorkspaceIndex(new Map(Object.entries(files).map(([path, text]) => [path, parseMarkdown(path, text)])));
+      const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      try {
+        return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options: { ...options, statuses }, tagTitleDisplayMode: 'inline' });
+      } finally {
+        preferences.repository.dispose();
+      }
+    };
+    const shown = show(withStatuses(['todo', 'doing']));
+    // The page's timers are held, so the offer's end can be run when the test says.
+    const timers: (() => void)[] = [];
+    shown.window.setTimeout = ((callback: () => void) => timers.push(callback)) as never;
+    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
+    const undo = () => shown.find('.undo-notice [data-action="undo-remove-status"]') as HTMLElement;
+    /** Removes the Doing column with its ×, which a click focuses first, as the browser's does. */
+    const removeDoing = (): void => {
+      const remove = shown.find('[data-action="remove-status"][data-status="doing"]') as HTMLElement;
+      remove.focus();
+      remove.click();
+    };
+
+    removeDoing();
+    assert.strictEqual(shown.document.activeElement, undo(), 'focus is on Undo');
+    undo().click();
+    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="remove-status"][data-status="doing"]'), 'taken, it goes back to the column\'s remove button');
+
+    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
+    removeDoing();
+    shown.send(withStatuses(['todo']));
+    assert.strictEqual(shown.document.activeElement, undo());
+    timers.splice(0).forEach((run) => run());
+    assert.strictEqual(shown.findAll('.undo-notice').length, 0, 'the offer is withdrawn');
+    assert.strictEqual(shown.document.activeElement, shown.find('.board-status[data-status="todo"]'), 'withdrawn, it goes to the status column where the removed one was');
+  });
+
+  test('a list row\'s and a card\'s controls are named by the title as it reads, not its Markdown', () => {
+    const files = { 'notes/a.md': '- [ ] Send **the** [proposal](https://x.example/p) #status/todo\n' };
+    const list = show(boardOf(files, { taskBoardLayout: 'list' }));
+    assert.strictEqual(list.find('.task-row [data-action="task-row-menu"]').getAttribute('aria-label'), 'Change Send the proposal #status/todo: status, priority, or due date');
+    assert.strictEqual(list.find('.task-row [data-action="toggle-task"]').getAttribute('aria-label'), 'Toggle Send the proposal #status/todo');
+    list.dispose();
+
+    const cards = show(boardOf(files));
+    assert.strictEqual(cards.find('.board-card [data-action="board-menu"]').getAttribute('aria-label'), 'Change Send the proposal: status, priority, or due date');
+    assert.strictEqual(cards.find('.board-card [data-action="board-toggle-task"]').getAttribute('aria-label'), 'Complete Send the proposal');
+    assert.match(cards.find('.board-card').getAttribute('aria-label') ?? '', /^Send the proposal, Todo/);
   });
 });

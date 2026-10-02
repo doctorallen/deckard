@@ -323,4 +323,17 @@ suite('Task Board host', () => {
       board.dispose();
     }
   });
+
+  test('a completion it cannot write is refused, then the board is redrawn', async () => {
+    const board = openBoard();
+    try {
+      await board.send({ type: 'toggleTask', taskId: 'gone', completed: true });
+      assert.deepStrictEqual(
+        board.surface.webview.posted.map((message) => ((message as { type: string }).type === 'state' ? 'state' : message)),
+        [{ type: 'toggleRefused', taskId: 'gone', completed: true }, 'state'],
+      );
+    } finally {
+      board.dispose();
+    }
+  });
 });

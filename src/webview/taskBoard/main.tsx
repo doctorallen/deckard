@@ -6,7 +6,7 @@
  * or puts the card back.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
-import type { TaskBoardCard, TaskBoardMessage, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import type { TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
@@ -23,7 +23,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
-import { installBoardMoves } from './boardMoves';
+import { type BoardScroll, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SortControl, TableSortNote, TaskList } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
@@ -53,6 +53,9 @@ let latest: TaskBoardSnapshot | undefined;
 /** Where the window was scrolled when a draw began, put back after it. */
 let scrolledTo = { x: 0, y: 0 };
 
+/** Where the board and its columns were scrolled when a draw began, put back after it. */
+let boardScrolledTo: BoardScroll | undefined;
+
 // What every page shares comes first, as the template's component script
 // did: the busy mark, the indexing line, tips, and the menu keys.
 const store = startPage<BoardPageState>({
@@ -63,6 +66,7 @@ const store = startPage<BoardPageState>({
     filterTaskEntries();
     editor.afterRender();
     window.scrollTo(scrolledTo.x, scrolledTo.y);
+    restoreBoardScroll(boardScrolledTo);
   },
 });
 installMenuKeys();
@@ -95,27 +99,22 @@ const editor = createQueryEditor({
   ),
 });
 
-/** Hides the rows and cards that do not have every plain word being typed. */
+/**
+ * Hides the list's rows, the board's cards, and the table's rows that do
+ * not have every plain word being typed, by what each shows, file and line
+ * included, and keeps the board's counts and its Tab stop with the cards
+ * left. One check for every layout, run as the words are typed and after
+ * every draw: the board used to be drawn by a check of its own that left
+ * out the file's name, so a card the words showed vanished at the next
+ * draw, and a column counted cards the words had hidden.
+ */
 function filterTaskEntries(): void {
   const words = editor.previewWords(editor.currentText());
-  document.querySelectorAll<HTMLElement>('.task-list .task-row, .task-board .board-card').forEach((entry) => {
+  document.querySelectorAll<HTMLElement>('.task-list .task-row, .task-board .board-card, .result-table .result-row').forEach((entry) => {
     const text = String(entry.textContent).toLowerCase();
     entry.hidden = !words.every((word) => text.includes(word));
   });
-}
-
-/**
- * Whether a card has every plain word being typed. The board is drawn with
- * this so a column's count and its empty state follow the words, instead of
- * a heading counting cards that are no longer on screen.
- */
-function isCardVisible(card: TaskBoardCard): boolean {
-  const words = editor.previewWords(editor.currentText());
-  if (!words.length) {
-    return true;
-  }
-  const text = [card.title, (card.details || []).join(' ')].join(' ').toLowerCase();
-  return words.every((word) => text.includes(word));
+  followShownCards();
 }
 
 /** The gear: layout, the Tasks view, the table's columns, the status columns, theme, and zen. */
@@ -156,7 +155,7 @@ function BoardContent({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   if (snapshot.layout === 'table') {
     return <ResultTable snapshot={snapshot} />;
   }
-  return <TaskBoard snapshot={snapshot} isVisible={isCardVisible} />;
+  return <TaskBoard snapshot={snapshot} />;
 }
 
 /** The whole page: its header, the search box with its Refine row, and the tasks. */
@@ -193,6 +192,7 @@ function redraw(change: Partial<BoardPageState> = {}): void {
     closeRankMenu();
     closeActionMenu();
     scrolledTo = { x: window.scrollX, y: window.scrollY };
+    boardScrolledTo = readBoardScroll();
   }
   store.update(change);
 }
@@ -316,8 +316,17 @@ function toggleColumn(id: string, on: boolean): void {
   post({ type: 'setTableColumns', columns: next });
 }
 
-/** Undo for a status column removed from the gear. */
-const statusUndo = createUndoNotice<{ status: string; index: number; after: string[] }>(() => redraw());
+/**
+ * Undo for a status column removed from the gear. Taken or withdrawn with
+ * focus on it, focus goes back to the removed column's ×, or, when the
+ * column has gone, to the column now where it was, or to the gear when it
+ * has closed.
+ */
+const statusUndo = createUndoNotice<{ status: string; index: number; after: string[] }>(() => redraw(), (removed) => {
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.board-status'));
+  const row = rows[Math.min(removed.index, rows.length - 1)];
+  return row && !row.closest('details:not([open])') ? row : document.querySelector<HTMLElement>('.view-options > summary');
+});
 
 /** Adds the status typed in the gear as a column, or says why it cannot be one. */
 function addStatus(snapshot: TaskBoardSnapshot): void {
@@ -384,7 +393,8 @@ function undoRemoveStatus(snapshot: TaskBoardSnapshot): void {
 /** What each of the page's own controls does on a click, given the snapshot it shows. */
 const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoardSnapshot) => void>> = {
   'open-tag': (target) => post({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
-  'save-board-search': () => post({ type: 'saveBoardSearch' }),
+  // What the box shows is what Save keeps, whether or not Enter ran it.
+  'save-board-search': () => post({ type: 'saveBoardSearch', query: editor.currentText() }),
   'set-table-sort': (target) => post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value as never } : { type: 'setTableSort' }),
   'use-for-agenda': () => post({ type: 'useSearchForAgenda' }),
   'toggle-available': (_target, snapshot) => post({ type: 'setBoardQuery', query: snapshot.availableToggleQuery || 'is:available' }),
@@ -428,11 +438,13 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// A right-click on a list or table row opens its ⋯ menu, as on a card.
+// A right-click on a list or table row opens its ⋯ menu, as on a card. On
+// a ranked list the row's Move to top and Move to bottom menu answered it
+// first, and one menu opens, not two over each other; ⋯ is still its button.
 document.addEventListener('contextmenu', (event) => {
   const element = event.target instanceof Element ? event.target : null;
   const row = rowOf(element);
-  if (!row || (element && element.closest('[data-tag-key], a, input'))) {
+  if (!row || event.defaultPrevented || (element && element.closest('[data-tag-key], a, input'))) {
     return;
   }
   const button = row.querySelector<HTMLElement>('[data-action="task-row-menu"]');
@@ -461,7 +473,9 @@ document.addEventListener('keydown', (event) => {
   if (editor.handleKeydown(event)) {
     return;
   }
-  if (event.key !== 'Enter' && event.key !== ' ') {
+  // Alt+Enter asks for the row's menu, which the menu keys opened already;
+  // it does not open the note as well.
+  if ((event.key !== 'Enter' && event.key !== ' ') || event.altKey || event.defaultPrevented) {
     return;
   }
   const element = event.target instanceof Element ? event.target : null;
@@ -536,6 +550,12 @@ let pendingState: TaskBoardSnapshot | undefined;
 onHostMessage<{ type: 'moveRefused'; taskId: string }>('moveRefused', (message) => {
   const card = Array.from(document.querySelectorAll<HTMLElement>('.board-card')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
   announce(`${card ? taskTitleOf(card) : 'The task'} was not moved.`);
+});
+// So is a completion or reopening it could not write, from a card, a row,
+// or the table.
+onHostMessage<ToggleRefusedMessage>('toggleRefused', (message) => {
+  const entry = Array.from(document.querySelectorAll<HTMLElement>('.board-card, .task-row, .result-row')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
+  announce(`${entry ? taskTitleOf(entry) : 'The task'} was not ${message.completed ? 'completed' : 'reopened'}.`);
 });
 onHostMessage<StateMessage<TaskBoardSnapshot>>('state', (message) => {
   const wait = lingerRemaining();

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { resolveColumnCapture, isValidStatusName } from '../../domain/tasks/boardMoves';
+import { resolveColumnCapture } from '../../domain/tasks/boardMoves';
 import { QueryContext } from '../../domain/query/queryContext';
 import { resolveTaskMove, TaskBoardOptions, TaskMoveContext } from '../state/taskBoardState';
 import {
@@ -18,9 +18,7 @@ import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
 import { formatCaptureLine } from '../../domain/capture/captureLines';
 import { Task } from '../../domain/model';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
-
-const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
+import { readBoardStatuses, readStatusNamespace } from '../../domain/tasks/taskPolicy';
 
 /**
  * Reads the task board settings. Every page that shows a board reads them
@@ -29,19 +27,10 @@ const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
  */
 export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
-  const statuses = configuration.get<unknown>(
-    'board.statuses',
-    DEFAULT_STATUSES,
-  );
   return {
     queryContext,
     statusNamespace: readStatusNamespace(configuration),
-    statuses: (Array.isArray(statuses) ? statuses : DEFAULT_STATUSES)
-      .filter(
-        (status): status is string =>
-          typeof status === 'string' && isValidStatusName(status),
-      )
-      .map((status) => status.toLowerCase()),
+    statuses: readBoardStatuses(configuration),
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
   };

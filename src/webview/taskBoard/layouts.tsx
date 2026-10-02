@@ -6,7 +6,7 @@ import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
 import { Inline } from '../shared/inline';
 import { EllipsisIcon, SortIcon } from '../shared/strokeIcons';
-import { TaskListRow } from '../shared/taskRow';
+import { plainTitle, TaskListRow } from '../shared/taskRow';
 import { board } from './model';
 
 /** A list or table row's ⋯, which opens the menu a board card has. */
@@ -41,7 +41,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
             item={item}
             draggable={draggable}
             titleDisplay={snapshot.tagTitleDisplayMode}
-            trailing={<RowMenuButton taskId={item.task.id} title={item.task.title} />}
+            trailing={<RowMenuButton taskId={item.task.id} title={plainTitle(item.titleTokens) || item.task.title} />}
           />
         ))
         : (
