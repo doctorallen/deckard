@@ -137,7 +137,11 @@ const store = startPage<SearchStore>({
     dropFittingMore();
     editor.afterRender();
     window.scrollTo(scrolledTo.x, scrolledTo.y);
-    const counts = resultCounts(store.state.snapshot as SearchPageState);
+    const snapshot = store.state.snapshot as SearchPageState;
+    // Every draw is unmarked first, the page's own redraws included, such
+    // as a tab or Show all, so every draw is marked again.
+    unmark = markWords(document.getElementById('app'), editor.previewWords((snapshot.query && snapshot.query.text) || ''));
+    const counts = resultCounts(snapshot);
     announce(`${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
   },
 });
@@ -527,6 +531,5 @@ onHostMessage<StateMessage<SearchPageState>>('state', (message) => {
   if (first) {
     restoreScroll(kept());
   }
-  unmark = markWords(document.getElementById('app'), editor.previewWords((latest.query && latest.query.text) || ''));
   saveState();
 });

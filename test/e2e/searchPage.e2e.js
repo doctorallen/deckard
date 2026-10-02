@@ -370,6 +370,15 @@ test('a long draft narrows by the words the host takes, never by older ones', as
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
 });
 
+test('the searched words stay marked through the page\'s own redraws', async () => {
+  const { view } = await openSearch('sequencing');
+  const marks = () => view.findAll('#app mark').map((mark) => mark.textContent.toLowerCase());
+  assert.deepStrictEqual(marks(), ['sequencing']);
+  view.click(view.find('[data-action="set-result-tab"][data-tab="tasks"]'));
+  view.click(view.find('[data-action="set-result-tab"][data-tab="notes"]'));
+  assert.deepStrictEqual(marks(), ['sequencing'], 'marked again after a tab and back');
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
