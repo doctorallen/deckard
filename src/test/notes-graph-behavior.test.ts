@@ -357,12 +357,21 @@ suite('Notes Graph behavior', () => {
       const page = openCanvas();
       page.send(threeKinds());
       const words = () => page.findAll('#graph-legend .legend-word').filter((word) => !(word as HTMLElement).hidden).map((word) => word.textContent);
+      // A sample line is an SVG element, which has no hidden property: the
+      // sheet hides it by its attribute.
+      const lines = () => page.findAll('#graph-legend svg.legend-line').filter((line) => !line.hasAttribute('hidden')).map((line) => line.getAttribute('data-legend'));
       assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag']);
+      assert.deepStrictEqual(lines(), ['wiki', 'heading', 'tag']);
       assert.strictEqual(page.findAll('#graph-legend svg.legend-line[aria-hidden="true"]').length, 4);
 
       page.send(graphState([note('a'), note('b')], [{ source: 'section:a', target: 'section:b', weight: 0.5, types: [] }]));
       assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag', 'Through a daily note']);
+      assert.deepStrictEqual(lines(), ['wiki', 'heading', 'tag', 'joined'], 'its sample line shows with its words');
       assert.deepStrictEqual(strokes(page), [[8, 3, 1, 3]]);
+
+      page.send(threeKinds());
+      assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag']);
+      assert.deepStrictEqual(lines(), ['wiki', 'heading', 'tag'], 'and goes with them');
     });
 
     test('the host can turn Only links I wrote on', () => {
