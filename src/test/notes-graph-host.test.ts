@@ -35,13 +35,13 @@ function indexOf(notes: Array<[string, string]>): WorkspaceIndex {
  * The graph over `NOTES`, attached to a fake panel: what the page is sent,
  * and what Related Notes is told.
  */
-function openGraph() {
+function openGraph(filePathOf: (uri: vscode.Uri) => string = () => 'notes/not-active.md') {
   let index = indexOf(NOTES);
   const updates = new vscode.EventEmitter<void>();
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
-    getFilePath: () => 'notes/not-active.md',
+    getFilePath: filePathOf,
     isNotesFile: () => true,
     onDidUpdate: (listener: () => void) => updates.event(listener),
   } as unknown as NotesGraphControllerOptions['indexer'];
@@ -232,6 +232,27 @@ suite('Notes graph host', () => {
         [false, 3, false],
       );
       assert.strictEqual((controller as unknown as { scopeChosen: boolean }).scopeChosen, true);
+    } finally {
+      host.dispose();
+    }
+  });
+
+  test('with Around this note off, says which note it would be drawn around as the editor changes, without drawing again', () => {
+    const { host, controller, surface, states } = openGraph((uri) => uri.path);
+    /** What the controller hears when the editor shows the note at `filePath`. */
+    const showNote = (filePath: string) => (controller as unknown as {
+      rememberNote(page: unknown, editor: unknown): void;
+    }).rememberNote(host, { document: { uri: vscode.Uri.file(filePath) } });
+    try {
+      showNote('/notes/atlas.md');
+      host.refresh();
+      assert.strictEqual(states().at(-1)?.data.focus?.title, 'atlas');
+      showNote('/notes/linking.md');
+      assert.strictEqual(states().length, 1, 'the whole graph is not sent again');
+      assert.deepStrictEqual(surface.webview.posted.at(-1), {
+        type: 'focus',
+        focus: { local: false, depth: 1, skipPeriodic: true, workspaceNodeCount: states()[0].data.focus?.workspaceNodeCount, filePath: '/notes/linking.md', title: 'linking' },
+      });
     } finally {
       host.dispose();
     }

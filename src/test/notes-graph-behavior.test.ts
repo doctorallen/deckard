@@ -941,6 +941,16 @@ suite('Notes Graph behavior', () => {
       assert.match(page.text('#status-counts') ?? '', /^2 notes · /, 'said once');
     });
 
+    test('a new focus from the host changes the focus line without a new graph', () => {
+      const page = openCanvas();
+      const focus = (title: string) => ({ local: false, depth: 2, skipPeriodic: true, workspaceNodeCount: 2, filePath: `notes/${title}.md`, title });
+      page.send(graphState([note('atlas'), note('linking')], [], { focus: focus('atlas') }));
+      assert.strictEqual(page.text('#focus-note'), 'Around atlas, when this is on.');
+      post(page, { type: 'focus', focus: focus('linking') });
+      assert.strictEqual(page.text('#focus-note'), 'Around linking, when this is on.');
+      assert.strictEqual((page.find('#local-depth') as HTMLInputElement).value, '2');
+    });
+
     test('a selection a filter hides is let go, and the host is told so Related Notes lets it go too', () => {
       const page = openCanvas();
       const toggle = (id: string, checked: boolean) => {

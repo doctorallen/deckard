@@ -7,6 +7,7 @@
 import type {
   NotesGraphConnection,
   NotesGraphEdge,
+  NotesGraphFocus,
   NotesGraphNode,
   NotesGraphSnapshot,
 } from '../../domain/model/graph';
@@ -101,6 +102,17 @@ export interface NotesGraphHighlightNodeMessage {
 }
 
 /**
+ * The note the graph would be drawn around, and the scope, when they
+ * change without changing what is drawn, as when the editor moves to
+ * another note with Around this note off: the page's focus line follows
+ * without the whole graph being sent again.
+ */
+export interface NotesGraphFocusMessage {
+  type: 'focus';
+  focus: NotesGraphFocus;
+}
+
+/**
  * A filter turned on for a reader who came to see it, such as Stats' Wiki
  * links total turning on Only links I wrote.
  */
@@ -128,6 +140,7 @@ export interface NotesGraphHostToPage {
   selectNode: NotesGraphSelectedNodeMessage;
   highlightNode: NotesGraphHighlightNodeMessage;
   applyFilters: NotesGraphApplyFiltersMessage;
+  focus: NotesGraphFocusMessage;
 }
 
 /** Messages from the notes graph page. */

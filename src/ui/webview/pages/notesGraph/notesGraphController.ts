@@ -4,7 +4,7 @@ import type { IndexReader, IndexUpdates } from '../../../../core/workspace/index
 import { isMarkdownFile } from '../../../../core/workspace/scanner';
 import { noteTitle } from '../../../../domain/index/backlinks';
 import { findDailyNoteDate, isPeriodicNoteFile, isPeriodicNotePath } from '../../../../domain/markdown/parser';
-import type { WorkspaceIndex, NotesGraphSnapshot } from '../../../../domain/model';
+import type { WorkspaceIndex, NotesGraphFocus, NotesGraphSnapshot } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
 import { logTrace, measure } from '../../../../shared/timing';
 import type { MessageOf } from '../../../protocol/messaging';
@@ -276,7 +276,36 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
     this.focusPath = filePath;
     if (this.scope.local) {
       page.refresh();
+      return;
     }
+    // The whole workspace is drawn, and stays as it is; only the line
+    // naming the note it would be drawn around changes.
+    this.postFocus(page);
+  }
+
+  /**
+   * Tells the page the focus as it is now, without the graph. Before a
+   * graph is built, or after a change it has yet to redraw for, the next
+   * graph carries the focus, so nothing is sent.
+   */
+  private postFocus(page: PageContext): void {
+    if (!this.snapshot) {
+      return;
+    }
+    postToGraph(page, { type: 'focus', focus: this.describeFocus(this.snapshot) });
+  }
+
+  /** The note the graph is drawn around, or would be, and its scope, over the workspace's graph. */
+  private describeFocus(workspace: NotesGraphSnapshot): NotesGraphFocus {
+    return {
+      local: this.scope.local,
+      depth: this.scope.depth,
+      skipPeriodic: this.scope.skipPeriodic,
+      workspaceNodeCount: workspace.nodes.length,
+      ...(this.focusPath
+        ? { filePath: this.focusPath, title: noteTitle(this.focusPath) }
+        : {}),
+    };
   }
 
   /** A node the graph in its scope holds now, by id. */
@@ -332,15 +361,7 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
    */
   private getSnapshot(): NotesGraphSnapshot {
     const workspace = this.getWorkspaceSnapshot();
-    const focus = {
-      local: this.scope.local,
-      depth: this.scope.depth,
-      skipPeriodic: this.scope.skipPeriodic,
-      workspaceNodeCount: workspace.nodes.length,
-      ...(this.focusPath
-        ? { filePath: this.focusPath, title: noteTitle(this.focusPath) }
-        : {}),
-    };
+    const focus = this.describeFocus(workspace);
     if (!this.scope.local || !this.focusPath) {
       return { ...workspace, focus };
     }
