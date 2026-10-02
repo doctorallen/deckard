@@ -84,6 +84,9 @@ interface Shown {
 function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; readonly shown: Shown }) {
   const snapshot = state.snapshot;
   const monthLabel = snapshot.title + (snapshot.notePath ? ', monthly note' : '');
+  // The title shows the week's days in the Week layout, and still opens the
+  // month's note, so its name says both, starting with what it shows.
+  const titleLabel = shown.week ? `${shown.title}, ${monthLabel}` : monthLabel;
   const step = state.layout === 'week' ? 'week' : 'month';
   const onToday = state.drawnSelected === snapshot.today &&
     (shown.week ? shown.week.days.some((day) => day.date === snapshot.today) : snapshot.month === snapshot.currentMonth);
@@ -91,7 +94,7 @@ function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; reado
     <header class="calendar-page-header">
       <div>
         <p class="eyebrow">DECKARD / CALENDAR</p>
-        <h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={monthLabel}>{shown.title}</button></h1>
+        <h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={titleLabel}>{shown.title}</button></h1>
       </div>
       <div class="calendar-page-actions" role="group" aria-label="Calendar">
         <button type="button" data-action="step-calendar" data-by="-1" aria-label={`Previous ${step}`} data-tip={`Previous ${step} ([)`}>‹</button>

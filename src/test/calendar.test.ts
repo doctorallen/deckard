@@ -551,4 +551,18 @@ suite('Calendar', () => {
       }
     }
   });
+
+  test('in the Week layout, the page\'s title is named for the week it shows and the month it opens', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }), { savedState: { layout: 'week' } });
+    try {
+      const title = page.find('.calendar-title');
+      assert.strictEqual(title.textContent, '2026-09-13 to 2026-09-19');
+      assert.strictEqual(title.getAttribute('aria-label'), '2026-09-13 to 2026-09-19, September 2026, monthly note', 'its name begins with what it shows');
+      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="month"]');
+      assert.strictEqual(page.find('.calendar-title').getAttribute('aria-label'), 'September 2026, monthly note');
+    } finally {
+      page.dispose();
+    }
+  });
 });
