@@ -63,3 +63,24 @@ export function settingTarget(
     ? vscode.ConfigurationTarget.Global
     : vscode.ConfigurationTarget.Workspace;
 }
+
+/**
+ * Clears a setting, so the window reads `cleared`: takes it out where the
+ * value in force is set. Taking a workspace's value out lets the user's
+ * show through, so when the user's settings hold something else, the
+ * workspace is given `cleared` instead, and the user's value, which other
+ * windows read, is left alone. Returns whether it was written.
+ */
+export function clearSetting(
+  key: string,
+  cleared: unknown,
+  configuration: Pick<vscode.WorkspaceConfiguration, 'inspect' | 'update'> = vscode.workspace.getConfiguration('deckard'),
+): Promise<boolean> {
+  const target = settingTarget(key, configuration);
+  const userValue = configuration.inspect(key)?.globalValue;
+  const showsThrough =
+    target === vscode.ConfigurationTarget.Workspace &&
+    userValue !== undefined &&
+    JSON.stringify(userValue) !== JSON.stringify(cleared);
+  return writeSetting(key, showsThrough ? cleared : undefined, target, configuration);
+}

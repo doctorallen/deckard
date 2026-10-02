@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import {
+  clearSetting,
   describeUnregisteredSetting,
   isUnregisteredSettingError,
   writeSetting,
@@ -62,6 +63,26 @@ suite('Settings writes', () => {
         },
       }),
       /EACCES/,
+    );
+  });
+
+  test('clears where the value in force is set, and keeps a user value from showing through', async () => {
+    const cleared = async (inspected: Record<string, unknown>) => {
+      const written: unknown[] = [];
+      await clearSetting('agenda.query', '', {
+        inspect: () => ({ key: 'deckard.agenda.query', ...inspected }) as never,
+        update: async (...args: unknown[]) => void written.push(args),
+      });
+      return written;
+    };
+    const { Global, Workspace } = vscode.ConfigurationTarget;
+    assert.deepStrictEqual(await cleared({ globalValue: '#a' }), [['agenda.query', undefined, Global]]);
+    assert.deepStrictEqual(await cleared({ workspaceValue: '#a' }), [['agenda.query', undefined, Workspace]]);
+    assert.deepStrictEqual(await cleared({ globalValue: '', workspaceValue: '#a' }), [['agenda.query', undefined, Workspace]]);
+    assert.deepStrictEqual(
+      await cleared({ globalValue: '#b', workspaceValue: '#a' }),
+      [['agenda.query', '', Workspace]],
+      "the user's search would show through, so the workspace keeps an empty one",
     );
   });
 });
