@@ -1,10 +1,8 @@
 /**
  * Escaping for the HTML the extension host writes as text: the Markdown
  * preview's plugins, the page shells, the Help page, and the Related Notes
- * diagnostic. The pages draw with Preact, which escapes what it renders;
- * `src/webview/shared/markWords.ts`, which writes text as HTML to mark the
- * words a search matched, keeps its own copy, since a page cannot import
- * host code.
+ * diagnostic. The pages draw with Preact, which escapes what it renders,
+ * and write no HTML as text.
  */
 
 /**

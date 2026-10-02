@@ -52,4 +52,18 @@ suite('Marking the searched words', () => {
       assert.strictEqual(result.text, 'Learning c++ and [x] or *', 'the text reads as before');
     }
   });
+
+  test('a word is found in the text the reader sees, never in the HTML it is written as', () => {
+    const cases: Array<[string, string[], string[]]> = [
+      ['Tom & Jerry, an ample cast', ['amp'], ['amp']],
+      ['a < b, a > c, salt and ghetto', ['lt', 'gt'], ['lt']],
+      ['She said "quote" and it\'s 2039', ['quot', '039'], ['quot', '039']],
+      ['R&D and <b> as written', ['r&d', '<b>'], ['R&D', '<b>']],
+    ];
+    for (const [text, words, expected] of cases) {
+      const result = mark(text, words);
+      assert.deepStrictEqual(result.marked, expected, `${words.join(', ')} in ${text}`);
+      assert.strictEqual(result.text, text, 'the text reads as before');
+    }
+  });
 });
