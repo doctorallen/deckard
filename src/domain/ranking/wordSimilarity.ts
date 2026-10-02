@@ -336,20 +336,24 @@ function isCommonplace(model: LexicalModel, term: string): boolean {
  */
 function getLexicalTerms(title: string, content: string): string[] {
   const ignored = STOP_WORDS;
-  const heading = withoutFrontmatter(title);
-  const clean = `${heading}\n${withoutFrontmatter(content)}`
-    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
-    .replace(/\[\[[^\]]+\]\]|https?:\/\/\S+|[#@][\w/-]+/g, ' ');
-  const titleTerms = heading
-    .replace(/[#@][\w/-]+/g, ' ')
-    .toLocaleLowerCase()
-    .match(/[a-z][a-z-]{2,}/g) ?? [];
+  // The title is cleaned as the text is: the note being read is its own
+  // title, and its code, links, and addresses are no more its words there.
+  const heading = withoutCodeLinksAndTags(withoutFrontmatter(title));
+  const clean = `${heading}\n${withoutCodeLinksAndTags(withoutFrontmatter(content))}`;
+  const titleTerms = heading.toLocaleLowerCase().match(/[a-z][a-z-]{2,}/g) ?? [];
   const bodyTerms = clean.toLocaleLowerCase().match(/[a-z][a-z-]{2,}/g) ?? [];
   return [
     ...titleTerms.filter((word) => !ignored.has(word)),
     ...titleTerms.filter((word) => !ignored.has(word)),
     ...bodyTerms.filter((word) => !ignored.has(word)),
   ];
+}
+
+/** Text with its fenced code, `[[links]]`, web addresses, and tags blanked out. */
+function withoutCodeLinksAndTags(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
+    .replace(/\[\[[^\]]+\]\]|https?:\/\/\S+|[#@][\w/-]+/g, ' ');
 }
 
 /**

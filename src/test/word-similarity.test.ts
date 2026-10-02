@@ -63,6 +63,25 @@ suite('Word similarity', () => {
     assert.ok(words.includes('marmalade') && words.includes('pipeline'), words.join(', '));
   });
 
+  test('the note being read counts no word from its code, links, or addresses', () => {
+    const active = parseMarkdown(
+      'notes/a.md',
+      [
+        '# Deploy runbook',
+        'Restart the service, then see [[Zebra crossing]] and https://example.com/giraffe.',
+        '```',
+        'kubectl rollout restart',
+        '```',
+      ].join('\n'),
+    );
+    const index = buildWorkspaceIndex(new Map([['notes/a.md', active]]));
+    const terms = [...createLexicalModel(index, active).queryTerms];
+    for (const word of ['kubectl', 'rollout', 'zebra', 'crossing', 'giraffe', 'example', 'https']) {
+      assert.ok(!terms.includes(word), `${word} is not one of the note's words`);
+    }
+    assert.ok(['deploy', 'runbook', 'restart', 'service'].every((word) => terms.includes(word)));
+  });
+
   test('a note with nothing else to go on is queried by its 25 rarest shared words', () => {
     const words = Array.from({ length: 40 }, (_, at) => `word${String.fromCharCode(97 + (at % 26))}${String.fromCharCode(97 + Math.floor(at / 26))}`);
     const active = parseMarkdown('notes/a.md', `# Long\n${words.join(' ')}\n`);
