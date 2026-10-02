@@ -409,6 +409,27 @@ test('a widget\'s gear is a control, not a handle to drag the widget by', async 
   );
 });
 
+test('a snapshot that arrives mid-drag leaves one of each widget once the drop is answered', async () => {
+  const { view, panel, lastState } = await openDashboard();
+  view.click(view.find('[data-action="customize-home"]'));
+  const ids = () => view.findAll('.home-widget').map((widget) => widget.dataset.widgetId);
+  const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
+  const before = ids();
+
+  view.fire('pointerdown', widget('tasks').querySelector('.home-widget-title'), { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+  view.document.pointerTarget = widget('search');
+  view.fire('pointermove', widget('tasks'), { pointerId: 1, clientX: 10, clientY: 5 });
+  // An index update redraws Home while the widget is held.
+  panel._deliver(lastState());
+  view.document.pointerTarget = widget('search');
+  view.fire('pointerup', view.document.body, { pointerId: 1, clientX: 10, clientY: 5 });
+  await delay(20);
+
+  assert.deepStrictEqual([...ids()].sort(), [...before].sort(), 'each widget once');
+  assert.strictEqual(ids().indexOf('tasks') < ids().indexOf('search'), true, 'the drop still moved it');
+  assert.strictEqual(view.findAll('.drag-placeholder, .drag-ghost').length, 0);
+});
+
 test('the tiles say what is overdue, due today, and open, and each opens its search', async () => {
   const { view, navigation } = await openDashboard();
   const tiles = view.findAll('.metrics .metric-open');

@@ -258,13 +258,31 @@ class RankedRows {
         && this.options.reorder({ kind: current.kind, key: current.key, targetKey: String(targetKey), before: this.dropBefore, placeholder: this.placeholder }) === true;
       this.suppressClick = true;
     }
-    // A dropped row takes the placeholder's place until the host answers.
-    if (dropped && this.placeholder && this.placeholder.parentElement) {
-      this.placeholder.parentElement.insertBefore(current.row, this.placeholder);
-      current.row.classList.remove('is-dragging');
+    if (dropped) {
+      this.placeDropped(current.row);
     }
     this.clearPreview();
     this.drag = undefined;
+  }
+
+  /**
+   * A dropped row takes the placeholder's place until the host answers. A
+   * draw that came in mid-drag made the list afresh without the row, and the
+   * placeholder may have followed the pointer into the new list: the row
+   * put there would be a second copy of one the new list already draws, so
+   * the page is told its list changed and draws it afresh instead.
+   */
+  private placeDropped(row: HTMLElement): void {
+    const placeholder = this.placeholder;
+    if (!placeholder || !placeholder.parentElement) {
+      return;
+    }
+    if (row.isConnected && placeholder.isConnected) {
+      placeholder.parentElement.insertBefore(row, placeholder);
+      row.classList.remove('is-dragging');
+    } else {
+      this.options.onListChanged?.();
+    }
   }
 
   /** Moves a row one place, past the row of its kind above or below it. */
