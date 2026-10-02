@@ -17,6 +17,7 @@ import {
   isRendered,
   nodeDegree,
   nodeRadius,
+  shortenName,
   type ViewEdge,
 } from './model';
 
@@ -426,7 +427,7 @@ function drawGroupLabels(frame: Frame, view: FrameView, placed: PlacedLabels, mo
 
 /** A title as a label says it: cut to 28 characters with an ellipsis. */
 function labelTitle(title: string): string {
-  return title.length > 28 ? title.slice(0, 27) + '…' : title;
+  return shortenName(title, 28);
 }
 
 /** At rest, names the eight best-connected notes and tasks on screen that are drawn bright, where they fit. */

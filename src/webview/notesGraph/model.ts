@@ -269,3 +269,19 @@ export function isDimmed(state: GraphState, index: number): boolean {
   }
   return false;
 }
+
+/** Splits a name into the characters a reader sees, an emoji and its joiners as one. */
+const CHARACTERS = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/**
+ * A name cut to `limit` characters with an ellipsis in the last, or as it
+ * is when it fits. It counts and cuts the characters a reader sees, so an
+ * emoji is never cut in half and drawn as a broken glyph.
+ */
+export function shortenName(name: string, limit: number): string {
+  if (name.length <= limit) {
+    return name;
+  }
+  const characters = Array.from(CHARACTERS.segment(name), (part) => part.segment);
+  return characters.length > limit ? characters.slice(0, limit - 1).join('') + '…' : name;
+}

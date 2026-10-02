@@ -772,6 +772,24 @@ suite('Notes Graph behavior', () => {
       assert.match(page.text('#status-counts') ?? '', / 3 groups$/);
     });
 
+    test('a long name is cut between characters, never through an emoji', () => {
+      const page = openCanvas();
+      const long = 'x'.repeat(26) + '😀trip';
+      page.send(grouped({ [long]: 5, relay: 4 }));
+      const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+      const options = page.findAll('#group-filter option').map((option) => option.textContent ?? '');
+      assert.ok(options.includes('x'.repeat(26) + '😀… (5)'), options.join(', '));
+      const drawn = () => page.canvasCalls.filter((call) => call.op === 'fillText' || call.op === 'strokeText').map((call) => String(call.args[0]));
+      atRest(page);
+      assert.ok(drawn().includes('x'.repeat(26) + '😀…'), 'the group is named on the canvas');
+      for (let step = 0; step < 6; step += 1) {
+        page.click('#zoom-in');
+        page.flushFrames(1);
+      }
+      assert.ok(drawn().some((text) => text.startsWith('x'.repeat(26) + '😀…')), 'zoomed in, each note is labeled');
+      assert.deepStrictEqual(drawn().filter((text) => lone.test(text)), [], 'no label ends in half an emoji');
+    });
+
     test('a click on a name picks the group out; the list says it; a rebuild without it lets go', () => {
       const page = openCanvas();
       page.send(grouped({ atlas: 5, relay: 4, design: 4 }));

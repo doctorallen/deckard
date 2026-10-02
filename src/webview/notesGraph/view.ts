@@ -24,6 +24,7 @@ import {
   type GraphSettings,
   type GraphState,
   nodeDegree,
+  shortenName,
   type ViewNode,
 } from './model';
 
@@ -768,10 +769,7 @@ function nameGroup(state: GraphState, g: number, evidence: GroupEvidence): void 
   if (state.groupKeyIndex[key] !== undefined) {
     key += '@' + state.nodes[best].id;
   }
-  if (name.length > 28) {
-    name = name.slice(0, 27) + '…';
-  }
-  state.groups[g] = { key, name, size: state.communitySizes[g] };
+  state.groups[g] = { key, name: shortenName(name, 28), size: state.communitySizes[g] };
   state.groupKeyIndex[key] = g;
   state.namedGroupCount += 1;
 }
