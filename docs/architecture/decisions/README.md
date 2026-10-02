@@ -37,3 +37,4 @@ A record is not edited to change its decision. A new record supersedes it instea
 | [0013](0013-exclude-globs-and-path-matchesglob.md) | Exclude globs stay on `picomatch` | Accepted: `path.matchesGlob` failed the check |
 | [0014](0014-pages-render-synchronously-from-one-store.md) | Pages render synchronously from one store | Accepted |
 | [0015](0015-note-markdown-tokenized-by-markdown-it.md) | Note Markdown is tokenized by `markdown-it`, not by our own parser | Accepted: amends 0011 |
+| [0016](0016-one-bundle-per-page.md) | Each Preact page loads one bundle of its own | Accepted: open question 3, measured at Search |

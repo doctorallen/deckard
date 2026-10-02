@@ -173,7 +173,7 @@ A page with a script entry passes `bundle: true`, and the shell writes `<script 
 
 ### One bundle per page
 
-*Measured in Phase 6 step 4.2, on Stats, the first Preact page; interim until Search.* Open question 3 asked whether the pages share one bundle of Preact and the shared core, or each carry their own. Two variants of Stats were built by `scripts/measure-page-bundles.js`:
+*Measured in Phase 6 step 4.2, on Stats, the first Preact page, and again in step 4.5, once the search page and the Task Board shared the query editor; recorded as [decision 0016](decisions/0016-one-bundle-per-page.md).* Open question 3 asked whether the pages share one bundle of Preact and the shared core, or each carry their own. Two variants of Stats were built by `scripts/measure-page-bundles.js`:
 
 - **A**, one bundle per page: `stats.js` holds Preact, what Stats uses of `src/webview/shared`, and the page.
 - **B**, a shared bundle: `shared.js` holds Preact and all of `src/webview/shared` as one `iife` global, and an esbuild plugin maps the page's imports to it, so `stats.js` holds only the page. The shell loads `shared.js` first.
@@ -198,6 +198,31 @@ The shares are of the minified bytes, from esbuild's metafile. B's shared bundle
 The VSIX `vsce` packed was 1,473.3 KB. A first render runs from the start of the page's document to its state drawn and laid out. Chrome's is timed in real time, since virtual time does not advance while a script runs. On macOS, Chrome 153.
 
 **Decision: A.** With one Preact page, B cannot save anything: it ships 6.6 KB more and draws 3.7 ms later, and jsdom's 1.3 ms is within its run-to-run spread. The build keeps one bundle per page. The question is measured again at Search, the first time two moved pages share the query editor, and then recorded as a decision.
+
+**Measured again at Search** (step 4.5), with the same script, on the search page, the Task Board, and Stats. `--together` swaps every Preact page's bundles in the VSIX at once, B with one `shared.js` for all five, which is what B would ship.
+
+| Bundle | Raw | Minified | Gzip | Preact | Core | Page | esbuild's own |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A `searchPage.js` | 170.0 KB | 94.2 KB | 31.0 KB | 10.7 KB | 64.5 KB | 19.0 KB | 0.0 KB |
+| A `taskBoard.js` | 198.1 KB | 110.1 KB | 35.2 KB | 10.7 KB | 68.1 KB | 30.7 KB | 0.5 KB |
+| A `stats.js` | 64.5 KB | 38.3 KB | 13.0 KB | 10.6 KB | 10.1 KB | 17.5 KB | 0.0 KB |
+| B `shared.js` | 176.7 KB | 96.0 KB | 32.2 KB | 13.2 KB | 82.3 KB | 0 | 0.5 KB |
+| B `searchPage.js` | 44.0 KB | 22.7 KB | 7.7 KB | 0 | 0 | 21.1 KB | 1.6 KB |
+| B `taskBoard.js` | 66.4 KB | 35.0 KB | 11.5 KB | 0 | 0 | 33.0 KB | 2.1 KB |
+| B `stats.js` | 37.3 KB | 20.1 KB | 6.2 KB | 0 | 0 | 19.2 KB | 0.9 KB |
+
+| | A | B |
+| --- | --- | --- |
+| The five Preact pages' scripts, minified (`--together`) | 328.4 KB in 5 files | 188.5 KB in 6 files |
+| The same, gzip | 109.7 KB | 63.3 KB |
+| VSIX, every page swapped, zipped again with `zip -9` | 1,536.7 KB | 1,491.2 KB |
+| Search page first render, jsdom (median of 20) / Chrome (median of 10) | 66.0 / 83.3 ms | 64.7 / 86.6 ms |
+| Task Board first render, jsdom / Chrome | 57.9 / 66.3 ms | 61.7 / 70.3 ms |
+| Stats first render, jsdom / Chrome | 35.2 / 49.7 ms | 39.7 / 54.6 ms |
+
+The VSIX `vsce` packed was 1,546.3 KB. On macOS, Chrome 153.
+
+**Decision: A, again** ([0016](decisions/0016-one-bundle-per-page.md)). B saves 45.5 KB of the VSIX, under half the rule's 100 KB, and draws every page measured 3 to 5 ms later in Chrome, since its shared bundle holds all of the core for whichever page loads it. Related Notes and the Dashboard, the pages still to move, will raise B's saving; if it ever crosses 100 KB, the question is measured again with this script and rule.
 
 ## The Content Security Policy
 

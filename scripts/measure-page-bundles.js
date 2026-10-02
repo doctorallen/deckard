@@ -26,6 +26,14 @@
 // test/ui/surfaces.js. --vsix names a VSIX built from this checkout, whose
 // bundles are swapped for each variant's and zipped again the same way, so
 // the two sizes compare. Nothing it builds is left in dist/.
+//
+// Each page's own VSIX row swaps that page's bundles alone. With
+// --together <page,page,…>, it also swaps every page listed at once, B
+// with one shared.js for all of them, which is what B would ship once more
+// than one page is built with it:
+//
+//   node scripts/measure-page-bundles.js searchPage taskBoard --vsix /tmp/deckard.vsix \
+//     --together stats,taskBoard,calendar,calendarPage,searchPage
 const path = require('node:path');
 const os = require('node:os');
 const zlib = require('node:zlib');
@@ -236,6 +244,35 @@ function variantVsix(unpacked, bundles, file) {
 }
 
 /**
+ * Every page listed built both ways at once, as the VSIX would ship it: A
+ * with each page's own bundle, B with one shared.js and each page's own,
+ * with the minified bytes and the VSIX each makes.
+ *
+ * @param {string[]} pages The pages' folders under src/webview.
+ * @param {{ dir: string, vsix?: string }} options Where to work, and the VSIX to zip again.
+ */
+async function measureTogether(pages, options) {
+  console.log(`\ntogether: ${pages.join(', ')}`);
+  let unpacked;
+  if (options.vsix) {
+    unpacked = path.join(options.dir, 'vsix-together');
+    mkdirSync(unpacked);
+    spawnSync('unzip', ['-q', options.vsix, '-d', unpacked]);
+  }
+  for (const variant of ['A', 'B']) {
+    const built = new Map();
+    for (const page of pages) {
+      (await buildVariant(variant, page)).forEach((bundle) => built.set(bundle.name, bundle));
+    }
+    const bundles = [...built.values()];
+    const total = bundles.reduce((sum, bundle) => sum + Buffer.byteLength(bundle.minified), 0);
+    const gzip = bundles.reduce((sum, bundle) => sum + zlib.gzipSync(bundle.minified, { level: 9 }).length, 0);
+    const vsixSize = unpacked ? kb(variantVsix(unpacked, bundles, path.join(options.dir, `together-${variant}.vsix`))) : '(no --vsix)';
+    console.log(`  ${variant} ${bundles.length} bundles, minified in all ${kb(total)}, gzip ${kb(gzip)}; VSIX ${vsixSize}`);
+  }
+}
+
+/**
  * Prints one variant's bundles: raw, minified, and gzip bytes, and the
  * minified bytes' shares.
  *
@@ -268,7 +305,7 @@ async function measurePage(page, options) {
   let unpacked;
   console.log(`\n${page}`);
   if (options.vsix) {
-    unpacked = path.join(options.dir, 'vsix');
+    unpacked = path.join(options.dir, `vsix-${page}`);
     mkdirSync(unpacked);
     spawnSync('unzip', ['-q', options.vsix, '-d', unpacked]);
     console.log(`  the VSIX as vsce packed it: ${kb(statSync(options.vsix).size)}`);
@@ -276,11 +313,11 @@ async function measurePage(page, options) {
   for (const variant of ['A', 'B']) {
     const bundles = await buildVariant(variant, page);
     printBundles(variant, bundles);
-    const html = variantPage(page, variantRoot(path.join(options.dir, variant), bundles), variant === 'B');
+    const html = variantPage(page, variantRoot(path.join(options.dir, `${page}-${variant}`), bundles), variant === 'B');
     const total = bundles.reduce((sum, bundle) => sum + Buffer.byteLength(bundle.minified), 0);
-    const vsixSize = unpacked ? kb(variantVsix(unpacked, bundles, path.join(options.dir, `${variant}.vsix`))) : '(no --vsix)';
+    const vsixSize = unpacked ? kb(variantVsix(unpacked, bundles, path.join(options.dir, `${page}-${variant}.vsix`))) : '(no --vsix)';
     const jsdom = jsdomFirstRender(html, surface.snapshot()).toFixed(1);
-    const inChrome = chrome.medianFirstRender(html, surface, { file: path.join(options.dir, `${variant}.html`) }).toFixed(1);
+    const inChrome = chrome.medianFirstRender(html, surface, { file: path.join(options.dir, `${page}-${variant}.html`) }).toFixed(1);
     console.log(`  ${variant} minified in all ${kb(total)}; VSIX ${vsixSize}; first render: jsdom ${jsdom} ms (median of 20), Chrome ${inChrome} ms (median of 10)`);
   }
 }
@@ -290,11 +327,16 @@ async function main() {
   const args = process.argv.slice(2);
   const vsixAt = args.indexOf('--vsix');
   const vsix = vsixAt >= 0 ? path.resolve(args[vsixAt + 1]) : undefined;
-  const pages = args.filter((arg, index) => !arg.startsWith('--') && index !== vsixAt + 1);
+  const togetherAt = args.indexOf('--together');
+  const together = togetherAt >= 0 ? args[togetherAt + 1].split(',').filter(Boolean) : [];
+  const pages = args.filter((arg, index) => !arg.startsWith('--') && index !== vsixAt + 1 && index !== togetherAt + 1);
   const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-bundles-'));
   try {
     for (const page of pages.length ? pages : ['stats']) {
       await measurePage(page, { dir, vsix });
+    }
+    if (together.length) {
+      await measureTogether(together, { dir, vsix });
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
