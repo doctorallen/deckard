@@ -149,4 +149,21 @@ suite('Move service', () => {
     fake.texts.set(noteUri('inbox.md').toString(), '# Inbox\n- [ ] Call Ren later\n- [ ] Pay rent\n');
     assert.deepStrictEqual(await service.readTasks(tasks), { kind: 'stale' });
   });
+
+  test('moves a task chosen together with its own step once, step and all', async () => {
+    const trip = '# Inbox\n- [ ] Plan trip 📅 2026-10-01\n  - [ ] Book hotel 📅 2026-10-01\n- [ ] Other\n';
+    const { fake, service } = setup({ 'inbox.md': trip, 'plan.md': '# Plan\n' });
+    const [task, step] = parseMarkdown('inbox.md', trip).tasks;
+    // The step comes first, as a list sorted by due date may give it.
+    const read = await service.readTasks([step, task]);
+    assert.strictEqual(read.kind, 'sources');
+    const sources = read.kind === 'sources' ? read.sources : [];
+    assert.deepStrictEqual(sources.map((source) => source.block.lines), [
+      ['- [ ] Plan trip 📅 2026-10-01', '  - [ ] Book hotel 📅 2026-10-01'],
+    ]);
+    const result = await service.move(sources, { uri: noteUri('plan.md'), link: 'plan', name: 'plan' });
+    assert.strictEqual(result.kind, 'moved');
+    assert.strictEqual(fake.text('inbox.md'), '# Inbox\n- [>] Plan trip 📅 2026-10-01 → [[plan]]\n- [ ] Other\n');
+    assert.strictEqual(fake.text('plan.md'), '# Plan\n- [ ] Plan trip 📅 2026-10-01\n  - [ ] Book hotel 📅 2026-10-01\n');
+  });
 });
