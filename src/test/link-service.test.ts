@@ -185,7 +185,29 @@ suite('LinkService', () => {
       findUnlinkedMentions: () => [],
     });
 
-    assert.deepStrictEqual(await service.planMentionLinks(index.files.get('notes/Log.md')!), { kind: 'none' });
+    assert.deepStrictEqual(await service.planMentionLinks(index.files.get('notes/Log.md')!), { kind: 'none', skipped: 0 });
+  });
+
+  test('a note with a mention that cannot be opened is passed over and counted, and the rest are linked', async () => {
+    const index = indexOf(review);
+    const mention = (filePath: string): Mention => ({ filePath, line: 0, startColumn: 0, endColumn: 4, text: 'Read' });
+    const service = (unreadable: readonly string[], mentions: readonly Mention[]) =>
+      new LinkService({
+        index: { getSnapshot: () => index },
+        notes: liveNotes({ 'notes/Log.md': review['notes/Log.md'] }, unreadable),
+        findUnlinkedMentions: () => mentions,
+      });
+
+    const plan = await service(['notes/Locked.md'], [mention('notes/Locked.md'), mention('notes/Log.md'), mention('notes/Locked.md')])
+      .planMentionLinks(index.files.get('notes/Log.md')!);
+    assert.strictEqual(plan.kind, 'planned');
+    assert.deepStrictEqual(described(plan.kind === 'planned' ? plan.edits : []), ['notes/Log.md:0:0-4 -> [[Read]]']);
+    assert.strictEqual(plan.skipped, 1, 'a note is counted once, however many mentions it has');
+
+    assert.deepStrictEqual(
+      await service(['notes/Locked.md'], [mention('notes/Locked.md')]).planMentionLinks(index.files.get('notes/Log.md')!),
+      { kind: 'none', skipped: 1 },
+    );
   });
 
   test('checked rewrites pass over a note that cannot be found or opened', async () => {

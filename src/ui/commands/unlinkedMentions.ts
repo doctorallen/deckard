@@ -5,6 +5,7 @@ import { LinkService } from '../../services/linkService';
 import { createLinkService, toWorkspaceEdit } from './linkMaintenancePorts';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { ParsedFile, WorkspaceIndex } from '../../domain/model';
+import { pluralize } from '../../shared/text';
 
 /** The command the Link mentions lens runs. */
 export const LINK_MENTIONS_COMMAND = 'deckard.linkMentions';
@@ -21,8 +22,9 @@ interface MentionIndexSource {
  * name as it was written: `atlas` becomes `[[atlas]]`, which opens `Atlas.md`
  * because links match names without regard to case.
  *
- * Which mentions are still there to link is LinkService's decision. The
- * write is one write to the history: previewed as
+ * Which mentions are still there to link is LinkService's decision; a note
+ * it could not open is left as it is and counted in the message. The write
+ * is one write to the history: previewed as
  * `deckard.previewWorkspaceWrites` asks, and taken back by `Deckard: Undo
  * Last Change`.
  */
@@ -37,6 +39,12 @@ export async function linkMentions(
   const file = indexer.parse(documentUri, document.getText());
   const title = noteTitle(file.filePath);
   const plan = await links.planMentionLinks(file);
+  if (plan.kind === 'none' && plan.skipped > 0) {
+    void vscode.window.showWarningMessage(
+      `${pluralize(plan.skipped, 'note mentions', 'notes mention')} ${title} without a link, but could not be opened.`,
+    );
+    return;
+  }
   if (plan.kind === 'none') {
     void vscode.window.showInformationMessage(
       `No note mentions ${title} without a link any more.`,
@@ -58,7 +66,8 @@ export async function linkMentions(
   }
   // The preview can leave changes out, so what landed is counted by note.
   const notes = written.notes.length;
+  const skipped = plan.skipped > 0 ? ` ${pluralize(plan.skipped, 'note')} could not be opened.` : '';
   void vscode.window.showInformationMessage(
-    `Linked the mentions of ${title} in ${notes === 1 ? '1 note' : `${notes} notes`}.`,
+    `Linked the mentions of ${title} in ${notes === 1 ? '1 note' : `${notes} notes`}.${skipped}`,
   );
 }

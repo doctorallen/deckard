@@ -101,10 +101,14 @@ export interface Mention {
   text: string;
 }
 
-/** Linking a note's mentions: the edits, or none left to link. */
+/**
+ * Linking a note's mentions: the edits, or none left to link. `skipped`
+ * counts the notes with a mention that could not be opened, which are left
+ * as they are.
+ */
 export type MentionLinkPlan<U> =
-  | { kind: 'planned'; edits: NoteEdit<U>[] }
-  | { kind: 'none' };
+  | { kind: 'planned'; edits: NoteEdit<U>[]; skipped: number }
+  | { kind: 'none'; skipped: number };
 
 /** What LinkService reads: the index, the live notes, and the mention finder. */
 export interface LinkServiceOptions<U> {
@@ -192,35 +196,42 @@ export class LinkService<U extends ResourceUri> {
    * The edits that turn every unlinked mention of a note into a `[[link]]`
    * to it, keeping the name as it was written. The mentions are found again
    * from the index, and each is compared with what its line says now, so a
-   * mention edited since the index read it is left alone.
+   * mention edited since the index read it is left alone. A note that
+   * cannot be opened is passed over and counted, as a link rewrite passes
+   * one over, so the rest are still linked.
    */
   public async planMentionLinks(file: ParsedFile): Promise<MentionLinkPlan<U>> {
     const mentions = this.options.findUnlinkedMentions(file, this.options.index.getSnapshot());
     const edits: NoteEdit<U>[] = [];
-    const notes = new Map<string, { uri: U; lines: string[] } | undefined>();
+    const notes = new Map<string, { uri: U; lines: string[] } | 'missing' | 'unreadable'>();
     for (const mention of mentions) {
       if (!notes.has(mention.filePath)) {
         notes.set(mention.filePath, await this.readLines(mention.filePath));
       }
       const note = notes.get(mention.filePath);
-      if (!note || !rewriteStillFits({ ...mention, from: mention.text }, note.lines)) {
+      if (typeof note !== 'object' || !rewriteStillFits({ ...mention, from: mention.text }, note.lines)) {
         continue;
       }
       edits.push({ ...toEdit(note.uri, mention), text: `[[${mention.text}]]` });
     }
-    return edits.length === 0 ? { kind: 'none' } : { kind: 'planned', edits };
+    const skipped = [...notes.values()].filter((note) => note === 'unreadable').length;
+    return edits.length === 0 ? { kind: 'none', skipped } : { kind: 'planned', edits, skipped };
   }
 
   /**
-   * A note's URI and its lines now, or undefined when no file has its path.
-   * A note that cannot be opened rejects, as linking mentions always has.
+   * A note's URI and its lines now; `missing` when no file has its path,
+   * which is not worth saying, and `unreadable` when it cannot be opened.
    */
-  private async readLines(filePath: string): Promise<{ uri: U; lines: string[] } | undefined> {
-    const uri = await this.options.notes.uriOf(filePath);
-    if (!uri) {
-      return undefined;
+  private async readLines(filePath: string): Promise<{ uri: U; lines: string[] } | 'missing' | 'unreadable'> {
+    try {
+      const uri = await this.options.notes.uriOf(filePath);
+      if (!uri) {
+        return 'missing';
+      }
+      return { uri, lines: (await this.options.notes.read(uri)).split(/\r?\n/) };
+    } catch {
+      return 'unreadable';
     }
-    return { uri, lines: (await this.options.notes.read(uri)).split(/\r?\n/) };
   }
 }
 
