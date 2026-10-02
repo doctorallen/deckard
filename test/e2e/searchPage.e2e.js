@@ -214,6 +214,28 @@ test('a tag\'s page lists what links its hub note, each saying so, and can leave
   vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
 });
 
+test('a tag\'s page leaves hub links out where a workspace turns them on', async () => {
+  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
+  vscode._test.workspaceSettings.set('deckard.tagOverview.includeHubLinks', true);
+  try {
+    const { view } = await openOverview('#project/atlas', { index: createHubLinkIndex() });
+    assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Budget']);
+
+    vscode._test.configurationUpdates.length = 0;
+    view.click(view.find('[data-action="exclude-hub-links"]'));
+    await settle();
+    assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]), [
+      ['deckard.tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Workspace],
+    ]);
+    assert.strictEqual(vscode._test.workspaceSettings.get('deckard.tagOverview.includeHubLinks'), false);
+    assert.strictEqual(vscode._test.settings.has('deckard.tagOverview.includeHubLinks'), false, 'the user\'s settings are left alone');
+    await settle();
+    assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+  } finally {
+    vscode._test.workspaceSettings.delete('deckard.tagOverview.includeHubLinks');
+  }
+});
+
 test('a tag\'s page says how else the tag is written, with Include in search and Merge', async () => {
   const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
   const files = [
