@@ -121,15 +121,17 @@ test('a task dragged to another day asks the host to move it, and a refusal is s
     // The harness's classList draws nothing, so what is checked is what is posted.
     view.fire('dragover', cell(tomorrow), { dataTransfer });
     view.fire('drop', cell(tomorrow), { dataTransfer });
-    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: chip.dataset.taskId, field: 'due', date: tomorrow });
+    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: chip.dataset.taskId, field: 'due', date: tomorrow, requestId: 1 });
   } finally {
     panel._onWebviewMessage = deliver;
   }
   // The stub cannot write the note, so the host refuses and says so.
-  panel._onWebviewMessage({ type: 'moveTask', taskId: chip.dataset.taskId, field: 'due', date: tomorrow });
+  panel._onWebviewMessage(view.posted[view.posted.length - 1]);
   await settle();
   await settle();
-  assert.ok(panel._toWebview.some((message) => message.type === 'moveRefused'), 'the host says it was not moved');
+  const refused = panel._toWebview.find((message) => message.type === 'moveRefused');
+  assert.deepStrictEqual(refused, { type: 'moveRefused', taskId: chip.dataset.taskId, requestId: 1 }, 'the host says that move was not made');
+  assert.strictEqual(view.find('#live-status').textContent, `"Call Ren" was not moved to ${tomorrow}.`);
 });
 
 test('the gear turns repeats off where the setting is written', async () => {

@@ -10,9 +10,9 @@
  * kept as before.
  */
 import { stepCalendar } from '../../domain/markdown/calendar';
-import type { CalendarMoveRefusedMessage, CalendarPageMessage, CalendarSnapshot } from '../../ui/protocol/calendar';
+import type { CalendarPageMessage, CalendarSnapshot } from '../../ui/protocol/calendar';
 import { installKeySheet } from '../shared/keySheet';
-import { type ActionHandler, dispatchAction, onHostMessage, readEmbeddedState } from '../shared/page';
+import { type ActionHandler, dispatchAction, readEmbeddedState } from '../shared/page';
 import { installDayPanel } from '../shared/calendar/dayPanel';
 import { eventElement } from '../shared/calendar/events';
 import { selectedDateOf, withGroupShown } from '../shared/calendar/model';
@@ -169,8 +169,8 @@ installKeySheet([{
     ['m, w', 'Month or Week'],
   ],
 }]);
+// The drag listens for the host's refusals too.
 installTaskDrag(session);
-onHostMessage<CalendarMoveRefusedMessage>('moveRefused', () => announce('The task was not moved.'));
 // What the page keeps across a hide or a reload: its layout, kept when the
 // reader chooses one, and where it was scrolled to, at most every 200 ms.
 rememberScroll(keptState, (value) => vscodeApi().setState(value));

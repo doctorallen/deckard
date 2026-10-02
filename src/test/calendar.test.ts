@@ -354,8 +354,39 @@ suite('Calendar', () => {
       assert.strictEqual((page.find('.day-panel details.day-group') as HTMLDetailsElement).open, false, 'Done folds again');
       assert.strictEqual(page.findAll('.dragging, .drop-target, .is-pending').length, 0, 'a drag\'s marks go');
       page.find('.day-cell[data-drop-date="2026-09-15"]').dispatchEvent(new page.window.Event('drop', { bubbles: true, cancelable: true }));
-      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId: chip.getAttribute('data-task-id'), field: 'due', date: '2026-09-15' });
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId: chip.getAttribute('data-task-id'), field: 'due', date: '2026-09-15', requestId: 1 });
       assert.strictEqual(page.findAll('.is-pending').length, 0, 'a chip drawn again since the drag began is not marked');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('the page numbers each move, and a refusal names and puts back the move it refuses', () => {
+    const now = new Date(2026, 8, 13, 10);
+    const moving = buildWorkspaceIndex(new Map([['notes/a.md', note('notes/a.md', '- [ ] Call Ren 📅 2026-09-13\n')]]));
+    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(moving, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' }));
+    try {
+      const chip = page.find('.cal-chip[data-kind="due"]');
+      const taskId = chip.getAttribute('data-task-id');
+      const drag = (date: string) => {
+        chip.dispatchEvent(new page.window.Event('dragstart', { bubbles: true }));
+        page.find(`.day-cell[data-drop-date="${date}"]`).dispatchEvent(new page.window.Event('drop', { bubbles: true, cancelable: true }));
+      };
+      const refuse = (requestId: number) =>
+        page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId, requestId } }));
+      // Dragged twice before the host answers either move.
+      drag('2026-09-15');
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, field: 'due', date: '2026-09-15', requestId: 1 });
+      drag('2026-09-16');
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, field: 'due', date: '2026-09-16', requestId: 2 });
+      assert.ok(chip.classList.contains('is-pending'));
+
+      refuse(1);
+      assert.strictEqual(page.text('#live-status'), '"Call Ren" was not moved to 2026-09-15.');
+      assert.ok(chip.classList.contains('is-pending'), 'the later move still waits');
+      refuse(2);
+      assert.strictEqual(page.text('#live-status'), '"Call Ren" was not moved to 2026-09-16.');
+      assert.ok(!chip.classList.contains('is-pending'), 'and the chip is put back once no move of it waits');
     } finally {
       page.dispose();
     }

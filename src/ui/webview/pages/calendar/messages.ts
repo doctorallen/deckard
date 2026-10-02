@@ -11,7 +11,7 @@ import type {
   CalendarPageToHost,
   CalendarShowMonthMessage,
 } from '../../../protocol/calendar';
-import { Narrower, NarrowingTable, narrowWith, onlyType, UncheckedMessage } from '../../host/narrowing';
+import { isRequestId, Narrower, NarrowingTable, narrowWith, onlyType, UncheckedMessage } from '../../host/narrowing';
 
 /** The longest note path the day panel may ask to open. */
 const MAX_FILE_PATH_LENGTH = 4096;
@@ -87,15 +87,26 @@ const narrowToggleTask: Narrower<ToggleTaskMessage> = (value) =>
     ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
     : undefined;
 
-/** A task dropped on a day: its id, which date moves, the day, and nothing else. */
+/**
+ * A task dropped on a day: its id, which date moves, the day, the move's
+ * number when it has one, and nothing else.
+ */
 const narrowMoveTask: Narrower<CalendarMoveTaskMessage> = (value) => {
   const date = readDate(value);
+  const numbered = value.requestId !== undefined;
   return typeof value.taskId === 'string' &&
     value.taskId.length > 0 &&
     (value.field === 'due' || value.field === 'scheduled') &&
     isDate(date) &&
-    Object.keys(value).length === 4
-    ? { type: 'moveTask', taskId: value.taskId, field: value.field, date }
+    (!numbered || isRequestId(value.requestId)) &&
+    Object.keys(value).length === (numbered ? 5 : 4)
+    ? {
+        type: 'moveTask',
+        taskId: value.taskId,
+        field: value.field,
+        date,
+        ...(isRequestId(value.requestId) ? { requestId: value.requestId } : {}),
+      }
     : undefined;
 };
 

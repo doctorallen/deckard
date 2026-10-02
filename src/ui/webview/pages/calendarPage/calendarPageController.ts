@@ -84,8 +84,8 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
     this.calendar = new CalendarController(calendarPage.indexer, calendarPage.writes, {
       dayPanel: () => true,
       refresh: calendarPage.refresh,
-      refused: (taskId) => {
-        calendarPage.post({ type: 'moveRefused', taskId });
+      refused: (taskId, requestId) => {
+        calendarPage.post({ type: 'moveRefused', taskId, ...(requestId === undefined ? {} : { requestId }) });
         calendarPage.refresh();
       },
     });
