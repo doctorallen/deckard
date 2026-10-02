@@ -55,7 +55,10 @@ export interface GraphPage {
   readonly look: GraphLook;
   /** Set once the controls are first drawn. */
   canvas: HTMLCanvasElement;
-  /** Null where the page has no 2D context, as under jsdom. */
+  /**
+   * The canvas's 2D context, taken with the canvas. A webview always gives
+   * a fresh canvas one, and so does the page harness the tests open.
+   */
   ctx: CanvasRenderingContext2D;
   /** Whether the next frame draws even if the simulation is at rest. */
   needsDraw: boolean;
