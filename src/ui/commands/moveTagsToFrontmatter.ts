@@ -167,7 +167,9 @@ export function moveInlineTagsToFrontmatterContent(
     '---',
   ];
 
-  return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join('\n');
+  // The note keeps its own line endings: a CRLF note stays CRLF.
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join(eol);
 }
 
 /**

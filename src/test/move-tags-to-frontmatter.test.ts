@@ -77,4 +77,12 @@ suite('Move inline tags to front matter', () => {
     assert.strictEqual(findCommentedTagField('---\nPeople:\n  - dana # lead\n---\n'), 'People');
     assert.strictEqual(findCommentedTagField('---\ntitle: x # mine\ntags: [a]\n---\n'), undefined, 'another field may end in a comment');
   });
+
+  test('keeps a CRLF note in CRLF', () => {
+    assert.strictEqual(
+      moveInlineTagsToFrontmatterContent('---\r\ntitle: Plan\r\n---\r\n# Plan #atlas\r\ntext\r\n'),
+      '---\r\ntitle: Plan\r\ntags: [atlas]\r\n---\r\n# Plan\r\ntext\r\n',
+    );
+    assert.strictEqual(moveInlineTagsToFrontmatterContent('# Plan #atlas\r\n'), '---\r\ntags: [atlas]\r\n---\r\n# Plan\r\n');
+  });
 });
