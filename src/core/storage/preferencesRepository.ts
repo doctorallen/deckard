@@ -111,7 +111,7 @@ export class PreferencesRepository implements PreferencesReader, Disposable {
     // Through the same queue as every other write, so a preference changed
     // before the handover lands is not overwritten by it.
     const write = async (): Promise<void> => {
-      await this.persist(clonePreferences(this.preferences));
+      await this.persist(clonePreferences(this.preferences), new Set());
       await this.state.update(workspaceScopedKey, true);
     };
     const queued = this.updateQueue.then(write, write);
@@ -153,13 +153,15 @@ export class PreferencesRepository implements PreferencesReader, Disposable {
     changes: Partial<PersistedPreferences>,
     quiet = false,
   ): Promise<void> {
+    const previous = this.preferences;
     this.preferences = normalizePreferences({
       ...this.preferences,
       ...changes,
     });
     const nextPreferences = clonePreferences(this.preferences);
+    const changed = changedKeys(previous, this.preferences, changes);
     const persist = async (): Promise<void> => {
-      await this.persist(nextPreferences);
+      await this.persist(nextPreferences, changed);
       if (quiet) {
         this.visitEmitter.fire();
       } else {
@@ -182,12 +184,54 @@ export class PreferencesRepository implements PreferencesReader, Disposable {
   /**
    * Writes one blob to the two stores it is split across. The workspace's
    * share is authoritative; the machine-wide copy is a backup and a seed.
+   *
+   * Every window shares the machine-wide store, and each read it once, when
+   * it started. Writing this window's whole blob there would put back every
+   * machine-wide choice another window has made since, such as a sort mode,
+   * on the next visit this window records. So only the keys in `changed`
+   * are laid over what the store holds now; the workspace's share of the
+   * copy is this window's whole, so the copy stays one workspace's set.
    */
-  private async persist(next: PersistedPreferences): Promise<void> {
-    await this.state.update(preferencesKey, next);
+  private async persist(
+    next: PersistedPreferences,
+    changed: ReadonlySet<string>,
+  ): Promise<void> {
+    const stored = this.state.get<Partial<PersistedPreferences>>(preferencesKey);
+    const merged: Record<string, unknown> = { ...(stored ?? next) };
+    for (const key of changed) {
+      merged[key] = next[key as keyof PersistedPreferences];
+    }
+    await this.state.update(
+      preferencesKey,
+      normalizePreferences(
+        this.workspaceState
+          ? { ...omitWorkspacePreferences(merged), ...pickWorkspacePreferences(next) }
+          : merged,
+      ),
+    );
     await this.workspaceState?.update(
       preferencesKey,
       pickWorkspacePreferences(next),
     );
   }
+}
+
+/**
+ * The keys one update changes: those it was given, even when the value is
+ * the one this window already held, since another window may have stored
+ * another since, and any other that normalizing it changed.
+ */
+function changedKeys(
+  previous: PersistedPreferences,
+  next: PersistedPreferences,
+  changes: Partial<PersistedPreferences>,
+): ReadonlySet<string> {
+  const changed = new Set<string>(Object.keys(changes));
+  const keys = new Set([...Object.keys(previous), ...Object.keys(next)]) as Set<keyof PersistedPreferences>;
+  for (const key of keys) {
+    if (!changed.has(key) && JSON.stringify(previous[key]) !== JSON.stringify(next[key])) {
+      changed.add(key);
+    }
+  }
+  return changed;
 }
