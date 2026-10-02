@@ -280,6 +280,7 @@ function createPage(): GraphPage {
     simNote: createRef(),
     tooltip: createRef(),
     resetUndo: createRef(),
+    announce: createRef(),
   };
   return {
     state: emptyGraphState(),

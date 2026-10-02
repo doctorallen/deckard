@@ -484,6 +484,19 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(page.posted.filter((message) => message.type === 'selectNode').length, 1, 'no selectNode without a node');
     });
 
+    test('a node chosen with the arrow keys is said, with what it is joined by', () => {
+      const page = openCanvas();
+      page.send(chain());
+      settle(page);
+      const canvas = page.find('#graph');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      const said = page.find('#graph-announce');
+      assert.strictEqual(said.getAttribute('role'), 'status');
+      assert.strictEqual(said.textContent, 'a · a.md:1 · No links');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      assert.strictEqual(said.textContent, 'call · Task · call.md:1 · No links');
+    });
+
     test('Enter opens the selected node, and Alt+Enter opens it beside the graph, as Alt-click does', () => {
       const page = openCanvas();
       page.send(chain());

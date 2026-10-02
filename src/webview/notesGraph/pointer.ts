@@ -258,7 +258,10 @@ function onKey(page: GraphPage, event: KeyboardEvent): void {
   stepSelection(page, forward);
 }
 
-/** Selects the next node drawn, or the one before, from the selection or from either end, and brings it into view. */
+/**
+ * Selects the next node drawn, or the one before, from the selection or
+ * from either end, brings it into view, and says it.
+ */
 function stepSelection(page: GraphPage, forward: boolean): void {
   const { state, settings } = page;
   const visible: number[] = [];
@@ -277,6 +280,10 @@ function stepSelection(page: GraphPage, forward: boolean): void {
   }
   selectNode(page, visible[next]);
   centerOnNode(page, visible[next]);
+  // The canvas draws the selection, which a screen reader cannot read, so
+  // the node is said as its tooltip says it.
+  const node = state.nodes[visible[next]];
+  (page.refs.announce.current as HTMLElement).textContent = node.title + ' · ' + describeNode(node);
 }
 
 /** Shows a node's title and what it is joined by beside the pointer, kept inside the window. */

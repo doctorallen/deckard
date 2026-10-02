@@ -47,6 +47,8 @@ export interface ControlRefs {
   readonly simNote: RefObject<HTMLSpanElement>;
   readonly tooltip: RefObject<HTMLDivElement>;
   readonly resetUndo: RefObject<HTMLSpanElement>;
+  /** Where a node chosen from the keyboard is said, since the canvas cannot say it. */
+  readonly announce: RefObject<HTMLSpanElement>;
 }
 
 /** A setting a checkbox turns on and off. */
@@ -105,6 +107,8 @@ export function GraphBody(props: ControlsProps) {
         aria-describedby="graph-legend"
         ref={refs.canvas}
       />
+      {' '}
+      <span class="visually-hidden" id="graph-announce" role="status" ref={refs.announce} />
       {' '}
       <div class="empty-state" id="empty-state" style={ui.emptyDisplay === undefined ? undefined : { display: ui.emptyDisplay }}>
         {ui.emptyNote ?? 'No indexed notes yet — save a Markdown file with tags or links.'}
