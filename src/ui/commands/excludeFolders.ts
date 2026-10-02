@@ -3,8 +3,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import {
-  findWrittenKey,
+  KeyLevel,
   listExcludedFolders,
+  planKeyRemoval,
   readExcludeKey,
   relativeExcludeKey,
   withExcludeKey,
@@ -129,7 +130,29 @@ export async function excludeFolderCommand(index: ExcludeIndex, uri?: vscode.Uri
   return true;
 }
 
-/** Include in Deckard: takes the folder's key out again. */
+/**
+ * The levels that can hold a folder's key, most specific first: the
+ * folder's own settings in a multi-root workspace, the workspace's, and
+ * the user's. In a single folder the folder's settings are the
+ * workspace's.
+ */
+function excludeLevels(configuration: vscode.WorkspaceConfiguration): KeyLevel<vscode.ConfigurationTarget>[] {
+  const inspected = configuration.inspect('exclude');
+  const multiRoot = vscode.workspace.workspaceFile !== undefined;
+  return [
+    ...(multiRoot ? [{ target: vscode.ConfigurationTarget.WorkspaceFolder, value: inspected?.workspaceFolderValue }] : []),
+    { target: vscode.ConfigurationTarget.Workspace, value: inspected?.workspaceValue },
+    { target: vscode.ConfigurationTarget.Global, value: inspected?.globalValue },
+  ];
+}
+
+/**
+ * Include in Deckard: takes the folder's key out again, wherever it is in
+ * force. The Explorer offers Include on any folder the merged setting
+ * names, but it used to look only where Exclude writes, the folder's or
+ * the workspace's settings, so a key in the user's settings (or, in a
+ * multi-root workspace, the workspace's) was "nothing to bring back".
+ */
 export async function includeFolderCommand(index: ExcludeIndex, uri?: vscode.Uri): Promise<boolean> {
   const described = uri ? describePlace(index, uri) : undefined;
   if (!described) {
@@ -138,15 +161,15 @@ export async function includeFolderCommand(index: ExcludeIndex, uri?: vscode.Uri
   }
   const { place, workspaceFolder } = described;
   const key = relativeExcludeKey(place.folder, place.workspaceFolder);
-  const { configuration, target, current } = settingPlace(workspaceFolder);
-  const written = key === undefined ? undefined : findWrittenKey(current, readExcludeKey(key));
-  if (!written) {
+  const configuration = vscode.workspace.getConfiguration('deckard', workspaceFolder.uri);
+  const removal = key === undefined ? undefined : planKeyRemoval(excludeLevels(configuration), readExcludeKey(key));
+  if (!removal) {
     void vscode.window.showInformationMessage(
       `Deckard does not leave out ${folderName(place)} by name here, so there is nothing to bring back. A pattern in the "${settingLabel('exclude')}" setting, or in the files or search exclude settings, may still match it.`,
     );
     return false;
   }
-  if (!(await writeSetting('exclude', withExcludeKey(current, written, false), target, configuration))) {
+  if (!(await writeSetting('exclude', removal.value, removal.target, configuration))) {
     return false;
   }
   void vscode.window.showInformationMessage(`Deckard indexes ${folderName(place)} again.`);

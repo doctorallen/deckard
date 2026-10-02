@@ -81,3 +81,44 @@ export function withExcludeKey(
   }
   return next;
 }
+
+/** One level an exclude-style setting can be set at: what it holds there, and how to write there. */
+export interface KeyLevel<T> {
+  target: T;
+  value: unknown;
+}
+
+/**
+ * What to write to take a folder's key out of an exclude-style setting so
+ * the merged value no longer names it, or undefined when no level names it
+ * by a `true` key.
+ *
+ * VS Code merges such an object across the user's, the workspace's, and a
+ * folder's settings, a key's value coming from the most specific level
+ * that holds it. So the key is taken out at that level. When a less
+ * specific level holds it as `true` too, taking it out would bring that
+ * one into force, so it is set to `false` there instead, under each
+ * spelling those levels hold.
+ * @param levels Most specific first.
+ * @param name The folder's path from its workspace folder, as
+ *   {@link findWrittenKey} reads it.
+ */
+export function planKeyRemoval<T>(
+  levels: readonly KeyLevel<T>[],
+  name: string,
+): { target: T; value: Record<string, boolean> } | undefined {
+  const held = levels.findIndex((level) => findWrittenKey(level.value, name) !== undefined);
+  const level = levels[held];
+  const written = level ? findWrittenKey(level.value, name) : undefined;
+  if (!level || written === undefined || (level.value as Record<string, unknown>)[written] !== true) {
+    return undefined;
+  }
+  const value = withExcludeKey(level.value, written, false);
+  for (const below of levels.slice(held + 1)) {
+    const spelling = findWrittenKey(below.value, name);
+    if (spelling !== undefined && (below.value as Record<string, unknown>)[spelling] === true) {
+      value[spelling] = false;
+    }
+  }
+  return { target: level.target, value };
+}
