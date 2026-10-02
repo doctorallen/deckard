@@ -100,6 +100,16 @@ suite('Agenda service', () => {
     assert.deepStrictEqual([view.filtered, view.querySet], [false, true]);
   });
 
+  test('reads a search that is not text as no search, as the setting\'s default', () => {
+    // A hand-edited settings.json can hold a number, null, or a list here.
+    for (const query of [42, null, ['tag:#atlas']]) {
+      const odd = setup({ 'deckard.agenda.query': query });
+      const view = odd.service.buildView(odd.index, []);
+      assert.deepStrictEqual(view.groups.map((group) => group.id), ['overdue', 'today', 'upcoming:2026-09-28', 'donetoday'], String(query));
+      assert.deepStrictEqual([view.query, view.filtered, view.querySet], ['', false, false], String(query));
+    }
+  });
+
   test('reads its grouping from the settings, falling back on what it cannot read', () => {
     assert.deepStrictEqual(setup({ 'deckard.agenda.groupBy': 'sideways' }).service.readGrouping(), {
       groupBy: 'due',

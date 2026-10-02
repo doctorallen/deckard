@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { listOverdueTasks } from '../commands/agendaActions';
+import { getAgendaQuery, listOverdueTasks } from '../commands/agendaActions';
 
 import { QueryContext } from '../../domain/query/queryContext';
 import { escapeMarkdown } from '../../shared/text';
@@ -139,11 +139,6 @@ interface StatusBarIndexSource {
 
 /** Where the day of the last reminder is kept: VS Code's global state. */
 type ReminderMemory = Pick<vscode.Memento, 'get' | 'update'>;
-
-/** `deckard.agenda.query`, so the count is of what the Tasks view lists. */
-function readAgendaQuery(): string {
-  return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
-}
 
 /** The command that opens the Tasks view, contributed by VS Code per view. */
 const SHOW_AGENDA = 'deckard.agenda.focus';
@@ -291,7 +286,7 @@ export class TaskStatusBar implements vscode.Disposable {
       return;
     }
     const context = readQueryContext(this.now().getTime());
-    const counts = countDueTasks(this.indexer.getSnapshot(), context, readAgendaQuery());
+    const counts = countDueTasks(this.indexer.getSnapshot(), context, getAgendaQuery());
     const text = describeDueTasks(counts);
     if (!text) {
       this.item.hide();
@@ -344,7 +339,7 @@ export class TaskStatusBar implements vscode.Disposable {
     const counts = countDueTasks(
       this.indexer.getSnapshot(),
       readQueryContext(this.now().getTime()),
-      readAgendaQuery(),
+      getAgendaQuery(),
     );
     this.refresh();
     if (counts.overdue + counts.today === 0) {

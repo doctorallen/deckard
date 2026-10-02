@@ -34,9 +34,14 @@ export function readAgendaGroupNamespace(
   return isNamespaceName(value) ? value.toLowerCase() : 'project';
 }
 
-/** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */
+/**
+ * What the Agenda lists, from `deckard.agenda.query`; empty is every open
+ * task, and so is a value that is not text, as a hand-edited settings.json
+ * can hold.
+ */
 export function readAgendaQuery(settings: SettingsReader): string {
-  return settings.get<string>('agenda.query', '');
+  const value = settings.get<unknown>('agenda.query', '');
+  return typeof value === 'string' ? value : '';
 }
 
 /** How many days Upcoming reaches, from `deckard.agenda.upcomingDays`: 1 to 90, 7 by default. */
