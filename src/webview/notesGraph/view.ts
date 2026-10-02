@@ -797,8 +797,12 @@ export function recomputeGroupMatch(state: GraphState, settings: GraphSettings):
   }
 }
 
-/** Selects a node, and the neighbors its drawn lines lead to, or nothing with -1. */
-export function setSelectedIndex(state: GraphState, index: number): void {
+/**
+ * Selects a node, and the neighbors its drawn lines lead to, or nothing
+ * with -1 or an index the graph does not hold.
+ */
+export function setSelectedIndex(state: GraphState, rawIndex: number): void {
+  const index = state.nodes[rawIndex] ? rawIndex : -1;
   state.selectedIndex = index;
   state.selectedId = index >= 0 ? state.nodes[index].id : null;
   state.selectedNeighbors = {};
@@ -809,8 +813,12 @@ export function setSelectedIndex(state: GraphState, index: number): void {
   }
 }
 
-/** Hovers a node, and the neighbors its drawn lines lead to, or nothing with -1. */
-export function setHoverIndex(state: GraphState, index: number): void {
+/**
+ * Hovers a node, and the neighbors its drawn lines lead to, or nothing
+ * with -1 or an index the graph does not hold.
+ */
+export function setHoverIndex(state: GraphState, rawIndex: number): void {
+  const index = state.nodes[rawIndex] ? rawIndex : -1;
   state.hoverIndex = index;
   state.hoverNeighbors = {};
   if (index >= 0) {

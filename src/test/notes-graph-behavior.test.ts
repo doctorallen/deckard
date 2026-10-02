@@ -845,4 +845,61 @@ suite('Notes Graph behavior', () => {
       assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:a1' }, 'the host is told its first heading');
     });
   });
+
+  suite('a graph that changes under the reader', () => {
+    const openCanvas = (): WebviewPage => {
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true });
+      return page;
+    };
+    /** Where each node of the last frame is on the page, in the order the frame filled them. */
+    const nodePoints = (page: WebviewPage): Array<{ x: number; y: number }> => {
+      const camera = (page.savedState() as { camera: { x: number; y: number; k: number } }).camera;
+      return lastFrame(page).filter((call) => call.op === 'arc').map((call) => {
+        const [x, y] = call.args as number[];
+        return { x: x * camera.k + camera.x, y: y * camera.k + camera.y };
+      });
+    };
+    const pointer = (page: WebviewPage, type: string, at: { x: number; y: number }) =>
+      page.find('#graph').dispatchEvent(new page.window.MouseEvent(type, { clientX: at.x, clientY: at.y, button: 0, bubbles: true }));
+
+    test('a click on a node across a new graph selects that node, not the one that took its place', () => {
+      const page = openCanvas();
+      page.send(graphState([note('m')], []));
+      settle(page);
+      const [at] = nodePoints(page);
+      pointer(page, 'pointerdown', at);
+      // A note sorted before it arrives while the button is down.
+      page.send(graphState([note('a'), note('m')], []));
+      pointer(page, 'pointerup', at);
+      assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:m' });
+    });
+
+    test('a click on a node the new graph no longer holds does nothing, and the graph still draws', () => {
+      const page = openCanvas();
+      page.send(graphState([note('a'), note('z')], []));
+      settle(page);
+      const z = nodePoints(page).find((at) => {
+        pointer(page, 'pointerdown', at);
+        pointer(page, 'pointerup', at);
+        return page.lastPosted('selectNode')?.nodeId === 'section:z';
+      });
+      assert.ok(z, 'z is on screen');
+      post(page, { type: 'selectNode', nodeId: 'section:a' });
+      const errors: string[] = [];
+      page.window.addEventListener('error', (event) => errors.push(event.message));
+      const posted = page.posted.length;
+      pointer(page, 'pointerdown', z);
+      page.send(graphState([note('a')], []));
+      pointer(page, 'pointerup', z);
+      assert.deepStrictEqual(page.posted.slice(posted), [], 'nothing selected, and the selection of a kept');
+      page.canvasCalls.length = 0;
+      page.flushFrames(5);
+      page.click('#zoom-in');
+      page.flushFrames(1);
+      assert.ok(lastFrame(page).some((call) => call.op === 'arc'), 'a is drawn');
+      assert.deepStrictEqual(errors, []);
+      page.find('#graph').dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'a is still selected');
+    });
+  });
 });

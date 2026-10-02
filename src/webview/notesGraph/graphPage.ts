@@ -228,7 +228,11 @@ export function rebuildView(page: GraphPage, repositionCommunities?: boolean): v
   if (!snapshot) {
     return;
   }
+  // A node held under the pointer is held by id: the new graph may number
+  // it differently, or no longer hold it.
+  const draggedId = state.dragIndex >= 0 && state.nodes[state.dragIndex] ? state.nodes[state.dragIndex].id : null;
   const rebuilt = buildView(state, settings, page.camera, repositionCommunities);
+  state.dragIndex = findNodeIndex(state, draggedId);
   if (rebuilt.groupGone) {
     keep(page);
   }
