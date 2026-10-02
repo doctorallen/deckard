@@ -26,6 +26,7 @@ function setup(settings: Record<string, unknown> = {}, note = NOTE) {
   const index = buildWorkspaceIndex(new Map([['plan.md', parseMarkdown('plan.md', note)]]));
   const written: [string, unknown][] = [];
   const refreshes: string[] = [];
+  const boards: { statuses: readonly string[] }[] = [];
   let ready = false;
   const options: AgendaServiceOptions<AgendaGroup> = {
     configuration: new FakeSettings(settings),
@@ -50,7 +51,10 @@ function setup(settings: Record<string, unknown> = {}, note = NOTE) {
           .find((group) => group.id === 'today')?.entries.length ?? 0,
       }),
       listOverdue: selectOverdueTasks,
-      resolveMove: (task, columnId, board) => resolveTaskMove(task, columnId, board, () => refuseMove('no tags')),
+      resolveMove: (task, columnId, board) => {
+        boards.push(board);
+        return resolveTaskMove(task, columnId, board, () => refuseMove('no tags'));
+      },
       isNamespaceName: (value) => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value),
     },
     writeSetting: async (key, value) => {
@@ -58,7 +62,7 @@ function setup(settings: Record<string, unknown> = {}, note = NOTE) {
       return key !== 'agenda.refused';
     },
   };
-  return { index, written, refreshes, service: new AgendaService(options), wasReady: () => ready };
+  return { index, written, refreshes, boards, service: new AgendaService(options), wasReady: () => ready };
 }
 
 /** The task whose words are `title`. */
@@ -154,6 +158,19 @@ suite('Agenda service', () => {
     );
     const refused = await service.moveToGroup([late], { groupId: 'tag:project/x', groupBy: 'tag' }, { from: new Map(), index: () => index }, async () => undefined);
     assert.deepStrictEqual(refused, { kind: 'moved', moved: 0, refused: ['no tags'] });
+  });
+
+  test('a drop reads the board\'s status columns as the Task Board reads them', async () => {
+    const cases: [unknown, string[]][] = [
+      [undefined, ['todo', 'doing', 'waiting']],
+      [['Review', 7, 'not a status', 'doing'], ['review', 'doing']],
+      ['doing', ['todo', 'doing', 'waiting']],
+    ];
+    for (const [statuses, read] of cases) {
+      const { index, service, boards } = setup(statuses === undefined ? {} : { 'deckard.board.statuses': statuses });
+      await service.moveToGroup([taskTitled(index, 'Late')], { groupId: 'doing', groupBy: 'status' }, { from: new Map(), index: () => index }, async () => undefined);
+      assert.deepStrictEqual(boards.at(-1)?.statuses, read, JSON.stringify(statuses));
+    }
   });
 
   test('completes and reopens only the boxes that changed, each read again from the index', async () => {

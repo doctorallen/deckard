@@ -11,7 +11,7 @@ import {
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
-import { readStatusNamespace } from '../domain/tasks/taskPolicy';
+import { readBoardStatuses, readStatusNamespace } from '../domain/tasks/taskPolicy';
 import type { Configuration } from '../ports/configuration';
 import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
@@ -338,7 +338,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     const configuration = this.settings();
     return {
       queryContext,
-      statuses: configuration.get<string[]>('board.statuses', []) ?? [],
+      statuses: readBoardStatuses(configuration),
       statusNamespace: readStatusNamespace(configuration),
       format: readMetadataFormat(configuration),
     };
