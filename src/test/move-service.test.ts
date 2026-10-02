@@ -75,6 +75,7 @@ suite('Move service', () => {
     assert.deepStrictEqual(history.writes[0].options.label, 'Move to…');
     assert.deepStrictEqual(history.writes[0].options.description, 'Moved to plan › Calls');
     assert.strictEqual(history.writes[0].options.preview, 'never');
+    assert.strictEqual(history.writes[0].options.together, true, 'both notes go back on an Undo, or neither');
     assert.deepStrictEqual(ranks, [[task.id, parseMarkdown('plan.md', fake.text('plan.md') ?? '').tasks[1].id]]);
   });
 

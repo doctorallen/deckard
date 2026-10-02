@@ -122,6 +122,47 @@ suite('Workspace writes', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('a write whose notes go back together puts none back once one has changed, and names it', async () => {
+    const root = await createTemporaryRoot();
+    const inbox = vscode.Uri.file(path.join(root.fsPath, 'inbox.md'));
+    const plan = vscode.Uri.file(path.join(root.fsPath, 'plan.md'));
+    await write(inbox, '# Inbox\n- [ ] Call Ren\n');
+    await write(plan, '# Plan\n');
+    const history = new WorkspaceWriteHistory();
+    let restored = 0;
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(inbox, new vscode.Range(1, 0, 2, 0), '');
+    edit.replace(plan, lineRange(1, 0, 0), '- [ ] Call Ren\n');
+    await history.write(edit, {
+      label: 'Move to…',
+      preview: 'never',
+      together: true,
+      restore: async () => {
+        restored += 1;
+      },
+    });
+    await editByHand(inbox, '# Inbox\n- [ ] Water plants\n');
+
+    const undone = await history.undo();
+    assert.deepStrictEqual(
+      { ...undone, skippedUris: undone?.skippedUris.map(String) },
+      { label: 'Move to…', restored: 0, skipped: 1, skippedUris: [inbox.toString()] },
+    );
+    assert.strictEqual(await read(inbox), '# Inbox\n- [ ] Water plants\n');
+    assert.strictEqual(await read(plan), '# Plan\n- [ ] Call Ren\n', 'the task is still where it went');
+    assert.strictEqual(restored, 0);
+    assert.strictEqual(history.lastWrite?.label, 'Move to…', 'kept, to try again once the note is put back');
+
+    await editByHand(inbox, '# Inbox\n');
+    const again = await history.undo();
+    assert.strictEqual(again?.restored, 2);
+    assert.strictEqual(await read(inbox), '# Inbox\n- [ ] Call Ren\n');
+    assert.strictEqual(await read(plan), '# Plan\n');
+    assert.strictEqual(restored, 1);
+    await deleteTemporaryRoot(root);
+  });
+
   test('puts back what the write changed outside the notes', async () => {
     const root = await createTemporaryRoot();
     const note = vscode.Uri.joinPath(root, 'note.md');
@@ -458,6 +499,19 @@ suite('An Undo offered on a message', () => {
 
 function lineRange(line: number, start: number, end: number): vscode.Range {
   return new vscode.Range(line, start, line, end);
+}
+
+/**
+ * Changes a note through its document and saves it, as a reader would, so
+ * the document and the disk agree at once; a write to disk reaches an open
+ * document only when VS Code next hears of the file.
+ */
+async function editByHand(uri: vscode.Uri, content: string): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(uri, new vscode.Range(new vscode.Position(0, 0), document.lineAt(document.lineCount - 1).range.end), content);
+  assert.ok(await vscode.workspace.applyEdit(edit));
+  assert.ok(await document.save());
 }
 
 async function write(uri: vscode.Uri, content: string): Promise<void> {

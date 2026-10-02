@@ -82,6 +82,13 @@ export interface HistoryWriteOptions {
   preview?: WritePreview;
   /** Puts back what the write changed outside the notes, on an Undo. */
   restore?: () => Promise<void>;
+  /**
+   * Whether the notes go back together or not at all: true for a write
+   * whose notes only make sense together, such as a task taken out of one
+   * note and put into another, whose Undo puts nothing back once any of
+   * them has changed since.
+   */
+  together?: boolean;
 }
 
 /** Whether a write landed, and when it did, the handle its Undo works through. */

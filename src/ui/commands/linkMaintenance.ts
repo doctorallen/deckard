@@ -199,6 +199,9 @@ export async function renameHeadingCommand(
   const written = await history.write(toWorkspaceEdit(plan.edits), {
     label: `the rename of the heading "${heading}"`,
     description: `Rename the heading to "${next.trim()}"`,
+    // Putting back the heading without its links, or the links without
+    // it, would break every link it renamed.
+    together: true,
   });
   if (!written.applied) {
     void reportFailure(describeRejectedEdit(noteName(editor.document.uri)));

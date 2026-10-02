@@ -168,6 +168,9 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       description: `Moved to ${target.name}`,
       preview: this.readPreview(),
       restore: deleteCreated,
+      // Undoing only the note the task left, or only the one it went to,
+      // would leave it in both or in neither.
+      together: true,
     });
     if (!write.applied) {
       await deleteCreated();

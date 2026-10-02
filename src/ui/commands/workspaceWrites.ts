@@ -28,6 +28,8 @@ export interface WorkspaceWrite {
   notes: WrittenNote[];
   /** Puts back what the write changed outside the notes, such as favorites. */
   restore?: () => Promise<void>;
+  /** Whether its notes go back together or not at all, as WorkspaceWriteOptions says. */
+  together?: boolean;
 }
 
 /** What an Undo managed to put back. */
@@ -36,7 +38,9 @@ export interface UndoResult {
   restored: number;
   /**
    * Notes Undo left as they are: those changed since the write, or every
-   * note when VS Code refused the Undo's edit.
+   * note when VS Code refused the Undo's edit. For a write whose notes go
+   * back together, the notes that changed since, which kept all of them
+   * from going back.
    */
   skipped: number;
   /** Which notes those are, so a message can name them. */
@@ -91,6 +95,17 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       return undefined;
     }
     const plan = await planUndo(write.notes);
+    if (write.together && plan.skippedUris.length > 0) {
+      // Putting back only some of them would undo half of one change, such
+      // as a task taken out of its note and never put back. The write is
+      // kept, so the Undo can be tried again once the note is put back.
+      return {
+        label: write.label,
+        restored: 0,
+        skipped: plan.skippedUris.length,
+        skippedUris: plan.skippedUris,
+      };
+    }
     if (!(await applyUndo(plan))) {
       return {
         label: write.label,
@@ -177,6 +192,7 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       at: Date.now(),
       notes,
       ...(options.restore ? { restore: options.restore } : {}),
+      ...(options.together ? { together: true } : {}),
     });
     return { applied: true, notes, handle: this.createHandle() };
   }
@@ -205,7 +221,11 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
         modal: true,
         detail: `${pluralize(write.notes.length, 'note')} go back to what they were before Deckard changed them, at ${new Date(
           write.at,
-        ).toLocaleTimeString()}. A note you have changed since is left as it is.`,
+        ).toLocaleTimeString()}. ${
+          write.together
+            ? 'They go back together, so if you have changed one since, none is put back.'
+            : 'A note you have changed since is left as it is.'
+        }`,
       },
       'Undo',
     );
@@ -457,6 +477,13 @@ export interface WorkspaceWriteOptions {
   preview?: WritePreview;
   /** Puts back what the write changed outside the notes, on an Undo. */
   restore?: () => Promise<void>;
+  /**
+   * Whether the notes go back together or not at all: true for a write
+   * whose notes only make sense together, such as Move to…, which takes a
+   * task out of one note and puts it into another. Its Undo puts nothing
+   * back, and names the note, once any of them has changed since.
+   */
+  together?: boolean;
 }
 
 /** The same edit, with every change waiting for the reader to accept it. */
