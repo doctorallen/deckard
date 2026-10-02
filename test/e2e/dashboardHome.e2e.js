@@ -44,14 +44,14 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Opens the Dashboard and mounts its webview, wired to the real host.
- * `prepare` sets preferences first, as an earlier visit would have.
+ * `prepare` sets preferences first, as an earlier visit would have;
+ * `indexerExtras` adds to the stand-in indexer, and `whatsNew` and `tryNext`
+ * are the host's own, when a test gives them.
  */
 async function openDashboard(
   index = createIndex(),
   prepare = async () => undefined,
-  indexerExtras = {},
-  whatsNew = undefined,
-  tryNext = undefined,
+  { indexerExtras = {}, whatsNew = undefined, tryNext = undefined } = {},
 ) {
   vscode._test.createdPanels.length = 0;
   const updates = new vscode.EventEmitter();
@@ -182,7 +182,7 @@ test('after an update Home says so once, and Dismiss takes the line away', async
     },
     onDidChange: changed.event,
   };
-  const { view, lastState } = await openDashboard(createIndex(), undefined, {}, whatsNew);
+  const { view, lastState } = await openDashboard(createIndex(), undefined, { whatsNew });
   assert.deepStrictEqual(lastState().data.whatsNew, { version: '1.23' });
   assert.strictEqual(view.find('.whats-new-bar span').textContent, 'Updated to Deckard 1.23.');
 
@@ -210,7 +210,7 @@ test('Try next suggests the Task board, and runs only the command it chose', asy
     snooze: async () => undefined,
     onDidChange: changed.event,
   };
-  const { view, lastState } = await openDashboard(index, undefined, {}, undefined, ledger);
+  const { view, lastState } = await openDashboard(index, undefined, { tryNext: ledger });
   const card = lastState().data.widgets.find((widget) => widget.kind === 'tryNext');
   assert.strictEqual(card.tryNext.id, 'taskBoard');
   assert.match(view.find('.try-next-text').textContent, /^You have 11 open tasks\./);
@@ -664,8 +664,10 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
         await store.pins.pinNote({ filePath: 'notes/current.md' });
       },
       {
-        isNotesFile: () => true,
-        getFilePath: (uri) => uri.fsPath.replace(/^\//, ''),
+        indexerExtras: {
+          isNotesFile: () => true,
+          getFilePath: (uri) => uri.fsPath.replace(/^\//, ''),
+        },
       },
     );
     const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);

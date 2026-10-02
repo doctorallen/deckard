@@ -5,7 +5,7 @@
 // status columns, so these check each of those through real messages.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./support.js');
+const { createGlobalState, mountWebview } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { TaskBoardPanel } = modules.taskBoard;
 const { createPreferences } = modules.preferenceServices;
@@ -14,17 +14,17 @@ const { DashboardPanel } = modules.dashboard;
 const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
-  const task = (id, title, lineNumber, tags, completed = false) => ({
+  const task = (id, title, lineNumber, { tags = [], completed = false } = {}) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags,
     tagLabels: Object.fromEntries(tags.map((tag) => [tag, tag])),
     lineNumber, checkboxColumn: 3, checkboxValue: completed ? 'x' : ' ',
     sourceLineText: `- [${completed ? 'x' : ' '}] ${title} ${tags.join(' ')}`.trim(),
   });
   const tasks = [
-    task('audit', 'Send the audit summary', 1, ['#project/atlas', '#status/doing']),
-    task('room', 'Book the review room', 2, ['#project/beta']),
-    task('call', 'Call Ren', 3, ['#project/atlas']),
-    task('ship', 'Ship the release', 4, [], true),
+    task('audit', 'Send the audit summary', 1, { tags: ['#project/atlas', '#status/doing'] }),
+    task('room', 'Book the review room', 2, { tags: ['#project/beta'] }),
+    task('call', 'Call Ren', 3, { tags: ['#project/atlas'] }),
+    task('ship', 'Ship the release', 4, { completed: true }),
   ];
   const tag = (key, taskIds) => [key, {
     key, label: key, sectionIds: [], taskIds, filePaths: [],
@@ -42,18 +42,6 @@ function createIndex() {
     entities: new Map(),
     tagAssociations: new Map(),
     updatedAt: Date.now(),
-  };
-}
-
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    keys: () => [...store.keys()],
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
   };
 }
 
@@ -316,7 +304,7 @@ test('a card breaks into steps from its menu and from s, which ask the host', as
 /** A task with three steps: one done, one plain, and one with a date of its own. */
 function createIndexWithSteps() {
   const index = createIndex();
-  const step = (id, title, lineNumber, completed, extra = {}) => ({
+  const step = (id, title, lineNumber, { completed, ...extra }) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags: [], tagLabels: {},
     associationTagGroups: [[]], lineNumber, checkboxColumn: 5, checkboxValue: completed ? 'x' : ' ',
     sourceLineText: `  - [${completed ? 'x' : ' '}] ${title}`, parentTaskId: 'plan', ...extra,
@@ -327,9 +315,9 @@ function createIndexWithSteps() {
     sourceLineText: '- [ ] Plan the offsite',
     steps: { ids: ['venue', 'email', 'caterer'], total: 3, done: 1, next: 'Draft the email' },
   });
-  index.tasks.set('venue', step('venue', 'Book the venue', 11, true));
-  index.tasks.set('email', step('email', 'Draft the email', 12, false));
-  index.tasks.set('caterer', step('caterer', 'Call the caterer', 13, false, { dueAt: Date.now(), dueText: 'today' }));
+  index.tasks.set('venue', step('venue', 'Book the venue', 11, { completed: true }));
+  index.tasks.set('email', step('email', 'Draft the email', 12, { completed: false }));
+  index.tasks.set('caterer', step('caterer', 'Call the caterer', 13, { completed: false, dueAt: Date.now(), dueText: 'today' }));
   return index;
 }
 

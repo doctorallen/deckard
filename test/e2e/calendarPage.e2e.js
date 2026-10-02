@@ -6,7 +6,7 @@
 // it could not.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./support.js');
+const { createGlobalState, mountWebview } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { CalendarPanel } = modules.calendarPage;
 const { parseMarkdown } = modules.parser;
@@ -150,8 +150,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
     getFilePath: (uri) => uri.fsPath,
     onDidUpdate: new vscode.EventEmitter().event,
   };
-  const store = new Map();
-  const globalState = { get: (key, fallback) => (store.has(key) ? store.get(key) : fallback), keys: () => [...store.keys()], update: (key, value) => { store.set(key, value); return Promise.resolve(); } };
+  const globalState = createGlobalState();
   const activeCalendar = new ActiveCalendar();
   const sidebar = new SidebarNotesView({
     indexer,

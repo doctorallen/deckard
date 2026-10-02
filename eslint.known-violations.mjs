@@ -361,14 +361,6 @@ export default {
       "getTaskBoardHtml"
     ]
   },
-  "max-params": {
-    "test/e2e/dashboardHome.e2e.js": [
-      "openDashboard"
-    ],
-    "test/e2e/taskBoard.e2e.js": [
-      "(arrow function)"
-    ]
-  },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
     "src/domain/index/indexState.ts": 2,
