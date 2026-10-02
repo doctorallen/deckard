@@ -302,6 +302,21 @@ test('Escape closes a widget\'s gear and hands focus back to it', async () => {
   assert.strictEqual(gear().open, false, 'and it stays closed when Home is drawn again');
 });
 
+test('Undo of a removed widget hands focus back to the widget it put back', async () => {
+  const { view } = await openDashboard();
+  view.click(view.find('[data-action="customize-home"]'));
+  const remove = () => view.find('.home-widget[data-widget-id="agenda"] [data-action="remove-widget"]');
+  remove().focus();
+  view.click(remove());
+  await delay(20);
+  const undo = view.find('#undo-toast [data-action="undo-remove-widget"]');
+  assert.strictEqual(view.document.activeElement, undo, 'focus moves to Undo');
+  view.click(undo);
+  await delay(20);
+  assert.ok(remove(), 'the widget is back');
+  assert.strictEqual(view.document.activeElement, remove(), 'focus is where the removal was made, not on the page itself');
+});
+
 test('a widget added is announced by its name alone', async () => {
   const { view } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));

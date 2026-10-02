@@ -232,6 +232,7 @@ function setEditingHome(editing: boolean): void {
   view.editingHome = editing;
   if (!editing) {
     widgetUndo.clear();
+    refocusRestored = undefined;
   }
   view.openWidgetOptions = undefined;
   saveView();
@@ -480,8 +481,16 @@ function removeWidget(widgetId: string | undefined): void {
   widgetUndo.show(`Removed ${(drawn && drawn.title) || 'the widget'}.`, 'undo-remove-widget', { widget: removed, index });
 }
 
-/** Puts back the widget removed last, where it was. */
+/**
+ * The widget Undo put back, whose Remove button takes focus once the host
+ * draws it again: Undo was taken with focus on it, and the toast emptied
+ * takes focus away to the page itself.
+ */
+let refocusRestored: string | undefined;
+
+/** Puts back the widget removed last, where it was, and, when Undo had focus, focus where the removal was made. */
 function undoRemoveWidget(): void {
+  const fromUndo = Boolean(document.getElementById('undo-toast')?.contains(document.activeElement));
   const undone = widgetUndo.take();
   const snapshot = shown();
   if (!undone || !snapshot) {
@@ -489,8 +498,28 @@ function undoRemoveWidget(): void {
   }
   const widgets = widgetConfig(snapshot);
   widgets.splice(Math.min(undone.index, widgets.length), 0, undone.widget);
+  refocusRestored = fromUndo ? undone.widget.id : undefined;
   sendWidgets(snapshot, widgets);
   redraw();
+}
+
+/**
+ * Focuses the restored widget's Remove button once it is drawn, while
+ * focus is still on the page itself or somewhere in Home's grid, where a
+ * stand-in for the gone widget may have put it; elsewhere, the reader has
+ * moved on, and it is left there.
+ */
+function focusRestoredWidget(): void {
+  const id = refocusRestored;
+  const button = id ? document.querySelector<HTMLElement>(`.home-widget[data-widget-id="${id}"] [data-action="remove-widget"]`) : null;
+  if (!button) {
+    return;
+  }
+  refocusRestored = undefined;
+  const active = document.activeElement;
+  if (!active || active === document.body || active.closest('.home-grid')) {
+    button.focus();
+  }
 }
 
 // ----- Ranking ---------------------------------------------------------------
@@ -938,6 +967,7 @@ function receiveState(incoming: DashboardPageState): void {
   editor.receive();
   redraw({ snapshot: incoming });
   revealNewWidget();
+  focusRestoredWidget();
 }
 
 onHostMessage<StateMessage<DashboardPageState>>('state', (message) => receiveState(message.data));
