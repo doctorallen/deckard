@@ -584,6 +584,12 @@ suite('Preferences round trip', () => {
       await assertReadsAs({ relatedNotesPreviewLines: 0 }, expected({ relatedNotesPreviewLines: 0 }));
     });
 
+    test('saved filters that are not a list read as none', async () => {
+      for (const savedFilters of ['filter-one', 1, true, { 0: { id: 'filter-one', name: 'One', tagKeys: ['#a'] } }, null]) {
+        await assertReadsAs({ savedFilters }, expected({}));
+      }
+    });
+
     test('lists keep unique non-empty strings, in order', async () => {
       const list = ['#b', '#a', '#b', '', 4, null, '#c'];
       await assertReadsAs(
