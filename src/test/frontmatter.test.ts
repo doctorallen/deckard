@@ -106,6 +106,8 @@ suite('Front matter bounds and values', () => {
     assert.deepStrictEqual(splitFrontmatterValues(' [a, "b", , \'c\'] '), ['a', 'b', 'c']);
     assert.deepStrictEqual(splitFrontmatterValues(' "solo" '), ['solo']);
     assert.deepStrictEqual(splitFrontmatterValues('   '), []);
+    assert.deepStrictEqual(splitFrontmatterValues('["a, b", \'it\'\'s, here\', c]'), ['a, b', "it's, here", 'c'], 'a comma inside quotes is part of the value');
+    assert.deepStrictEqual(splitFrontmatterValues("[it's, b]"), ["it's", 'b'], 'only a quote that opens a value starts one');
     assert.deepStrictEqual(splitFrontmatterValues('[]', { keepEmptyValue: true }), []);
   });
 
@@ -154,5 +156,10 @@ suite('Rename Tag in front matter', () => {
       '---\nproject\t: hermes\n---\n',
     );
     assert.strictEqual(rename('---\ntags : [atlas, beta]\n---\n', '#atlas', '#beta'), '---\ntags : [beta]\n---\n', 'a merge in one list leaves one');
+  });
+
+  test('renames a quoted value holding a comma as the one tag YAML reads', () => {
+    assert.strictEqual(rename('---\ntags: ["a, b", c]\n---\n', '#a-b', '#d'), '---\ntags: ["d", c]\n---\n');
+    assert.strictEqual(rename('---\ntags: ["a, b", c]\n---\n', '#a-b', '#c'), '---\ntags: [c]\n---\n', 'a merge in one list leaves one');
   });
 });

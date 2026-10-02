@@ -9,7 +9,7 @@ import {
   Task,
 } from '../model';
 import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
-import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
+import { findFrontmatterEnd, readFlowListValue, splitFlowListItems, splitFrontmatterValues, unquote } from './frontmatter';
 import { findListParents, findParentTaskLine } from './listNesting';
 import {
   findFencedLines,
@@ -727,16 +727,17 @@ function createFrontmatterTagSpans(
     (isArray
       ? rawValue.indexOf('[') + 1
       : 0);
-  let offset = 0;
+  // A list is split as YAML and splitFrontmatterValues split it, so a span
+  // is a value the index holds.
+  const items = isArray ? splitFlowListItems(content) : splitAtCommas(content);
 
-  return content.split(',').flatMap((item) => {
-    const leading = item.length - item.trimStart().length;
-    const sourceValue = item.trim();
-    const value = unquote(sourceValue);
+  return items.flatMap((item) => {
+    const leading = item.text.length - item.text.trimStart().length;
+    const sourceValue = item.text.trim();
+    const value = isArray ? readFlowListValue(sourceValue) : unquote(sourceValue);
     const tag = frontmatterValueToTag(getTagField(field), value, settings);
     const quoteOffset = /^['"]/.test(sourceValue) ? 1 : 0;
-    const startColumn = contentStart + offset + leading + quoteOffset;
-    offset += item.length + 1;
+    const startColumn = contentStart + item.start + leading + quoteOffset;
 
     if (!tag || !value) {
       return [];
@@ -748,9 +749,20 @@ function createFrontmatterTagSpans(
         label: tag.label,
         lineNumber,
         startColumn,
-        endColumn: startColumn + value.length,
+        // The value as written between its quotes, which is what a rename replaces.
+        endColumn: startColumn + unquote(sourceValue).length,
       },
     ];
+  });
+}
+
+/** A value's pieces between commas, each with the offset it starts at. */
+function splitAtCommas(value: string): { text: string; start: number }[] {
+  let start = 0;
+  return value.split(',').map((text) => {
+    const item = { text, start };
+    start += text.length + 1;
+    return item;
   });
 }
 

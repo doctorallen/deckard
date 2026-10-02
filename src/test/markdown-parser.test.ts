@@ -414,6 +414,17 @@ suite('Markdown parser', () => {
     );
   });
 
+  test('reads a quoted list value holding a comma as one value, as YAML does', () => {
+    const content = '---\ntags: ["a, b", c, \'it\'\'s, here\']\n---\n# Note';
+    const parsed = parseMarkdown('notes/note.md', content);
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#a-b', '#c', '#it-s-here']);
+    assert.deepStrictEqual(
+      extractTagSpans(content).filter((span) => span.lineNumber === 2).map((span) => [span.key, span.startColumn, span.endColumn]),
+      [['#a-b', 8, 12], ['#c', 15, 16], ['#it-s-here', 19, 30]],
+      'each span is the value between its quotes',
+    );
+  });
+
   test('returns typed clickable spans for supported frontmatter values', () => {
     const spans = extractTagSpans(
       [

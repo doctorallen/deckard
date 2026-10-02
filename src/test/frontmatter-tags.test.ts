@@ -188,8 +188,9 @@ suite('Front matter tags', () => {
     assert.strictEqual(findTagsFieldProblem('---\ntags: [a]\n---\n'), undefined);
   });
 
-  test('leaves a quoted value with a comma alone, which YAML reads as one value and the parser as two', () => {
-    assert.strictEqual(addFrontmatterTag('---\ntags: ["a, b"]\n---\n', 'parked'), undefined);
+  test('keeps a quoted value with a comma whole, as YAML and the parser read it', () => {
+    assert.strictEqual(addFrontmatterTag('---\ntags: ["a, b"]\n---\n', 'parked'), '---\ntags: ["a, b", parked]\n---\n');
+    assert.strictEqual(removeFrontmatterTags('---\ntags: ["a, b", parked]\n---\n', ['parked']), '---\ntags: ["a, b"]\n---\n');
     assert.strictEqual(addFrontmatterTag("---\ntags: [it's, b]\n---\n", 'parked'), "---\ntags: [it's, b, parked]\n---\n");
   });
 

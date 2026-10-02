@@ -13,7 +13,7 @@ import {
   endsInComment,
   formatYamlValue,
   getFrontmatterBounds,
-  splitQuotedValues,
+  splitValues,
 } from '../../domain/markdown/frontmatterTags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { TagReference } from '../../domain/model';
@@ -225,7 +225,7 @@ function collectFrontmatterValues(
       currentGroup = getFrontmatterGroupForField(property[1]);
       if (currentGroup) {
         // As YAML reads them, so a quoted value holding a comma is written back whole.
-        splitQuotedValues(property[2]).forEach((value) =>
+        splitValues(property[2]).forEach((value) =>
           addFrontmatterValue(values, currentGroup!, value),
         );
       }
