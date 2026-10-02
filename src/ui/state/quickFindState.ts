@@ -25,7 +25,8 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
-import { describeTagMatches, getHeadingPath } from './dashboardState';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { describeTagMatches } from './querySuggestions';
 import { frecencyScore } from './frecency';
 import { createPinForLine, findPinnedSection, resolvePin } from './pinnedNotes';
 import { normalizeFindInput, pinKey } from '../../core/storage/preferences';

@@ -10,7 +10,7 @@ import {
   WikiLinkTarget,
 } from '../../domain/index/backlinks';
 import { ParsedFile, Section, Task, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from './dashboardState';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { stripTrailingTags } from './queryBlockState';
 
 /**

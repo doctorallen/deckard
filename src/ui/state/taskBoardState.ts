@@ -50,12 +50,9 @@ import {
   Section,
 } from '../../core/types';
 import { tokenizeInline } from '../../domain/markdown/inline';
-import {
-  createDashboardTask,
-  createQueryViewState,
-  getHeadingPath,
-  sortTasks,
-} from './dashboardState';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { createDashboardTask, sortTasks } from './entryCards';
+import { createQueryViewState } from './querySuggestions';
 import { stripTrailingTags } from './queryBlockState';
 import {
   compareTasksByColumn,

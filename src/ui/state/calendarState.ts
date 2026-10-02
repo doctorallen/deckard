@@ -15,7 +15,7 @@ import {
   Task,
   WorkspaceIndex,
 } from '../../core/types';
-import { createDashboardTask } from './dashboardState';
+import { createDashboardTask } from './entryCards';
 import {
   findPeriodicNoteNames,
   formatLocalDate,

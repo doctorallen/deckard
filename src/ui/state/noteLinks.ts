@@ -12,7 +12,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
-import { getHeadingPath } from './dashboardState';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { findUnlinkedMentions } from './editorLensState';
 
 /**
