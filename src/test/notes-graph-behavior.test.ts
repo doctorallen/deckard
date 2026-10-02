@@ -491,6 +491,19 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual(arcs(), 3, 'the notes');
     });
 
+    test('a graph with no nodes is at rest, and Reset does not set it running', () => {
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true, clockStep: 1 });
+      page.send(graphState([], []));
+      page.flushFrames(1);
+      assert.strictEqual(page.flushFrames(100), 0, 'no frame is asked for');
+      assert.strictEqual((page.find('#sim-note') as HTMLElement).hidden, true, 'not Simulating');
+
+      page.click('#reset-graph-settings');
+      page.flushFrames(1);
+      assert.strictEqual(page.flushFrames(100), 0, 'Reset draws once, and asks for no more');
+      assert.strictEqual((page.find('#sim-note') as HTMLElement).hidden, true);
+    });
+
     test('Reset lays the graph out afresh and heats it, then frames it again', () => {
       // On the stepped clock a frame runs seven ticks, so the heat shows.
       page = openWebviewPage(renderPage('notesGraph'), undefined, { canvas: true, clockStep: 1 });

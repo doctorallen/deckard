@@ -185,10 +185,10 @@ function setting(calls: Call[], name: string, at = calls.length): unknown {
 }
 
 suite('Notes Graph simulation', () => {
-  test('a graph with no nodes does not tick, and the heat falls 2.28% a tick until it stops under 0.005', () => {
+  test('a graph with no nodes is at rest at once, and the heat falls 2.28% a tick until it stops under 0.005', () => {
     const empty = layout([], [], []);
     graph.tick(empty, DEFAULTS);
-    assert.strictEqual(empty.alpha, 1, 'nothing to move, nothing cools');
+    assert.strictEqual(empty.alpha, 0, 'nothing to move, so the frame loop stops');
 
     const state = layout([node('a'), node('b')], [], [[0, 0], [50, 0]]);
     graph.tick(state, DEFAULTS);
