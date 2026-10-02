@@ -175,7 +175,6 @@ export default {
     "test/ui/checkLayout.js": 5,
     "test/ui/checkRenderedContrast.js": 1,
     "test/ui/checkVisual.js": 4,
-    "test/ui/pages.js": 3,
     "test/ui/verifyWebviews.js": 13
   },
   "jsdoc/escape-inline-tags": {
@@ -255,8 +254,7 @@ export default {
     "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/helpHtml.ts": 1,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
-    "src/ui/webview/searchPage.ts": 2,
-    "test/e2e/vscodeStub.js": 17
+    "src/ui/webview/searchPage.ts": 2
   },
   "max-depth": {
     "scripts/build-walkthrough-images.mjs": 1,

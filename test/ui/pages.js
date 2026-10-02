@@ -12,35 +12,23 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const Module = require('node:module');
-const resolveFilename = Module._resolveFilename;
-Module._resolveFilename = function patched(request, ...rest) {
-  if (request === 'vscode') {
-    return path.join(__dirname, '..', 'e2e', 'vscodeStub.js');
-  }
-  return resolveFilename.call(this, request, ...rest);
-};
+const vscodeStub = require('../e2e/vscodeStub.js');
+vscodeStub.install();
+/**
+ * The page builders read the theme and zen mode from the settings when they
+ * run, so the pages are given them through the stub's settings, as a
+ * reader's settings would give them. The contrast check walks every theme,
+ * and the layout check walks zen on and off.
+ */
+const { settings } = vscodeStub._test;
+/** Where the theme and zen mode are set, by their full names. */
+const THEME = 'deckard.theme';
+const ZEN = 'deckard.zenMode';
 // The layout checks describe the pages under Replicant, which declares no
 // tokens of its own. Every other theme, the default Corpo included, re-declares
 // the tokens and restyles surfaces on purpose, so the pages render as Replicant.
-const vscodeStub = require(path.join(__dirname, '..', 'e2e', 'vscodeStub.js'));
-const getConfiguration = vscodeStub.workspace.getConfiguration;
-/** The theme the pages render with; the contrast check walks every one. */
-let renderTheme = 'replicant';
-/** Whether the pages render with zen mode on; the layout check walks both. */
-let renderZen = false;
-vscodeStub.workspace.getConfiguration = (section) => {
-  const configuration = getConfiguration(section);
-  return {
-    ...configuration,
-    get: (key, fallback) => {
-      if (section !== 'deckard') return configuration.get(key, fallback);
-      if (key === 'theme') return renderTheme;
-      if (key === 'zenMode') return renderZen;
-      return configuration.get(key, fallback);
-    },
-  };
-};
+settings.set(THEME, 'replicant');
+settings.set(ZEN, false);
 const modules = require('../harness/modules.js');
 const { loadPage } = require('../harness/loadPage.js');
 
@@ -71,15 +59,20 @@ const { deckardThemes } = modules.themes;
  * each one rather than restyled after the fact.
  */
 function renderPagesForTheme(theme, options) {
-  const previousTheme = renderTheme;
-  const previousZen = renderZen;
-  renderTheme = theme;
-  renderZen = Boolean(options && options.zen);
+  return withLook(theme, Boolean(options && options.zen), () => pages.map(([name, render]) => [name, render()]));
+}
+
+/** Runs `render` with the theme and zen mode set, and sets them back after. */
+function withLook(theme, zen, render) {
+  const previousTheme = settings.get(THEME);
+  const previousZen = settings.get(ZEN);
+  settings.set(THEME, theme);
+  settings.set(ZEN, zen);
   try {
-    return pages.map(([name, render]) => [name, render()]);
+    return render();
   } finally {
-    renderTheme = previousTheme;
-    renderZen = previousZen;
+    settings.set(THEME, previousTheme);
+    settings.set(ZEN, previousZen);
   }
 }
 
@@ -92,16 +85,8 @@ function renderPage(name, options = {}) {
   if (!pages.some(([pageName]) => pageName === name)) {
     throw new Error(`No such page: ${name}`);
   }
-  const previousTheme = renderTheme;
-  const previousZen = renderZen;
-  renderTheme = options.theme || renderTheme;
-  renderZen = Boolean(options.zen);
-  try {
-    return loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions }));
-  } finally {
-    renderTheme = previousTheme;
-    renderZen = previousZen;
-  }
+  return withLook(options.theme || settings.get(THEME), Boolean(options.zen), () =>
+    loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions })));
 }
 
 /**
