@@ -81,6 +81,51 @@ function recountColumn(column: HTMLElement | null): void {
   column.classList.toggle('over-limit', limit !== undefined && count > limit);
 }
 
+/** Where the board was scrolled across, and each of its columns down, by column. */
+export interface BoardScroll {
+  readonly left: number;
+  readonly columns: ReadonlyMap<string, number>;
+}
+
+/** Where the board and its columns are scrolled now, or undefined with no board drawn. */
+export function readBoardScroll(): BoardScroll | undefined {
+  const drawn = document.querySelector<HTMLElement>('.task-board');
+  if (!drawn) {
+    return undefined;
+  }
+  const columns = new Map<string, number>();
+  drawn.querySelectorAll<HTMLElement>('.board-column').forEach((column) => {
+    const cards = column.querySelector<HTMLElement>('.board-cards');
+    if (cards) {
+      columns.set(String(column.dataset.columnId), cards.scrollTop);
+    }
+  });
+  return { left: drawn.scrollLeft, columns };
+}
+
+/**
+ * Scrolls the board and each column it still draws back to where
+ * `readBoardScroll` found them. A move or a completion makes the board
+ * afresh, and a column made afresh starts at its top: moving a card far
+ * down a long column threw the reader back to its first card.
+ */
+export function restoreBoardScroll(scroll: BoardScroll | undefined): void {
+  const drawn = document.querySelector<HTMLElement>('.task-board');
+  if (!scroll || !drawn) {
+    return;
+  }
+  if (drawn.scrollLeft !== scroll.left) {
+    drawn.scrollLeft = scroll.left;
+  }
+  drawn.querySelectorAll<HTMLElement>('.board-column').forEach((column) => {
+    const cards = column.querySelector<HTMLElement>('.board-cards');
+    const top = scroll.columns.get(String(column.dataset.columnId));
+    if (cards && top !== undefined && cards.scrollTop !== top) {
+      cards.scrollTop = top;
+    }
+  });
+}
+
 /**
  * Keeps the board with the cards the words being typed leave shown: each
  * column counted again from them, and the Tab stop moved to the first of

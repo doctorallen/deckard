@@ -423,4 +423,19 @@ suite('Task Board page', () => {
     type(table, 'beta');
     assert.strictEqual(table.findAll('.result-row').filter((row) => !(row as HTMLElement).hidden).length, 1, 'the table narrows as the list does');
   });
+
+  test('the board drawn again after a move keeps where each column and the board were scrolled', () => {
+    const lines = Array.from({ length: 40 }, (_, number) => `- [ ] Task ${number} #status/doing`);
+    const files = { 'notes/a.md': `${lines.join('\n')}\n- [ ] Lone #status/todo\n` };
+    const shown = show(boardOf(files));
+    const cards = () => shown.find('.board-column[data-column-id="status:doing"] .board-cards');
+    cards().scrollTop = 300;
+    shown.find('.task-board').scrollLeft = 120;
+    const card = cardTitled(shown, 'Task 30');
+    card.focus();
+    press(shown, card, '2');
+    shown.send(boardOf({ 'notes/a.md': files['notes/a.md'].replace('Task 30 #status/doing', 'Task 30 #status/doing ⏫') }));
+    assert.strictEqual(cards().scrollTop, 300, 'the Doing column is where it was, not back at its top');
+    assert.strictEqual(shown.find('.task-board').scrollLeft, 120);
+  });
 });

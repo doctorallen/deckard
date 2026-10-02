@@ -23,7 +23,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
-import { followShownCards, installBoardMoves } from './boardMoves';
+import { type BoardScroll, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SortControl, TableSortNote, TaskList } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
@@ -53,6 +53,9 @@ let latest: TaskBoardSnapshot | undefined;
 /** Where the window was scrolled when a draw began, put back after it. */
 let scrolledTo = { x: 0, y: 0 };
 
+/** Where the board and its columns were scrolled when a draw began, put back after it. */
+let boardScrolledTo: BoardScroll | undefined;
+
 // What every page shares comes first, as the template's component script
 // did: the busy mark, the indexing line, tips, and the menu keys.
 const store = startPage<BoardPageState>({
@@ -63,6 +66,7 @@ const store = startPage<BoardPageState>({
     filterTaskEntries();
     editor.afterRender();
     window.scrollTo(scrolledTo.x, scrolledTo.y);
+    restoreBoardScroll(boardScrolledTo);
   },
 });
 installMenuKeys();
@@ -188,6 +192,7 @@ function redraw(change: Partial<BoardPageState> = {}): void {
     closeRankMenu();
     closeActionMenu();
     scrolledTo = { x: window.scrollX, y: window.scrollY };
+    boardScrolledTo = readBoardScroll();
   }
   store.update(change);
 }
