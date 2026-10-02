@@ -203,7 +203,7 @@ class BoardMoves {
     this.options.post(message);
   }
 
-  private openCard(card: HTMLElement, event?: MouseEvent): void {
+  private openCard(card: HTMLElement, event?: MouseEvent | KeyboardEvent): void {
     this.post(openSourceMessage(card, event));
   }
 
@@ -414,11 +414,16 @@ class BoardMoves {
   private onKeydown(event: KeyboardEvent): void {
     const target = event.target instanceof Element ? event.target : null;
     const card = target && target.matches('.task-board .board-card') ? (target as HTMLElement) : undefined;
-    if (!card || event.metaKey || event.ctrlKey || event.altKey) {
+    if (!card) {
       return;
     }
-    if (event.key === 'Enter') {
-      this.openCard(card);
+    // Enter opens the card as a click does, Ctrl or Cmd beside the board;
+    // Alt+Enter is its menu's.
+    if (event.key === 'Enter' && !event.altKey) {
+      this.openCard(card, event);
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) {
       return;
     }
     if (this.handleCardKey(event, card)) {

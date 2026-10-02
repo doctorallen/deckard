@@ -469,4 +469,18 @@ suite('Task Board page', () => {
     press(shown, row, 'ContextMenu');
     assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'so does the menu key');
   });
+
+  test('Ctrl+Enter or Cmd+Enter on a card opens it beside, as a click with either does', () => {
+    const shown = show(boardOf(TWO));
+    const card = cardTitled(shown, 'Alpha');
+    card.focus();
+    press(shown, card, 'Enter', { ctrlKey: true });
+    assert.strictEqual(shown.lastPosted('openSource')?.beside, true);
+    shown.posted.length = 0;
+    press(shown, card, 'Enter', { metaKey: true });
+    assert.strictEqual(shown.lastPosted('openSource')?.beside, true);
+    shown.posted.length = 0;
+    press(shown, card, 'Enter');
+    assert.deepStrictEqual(shown.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'Enter alone opens it in place');
+  });
 });
