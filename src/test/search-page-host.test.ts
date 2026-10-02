@@ -141,6 +141,21 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
 }
 
 suite('Search page host', () => {
+  test('is kept running while hidden, for its search box, and opens on its loading line', () => {
+    // Q1 of docs/implementation/20-webviews.md: a search page keeps retain,
+    // so a search half built in the box outlives a hide. Its snapshot
+    // takes 182 ms to build on 5,000 notes, over Q3's 50 ms, so it is
+    // posted, never carried in the page's HTML.
+    const page = openSearchPage();
+    try {
+      assert.strictEqual(page.controller.options.retainContextWhenHidden, true);
+      assert.strictEqual(page.controller.options.readsInertState, undefined);
+      assert.strictEqual(page.controller.options.embedsSnapshot, undefined);
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('takes its turn as search page, and times its search as Search page, as it always has', () => {
     const page = openSearchPage();
     try {

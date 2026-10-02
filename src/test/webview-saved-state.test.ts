@@ -70,6 +70,22 @@ suite('Webview saved state', () => {
       const other = open({ query: '#project/beta', origin: '', scrollY: 240 });
       assert.deepStrictEqual(other.savedState(), { query: '#project/atlas', origin: '' });
     });
+
+    test('anything else it was left with is not read: only the search is kept', () => {
+      for (const saved of [undefined, null, '#project/atlas', { query: '#project/atlas', scrollY: '240' }, { query: 7, scrollY: 240 }, { query: '#project/atlas', extra: true }, { tagKey: 'project/atlas' }]) {
+        const search = open(saved);
+        assert.deepStrictEqual(search.savedState(), { query: '#project/atlas', origin: '' }, JSON.stringify(saved));
+        search.dispose();
+        page = undefined;
+      }
+    });
+
+    test('keeps where it was scrolled, with its search', async () => {
+      const search = open(undefined);
+      search.window.dispatchEvent(new search.window.Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepStrictEqual(search.savedState(), { query: '#project/atlas', origin: '', scrollY: 0 });
+    });
   });
 
   suite('the Task Board (row 21)', () => {

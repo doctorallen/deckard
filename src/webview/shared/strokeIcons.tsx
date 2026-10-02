@@ -53,3 +53,51 @@ export function SortIcon() {
     </StrokeIcon>
   );
 }
+
+/** Three lines of falling length, beside a control that sets how many lines or rows. */
+export function LinesIcon() {
+  return (
+    <StrokeIcon className="control-icon-svg">
+      <path d="M3 5h10M3 8h7M3 11h4" />
+    </StrokeIcon>
+  );
+}
+
+/** A frame with a tab across its top: results shown one kind at a time. */
+export function LayoutTabsIcon() {
+  return (
+    <StrokeIcon>
+      <rect x="2" y="2.5" width="12" height="11" rx="1" />
+      <path d="M2 6h12M5 2.5V6" />
+    </StrokeIcon>
+  );
+}
+
+/** A frame split in two: results shown side by side. */
+export function LayoutSplitIcon() {
+  return (
+    <StrokeIcon>
+      <rect x="2" y="2" width="12" height="12" rx="1" />
+      <path d="M9 2v12" />
+    </StrokeIcon>
+  );
+}
+
+/** An eye: a note drawn as formatted Markdown. */
+export function RenderedIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z" />
+      <circle cx="8" cy="8" r="1.75" />
+    </StrokeIcon>
+  );
+}
+
+/** A frame around angle brackets: a note shown as its Markdown source. */
+export function SourceIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5" />
+    </StrokeIcon>
+  );
+}

@@ -1,8 +1,13 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { deckardThemes, getDeckardTheme } from '../ui/webview/themes';
+import { createPreferences } from './preferenceServices';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
@@ -629,12 +634,11 @@ suite('Webview contracts', () => {
   test('renders search page tabs and side-by-side layouts', () => {
     const html = withSheets(renderPage('searchPage'));
 
-    assertWebviewScriptParses(html);
     assert.strictEqual(
       html.includes('grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);'),
       true,
     );
-                            assert.strictEqual(
+    assert.strictEqual(
       html.includes('.segmented > * + * { margin-left: calc(var(--edge) * -1); }'),
       true,
     );
@@ -644,15 +648,7 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-                                                                                assert.strictEqual(
-      html.includes("vscode.postMessage({ type: 'createHubNote' })"),
-      true,
-    );
-                        // The Notes and Tasks tabs are the shared result tabs.
-    assert.strictEqual(html.includes("{ id: 'notes', label: 'Notes', count: notesCount },"), true);
-    // Both tabs count what their pane shows.
-    assert.strictEqual(html.includes("{ id: 'tasks', label: 'Tasks', count: tasksCount },"), true);
-                    assert.strictEqual(
+    assert.strictEqual(
       html.includes('.segmented { display: inline-flex; }'),
       true,
     );
@@ -662,18 +658,11 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-        assert.strictEqual(
+    assert.strictEqual(
       html.includes('.segmented > .active { position: relative; z-index: var(--z-raised); }'),
       true,
     );
-                            // The closer spelling a search page offers, and the batch it carries of
-    // a broad one, are held to what the page does: see the Search page
-    // behavior suite.
-    assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
-    assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
-        
-                
-            assert.strictEqual(
+    assert.strictEqual(
       html.includes(
         'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
       ),
@@ -681,26 +670,42 @@ suite('Webview contracts', () => {
     );
     // A short header is tall enough to hold the gear.
     assert.strictEqual(html.includes('header > .toolbar { margin-top: 36px; }'), true);
-        assert.strictEqual(
+    assert.strictEqual(
       html.includes(
         'header > .toolbar { width: 100%; margin-top: 0; }',
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes(
-        'input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }',
-      ),
-      true,
-    );
-                                                                                                                                                                                    // Tasks are the shared task rows, marked so typed words can hide them.
-    assert.strictEqual(html.includes("renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })"), true);
-                assert.strictEqual(
-      html.includes(
-        '.task.completed .task-title { color: var(--muted); text-decoration: line-through; }',
-      ),
-      true,
-    );
+
+    // The page itself, driven. A tag no note describes offers a hub note.
+    const index = buildWorkspaceIndex(new Map([
+      ['notes/one.md', parseMarkdown('notes/one.md', '# One #risk/vendor\nProse.\n- [ ] Chase it #risk/vendor\n- [ ] And this #risk/vendor')],
+    ]));
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, '#risk/vendor', { queryContext: createQueryContext(Date.now()) });
+    const page = openWebviewPage(renderPage('searchPage'), { ...snapshot, originQuery: '#risk/vendor' });
+    try {
+      page.click('[data-action="create-hub"]');
+      assert.deepStrictEqual(page.lastPosted('createHubNote'), { type: 'createHubNote' });
+      // The Notes and Tasks tabs are the shared result tabs, and each counts
+      // what its pane shows.
+      const tabs = page.findAll('[role="tab"][data-action="set-result-tab"]');
+      assert.deepStrictEqual(tabs.map((tab) => tab.textContent), ['Notes (1)', 'Tasks (2)']);
+      assert.deepStrictEqual(tabs.map((tab) => tab.getAttribute('data-tab')), ['notes', 'tasks']);
+      // Clear returns the page to the search it was opened with, so it is
+      // held while the box holds only that.
+      assert.strictEqual(page.find('[data-action="clear-query"]').getAttribute('aria-disabled'), 'true');
+      // While the sidebar shows this search's Refine, the page says so in its place.
+      page.send({ ...snapshot, originQuery: '#risk/vendor', refineInSidebar: true });
+      assert.match(page.text('.query-facets') ?? '', /In the Context sidebar\./);
+      // Side by side, there are no tabs, and each pane's heading counts it.
+      page.send({ ...snapshot, layout: 'split' });
+      assert.strictEqual(page.findAll('[role="tab"]').length, 0);
+      assert.deepStrictEqual(page.findAll('.overview-split .overview-pane-heading').map((heading) => heading.textContent), ['Notes (1)', 'Tasks (2)']);
+    } finally {
+      page.dispose();
+      store.repository.dispose();
+    }
   });
 
   test('renders formatted related-note relevance explanations', () => {

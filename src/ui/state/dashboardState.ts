@@ -1709,6 +1709,7 @@ function createTagOverviewHub(
     fileName: getFileName(file.filePath) ?? file.filePath,
     rawContent,
     renderedHtml: renderMarkdown(rawContent),
+    bodyTokens: buildBlockExcerpt(rawContent),
     properties: (file.hub?.properties ?? []).map((property) => ({
       name: property.name,
       values: property.values.map((value) => ({ ...value })),

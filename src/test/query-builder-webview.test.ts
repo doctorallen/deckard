@@ -56,7 +56,7 @@ suite('Tag overview query builder', () => {
     // A group beside the row, joined the other way, and told to match any.
     view.click({ action: 'builder-add-group', path: '' });
     assert.strictEqual(view.countGroups(), 2, 'the root, and one inside it');
-    assert.match(view.html(), /<span class="query-builder-and">and<\/span>/, 'the group joins the root with AND');
+    assert.ok(view.findAll('span.query-builder-and').some((join) => join.textContent === 'and'), 'the group joins the root with AND');
     view.change({ dataset: { action: 'builder-set-join', path: '1' } }, 'or');
 
     const row = (path: string) => ({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p' + path.replace(/\./g, '_'), path } });
@@ -93,15 +93,15 @@ suite('Tag overview query builder', () => {
     // Every row's completion list is found by its key, so two rows sharing
     // one would send a completion to the wrong row: that is how a nested
     // group's first row once became "tag = undefined". A key is its path.
-    const keys = [...view.html().matchAll(/data-suggest-key="([^"]+)"[^>]*data-path="([^"]+)"/g)]
-      .map((match) => [match[1], match[2]]);
+    const keys = view.findAll('[data-suggest-key][data-path]')
+      .map((row) => [String(row.getAttribute('data-suggest-key')), String(row.getAttribute('data-path'))]);
     assert.strictEqual(keys.length, 4);
     assert.strictEqual(new Set(keys.map(([key]) => key)).size, 4, 'every row has its own key');
     for (const [key, path] of keys) {
       assert.strictEqual(key, 'p' + path.replace(/\./g, '_'), `the key for ${path}`);
     }
-    assert.doesNotMatch(view.html(), /query-builder-readonly/, 'nothing is text');
-    assert.match(view.html(), /data-action="builder-toggle-not" data-path="0" aria-pressed="true"/, 'the group is shown as negated');
+    assert.strictEqual(view.findAll('.query-builder-readonly').length, 0, 'nothing is text');
+    assert.strictEqual(view.find('[data-action="builder-toggle-not"][data-path="0"]').getAttribute('aria-pressed'), 'true', 'the group is shown as negated');
   });
 
   test('accepting a completion in a nested group\'s second row leaves its first row alone', () => {
@@ -233,7 +233,7 @@ suite('Tag overview query builder', () => {
   test('shows the search box without a toggle', () => {
     const view = mountTagOverview();
     view.send(createState());
-    assert.match(view.html(), /data-action="query-input"/);
+    assert.ok(view.find('[data-action="query-input"]'));
     assert.doesNotMatch(view.html(), /toggle-query/);
   });
 
@@ -287,7 +287,7 @@ suite('Tag overview query builder', () => {
     };
     view.send(state);
     view.click({ action: 'toggle-builder' });
-    assert.match(view.html(), /placeholder="Atlas#Decision"/);
+    assert.strictEqual(view.findAll('[placeholder="Atlas#Decision"]').length, 1);
     const input = view.type({ dataset: { action: 'builder-set-value', suggestKey: 'p0', field: 'link', path: '0' } }, '[[Atlas plan]]');
     view.key(input, 'Enter');
     const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
@@ -303,9 +303,8 @@ suite('Tag overview query builder', () => {
       { text: '-[[Budget]]', without: '[[Atlas plan]]' },
     ];
     view.send(state);
-    const html = view.html();
-    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 2);
-    assert.match(html, /class="query-chip is-negated" data-action="remove-term" data-without="\[\[Atlas plan\]\]"/);
+    assert.strictEqual(view.findAll('[class="query-chip-remove"]').length, 2);
+    assert.strictEqual(view.find('[data-action="remove-term"][data-without="[[Atlas plan]]"]').getAttribute('class'), 'query-chip is-negated');
   });
 
   test('completes a note after [[ in the bar and in a new row', () => {
@@ -382,8 +381,8 @@ suite('Tag overview query builder', () => {
     view.click({ action: 'toggle-builder' });
     assert.strictEqual(view.countGroups(), 3);
     // The root draws no box of its own; every group inside it does.
-    assert.strictEqual((view.html().match(/class="query-builder-group is-root"/g) ?? []).length, 1);
-    assert.strictEqual((view.html().match(/query-builder-item has-group/g) ?? []).length, 2);
+    assert.strictEqual(view.findAll('[class="query-builder-group is-root"]').length, 1);
+    assert.strictEqual(view.findAll('.query-builder-item.has-group').length, 2);
 
     // The page keeps its own tree until the host answers with a different
     // search, so the host's echo of each search is sent back before the
@@ -425,16 +424,20 @@ suite('Tag overview query builder', () => {
       },
     ];
     view.send(state);
-    const html = view.html();
-    assert.strictEqual((html.match(/class="query-chip-group is-negated"/g) ?? []).length, 1);
-    assert.match(html, /<span class="query-chip-join" aria-hidden="true">OR<\/span>/);
-    assert.match(html, /<span class="query-chip-join" aria-hidden="true">NOT<\/span>/);
-    assert.match(html, /<span class="query-chip-join" aria-hidden="true">AND<\/span>/);
-    assert.match(html, /query-chip-group-remove" data-action="remove-term" data-without="#a"/);
-    assert.match(html, /class="query-chip is-tag is-negated" data-action="remove-term" data-without="#a OR NOT \(#b\)"/);
-    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 4, 'a, the group, b, and c');
+    const groups = view.findAll('[class="query-chip-group is-negated"]');
+    assert.strictEqual(groups.length, 1);
+    const joins = view.findAll('span[class="query-chip-join"][aria-hidden="true"]').map((join) => join.textContent);
+    for (const join of ['OR', 'NOT', 'AND']) {
+      assert.ok(joins.includes(join), `the ${join} between terms`);
+    }
+    assert.ok(view.find('.query-chip-group-remove[data-action="remove-term"][data-without="#a"]'));
+    assert.strictEqual(view.find('[data-action="remove-term"][data-without="#a OR NOT (#b)"]').getAttribute('class'), 'query-chip is-tag is-negated');
+    assert.strictEqual(view.findAll('[class="query-chip-remove"]').length, 4, 'a, the group, b, and c');
     // The frame itself removes the group, as a chip's face removes its term.
-    assert.match(html, /class="query-chip-group is-negated" role="group" aria-label="NOT \(#b AND -#c\)" data-action="remove-term" data-without="#a"/);
+    assert.deepStrictEqual(
+      ['role', 'aria-label', 'data-action', 'data-without'].map((name) => groups[0].getAttribute(name)),
+      ['group', 'NOT (#b AND -#c)', 'remove-term', '#a'],
+    );
 
     view.click({ action: 'remove-term', without: '#a OR NOT (-#c)' });
     const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
@@ -452,7 +455,7 @@ suite('Tag overview query builder', () => {
     ];
     const view = mountTagOverview();
     view.send(createState('tag = #project/atlas', { facets, canAppend: true }));
-    assert.match(view.html(), /data-action="facet"/);
+    assert.ok(view.findAll('[data-action="facet"]').length > 0);
 
     view.posted.length = 0;
     view.click({ action: 'facet', clause: 'is:open', facetId: 'status' });
@@ -512,8 +515,8 @@ suite('Tag overview query builder', () => {
     ];
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { facets }));
-    assert.match(view.html(), /data-clause="#team\/harbor"/);
-    assert.match(view.html(), /class="tag-weight-rail"/, 'a related tag shows its strength');
+    assert.ok(view.findAll('[data-clause="#team/harbor"]').length > 0);
+    assert.ok(view.findAll('[class="tag-weight-rail"]').length > 0, 'a related tag shows its strength');
     assert.match(view.html(), /related 2 of 3/);
 
     // Given the results it is a share of, the chip says so.
@@ -522,7 +525,7 @@ suite('Tag overview query builder', () => {
     assert.match(view.html(), /in 6 of 13 results/);
 
     view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
-    assert.doesNotMatch(view.html(), /data-clause="#team\/harbor"/);
+    assert.strictEqual(view.findAll('[data-clause="#team/harbor"]').length, 0);
     assert.match(view.html(), /In the Context sidebar\./);
   });
 
@@ -542,14 +545,14 @@ suite('Tag overview query builder', () => {
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
-    const html = view.html();
-
     // Clear is always drawn, disabled while the box holds only the page's
     // own tag, so nothing appears beside the box when typing starts.
-    assert.match(html, /data-action="clear-query" data-query-clears[^>]*aria-disabled="true"/);
+    const held = view.find('[data-action="clear-query"]');
+    assert.ok(held.hasAttribute('data-query-clears'));
+    assert.strictEqual(held.getAttribute('aria-disabled'), 'true');
     // Builder sits under the box, not beside it.
     assert.ok(
-      html.indexOf('data-action="toggle-builder"') > html.indexOf('class="query-status"'),
+      view.find('.query-status').contains(view.find('[data-action="toggle-builder"]')),
       'the builder toggle is on the line under the box',
     );
 
@@ -585,6 +588,7 @@ interface ElementDescriptor {
 interface MountedView {
   posted: Array<Record<string, unknown>>;
   find: (selector: string) => Element;
+  findAll: (selector: string) => Element[];
   send: (state: unknown) => void;
   click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
   key: (input: Element, key: string) => void;
@@ -667,6 +671,7 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
   return {
     posted: page.posted as Array<Record<string, unknown>>,
     find: (selector) => page.find(selector),
+    findAll: (selector) => page.findAll(selector),
     send: show,
     click: (dataset, modifiers = {}) =>
       raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers })),
@@ -683,9 +688,8 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
       raise(target, new window.Event('change', { bubbles: true }));
     },
     html: () => app.innerHTML,
-    countRows: () => (app.innerHTML.match(/builder-set-value/g) ?? []).length,
-    countGroups: () =>
-      (app.innerHTML.match(/class="query-builder-group[ "]/g) ?? []).length,
+    countRows: () => app.querySelectorAll('[data-action="builder-set-value"]').length,
+    countGroups: () => app.querySelectorAll('.query-builder-group').length,
     type: (input, value) => {
       const target = element(input.dataset);
       target.focus();
