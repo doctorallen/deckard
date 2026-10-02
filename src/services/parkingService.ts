@@ -3,7 +3,12 @@ import { findWrittenKey, readExcludeKey, relativeExcludeKey, withExcludeKey } fr
 import { ParkedRules, toParkedTagKey } from '../domain/index/parked';
 import { countNotesIn, parkedTagSettingValue, parkingFolder, parkingTags } from '../domain/index/parkingRules';
 import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
-import { addFrontmatterTag, readFrontmatterTagValues, removeFrontmatterTags } from '../domain/markdown/frontmatterTags';
+import {
+  addFrontmatterTag,
+  findTagsFieldProblem,
+  readFrontmatterTagValues,
+  removeFrontmatterTags,
+} from '../domain/markdown/frontmatterTags';
 import type { WorkspaceIndex } from '../domain/model';
 import { countTagMatches } from '../domain/query/queryEvaluator';
 import type { Configuration } from '../ports/configuration';
@@ -102,8 +107,12 @@ export type ParkNotesResult<U extends ResourceUri, Handle> =
   | { kind: 'refused'; reason: 'parked-by-folder'; filePath: string; folder: string }
   | { kind: 'refused'; reason: 'already-parked'; filePath: string }
   | { kind: 'refused'; reason: 'all-parked' }
-  /** No note could be parked, and this is the first whose front matter could not be read. */
-  | { kind: 'unreadable'; filePath: string; tag: string }
+  /**
+   * No note could be parked, and this is the first whose front matter could
+   * not be read; `comment` when its tags line ends in a comment, which a
+   * rewrite would lose.
+   */
+  | { kind: 'unreadable'; filePath: string; tag: string; comment?: true }
   | { kind: 'not-applied' }
   | { kind: 'parked'; filePaths: string[]; handle: Handle };
 
@@ -124,7 +133,8 @@ export type UnparkNotesOutcome<Handle> =
 export type UnparkNotesResult<Handle> =
   | { kind: 'refused'; reason: 'parked-by-folder'; filePath: string; folder: string }
   | { kind: 'refused'; reason: 'not-parked'; filePath: string }
-  | { kind: 'unreadable'; filePath: string }
+  /** `comment` when its tags line ends in a comment, which a rewrite would lose. */
+  | { kind: 'unreadable'; filePath: string; comment?: true }
   | {
       kind: 'parked-by-tag';
       filePath: string;
@@ -210,6 +220,11 @@ interface UnparkNote<U extends ResourceUri, Handle> {
   edit: ParkingEdit<U, Handle>;
 }
 
+/** `comment: true` when the note's tags line ends in a comment, which is why it cannot be rewritten. */
+function commentedTags(text: string): { comment?: true } {
+  return findTagsFieldProblem(text) === 'comment' ? { comment: true } : {};
+}
+
 /** A note passed over because several were chosen. */
 const SKIP = { kind: 'skip' } as const;
 
@@ -230,7 +245,7 @@ export class ParkingService<U extends ResourceUri, Handle> {
     }
     const edit = this.collaborators.edits();
     const parked: string[] = [];
-    const unreadable: string[] = [];
+    const unreadable: { filePath: string; comment?: true }[] = [];
     const single = uris.length === 1;
     for (const uri of uris) {
       const refusal = this.refusePark(index, rules, uri, single);
@@ -241,16 +256,17 @@ export class ParkingService<U extends ResourceUri, Handle> {
         return refusal;
       }
       const filePath = this.collaborators.index.getFilePath(uri);
-      const next = addFrontmatterTag(await edit.read(uri), tag.slice(1));
+      const text = await edit.read(uri);
+      const next = addFrontmatterTag(text, tag.slice(1));
       if (next === undefined) {
-        unreadable.push(filePath);
+        unreadable.push({ filePath, ...commentedTags(text) });
         continue;
       }
       edit.replace(uri, next);
       parked.push(filePath);
     }
     if (unreadable.length > 0 && parked.length === 0) {
-      return { kind: 'unreadable', filePath: unreadable[0], tag: tag.slice(1) };
+      return { kind: 'unreadable', ...unreadable[0], tag: tag.slice(1) };
     }
     if (parked.length === 0) {
       return { kind: 'refused', reason: 'all-parked' };
@@ -412,8 +428,9 @@ export class ParkingService<U extends ResourceUri, Handle> {
     if (tags.length === 0) {
       return single ? { kind: 'refused', reason: 'not-parked', filePath } : SKIP;
     }
-    if (readFrontmatterTagValues(await edit.read(uri)) === undefined) {
-      return single ? { kind: 'unreadable', filePath } : SKIP;
+    const text = await edit.read(uri);
+    if (readFrontmatterTagValues(text) === undefined) {
+      return single ? { kind: 'unreadable', filePath, ...commentedTags(text) } : SKIP;
     }
     const other = tags.find((key) => key !== writtenTag);
     if (other && !single) {

@@ -2,6 +2,8 @@ import * as assert from 'assert';
 
 import {
   addFrontmatterTag,
+  findTagsFieldProblem,
+  formatYamlValue,
   readFrontmatterTagValues,
   removeFrontmatterTags,
 } from '../domain/markdown/frontmatterTags';
@@ -142,6 +144,53 @@ suite('Front matter tags', () => {
       'Park adds to the list rather than writing a second value',
     );
     assert.strictEqual(addFrontmatterTag(note, 'parked'), undefined, 'Park finds the tag already there');
+  });
+
+  test('quotes a value YAML would misread unquoted, and only such a value', () => {
+    assert.strictEqual(addFrontmatterTag('---\ntags: ["#atlas"]\n---\n', 'parked'), '---\ntags: ["#atlas", parked]\n---\n');
+    assert.strictEqual(addFrontmatterTag('---\ntags: ["@dana"]\n---\n', 'parked'), '---\ntags: ["@dana", parked]\n---\n');
+    assert.strictEqual(addFrontmatterTag("---\ntags: ['a: b']\n---\n", 'parked'), '---\ntags: ["a: b", parked]\n---\n');
+    assert.strictEqual(addFrontmatterTag('---\ntags: "#atlas"\n---\n', 'parked'), '---\ntags: ["#atlas", parked]\n---\n');
+    assert.strictEqual(
+      addFrontmatterTag('---\ntags: [#a, #b]\n---\n', 'parked'),
+      '---\ntags: ["#a", "#b", parked]\n---\n',
+      'tags the parser reads, written so YAML reads them too',
+    );
+    assert.strictEqual(addFrontmatterTag('# A\n', 'yes'), '---\ntags: ["yes"]\n---\n# A\n');
+    assert.strictEqual(addFrontmatterTag('---\ntags:\n  - a\n---\n', 'null'), '---\ntags:\n  - a\n  - "null"\n---\n');
+    assert.strictEqual(
+      removeFrontmatterTags('---\ntags: ["#atlas", parked]\n---\nx\n', ['#parked']),
+      '---\ntags: ["#atlas"]\n---\nx\n',
+    );
+    assert.strictEqual(formatYamlValue('a, b', 'list'), '"a, b"', 'a comma ends a value only inside a list');
+    assert.strictEqual(formatYamlValue('a, b', 'line'), 'a, b');
+    assert.strictEqual(formatYamlValue('-x', 'list'), '-x');
+    assert.strictEqual(formatYamlValue('say "hi" #x', 'list'), `'say "hi" #x'`);
+    assert.strictEqual(formatYamlValue("it's", 'list'), "it's");
+  });
+
+  test('leaves a tags line alone that ends in a comment, and says so', () => {
+    for (const note of [
+      '---\ntags: [a] # mine\n---\n',
+      '---\ntags: a # mine\n---\n',
+      '---\ntags:\n  - a # mine\n  - parked\n---\n',
+    ]) {
+      assert.strictEqual(addFrontmatterTag(note, 'parked'), undefined, note);
+      assert.strictEqual(removeFrontmatterTags(note, ['parked']), undefined, note);
+      assert.strictEqual(findTagsFieldProblem(note), 'comment', note);
+    }
+    assert.strictEqual(
+      addFrontmatterTag('---\ntags: ["a # b"]\n---\n', 'parked'),
+      '---\ntags: ["a # b", parked]\n---\n',
+      'a # inside quotes is part of the value',
+    );
+    assert.strictEqual(findTagsFieldProblem('---\ntags: [a,\n  b]\n---\n'), 'unreadable');
+    assert.strictEqual(findTagsFieldProblem('---\ntags: [a]\n---\n'), undefined);
+  });
+
+  test('leaves a quoted value with a comma alone, which YAML reads as one value and the parser as two', () => {
+    assert.strictEqual(addFrontmatterTag('---\ntags: ["a, b"]\n---\n', 'parked'), undefined);
+    assert.strictEqual(addFrontmatterTag("---\ntags: [it's, b]\n---\n", 'parked'), "---\ntags: [it's, b, parked]\n---\n");
   });
 
   test('says when there was nothing to remove', () => {

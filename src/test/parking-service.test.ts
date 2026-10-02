@@ -195,6 +195,23 @@ suite('ParkingService', () => {
       });
     });
 
+    test('says when it could not read the front matter because its tags line ends in a comment', async () => {
+      const notes = { 'a.md': '---\ntags: [a] # mine\n---\n# A\n' };
+      const { service } = parkingWith({ notes });
+      assert.deepStrictEqual(await service.parkNotes(indexOf(notes), [noteUri('a.md')]), {
+        kind: 'unreadable',
+        filePath: 'a.md',
+        tag: 'parked',
+        comment: true,
+      });
+      const { service: unparking } = parkingWith({ notes: { 'a.md': '---\ntags: parked # mine\n---\n# A\n' } });
+      assert.deepStrictEqual(await unparking.unparkNotes(indexOf({ 'a.md': PARKED }), [noteUri('a.md')]), {
+        kind: 'unreadable',
+        filePath: 'a.md',
+        comment: true,
+      });
+    });
+
     test('reports a write VS Code did not apply', async () => {
       const notes = { 'a.md': PLAIN };
       const { service } = parkingWith({ notes, writesLand: false });

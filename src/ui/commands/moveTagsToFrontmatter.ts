@@ -9,7 +9,12 @@ import {
   getPersonMarker,
   isBuiltInEntityKind,
 } from '../../domain/markdown/parser';
-import { getFrontmatterBounds, splitValues } from '../../domain/markdown/frontmatterTags';
+import {
+  endsInComment,
+  formatYamlValue,
+  getFrontmatterBounds,
+  splitValues,
+} from '../../domain/markdown/frontmatterTags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { TagReference } from '../../domain/model';
 import { unquote } from '../../domain/markdown/frontmatter';
@@ -42,6 +47,15 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
     void vscode.window.showInformationMessage(
       'Open a note to move its tags into front matter.',
     );
+    return;
+  }
+
+  const commented = findCommentedTagField(editor.document.getText());
+  if (commented) {
+    void reportFailure({
+      outcome: `Deckard did not move the tags: the ${commented} field in the front matter ends in a comment, which rewriting the field would lose.`,
+      fix: 'Move the comment onto a line of its own, then try again.',
+    });
     return;
   }
 
@@ -81,13 +95,18 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
 
 /**
  * Builds the complete transformed note so it can be applied atomically and
- * exercised without a live editor.
+ * exercised without a live editor. Undefined when there is no inline tag to
+ * move, or when a field it would write again ends in a YAML comment, which
+ * `findCommentedTagField` names.
  */
 export function moveInlineTagsToFrontmatterContent(
   content: string,
   entityNamespaceAliases: EntityNamespaceAliases = {},
   personMarker = '@',
 ): string | undefined {
+  if (findCommentedTagField(content)) {
+    return undefined;
+  }
   const lines = content.split(/\r?\n/);
   const frontmatter = getFrontmatterBounds(lines);
   const spans = extractTagSpans(
@@ -137,7 +156,9 @@ export function moveInlineTagsToFrontmatterContent(
     : [];
   const generatedFrontmatter = frontmatterGroups.flatMap((group) => {
     const values = groupedValues.get(group) ?? [];
-    return values.length > 0 ? [`${group}: [${values.join(', ')}]`] : [];
+    return values.length > 0
+      ? [`${group}: [${values.map((value) => formatYamlValue(value, 'list')).join(', ')}]`]
+      : [];
   });
   const normalizedFrontmatter = [
     '---',
@@ -147,6 +168,35 @@ export function moveInlineTagsToFrontmatterContent(
   ];
 
   return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join('\n');
+}
+
+/**
+ * The first tag field, as written, whose line or list item ends in a YAML
+ * comment, or undefined when none does. Moving tags writes every tag field
+ * again, which would lose the comment or read it as a tag.
+ */
+export function findCommentedTagField(content: string): string | undefined {
+  const lines = content.split(/\r?\n/);
+  const frontmatter = getFrontmatterBounds(lines);
+  if (!frontmatter) {
+    return undefined;
+  }
+  let current: string | undefined;
+  for (const line of lines.slice(1, frontmatter.end)) {
+    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    if (property) {
+      current = getFrontmatterGroupForField(property[1]) ? property[1] : undefined;
+      if (current && endsInComment(property[2])) {
+        return current;
+      }
+      continue;
+    }
+    const listItem = line.match(/^\s*-\s+(.+?)\s*$/);
+    if (listItem && current && endsInComment(listItem[1])) {
+      return current;
+    }
+  }
+  return undefined;
 }
 
 /** The values the note's front matter already holds, by the field they are under. */
