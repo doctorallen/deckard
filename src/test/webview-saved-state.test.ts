@@ -6,6 +6,7 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { createCalendar } from '../ui/state/calendarState';
 import { createDashboardSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
+import { createTaskBoard } from '../ui/state/taskBoardState';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { renderPage } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
@@ -68,6 +69,45 @@ suite('Webview saved state', () => {
       same.dispose();
       const other = open({ query: '#project/beta', origin: '', scrollY: 240 });
       assert.deepStrictEqual(other.savedState(), { query: '#project/atlas', origin: '' });
+    });
+  });
+
+  suite('the Task Board (row 21)', () => {
+    const open = (savedState: unknown, query = 'is:open'): WebviewPage => {
+      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      const board = createTaskBoard({
+        index: index(),
+        preferences: { ...store.reader.value, taskBoardLayout: 'board' },
+        search: { query },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
+        tagTitleDisplayMode: 'inline',
+      });
+      page = openWebviewPage(renderPage('taskBoard'), board, { savedState });
+      return page;
+    };
+
+    test('keeps its search, and a saved scroll only for the search it was scrolled in', () => {
+      const same = open({ query: 'is:open', scrollY: 240 });
+      assert.deepStrictEqual(same.savedState(), { query: 'is:open', scrollY: 240 });
+      same.dispose();
+      const other = open({ query: '#project/atlas', scrollY: 240 });
+      assert.deepStrictEqual(other.savedState(), { query: 'is:open' });
+    });
+
+    test('anything else it was left with is not read: only the search is kept', () => {
+      for (const saved of [undefined, null, 'is:open', { query: 'is:open', scrollY: '240' }, { query: 7, scrollY: 240 }, { query: 'is:open', extra: true }]) {
+        const board = open(saved);
+        assert.deepStrictEqual(board.savedState(), { query: 'is:open' }, JSON.stringify(saved));
+        board.dispose();
+        page = undefined;
+      }
+    });
+
+    test('keeps where it was scrolled, with its search', async () => {
+      const board = open(undefined);
+      board.window.dispatchEvent(new board.window.Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepStrictEqual(board.savedState(), { query: 'is:open', scrollY: 0 });
     });
   });
 
