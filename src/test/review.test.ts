@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { getIsoWeekStart, getReviewRange } from '../domain/notes/reviewPeriods';
-import { findOpenPeriod, openPeriodicNoteWithReview, ReviewWrites } from '../ui/commands/review';
+import { findOpenPeriod, openPeriodicNoteWithReview, ReviewWrites, writeReviewCommand } from '../ui/commands/review';
 import {
   formatReview,
   REVIEW_END,
@@ -309,6 +309,33 @@ suite('Periodic review', () => {
         Object.defineProperty(workspace, 'workspaceFolders', kept);
       }
       window.showQuickPick = showQuickPick;
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('says so when the review in the note is already up to date', async () => {
+    const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-review-current-${Date.now()}`));
+    const noteUri = vscode.Uri.joinPath(root, `${range.name}.md`);
+    await vscode.workspace.fs.writeFile(noteUri, Buffer.from('# Week\n', 'utf8'));
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showInformationMessage = window.showInformationMessage;
+    const shown: unknown[] = [];
+    window.showInformationMessage = async (message: unknown) => void shown.push(message);
+    const writes = {
+      reviews: { write: async () => ({ kind: 'unchanged', title: range.title, noteUri }) },
+    } as unknown as ReviewWrites;
+    try {
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(noteUri));
+      const title = await writeReviewCommand(
+        { ready: Promise.resolve(), getSnapshot: () => index, refresh: async () => undefined },
+        writes,
+      );
+
+      assert.strictEqual(title, range.title);
+      assert.deepStrictEqual(shown, ['The review of 2026-09-14 to 2026-09-20 is already up to date.']);
+    } finally {
+      window.showInformationMessage = showInformationMessage;
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }

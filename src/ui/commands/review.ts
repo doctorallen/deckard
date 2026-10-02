@@ -191,7 +191,11 @@ async function chooseReviewNote(
   return { note: () => ensurePeriodicNote(folder, period, day), scope: folder.uri };
 }
 
-/** Says a review was written, unless `silent`, and returns its title; undefined when nothing was written. */
+/**
+ * Says a review was written, or that the note already holds it as it would
+ * be written, unless `silent`, and returns its title; undefined when nothing
+ * was written.
+ */
 function reportReview(
   result: ReviewResult<vscode.Uri, WriteHandle, ReviewSummary>,
   silent: boolean | undefined,
@@ -199,6 +203,9 @@ function reportReview(
 ): string | undefined {
   switch (result.kind) {
     case 'unchanged':
+      if (!silent) {
+        void vscode.window.showInformationMessage(`The review of ${result.title} is already up to date.`);
+      }
       return result.title;
     case 'not-applied':
       return undefined;
