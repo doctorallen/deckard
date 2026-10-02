@@ -119,6 +119,9 @@ async function bench(size) {
   row('Calendar snapshot, sidebar (median of 5)', ms(timeCalendarSnapshot(index, now, {})));
   row('Calendar snapshot, page (median of 5)', ms(timeCalendarSnapshot(index, now, { layout: 'page', dayPanel: true })));
   row('Task Board snapshot (median of 5)', ms(timeTaskBoardSnapshot(index, now)));
+  // The Notes Graph's whole-workspace snapshot, timed by the Notes Graph
+  // line its controller writes, for the same rule.
+  row('Notes Graph snapshot (median of 5)', ms(timeGraphSnapshot(index)));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -379,6 +382,27 @@ function timeTaskBoardSnapshot(index, now) {
     log.lines.length = 0;
     measure('Task board', () => createTaskBoard({ index, preferences, search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' }));
     return readTiming(log.lines, ['Task board']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
+}
+
+/**
+ * The median of five builds of the Notes Graph's whole-workspace snapshot
+ * over `index`, each read from the `Notes Graph` line `measure` writes, as
+ * the graph's controller times it. An older checkout without the state
+ * builder prints a dash.
+ */
+function timeGraphSnapshot(index) {
+  if (!graphState.createNotesGraphSnapshot || !measure) {
+    return NaN;
+  }
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Notes Graph', () => graphState.createNotesGraphSnapshot(index), (graph) => `${graph.nodes.length} nodes`);
+    return readTiming(log.lines, ['Notes Graph']);
   });
   setTimingLog(undefined);
   return median(timings.filter((value) => value !== undefined));

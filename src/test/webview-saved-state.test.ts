@@ -270,6 +270,55 @@ suite('Webview saved state', () => {
       page.flushFrames(1);
       assert.strictEqual(page.text('#zoom-readout'), '250%');
     });
+
+    /** What the page keeps after it is opened with `savedState` and asked to keep its settings. */
+    const keptFrom = (savedState: unknown): Record<string, unknown> => {
+      const opened = openWebviewPage(renderPage('notesGraph'), undefined, { savedState });
+      try {
+        persist(opened);
+        return opened.savedState() as Record<string, unknown>;
+      } finally {
+        opened.dispose();
+      }
+    };
+
+    test('reads anything but a record of settings as nothing kept', () => {
+      for (const saved of [undefined, null, false, 'graph', 7, true, []]) {
+        const kept = keptFrom(saved);
+        assert.strictEqual(kept.linkDistance, 32, JSON.stringify(saved));
+        assert.strictEqual(kept.showNotes, true, JSON.stringify(saved));
+        assert.deepStrictEqual(kept.camera, { x: 0, y: 0, k: 1 }, JSON.stringify(saved));
+      }
+    });
+
+    test('takes any value but undefined as it was kept, empty and null among them', () => {
+      const kept = keptFrom({ showNotes: 0, search: '', group: null, selectedTags: 'atlas', linkDensity: 'many' });
+      assert.strictEqual(kept.showNotes, 0);
+      assert.strictEqual(kept.search, '');
+      assert.strictEqual(kept.group, null);
+      assert.strictEqual(kept.selectedTags, 'atlas');
+      assert.strictEqual(kept.linkDensity, 'many');
+    });
+
+    test('takes a camera whose zoom reads as a finite number as it is, and any other as the default', () => {
+      assert.deepStrictEqual(keptFrom({ camera: { x: 4, y: 5, k: '2' } }).camera, { x: 4, y: 5, k: '2' });
+      assert.deepStrictEqual(keptFrom({ camera: { x: 4, y: 5, k: null } }).camera, { x: 4, y: 5, k: null });
+      assert.deepStrictEqual(keptFrom({ camera: { k: 3 } }).camera, { k: 3 }, 'no pan is kept as none');
+      assert.deepStrictEqual(keptFrom({ camera: { x: 4, y: 5, k: 'near' } }).camera, { x: 0, y: 0, k: 1 });
+      assert.deepStrictEqual(keptFrom({ camera: { x: 4, y: 5 } }).camera, { x: 0, y: 0, k: 1 });
+      assert.deepStrictEqual(keptFrom({ camera: 'here' }).camera, { x: 0, y: 0, k: 1 });
+    });
+
+    test('keeps only the settings it knows, in the order of its defaults, then the camera', () => {
+      const kept = keptFrom({ retired: true, camera: { x: 1, y: 2, k: 3 }, linkDistance: 50 });
+      assert.deepStrictEqual(Object.keys(kept), [
+        'showNotes', 'showTasks', 'showTags', 'showOrphans', 'showParked', 'onlyWrittenLinks', 'selectedTags', 'group',
+        'search', 'nodeSize', 'linkThickness', 'linkDensity', 'tagSpecificity', 'bridgeStrength', 'showAllLinks',
+        'headings', 'labelThreshold', 'centerStrength', 'clusterCohesion', 'communitySpacing', 'repelStrength',
+        'linkStrength', 'linkDistance', 'camera',
+      ]);
+      assert.strictEqual(kept.linkDistance, 50);
+    });
   });
 
   suite('the calendar page (row 24)', () => {
