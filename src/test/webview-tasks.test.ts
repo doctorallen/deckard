@@ -3,30 +3,25 @@ import * as assert from 'assert';
 import { tokenizeInline } from '../domain/markdown/inline';
 import type { Task } from '../domain/model/tasks';
 import type { DashboardTask } from '../ui/protocol/shared';
-import { getComponentScript } from '../ui/webview/components';
 import { normalizeBody } from '../../test/harness/domSnapshot';
-import { renderMarkdownInline } from './legacyMarkdown';
 import { bundleShared } from './sharedBundle';
+import { templateRecords } from './templateRecords';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /**
  * The shared task parts (src/webview/shared: taskRow, taskTitle, tagButton)
- * against the template script they replace: each drawn both ways must be
- * the same DOM, as test:dom normalizes it, so the Task Board, a search's
- * tasks, Home, and the calendar's day can draw them and change nothing.
+ * against the template script they replaced (deleted in Phase 6 step 7):
+ * each must draw the DOM the template's helper drew, as test:dom normalizes
+ * it, so the Task Board, a search's tasks, Home, and the calendar's day draw
+ * what they drew. The template's side is its recording (templateRecords.ts);
+ * the title it was handed was the HTML legacyMarkdown.ts writes.
+ *
+ * The dates are local times, as a note's are, so the recording holds in
+ * every time zone.
  */
 
-/** The template script's helpers these replace, by name. */
-const LEGACY_NAMES = [
-  'renderTaskListRow', 'renderPriorityBadge', 'renderTagButton', 'renderTaskTitle', 'renderInlineTitle',
-  'formatTaskDate', 'trimHeadingPath', 'formatSourceLocation', 'renderParkedLabel', 'taskTitleOf',
-];
-
-/** A page running the template script, with its helpers on `window.legacy`. */
-function legacyPage(): WebviewPage {
-  const script = `(function () {\n  const vscode = acquireVsCodeApi();\n${getComponentScript('replicant')}\n  window.legacy = { ${LEGACY_NAMES.join(', ')} };\n}());`;
-  return openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${script}</script></body></html>`);
-}
+/** What the template drew, by case. */
+const drawnByTemplate = templateRecords('webview-tasks');
 
 /** A page running the shared parts, with their exports on `window.shared`. */
 function corePage(): WebviewPage {
@@ -53,14 +48,10 @@ function task(title: string, extra: Partial<Task> = {}): Task {
   };
 }
 
-/**
- * A task as a list draws it, its title rendered both ways: as tokens for
- * the shared row, and as the HTML the template script's row set.
- */
-function listed(title: string, extra: Partial<Task> = {}, item: Partial<DashboardTask> = {}): DashboardTask & { renderedTitle: string } {
+/** A task as a list draws it, its title as tokens. */
+function listed(title: string, extra: Partial<Task> = {}, item: Partial<DashboardTask> = {}): DashboardTask {
   return {
     task: task(title, extra),
-    renderedTitle: renderMarkdownInline(title),
     titleTokens: JSON.parse(JSON.stringify(tokenizeInline(title))),
     titleTags: [],
     fileName: 'atlas.md',
@@ -72,44 +63,36 @@ const ATLAS = { key: '#project/atlas', label: '#project/atlas' };
 const PHONE = { key: '#context/phone', label: '#context/phone' };
 
 suite('The shared task parts draw what the template script drew', () => {
-  let legacy: WebviewPage;
   let core: WebviewPage;
   suiteSetup(() => {
-    legacy = legacyPage();
     core = corePage();
   });
   suiteTeardown(() => {
-    legacy.dispose();
     core.dispose();
   });
 
-  const old = (): Helpers => (legacy.window as unknown as { legacy: Helpers }).legacy;
   const shared = (): Helpers => (core.window as unknown as { shared: Helpers }).shared;
   const element = (name: string, props: object): unknown => shared().h(shared()[name], props);
 
-  const drawnBefore = (html: unknown): Element => {
-    const container = legacy.document.createElement('div');
-    container.innerHTML = String(html);
-    return container;
-  };
   const drawnNow = (vnode: unknown): Element => {
     const container = core.document.createElement('div');
     shared().render(vnode, container);
     return container;
   };
-  const assertSame = (before: Element, now: Element, what: string): void => {
-    assert.strictEqual(normalizeBody(now), normalizeBody(before), what);
+  /** The part drawn now is what the template drew for the case `name`. */
+  const assertSame = (name: string, now: Element, what = name): void => {
+    assert.strictEqual(normalizeBody(now), drawnByTemplate(name), what);
   };
 
   test('a priority badge, for each priority and for none', () => {
     for (const priority of ['highest', 'high', 'medium', 'low', 'lowest', 'HIGH', '', undefined, 'urgent']) {
-      assertSame(drawnBefore(old().renderPriorityBadge(priority)), drawnNow(element('PriorityBadge', { priority })), String(priority));
+      assertSame(`priority ${String(priority)}`, drawnNow(element('PriorityBadge', { priority })), String(priority));
     }
   });
 
   test('a tag that opens its overview, and a title with its tags as controls', () => {
     for (const className of ['inline-tag', undefined]) {
-      assertSame(drawnBefore(old().renderTagButton(ATLAS, className)), drawnNow(element('TagButton', { tag: ATLAS, className })), String(className));
+      assertSame(`tag button ${String(className)}`, drawnNow(element('TagButton', { tag: ATLAS, className })), String(className));
     }
     const titles: Array<[string, Array<{ key: string; label: string }>]> = [
       ['Call Ren #context/phone about #project/atlas', [ATLAS, PHONE]],
@@ -122,7 +105,7 @@ suite('The shared task parts draw what the template script drew', () => {
     for (const [title, tags] of titles) {
       for (const appendMissing of [true, false]) {
         assertSame(
-          drawnBefore(old().renderInlineTitle(title, tags, appendMissing)),
+          `title with tags ${title}, appending ${appendMissing}`,
           drawnNow(element('TitleWithTags', { title, tags, appendMissing })),
           `${title}, appending ${appendMissing}`,
         );
@@ -144,7 +127,7 @@ suite('The shared task parts draw what the template script drew', () => {
       const tokens = JSON.parse(JSON.stringify(tokenizeInline(title)));
       for (const tags of [[ATLAS, PHONE], []]) {
         assertSame(
-          drawnBefore(old().renderTaskTitle(renderMarkdownInline(title), tags)),
+          `task title ${title} with ${tags.length} tags`,
           drawnNow(element('TaskTitle', { tokens, tags })),
           `${title} with ${tags.length} tags`,
         );
@@ -153,7 +136,7 @@ suite('The shared task parts draw what the template script drew', () => {
   });
 
   test('a task row, with each fact it can carry', () => {
-    const dated = Date.UTC(2026, 8, 22, 12);
+    const dated = new Date(2026, 8, 22, 12).getTime();
     const items: Array<[string, DashboardTask]> = [
       ['plain', listed('Send the proposal')],
       ['done', listed('Send the proposal', { completed: true, checkboxValue: 'x' })],
@@ -166,29 +149,25 @@ suite('The shared task parts draw what the template script drew', () => {
       ['a path whose first step is the file', listed('Tidy', {}, { headingPath: ['atlas', 'Actions'] })],
       ['tags in the title', listed('Call Ren #context/phone', {}, { titleTags: [PHONE] })],
     ];
-    const options: Array<[string, Record<string, unknown>, Record<string, unknown>]> = [
-      ['inline', { titleDisplay: 'inline' }, { titleDisplay: 'inline' }],
-      ['separate', { titleDisplay: 'separate' }, { titleDisplay: 'separate' }],
-      ['draggable, with a menu', { draggable: true, trailing: '<button class="row-menu">⋯</button>' }, { draggable: true, trailing: shared().h('button', { class: 'row-menu' }, '⋯') }],
-      ['a mark in place of the checkbox', { leading: '<span class="repeat-mark" aria-hidden="true">↻</span>' }, { leading: shared().h('span', { class: 'repeat-mark', 'aria-hidden': 'true' }, '↻') }],
+    const options: Array<[string, Record<string, unknown>]> = [
+      ['inline', { titleDisplay: 'inline' }],
+      ['separate', { titleDisplay: 'separate' }],
+      ['draggable, with a menu', { draggable: true, trailing: shared().h('button', { class: 'row-menu' }, '⋯') }],
+      ['a mark in place of the checkbox', { leading: shared().h('span', { class: 'repeat-mark', 'aria-hidden': 'true' }, '↻') }],
     ];
     for (const [what, item] of items) {
-      for (const [how, before, now] of options) {
-        assertSame(
-          drawnBefore(old().renderTaskListRow(item, before)),
-          drawnNow(element('TaskListRow', { item, ...now })),
-          `${what}, ${how}`,
-        );
+      for (const [how, now] of options) {
+        assertSame(`task row ${what}, ${how}`, drawnNow(element('TaskListRow', { item, ...now })), `${what}, ${how}`);
       }
     }
   });
 
   test('a date as the note writes it, where an entry is written, and the path above it', () => {
-    for (const at of [Date.UTC(2026, 0, 5, 12), Date.UTC(2026, 11, 31, 1)]) {
-      assert.strictEqual(shared().formatTaskDate(at), old().formatTaskDate(at));
+    for (const [when, at] of [['noon on 5 January', new Date(2026, 0, 5, 12).getTime()], ['1 am on 31 December', new Date(2026, 11, 31, 1).getTime()]] as const) {
+      assert.strictEqual(shared().formatTaskDate(at), drawnByTemplate(`task date ${when}`));
     }
     for (const name of ['2026-09-22.md', 'Notes.MD', 'plain']) {
-      assert.strictEqual(shared().formatSourceLocation(name, 7), old().formatSourceLocation(name, 7));
+      assert.strictEqual(shared().formatSourceLocation(name, 7), drawnByTemplate(`source location ${name}`));
     }
     const paths: Array<[string[] | undefined, string, string]> = [
       [['Atlas', 'Actions', 'Encrypt the disk'], 'atlas.md', 'Encrypt the disk'],
@@ -198,23 +177,20 @@ suite('The shared task parts draw what the template script drew', () => {
       [['  ', 'Step'], 'x.md', 'step'],
     ];
     for (const [path, file, own] of paths) {
-      // Each page's arrays are its own window's, so they are compared as JSON.
-      assert.strictEqual(JSON.stringify(shared().trimHeadingPath(path, file, own)), JSON.stringify(old().trimHeadingPath(path, file, own)));
+      // The page's arrays are its own window's, so they are compared as JSON.
+      assert.strictEqual(JSON.stringify(shared().trimHeadingPath(path, file, own)), drawnByTemplate(`heading path ${JSON.stringify([path ?? null, file, own])}`));
     }
-    assertSame(drawnBefore(old().renderParkedLabel()), drawnNow(element('ParkedLabel', {})), 'the parked label');
+    assertSame('parked label', drawnNow(element('ParkedLabel', {})), 'the parked label');
   });
 
   test('a task is named by its title, spaces folded, from inside its row', () => {
     const item = listed('Read **the  brief**\nnow');
-    const before = drawnBefore(old().renderTaskListRow(item, {}));
     const now = drawnNow(element('TaskListRow', { item }));
-    legacy.document.body.appendChild(before);
     core.document.body.appendChild(now);
     try {
-      assert.strictEqual(shared().taskTitleOf(now.querySelector('input')), old().taskTitleOf(before.querySelector('input')));
+      assert.strictEqual(shared().taskTitleOf(now.querySelector('input')), drawnByTemplate('task title of a row'));
       assert.strictEqual(shared().taskTitleOf(core.document.body), 'the task');
     } finally {
-      before.remove();
       now.remove();
     }
   });

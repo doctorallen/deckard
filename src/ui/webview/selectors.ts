@@ -1,8 +1,6 @@
 /**
- * Selector pieces the shared sheet, the themes, and the pages all write.
- *
- * Its own module so `themes.ts` can take it without importing
- * `components.ts`, which imports the themes.
+ * Selector pieces the style sheets under src/webview write by hand, named
+ * once so a test can look for them (components-primitives.test.ts).
  */
 
 /**

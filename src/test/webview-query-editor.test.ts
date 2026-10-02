@@ -6,18 +6,31 @@ import type { QueryFacet, QueryViewState } from '../domain/model/query';
 import { createQueryContext } from '../domain/query/queryContext';
 import { parseQuery } from '../domain/query/queryParser';
 import { createQueryViewState } from '../ui/state/dashboardState';
-import { getComponentScript, getQueryEditorScript } from '../ui/webview/components';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import { bundleShared } from './sharedBundle';
+import { templateRecords } from './templateRecords';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /**
  * The shared search box (src/webview/shared/queryEditor.tsx) against the
- * template script it replaces (getQueryEditorScript): the same states drawn
- * both ways must be the same DOM, as test:dom normalizes it, and the same
- * keys, clicks, and typing must draw the same and run the same searches. The
- * Task Board draws it first; a search page and Home draw it later.
+ * template script it replaced (getQueryEditorScript, deleted in Phase 6
+ * step 7): each state must be the DOM the template drew, as test:dom
+ * normalizes it, and the same keys, clicks, and typing must draw the same,
+ * run the same searches, and leave focus in the same place. The template's
+ * side is its recording (templateRecords.ts), taken at each comparison as
+ * the Task Board's template ran it, with a Save button and a Sorted label.
  */
+
+/** What the template drew, ran, was told, and focused, by test and step. */
+const doneByTemplate = templateRecords('webview-query-editor');
+
+/** The template's page at one step: `#app` normalized, what it ran and was told so far, and where focus was. */
+interface StepRecord {
+  readonly page: string;
+  readonly ran: string[];
+  readonly typed: string[];
+  readonly focus: string;
+}
 
 const INDEX = buildWorkspaceIndex(new Map([
   ['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Call Ren #context/phone 📅 2026-09-21\n- [ ] Draft the plan #status/doing\n')],
@@ -60,7 +73,7 @@ function viewOf(text: string, extra: Partial<QueryViewState> = {}, typed?: strin
   };
 }
 
-/** What a page's script is handed, either way. */
+/** What the page's script hands the suite. */
 interface Harness {
   /** Delivers the host's next view of the search, and draws. */
   send(state: QueryViewState | undefined): void;
@@ -72,7 +85,7 @@ interface Harness {
   readonly drafts: string[];
 }
 
-/** The script both pages run: an editor, a page that draws its bar and facets, and the listeners a page wires. */
+/** The script the page runs: an editor, a page that draws its bar and facets, and the listeners a page wires. */
 const PAGE_SCRIPT = `
   let state;
   const applied = [];
@@ -111,15 +124,6 @@ const PAGE_SCRIPT = `
   };
 `;
 
-/** A page running the template scripts, the way the Task Board's template ran them. */
-function legacyPage(): WebviewPage {
-  const script = PAGE_SCRIPT
-    .replace('ACTIONS', `function (hasText) { return '<button data-action="save" data-query-needs-text data-tip="Save"' + (hasText ? '' : ' aria-disabled="true"') + '>Save</button>'; }`)
-    .replace('DRAW', `document.getElementById('app').innerHTML = editor.renderBar('<span class="control-label">Sorted</span>') + editor.renderFacets()`);
-  const page = `(function () {\n  const vscode = acquireVsCodeApi();\n${getComponentScript('replicant')}\n${getQueryEditorScript()}\n${script}\n}());`;
-  return openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${page}</script></body></html>`);
-}
-
 /** A page running the shared search box, drawn with Preact. */
 function corePage(): WebviewPage {
   const bundle = bundleShared(['queryEditor', 'queryText']);
@@ -131,24 +135,22 @@ function corePage(): WebviewPage {
 }
 
 suite('The shared search box draws and does what the template script did', () => {
-  let legacy: WebviewPage;
   let core: WebviewPage;
-  setup(() => {
-    legacy = legacyPage();
+  /** The running test's title, which names its steps' recordings. */
+  let running = '';
+  setup(function () {
+    running = this.currentTest?.title ?? '';
     core = corePage();
   });
   teardown(() => {
-    legacy.dispose();
     core.dispose();
   });
 
   const harness = (page: WebviewPage): Harness & { settings: { elsewhere: boolean } } =>
     (page.window as unknown as { harness: Harness & { settings: { elsewhere: boolean } } }).harness;
-  const both = (act: (page: WebviewPage) => void): void => {
-    act(legacy);
-    act(core);
-  };
-  /** Where focus is, said by what the focused element is, for comparing two pages. */
+  /** Does something on the page under test. */
+  const onPage = (act: (page: WebviewPage) => void): void => act(core);
+  /** Where focus is, said by what the focused element is, as the recording says it. */
   const focusOf = (page: WebviewPage): string => {
     const active = page.document.activeElement as HTMLInputElement | null;
     if (!active || active === page.document.body) {
@@ -158,34 +160,36 @@ suite('The shared search box draws and does what the template script did', () =>
     return `${active.tagName} ${active.getAttribute('data-action') ?? ''} ${active.getAttribute('data-path') ?? ''}${caret}`;
   };
   /**
-   * The two pages draw the same, ran the same, and have focus in the same
-   * place. With `focusKept`, a field the template's draw took away, leaving
-   * focus on the page, may keep it here: Preact keeps the element.
+   * The page draws what the template drew at this step, ran the same, and
+   * has focus in the same place. With `focusKept`, a field the template's
+   * draw took away, leaving focus on the page, may keep it here: Preact
+   * keeps the element.
    */
   const assertSame = (what: string, focusKept = false): void => {
-    assert.strictEqual(normalizeBody(core.find('#app')), normalizeBody(legacy.find('#app')), `${what}: the page`);
-    assert.deepStrictEqual([...harness(core).applied], [...harness(legacy).applied], `${what}: what was run`);
-    assert.deepStrictEqual([...harness(core).drafts], [...harness(legacy).drafts], `${what}: what was typed`);
-    if (focusKept && focusOf(legacy) === 'body') {
+    const before = doneByTemplate<StepRecord>(`${running}: ${what}`);
+    assert.strictEqual(normalizeBody(core.find('#app')), before.page, `${what}: the page`);
+    assert.deepStrictEqual([...harness(core).applied], before.ran, `${what}: what was run`);
+    assert.deepStrictEqual([...harness(core).drafts], before.typed, `${what}: what was typed`);
+    if (focusKept && before.focus === 'body') {
       return;
     }
-    assert.strictEqual(focusOf(core), focusOf(legacy), `${what}: where focus is`);
+    assert.strictEqual(focusOf(core), before.focus, `${what}: where focus is`);
   };
-  const send = (state: QueryViewState | undefined): void => both((page) => harness(page).send(JSON.parse(JSON.stringify(state ?? null)) ?? undefined));
-  const click = (selector: string, init: MouseEventInit = {}): void => both((page) => {
+  const send = (state: QueryViewState | undefined): void => onPage((page) => harness(page).send(JSON.parse(JSON.stringify(state ?? null)) ?? undefined));
+  const click = (selector: string, init: MouseEventInit = {}): void => onPage((page) => {
     page.find(selector).dispatchEvent(new page.window.MouseEvent('click', { bubbles: true, cancelable: true, ...init }));
   });
-  const key = (selector: string, keyName: string, init: KeyboardEventInit = {}): void => both((page) => {
+  const key = (selector: string, keyName: string, init: KeyboardEventInit = {}): void => onPage((page) => {
     page.find(selector).dispatchEvent(new page.window.KeyboardEvent('keydown', { key: keyName, bubbles: true, cancelable: true, ...init }));
   });
-  const type = (selector: string, text: string): void => both((page) => {
+  const type = (selector: string, text: string): void => onPage((page) => {
     const field = page.find(selector) as HTMLInputElement;
     field.focus();
     field.value = text;
     field.setSelectionRange(text.length, text.length);
     field.dispatchEvent(new page.window.Event('input', { bubbles: true }));
   });
-  const change = (selector: string, value: string): void => both((page) => {
+  const change = (selector: string, value: string): void => onPage((page) => {
     const field = page.find(selector) as HTMLSelectElement;
     field.value = value;
     field.dispatchEvent(new page.window.Event('change', { bubbles: true }));
@@ -208,7 +212,7 @@ suite('The shared search box draws and does what the template script did', () =>
       send(state);
       assertSame(what);
     }
-    both((page) => {
+    onPage((page) => {
       harness(page).settings.elsewhere = true;
     });
     for (const [what, state] of searches) {
@@ -257,9 +261,9 @@ suite('The shared search box draws and does what the template script did', () =>
 
   test('an empty bar offers recent searches when focused, and a recent search runs whole', () => {
     send(viewOf(''));
-    both((page) => (page.find('[data-action="query-input"]') as HTMLElement).focus());
+    onPage((page) => (page.find('[data-action="query-input"]') as HTMLElement).focus());
     assertSame('recent searches');
-    both((page) => page.find('[data-action="query-suggestion"][data-suggestion-index="1"]').dispatchEvent(new page.window.MouseEvent('mousedown', { bubbles: true, cancelable: true })));
+    onPage((page) => page.find('[data-action="query-suggestion"][data-suggestion-index="1"]').dispatchEvent(new page.window.MouseEvent('mousedown', { bubbles: true, cancelable: true })));
     click('[data-action="query-suggestion"][data-suggestion-index="1"]');
     assertSame('a recent search ran');
   });
@@ -296,9 +300,9 @@ suite('The shared search box draws and does what the template script did', () =>
   test('the builder opens with a row to type in, takes conditions, groups, and edits', () => {
     /** The host's answer to the search the builder ran last, with focus let go where the two may differ. */
     const answer = (): void => {
-      const ran = harness(legacy).applied;
+      const ran = harness(core).applied;
       send(viewOf(ran[ran.length - 1].replace(/ \(step\)$/, '')));
-      both((page) => (page.document.activeElement as HTMLElement | null)?.blur());
+      onPage((page) => (page.document.activeElement as HTMLElement | null)?.blur());
     };
     send(viewOf('is:open AND (#project/atlas OR text ~ vendor) AND link = [[Atlas]] AND priority >= high'));
     click('[data-action="toggle-builder"]');
@@ -309,7 +313,7 @@ suite('The shared search box draws and does what the template script did', () =>
     assertSame('the new row committed');
     send(viewOf('is:open AND (#project/atlas OR text ~ vendor) AND link = [[Atlas]] AND priority >= high AND text ~ due'));
     assertSame('the host answered the row', true);
-    both((page) => (page.document.activeElement as HTMLElement | null)?.blur());
+    onPage((page) => (page.document.activeElement as HTMLElement | null)?.blur());
     change('[data-action="builder-set-join"][data-path="1"]', 'and');
     change('[data-action="builder-set-operator"][data-path="3"]', 'lt');
     change('[data-action="builder-set-field"][data-path="0"]', 'kind');
@@ -338,17 +342,7 @@ suite('The shared search box draws and does what the template script did', () =>
   test('the plain words of a search, which a page filters by at once', () => {
     const shared = (core.window as unknown as { shared: { previewWords(text: string): string[] } }).shared;
     for (const text of ['vendor review', 'vendor = x review', 'a OR b', 'tag = #x word', '#tag word -no "quoted" and && w', 'due <= 7d plan']) {
-      assert.deepStrictEqual(JSON.parse(JSON.stringify(shared.previewWords(text))), expectedWords(text), text);
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(shared.previewWords(text))), doneByTemplate<string[]>(`plain words of ${text}`), text);
     }
   });
 });
-
-/** The plain words as the template's previewWords read them. */
-function expectedWords(text: string): string[] {
-  const page = openWebviewPage(`<!DOCTYPE html><html><body><main id="app"></main><script>(function () {\n  const vscode = acquireVsCodeApi();\n${getComponentScript('replicant')}\n${getQueryEditorScript()}\n  window.words = createQueryEditor({ getState: function () { return undefined; }, render: function () {} }).previewWords(${JSON.stringify(text)});\n}());</script></body></html>`);
-  try {
-    return JSON.parse(JSON.stringify((page.window as unknown as { words: string[] }).words));
-  } finally {
-    page.dispose();
-  }
-}

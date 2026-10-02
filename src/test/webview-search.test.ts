@@ -6,12 +6,12 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
 import type { ParsedFile } from '../core/types';
 import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/dashboardState';
-import { getComponentScript } from '../ui/webview/components';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import * as corpus from './indexCorpus';
 import { renderMarkdown } from './legacyMarkdown';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { bundleShared } from './sharedBundle';
+import { templateRecords } from './templateRecords';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /**
@@ -21,7 +21,8 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  * legacyMarkdown.ts writes it, since the sanitizer left), over every
  * excerpt the sample workspace, the development notes, and the fixtures
  * hold, and the tag menu the one the template script opened, as test:dom
- * normalizes both. The cards were held to the search page's template here
+ * normalizes both. The template script was deleted in Phase 6 step 7; the
+ * menu it opened is its recording (templateRecords.ts). The cards were held to the search page's template here
  * until the page moved; the page itself is now held by test:dom and the
  * recorded suites.
  *
@@ -33,13 +34,14 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  * punctuation escaped.
  */
 
-/** The template script's tag menu, by name, with the tag it is open on. */
-const LEGACY_MENU = 'openContextMenu, openTagContextMenu, closeTagContextMenu, setParkedTags, parkTagMenuItem, contextKey: function () { return tagContextKey; }';
+/** The menus the template script opened, by case. */
+const openedByTemplate = templateRecords('webview-search');
 
-/** A page running the template script, with its tag menu on `window.legacy`. */
-function legacyPage(): WebviewPage {
-  const script = `(function () {\n  const vscode = acquireVsCodeApi();\n${getComponentScript('replicant')}\n  window.legacy = { ${LEGACY_MENU} };\n}());`;
-  return openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${script}</script></body></html>`);
+/** A menu as the template left it: the menu, the tag it was about, and the text of what had focus. */
+interface MenuRecord {
+  readonly menu: string;
+  readonly tag: string;
+  readonly focus: string;
 }
 
 /** A page with the shared parts on `window.shared`. */
@@ -203,41 +205,28 @@ suite('The search page\'s shared parts draw what its template drew', () => {
   });
 
   test('the tag menu, on a tag parked and not, and the menu a page fills itself', () => {
-    const legacy = legacyPage();
-    try {
-      const old = (legacy.window as unknown as { legacy: Shared }).legacy;
-      const pages: Array<[WebviewPage, Shared]> = [[legacy, old], [core, shared()]];
-      // A tag on each page, with focus on it, as a keyboard opens the menu.
-      const tags = pages.map(([page]) => {
-        const app = page.find('#app');
-        app.innerHTML = '<button class="tag-open" data-tag-key="#project/atlas">#project/atlas</button><article class="card" tabindex="0"></article>';
-        return page.find('[data-tag-key]') as HTMLElement;
-      });
-      const menuOf = (page: WebviewPage): string => normalizeBody(page.find('#tag-context-menu'));
-      const open = (index: number, how: (helpers: Shared, event: MouseEvent, tag: HTMLElement) => void): void => {
-        const [page, helpers] = pages[index];
-        how(helpers, new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 30 }), tags[index]);
-      };
-      const same = (what: string): void => {
-        assert.strictEqual(menuOf(core), menuOf(legacy), what);
-        assert.strictEqual(String(shared().tagContextKey()), String(old.contextKey()), `${what}: the tag it is about`);
-        assert.strictEqual(core.document.activeElement?.textContent, legacy.document.activeElement?.textContent, `${what}: focus`);
-      };
-      for (const parked of [[], ['#PROJECT/atlas'], ['#other']]) {
-        pages.forEach(([, helpers]) => helpers.setParkedTags(parked));
-        [0, 1].forEach((index) => open(index, (helpers, event, tag) => helpers.openTagContextMenu(event, tag)));
-        same(`a tag, with ${JSON.stringify(parked)} parked`);
-        assert.strictEqual(JSON.stringify(shared().parkTagMenuItem('#project/atlas')), JSON.stringify(old.parkTagMenuItem('#project/atlas')));
-      }
-      [0, 1].forEach((index) => open(index, (helpers, event) => helpers.openContextMenu(event, [{ action: 'pin-note', label: 'Pin to Home' }, { action: 'park-note', label: 'Park note' }])));
-      same('a card\'s menu');
-      pages.forEach(([, helpers]) => helpers.closeTagContextMenu());
-      same('closed');
-      [0, 1].forEach((index) => open(index, (helpers, event) => helpers.openContextMenu(event, [])));
-      same('no items opens nothing');
-    } finally {
-      legacy.dispose();
+    // A tag on the page, with focus on it, as a keyboard opens the menu.
+    core.find('#app').innerHTML = '<button class="tag-open" data-tag-key="#project/atlas">#project/atlas</button><article class="card" tabindex="0"></article>';
+    const tag = core.find('[data-tag-key]') as HTMLElement;
+    const event = (): MouseEvent => new core.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 30 });
+    const same = (what: string): void => {
+      const before = openedByTemplate<MenuRecord>(what);
+      assert.strictEqual(normalizeBody(core.find('#tag-context-menu')), before.menu, what);
+      assert.strictEqual(String(shared().tagContextKey()), before.tag, `${what}: the tag it is about`);
+      assert.strictEqual(core.document.activeElement?.textContent, before.focus, `${what}: focus`);
+    };
+    for (const parked of [[], ['#PROJECT/atlas'], ['#other']]) {
+      shared().setParkedTags(parked);
+      shared().openTagContextMenu(event(), tag);
+      same(`a tag, with ${JSON.stringify(parked)} parked`);
+      assert.strictEqual(JSON.stringify(shared().parkTagMenuItem('#project/atlas')), openedByTemplate(`the park item, with ${JSON.stringify(parked)} parked`));
     }
+    shared().openContextMenu(event(), [{ action: 'pin-note', label: 'Pin to Home' }, { action: 'park-note', label: 'Park note' }]);
+    same('a card\'s menu');
+    shared().closeTagContextMenu();
+    same('closed');
+    shared().openContextMenu(event(), []);
+    same('no items opens nothing');
   });
 
   test('a hub note\'s body reaches the page as tokens too', () => {

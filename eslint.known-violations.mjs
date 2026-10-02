@@ -362,11 +362,6 @@ export default {
       "formatReview",
       "summarizeReview"
     ],
-    "src/ui/webview/components.ts": [
-      "getComponentScript",
-      "getQueryEditorScript",
-      "getTipScript"
-    ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],

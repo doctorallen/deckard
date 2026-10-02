@@ -4,8 +4,8 @@ import type { IndexReader, IndexScanStatus } from '../../core/workspace/indexRea
 
 /**
  * Tells a page how far the first scan has got, as it goes, until the index
- * is ready: `{ type: 'indexing', progress }`, which the shared page script
- * writes into its loading line as "Indexing this workspace: 412 of 3,760
+ * is ready: `{ type: 'indexing', progress }`, which the shared core
+ * (src/webview/shared/status.ts) writes into a page's loading line as "Indexing this workspace: 412 of 3,760
  * notes read…". Does nothing once the workspace has been indexed.
  */
 export function followIndexing(
