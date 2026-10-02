@@ -189,6 +189,8 @@ suite('Calendar page host', () => {
         followIndexing: false,
         onChromeChange: 'reload',
         measure: false,
+        readsInertState: true,
+        embedsSnapshot: true,
       });
     } finally {
       page.dispose();

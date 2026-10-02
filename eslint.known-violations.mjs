@@ -365,9 +365,6 @@ export default {
     "src/ui/webview/calendarDay.ts": [
       "getCalendarDayScript"
     ],
-    "src/ui/webview/calendarHtml.ts": [
-      "getCalendarHtml"
-    ],
     "src/ui/webview/components.ts": [
       "getComponentScript",
       "getQueryEditorScript",

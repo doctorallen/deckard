@@ -106,7 +106,8 @@ export const PAGES: readonly CatalogPage[] = [
   {
     id: 'calendarPage',
     title: 'Calendar page',
-    render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri, { page: true }),
+    render: (context) => getCalendarHtml(context.webview as vscode.Webview, context.extensionUri, { page: true, state: context.state as CalendarSnapshot | undefined }),
+    readsInertState: true,
   },
   {
     id: 'relatedNotesDebug',

@@ -201,10 +201,11 @@ suite('Component primitives', () => {
       const snapshots: Partial<Record<string, unknown>> = {
         stats: createDeckardStatsSnapshot(index, store.reader.value, [], Date.now()),
         calendar: createCalendar(index, '2026-09', createQueryContext(Date.now())),
+        calendarPage: createCalendar(index, '2026-09', createQueryContext(Date.now()), { dayPanel: true, layout: 'page' }),
       };
       // A calendar still says it is ready when it loads, as it always has, so
       // its host sends a snapshot newer than the one its HTML carried.
-      const asks: Partial<Record<string, unknown[]>> = { calendar: [{ type: 'ready' }] };
+      const asks: Partial<Record<string, unknown[]>> = { calendar: [{ type: 'ready' }], calendarPage: [{ type: 'ready' }] };
       const embedding = PAGES.filter((entry) => entry.readsInertState);
       assert.ok(embedding.length >= 1, 'at least Stats reads its first snapshot from its shell');
       for (const entry of embedding) {
