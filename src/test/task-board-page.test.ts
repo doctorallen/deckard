@@ -467,6 +467,29 @@ suite('Task Board page', () => {
     assert.strictEqual(open.length, 1, `open: ${open.join(', ')}`);
   });
 
+  test('the arrows, Home, and End walk a ranked list row\'s menu, as they walk every menu', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'rank' }));
+    const row = shown.find('.task-list .task-row') as HTMLElement;
+    row.focus();
+    press(shown, row, 'F10', { shiftKey: true });
+    const menu = shown.find('#rank-context-menu') as HTMLElement;
+    assert.strictEqual(menu.hidden, false, 'the rank menu opens');
+    const items = shown.findAll('#rank-context-menu [data-context-action]');
+    assert.ok(items.length > 2, `items: ${items.length}`);
+    assert.strictEqual(shown.document.activeElement, items[0]);
+    assert.strictEqual(press(shown, items[0], 'ArrowDown').defaultPrevented, true, 'the menu takes the key');
+    assert.strictEqual(shown.document.activeElement, items[1]);
+    press(shown, items[1], 'End');
+    assert.strictEqual(shown.document.activeElement, items[items.length - 1]);
+    press(shown, items[items.length - 1], 'ArrowDown');
+    assert.strictEqual(shown.document.activeElement, items[0], 'down from the last goes round to the first');
+    press(shown, items[0], 'ArrowUp');
+    assert.strictEqual(shown.document.activeElement, items[items.length - 1], 'and up from the first to the last');
+    press(shown, items[items.length - 1], 'Home');
+    assert.strictEqual(shown.document.activeElement, items[0]);
+    assert.strictEqual(menu.hidden, false, 'and it stays open');
+  });
+
   test('Shift+F10 and the menu key on a table row open its menu, as a right-click does', () => {
     const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
     const row = shown.find('.result-row') as HTMLElement;
