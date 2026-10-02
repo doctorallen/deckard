@@ -8,7 +8,7 @@ Everything below the line is printed by `node scripts/import-graph-report.js`, w
 
 | Measure | Before Phase 0 (`dev` 1805a01) | End of Phase 1 | End of Phase 2 | End of Phase 3 | End of Phase 4 | End of Phase 5 | End of Phase 6 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Mocha suites that run under `test:unit` | 16 of 139 | 30 of 149 | 57 of 153 | 63 of 159 | 88 of 180 | 89 of 183 | 111 of 221 |
+| Mocha suites that run under `test:unit` | 16 of 139 | 30 of 149 | 57 of 153 | 63 of 159 | 88 of 180 | 89 of 183 | 114 of 221 |
 | Pairs of folders that import each other | 7 | 3 | 4 | 4 | 6, three of them inside `domain/` | 7, three inside `domain/`, one type-only | 6, three inside `domain/`, one type-only |
 | Known dependency violations | 19 | 12 | 6 | 6 | 4 | 4 | 2 |
 | Module-level state the plan replaces | 8 | 8 | 1, the timing log, which may stay | 1 | 1 | 1 | 1 |
@@ -19,9 +19,8 @@ Everything below the line is printed by `node scripts/import-graph-report.js`, w
 - **Phase 5 made `extension.ts` a 35-line composition root.** `src/composition/services.ts` builds every service once, and each of the nineteen features in `src/ui/commands/<feature>/register.ts` registers its commands against them. The features import the `Services` type from the composition module, which imports the classes it builds from `ui/commands`: a pair of folders, type-only in that direction, and the shape the plan's `register(context, services)` implies.
 - **Phase 6 moved every page into `src/webview/<page>/`, bundles on a shared Preact core in `src/webview/shared/`.** Its 90 modules reach no `vscode`: they import `ui/protocol` (the typed messages and snapshots), four pure domain folders (`domain/markdown`, `domain/dashboard`, `domain/graph`, `domain/tasks`), and each other. The script's `folderOf` does not group `src/webview`, so the tables below name each page module on its own row; every one of them reads 0 and 0 in the first table.
 - **`ui/state` and `ui/webview` no longer import each other, and the two known violations left with them.** The state builders sent HTML they rendered with `ui/webview/rendering.ts`; they now send the token tree of `domain/markdown/inline.ts` and `blockExcerpt.ts` (decision 0015), the pages draw it, and `rendering.ts` and `sanitize-html` are gone. The host side of the pages is `src/ui/webview/host/` (`WebviewHost`, the shell, the narrowing helpers, the shared handlers) and a controller and narrowing table per page in `src/ui/webview/pages/<page>/`; `messages.ts` is gone.
-- **The 22 new `test:unit` suites** are the per-page narrowing tables (`*-messages`), the domain modules the pages share with the host (`markdown-inline`, `markdown-block-excerpt`, `notes-graph-communities`, `notes-graph-simulation`, `widget-catalog`, `task-columns`, `calendar-day-panel`), `navigation-service`, `page-narrowing`, `help-manifest`, `guide-links`, `icons`, and `spacing-scale`.
-- **What got worse.** The suites that reach `vscode` only through what they test went from 24 to 38, and the suites that import it themselves from 70 to 72. Ten reach it through `src/test/pages.ts`, which renders each page's shell against a stand-in webview and imports `vscode` for that webview's type; five, one at the end of Phase 5, through `src/ui/webview/components.ts`, which still imports `vscode` for `affectsPageChrome` and `onDidChangePageChrome`. A page's host and controller are `vscode` adapters by design, so a suite of a page's host reaches it either way. `ui/webview`'s imports of `ui/commands` grew from 48 to 56 (still 24 modules), and `ui/commands` and `ui/webview` still import each other, through `chooseTheme.ts`, the one known violation left in `ui/`. `src/ui/webview` grew from 35 files to 65, 47 of which reach `vscode`.
-- **These numbers count the page-script builders of `components.ts` and `test/ui/checkWebviewScripts.js` as still present.** They are being deleted at the end of Phase 6; with them go the four suites that import `getComponentScript` or `getQueryEditorScript` (`webview-shared`, `webview-search`, `webview-tasks`, `webview-query-editor`), all four outside `test:unit`, so the suite counts change by that much when the script is run again.
+- **The 25 new `test:unit` suites** are the per-page narrowing tables (`*-messages`), the domain modules the pages share with the host (`markdown-inline`, `markdown-block-excerpt`, `notes-graph-communities`, `notes-graph-simulation`, `widget-catalog`, `task-columns`, `calendar-day-panel`), `navigation-service`, `page-narrowing`, `help-manifest`, `guide-links`, `icons`, and `spacing-scale`, and three of the template-parity suites (`webview-shared`, `webview-tasks`, `webview-query-editor`), which compare against recordings of the deleted templates since step 7.
+- **What got worse.** The suites that reach `vscode` only through what they test went from 24 to 35, and the suites that import it themselves from 70 to 72. Ten reach it through `src/test/pages.ts`, which renders each page's shell against a stand-in webview and imports `vscode` for that webview's type. A page's host and controller are `vscode` adapters by design, so a suite of a page's host reaches it either way. `ui/webview`'s imports of `ui/commands` grew from 48 to 56 (still 24 modules), and `ui/commands` and `ui/webview` still import each other, through `chooseTheme.ts`, the one known violation left in `ui/`. `src/ui/webview` grew from 35 files to 65, 47 of which reach `vscode`.
 
 ---
 
@@ -439,7 +438,7 @@ Everything below the line is printed by `node scripts/import-graph-report.js`, w
 | `src/ui/webview` | `src/ports/events.ts` | 1 | 1 |
 | `src/ui/webview` | `src/services/exportService.ts` | 4 | 1 |
 | `src/ui/webview` | `src/services/navigationService.ts` | 13 | 1 |
-| `src/ui/webview` | `src/shared` | 15 | 4 |
+| `src/ui/webview` | `src/shared` | 14 | 4 |
 | `src/ui/webview` | `src/ui/commands` | 56 | 24 |
 | `src/ui/webview` | `src/ui/protocol` | 51 | 11 |
 | `src/ui/webview` | `src/ui/state` | 22 | 13 |
@@ -820,24 +819,24 @@ What it imports from outside `src`: `fs`, `node:sqlite`, `path`, `worker_threads
 | --- | --- |
 | All mocha suites in `src/test` | 221 |
 | Import `vscode` themselves | 72 |
-| Import no `vscode` themselves, but reach it | 38 |
-| Never reach `vscode`, so run under `test:unit` | 111 |
+| Import no `vscode` themselves, but reach it | 35 |
+| Never reach `vscode`, so run under `test:unit` | 114 |
 
-The suites under `test:unit`: `agenda-service`, `assignee`, `assistant-tool-table`, `assistant-tools`, `calendar-day-panel`, `calendar-math`, `calendar-messages`, `calendarPage-messages`, `capture-box`, `capture-lines`, `capture-service`, `capture-words`, `change-reactions`, `change-watcher`, `changelog`, `completion-context`, `dashboard-messages`, `dashboard-widgets`, `debounce`, `due-date-wording`, `emitter`, `export-results`, `export-service`, `frontmatter-tags`, `frontmatter`, `guards`, `guide-links`, `help-manifest`, `help-messages`, `icons`, `index-publishing`, `line-shapes`, `link-rewrites`, `link-service`, `markdown-block-excerpt`, `markdown-inline`, `markdown-parser`, `mcp-protocol`, `move-service`, `naming`, `navigation-service`, `note-boundaries`, `note-embeds`, `note-links`, `notes-graph-communities`, `notes-graph-messages`, `notes-graph-simulation`, `notes-graph-state`, `outline-tree`, `page-loader`, `page-narrowing`, `parked`, `parking-service`, `paths`, `people-recency`, `pin-service`, `pinned-notes`, `preference-snapshots`, `preferences-invariants`, `preferences-maintenance`, `preferences-prune`, `preferences-roundtrip`, `preferences-schema`, `preferences`, `prose-excerpt`, `query-block`, `query-language`, `query-links`, `query-values`, `quick-find-actions`, `related-notes-evaluation`, `repeat-rule-problems`, `result-table`, `review-service`, `rollover-service`, `search-page-messages`, `search-store`, `setting-toggles`, `shared-html`, `sidebarNotes-messages`, `spacing-scale`, `stats-messages`, `tag-hygiene`, `tag-navigation`, `tag-service`, `tag-target`, `tagged-entries`, `task-board-messages`, `task-columns`, `task-draft`, `task-metadata`, `task-policy`, `task-query`, `task-rules`, `task-service`, `task-steps`, `template-service`, `templates`, `text`, `theme-preview`, `timing`, `try-next`, `view-publisher`, `view-state`, `warm-start`, `webview-page`, `widget-catalog`, `wiki-link-targets`, `word-similarity`, `workspace`, `write-history`.
+The suites under `test:unit`: `agenda-service`, `assignee`, `assistant-tool-table`, `assistant-tools`, `calendar-day-panel`, `calendar-math`, `calendar-messages`, `calendarPage-messages`, `capture-box`, `capture-lines`, `capture-service`, `capture-words`, `change-reactions`, `change-watcher`, `changelog`, `completion-context`, `dashboard-messages`, `dashboard-widgets`, `debounce`, `due-date-wording`, `emitter`, `export-results`, `export-service`, `frontmatter-tags`, `frontmatter`, `guards`, `guide-links`, `help-manifest`, `help-messages`, `icons`, `index-publishing`, `line-shapes`, `link-rewrites`, `link-service`, `markdown-block-excerpt`, `markdown-inline`, `markdown-parser`, `mcp-protocol`, `move-service`, `naming`, `navigation-service`, `note-boundaries`, `note-embeds`, `note-links`, `notes-graph-communities`, `notes-graph-messages`, `notes-graph-simulation`, `notes-graph-state`, `outline-tree`, `page-loader`, `page-narrowing`, `parked`, `parking-service`, `paths`, `people-recency`, `pin-service`, `pinned-notes`, `preference-snapshots`, `preferences-invariants`, `preferences-maintenance`, `preferences-prune`, `preferences-roundtrip`, `preferences-schema`, `preferences`, `prose-excerpt`, `query-block`, `query-language`, `query-links`, `query-values`, `quick-find-actions`, `related-notes-evaluation`, `repeat-rule-problems`, `result-table`, `review-service`, `rollover-service`, `search-page-messages`, `search-store`, `setting-toggles`, `shared-html`, `sidebarNotes-messages`, `spacing-scale`, `stats-messages`, `tag-hygiene`, `tag-navigation`, `tag-service`, `tag-target`, `tagged-entries`, `task-board-messages`, `task-columns`, `task-draft`, `task-metadata`, `task-policy`, `task-query`, `task-rules`, `task-service`, `task-steps`, `template-service`, `templates`, `text`, `theme-preview`, `timing`, `try-next`, `view-publisher`, `view-state`, `warm-start`, `webview-page`, `webview-query-editor`, `webview-shared`, `webview-tasks`, `widget-catalog`, `wiki-link-targets`, `word-similarity`, `workspace`, `write-history`.
 
 For the suites that reach `vscode` only through what they test, the module on the shortest path that imports `vscode` itself:
 
 | Imports `vscode` | Suites that reach it first | Examples |
 | --- | --- | --- |
 | `src/test/pages.ts` | 10 | notes-graph-behavior, page-sheets, parked-commands, query-builder-webview |
-| `src/ui/webview/components.ts` | 5 | components-primitives, webview-query-editor, webview-search, webview-shared |
+| `src/ui/commands/sampleWorkspace.ts` | 3 | index-equivalence, parsed-file-codec, webview-search |
 | `src/ui/commands/dailyNote.ts` | 2 | calendar, daily-notes |
-| `src/ui/commands/sampleWorkspace.ts` | 2 | index-equivalence, parsed-file-codec |
 | `src/ui/commands/bulkEdit.ts` | 2 | tags-in-code, tags-in-links |
 | `src/ui/webview/host/activeSource.ts` | 1 | active-source |
 | `src/ui/commands/assistantWrites.ts` | 1 | assistant-writes |
 | `src/ui/commands/agendaActions.ts` | 1 | calendar-day |
 | `src/ui/commands/checkSetup.ts` | 1 | check-setup |
+| `src/ui/webview/themes.ts` | 1 | components-primitives |
 | `src/ui/commands/datePrompt.ts` | 1 | date-phrases |
 | `src/ui/webview/sidebarNotes.ts` | 1 | entry-matching |
 | `src/ui/webview/pages/help/guidePage.ts` | 1 | guide |
