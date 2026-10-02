@@ -1,8 +1,8 @@
 import type MarkdownIt from 'markdown-it';
 
 import { parseWikiTarget } from '../../domain/index/backlinks';
+import { ATTACHMENT } from '../../domain/markdown/noteNames';
 import {
-  ATTACHMENT,
   createSourceParser,
   EMBED_LINE,
   resolveEmbed,

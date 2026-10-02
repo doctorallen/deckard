@@ -1,4 +1,4 @@
-import { getExtractedNoteFileName } from '../markdown/noteNames';
+import { ATTACHMENT, getExtractedNoteFileName } from '../markdown/noteNames';
 import { WorkspaceIndex } from '../model';
 import {
   createNoteTitleMap,
@@ -23,9 +23,9 @@ export interface LinkProblem {
 
 /**
  * The links in a note that open no note: a name no note has, or one several
- * notes share. Links in code and `[[#Heading]]` links into the note
- * itself are left alone, as is a heading a note lacks, since the link still
- * opens the note.
+ * notes share. Links in code, links to attachments, and `[[#Heading]]`
+ * links into the note itself are left alone, as is a heading a note lacks,
+ * since the link still opens the note.
  */
 export function findLinkProblems(
   content: string,
@@ -36,7 +36,8 @@ export function findLinkProblems(
   const problems: LinkProblem[] = [];
   for (const span of findWikiLinkSpans(content)) {
     const { note } = parseWikiTarget(span.target);
-    if (!note) {
+    // An attachment, such as an embedded image, is not a note.
+    if (!note || ATTACHMENT.test(note)) {
       continue;
     }
     const paths = findWikiTargetPaths(titles, note, sourcePath);

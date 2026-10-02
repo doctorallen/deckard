@@ -1,5 +1,6 @@
 import { stripTags } from '../markdown/parser';
 import { ParsedFile, Section, WorkspaceIndex } from '../model';
+import { ATTACHMENT } from '../markdown/noteNames';
 import { findWikiLinkSpans } from '../markdown/wikiLinks';
 
 /**
@@ -60,13 +61,15 @@ export const WIKI_LINK_WITH_TEXT = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
  * Splits what sits between a link's brackets, display text already removed,
  * into the note and the heading or `^id` after the first `#`. Each part is
  * trimmed; an empty heading or `^id` is left out rather than kept as `''`.
+ * A note named by its file name, as `[[Plan.md]]`, is named by its title,
+ * `Plan`, which is what notes are matched by.
  */
 export function parseWikiTarget(text: string): WikiLinkTarget {
   const hash = text.indexOf('#');
   if (hash < 0) {
-    return { note: text.trim() };
+    return { note: withoutNoteExtension(text) };
   }
-  const note = text.slice(0, hash).trim();
+  const note = withoutNoteExtension(text.slice(0, hash));
   const fragment = text.slice(hash + 1).trim();
   // A fragment that opens with a caret names a line rather than a heading.
   // Obsidian writes it that way, and a heading cannot begin with one.
@@ -75,6 +78,11 @@ export function parseWikiTarget(text: string): WikiLinkTarget {
     return { note, ...(block ? { block } : {}) };
   }
   return { note, heading: fragment || undefined };
+}
+
+/** A link's note name, trimmed, without a `.md` it may end in. */
+function withoutNoteExtension(name: string): string {
+  return name.trim().replace(/\.md$/i, '').trim();
 }
 
 /** A note's title: its file name without the `.md` extension. */
@@ -284,13 +292,18 @@ export interface MissingLinkTarget {
 /**
  * Every name a link writes that opens no note, most linked first. A name
  * two notes share is not missing: it opens a choice, which the editor
- * warns about where it is written.
+ * warns about where it is written. Nor is an attachment, such as an
+ * embedded image, which is not a note at all.
  */
 export function findMissingLinkTargets(index: WorkspaceIndex): MissingLinkTarget[] {
   const titles = createNoteTitleMap(index);
   const missing = new Map<string, MissingLinkTarget>();
   getBacklinkIndex(index).occurrences.forEach((occurrence) => {
-    if (!occurrence.note || findWikiTargetPaths(titles, occurrence.note, occurrence.sourcePath).length > 0) {
+    if (
+      !occurrence.note ||
+      ATTACHMENT.test(occurrence.note) ||
+      findWikiTargetPaths(titles, occurrence.note, occurrence.sourcePath).length > 0
+    ) {
       return;
     }
     const key = occurrence.note.toLocaleLowerCase();

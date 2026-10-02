@@ -10,6 +10,7 @@ import {
   resolveWikiTarget,
 } from '../index/backlinks';
 import { findFrontmatterEnd } from '../markdown/frontmatter';
+import { ATTACHMENT } from '../markdown/noteNames';
 import { findFencedLines } from '../markdown/lineShapes';
 import { BLOCK_ID_PATTERN } from '../markdown/taskFields';
 
@@ -19,9 +20,6 @@ import { BLOCK_ID_PATTERN } from '../markdown/taskFields';
  * each one reads. The preview draws them (`ui/preview/noteEmbeds.ts`) and
  * the editor's lenses report the ones that name nothing; both read them here.
  */
-
-/** Names that are not notes, which Deckard does not embed. */
-export const ATTACHMENT = /\.(?:png|jpe?g|gif|svg|webp|bmp|pdf|mp4|mp3|wav|mov|webm)$/i;
 
 /** An embed alone on its line, as `![[Target]]`, with the target captured. */
 export const EMBED_LINE = /^ {0,3}!\[\[([^\]]+)\]\][ \t]*$/;
