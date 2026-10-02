@@ -3,6 +3,7 @@ import { createPreviewSourceHref } from '../markdown/sourceLinks';
 import { ParsedFile, WorkspaceIndex } from '../model';
 import {
   createNoteTitleMap,
+  findLinkedBlock,
   findLinkedSection,
   noteTitle,
   parseWikiTarget,
@@ -128,7 +129,7 @@ function sourceHref(filePath: string, line: number): string | undefined {
 
 /** The one line marked `^block`, without its marker. */
 function readBlock(read: EmbedRead, block: string, title: string): ResolvedEmbed {
-  const line = read.file.blockIds?.[block];
+  const line = findLinkedBlock(read.file, block);
   const text =
     line === undefined ? undefined : read.file.content.split(/\r?\n/)[line - 1];
   if (text === undefined || line === undefined) {

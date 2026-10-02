@@ -13,6 +13,7 @@ import {
   parseMarkdown,
   stripTags,
 } from '../domain/markdown/parser';
+import { findLinkedBlock } from '../domain/index/backlinks';
 
 suite('Markdown parser', () => {
   test('gives two entries whose old ids collided ids of their own', () => {
@@ -248,6 +249,26 @@ suite('Markdown parser', () => {
       ),
       'management',
     );
+  });
+
+  test('a namespace or block id named after a property of every object is read as written', () => {
+    const parsed = parseMarkdown(
+      'notes/fix.md',
+      '# Fix #constructor/x #toString/y\nThe line ^constructor',
+      undefined,
+      { entityNamespaceAliases: getEntityNamespaceAliases({ alias: 'constructor' }) },
+    );
+    assert.deepStrictEqual(parsed.sections[0].tags, ['#constructor/x', '#tostring/y']);
+    assert.deepStrictEqual(
+      extractTagSpans('# Fix #alias/x', true, getEntityNamespaceAliases({ alias: 'constructor' })).map(
+        (span) => span.key,
+      ),
+      ['#constructor/x'],
+      'an alias of a namespace named constructor resolves to it',
+    );
+    assert.deepStrictEqual(parsed.blockIds, { constructor: 2 });
+    assert.strictEqual(findLinkedBlock(parsed, 'constructor'), 2);
+    assert.strictEqual(findLinkedBlock(parsed, 'toString'), undefined);
   });
 
   test('uses the configured people marker and preserves @ as a generic tag', () => {

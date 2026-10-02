@@ -190,7 +190,9 @@ function resolveNamespaceAlias(
 ): string {
   let current = namespace;
   const visited = new Set<string>();
-  while (aliases[current] && !visited.has(current)) {
+  // Own keys only: a namespace such as `constructor` must not walk into
+  // what every object inherits.
+  while (Object.hasOwn(aliases, current) && !visited.has(current)) {
     visited.add(current);
     current = aliases[current];
   }
@@ -1009,9 +1011,11 @@ function normalizeTagKey(
     return key;
   }
 
-  const canonicalNamespace = getEntityNamespaceAliases(entityNamespaceAliases)[
-    namespace.toLowerCase()
-  ];
+  // The namespace is the note's text, so only the record's own keys count:
+  // `#constructor/x` must not read Object's constructor as its namespace.
+  const aliases = getEntityNamespaceAliases(entityNamespaceAliases);
+  const lowered = namespace.toLowerCase();
+  const canonicalNamespace = Object.hasOwn(aliases, lowered) ? aliases[lowered] : undefined;
   return canonicalNamespace
     ? `#${canonicalNamespace}/${name.join('/')}`
     : key;
@@ -1766,7 +1770,8 @@ export function findBlockIds(
       return;
     }
     const match = BLOCK_ID_PATTERN.exec(line);
-    if (match && !(match[1] in blockIds)) {
+    // Own keys only: `in` would count `^constructor` as already seen.
+    if (match && !Object.hasOwn(blockIds, match[1])) {
       blockIds[match[1]] = lineIndex + 1;
     }
   });

@@ -170,12 +170,17 @@ export function findLinkedSection(
   );
 }
 
-/** The one-based line a link's `#^id` names in a note. */
+/**
+ * The one-based line a link's `#^id` names in a note, or undefined when the
+ * note marks no such block. Only the note's own ids count: the id is the
+ * link's text, and `^constructor` must not find what every object inherits.
+ */
 export function findLinkedBlock(
   file: ParsedFile,
   block: string,
 ): number | undefined {
-  return file.blockIds?.[block];
+  const blockIds = file.blockIds;
+  return blockIds && Object.hasOwn(blockIds, block) ? blockIds[block] : undefined;
 }
 
 /**
