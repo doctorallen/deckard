@@ -58,6 +58,16 @@ suite('Markdown parser', () => {
     assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#café']);
   });
 
+  test('reads a front-matter field with spaces before its colon, as YAML does', () => {
+    const content = '---\ntags : [parked]\nproject\t: Atlas\n---\n# Note';
+    const parsed = parseMarkdown('notes/note.md', content);
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#parked', '#project/atlas']);
+    assert.deepStrictEqual(
+      extractTagSpans(content).filter((span) => span.lineNumber <= 3).map((span) => [span.lineNumber, span.startColumn, span.endColumn]),
+      [[2, 8, 14], [3, 10, 15]],
+    );
+  });
+
   test('a # in a bare web address is part of the address, not a tag', () => {
     assert.deepStrictEqual(extractTags('Docs at https://docs.example.com/#install today'), []);
     assert.deepStrictEqual(

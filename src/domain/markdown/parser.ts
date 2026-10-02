@@ -516,14 +516,16 @@ function readFrontmatterValues(
   let currentKey: string | undefined;
   lines.slice(1, end).forEach((line, lineIndex) => {
     const lineNumber = lineIndex + 2;
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    // YAML allows spaces before the colon, as `tags : [parked]`.
+    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*)([ \t]*:)\s*(.*)$/);
     if (property) {
+      const value = property[3];
       currentKey = property[1].toLowerCase();
-      values.set(currentKey, splitFrontmatterValues(property[2], { keepEmptyValue: true }));
-      const valueStart = line.indexOf(property[2], property[1].length + 1);
+      values.set(currentKey, splitFrontmatterValues(value, { keepEmptyValue: true }));
+      const valueStart = line.indexOf(value, property[1].length + property[2].length);
       tagSpans.push(
         ...createFrontmatterTagSpans(
-          { field: currentKey, rawValue: property[2], lineNumber, valueStart },
+          { field: currentKey, rawValue: value, lineNumber, valueStart },
           settings,
         ),
       );
