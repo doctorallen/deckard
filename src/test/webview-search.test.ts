@@ -8,6 +8,7 @@ import type { ParsedFile } from '../core/types';
 import type { SearchPageSnapshot } from '../ui/protocol/searchPage';
 import type { TagOverviewCard } from '../ui/protocol/shared';
 import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/dashboardState';
+import { getComponentScript } from '../ui/webview/components';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import * as corpus from './indexCorpus';
@@ -32,9 +33,18 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  * punctuation escaped, as scripts/compare-card-markdown.js shows it.
  */
 
+/** The template script's tag menu, by name, with the tag it is open on. */
+const LEGACY_MENU = 'openContextMenu, openTagContextMenu, closeTagContextMenu, setParkedTags, parkTagMenuItem, contextKey: function () { return tagContextKey; }';
+
+/** A page running the template script, with its tag menu on `window.legacy`. */
+function legacyPage(): WebviewPage {
+  const script = `(function () {\n  const vscode = acquireVsCodeApi();\n${getComponentScript('replicant')}\n  window.legacy = { ${LEGACY_MENU} };\n}());`;
+  return openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${script}</script></body></html>`);
+}
+
 /** A page with the shared parts on `window.shared`. */
 function corePage(): WebviewPage {
-  const bundle = bundleShared(['blockExcerpt', 'searchCard']);
+  const bundle = bundleShared(['blockExcerpt', 'searchCard', 'tagMenu', 'menuKeys']);
   return openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${bundle}</script></body></html>`);
 }
 
@@ -189,6 +199,44 @@ suite('The search page\'s shared parts draw what its template drew', () => {
       shared().render(shared().h(shared().NoteBody, { rawContent: raw, blocks: [], renderMode: 'markdown' }), now);
       assert.strictEqual(normalizeBody(now), normalizeBody(before), JSON.stringify(raw));
       assert.strictEqual(now.textContent, before.textContent, `the same text in the <pre>: ${JSON.stringify(raw)}`);
+    }
+  });
+
+  test('the tag menu, on a tag parked and not, and the menu a page fills itself', () => {
+    const legacy = legacyPage();
+    try {
+      const old = (legacy.window as unknown as { legacy: Shared }).legacy;
+      const pages: Array<[WebviewPage, Shared]> = [[legacy, old], [core, shared()]];
+      // A tag on each page, with focus on it, as a keyboard opens the menu.
+      const tags = pages.map(([page]) => {
+        const app = page.find('#app');
+        app.innerHTML = '<button class="tag-open" data-tag-key="#project/atlas">#project/atlas</button><article class="card" tabindex="0"></article>';
+        return page.find('[data-tag-key]') as HTMLElement;
+      });
+      const menuOf = (page: WebviewPage): string => normalizeBody(page.find('#tag-context-menu'));
+      const open = (index: number, how: (helpers: Shared, event: MouseEvent, tag: HTMLElement) => void): void => {
+        const [page, helpers] = pages[index];
+        how(helpers, new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 30 }), tags[index]);
+      };
+      const same = (what: string): void => {
+        assert.strictEqual(menuOf(core), menuOf(legacy), what);
+        assert.strictEqual(String(shared().tagContextKey()), String(old.contextKey()), `${what}: the tag it is about`);
+        assert.strictEqual(core.document.activeElement?.textContent, legacy.document.activeElement?.textContent, `${what}: focus`);
+      };
+      for (const parked of [[], ['#PROJECT/atlas'], ['#other']]) {
+        pages.forEach(([, helpers]) => helpers.setParkedTags(parked));
+        [0, 1].forEach((index) => open(index, (helpers, event, tag) => helpers.openTagContextMenu(event, tag)));
+        same(`a tag, with ${JSON.stringify(parked)} parked`);
+        assert.strictEqual(JSON.stringify(shared().parkTagMenuItem('#project/atlas')), JSON.stringify(old.parkTagMenuItem('#project/atlas')));
+      }
+      [0, 1].forEach((index) => open(index, (helpers, event) => helpers.openContextMenu(event, [{ action: 'pin-note', label: 'Pin to Home' }, { action: 'park-note', label: 'Park note' }])));
+      same('a card\'s menu');
+      pages.forEach(([, helpers]) => helpers.closeTagContextMenu());
+      same('closed');
+      [0, 1].forEach((index) => open(index, (helpers, event) => helpers.openContextMenu(event, [])));
+      same('no items opens nothing');
+    } finally {
+      legacy.dispose();
     }
   });
 
