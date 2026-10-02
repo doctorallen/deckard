@@ -6,7 +6,7 @@
  * or puts the card back.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
-import type { TaskBoardCard, TaskBoardMessage, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import type { TaskBoardCard, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
@@ -537,6 +537,12 @@ let pendingState: TaskBoardSnapshot | undefined;
 onHostMessage<{ type: 'moveRefused'; taskId: string }>('moveRefused', (message) => {
   const card = Array.from(document.querySelectorAll<HTMLElement>('.board-card')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
   announce(`${card ? taskTitleOf(card) : 'The task'} was not moved.`);
+});
+// So is a completion or reopening it could not write, from a card, a row,
+// or the table.
+onHostMessage<ToggleRefusedMessage>('toggleRefused', (message) => {
+  const entry = Array.from(document.querySelectorAll<HTMLElement>('.board-card, .task-row, .result-row')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
+  announce(`${entry ? taskTitleOf(entry) : 'The task'} was not ${message.completed ? 'completed' : 'reopened'}.`);
 });
 onHostMessage<StateMessage<TaskBoardSnapshot>>('state', (message) => {
   const wait = lingerRemaining();

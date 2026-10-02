@@ -11,6 +11,7 @@ import type {
   MoveTaskMessage,
   TaskBoardPageToHost,
   TaskBoardSnapshot,
+  ToggleRefusedMessage,
 } from '../../../protocol/taskBoard';
 import { askForDueDate, setTasksDue } from '../../../commands/agendaActions';
 import { presentExport } from '../../../commands/exportResults';
@@ -398,6 +399,9 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
           return;
         }
         this.writeIndexAt = undefined;
+        // The page marked the card at once; say it was not, then put it back.
+        const refused: ToggleRefusedMessage = { type: 'toggleRefused', taskId: message.taskId, completed: message.completed };
+        page.post(refused);
         page.refresh();
       },
       moveTask: (message, page) => this.moveTask(message, page),

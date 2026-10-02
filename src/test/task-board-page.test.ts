@@ -385,4 +385,13 @@ suite('Task Board page', () => {
       ['status:todo', 'priority:', 'due:'],
     );
   });
+
+  test('a completion the host could not write is said, as a move it could not write is', () => {
+    const shown = show(boardOf(TWO));
+    const beta = cardTitled(shown, 'Beta');
+    beta.focus();
+    press(shown, beta, 'x');
+    shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'toggleRefused', taskId: beta.dataset.taskId, completed: true } }));
+    assert.strictEqual(shown.text('#live-status'), 'Beta was not completed.');
+  });
 });

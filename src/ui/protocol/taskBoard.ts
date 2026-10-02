@@ -236,6 +236,17 @@ export interface MoveRefusedMessage extends Partial<Correlated> {
   taskId: string;
 }
 
+/**
+ * A completion or reopening the host could not write, of a task that has
+ * gone or a line that changed. The page marked the card at once, so it
+ * says it was not; the state that follows puts the card back.
+ */
+export interface ToggleRefusedMessage {
+  type: 'toggleRefused';
+  taskId: string;
+  completed: boolean;
+}
+
 /** Chooses what the board's columns group tasks by. */
 export interface SetBoardGroupMessage {
   type: 'setBoardGroup';
@@ -348,12 +359,13 @@ export interface TaskBoardPageToHost {
 
 /**
  * What the host sends the Task Board, by type: its snapshot, the first
- * scan's progress, and a move it could not write.
+ * scan's progress, and a move or a completion it could not write.
  */
 export interface TaskBoardHostToPage {
   state: StateMessage<TaskBoardSnapshot>;
   indexing: IndexingMessage;
   moveRefused: MoveRefusedMessage;
+  toggleRefused: ToggleRefusedMessage;
 }
 
 /** Messages from the Task Board. */
