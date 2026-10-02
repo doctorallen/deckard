@@ -317,6 +317,23 @@ test('Undo of a removed widget hands focus back to the widget it put back', asyn
   assert.strictEqual(view.document.activeElement, remove(), 'focus is where the removal was made, not on the page itself');
 });
 
+test('Undo that lapses with focus on it hands focus to the widget now in the removed one\'s place', async () => {
+  const { view } = await openDashboard();
+  // Undo stands for 8 seconds; here it lapses at once.
+  const setTimer = view.window.setTimeout;
+  view.window.setTimeout = (run, ms, ...rest) => setTimer(run, ms === 8000 ? 0 : ms, ...rest);
+  view.click(view.find('[data-action="customize-home"]'));
+  const ids = view.findAll('.home-widget').map((widget) => widget.dataset.widgetId);
+  const at = ids.indexOf('agenda');
+  const remove = view.find('.home-widget[data-widget-id="agenda"] [data-action="remove-widget"]');
+  remove.focus();
+  view.click(remove);
+  assert.strictEqual(view.document.activeElement, view.find('#undo-toast [data-action="undo-remove-widget"]'), 'focus moves to Undo');
+  await delay(20);
+  assert.strictEqual(view.find('#undo-toast [data-action="undo-remove-widget"]'), null, 'Undo has lapsed');
+  assert.strictEqual(view.document.activeElement, view.find(`.home-widget[data-widget-id="${ids[at + 1]}"]`), 'focus is on the widget that took its place, not on the page itself');
+});
+
 test('a widget added is announced by its name alone', async () => {
   const { view } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));
