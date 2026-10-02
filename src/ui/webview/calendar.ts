@@ -49,6 +49,7 @@ export class CalendarView implements vscode.WebviewViewProvider, vscode.Disposab
       indexer,
       writes: options.writes,
       refresh: () => this.page.host.refresh(),
+      post: (message) => this.page.host.post(message),
       openTag: options.openTag,
       extensionUri,
     });

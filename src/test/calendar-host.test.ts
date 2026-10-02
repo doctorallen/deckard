@@ -43,6 +43,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     indexer,
     writes: createTaskWrites(),
     refresh: () => host?.refresh(),
+    post: (message) => host?.post(message),
     openTag: (tagKey) => openedTags.push(tagKey),
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
   });
@@ -199,6 +200,21 @@ suite('Calendar host', () => {
     }
   });
 
+  test('a move the day panel asked for that could not be made is said, and the calendar drawn again', async () => {
+    const { host, surface, send } = openCalendar();
+    try {
+      surface.webview.posted.length = 0;
+      await send({ type: 'moveTask', taskId: 'gone', field: 'due', date: today });
+      assert.deepStrictEqual(surface.webview.posted[0], { type: 'moveRefused', taskId: 'gone' });
+      assert.deepStrictEqual(
+        surface.webview.posted.map((message) => (message as { type: string }).type),
+        ['moveRefused', 'state'],
+      );
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('acts on nothing it does not accept, and never says how indexing is going', async () => {
     const { host, surface, send } = openCalendar({ scanning: true });
     try {
@@ -207,10 +223,9 @@ suite('Calendar host', () => {
         await send({ type: 'selectDay', date: today, extra: 1 });
         await send({ type: 'chooseTheme' });
         await send({ type: 'setShowRepeats', show: false });
-        await send({ type: 'moveTask', taskId: 'gone', field: 'due', date: today });
       });
       assert.deepStrictEqual(calls, []);
-      assert.deepStrictEqual(surface.webview.posted, [], 'and a refused move is not answered in the sidebar');
+      assert.deepStrictEqual(surface.webview.posted, []);
     } finally {
       host.dispose();
     }
