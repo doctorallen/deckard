@@ -98,7 +98,7 @@ export function findTagSource(
   key: string,
 ): { kind: 'heading'; heading: string } | { kind: 'frontmatter' } {
   const heading = findHeadingWithTag(index, task, key);
-  return heading !== undefined ? { kind: 'heading', heading } : { kind: 'frontmatter' };
+  return heading === undefined ? { kind: 'frontmatter' } : { kind: 'heading', heading };
 }
 
 /** A namespace open tasks use, with how many and its busiest values. */

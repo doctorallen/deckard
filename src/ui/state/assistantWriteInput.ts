@@ -37,8 +37,11 @@ export interface ChangeTaskInput {
   assignee?: string | null;
 }
 
+/** The priorities a call may set, as the manifest's schema lists them. */
 const PRIORITIES: readonly TaskPriority[] = ['highest', 'high', 'medium', 'low', 'lowest'];
+/** A due date as a call must send it, YYYY-MM-DD. */
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** The most characters a task's words may run to, so a call cannot write a page into one line. */
 const MAX_TEXT = 500;
 
 /**
@@ -73,26 +76,65 @@ export function readChangeTaskInput(value: unknown): ChangeTaskInput | undefined
     return undefined;
   }
   const input: ChangeTaskInput = { note: value.note.trim(), line: value.line };
-  if (value.title !== undefined) {
-    if (typeof value.title !== 'string' || !value.title.trim() || value.title.length > MAX_TEXT) {return undefined;}
-    input.title = value.title.trim().replace(/\s+/g, ' ');
+  for (const field of CHANGE_FIELDS) {
+    if (value[field] !== undefined && !readChangeField(input, field, value[field])) {
+      return undefined;
+    }
   }
-  if (value.complete !== undefined) {
-    if (typeof value.complete !== 'boolean') {return undefined;}
-    input.complete = value.complete;
+  return CHANGE_FIELDS.some((field) => input[field] !== undefined) ? input : undefined;
+}
+
+/** The changes a call may ask for, in the order they are read. */
+const CHANGE_FIELDS = ['title', 'complete', 'due', 'priority', 'assignee'] as const;
+
+/** A field a change-task call may change. */
+type ChangeField = (typeof CHANGE_FIELDS)[number];
+
+/** What a field reader answers for a value the call may not send. */
+const INVALID = Symbol('invalid');
+
+/**
+ * How each change is read from a value the call sent: the value to keep, or
+ * INVALID. `null` clears a date, priority, or assignee, so it is kept.
+ */
+const CHANGE_FIELD_READERS: {
+  readonly [K in ChangeField]: (value: unknown) => ChangeTaskInput[K] | typeof INVALID;
+} = {
+  title: (value) =>
+    typeof value !== 'string' || !value.trim() || value.length > MAX_TEXT
+      ? INVALID
+      : value.trim().replace(/\s+/g, ' '),
+  complete: (value) => (typeof value === 'boolean' ? value : INVALID),
+  due: (value) => {
+    if (value === null) {
+      return null;
+    }
+    return typeof value === 'string' && ISO_DAY.test(value) ? value : INVALID;
+  },
+  priority: (value) => {
+    if (value === null) {
+      return null;
+    }
+    return PRIORITIES.includes(value as TaskPriority) ? (value as TaskPriority) : INVALID;
+  },
+  assignee: (value) => {
+    if (value === null) {
+      return null;
+    }
+    return typeof value === 'string' && /^\S{1,80}$/.test(value) ? value : INVALID;
+  },
+};
+
+/** Reads one change the call sent into `input`; false when the value is one it may not send. */
+function readChangeField<K extends ChangeField>(
+  input: ChangeTaskInput,
+  field: K,
+  value: unknown,
+): boolean {
+  const read = CHANGE_FIELD_READERS[field](value);
+  if (read === INVALID) {
+    return false;
   }
-  if (value.due !== undefined) {
-    if (value.due !== null && (typeof value.due !== 'string' || !ISO_DAY.test(value.due))) {return undefined;}
-    input.due = value.due;
-  }
-  if (value.priority !== undefined) {
-    if (value.priority !== null && !PRIORITIES.includes(value.priority as TaskPriority)) {return undefined;}
-    input.priority = value.priority as TaskPriority | null;
-  }
-  if (value.assignee !== undefined) {
-    if (value.assignee !== null && (typeof value.assignee !== 'string' || !/^\S{1,80}$/.test(value.assignee))) {return undefined;}
-    input.assignee = value.assignee;
-  }
-  const fields = ['title', 'complete', 'due', 'priority', 'assignee'] as const;
-  return fields.some((field) => input[field] !== undefined) ? input : undefined;
+  input[field] = read;
+  return true;
 }

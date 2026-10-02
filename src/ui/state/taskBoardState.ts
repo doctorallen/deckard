@@ -50,12 +50,9 @@ import {
   Section,
 } from '../../core/types';
 import { tokenizeInline } from '../../domain/markdown/inline';
-import {
-  createDashboardTask,
-  createQueryViewState,
-  getHeadingPath,
-  sortTasks,
-} from './dashboardState';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { createDashboardTask, sortTasks } from './entryCards';
+import { createQueryViewState } from './querySuggestions';
 import { stripTrailingTags } from './queryBlockState';
 import {
   compareTasksByColumn,
@@ -91,6 +88,7 @@ export type { TaskMove } from '../../domain/tasks/boardMoves';
  * Every grouping ends with Done, which holds completed tasks.
  */
 
+/** What the board is built with: its context, its status columns, and how much each column draws. */
 export interface TaskBoardOptions {
   /**
    * The settings and moment the board is built in: its search is evaluated,
@@ -116,6 +114,7 @@ export interface TaskBoardOptions {
   limits?: Readonly<Record<string, number>>;
 }
 
+/** A column before it is cut to its limit and its tasks become cards. */
 interface ColumnDraft {
   id: string;
   label: string;
@@ -345,7 +344,13 @@ export function layoutTaskBoard({
       .map((task) => task.dependencyId as string),
   );
   const toCard = (task: Task, draft?: ColumnDraft): TaskBoardCard => {
-    const card = createCard(task, groupBy, options.queryContext, openDependencyIds, index.sections, options.statusNamespace);
+    const card = createCard(task, {
+      groupBy,
+      context: options.queryContext,
+      openDependencyIds,
+      sections: index.sections,
+      statusNamespace: options.statusNamespace,
+    });
     const others = draft?.alsoIn?.get(task.id);
     const withTags =
       groupBy === 'tag' && namespace
@@ -363,16 +368,7 @@ export function layoutTaskBoard({
     groupBy === 'status' &&
     readTaskStatus(task, options.statusNamespace) === 'done';
   const markedDone = open.filter(isMarkedDone);
-  const drafts =
-    groupBy === 'status'
-      ? createStatusColumns(open.filter((task) => !isMarkedDone(task)), options)
-      : groupBy === 'priority'
-        ? createPriorityColumns(open)
-        : groupBy === 'assignee'
-          ? createAssigneeColumns(open, index)
-          : groupBy === 'tag' && namespace
-            ? createTagColumns(open, index, namespace)
-            : createDueColumns(open, options.queryContext);
+  const drafts = draftColumns({ groupBy, open, index, options, namespace, isMarkedDone });
 
   const columns: TaskBoardColumn[] = [
     ...drafts.map((draft) => {
@@ -390,7 +386,7 @@ export function layoutTaskBoard({
         hiddenCount: sorted.length - drawn.length,
         overdueCount:
           draft.id === 'due:overdue' ? 0 : cards.filter((card) => card.overdue).length,
-        ...(limit !== undefined ? { limit } : {}),
+        ...(limit === undefined ? {} : { limit }),
       };
     }),
     {
@@ -412,6 +408,35 @@ export function layoutTaskBoard({
   };
 }
 
+/**
+ * The open tasks' columns for the grouping, before Done, with due bands for
+ * the due grouping. A status named done is the board's own Done, so the
+ * tasks carrying it are left out of the status columns.
+ */
+function draftColumns({ groupBy, open, index, options, namespace, isMarkedDone }: {
+  groupBy: TaskBoardGroupBy;
+  open: Task[];
+  index: WorkspaceIndex;
+  options: TaskBoardOptions;
+  namespace: string | undefined;
+  isMarkedDone: (task: Task) => boolean;
+}): ColumnDraft[] {
+  if (groupBy === 'status') {
+    return createStatusColumns(open.filter((task) => !isMarkedDone(task)), options);
+  }
+  if (groupBy === 'priority') {
+    return createPriorityColumns(open);
+  }
+  if (groupBy === 'assignee') {
+    return createAssigneeColumns(open, index);
+  }
+  if (groupBy === 'tag' && namespace) {
+    return createTagColumns(open, index, namespace);
+  }
+  return createDueColumns(open, options.queryContext);
+}
+
+/** The namespaces each index's Tag… menu offers, by status namespace, worked out once. */
 const boardNamespaces = new WeakMap<WorkspaceIndex, Map<string, { name: string; openTasks: number }[]>>();
 
 /** The namespaces the Tag… menu offers, worked out once per index. */
@@ -466,11 +491,12 @@ function createTagColumns(
       column.tasks.push(task);
       columns.set(id, column);
       const others = labels.filter((_, other) => other !== at);
-      if (others.length > 0) {
-        const byTask = alsoIn.get(id) ?? new Map<string, string[]>();
-        byTask.set(task.id, others);
-        alsoIn.set(id, byTask);
+      if (others.length === 0) {
+        return;
       }
+      const byTask = alsoIn.get(id) ?? new Map<string, string[]>();
+      byTask.set(task.id, others);
+      alsoIn.set(id, byTask);
     });
   });
   return [
@@ -560,13 +586,6 @@ function describeStatusCoverage(
 }
 
 /**
- * Decides what dropping `task` on the column `columnId` writes.
- *
- * A completed task moved out of Done is reopened by the same edit. A due date
- * written in the task's sentence rather than as metadata is left alone,
- * because there is no marker Deckard could safely remove.
- */
-/**
  * What a move reads besides the task: the index, which says which of the
  * task's tags it inherits, and the column the card was dragged from.
  */
@@ -575,6 +594,13 @@ export interface TaskMoveContext {
   from?: string;
 }
 
+/**
+ * Decides what dropping `task` on the column `columnId` writes.
+ *
+ * A completed task moved out of Done is reopened by the same edit. A due date
+ * written in the task's sentence rather than as metadata is left alone,
+ * because there is no marker Deckard could safely remove.
+ */
 export function resolveTaskMove(
   task: Task,
   columnId: string,
@@ -603,55 +629,81 @@ function resolveTagMove(
   const namespace = slash < 0 ? value : value.slice(0, slash);
   const target = slash < 0 ? '' : value.slice(slash + 1).toLowerCase();
   const tag = `#${namespace}/${target}`;
-  if (!isNamespaceName(namespace) || slash < 0) {
+  if (!isNamespaceName(namespace) || slash < 0 || (target && !readsAsOneTag(tag))) {
     return refuseMove(`Deckard cannot write "${tag}" as a tag.`);
   }
-  if (target) {
-    const parsed = extractTags(tag);
-    if (parsed.length !== 1 || parsed[0].key.toLowerCase() !== tag.toLowerCase()) {
-      return refuseMove(`Deckard cannot write "${tag}" as a tag.`);
-    }
+  const move: TagMove = {
+    task,
+    namespace,
+    values: readNamespaceValues(context.index, task, namespace),
+    index: context.index,
+    reopen,
+  };
+  if (!target) {
+    return clearNamespace(move);
   }
-  const values = readNamespaceValues(context.index, task, namespace);
   const from = context.from?.startsWith(`tag:${namespace.toLowerCase()}/`)
     ? context.from.slice(`tag:${namespace}/`.length).toLowerCase()
     : undefined;
-  const inheritedRefusal = (entry: NamespaceValue): TaskMove => {
-    const source = context.index
-      ? findTagSource(context.index, task, entry.key)
-      : { kind: 'frontmatter' as const };
-    return refuseMove(
-      source.kind === 'heading'
-        ? `${quoteTask(task)} is in ${entry.label} because its heading "${source.heading}" is, so moving it cannot take it out. Change the heading instead.`
-        : `${quoteTask(task)} is in ${entry.label} because its note's front matter is, so moving it cannot take it out. Change the front matter instead.`,
-    );
-  };
-  const column = task.checkboxColumn;
+  return moveToTag(move, { target, tag, from });
+}
 
-  if (!target) {
-    const inherited = values.find((entry) => entry.inherited);
-    if (inherited) {
-      return inheritedRefusal(inherited);
-    }
-    const written = values.filter((entry) => entry.written);
-    if (written.length === 0 && !task.completed) {
-      return { kind: 'unchanged' };
-    }
-    return {
-      kind: 'edit',
-      label: noValueLabel(namespace),
-      edit: (line) =>
-        setTaskNamespaceTags(reopen(line), column, {
-          remove: written.map((entry) => entry.label),
-        }),
-    };
+/** A drop on a tag column, read: the task, its namespace and its values there, and how to reopen it. */
+interface TagMove {
+  task: Task;
+  namespace: string;
+  values: NamespaceValue[];
+  index: WorkspaceIndex | undefined;
+  reopen: (line: string) => string;
+}
+
+/** Whether a tag written as `tag` is read back as that one tag, so writing it is safe. */
+function readsAsOneTag(tag: string): boolean {
+  const parsed = extractTags(tag);
+  return parsed.length === 1 && parsed[0].key.toLowerCase() === tag.toLowerCase();
+}
+
+/**
+ * A drop on the namespace's no-value column: the tags of the namespace
+ * written on the line come off. An inherited one cannot, so the move says
+ * where it comes from instead; a task with none written is already there.
+ */
+function clearNamespace(move: TagMove): TaskMove {
+  const { task, namespace, values, reopen } = move;
+  const inherited = values.find((entry) => entry.inherited);
+  if (inherited) {
+    return refuseInherited(task, inherited, move.index);
   }
+  const written = values.filter((entry) => entry.written);
+  if (written.length === 0 && !task.completed) {
+    return { kind: 'unchanged' };
+  }
+  return {
+    kind: 'edit',
+    label: noValueLabel(namespace),
+    edit: (line) =>
+      setTaskNamespaceTags(reopen(line), task.checkboxColumn, {
+        remove: written.map((entry) => entry.label),
+      }),
+  };
+}
 
+/**
+ * A drop on a value's column. Dragged from another value of the namespace,
+ * the card's old tag is replaced, unless it is inherited; otherwise the
+ * column's tag is added, and a task that has it is already there.
+ */
+function moveToTag(
+  move: TagMove,
+  { target, tag, from }: { target: string; tag: string; from: string | undefined },
+): TaskMove {
+  const { task, values, reopen } = move;
+  const column = task.checkboxColumn;
   const has = values.some((entry) => entry.value === target);
   const source = from ? values.find((entry) => entry.value === from) : undefined;
   if (source && from !== target) {
     if (source.inherited) {
-      return inheritedRefusal(source);
+      return refuseInherited(task, source, move.index);
     }
     return {
       kind: 'edit',
@@ -674,6 +726,26 @@ function resolveTagMove(
       return has ? opened : setTaskNamespaceTags(opened, column, { remove: [], add: tag });
     },
   };
+}
+
+/**
+ * Refuses to take a task out of a tag it inherits, saying whether its
+ * heading or its note's front matter gives it the tag. Without an index to
+ * look in, the front matter is named.
+ */
+function refuseInherited(
+  task: Task,
+  entry: NamespaceValue,
+  index: WorkspaceIndex | undefined,
+): TaskMove {
+  const source = index
+    ? findTagSource(index, task, entry.key)
+    : { kind: 'frontmatter' as const };
+  return refuseMove(
+    source.kind === 'heading'
+      ? `${quoteTask(task)} is in ${entry.label} because its heading "${source.heading}" is, so moving it cannot take it out. Change the heading instead.`
+      : `${quoteTask(task)} is in ${entry.label} because its note's front matter is, so moving it cannot take it out. Change the front matter instead.`,
+  );
 }
 
 /**
@@ -840,11 +912,13 @@ function createDueColumns(open: Task[], context: QueryContext): ColumnDraft[] {
 
 function createCard(
   task: Task,
-  groupBy: TaskBoardGroupBy,
-  context: QueryContext,
-  openDependencyIds: ReadonlySet<string>,
-  sections: ReadonlyMap<string, Section>,
-  statusNamespace: string,
+  { groupBy, context, openDependencyIds, sections, statusNamespace }: {
+    groupBy: TaskBoardGroupBy;
+    context: QueryContext;
+    openDependencyIds: ReadonlySet<string>;
+    sections: ReadonlyMap<string, Section>;
+    statusNamespace: string;
+  },
 ): TaskBoardCard {
   const section = task.sectionId ? sections.get(task.sectionId) : undefined;
   const title = stripTrailingTags(task.title) || task.title;
@@ -866,27 +940,7 @@ function createCard(
     line: task.lineNumber,
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
-    details: [
-      !open && task.doneAt !== undefined
-        ? `done ${formatIsoDate(task.doneAt)}`
-        : '',
-      open && task.dueAt !== undefined
-        ? describeDueDate(task.dueAt, today, taskPolicy, task.dueText).label
-        : open && task.dueText
-          ? `due ${task.dueText}`
-          : '',
-      open && task.scheduledAt !== undefined
-        ? `scheduled ${formatIsoDate(task.scheduledAt)}`
-        : '',
-      open && task.startAt !== undefined && task.startAt > today
-        ? `starts ${formatIsoDate(task.startAt)}`
-        : '',
-      groupBy !== 'priority' && task.priority
-        ? `${task.priority} priority`
-        : '',
-      task.recurrence ? `repeats ${task.recurrence}` : '',
-      open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
-    ].filter(Boolean),
+    details: cardDetails(task, { groupBy, today, taskPolicy, blockers }),
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
@@ -895,24 +949,74 @@ function createCard(
   };
 }
 
+/**
+ * What a card says under its title: when a done task was done, or an open
+ * task's due, scheduled, and future start dates; its priority, unless the
+ * columns already say it; how it repeats; and what open tasks block it.
+ */
+function cardDetails(
+  task: Task,
+  { groupBy, today, taskPolicy, blockers }: {
+    groupBy: TaskBoardGroupBy;
+    today: number;
+    taskPolicy: QueryContext['taskPolicy'];
+    blockers: readonly string[];
+  },
+): string[] {
+  const open = !task.completed;
+  return [
+    !open && task.doneAt !== undefined
+      ? `done ${formatIsoDate(task.doneAt)}`
+      : '',
+    open ? dueDetail(task, today, taskPolicy) : '',
+    open && task.scheduledAt !== undefined
+      ? `scheduled ${formatIsoDate(task.scheduledAt)}`
+      : '',
+    open && task.startAt !== undefined && task.startAt > today
+      ? `starts ${formatIsoDate(task.startAt)}`
+      : '',
+    groupBy !== 'priority' && task.priority
+      ? `${task.priority} priority`
+      : '',
+    task.recurrence ? `repeats ${task.recurrence}` : '',
+    open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
+  ].filter(Boolean);
+}
+
+/** An open task's due date in words beside today; its written words when they are not a date; else nothing. */
+function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy']): string {
+  if (task.dueAt !== undefined) {
+    return describeDueDate(task.dueAt, today, taskPolicy, task.dueText).label;
+  }
+  return task.dueText ? `due ${task.dueText}` : '';
+}
+
 /** The move values a task already has, for its card's menu to check. */
 function currentMoves(task: Task, today: number, statusNamespace: string): string[] {
-  const due =
-    task.dueAt === undefined
-      ? task.dueText
-        ? []
-        : ['due:']
-      : task.dueAt >= today && task.dueAt < addDays(today, 1)
-        ? ['due:today']
-        : task.dueAt >= addDays(today, 1) && task.dueAt < addDays(today, 2)
-          ? ['due:tomorrow']
-          : [];
   return [
     `status:${readTaskStatus(task, statusNamespace) ?? ''}`,
     `priority:${task.priority ?? ''}`,
-    ...due,
+    ...dueMoves(task, today),
     ...(task.completed ? ['done'] : []),
   ];
+}
+
+/**
+ * The due column a task is already in, of the ones the card's menu offers:
+ * no date, today, or tomorrow. A due date written in words has none, since
+ * no move can take it away.
+ */
+function dueMoves(task: Task, today: number): string[] {
+  if (task.dueAt === undefined) {
+    return task.dueText ? [] : ['due:'];
+  }
+  if (task.dueAt >= today && task.dueAt < addDays(today, 1)) {
+    return ['due:today'];
+  }
+  if (task.dueAt >= addDays(today, 1) && task.dueAt < addDays(today, 2)) {
+    return ['due:tomorrow'];
+  }
+  return [];
 }
 
 /** Soonest due first, then highest priority, then source order. */
@@ -946,6 +1050,7 @@ function compareOptional(
   return (left - right) * direction;
 }
 
+/** Source order: by file path, then line. */
 function compareSource(left: Task, right: Task): number {
   return (
     left.filePath.localeCompare(right.filePath) ||

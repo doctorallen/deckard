@@ -17,11 +17,11 @@ import {
  * The host stays the one that decides what to write, and splits each note
  * into its rows before sending it. Comparing a scan against the cache reads a
  * path, a time, and a size per note and is cheap; splitting a note is about
- * 3% of writing it. So a res››can that changed nothing sends nothing, and a
+ * 3% of writing it. So a rescan that changed nothing sends nothing, and a
  * note is never parsed a second time or a second way.
  */
 
-/** What the host sends this thread when it opens it. */
+/** What the host passes the thread as workerData: the cache to open. */
 interface WorkerSetup {
   databasePath: string;
 }
@@ -35,6 +35,7 @@ export interface SearchWorkerRequest {
   clear: boolean;
 }
 
+/** The thread's answer to one batch: how many notes it wrote, or why it could not. */
 export type SearchWorkerReply =
   | { id: number; written: number }
   | { id: number; error: string };
@@ -62,6 +63,7 @@ parentPort?.on('message', (request: SearchWorkerRequest) => {
   }
 });
 
+/** Applies one batch in order: clear, then erase, then write in commits of COMMIT_EVERY; returns the notes written. */
 function run(request: SearchWorkerRequest): number {
   if (request.clear) {
     writer.transaction(() => writer.clear());

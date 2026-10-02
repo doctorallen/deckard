@@ -3,6 +3,24 @@ import { FileSystem, FileType } from '../../ports/fileSystem';
 import type { ResourceUri } from '../../ports/uri';
 import { PersistedPreferences } from '../types';
 
+/** How many copies are kept; the oldest past this many are deleted after each write. */
+export const SNAPSHOTS_KEPT = 20;
+/** Long enough to fold a burst of changes into one copy. */
+const SETTLE_MS = 2000;
+
+/** One copy on disk. */
+export interface PreferenceSnapshot<U extends ResourceUri = ResourceUri> {
+  uri: U;
+  /** When it was written, from its name. */
+  at: Date;
+}
+
+/** The remembered state to copy, and the event that says it changed. */
+interface SnapshotSource {
+  readonly value: PersistedPreferences;
+  readonly onDidChange: Event<PersistedPreferences>;
+}
+
 /**
  * A rolling set of copies of what a workspace remembers, written into that
  * workspace's storage every time it changes.
@@ -15,22 +33,6 @@ import { PersistedPreferences } from '../types';
  * A window with no folder open has no storage of its own, and nothing to
  * remember about a workspace, so it writes nothing.
  */
-
-export const SNAPSHOTS_KEPT = 20;
-/** Long enough to fold a burst of changes into one copy. */
-const SETTLE_MS = 2000;
-
-export interface PreferenceSnapshot<U extends ResourceUri = ResourceUri> {
-  uri: U;
-  /** When it was written, from its name. */
-  at: Date;
-}
-
-interface SnapshotSource {
-  readonly value: PersistedPreferences;
-  readonly onDidChange: Event<PersistedPreferences>;
-}
-
 export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements Disposable {
   private readonly folder: U | undefined;
   private readonly disposables: Disposable[] = [];
@@ -93,6 +95,7 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
     await this.writing;
   }
 
+  /** Stops listening and drops a copy still waiting to settle; a write already started finishes. */
   public dispose(): void {
     if (this.pending) {
       clearTimeout(this.pending);
@@ -100,6 +103,7 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
+  /** Restarts the settle timer, so a burst of changes is written once. */
   private schedule(): void {
     if (this.pending) {
       clearTimeout(this.pending);
@@ -110,6 +114,7 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
     }, SETTLE_MS);
   }
 
+  /** Writes one copy and deletes those past SNAPSHOTS_KEPT; nothing without a storage folder. */
   private async write(): Promise<void> {
     const folder = this.folder;
     if (!folder) {
@@ -140,6 +145,10 @@ export function nameFromDate(date: Date): string {
   return date.toISOString().replace(/[:.]/g, '-');
 }
 
+/**
+ * The time a copy was written, read back from a nameFromDate name. A name it
+ * cannot read gives an Invalid Date, which list() drops.
+ */
 export function dateFromName(name: string): Date {
   const stem = name.replace(/\.json$/, '');
   const iso = stem.replace(

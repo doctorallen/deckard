@@ -12,7 +12,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
-import { getHeadingPath } from './dashboardState';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { findUnlinkedMentions } from './editorLensState';
 
 /**
@@ -29,8 +29,10 @@ import { findUnlinkedMentions } from './editorLensState';
 const LIMIT = 50;
 /** How much of a line's section unfolds under it. */
 const SECTION_LINES = 15;
+/** The most characters of a section shown, once it is cut to SECTION_LINES lines. */
 const SECTION_CHARACTERS = 1500;
 
+/** When the list is read, and whether it leaves out periodic notes. */
 export interface NoteLinkOptions {
   /** The moment the links are listed at, which says how lately each note changed. */
   now: number;
@@ -38,98 +40,28 @@ export interface NoteLinkOptions {
   hideDailyNotes?: boolean;
 }
 
+/**
+ * Lists what points at `file`: the notes linking to it, one group a note,
+ * newest updated first and parked notes last, with up to LIMIT lines across
+ * them; and the notes that name it without a link, up to LIMIT. The counts
+ * say how many there are in all.
+ */
 export function collectNoteLinks(
   index: WorkspaceIndex,
   file: ParsedFile,
   options: NoteLinkOptions,
 ): NoteLinks {
-  const { now } = options;
   const everyLink = getBacklinkIndex(index).toNote(file.filePath);
-  // A daily note links to everything written that day, so it can be left
-  // out; the notes left out are counted, so the list can say so.
-  const hidden = new Set<string>();
-  const linked = options.hideDailyNotes
-    ? everyLink.filter((occurrence) => {
-        const source = index.files.get(occurrence.sourcePath);
-        if (source && isPeriodicNoteFile(source)) {
-          hidden.add(occurrence.sourcePath);
-          return false;
-        }
-        return true;
-      })
-    : everyLink;
+  const { linked, hidden } = options.hideDailyNotes
+    ? leaveOutPeriodicNotes(index, everyLink)
+    : { linked: everyLink, hidden: new Set<string>() };
   const mentions = findUnlinkedMentions(file, index).filter(
     (mention) => mention.filePath !== file.filePath,
   );
-  const lines = new Map<string, string[]>();
-  const lineOf = (filePath: string, line: number): string => {
-    let content = lines.get(filePath);
-    if (!content) {
-      content = index.files.get(filePath)?.content.split(/\r?\n/) ?? [];
-      lines.set(filePath, content);
-    }
-    return (content[line] ?? '').trim();
-  };
-  const entry = (filePath: string, zeroBasedLine: number): NoteLinkEntry => ({
-    filePath,
-    title: noteTitle(filePath),
-    line: zeroBasedLine + 1,
-    text: lineOf(filePath, zeroBasedLine).slice(0, 200),
-    headingPath: headingPathAt(index, filePath, zeroBasedLine + 1),
-  });
-
-  // One group a note, newest updated first, so what was written lately
-  // about this note is at the top rather than wherever the index put it.
-  const bySource = new Map<string, number[]>();
-  linked.forEach((occurrence) => {
-    const found = bySource.get(occurrence.sourcePath) ?? [];
-    if (!found.includes(occurrence.line)) {
-      found.push(occurrence.line);
-    }
-    bySource.set(occurrence.sourcePath, found);
-  });
-  const groups = [...bySource.entries()]
-    .map(([filePath, sourceLines]) => ({
-      filePath,
-      title: noteTitle(filePath),
-      updatedAt: index.files.get(filePath)?.updatedAt,
-      sourceLines: sourceLines.sort((left, right) => left - right),
-      linkCount: linked.filter((occurrence) => occurrence.sourcePath === filePath).length,
-      parked: isParkedFile(index, filePath),
-    }))
-    // A link from a parked note is a fact, so it stays, after the rest.
-    .sort(
-      (left, right) =>
-        Number(left.parked) - Number(right.parked) ||
-        (right.updatedAt ?? 0) - (left.updatedAt ?? 0) ||
-        left.title.localeCompare(right.title),
-    );
-  let room = LIMIT;
-  const linkedFromNotes: NoteLinkGroup[] = [];
-  for (const group of groups) {
-    if (room <= 0) {
-      break;
-    }
-    const shown = group.sourceLines.slice(0, room);
-    room -= shown.length;
-    linkedFromNotes.push({
-      filePath: group.filePath,
-      title: group.title,
-      ...(group.updatedAt !== undefined
-        ? { updatedAt: group.updatedAt, updatedLabel: describeAge(group.updatedAt, now) }
-        : {}),
-      entries: shown.map((line) => {
-        const row = entry(group.filePath, line);
-        const sectionText = sectionTextAt(index, group.filePath, line + 1);
-        return sectionText ? { ...row, sectionText } : row;
-      }),
-      linkCount: group.linkCount,
-      ...(group.parked ? { parked: true as const } : {}),
-    });
-  }
-
+  const entry = createEntryReader(index);
+  const groups = groupBySource(index, linked);
   return {
-    linkedFromNotes,
+    linkedFromNotes: listLinkedFromNotes(index, groups, entry, options.now),
     linkedFromCount: linked.length,
     linkedFromNoteCount: groups.length,
     ...(hidden.size > 0 ? { hiddenDailyNoteCount: hidden.size } : {}),
@@ -143,6 +75,131 @@ export function collectNoteLinks(
     ),
     mentionCount: mentions.length,
   };
+}
+
+/** A link to the note, as the backlink index records it. */
+type LinkOccurrence = ReturnType<ReturnType<typeof getBacklinkIndex>['toNote']>[number];
+
+/** A linking note before its lines are cut to fit. */
+interface SourceGroup {
+  filePath: string;
+  title: string;
+  updatedAt: number | undefined;
+  /** Zero-based lines that link, in order, each once. */
+  sourceLines: number[];
+  linkCount: number;
+  parked: boolean;
+}
+
+/** Reads one line of a note as a row, under the headings it sits beneath. */
+type EntryReader = (filePath: string, zeroBasedLine: number) => NoteLinkEntry;
+
+/**
+ * Leaves out links from periodic notes. A daily note links to everything
+ * written that day, so it can be left out; the notes left out are counted,
+ * so the list can say so.
+ */
+function leaveOutPeriodicNotes(
+  index: WorkspaceIndex,
+  everyLink: readonly LinkOccurrence[],
+): { linked: LinkOccurrence[]; hidden: Set<string> } {
+  const hidden = new Set<string>();
+  const linked = everyLink.filter((occurrence) => {
+    const source = index.files.get(occurrence.sourcePath);
+    if (source && isPeriodicNoteFile(source)) {
+      hidden.add(occurrence.sourcePath);
+      return false;
+    }
+    return true;
+  });
+  return { linked, hidden };
+}
+
+/** An EntryReader that splits each note into lines once, however many rows it reads from it. */
+function createEntryReader(index: WorkspaceIndex): EntryReader {
+  const lines = new Map<string, string[]>();
+  const lineOf = (filePath: string, line: number): string => {
+    let content = lines.get(filePath);
+    if (!content) {
+      content = index.files.get(filePath)?.content.split(/\r?\n/) ?? [];
+      lines.set(filePath, content);
+    }
+    return (content[line] ?? '').trim();
+  };
+  return (filePath, zeroBasedLine) => ({
+    filePath,
+    title: noteTitle(filePath),
+    line: zeroBasedLine + 1,
+    text: lineOf(filePath, zeroBasedLine).slice(0, 200),
+    headingPath: headingPathAt(index, filePath, zeroBasedLine + 1),
+  });
+}
+
+/**
+ * One group a note, newest updated first, so what was written lately about
+ * this note is at the top rather than wherever the index put it. A link from
+ * a parked note is a fact, so it stays, after the rest.
+ */
+function groupBySource(
+  index: WorkspaceIndex,
+  linked: readonly LinkOccurrence[],
+): SourceGroup[] {
+  const bySource = new Map<string, number[]>();
+  linked.forEach((occurrence) => {
+    const found = bySource.get(occurrence.sourcePath) ?? [];
+    if (!found.includes(occurrence.line)) {
+      found.push(occurrence.line);
+    }
+    bySource.set(occurrence.sourcePath, found);
+  });
+  return [...bySource.entries()]
+    .map(([filePath, sourceLines]) => ({
+      filePath,
+      title: noteTitle(filePath),
+      updatedAt: index.files.get(filePath)?.updatedAt,
+      sourceLines: sourceLines.sort((left, right) => left - right),
+      linkCount: linked.filter((occurrence) => occurrence.sourcePath === filePath).length,
+      parked: isParkedFile(index, filePath),
+    }))
+    .sort(
+      (left, right) =>
+        Number(left.parked) - Number(right.parked) ||
+        (right.updatedAt ?? 0) - (left.updatedAt ?? 0) ||
+        left.title.localeCompare(right.title),
+    );
+}
+
+/** The groups as Linked from draws them, until LIMIT lines are shown across them. */
+function listLinkedFromNotes(
+  index: WorkspaceIndex,
+  groups: readonly SourceGroup[],
+  entry: EntryReader,
+  now: number,
+): NoteLinkGroup[] {
+  let room = LIMIT;
+  const linkedFromNotes: NoteLinkGroup[] = [];
+  for (const group of groups) {
+    if (room <= 0) {
+      break;
+    }
+    const shown = group.sourceLines.slice(0, room);
+    room -= shown.length;
+    linkedFromNotes.push({
+      filePath: group.filePath,
+      title: group.title,
+      ...(group.updatedAt === undefined
+        ? {}
+        : { updatedAt: group.updatedAt, updatedLabel: describeAge(group.updatedAt, now) }),
+      entries: shown.map((line) => {
+        const row = entry(group.filePath, line);
+        const sectionText = sectionTextAt(index, group.filePath, line + 1);
+        return sectionText ? { ...row, sectionText } : row;
+      }),
+      linkCount: group.linkCount,
+      ...(group.parked ? { parked: true as const } : {}),
+    });
+  }
+  return linkedFromNotes;
 }
 
 /**

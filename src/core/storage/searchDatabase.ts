@@ -144,6 +144,10 @@ export class SearchWriter {
   private readonly deleteEntryText: StatementSync;
   private readonly deleteEntries: StatementSync;
 
+  /**
+   * Prepares every statement a write runs once, against a database
+   * openSearchDatabase has already brought to the current schema.
+   */
   public constructor(private readonly database: DatabaseSync) {
     this.upsertNoteRow = database.prepare(
       `INSERT INTO notes (file_path, updated_at, created_at, bytes, parsed)
@@ -224,6 +228,7 @@ export class SearchWriter {
     return row ? String(row.value) : undefined;
   }
 
+  /** Keeps a value beside the notes under `key`, replacing what was there. */
   public writeMeta(key: string, value: string): void {
     this.database
       .prepare(
@@ -246,6 +251,7 @@ export class SearchWriter {
     return row ? String(row.value) : undefined;
   }
 
+  /** Records how the notes about to be written were parsed, for readParseFingerprint to compare. */
   public writeParseFingerprint(fingerprint: string): void {
     this.database
       .prepare(
@@ -263,6 +269,7 @@ export class SearchWriter {
     );
   }
 
+  /** Deletes every note and entry, for a rebuild; the schema and meta values stay. */
   public clear(): void {
     this.database.exec(
       'DELETE FROM notes; DELETE FROM entries; DELETE FROM entries_fts;',
@@ -320,6 +327,7 @@ export class SearchWriter {
     }
   }
 
+  /** Deletes a note and its entries; a path the cache never held is a no-op. */
   public erase(filePath: string): void {
     const row = this.findNoteId.get(filePath);
     if (row) {
@@ -330,6 +338,7 @@ export class SearchWriter {
     this.deleteNote.run(filePath);
   }
 
+  /** Runs a `SELECT count(*) AS count` and reads the number. */
   private count(sql: string): number {
     return Number(this.database.prepare(sql).get()?.count);
   }
@@ -388,6 +397,7 @@ export function createNoteToWrite(file: ParsedFile): NoteToWrite {
   };
 }
 
+/** One row of the text index: a section, task, or whole file, with the text each column ranks. */
 export interface SearchEntry {
   kind: 'section' | 'task' | 'file';
   id: string;

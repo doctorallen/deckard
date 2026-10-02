@@ -68,6 +68,11 @@ export type ReuseParsedFile = (
  */
 const READS_IN_FLIGHT = 8;
 
+/** The configured note boundary, falling back when the setting is stale. */
+function getNoteBoundaries(value: unknown): NoteBoundaries {
+  return value === 'heading' || value === 'marked' ? value : 'line';
+}
+
 /**
  * Reads only the configured Markdown surface of a workspace.
  *
@@ -75,22 +80,12 @@ const READS_IN_FLIGHT = 8;
  * requiring a live VS Code workspace, while extension.ts passes the VS Code
  * workspace from platform/vscodeWorkspace.ts in production.
  */
-/** The configured note boundary, falling back when the setting is stale. */
-function getNoteBoundaries(value: unknown): NoteBoundaries {
-  return value === 'heading' || value === 'marked' ? value : 'line';
-}
-
 export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements NoteFiles<U> {
+  /** Reads, finds, and configures through `access` alone, so a test can pass plain objects. */
   public constructor(
     private readonly access: WorkspaceFileAccess<U>,
   ) {}
 
-  /**
-   * Scans each workspace folder and skips unreadable files individually.
-   *
-   * One bad note should not make the rest of the workspace disappear from the
-   * index, so read failures are reported and scanning continues.
-   */
   /**
    * The notes the last scan could not read, with why. A read that fails is
    * logged, but a log is not where a reader looks when a search comes back
@@ -106,18 +101,55 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    */
   public lastScan = { found: 0, templates: 0, excluded: 0, read: 0 };
 
+  /**
+   * Scans each workspace folder and skips unreadable files individually.
+   *
+   * One bad note should not make the rest of the workspace disappear from the
+   * index, so read failures are reported and scanning continues.
+   */
   public async scan(
     onProgress?: ScanProgress,
     reuse?: ReuseParsedFile,
     /** Called with each note read and parsed, between reads. */
     onParsed?: (file: ParsedFile) => void,
   ): Promise<ParsedFile[]> {
-    const entries: Array<ScanEntry<U>> = [];
-    const failures: UnreadableNote[] = [];
-    let found = 0;
-    let templates = 0;
-    let excluded = 0;
+    const listing = await this.listNoteEntries();
+    const entries = listing.entries;
+    onProgress?.(0, entries.length);
+    let completed = 0;
+    const results = await mapWithConcurrency(entries, READS_IN_FLIGHT, async (entry) => {
+      try {
+        return await this.readEntry(entry, reuse, onParsed);
+      } catch (error) {
+        reportError(`Could not read ${entry.uri.toString()}`, error);
+        const unreadable: UnreadableNote = {
+          filePath: this.getFilePath(entry.uri, entry.workspaceFolder),
+          reason: describeError(error),
+        };
+        return unreadable;
+      } finally {
+        completed += 1;
+        onProgress?.(completed, entries.length);
+      }
+    });
+    const { files, failures } = partitionReads(results);
+    this.failures = failures;
+    this.lastScan = {
+      found: listing.found,
+      templates: listing.templates,
+      excluded: listing.excluded,
+      read: files.length,
+    };
+    return files;
+  }
 
+  /**
+   * The notes a scan reads, in the order findFiles gave them, with how many
+   * Markdown files each folder held and how many the templates folder and the
+   * exclude patterns kept out.
+   */
+  private async listNoteEntries(): Promise<NoteListing<U>> {
+    const listing: NoteListing<U> = { entries: [], found: 0, templates: 0, excluded: 0 };
     for (const workspaceFolder of this.access.workspaceFolders ?? []) {
       const pattern = this.createPattern(workspaceFolder);
       const excludePatterns = this.getExcludePatterns(workspaceFolder);
@@ -140,51 +172,12 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       const kept = outsideTemplates.filter(
         (uri) => !isExcluded(getRelativePath(uri, workspaceFolder, this.access)),
       );
-      found += markdown.length;
-      templates += markdown.length - outsideTemplates.length;
-      excluded += outsideTemplates.length - kept.length;
-      kept.forEach((uri) => entries.push({ uri, workspaceFolder }));
+      listing.found += markdown.length;
+      listing.templates += markdown.length - outsideTemplates.length;
+      listing.excluded += outsideTemplates.length - kept.length;
+      kept.forEach((uri) => listing.entries.push({ uri, workspaceFolder }));
     }
-
-    onProgress?.(0, entries.length);
-    let completed = 0;
-    // Results keep the order findFiles gave, whichever read finishes first.
-    const results: Array<ParsedFile | UnreadableNote | undefined> = new Array(entries.length);
-    let next = 0;
-    const readNext = async (): Promise<void> => {
-      while (next < entries.length) {
-        const position = next;
-        next += 1;
-        const entry = entries[position];
-        try {
-          results[position] = await this.readEntry(entry, reuse, onParsed);
-        } catch (error) {
-          reportError(`Could not read ${entry.uri.toString()}`, error);
-          results[position] = {
-            filePath: this.getFilePath(entry.uri, entry.workspaceFolder),
-            reason: describeError(error),
-          };
-        } finally {
-          completed += 1;
-          onProgress?.(completed, entries.length);
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(READS_IN_FLIGHT, entries.length) }, readNext),
-    );
-
-    const files: ParsedFile[] = [];
-    results.forEach((result) => {
-      if (result && 'reason' in result) {
-        failures.push(result);
-      } else if (result) {
-        files.push(result);
-      }
-    });
-    this.failures = failures;
-    this.lastScan = { found, templates, excluded, read: files.length };
-    return files;
+    return listing;
   }
 
   /**
@@ -221,11 +214,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
     assertMarkdownFile(uri);
     const [bytes, metadata] = await Promise.all([
       this.access.readFile(uri),
-      stamp === undefined
-        ? this.readMetadata(uri)
-        : stamp === null
-          ? undefined
-          : { createdAt: stamp.ctime, updatedAt: stamp.mtime },
+      this.metadataFor(uri, stamp),
     ]);
     const content = Buffer.from(bytes).toString('utf8');
     return parseMarkdown(
@@ -234,6 +223,23 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       metadata,
       this.getParseOptions(workspaceFolder),
     );
+  }
+
+  /**
+   * The times read() parses a note with: from a stat already read, none when
+   * that stat failed (null), or a fresh stat when there was none (undefined).
+   */
+  private metadataFor(
+    uri: U,
+    stamp: FileStamp | null | undefined,
+  ): Promise<NoteTimes | undefined> | NoteTimes | undefined {
+    if (stamp === undefined) {
+      return this.readMetadata(uri);
+    }
+    if (stamp === null) {
+      return undefined;
+    }
+    return timesOf(stamp);
   }
 
   /**
@@ -291,20 +297,19 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
   public getParkedRules(): ParkedRules {
     const folders = this.access.workspaceFolders ?? [];
     const multiRoot = folders.length > 1;
-    const matchers = folders.map((folder) => ({
+    const folderSettings = folders.map((folder) =>
+      this.getConfiguration(folder).get<unknown>('parked.folders', {}),
+    );
+    const matchers = folders.map((folder, index) => ({
       prefix: multiRoot ? `${folder.name}/` : '',
-      isParked: createExcludeMatcher(
-        this.getConfiguration(folder).get<unknown>('parked.folders', {}),
-      ),
+      isParked: createExcludeMatcher(folderSettings[index]),
     }));
-    const hasFolders = folders.some((folder) => {
-      const value = this.getConfiguration(folder).get<unknown>('parked.folders', {});
-      return (
+    const hasFolders = folderSettings.some(
+      (value) =>
         value !== null &&
         typeof value === 'object' &&
-        Object.values(value).some((enabled) => enabled === true)
-      );
-    });
+        Object.values(value).some((enabled) => enabled === true),
+    );
     const cache = new Map<string, boolean>();
     const options = this.getParseOptions(folders[0]);
     const written = this.access.getConfiguration('deckard').get<unknown>('parked.tags', ['parked']);
@@ -312,16 +317,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       ...new Set(
         (Array.isArray(written) ? written : [])
           .filter((value): value is string => typeof value === 'string')
-          .map((value) => {
-            const key = toParkedTagKey(value);
-            if (!key || key.startsWith('@')) {
-              return key;
-            }
-            return (
-              extractTags(key, options.entityNamespaceAliases, options.personMarker)[0]?.key.toLowerCase() ??
-              key
-            );
-          })
+          .map((value) => parkedTagKey(value, options))
           .filter((key): key is string => key !== undefined),
       ),
     ];
@@ -519,9 +515,9 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    */
   private async readMetadata(
     uri: U,
-  ): Promise<Pick<ParsedFile, 'createdAt' | 'updatedAt'> | undefined> {
+  ): Promise<NoteTimes | undefined> {
     const stamp = await this.readStamp(uri);
-    return stamp ? { createdAt: stamp.ctime, updatedAt: stamp.mtime } : undefined;
+    return stamp ? timesOf(stamp) : undefined;
   }
 
   /** The note's times and size, or nothing when they cannot be read. */
@@ -575,9 +571,80 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
   }
 }
 
+/** One note a scan will read, with the workspace folder its path is relative to. */
 interface ScanEntry<U extends ResourceUri> {
   uri: U;
   workspaceFolder: WorkspaceFolder<U>;
+}
+
+/** The notes a scan will read, and the counts lastScan reports about how they were chosen. */
+interface NoteListing<U extends ResourceUri> {
+  entries: Array<ScanEntry<U>>;
+  found: number;
+  templates: number;
+  excluded: number;
+}
+
+/** The dates a note carries from its file: created from ctime, updated from mtime. */
+type NoteTimes = Pick<ParsedFile, 'createdAt' | 'updatedAt'>;
+
+/**
+ * A `deckard.parked.tags` entry keyed as the index keys tags, so an alias
+ * parks the tag it stands for; a person key is kept as written, and an entry
+ * that names no tag gives undefined.
+ */
+function parkedTagKey(value: string, options: MarkdownParseOptions): string | undefined {
+  const key = toParkedTagKey(value);
+  if (!key || key.startsWith('@')) {
+    return key;
+  }
+  return (
+    extractTags(key, options.entityNamespaceAliases, options.personMarker)[0]?.key.toLowerCase() ??
+    key
+  );
+}
+
+/** A stat's times as the dates a parsed note carries. */
+function timesOf(stamp: FileStamp): NoteTimes {
+  return { createdAt: stamp.ctime, updatedAt: stamp.mtime };
+}
+
+/**
+ * Runs `read` over every item, `limit` at a time. Results keep the items'
+ * order, whichever read finishes first.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  read: (item: T) => Promise<R>,
+): Promise<Array<R | undefined>> {
+  const results: Array<R | undefined> = new Array(items.length);
+  let next = 0;
+  const readNext = async (): Promise<void> => {
+    while (next < items.length) {
+      const position = next;
+      next += 1;
+      results[position] = await read(items[position]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, readNext));
+  return results;
+}
+
+/** Splits a scan's reads into the notes parsed and the notes that could not be read, keeping order. */
+function partitionReads(
+  results: ReadonlyArray<ParsedFile | UnreadableNote | undefined>,
+): { files: ParsedFile[]; failures: UnreadableNote[] } {
+  const files: ParsedFile[] = [];
+  const failures: UnreadableNote[] = [];
+  results.forEach((result) => {
+    if (result && 'reason' in result) {
+      failures.push(result);
+    } else if (result) {
+      files.push(result);
+    }
+  });
+  return { files, failures };
 }
 
 /**

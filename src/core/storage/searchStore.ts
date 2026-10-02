@@ -26,6 +26,7 @@ export interface ScanCounts {
   read: number;
 }
 
+/** A note that matched a file-level search, with the text to show under its name. */
 export interface StoredSearchMatch {
   filePath: string;
   excerpt: string;
@@ -43,6 +44,7 @@ export interface EntrySearchMatch {
   excerpt: string;
 }
 
+/** What an entry search found, and whether it had to settle for fewer words. */
 export interface EntrySearchResult {
   matches: EntrySearchMatch[];
   /**
@@ -57,6 +59,7 @@ export interface EntrySearchResult {
   suggestion?: string;
 }
 
+/** How many entries a search returns, and whether it is matching while the person types. */
 export interface EntrySearchOptions {
   limit?: number;
   /** Match the last word as a prefix, for results while it is being typed. */
@@ -240,6 +243,7 @@ export class SearchStore implements Disposable {
     }
   }
 
+  /** Keeps a scan's counts, so Stats can show them on the next start before a scan finishes. */
   public writeLastScan(counts: ScanCounts): void {
     this.writer.writeMeta('lastScan', JSON.stringify(counts));
   }
@@ -253,6 +257,7 @@ export class SearchStore implements Disposable {
     this.writer.transaction(() => this.writer.writeNote(note));
   }
 
+  /** Forgets one deleted or excluded note at once, as upsert writes one saved note. */
   public remove(filePath: string): void {
     this.stored?.delete(filePath);
     this.writer.transaction(() => this.writer.erase(filePath));
@@ -346,6 +351,7 @@ export class SearchStore implements Disposable {
     return results;
   }
 
+  /** Stops the worker thread, dropping any batch it has not written, and closes the database. */
   public dispose(): void {
     this.worker?.dispose();
     this.database.close();

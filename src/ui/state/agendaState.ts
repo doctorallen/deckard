@@ -39,6 +39,11 @@ import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLab
  * Tasks view, Home's agenda, and the count in the status bar.
  */
 
+/**
+ * A group's id: a placement such as `overdue`, `upcoming:2026-09-28` for a
+ * day of Upcoming, `donetoday`, or the value a grouping keys on, such as
+ * `priority:high` or `tag:context/phone`.
+ */
 export type AgendaGroupId = string;
 
 export type { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
@@ -64,6 +69,7 @@ export const AGENDA_GROUPINGS: readonly {
   },
 ];
 
+/** One task as the Agenda lists it, with what placed it and what to say beside it. */
 export interface AgendaEntry {
   task: Task;
   title: string;
@@ -80,12 +86,14 @@ export interface AgendaEntry {
   stepsLabel?: string;
 }
 
+/** One group of the Agenda, its entries in the order they are shown. */
 export interface AgendaGroup {
   id: AgendaGroupId;
   label: string;
   entries: AgendaEntry[];
 }
 
+/** The groups by due status, in the order they are shown. */
 const GROUP_ORDER: readonly AgendaGroupId[] = [
   'overdue',
   'today',
@@ -95,6 +103,7 @@ const GROUP_ORDER: readonly AgendaGroupId[] = [
   'needsdate',
 ];
 
+/** What each due-status group is called. */
 const GROUP_LABELS: Readonly<Record<string, string>> = {
   overdue: 'Overdue',
   today: 'Today',
@@ -213,6 +222,48 @@ const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
 ];
 
 
+/** An order of entries, as each group sorts its own. */
+type EntryOrder = (left: AgendaEntry, right: AgendaEntry) => number;
+
+/** The days the Agenda is placed against: today's midnight, tomorrow's, and Upcoming's end. */
+interface AgendaWindow {
+  today: number;
+  tomorrow: number;
+  horizon: number;
+}
+
+/**
+ * How the due-status groups order their entries. Today and No date are to-do
+ * lists, so importance leads; the other groups read as a timeline, by
+ * compareByDate. Overdue runs newest slip first: what slipped yesterday can
+ * still be saved, and a month-old task is not news.
+ */
+const ORDER_BY_GROUP = new Map<AgendaGroupId, EntryOrder>([
+  ['today', compareByPriority],
+  ['nodate', compareByPriority],
+  ['overdue', compareByDateDescending],
+]);
+
+/** Regroups the Agenda's entries along another axis than due status. */
+type Regrouper = (
+  entries: readonly AgendaEntry[],
+  index: WorkspaceIndex,
+  options: AgendaOptions,
+  order: EntryOrder,
+) => AgendaGroup[];
+
+/**
+ * The groupings other than by due status. Any other value groups by person,
+ * as the Agenda always has for a value it does not know.
+ */
+const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
+  ['priority', (entries, _index, _options, order) => groupByPriority(entries, order)],
+  ['status', (entries, _index, options, order) =>
+    groupByStatus(entries, options.statusNamespace ?? 'status', order)],
+  ['tag', (entries, index, options, order) =>
+    groupByTag(entries, index, options.groupNamespace ?? 'project', order)],
+]);
+
 /**
  * Builds the Agenda for the context's `now`, with its task policy saying
  * when an overdue task needs a new date. Empty groups are left out.
@@ -222,71 +273,25 @@ export function createAgenda(
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: AgendaOptions,
 ): AgendaGroup[] {
-  const {
-    tasks = index.tasks.values(),
-    upcomingDays,
-    groupBy = 'due',
-    statusNamespace = 'status',
-    taskOrder = [],
-  } = options;
-  // A plain step rides on its open task's row, so five steps are not five
-  // rows, nor five in the count; one with a date, priority, person, or tag
-  // of its own is still listed on its own.
-  const all = [...tasks];
-  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
-  const listed = all.filter(
-    (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
-  );
-  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
-  const byRank =
-    (fallback: (left: AgendaEntry, right: AgendaEntry) => number) =>
-    (left: AgendaEntry, right: AgendaEntry): number => {
-      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftRank - rightRank || fallback(left, right);
-    };
+  const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [] } = options;
+  const listed = withoutPlainSteps([...tasks]);
+  const byRank = rankFirst(taskOrder);
   const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
-  const horizon = addDays(today, Math.max(1, upcomingDays) + 1);
-  const openDependencyIds = new Set(
-    [...index.tasks.values()]
-      .filter((task) => !task.completed && task.dependencyId)
-      .map((task) => task.dependencyId as string),
-  );
-
-  const groups = new Map<AgendaGroupId, AgendaEntry[]>(
-    GROUP_ORDER.map((id) => [id, []]),
-  );
-  for (const task of listed) {
-    if (task.completed) {
-      continue;
-    }
-    const placement = placeTask(task, { today, tomorrow, horizon }, context.taskPolicy);
-    if (placement) {
-      groups
-        .get(placement.group)
-        ?.push(createEntry(task, index, placement, openDependencyIds));
-    }
-  }
-
+  const window: AgendaWindow = {
+    today,
+    tomorrow,
+    horizon: addDays(today, Math.max(1, upcomingDays) + 1),
+  };
+  const openDependencyIds = collectOpenDependencyIds(index);
+  const groups = placeOpenTasks(listed, index, context, { window, openDependencyIds });
   const byDue = GROUP_ORDER.map((id) => ({
     id,
     label: GROUP_LABELS[id] ?? id,
-    // Today and No date are to-do lists, so importance leads; the other
-    // groups read as a timeline. Overdue runs newest slip first: what slipped
-    // yesterday can still be saved, and a month-old task is not news.
-    entries: (groups.get(id) ?? []).sort(
-      byRank(
-        id === 'today' || id === 'nodate'
-          ? compareByPriority
-          : id === 'overdue'
-            ? compareByDateDescending
-            : compareByDate,
-      ),
-    ),
+    entries: (groups.get(id) ?? []).sort(byRank(ORDER_BY_GROUP.get(id) ?? compareByDate)),
   })).filter((group) => group.entries.length > 0);
   const done = options.doneToday
-    ? createDoneToday(listed, index, today, tomorrow, openDependencyIds)
+    ? createDoneToday(listed, index, { today, tomorrow, openDependencyIds })
     : [];
   if (groupBy === 'due') {
     return [
@@ -302,16 +307,70 @@ export function createAgenda(
   // axis changes.
   const entries = byDue.flatMap((group) => group.entries);
   const order = byRank(compareByDate);
+  const regroup = REGROUPERS.get(groupBy);
   return [
-    ...(groupBy === 'priority'
-      ? groupByPriority(entries, order)
-      : groupBy === 'status'
-        ? groupByStatus(entries, statusNamespace, order)
-        : groupBy === 'tag'
-          ? groupByTag(entries, index, options.groupNamespace ?? 'project', order)
-          : groupByAssignee(entries, index, order)),
+    ...(regroup ? regroup(entries, index, options, order) : groupByAssignee(entries, index, order)),
     ...done,
   ];
+}
+
+/**
+ * Leaves out the plain steps of open tasks. A plain step rides on its open
+ * task's row, so five steps are not five rows, nor five in the count; one
+ * with a date, priority, person, or tag of its own is still listed on its own.
+ */
+function withoutPlainSteps(all: readonly Task[]): Task[] {
+  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
+  return all.filter(
+    (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
+  );
+}
+
+/**
+ * Puts the tasks a reader dragged into place first, in the order they left
+ * them, and orders the rest by `fallback`.
+ */
+function rankFirst(taskOrder: readonly string[]): (fallback: EntryOrder) => EntryOrder {
+  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
+  return (fallback) =>
+    (left, right) => {
+      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftRank - rightRank || fallback(left, right);
+    };
+}
+
+/** The 🆔 ids open tasks carry, so a ⛔ naming one is still blocked. */
+function collectOpenDependencyIds(index: WorkspaceIndex): Set<string> {
+  return new Set(
+    [...index.tasks.values()]
+      .filter((task) => !task.completed && task.dependencyId)
+      .map((task) => task.dependencyId as string),
+  );
+}
+
+/** Each open task as an entry in the due-status group placeTask puts it in, in listed order. */
+function placeOpenTasks(
+  listed: readonly Task[],
+  index: WorkspaceIndex,
+  context: Pick<QueryContext, 'taskPolicy'>,
+  { window, openDependencyIds }: { window: AgendaWindow; openDependencyIds: ReadonlySet<string> },
+): Map<AgendaGroupId, AgendaEntry[]> {
+  const groups = new Map<AgendaGroupId, AgendaEntry[]>(
+    GROUP_ORDER.map((id) => [id, []]),
+  );
+  for (const task of listed) {
+    if (task.completed) {
+      continue;
+    }
+    const placement = placeTask(task, window, context.taskPolicy);
+    if (placement) {
+      groups
+        .get(placement.group)
+        ?.push(createEntry(task, index, placement, openDependencyIds));
+    }
+  }
+  return groups;
 }
 
 /**
@@ -333,6 +392,7 @@ function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGr
   }));
 }
 
+/** Month names as a day label writes them, independent of locale. */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** A day as a group names it, `Mon Sep 28`, with no locale comma. */
@@ -349,9 +409,11 @@ function formatDayLabel(at: number): string {
 function createDoneToday(
   tasks: readonly Task[],
   index: WorkspaceIndex,
-  today: number,
-  tomorrow: number,
-  openDependencyIds: ReadonlySet<string>,
+  { today, tomorrow, openDependencyIds }: {
+    today: number;
+    tomorrow: number;
+    openDependencyIds: ReadonlySet<string>;
+  },
 ): AgendaGroup[] {
   const entries = tasks
     .filter(
@@ -506,10 +568,16 @@ function collect(
     }));
 }
 
+/** A word with its first letter capitalized, as a group label begins. */
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+/**
+ * A task as an entry: its title without trailing tags, the headings above
+ * it, and the details beside it, which are why it was placed, its priority,
+ * the open tasks it waits on, its steps, and its note.
+ */
 function createEntry(
   task: Task,
   index: WorkspaceIndex,
@@ -545,6 +613,7 @@ function createEntry(
   };
 }
 
+/** The timeline order: soonest date first, then higher priority, then source order. */
 function compareByDate(left: AgendaEntry, right: AgendaEntry): number {
   return (
     left.at - right.at ||
@@ -553,6 +622,7 @@ function compareByDate(left: AgendaEntry, right: AgendaEntry): number {
   );
 }
 
+/** Latest date first, then higher priority, then source order: Overdue's newest slip first. */
 function compareByDateDescending(left: AgendaEntry, right: AgendaEntry): number {
   return (
     right.at - left.at ||
@@ -561,6 +631,7 @@ function compareByDateDescending(left: AgendaEntry, right: AgendaEntry): number 
   );
 }
 
+/** The to-do order: higher priority first, then soonest date, then source order. */
 function compareByPriority(left: AgendaEntry, right: AgendaEntry): number {
   return (
     comparePriority(left, right) ||
@@ -569,6 +640,7 @@ function compareByPriority(left: AgendaEntry, right: AgendaEntry): number {
   );
 }
 
+/** Higher priority first; no priority ranks between medium and low, as a query ranks it. */
 function comparePriority(left: AgendaEntry, right: AgendaEntry): number {
   return (
     TASK_PRIORITY_RANKS[right.task.priority ?? 'none'] -
@@ -576,6 +648,7 @@ function comparePriority(left: AgendaEntry, right: AgendaEntry): number {
   );
 }
 
+/** Source order: by file path, then line. */
 function compareSource(left: AgendaEntry, right: AgendaEntry): number {
   return (
     left.task.filePath.localeCompare(right.task.filePath) ||

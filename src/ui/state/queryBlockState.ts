@@ -84,6 +84,10 @@ export interface QueryBlockSource {
   options: QueryBlockOptions;
 }
 
+/**
+ * One result row, a note section, front-matter-only note, or task, as every
+ * surface that draws a block's results reads it.
+ */
 export interface QueryBlockItem {
   id: string;
   title: string;
@@ -114,11 +118,13 @@ export interface QueryBlockItem {
   updatedAt?: number;
 }
 
+/** A diagnostic or option warning shown beside a block's results. */
 export interface QueryBlockMessage {
   severity: 'error' | 'warning';
   text: string;
 }
 
+/** What a block's query found, ordered and cut to its limit, with what to say about it. */
 export interface QueryBlockSnapshot {
   query: string;
   /** Query diagnostics, then option warnings. */
@@ -177,50 +183,63 @@ export function parseQueryBlockInfo(
     const match = /^([A-Za-z]+)=["']?([^"']*)["']?$/.exec(attribute);
     const name = match?.[1].toLowerCase();
     const value = match?.[2].toLowerCase() ?? '';
-    if (name === 'sort') {
-      if (isTaskColumnId(value)) {
-        options.sort = value;
-      } else {
-        options.warnings.push(
-          `sort must be a column, such as title, due, priority, created, or updated, not "${value}".`,
-        );
-      }
-    } else if (name === 'dir') {
-      if (value === 'asc' || value === 'desc') {
-        options.direction = value;
-      } else {
-        options.warnings.push(`dir must be asc or desc, not "${value}".`);
-      }
-    } else if (name === 'view') {
-      if (value === 'table' || value === 'list') {
-        options.view = value;
-      } else {
-        options.warnings.push(`view must be list or table, not "${value}".`);
-      }
-    } else if (name === 'columns') {
-      const parsed = parseTaskColumns(value);
-      options.columns = parsed.columns;
-      if (parsed.unknown.length > 0) {
-        options.warnings.push(
-          `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`,
-        );
-      }
-    } else if (name === 'limit') {
-      if (/^\d+$/.test(value) && Number(value) > 0) {
-        options.limit = Number(value);
-      } else {
-        options.warnings.push(
-          `limit must be a positive whole number, not "${value}".`,
-        );
-      }
-    } else {
-      options.warnings.push(
-        `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, or columns=.`,
-      );
+    const read = name === undefined ? undefined : OPTION_READERS.get(name);
+    const warning = read
+      ? read(value, options)
+      : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, or columns=.`;
+    if (warning) {
+      options.warnings.push(warning);
     }
   }
   return options;
 }
+
+/**
+ * Reads one `name=value` option into the block's options, and answers the
+ * warning to show when the value is not one the option takes.
+ */
+type OptionReader = (value: string, options: QueryBlockOptions) => string | undefined;
+
+/** The options a query block's info string may set, by lowercased name. */
+const OPTION_READERS = new Map<string, OptionReader>([
+  ['sort', (value, options) => {
+    if (!isTaskColumnId(value)) {
+      return `sort must be a column, such as title, due, priority, created, or updated, not "${value}".`;
+    }
+    options.sort = value;
+    return undefined;
+  }],
+  ['dir', (value, options) => {
+    if (value !== 'asc' && value !== 'desc') {
+      return `dir must be asc or desc, not "${value}".`;
+    }
+    options.direction = value;
+    return undefined;
+  }],
+  ['view', (value, options) => {
+    if (value !== 'table' && value !== 'list') {
+      return `view must be list or table, not "${value}".`;
+    }
+    options.view = value;
+    return undefined;
+  }],
+  ['columns', (value, options) => {
+    // Unknown names are reported, and the known ones are still shown.
+    const parsed = parseTaskColumns(value);
+    options.columns = parsed.columns;
+    if (parsed.unknown.length === 0) {
+      return undefined;
+    }
+    return `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`;
+  }],
+  ['limit', (value, options) => {
+    if (!/^\d+$/.test(value) || Number(value) <= 0) {
+      return `limit must be a positive whole number, not "${value}".`;
+    }
+    options.limit = Number(value);
+    return undefined;
+  }],
+]);
 
 /**
  * Finds query blocks using CommonMark's fence rules, which are the rules the
@@ -437,6 +456,7 @@ export function describeQueryBlockCounts(snapshot: QueryBlockSnapshot): string {
   return parts.join(' · ');
 }
 
+/** A matched section as a row, titled by its heading under the headings above it. */
 function createSectionItem(
   section: Section,
   index: WorkspaceIndex,
@@ -476,6 +496,7 @@ function createFileItem(file: ParsedFile): QueryBlockItem {
   };
 }
 
+/** A matched task as a row, with the status its `#<statusNamespace>/` tag names. */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
@@ -514,9 +535,6 @@ function createTaskItem(
   };
 }
 
-/**
- * Orders notes alphabetically unless a date sort puts the newest first.
- */
 /** Which way a sort runs when the block does not say: dates newest first. */
 function directionOf(
   sort: QueryBlockSort | undefined,
@@ -525,6 +543,9 @@ function directionOf(
   return direction ?? (sort === 'created' || sort === 'updated' ? 'desc' : 'asc');
 }
 
+/**
+ * Orders notes alphabetically unless a date sort puts the newest first.
+ */
 function createNoteComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
@@ -580,6 +601,7 @@ function compareBySort(
   return 0;
 }
 
+/** Titles alphabetically, ignoring case and accents, then source order. */
 function compareTitles(left: QueryBlockItem, right: QueryBlockItem): number {
   return (
     left.title.localeCompare(right.title, undefined, { sensitivity: 'base' }) ||
@@ -587,6 +609,7 @@ function compareTitles(left: QueryBlockItem, right: QueryBlockItem): number {
   );
 }
 
+/** Source order: by file path, then line. */
 function compareSource(left: QueryBlockItem, right: QueryBlockItem): number {
   return left.filePath.localeCompare(right.filePath) || left.line - right.line;
 }
@@ -607,6 +630,7 @@ function compareAscending(left?: number, right?: number): number {
   return left - right;
 }
 
+/** Newest first, with undated items still last. */
 function compareDescending(left?: number, right?: number): number {
   if (left === undefined || right === undefined) {
     return (left === undefined ? 1 : 0) - (right === undefined ? 1 : 0);

@@ -33,6 +33,7 @@ export interface OutlineNode {
   links?: number;
 }
 
+/** How buildOutline reads a note's tags and where it counts links to each heading from. */
 export interface OutlineOptions {
   /** The configured people marker, so stripping matches how tags were parsed. */
   personMarker?: string;
@@ -247,10 +248,11 @@ function collectTags(
 
   const keys = new Set(tags.map((tag) => tag.key));
   file.frontmatterTags.forEach((tag) => {
-    if (!keys.has(tag.key)) {
-      keys.add(tag.key);
-      tags.push(tag);
+    if (keys.has(tag.key)) {
+      return;
     }
+    keys.add(tag.key);
+    tags.push(tag);
   });
 
   return tags;
