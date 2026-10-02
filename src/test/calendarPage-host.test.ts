@@ -14,7 +14,8 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
-import { pageExtensionUri } from './pageWebview';
+import { pageExtensionUri, pageWebview } from './pageWebview';
+import { openWebviewPage } from './webviewPage';
 
 const today = formatLocalDate(new Date());
 
@@ -179,12 +180,12 @@ suite('Calendar page host', () => {
     }
   });
 
-  test('is named Calendar page, keeps its context while hidden, and has no find widget', () => {
+  test('is named Calendar page, is not kept running while hidden, and has no find widget', () => {
     const page = openPage();
     try {
       assert.strictEqual(page.controller.name, 'Calendar page');
       assert.deepStrictEqual(page.controller.options, {
-        retainContextWhenHidden: true,
+        retainContextWhenHidden: false,
         enableFindWidget: false,
         followIndexing: false,
         onChromeChange: 'reload',
@@ -193,6 +194,36 @@ suite('Calendar page host', () => {
         embedsSnapshot: true,
       });
     } finally {
+      page.dispose();
+    }
+  });
+
+  test('is not kept running while hidden: hidden, its HTML carries the month it was sent, which loaded draws as the posted month did', () => {
+    const page = openPage();
+    const pages: ReturnType<typeof openWebviewPage>[] = [];
+    try {
+      page.surface.htmlWebview = pageWebview as vscode.Webview;
+      let builds = 0;
+      const build = page.controller.buildSnapshot.bind(page.controller);
+      page.controller.buildSnapshot = () => {
+        builds += 1;
+        return build();
+      };
+      page.host.refresh();
+      const [sent] = page.states();
+      page.surface.setVisible(false);
+      assert.strictEqual(builds, 1, 'the month it carries is the one sent, not built again');
+      const carried = /<script type="application\/json" id="state">([^<]*)<\/script>/.exec(String(page.surface.html));
+      assert.ok(carried, 'the hidden page\'s HTML carries the month');
+      assert.deepStrictEqual(JSON.parse(carried[1]), sent.data);
+      const reloaded = openWebviewPage(String(page.surface.html));
+      const drawn = openWebviewPage(String(page.surface.html).replace(carried[0], ''), sent.data);
+      pages.push(reloaded, drawn);
+      assert.strictEqual(reloaded.findAll('#app .loading').length, 0);
+      assert.deepStrictEqual(reloaded.posted, [{ type: 'ready' }], 'it asks for a newer month, as it always has');
+      assert.strictEqual(reloaded.find('#app').innerHTML, drawn.find('#app').innerHTML);
+    } finally {
+      pages.forEach((opened) => opened.dispose());
       page.dispose();
     }
   });

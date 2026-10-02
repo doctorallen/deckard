@@ -219,12 +219,33 @@ suite('Calendar host', () => {
     }
   });
 
-  test('is named Calendar, and keeps its context while hidden', () => {
+  test('hidden, its HTML carries the month it was sent, not built again', () => {
+    const { host, controller, surface, states } = openCalendar();
+    try {
+      surface.htmlWebview = pageWebview as vscode.Webview;
+      let builds = 0;
+      const build = controller.buildSnapshot.bind(controller);
+      controller.buildSnapshot = () => {
+        builds += 1;
+        return build();
+      };
+      host.refresh();
+      surface.setVisible(false);
+      assert.strictEqual(builds, 1);
+      const carried = /<script type="application\/json" id="state">([^<]*)<\/script>/.exec(String(surface.html));
+      assert.ok(carried, 'the hidden view\'s HTML carries the month');
+      assert.deepStrictEqual(JSON.parse(carried[1]), states()[0].data);
+    } finally {
+      host.dispose();
+    }
+  });
+
+  test('is named Calendar, and is not kept running while hidden', () => {
     const { host, controller } = openCalendar();
     try {
       assert.strictEqual(controller.name, 'Calendar');
       assert.deepStrictEqual(controller.options, {
-        retainContextWhenHidden: true,
+        retainContextWhenHidden: false,
         enableFindWidget: false,
         followIndexing: false,
         onChromeChange: 'reload',

@@ -279,4 +279,28 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('the page keeps its layout and where it was scrolled, and draws with them when VS Code loads it again', async () => {
+    const now = new Date(2026, 8, 13, 10);
+    const snapshot = createCalendar(index, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
+    const page = openWebviewPage(renderPage('calendarPage'), snapshot);
+    try {
+      assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
+      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
+      assert.deepStrictEqual(page.savedState(), { layout: 'week' });
+      page.window.dispatchEvent(new page.window.Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepStrictEqual(page.savedState(), { layout: 'week', scrollY: 0 });
+    } finally {
+      page.dispose();
+    }
+    // Drawn from its shell, as a hidden page is when it is shown again.
+    const kept = openWebviewPage(renderPage('calendarPage', { state: snapshot }), undefined, { savedState: { layout: 'week', scrollY: 120 } });
+    try {
+      assert.ok(kept.find('.calendar-page-body').classList.contains('is-week'), 'the week it was left on');
+      assert.deepStrictEqual(kept.savedState(), { layout: 'week', scrollY: 120 }, 'and nothing it kept is lost');
+    } finally {
+      kept.dispose();
+    }
+  });
 });

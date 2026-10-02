@@ -53,12 +53,16 @@ export interface CalendarPageControllerOptions {
 export class CalendarPageController implements PageController<CalendarSnapshot, CalendarPagePageToHost> {
   public readonly name = 'Calendar page';
   /**
-   * A theme or zen change only resets the HTML; the page then reloads and
-   * asks for its state with `ready`. Its HTML carries the month, built when
-   * it is set (37 ms median on the 5,000-note bench, under Q3's 50 ms).
+   * The page is not kept running while hidden (Q1 of
+   * docs/implementation/20-webviews.md): hidden, its HTML is set again with
+   * the last month it was sent, and it keeps its layout and scroll with
+   * `setState`. A theme or zen change only resets the HTML; the page then
+   * reloads and asks for its state with `ready`. Its HTML carries the
+   * month, built when it is set (37 ms median on the 5,000-note bench,
+   * under Q3's 50 ms).
    */
   public readonly options: PageOptions = {
-    retainContextWhenHidden: true,
+    retainContextWhenHidden: false,
     enableFindWidget: false,
     followIndexing: false,
     onChromeChange: 'reload',

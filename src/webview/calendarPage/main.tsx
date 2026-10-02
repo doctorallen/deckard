@@ -4,7 +4,10 @@
  * takes the grid's keys as the sidebar's does; a click anywhere in a day
  * chooses it, a chip opens its task, and a due or scheduled chip can be
  * dragged to another day. `[` and `]` step a month or a week, `t` goes to
- * today, and `m` and `w` choose the layout, which the page keeps.
+ * today, and `m` and `w` choose the layout. The page is not kept running
+ * while hidden: it keeps its layout and where it was scrolled to with
+ * `setState`, as `{ layout, scrollY }`, and reads a layout an older release
+ * kept as before.
  */
 import { stepCalendar } from '../../domain/markdown/calendar';
 import type { CalendarMoveRefusedMessage, CalendarPageMessage, CalendarSnapshot } from '../../ui/protocol/calendar';
@@ -16,7 +19,8 @@ import { selectedDateOf, withGroupShown } from '../shared/calendar/model';
 import { CalendarSession, send } from '../shared/calendar/session';
 import { announce } from '../shared/status';
 import { installViewOptions } from '../shared/viewOptions';
-import { keepState, keptState, post } from '../shared/vscode';
+import { rememberScroll, restoreScroll } from '../shared/scroll';
+import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { clearDragMarks, installTaskDrag } from './drag';
 import { CalendarPage, type CalendarLayout, type CalendarPageState, type DrawnCalendarPage } from './view';
 
@@ -30,10 +34,20 @@ function keptLayout(): CalendarLayout {
   return keptState().layout === 'week' ? 'week' : 'month';
 }
 
+let scrolled = false;
 const session: CalendarSession<CalendarPageState> = new CalendarSession<CalendarPageState>({
   initial: { snapshot: readEmbeddedState<CalendarSnapshot>(), shownGroups: [], layout: keptLayout() },
   view: (state) => <CalendarPage state={state as DrawnCalendarPage} />,
-  afterFullDraw: clearDragMarks,
+  afterFullDraw: () => {
+    clearDragMarks();
+    // The first page drawn goes back to where the reader left it, since the
+    // page is not kept running while hidden.
+    if (scrolled) {
+      return;
+    }
+    scrolled = true;
+    restoreScroll(keptState());
+  },
   stepsByDay: (): boolean => session.store.state.layout === 'week',
 });
 
@@ -157,4 +171,7 @@ installKeySheet([{
 }]);
 installTaskDrag(session);
 onHostMessage<CalendarMoveRefusedMessage>('moveRefused', () => announce('The task was not moved.'));
+// What the page keeps across a hide or a reload: its layout, kept when the
+// reader chooses one, and where it was scrolled to, at most every 200 ms.
+rememberScroll(keptState, (value) => vscodeApi().setState(value));
 send({ type: 'ready' });

@@ -244,13 +244,15 @@ export interface CalendarViewControllerOptions {
 export class CalendarViewController implements PageController<CalendarSnapshot, CalendarPageToHost> {
   public readonly name = 'Calendar';
   /**
-   * The view's registration keeps it running while hidden. A theme or zen
+   * The view is not kept running while hidden (Q1 of
+   * docs/implementation/20-webviews.md): hidden, its HTML is set again with
+   * the last month it was sent, which it draws when shown. A theme or zen
    * change only resets the HTML; the page then reloads and asks for its
    * state with `ready`. Its HTML carries the month, built when it is set
    * (15 ms median on the 5,000-note bench, under Q3's 50 ms).
    */
   public readonly options: PageOptions = {
-    retainContextWhenHidden: true,
+    retainContextWhenHidden: false,
     enableFindWidget: false,
     followIndexing: false,
     onChromeChange: 'reload',
