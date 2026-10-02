@@ -375,8 +375,12 @@ export class QuickFind implements vscode.Disposable {
         void vscode.window.showInformationMessage(`Copied ${link.text}.`);
       },
       editTask: async (task) => {
-        await openSourceAt({ filePath: task.filePath, line: task.lineNumber });
-        await vscode.commands.executeCommand('deckard.editTask');
+        // Edit Task reads the active editor, so it runs only once the task's
+        // own note is that editor; openSourceAt has already said why not.
+        const editor = await openSourceAt({ filePath: task.filePath, line: task.lineNumber });
+        if (editor) {
+          await vscode.commands.executeCommand('deckard.editTask');
+        }
       },
       ...(moveTask ? { moveTask: (task: Task) => moveTask(task) } : {}),
       renameTag: async (tagKey) => {
