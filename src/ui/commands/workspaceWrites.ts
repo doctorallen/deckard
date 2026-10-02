@@ -59,11 +59,33 @@ export interface UndoResult {
  * wrote is what another's Undo sees, and a test builds its own.
  */
 export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
+  /** The write or Undo running now; the next waits for it. */
+  private turn: Promise<unknown> = Promise.resolve();
+
   /**
    * Puts every note the write changed back as it was, unless it has changed
-   * again since, in which case it is left to whoever changed it.
+   * again since, in which case it is left to whoever changed it. Given
+   * `mine`, it takes back nothing once that write is no longer the last,
+   * judged when its turn comes, after any write still landing.
    */
-  public async undo(): Promise<UndoResult | undefined> {
+  public undo(mine?: WriteMark): Promise<UndoResult | undefined> {
+    return this.inTurn(() => (mine && !mine.isLatest() ? Promise.resolve(undefined) : this.undoLatest()));
+  }
+
+  /**
+   * Runs `job` once every write and Undo asked for before it has finished.
+   * Each reads the notes, applies its edit, and reads them again across
+   * several awaits; two at once would each read what the other was
+   * changing, and the Undo of the last would take back both.
+   */
+  private inTurn<T>(job: () => Promise<T>): Promise<T> {
+    const run = this.turn.then(job, job);
+    this.turn = run.catch(() => undefined);
+    return run;
+  }
+
+  /** Takes back the last write, as `undo` says. */
+  private async undoLatest(): Promise<UndoResult | undefined> {
     const write = this.lastWrite;
     if (!write) {
       return undefined;
@@ -95,8 +117,18 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
    * know. What actually landed is read back from the notes afterwards, so
    * leaving a change out of the preview leaves it out of the Undo as well.
    * A write that lands returns the handle its Undo button works through.
+   * Writes take turns, so one asked for while another lands starts from
+   * the notes as that one left them.
    */
-  public async write(
+  public write(
+    edit: vscode.WorkspaceEdit,
+    options: WorkspaceWriteOptions,
+  ): Promise<WorkspaceWriteResult> {
+    return this.inTurn(() => this.writeNow(edit, options));
+  }
+
+  /** Makes one write, as `write` says, once its turn has come. */
+  private async writeNow(
     edit: vscode.WorkspaceEdit,
     options: WorkspaceWriteOptions,
   ): Promise<WorkspaceWriteResult> {
@@ -185,8 +217,12 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       return undefined;
     }
 
-    const result = await this.undo();
+    const result = await this.undo(mine);
     if (!result) {
+      if (mine) {
+        // A write landed while the Undo waited its turn.
+        reportWrittenSince();
+      }
       return undefined;
     }
     try {
@@ -273,7 +309,7 @@ class Handle implements WriteHandle {
 
   /** Takes this write back while it is still the last; undefined once Deckard has written since. */
   public async undo(): Promise<UndoResult | undefined> {
-    return this.isLatest() ? this.history.undo() : undefined;
+    return this.history.undo(this.mine);
   }
 
   /** The Undo button, pressed: takes the write back the way `offer.guard` says. */

@@ -10,8 +10,23 @@ import {
   WorkspaceWriteHistory,
   WriteHandle,
 } from '../ui/commands/workspaceWrites';
+import { useDiskWorkspace } from './diskWorkspace';
+
+/**
+ * In the extension host the suites run against VS Code; under the e2e
+ * stand-in, against a workspace on disk modeled on it.
+ */
+function onDisk(): void {
+  let putBack: () => void = () => undefined;
+  suiteSetup(() => {
+    putBack = useDiskWorkspace();
+  });
+  suiteTeardown(() => putBack());
+}
 
 suite('Workspace writes', () => {
+  onDisk();
+
   test('shows a write that reaches more than one note', () => {
     assert.strictEqual(shouldPreview('severalNotes', 1), false);
     assert.strictEqual(shouldPreview('severalNotes', 2), true);
@@ -170,6 +185,55 @@ suite('Workspace writes', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('two writes made at once land one after the other, and an Undo takes back only the last', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.file(path.join(root.fsPath, 'note.md'));
+    await write(note, 'one\ntwo\n');
+    const history = new WorkspaceWriteHistory();
+
+    const first = new vscode.WorkspaceEdit();
+    first.replace(note, lineRange(0, 3, 3), ' #a');
+    const second = new vscode.WorkspaceEdit();
+    second.replace(note, lineRange(1, 3, 3), ' #b');
+    const [one, two] = await Promise.all([
+      history.write(first, { label: 'adding #a', preview: 'never' }),
+      history.write(second, { label: 'adding #b', preview: 'never' }),
+    ]);
+    assert.ok(one.applied && two.applied);
+    assert.strictEqual(await read(note), 'one #a\ntwo #b\n');
+    assert.deepStrictEqual(
+      two.notes.map(({ before, after }) => ({ before, after })),
+      [{ before: 'one #a\ntwo\n', after: 'one #a\ntwo #b\n' }],
+      'the second write found the note as the first left it',
+    );
+    assert.strictEqual(one.handle.isLatest(), false);
+
+    const undone = await history.undo();
+    assert.strictEqual(undone?.label, 'adding #b');
+    assert.strictEqual(await read(note), 'one #a\ntwo\n', 'the first write stays');
+    await deleteTemporaryRoot(root);
+  });
+
+  test('an Undo asked for while a write is landing waits for it, and then takes nothing back', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.file(path.join(root.fsPath, 'note.md'));
+    await write(note, 'one\ntwo\n');
+    const history = new WorkspaceWriteHistory();
+    const first = new vscode.WorkspaceEdit();
+    first.replace(note, lineRange(0, 3, 3), ' #a');
+    const written = await history.write(first, { label: 'adding #a', preview: 'never' });
+    assert.ok(written.applied);
+
+    const second = new vscode.WorkspaceEdit();
+    second.replace(note, lineRange(1, 3, 3), ' #b');
+    const later = history.write(second, { label: 'adding #b', preview: 'never' });
+    assert.strictEqual(await written.handle.undo(), undefined, 'the write it was for is no longer the last');
+    await later;
+    assert.strictEqual(await read(note), 'one #a\ntwo #b\n');
+    assert.strictEqual(history.lastWrite?.label, 'adding #b');
+    await deleteTemporaryRoot(root);
+  });
+
   test('a write\'s saves are marked as Deckard\'s own, for the index', async () => {
     const root = await createTemporaryRoot();
     const note = vscode.Uri.joinPath(root, 'note.md');
@@ -186,6 +250,8 @@ suite('Workspace writes', () => {
 });
 
 suite('An Undo offered on a message', () => {
+  onDisk();
+
   const WRITTEN_SINCE = 'Deckard has changed your notes again since, so use Deckard: Undo Last Change.';
 
   /** A write to one note, as the history keeps it; nothing on disk. */
