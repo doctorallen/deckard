@@ -16,6 +16,7 @@ import {
   PARSE_FORMAT,
 } from '../../domain/markdown/parser';
 import { findWorkspaceFolderByKey, readFolderSetting, workspaceFolderKey } from '../../shared/paths';
+import { decodeUtf8Text } from '../../shared/text';
 import { reportError } from '../../shared/timing';
 import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
 import { ParsedFile, UnreadableNote } from '../../domain/model';
@@ -215,7 +216,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       this.access.readFile(uri),
       this.metadataFor(uri, stamp),
     ]);
-    const content = Buffer.from(bytes).toString('utf8');
+    const content = decodeUtf8Text(bytes);
     return parseMarkdown(
       this.getFilePath(uri, workspaceFolder),
       content,

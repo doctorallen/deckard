@@ -8,6 +8,7 @@ import {
   ScanCounts,
   SearchStore,
 } from '../storage/searchStore';
+import { UTF8_BOM_BYTES } from '../../shared/text';
 import { measure, measureAsync, reportError } from '../../shared/timing';
 import type { ChangeTarget, QueuedChange } from './changeWatcher';
 import type { IndexContents, IndexScanStatus, IndexSearch, RefreshOptions } from './indexReader';
@@ -719,16 +720,18 @@ function describeUpdate(changes: readonly NoteChange[]): (index: WorkspaceIndex)
 
 /**
  * The note as already parsed, when the file is still as it was then: same
- * saved time, created time, and size.
+ * saved time, created time, and size. The text is read without a byte order
+ * mark, so a file with one is three bytes longer than the text.
  */
 function reuseUnchanged(
   file: ParsedFile | undefined,
   stamp: FileStamp,
 ): ParsedFile | undefined {
+  const bytes = file ? Buffer.byteLength(file.content, 'utf8') : 0;
   return file &&
     file.fileTimes?.updatedAt === stamp.mtime &&
     file.fileTimes.createdAt === stamp.ctime &&
-    Buffer.byteLength(file.content, 'utf8') === stamp.size
+    (stamp.size === bytes || stamp.size === bytes + UTF8_BOM_BYTES)
     ? file
     : undefined;
 }

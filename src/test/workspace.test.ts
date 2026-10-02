@@ -388,6 +388,40 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(scanner.getUri('notes (2)/plan.md')?.toString(), personalPlan.toString());
   });
 
+  test('reads a note saved with a byte order mark as if it had none, and does not reread it unchanged', async () => {
+    const workspaceUri = fileUri('/tmp/deckard-bom');
+    const noteUri = joinUri(workspaceUri, 'plan.md');
+    const bytes = Buffer.concat([
+      Buffer.from([0xef, 0xbb, 0xbf]),
+      Buffer.from('# Launch plan #project/atlas\n- [ ] Book the room\n', 'utf8'),
+    ]);
+    let reads = 0;
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: [{ uri: workspaceUri, name: 'w', index: 0 }],
+      findFiles: async () => [noteUri],
+      readFile: async () => {
+        reads += 1;
+        return bytes;
+      },
+      stat: async () => ({ type: FileType.File, ctime: 1, mtime: 1000, size: bytes.length }),
+    }));
+    const indexer = createWorkspaceIndex({ scanner });
+    try {
+      await indexer.refresh();
+      const [file] = indexer.getSnapshot().files.values();
+      assert.ok(!file.content.startsWith('\uFEFF'), 'the mark is not part of the text');
+      assert.deepStrictEqual(file.sections.map((section) => [section.heading, section.headingLevel]), [
+        ['Launch plan #project/atlas', 1],
+      ]);
+      assert.ok(indexer.getSnapshot().tags.has('#project/atlas'));
+      reads = 0;
+      await indexer.refresh();
+      assert.strictEqual(reads, 0, 'a rescan reads no note that has not changed');
+    } finally {
+      indexer.dispose();
+    }
+  });
+
   test('leaves the templates folder out of the notes', async () => {
     const workspaceUri = fileUri('/tmp/deckard-scanner');
     const noteUri = joinUri(workspaceUri, 'case.md');
