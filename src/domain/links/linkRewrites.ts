@@ -2,6 +2,7 @@ import { stripTags } from '../markdown/parser';
 import { WorkspaceIndex } from '../model';
 import {
   createNoteTitleMap,
+  findLinkedSection,
   normalizeHeading,
   noteTitle,
   resolveWikiTarget,
@@ -33,9 +34,13 @@ export interface LinkRewrite {
   text: string;
 }
 
-/** A heading being renamed: the note it is in, its text now, and its new text. */
+/**
+ * A heading being renamed: the note it is in, the one-based line it is on,
+ * its text now, and its new text.
+ */
 export interface HeadingRename {
   filePath: string;
+  startLine: number;
   from: string;
   to: string;
 }
@@ -89,6 +94,11 @@ export function planNoteRenameRewrites(
  * Rewrites every link that names one heading of one note, so the links follow
  * the heading's new text. A link to the note itself, without a `#`, already
  * points where it should and is left alone.
+ *
+ * A link names a heading by its words, and opens the first heading in the
+ * note with them. When the heading renamed is a later one with the same
+ * words, no link opens it, and none is rewritten: each still opens the
+ * first.
  */
 export function planHeadingRenameRewrites(
   index: WorkspaceIndex,
@@ -98,6 +108,10 @@ export function planHeadingRenameRewrites(
   const wanted = normalizeHeading(rename.from);
   const next = stripTags(rename.to).replace(/\s+/g, ' ').trim();
   if (!wanted || !next || wanted === normalizeHeading(rename.to)) {
+    return [];
+  }
+  const file = index.files.get(rename.filePath);
+  if (file && findLinkedSection(file, rename.from)?.startLine !== rename.startLine) {
     return [];
   }
   const titles = createNoteTitleMap(index);

@@ -169,7 +169,7 @@ export class LinkService<U extends ResourceUri> {
     request: HeadingRenameRequest<U>,
   ): Promise<HeadingRenamePlan<U>> {
     const { index, filePath, uri, text } = request;
-    const rename: HeadingRename = { filePath, from: request.from, to: request.to };
+    const rename: HeadingRename = { filePath, startLine: request.section.startLine, from: request.from, to: request.to };
     const rewrites = planHeadingRenameRewrites(index, rename, (path) =>
       path === filePath ? text : index.files.get(path)?.content,
     );
