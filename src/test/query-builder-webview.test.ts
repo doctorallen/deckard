@@ -147,6 +147,21 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.countRows(), 3);
   });
 
+  test('keeps a value being typed in a row across an unrelated refresh', () => {
+    const view = mountTagOverview();
+    view.send(createState());
+    view.click({ action: 'toggle-builder' });
+    const row = { dataset: { action: 'builder-set-value', path: '0' } };
+    view.type(row, '#project/atlas-two');
+
+    // An index update re-sends the same query while the value is typed and
+    // not yet committed.
+    view.send(createState());
+
+    const value = view.find('[data-action="builder-set-value"][data-path="0"]') as HTMLInputElement;
+    assert.strictEqual(value.value, '#project/atlas-two');
+  });
+
   test('rebuilds its rows when the query changes elsewhere', () => {
     const view = mountTagOverview();
     view.send(createState());

@@ -1560,13 +1560,14 @@ class SearchBox implements QueryEditor {
       return true;
     }
     if (target.dataset.action === 'builder-set-value') {
-      if (target.dataset.pending) {
-        const tree = this.builderTree();
-        const row = this.rowAt(tree, target);
-        if (row) {
-          row.value = target.value;
-          this.builderDraft = tree;
-        }
+      // The draft keeps what is typed in every row, a new one or not, so a
+      // draw before the row is committed, such as an index update's, puts
+      // the same text back rather than the value the host last parsed.
+      const tree = this.builderTree();
+      const row = this.rowAt(tree, target);
+      if (row) {
+        row.value = target.value;
+        this.builderDraft = tree;
       }
       this.openSuggestions(target);
       return true;
