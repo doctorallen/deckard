@@ -493,6 +493,30 @@ test('a snapshot that arrives mid-drag leaves one of each widget once the drop i
   assert.strictEqual(view.findAll('.drag-placeholder, .drag-ghost').length, 0);
 });
 
+test('the Tasks view widget reaches as far ahead as the Tasks view, at most 90 days', async () => {
+  const day = (offset) => {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const note = parseMarkdown(
+    'notes/plan.md',
+    `# Plan\n- [ ] Near task 📅 ${day(3)}\n- [ ] Far task 📅 ${day(120)}\n`,
+    { createdAt: 1, updatedAt: 2 },
+    {},
+  );
+  // Outside the manifest's 1 to 90, which VS Code only warns about.
+  vscode._test.settings.set('deckard.agenda.upcomingDays', 365);
+  try {
+    const { view } = await openDashboard(buildWorkspaceIndex(new Map([[note.filePath, note]])));
+    const groups = view.findAll('.home-widget[data-widget-id="agenda"] .home-widget-group').map((heading) => heading.textContent);
+    // The far task is Later, past the 90 days Upcoming reaches in the Tasks view.
+    assert.deepStrictEqual(groups, ['Upcoming 1', 'Later 1']);
+  } finally {
+    vscode._test.settings.delete('deckard.agenda.upcomingDays');
+  }
+});
+
 test('the tiles say what is overdue, due today, and open, and each opens its search', async () => {
   const { view, navigation } = await openDashboard();
   const tiles = view.findAll('.metrics .metric-open');

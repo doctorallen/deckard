@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { listedParkedTags } from '../../../../domain/index/parked';
+import { readAgendaQuery, readUpcomingDays } from '../../../../domain/tasks/agendaGroups';
 import type { DashboardColumnCount, DashboardMode, PersistedPreferences } from '../../../../domain/model/preferences';
 import type { WorkspaceIndex } from '../../../../domain/model';
 import type { QueryContext } from '../../../../domain/query/queryContext';
@@ -179,7 +180,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         index,
         preferences: viewPreferences,
         tagTitleDisplayMode,
-        agendaQuery: configuration.get<string>('agenda.query', ''),
+        agendaQuery: readAgendaQuery(configuration),
         queryContext,
       }),
       homeArranged: !isDefaultHomeLayout(blob.dashboardWidgets),
@@ -603,10 +604,12 @@ export class DashboardController implements PageController<DashboardPageState, D
     },
   ): DashboardSnapshot['widgets'] {
     const { queryContext, tagTitleDisplayMode, tryNext } = reading;
+    // The agenda's settings are read as the Tasks view reads them, so its
+    // widget lists what the view does, however they were written.
     return createDashboardWidgets(index, viewPreferences, {
       queryContext,
-      upcomingDays: configuration.get<number>('agenda.upcomingDays', 7),
-      agendaQuery: configuration.get<string>('agenda.query', ''),
+      upcomingDays: readUpcomingDays(configuration),
+      agendaQuery: readAgendaQuery(configuration),
       tagTitleDisplayMode,
       sourceNotePath: this.getSourceNotePath(),
       ...(tryNext ? { tryNext } : {}),
