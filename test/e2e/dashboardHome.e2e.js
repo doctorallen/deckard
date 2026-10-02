@@ -634,6 +634,21 @@ test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
   assert.deepStrictEqual(shownTags(), ['#follow-up'], 'None leaves people out');
 });
 
+test('a tag search finds a tag by the name its row shows', async () => {
+  const note = parseMarkdown('notes/alpha.md', '# Alpha #follow-up #person/mara-vale #atlas\nBody text.', { createdAt: 1, updatedAt: 2 }, {});
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view } = await openDashboard(index);
+  view.click(view.find('[data-dashboard-mode="browse"]'));
+  await delay(20);
+  const shownTags = () => view.findAll('.tag-row').map((row) => row.dataset.tagKey);
+  view.type(view.find('[data-action="search-browse"]'), 'follow up');
+  assert.deepStrictEqual(shownTags(), ['#follow-up']);
+  view.type(view.find('[data-action="search-browse"]'), 'mara vale');
+  assert.deepStrictEqual(shownTags(), ['#person/mara-vale']);
+  view.type(view.find('[data-action="search-browse"]'), 'follow-up');
+  assert.deepStrictEqual(shownTags(), ['#follow-up'], 'and as it is written');
+});
+
 test('nested tags in one namespace are named apart in the Tags tab', async () => {
   const note = parseMarkdown(
     'notes/alpha.md',

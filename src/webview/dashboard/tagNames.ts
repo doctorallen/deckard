@@ -31,6 +31,15 @@ export function formatTagDisplay(tag: DashboardTag): { name: string; namespace: 
   return { name: name || label, namespace };
 }
 
+/**
+ * What a tag search matches, in lower case: the tag as written, and as its
+ * row shows it, so "follow up" finds #follow-up, which reads "follow up".
+ */
+function searchedText(tag: DashboardTag): string {
+  const display = formatTagDisplay(tag);
+  return `${tag.label} ${tag.key} ${display.name} ${display.namespace}`.toLowerCase();
+}
+
 /** What the Tags tab shows of its tags, for a search and a namespace filter. */
 export interface TagFilter {
   /** The namespaces the tags are written under, A to Z. */
@@ -61,7 +70,7 @@ export function filterTags(tags: readonly DashboardTag[], search: string, namesp
   const wanted = activeNamespace === NO_TAG_NAMESPACE ? '' : activeNamespace;
   const shown = tags.filter((tag) =>
     (!activeNamespace || tagNamespaceOf(tag) === wanted) &&
-    (!query || `${tag.label} ${tag.key}`.toLowerCase().includes(query)));
+    (!query || searchedText(tag).includes(query)));
   let namespaceLabel = '';
   if (activeNamespace) {
     namespaceLabel = activeNamespace === NO_TAG_NAMESPACE ? 'None' : formatKeyWords(activeNamespace);
