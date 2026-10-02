@@ -40,14 +40,24 @@ const KNOWN = new Set([]);
 /**
  * Controls whose only content is an icon, by selector. WCAG asks 3:1 of
  * the icon against what it is drawn on (1.4.11), and the text check never
- * sees it. Only these are checked so far: the calendar's week mark, whose
- * icon LCARS once drew in its buttons' black on the calendar's own black.
+ * sees it. Each is measured at rest and hovered. Only these are checked
+ * so far: the calendar's week mark, whose icon LCARS once drew in its
+ * buttons' black on the calendar's own black.
  */
 const ICON_CONTROLS = ['.week-label'];
+
+/**
+ * Controls whose words are measured hovered as well as at rest, by
+ * selector: the sidebar calendar's days, where the theme's hover ground
+ * meets the muted ink of a day outside the month.
+ */
+const HOVERED_TEXT = ['.day'];
 
 /** What the page measures about its own colors, written for the dump. */
 const PROBE = `
 (function () {
+  // The class a hovered run puts in place of :hover; see below.
+  const hoverClass = 'contrast-probe-hover';
   function parse(value) {
     const m = /rgba?\\(([^)]+)\\)/.exec(value || '');
     if (!m) return null;
@@ -87,7 +97,11 @@ const PROBE = `
     return value;
   }
   function name(el) {
-    const own = function (node) { return node.tagName.toLowerCase() + (node.classList.length ? '.' + [...node.classList].slice(0, 3).join('.') : ''); };
+    // The class that stands in for :hover is the probe's, not the page's.
+    const own = function (node) {
+      const classes = [...node.classList].filter(function (c) { return c !== hoverClass; });
+      return node.tagName.toLowerCase() + (classes.length ? '.' + classes.slice(0, 3).join('.') : '');
+    };
     // Two ancestors say where it is: a tag in a card, a count in a facet.
     const above = [el.parentElement, el.parentElement && el.parentElement.parentElement].filter(function (node) { return node && node !== document.body; });
     return above.reverse().map(own).concat(own(el)).join(' > ');
@@ -100,16 +114,17 @@ const PROBE = `
   }
   const failures = [];
   const seen = new Set();
-  // Text: each element that holds words of its own.
-  for (const el of document.querySelectorAll('body *')) {
-    if (el.closest('[aria-hidden="true"], #layout-probe, script, style, svg, [hidden]')) continue;
+  // The colors of an element's own words against what is behind them, in a
+  // state: 'rest', or 'hovered' with the pointer over the element.
+  function checkText(el, state) {
+    if (el.closest('[aria-hidden="true"], #layout-probe, script, style, svg, [hidden]')) return;
     // A control that cannot be used is exempt, as WCAG has it.
-    if (el.closest('[disabled], [aria-disabled="true"]')) continue;
+    if (el.closest('[disabled], [aria-disabled="true"]')) return;
     const own = [...el.childNodes].some(function (n) { return n.nodeType === 3 && n.textContent.trim(); });
-    if (!own || !shown(el)) continue;
+    if (!own || !shown(el)) return;
     const style = getComputedStyle(el);
     const fg = parse(style.color);
-    if (!fg) continue;
+    if (!fg) return;
     const bg = ground(el);
     const alpha = fg.a * opacity(el);
     const drawn = over({ r: fg.r, g: fg.g, b: fg.b, a: alpha }, bg);
@@ -119,12 +134,31 @@ const PROBE = `
     const needed = large ? 3 : 4.5;
     const value = ratio(drawn, bg);
     if (value + 0.005 < needed) {
-      const key = name(el) + style.color + '|' + bg.r + ',' + bg.g + ',' + bg.b;
-      if (seen.has(key)) continue;
+      const key = state + name(el) + style.color + '|' + bg.r + ',' + bg.g + ',' + bg.b;
+      if (seen.has(key)) return;
       seen.add(key);
-      failures.push({ kind: 'text', el: name(el), text: el.textContent.trim().slice(0, 30), ratio: +value.toFixed(2), needed, size, fg: style.color, bg: 'rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(', ') + ')' });
+      failures.push({ kind: 'text', state, el: name(el), text: el.textContent.trim().slice(0, 30), ratio: +value.toFixed(2), needed, size, fg: style.color, bg: 'rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(', ') + ')' });
     }
   }
+  // An icon that is a control's only content: what draws its shape, its
+  // stroke or else its fill, against the ground under the control.
+  function checkIcon(el, state) {
+    const shape = el.querySelector('svg');
+    if (!shape || !shown(el) || el.closest('[aria-hidden="true"], [hidden]')) return;
+    const style = getComputedStyle(shape);
+    const paint = parse(style.stroke) || parse(style.fill);
+    if (!paint) return;
+    const bg = ground(el);
+    const value = ratio(over({ r: paint.r, g: paint.g, b: paint.b, a: paint.a * opacity(shape) }, bg), bg);
+    if (value + 0.005 < 3) {
+      const key = state + name(el) + (style.stroke || style.fill) + '|' + bg.r + ',' + bg.g + ',' + bg.b;
+      if (seen.has(key)) return;
+      seen.add(key);
+      failures.push({ kind: 'icon', state, el: name(el), ratio: +value.toFixed(2), needed: 3, fg: parse(style.stroke) ? style.stroke : style.fill, bg: 'rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(', ') + ')' });
+    }
+  }
+  // Text: each element that holds words of its own.
+  for (const el of document.querySelectorAll('body *')) checkText(el, 'rest');
   // Text fields: the edge, or the fill, must stand out from the ground.
   for (const el of document.querySelectorAll('input[type="text"], input[type="search"], select, textarea, .query-bar-shell')) {
     if (!shown(el) || el.closest('[aria-hidden="true"], [hidden]')) continue;
@@ -143,22 +177,29 @@ const PROBE = `
       failures.push({ kind: 'edge', el: name(el), ratio: +best.toFixed(2), needed: 3, fg: style.borderBottomColor, bg: 'rgb(' + [outside.r, outside.g, outside.b].map(Math.round).join(', ') + ')' });
     }
   }
-  // An icon that is a control's only content: what draws its shape, its
-  // stroke or else its fill, against the ground under the control.
-  for (const el of document.querySelectorAll(${JSON.stringify(ICON_CONTROLS.join(', '))})) {
-    const shape = el.querySelector('svg');
-    if (!shape || !shown(el) || el.closest('[aria-hidden="true"], [hidden]')) continue;
-    const style = getComputedStyle(shape);
-    const paint = parse(style.stroke) || parse(style.fill);
-    if (!paint) continue;
-    const bg = ground(el);
-    const value = ratio(over({ r: paint.r, g: paint.g, b: paint.b, a: paint.a * opacity(shape) }, bg), bg);
-    if (value + 0.005 < 3) {
-      const key = name(el) + (style.stroke || style.fill);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      failures.push({ kind: 'icon', el: name(el), ratio: +value.toFixed(2), needed: 3, fg: parse(style.stroke) ? style.stroke : style.fill, bg: 'rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(', ') + ')' });
+  const icons = ${JSON.stringify(ICON_CONTROLS.join(', '))};
+  for (const el of document.querySelectorAll(icons)) checkIcon(el, 'rest');
+  // Hovered: :hover cannot be forced from a script, so every :hover rule is
+  // rewritten to match a class, as the layout check does, and the class is
+  // put on one control at a time and on everything it sits in, since the
+  // pointer over a control is over those too.
+  (function rewrite(rules) {
+    for (const rule of rules) {
+      if (rule.selectorText && rule.selectorText.includes(':hover')) {
+        rule.selectorText = rule.selectorText.split(':hover').join('.' + hoverClass);
+      }
+      if (rule.cssRules) rewrite(rule.cssRules);
     }
+  })([...document.styleSheets].flatMap(function (sheet) { try { return [...sheet.cssRules]; } catch (error) { return []; } }));
+  const hovered = ${JSON.stringify([...HOVERED_TEXT, ...ICON_CONTROLS].join(', '))};
+  for (const el of document.querySelectorAll(hovered)) {
+    if (el.closest('[disabled], [aria-disabled="true"]')) continue;
+    const path = [];
+    for (let node = el; node && node.nodeType === 1; node = node.parentElement) path.push(node);
+    path.forEach(function (node) { node.classList.add(hoverClass); });
+    if (el.matches(icons)) checkIcon(el, 'hovered');
+    else [el, ...el.querySelectorAll('*')].forEach(function (node) { checkText(node, 'hovered'); });
+    path.forEach(function (node) { node.classList.remove(hoverClass); });
   }
   const pre = document.createElement('pre');
   pre.id = 'layout-probe';
@@ -187,7 +228,7 @@ function surfaceFailures(file, surface, theme) {
 function describeFailure(failure) {
   return failure.kind === 'error'
     ? `         ${failure.el}`
-    : `         ${failure.kind} ${failure.el}${failure.text ? ` "${failure.text}"` : ''} ${failure.ratio} < ${failure.needed}: ${failure.fg} on ${failure.bg}${failure.size ? `, ${failure.size}px` : ''}`;
+    : `         ${failure.kind}${failure.state && failure.state !== 'rest' ? ` (${failure.state})` : ''} ${failure.el}${failure.text ? ` "${failure.text}"` : ''} ${failure.ratio} < ${failure.needed}: ${failure.fg} on ${failure.bg}${failure.size ? `, ${failure.size}px` : ''}`;
 }
 
 /**

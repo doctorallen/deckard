@@ -52,3 +52,6 @@ button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, 
 /* The Notes Graph's status line sits on the darkest parchment, where the
    muted ink read at 4.43:1; one step deeper, it reads at 4.76:1. */
 .status-line { color: #505739; }
+/* A day outside the month, hovered, sits on the green hover ground, where
+   the muted olive read at 1.14:1; it takes the page's parchment, 4.56:1. */
+.day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--bg); }

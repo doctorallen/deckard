@@ -95,3 +95,7 @@ input[type="checkbox"], .task input { accent-color: var(--vscode-button-backgrou
 .tag-open:hover, .inline-tag:hover, .task-title .inline-tag:hover { border-color: transparent; background: var(--vscode-list-hoverBackground); color: var(--vscode-textLink-activeForeground); }
 .query-suggestion:hover, .query-suggestion.active { background: var(--vscode-list-hoverBackground); color: var(--vscode-foreground); }
 .zoom-controls button, .zoom-readout, .reset-graph-settings { background: var(--vscode-editorWidget-background); }
+/* A day outside the month, hovered, sits on the button's hover ground, where
+   VS Code's description ink read at 4.07:1 in Dark Modern; it takes the
+   button's own hover ink, as a day in the month does: 6.9:1. */
+.day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--vscode-button-secondaryForeground); }

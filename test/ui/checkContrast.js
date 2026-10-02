@@ -860,8 +860,10 @@ const path = require('node:path');
  * were the calendar's day and week buttons, written `background: none`,
  * which the model read as no background declared, handing them the
  * theme's `button` fill; `backgroundOf` reads it as transparent, as the
- * browser does. This model reads no icons, so the calendar's are
- * measured as drawn, in checkRenderedContrast.js.
+ * browser does. This model reads no icons, and it settles a hovered
+ * element's color by its state before its specificity, so the calendar's
+ * icons and a hovered day outside the month are measured as drawn, in
+ * checkRenderedContrast.js.
  */
 const BASELINE = path.join(__dirname, 'contrast-baseline.json');
 /** The element shapes frozen from the page text; see contrastShapes. */
