@@ -9,7 +9,7 @@
  */
 import { HOME_WIDGET_LIMIT, isWatchableNamespace, isWidgetKind, WIDGET_ENTRY_COUNTS, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import { legacyIdOf } from '../../domain/markdown/parser';
-import { isTaskColumnId } from '../../domain/tasks/taskColumns';
+import { isBoardNamespace, isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
   DashboardColumnCount,
   DashboardViewState,
@@ -876,11 +876,6 @@ export function normalizeTableSort(value: unknown): TableSort | undefined {
   return isTaskColumnId(column)
     ? { column, direction: direction === 'desc' ? 'desc' : 'asc' }
     : undefined;
-}
-
-/** A namespace the board can group by: `project`, `context`. */
-export function isBoardNamespace(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-z][a-z0-9_-]*$/.test(value.toLowerCase());
 }
 
 /** The id-keyed preferences `carryLegacyIds` renames. */

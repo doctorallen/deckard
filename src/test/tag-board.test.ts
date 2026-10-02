@@ -81,6 +81,11 @@ suite('The Task board grouped by a tag namespace', () => {
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'Context' }), ['tag', 'context']);
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag' }), ['status', undefined]);
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: '1 bad' }), ['status', undefined]);
+    assert.deepStrictEqual(
+      read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'Équipe' }),
+      ['tag', 'équipe'],
+      'a namespace in any script, as the page sends one',
+    );
   });
 
   suite('on the page', () => {

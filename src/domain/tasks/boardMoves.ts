@@ -1,7 +1,7 @@
 import { escapeRegExp } from '../../shared/text';
 import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
 import { findCodeAndLinkRanges, isInRanges } from '../markdown/inlineRanges';
-import { parseMarkdown, readPerson } from '../markdown/parser';
+import { parseMarkdown, readPerson, TAG_WORD_CHARACTERS } from '../markdown/parser';
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
@@ -268,7 +268,9 @@ export function setTaskNamespaceTags(
   let text = line.slice(checkboxColumn + 2);
   let placed = change.add === undefined;
   change.remove.forEach((label) => {
-    const pattern = new RegExp(`[ \\t]+${escapeRegExp(label)}(?![A-Za-z0-9_/-])`, 'gi');
+    // A tag that goes on past the label, such as `#project/café` past
+    // `#project/caf`, is another tag and stays.
+    const pattern = new RegExp(`[ \\t]+${escapeRegExp(label)}(?![${TAG_WORD_CHARACTERS}/-])`, 'giu');
     const skipped = findCodeAndLinkRanges(text);
     text = text.replace(pattern, (match, offset: number) => {
       if (isInRanges(skipped, offset)) {
@@ -301,8 +303,8 @@ export function setTaskStatusTag(
   const text = line.slice(checkboxColumn + 2);
   const tag = `#${namespace}/${status ?? ''}`;
   const pattern = new RegExp(
-    `[ \\t]+#${escapeRegExp(namespace)}/[A-Za-z0-9][A-Za-z0-9_-]*(?![A-Za-z0-9_/-])`,
-    'gi',
+    `[ \\t]+#${escapeRegExp(namespace)}/[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*(?![${TAG_WORD_CHARACTERS}/-])`,
+    'giu',
   );
   let written = false;
   const skipped = findCodeAndLinkRanges(text);

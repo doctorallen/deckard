@@ -147,6 +147,32 @@ suite('Task rules', () => {
     assert.strictEqual(readTaskStatus(task('- [ ] Plan #Status/Doing'), 'status'), 'doing');
   });
 
+  test('reads and writes a status or a namespace tag in any script, as tags are', () => {
+    const line = '- [ ] Plan #status/à-faire #project/café';
+    assert.strictEqual(readTaskStatus(task(line), 'status'), 'à-faire');
+    assert.strictEqual(
+      apply(resolveTaskMove(task(line), 'status:à-faire', options, noTags), line),
+      'unchanged',
+      'a status in any script is a column a card can be dropped on',
+    );
+    assert.strictEqual(
+      apply(resolveTaskMove(task(line), 'status:doing', options, noTags), line),
+      '- [ ] Plan #status/doing #project/café',
+    );
+    assert.strictEqual(
+      apply(resolveTaskMove(task('- [ ] Plan #status/todo'), 'status:été', options, noTags), '- [ ] Plan #status/todo'),
+      '- [ ] Plan #status/été',
+    );
+    // An accented status is taken whole, not cut short at its first accent.
+    assert.strictEqual(setTaskStatusTag('- [ ] Plan #status/café', 3, 'status', 'doing'), '- [ ] Plan #status/doing');
+    assert.strictEqual(setTaskStatusTag('- [ ] Plan #état/prêt', 3, 'état', undefined), '- [ ] Plan');
+    // A label that is the start of a longer tag leaves that tag alone.
+    assert.strictEqual(
+      setTaskNamespaceTags('- [ ] Plan #project/caf #project/café', 3, { remove: ['#project/caf'], add: '#project/x' }),
+      '- [ ] Plan #project/x #project/café',
+    );
+  });
+
   test('bands a due date the way the board draws it', () => {
     const context = createQueryContext(now);
     assert.strictEqual(getDueBand(undefined, context), '');
