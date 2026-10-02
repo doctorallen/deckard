@@ -165,13 +165,11 @@ export async function setTaskDateField(
     writes,
     task,
     (line, { uri }) =>
-      setTaskDate(
-        line,
-        task.checkboxColumn,
+      setTaskDate(line, task.checkboxColumn, {
         field,
         date,
-        readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
-      ),
+        preferredFormat: readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
+      }),
     describeDateChange(quoteTaskTitle(task), field, date),
   );
 }
@@ -209,13 +207,11 @@ export async function setTasksDue(
       writes,
       task,
       (line, { uri }) =>
-        setTaskDate(
-          line,
-          task.checkboxColumn,
-          'due',
+        setTaskDate(line, task.checkboxColumn, {
+          field: 'due',
           date,
-          readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
-        ),
+          preferredFormat: readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
+        }),
       describeDateChange(quoteTaskTitle(task), 'due', date),
     );
     return;

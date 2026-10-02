@@ -106,7 +106,7 @@ export function resolveTaskMove(
   const value = separator < 0 ? '' : columnId.slice(separator + 1);
   const column = task.checkboxColumn;
   const reopen = (line: string): string =>
-    task.completed ? setTaskLineCompletion(line, column, false) : line;
+    task.completed ? setTaskLineCompletion(line, column, { completed: false }) : line;
 
   if (kind === 'tag') {
     return moveToTag(value, reopen);
@@ -183,7 +183,7 @@ function moveToDue(request: MoveRequest): TaskMove {
       kind: 'edit',
       label: value === 'today' ? 'Due today' : 'Due tomorrow',
       edit: (line) =>
-        setTaskDate(reopen(line), column, 'due', date, options.format),
+        setTaskDate(reopen(line), column, { field: 'due', date, preferredFormat: options.format }),
     };
   }
   if (value === '') {
@@ -197,7 +197,7 @@ function moveToDue(request: MoveRequest): TaskMove {
     return {
       kind: 'edit',
       label: 'No due date',
-      edit: (line) => setTaskDate(reopen(line), column, 'due', undefined),
+      edit: (line) => setTaskDate(reopen(line), column, { field: 'due', date: undefined }),
     };
   }
   return refuseMove(
@@ -215,7 +215,11 @@ function moveToDate({ task, value, options, reopen }: MoveRequest): TaskMove {
   return {
     kind: 'edit',
     label: `Due ${weekday} ${value}`,
-    edit: (line) => setTaskDate(reopen(line), task.checkboxColumn, 'due', value, options.format),
+    edit: (line) => setTaskDate(reopen(line), task.checkboxColumn, {
+      field: 'due',
+      date: value,
+      preferredFormat: options.format,
+    }),
   };
 }
 

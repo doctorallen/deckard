@@ -241,7 +241,7 @@ export function writeEditedTask({ before, edited, now, eol, steps = [] }: Edited
   if (before.completed || !edited.completed) {
     return { text: line };
   }
-  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol, steps);
+  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, { now, eol, steps });
 }
 
 /** A draft, the date field to set on it, and the words written for it. */

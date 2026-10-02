@@ -259,5 +259,5 @@ export function readStepsForNextOccurrence(lines: readonly string[], lineIndex: 
  */
 export function resetStepLine(line: string): string {
   const column = findCheckboxColumn(line);
-  return column < 0 ? line : setTaskLineCompletion(line, column, false);
+  return column < 0 ? line : setTaskLineCompletion(line, column, { completed: false });
 }
