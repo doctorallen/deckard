@@ -486,3 +486,74 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   }
 });
 
+
+test("Add's Undo says so when VS Code does not accept it", async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/today.md', '# Thursday\nThe northern route audit found Northwind late on deliveries again.'),
+    note('notes/audit.md', '# Northwind audit #risk/vendor\nNorthwind deliveries on the northern route are late.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = {
+    ready: Promise.resolve(),
+    getSnapshot: () => index,
+    getFilePath: (uri) => uri.fsPath,
+    onDidUpdate: new vscode.EventEmitter().event,
+    refresh: async () => undefined,
+  };
+  /** A note's editor document over lines a test can change. */
+  const createDocument = (lines) => ({
+    uri: vscode.Uri.file('notes/today.md'),
+    languageId: 'markdown',
+    lineCount: lines.length,
+    getText: () => lines.join('\n'),
+    lineAt: (line) => ({ text: lines[line], range: new vscode.Range(line, 0, line, lines[line].length) }),
+  });
+  const lines = ['# Thursday', 'The northern route audit found Northwind late on deliveries again.'];
+  vscode.window.activeTextEditor = { document: createDocument(lines), selection: { active: { line: 0 } } };
+  // The note as Undo finds it: with the tag Add wrote.
+  const { openTextDocument } = vscode.workspace;
+  vscode.workspace.openTextDocument = () => Promise.resolve(createDocument(['# Thursday #risk/vendor', lines[1]]));
+  // VS Code accepts the tag, then refuses the edit that takes it back.
+  const history = new WorkspaceWriteHistory();
+  const labels = [];
+  history.write = async (_edit, options) => {
+    labels.push(options.label);
+    return labels.length === 1 ? { applied: true, notes: [], handle: {} } : { applied: false, notes: [] };
+  };
+  const { showInformationMessage } = vscode.window;
+  vscode.window.showInformationMessage = (message, ...buttons) => {
+    vscode._test.shown.info.push(message);
+    return Promise.resolve(buttons.includes('Undo') ? 'Undo' : undefined);
+  };
+  vscode._test.shown.error.length = 0;
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences: createPreferences(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history,
+    themePreview: new ThemePreview(),
+  });
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  try {
+    await settle();
+    view.click(view.find('.suggested-tag-add[data-suggested-tag="#risk/vendor"]'));
+    await settle();
+    assert.deepStrictEqual(labels, ['#risk/vendor on "Thursday"', 'taking #risk/vendor off "Thursday"']);
+    assert.deepStrictEqual(vscode._test.shown.error, [
+      'VS Code did not accept the undo in today.md, so the line keeps #risk/vendor. Check that the note is not read-only, then try again.',
+    ]);
+  } finally {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+    vscode.workspace.openTextDocument = openTextDocument;
+    vscode.window.showInformationMessage = showInformationMessage;
+  }
+});

@@ -38,6 +38,21 @@ class Position {
 }
 
 /**
+ * A workspace edit, as the host builds one. It only records its
+ * replacements, in order, since nothing here applies it: a test that writes
+ * gives the host a history of its own.
+ */
+class WorkspaceEdit {
+  constructor() {
+    this.replacements = [];
+  }
+
+  replace(uri, range, newText) {
+    this.replacements.push({ uri, range, newText });
+  }
+}
+
+/**
  * A selection, made from an anchor and an active position, or from their
  * four numbers, as VS Code's is.
  */
@@ -299,6 +314,7 @@ module.exports = {
   Range,
   Position,
   Selection,
+  WorkspaceEdit,
   DocumentLink,
   MarkdownString,
   ThemeColor,
