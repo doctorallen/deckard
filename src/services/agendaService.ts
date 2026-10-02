@@ -6,12 +6,12 @@ import {
   readAgendaGroupNamespace,
   readAgendaGrouping,
   readAgendaQuery,
-  readStatusNamespace,
   readUpcomingDays,
 } from '../domain/tasks/agendaGroups';
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
+import { readStatusNamespace } from '../domain/tasks/taskPolicy';
 import type { Configuration } from '../ports/configuration';
 import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
@@ -339,9 +339,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     return {
       queryContext,
       statuses: configuration.get<string[]>('board.statuses', []) ?? [],
-      statusNamespace:
-        configuration.get<string>('board.statusNamespace', 'status').trim() ||
-        'status',
+      statusNamespace: readStatusNamespace(configuration),
       format: readMetadataFormat(configuration),
     };
   }

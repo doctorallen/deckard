@@ -45,11 +45,6 @@ export function readUpcomingDays(settings: SettingsReader): number {
   return Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 1), 90) : 7;
 }
 
-/** The namespace a task's status is written in, from `deckard.board.statusNamespace`. */
-export function readStatusNamespace(settings: SettingsReader): string {
-  return settings.get<string>('board.statusNamespace', 'status').trim() || 'status';
-}
-
 /**
  * The Task board column a group means, when it means one.
  *

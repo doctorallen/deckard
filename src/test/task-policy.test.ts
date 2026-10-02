@@ -4,6 +4,7 @@ import {
   DEFAULT_TASK_POLICY,
   needsNewDate,
   readLineStatus,
+  readStatusNamespace,
 } from '../domain/tasks/taskPolicy';
 import { createAgenda } from '../ui/state/agendaState';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -62,6 +63,17 @@ suite('Task policy', () => {
     });
     assert.strictEqual(readLineStatus(task, DEFAULT_TASK_POLICY.statusNamespace), 'waiting');
     assert.strictEqual(readLineStatus(task, 'state'), '');
+  });
+
+  test('reads the status namespace once, for every view: trimmed, checked, and lowercased', () => {
+    const read = (value: unknown) =>
+      readStatusNamespace({ get: <T>(_key: string, fallback: T) => (value === undefined ? fallback : value) as T });
+    assert.strictEqual(read(undefined), 'status');
+    assert.strictEqual(read('Stage'), 'stage', 'tags are matched lowercased, so it is written lowercased');
+    assert.strictEqual(read('  phase_2 '), 'phase_2');
+    for (const value of ['', '  ', '#status', 'two words', '9lives', null, ['stage'], 7]) {
+      assert.strictEqual(read(value), 'status', JSON.stringify(value));
+    }
   });
 });
 

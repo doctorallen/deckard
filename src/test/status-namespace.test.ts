@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { createQueryContext } from '../domain/query/queryContext';
+import { readTaskPolicy } from '../ui/commands/queryContext';
 import { readTaskBoardOptions } from '../ui/commands/taskBoardActions';
 
 /**
@@ -19,6 +20,24 @@ suite('The status namespace setting', () => {
     for (const value of [null, ['doing'], 7, '']) {
       await write(value);
       assert.strictEqual(readTaskBoardOptions(createQueryContext(Date.now())).statusNamespace, 'status', JSON.stringify(value));
+    }
+  });
+
+  test('the board and every other view read it the same way, lowercased', async () => {
+    const cases: Array<[unknown, string]> = [
+      ['Status', 'status'],
+      [' Stage ', 'stage'],
+      ['#status', 'status'],
+      ['two words', 'status'],
+      [null, 'status'],
+    ];
+    for (const [value, expected] of cases) {
+      await write(value);
+      const read = {
+        board: readTaskBoardOptions(createQueryContext(Date.now())).statusNamespace,
+        policy: readTaskPolicy().statusNamespace,
+      };
+      assert.deepStrictEqual(read, { board: expected, policy: expected }, JSON.stringify(value));
     }
   });
 });

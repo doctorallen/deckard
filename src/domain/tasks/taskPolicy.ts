@@ -1,4 +1,5 @@
 import { Task } from '../model';
+import { isBoardNamespace } from './taskColumns';
 
 /**
  * How Deckard reads tasks, from settings.
@@ -27,6 +28,23 @@ export const DEFAULT_TASK_POLICY: Readonly<TaskPolicy> = {
   statusNamespace: 'status',
   onHoldStatuses: ['waiting', 'someday'],
 };
+
+/**
+ * The namespace a task's status is written in, from
+ * `deckard.board.statusNamespace`. Every view reads it here, so a status is
+ * read and written the same way from each: the Task Board used to lowercase
+ * it and check it against the setting's pattern while the Tasks view, the
+ * preview, Related Notes, and the task policy only trimmed it, so
+ * `Status` was written `#status/doing` from the board and `#Status/doing`
+ * from the Tasks view. Tags are matched by lowercased key everywhere, so it
+ * is lowercased. A value that is not a string, or does not fit the
+ * setting's pattern once trimmed, reads as `status`.
+ */
+export function readStatusNamespace(settings: { get<T>(key: string, defaultValue: T): T }): string {
+  const value = settings.get<unknown>('board.statusNamespace', DEFAULT_TASK_POLICY.statusNamespace);
+  const trimmed = typeof value === 'string' ? value.trim() : value;
+  return isBoardNamespace(trimmed) ? trimmed.toLowerCase() : DEFAULT_TASK_POLICY.statusNamespace;
+}
 
 /**
  * True for a due date more than the policy's `needsNewDateAfterDays` behind
