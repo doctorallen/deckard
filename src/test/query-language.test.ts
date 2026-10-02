@@ -100,6 +100,29 @@ suite('Deckard query language', () => {
     assert.match(parsed.diagnostics[0].message, /not a Deckard query field/);
   });
 
+  test('a field or value named after a property of every object is unknown like any other', () => {
+    const unknownField = parseQuery('color:x');
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      const parsed = parseQuery(`${name}:x`);
+      assert.strictEqual(parsed.node, undefined, name);
+      assert.deepStrictEqual(
+        parsed.diagnostics.map((diagnostic) => diagnostic.message),
+        unknownField.diagnostics.map((diagnostic) => diagnostic.message.replace('"color"', `"${name}"`)),
+        name,
+      );
+      for (const field of ['is', 'has', 'no', 'task', 'priority']) {
+        const unknownValue = parseQuery(`${field}:bogus`);
+        const value = parseQuery(`${field}:${name}`);
+        assert.strictEqual(value.node, undefined, `${field}:${name}`);
+        assert.deepStrictEqual(
+          value.diagnostics.map((diagnostic) => diagnostic.message),
+          unknownValue.diagnostics.map((diagnostic) => diagnostic.message.replace('"bogus"', `"${name}"`)),
+          `${field}:${name}`,
+        );
+      }
+    }
+  });
+
   test('reports an unclosed group', () => {
     const parsed = parseQuery('(tag:#a AND tag:#b');
     assert.strictEqual(parsed.node, undefined);
