@@ -2,6 +2,7 @@
  * A search page's protocol: the notes and tasks one search finds, a tag's
  * page when the search is one tag, and the messages the page sends.
  */
+import type { BlockToken } from '../../domain/model/blocks';
 import type { FrontmatterProperty } from '../../domain/model/notes';
 import type {
   DashboardColumnCount,
@@ -143,6 +144,8 @@ export interface TagOverviewHub {
   /** The note's body after its front matter. */
   rawContent: string;
   renderedHtml: string;
+  /** The body as block tokens, which a Preact page draws in place of `renderedHtml`. */
+  bodyTokens: BlockToken[];
   properties: FrontmatterProperty[];
   /** Other notes that also describe the tag. */
   otherFilePaths: string[];
