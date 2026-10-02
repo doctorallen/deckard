@@ -23,6 +23,7 @@ import {
   TaskLineShape,
 } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
+import { findWikiLinkSpans } from './wikiLinks';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
@@ -76,7 +77,6 @@ function getTagField(field: string): string {
 const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
-const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
 const monthDatePattern =
   /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i;
@@ -391,13 +391,14 @@ export function extractTags(
 
 /**
  * Extracts workspace-local Wiki link targets without treating their labels as
- * paths. Resolution happens against the current workspace index.
+ * paths. Resolution happens against the current workspace index. A link in
+ * fenced code or an inline code span is an example, not a link.
  */
 export function extractWikiLinks(text: string): string[] {
   const links = new Set<string>();
 
-  for (const match of text.matchAll(wikiLinkPattern)) {
-    const target = match[1].trim();
+  for (const span of findWikiLinkSpans(text)) {
+    const target = span.target.trim();
     if (target.length > 0) {
       links.add(target);
     }

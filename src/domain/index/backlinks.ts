@@ -1,6 +1,6 @@
 import { stripTags } from '../markdown/parser';
 import { ParsedFile, Section, WorkspaceIndex } from '../model';
-import { findFencedLines } from '../markdown/lineShapes';
+import { findWikiLinkSpans } from '../markdown/wikiLinks';
 
 /**
  * Wiki links between notes, found once per index so the editor can count and
@@ -245,32 +245,25 @@ export function getBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
 
 /**
  * Finds every Wiki link in the workspace's saved notes, front matter
- * included, and code fences excluded.
+ * included, and code excluded: fenced code and inline code spans, as
+ * `findWikiLinkSpans` reads them.
  */
 export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
   const titles = createNoteTitleMap(index);
   const occurrences: WikiLinkOccurrence[] = [];
   index.files.forEach((file, sourcePath) => {
-    const lines = file.content.split(/\r?\n/);
-    const fenced = findFencedLines(lines);
-    lines.forEach((text, line) => {
-      if (fenced.has(line)) {
-        return;
-      }
-      for (const match of text.matchAll(WIKI_LINK)) {
-        const target = parseWikiTarget(match[1]);
-        const startColumn = match.index ?? 0;
-        occurrences.push({
-          sourcePath,
-          line,
-          startColumn,
-          endColumn: startColumn + match[0].length,
-          note: target.note,
-          targetPath: resolveWikiTarget(titles, target.note, sourcePath),
-          heading: target.heading,
-          block: target.block,
-        });
-      }
+    findWikiLinkSpans(file.content).forEach((span) => {
+      const target = parseWikiTarget(span.target);
+      occurrences.push({
+        sourcePath,
+        line: span.line,
+        startColumn: span.startColumn,
+        endColumn: span.endColumn,
+        note: target.note,
+        targetPath: resolveWikiTarget(titles, target.note, sourcePath),
+        heading: target.heading,
+        block: target.block,
+      });
     });
   });
   return new BacklinkIndex(occurrences);
