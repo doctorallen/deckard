@@ -407,6 +407,29 @@ test('Alt+Enter on a card opens its menu and not the note', async () => {
   assert.deepStrictEqual(view.posted.filter((message) => message.type === 'openSource'), [], 'the note is not opened');
 });
 
+/** An index of `count` notes, each tagged #work, for a search of many pages. */
+function createManyNotesIndex(count) {
+  const files = Array.from({ length: count }, (_, at) => {
+    const filePath = `notes/n${String(at).padStart(3, '0')}.md`;
+    return parseMarkdown(filePath, `## Note ${at} #work\nProse.`, { createdAt: 1, updatedAt: 2 }, {});
+  });
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}
+
+test('a page number pressed keeps focus once the numbers around it move', async () => {
+  const { view } = await openSearch('#work', { index: createManyNotesIndex(300) });
+  const focused = () => view.document.activeElement.getAttribute('aria-label');
+  for (const page of [2, 3, 4, 5, 6]) {
+    const label = `Page ${page} of notes`;
+    const button = view.findAll('.pagination button').find((candidate) => candidate.getAttribute('aria-label') === label);
+    assert.ok(button, `${label} is offered`);
+    view.press(button);
+    await settle();
+    assert.strictEqual(view.find('.pagination .is-current').textContent, String(page));
+    assert.strictEqual(focused(), label, `focus stays on ${label}`);
+  }
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
