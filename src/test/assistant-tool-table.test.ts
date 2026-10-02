@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
@@ -164,6 +166,16 @@ suite('Assistant tool table', () => {
     assert.strictEqual(reads, 0);
     run(call);
     assert.strictEqual(reads, 1);
+  });
+
+  test('VS Code offers every tool, the writes too, only while the Assistant Tools setting is on', () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8'),
+    ) as { contributes: { languageModelTools: { name: string; when?: string }[] } };
+    assert.deepStrictEqual(
+      manifest.contributes.languageModelTools.map((declared) => [declared.name, declared.when]),
+      ASSISTANT_TOOLS.map((declared) => [declared.name, 'config.deckard.assistantTools']),
+    );
   });
 
   test('says what each tool is doing while VS Code runs it', () => {
