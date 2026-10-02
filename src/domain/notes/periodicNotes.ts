@@ -1,4 +1,5 @@
 import {
+  findDailyNoteDate,
   findFileDailyNoteDate,
   isPeriodicNotePath,
 } from '../markdown/parser';
@@ -13,7 +14,9 @@ export interface DailyNoteEntry {
 
 /**
  * The index's daily notes, oldest first: notes named for a day, or whose top
- * heading holds one.
+ * heading holds one. Of the notes for one day, the one named for it comes
+ * first, so a meeting note whose heading mentions the day never stands in
+ * for the day's own note where a caller takes the first note for a date.
  */
 export function listDailyNotes(index: WorkspaceIndex): DailyNoteEntry[] {
   return [...index.files.values()]
@@ -24,19 +27,30 @@ export function listDailyNotes(index: WorkspaceIndex): DailyNoteEntry[] {
     .sort(
       (left, right) =>
         left.date.localeCompare(right.date) ||
+        Number(isNamedForDay(right)) - Number(isNamedForDay(left)) ||
         left.filePath.localeCompare(right.filePath),
     );
 }
 
-/** The nearest daily note before or after a day, skipping days without one. */
+/** Whether a daily note's file name is its day, rather than only its heading. */
+function isNamedForDay(note: DailyNoteEntry): boolean {
+  return findDailyNoteDate(note.filePath, []) === note.date;
+}
+
+/**
+ * The nearest daily note before or after a day, skipping days without one.
+ * Of several notes for that day, the first `listDailyNotes` lists.
+ */
 export function findAdjacentDailyNote(
   notes: readonly DailyNoteEntry[],
   from: string,
   direction: 'previous' | 'next',
 ): DailyNoteEntry | undefined {
-  return direction === 'previous'
-    ? [...notes].reverse().find((note) => note.date < from)
-    : notes.find((note) => note.date > from);
+  const date =
+    direction === 'previous'
+      ? [...notes].reverse().find((note) => note.date < from)?.date
+      : notes.find((note) => note.date > from)?.date;
+  return date === undefined ? undefined : notes.find((note) => note.date === date);
 }
 
 /** A stretch of the calendar a note can be kept for. */
