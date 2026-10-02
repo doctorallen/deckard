@@ -77,6 +77,20 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
   return { view, panel, board, preferences, updates, lastState, cards, shownCards, activeSearch, index };
 }
 
+test('Save keeps the search the box shows, before it is run', async () => {
+  const { view, preferences } = await openBoard();
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, '#project/atlas');
+  vscode._test.setInputBoxResponse('Atlas');
+  view.click(view.find('[data-action="save-board-search"]'));
+  await delay(10);
+  vscode._test.setInputBoxResponse(undefined);
+  // The words typed after the board's own is:open, as Enter would run them.
+  assert.deepStrictEqual(preferences.reader.value.savedFilters.map((saved) => saved.query), ['is:open AND #project/atlas']);
+  view.keydown(bar, 'Enter');
+  assert.strictEqual(view.posted.filter((message) => message.type === 'setBoardQuery').at(-1).query, 'is:open AND #project/atlas');
+});
+
 /**
  * Restores the board from what VS Code kept for it across a reload, as the
  * serializer does, and says what its search box holds.

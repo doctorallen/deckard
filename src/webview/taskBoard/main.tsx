@@ -384,7 +384,8 @@ function undoRemoveStatus(snapshot: TaskBoardSnapshot): void {
 /** What each of the page's own controls does on a click, given the snapshot it shows. */
 const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoardSnapshot) => void>> = {
   'open-tag': (target) => post({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
-  'save-board-search': () => post({ type: 'saveBoardSearch' }),
+  // What the box shows is what Save keeps, whether or not Enter ran it.
+  'save-board-search': () => post({ type: 'saveBoardSearch', query: editor.currentText() }),
   'set-table-sort': (target) => post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value as never } : { type: 'setTableSort' }),
   'use-for-agenda': () => post({ type: 'useSearchForAgenda' }),
   'toggle-available': (_target, snapshot) => post({ type: 'setBoardQuery', query: snapshot.availableToggleQuery || 'is:available' }),

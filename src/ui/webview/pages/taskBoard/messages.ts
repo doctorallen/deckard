@@ -18,6 +18,7 @@ import type {
   MoveTaskToMessage,
   PickTaskDateMessage,
   ReorderTasksMessage,
+  SaveBoardSearchMessage,
   SetBoardGroupMessage,
   SetBoardQueryMessage,
   SetBoardStatusesMessage,
@@ -120,6 +121,16 @@ const narrowSetBoardQuery: Narrower<SetBoardQueryMessage> = (value) =>
     ? { type: 'setBoardQuery', query: value.query }
     : undefined;
 
+/** Save, with the search the box shows, no longer than a search may be, or with none. */
+const narrowSaveBoardSearch: Narrower<SaveBoardSearchMessage> = (value) => {
+  if (value.query === undefined) {
+    return Object.keys(value).length === 1 ? { type: 'saveBoardSearch' } : undefined;
+  }
+  return typeof value.query === 'string' && value.query.length <= MAX_QUERY_LENGTH && Object.keys(value).length === 2
+    ? { type: 'saveBoardSearch', query: value.query }
+    : undefined;
+};
+
 /** A list, a board, or a table. */
 const narrowSetTaskLayout: Narrower<SetTaskLayoutMessage> = (value) =>
   value.layout === 'list' || value.layout === 'board' || value.layout === 'table'
@@ -165,7 +176,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setZenMode: narrowSetZenMode,
   chooseTheme: onlyType('chooseTheme'),
   ready: onlyType('ready'),
-  saveBoardSearch: exactlyType('saveBoardSearch'),
+  saveBoardSearch: narrowSaveBoardSearch,
   useSearchForAgenda: exactlyType('useSearchForAgenda'),
   openSource: narrowOpenSource,
   openTag: narrowOpenTag,

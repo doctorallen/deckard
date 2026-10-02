@@ -375,7 +375,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         }
       },
       setBoardQuery: (message, page) => this.applySearch(message.query, page),
-      saveBoardSearch: () => this.saveSearch(),
+      saveBoardSearch: (message) => this.saveSearch(message.query),
       useSearchForAgenda: (_message, page) => this.useSearchForAgenda(page),
       setBoardStatuses: (message) =>
         updateTaskBoardSetting('statuses', [...new Set(message.statuses.map((status) => status.toLowerCase()))]),
@@ -544,9 +544,13 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     return {};
   }
 
-  /** Names the board's search and keeps it as a saved view that reopens here. */
-  private async saveSearch(): Promise<void> {
-    const query = this.query.trim();
+  /**
+   * Names a search and keeps it as a saved view that reopens here: `typed`,
+   * the search the box shows, which may not have been run yet, or the
+   * board's own search when the page sends none.
+   */
+  private async saveSearch(typed: string | undefined): Promise<void> {
+    const query = (typed ?? this.query).trim();
     if (!query) {
       return;
     }

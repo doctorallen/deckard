@@ -127,6 +127,8 @@ suite('Task Board messages', () => {
   test('accepts the gear’s, the search box’s, and a card’s other messages', () => {
     for (const message of [
       { type: 'saveBoardSearch' },
+      { type: 'saveBoardSearch', query: '#project/atlas' },
+      { type: 'saveBoardSearch', query: 'x'.repeat(2000) },
       { type: 'useSearchForAgenda' },
       { type: 'openHelp' },
       { type: 'setBoardQuery', query: 'x'.repeat(2000) },
@@ -148,6 +150,9 @@ suite('Task Board messages', () => {
       'ready',
       { type: 'constructor' },
       { type: 'saveBoardSearch', extra: 1 },
+      { type: 'saveBoardSearch', query: 7 },
+      { type: 'saveBoardSearch', query: 'x'.repeat(2001) },
+      { type: 'saveBoardSearch', query: 'is:open', extra: 1 },
       { type: 'useSearchForAgenda', extra: 1 },
       { type: 'openHelp', section: 'periodic' },
       { type: 'setBoardQuery', query: 'x'.repeat(2001) },

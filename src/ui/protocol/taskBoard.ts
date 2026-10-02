@@ -262,9 +262,13 @@ export interface SetBoardStatusNamespaceMessage {
   namespace: string;
 }
 
-/** Names the Task Board's search and keeps it as a saved view. */
+/**
+ * Names the Task Board's search and keeps it as a saved view: the search
+ * the box shows, typed or run, or the board's own search when it sends none.
+ */
 export interface SaveBoardSearchMessage {
   type: 'saveBoardSearch';
+  query?: string;
 }
 
 /** Makes the Tasks view list the Task Board's search. */
