@@ -69,8 +69,12 @@ export function WeightRail({ level, title }: { readonly level: number; readonly 
   );
 }
 
-/** A related tag's share of the results, as its chip says it aloud. */
-function describeShare(value: QueryFacetValue): string {
+/**
+ * A related tag's share of the results, as its chip says it aloud, here and
+ * in the sidebar's Refine: in how many of the results it is, or how
+ * strongly it is related.
+ */
+export function describeShare(value: QueryFacetValue): string {
   return typeof value.total === 'number'
     ? `, in ${value.count} of ${value.total} results`
     : `, related ${getWeightLevel(value.strength)} of 3`;

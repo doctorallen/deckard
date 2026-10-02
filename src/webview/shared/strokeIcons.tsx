@@ -101,3 +101,12 @@ export function SourceIcon() {
     </StrokeIcon>
   );
 }
+
+/** An arrow leaving a box: a control that opens what it names in a tab of its own. */
+export function OpenInNewIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" />
+    </StrokeIcon>
+  );
+}
