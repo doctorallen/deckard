@@ -542,6 +542,25 @@ suite('Tag overview query builder', () => {
     assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
   });
 
+  test('Tab out of an empty search box moves on, and runs none of its recent searches', () => {
+    const view = mountTagOverview();
+    view.send(
+      createState('', {
+        recent: [{ value: '#project/atlas is:open', label: '#project/atlas is:open', detail: 'Recent search' }],
+      }),
+    );
+    // Tabbing into the box focuses it, which offers the recent searches.
+    view.focus({ dataset: { action: 'query-input', suggestKey: 'query' } }, '');
+    assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
+
+    view.posted.length = 0;
+    const taken = view.key(view.find('[data-suggest-key="query"]'), 'Tab');
+
+    assert.deepStrictEqual(view.posted, [], 'no search runs');
+    assert.strictEqual(taken, false, 'Tab is left to move focus on');
+    assert.strictEqual(view.suggestionsFor('query'), '', 'the list closes');
+  });
+
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
@@ -591,7 +610,8 @@ interface MountedView {
   findAll: (selector: string) => Element[];
   send: (state: unknown) => void;
   click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
-  key: (input: Element, key: string) => void;
+  /** Presses a key on an element; true when the page took it, so the browser does nothing more with it. */
+  key: (input: Element, key: string) => boolean;
   focus: (input: ElementDescriptor, value: string) => void;
   change: (input: ElementDescriptor, value: string) => void;
   html: () => string;
@@ -660,9 +680,10 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
     }
     return found;
   };
-  const raise = (target: Element, event: Event): void => {
+  const raise = (target: Element, event: Event): boolean => {
     target.dispatchEvent(event);
     answerHost();
+    return event.defaultPrevented;
   };
   const fill = (target: HTMLElement, value: string): void => {
     (target as HTMLInputElement).value = value;
@@ -673,8 +694,9 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
     find: (selector) => page.find(selector),
     findAll: (selector) => page.findAll(selector),
     send: show,
-    click: (dataset, modifiers = {}) =>
-      raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers })),
+    click: (dataset, modifiers = {}) => {
+      raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers }));
+    },
     key: (input, key) =>
       raise(input, new window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, key })),
     focus: (input, value) => {

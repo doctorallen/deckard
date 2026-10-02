@@ -466,6 +466,8 @@ class SearchBox implements QueryEditor {
   private suggestionHostKey: string | undefined;
   /** The partial text the completion list is filtering on. */
   private suggestionToken = '';
+  /** Whether the open list is an empty box's recent searches, offered rather than asked for by typing. */
+  private suggestionsUnasked = false;
   /** Whether the pointer went down in the search box, so leaving its field for its buttons keeps what was typed. */
   private pointerInWorkspace = false;
   /** The bar's field, where the caret is put back. */
@@ -963,6 +965,7 @@ class SearchBox implements QueryEditor {
         : [];
     }
     this.suggestionToken = String(source.token || '');
+    this.suggestionsUnasked = Boolean(source.showAll);
     this.suggestionHostKey = key;
     // Nothing is highlighted until the author arrows into the list, so Enter
     // runs what they typed instead of silently taking a completion.
@@ -1012,6 +1015,7 @@ class SearchBox implements QueryEditor {
   private closeSuggestions(): void {
     this.suggestionItems = [];
     this.suggestionIndex = -1;
+    this.suggestionsUnasked = false;
     const container = this.suggestionContainer(this.suggestionHostKey);
     if (container) {
       container.hidden = true;
@@ -1446,6 +1450,13 @@ class SearchBox implements QueryEditor {
   private handleListKey(event: KeyboardEvent, input: HTMLInputElement): boolean {
     const count = this.suggestionItems.length;
     if (!count || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Tab')) {
+      return false;
+    }
+    if (event.key === 'Tab' && this.suggestionsUnasked && this.suggestionIndex < 0) {
+      // An empty box offers its recent searches as soon as it is focused,
+      // Tab included, so Tab there is the reader moving on, not choosing
+      // one: the list closes and focus leaves the box.
+      this.closeSuggestions();
       return false;
     }
     event.preventDefault();
