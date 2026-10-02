@@ -5,7 +5,7 @@ import { BLOCK_ID_PATTERN, stripTags } from '../../domain/markdown/parser';
 import { describeDay, parseDatePhrase } from '../../domain/markdown/dates';
 import { readDateOptions } from '../commands/datePrompt';
 import { measureAsync } from '../../shared/timing';
-import { WorkspaceIndex } from '../../core/types';
+import { ParsedFile, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   noteTitle,
@@ -31,10 +31,10 @@ interface AccessSource {
   };
 }
 
-
 /** Where links are completed and opened: every Markdown file, narrowed to notes. */
 const LINK_SELECTOR: vscode.DocumentSelector = { pattern: '**/*.md' };
 
+/** What link completion and the links read from the indexer. */
 interface IndexSource {
   readonly ready: Promise<void>;
   readonly published?: Promise<void>;
@@ -131,24 +131,18 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
 
     await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
-    // Past a `#^`, the note's own line markers are what can be completed,
-    // not another note's name.
-    const blockContext = getBlockCompletionContext(context.query);
-    if (blockContext) {
-      return this.completeBlockIds(
-        index,
-        blockContext,
-        document,
-        position,
-        context.startColumn,
-      );
-    }
     const range = new vscode.Range(
       position.line,
       context.startColumn,
       position.line,
       position.character,
     );
+    // Past a `#^`, the note's own line markers are what can be completed,
+    // not another note's name.
+    const blockContext = getBlockCompletionContext(context.query);
+    if (blockContext) {
+      return this.completeBlockIds(index, blockContext, document, range);
+    }
     // Past a `#`, the headings: of the note named, of this note when none
     // is, or of every note after `##`.
     const headingContext = getHeadingCompletionContext(context.query);
@@ -283,16 +277,8 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     range: vscode.Range,
   ): vscode.CompletionItem[] {
-    const titles = createNoteTitleMap(index);
     const sourcePath = this.indexer.getFilePath?.(document.uri) ?? '';
-    const files =
-      context.note === undefined
-        ? [...index.files.values()]
-        : [index.files.get(
-            context.note
-              ? resolveWikiTarget(titles, context.note, sourcePath) ?? ''
-              : sourcePath,
-          )].filter((file): file is NonNullable<typeof file> => file !== undefined);
+    const files = filesForHeadingContext(index, context.note, sourcePath);
     const words = context.query.trim().split(/\s+/).filter(Boolean);
     const seen = new Set<string>();
     const found: { title: string; heading: string; filePath: string; score: number }[] = [];
@@ -315,22 +301,22 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
         found.push({ title, heading, filePath: file.filePath, score });
       }
     }
+    const { note } = context;
+    const filterText = `${note === undefined ? '##' : `${note}#`}${context.query}`;
     return found
       .sort((left, right) => right.score - left.score)
       .slice(0, 200)
       .map((entry, rank) => {
+        // A heading found across notes takes its note's name; one in the
+        // note named, or in this note, takes the name as it was typed.
+        const target = `${note ?? entry.title}#${entry.heading}`;
         const item = new vscode.CompletionItem(
-          context.note === undefined ? `${entry.title}#${entry.heading}` : entry.heading,
+          note === undefined ? target : entry.heading,
           vscode.CompletionItemKind.Reference,
         );
         item.detail = entry.filePath;
-        // A heading in this note needs no note name; one found across notes
-        // takes its note's.
-        const target = context.note === undefined
-          ? `${entry.title}#${entry.heading}`
-          : `${context.note}#${entry.heading}`;
         item.insertText = `${target}]]`;
-        item.filterText = `${context.note === undefined ? '##' : `${context.note}#`}${context.query}`;
+        item.filterText = filterText;
         item.sortText = String(rank).padStart(5, '0');
         item.range = range;
         return item;
@@ -345,8 +331,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     index: WorkspaceIndex,
     context: { note: string; query: string },
     document: vscode.TextDocument,
-    position: vscode.Position,
-    startColumn: number,
+    range: vscode.Range,
   ): vscode.CompletionItem[] {
     const titles = createNoteTitleMap(index);
     const sourcePath = this.indexer.getFilePath?.(document.uri) ?? '';
@@ -371,12 +356,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
           .trim()
           .slice(0, 120);
         item.insertText = `^${block}]]`;
-        item.range = new vscode.Range(
-          position.line,
-          startColumn,
-          position.line,
-          position.character,
-        );
+        item.range = range;
         return item;
       });
   }
@@ -401,6 +381,10 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     );
   }
 
+  /**
+   * Where a note opens, resolved once per index: the promise is kept, so
+   * links asked for again before it settles share one file system check.
+   */
   private resolveTarget(
     index: WorkspaceIndex,
     filePath: string,
@@ -418,6 +402,10 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     return target;
   }
 
+  /**
+   * A link for each `[[…]]` in the document that names exactly one note
+   * whose file still exists, opening it at the heading the link names.
+   */
   private async createDocumentLinks(
     document: vscode.TextDocument,
   ): Promise<vscode.DocumentLink[]> {
@@ -452,4 +440,24 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
       return [documentLink];
     });
   }
+}
+
+/**
+ * The notes whose headings `[[Note#` completes: every note after `##`, else
+ * the note named, or this note after a bare `#`; none when the name matches
+ * no note.
+ */
+function filesForHeadingContext(
+  index: WorkspaceIndex,
+  note: string | undefined,
+  sourcePath: string,
+): ParsedFile[] {
+  if (note === undefined) {
+    return [...index.files.values()];
+  }
+  const filePath = note
+    ? resolveWikiTarget(createNoteTitleMap(index), note, sourcePath) ?? ''
+    : sourcePath;
+  const file = index.files.get(filePath);
+  return file ? [file] : [];
 }

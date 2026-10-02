@@ -31,6 +31,14 @@ const unreadableMessage = 'Deckard could not read this file.';
 const rebuildDelayMs = 200;
 const followCursorDelayMs = 100;
 
+/** The settings that change what the Outline shows, so a change rebuilds it. */
+const OUTLINE_SETTINGS = [
+  'deckard.outline',
+  'deckard.zenMode',
+  'deckard.personMarker',
+  'deckard.entityNamespaceAliases',
+];
+
 /**
  * Shows the active Markdown file's headings as a tree the reader can pull into
  * either sidebar.
@@ -63,6 +71,10 @@ export class OutlineTreeProvider
    */
   private tagFilter: { key: string; label: string } | undefined;
 
+  /**
+   * Starts listening at once to the active editor, its text, its saves and
+   * cursor, the index, and the Outline's settings.
+   */
   public constructor(private readonly indexer: IndexReader & IndexUpdates) {
     this.disposables.push(this.changeEmitter);
     this.disposables.push(
@@ -93,15 +105,11 @@ export class OutlineTreeProvider
     this.disposables.push(indexer.onDidUpdate(() => this.scheduleRebuild()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.outline') ||
-          event.affectsConfiguration('deckard.zenMode') ||
-          event.affectsConfiguration('deckard.personMarker') ||
-          event.affectsConfiguration('deckard.entityNamespaceAliases')
-        ) {
-          void syncOutlineFollowCursorContext();
-          this.rebuildNow();
+        if (!OUTLINE_SETTINGS.some((section) => event.affectsConfiguration(section))) {
+          return;
         }
+        void syncOutlineFollowCursorContext();
+        this.rebuildNow();
       }),
     );
   }
@@ -121,6 +129,10 @@ export class OutlineTreeProvider
     this.rebuildNow();
   }
 
+  /**
+   * A heading's row: its tags and counts beside it as the settings say, its
+   * full text in the tooltip, and a click that reveals it in the editor.
+   */
   public getTreeItem(node: OutlineNode): vscode.TreeItem {
     const item = new vscode.TreeItem(
       node.label,
@@ -162,6 +174,7 @@ export class OutlineTreeProvider
     this.rebuildNow();
   }
 
+  /** The headings under a heading, or the top-level headings shown. */
   public getChildren(node?: OutlineNode): OutlineNode[] {
     return node ? node.children : this.roots;
   }
@@ -218,6 +231,10 @@ export class OutlineTreeProvider
     this.pendingRebuild.schedule(() => this.rebuild());
   }
 
+  /**
+   * Rebuilds at once, dropping any rebuild waiting for typing to pause; a
+   * hidden view only notes that it is owed one.
+   */
   private rebuildNow(): void {
     this.pendingRebuild.cancel();
     if (this.view && !this.view.visible) {
@@ -257,21 +274,17 @@ export class OutlineTreeProvider
       );
       this.allRoots = roots;
       const shown = this.tagFilter ? filterOutline(roots, this.tagFilter.key) : roots;
-      this.publish(
-        shown,
-        document.uri,
-        roots.length === 0
-          ? noHeadingsMessage
-          : shown.length === 0 && this.tagFilter
-            ? `No heading in this note carries ${this.tagFilter.label}.`
-            : undefined,
-      );
+      this.publish(shown, document.uri, describeOutlineMessage(roots, shown, this.tagFilter));
       void this.followCursor();
     } catch {
       this.publish([], undefined, unreadableMessage);
     }
   }
 
+  /**
+   * Replaces the tree and the view's message, and fires one change for the
+   * whole tree. With no document, the unfiltered headings are forgotten too.
+   */
   private publish(
     roots: OutlineNode[],
     documentUri: vscode.Uri | undefined,
@@ -297,6 +310,10 @@ export class OutlineTreeProvider
     this.pendingFollow.schedule(() => void this.followCursor());
   }
 
+  /**
+   * Selects the heading the cursor is under, when the view is visible, the
+   * setting is on, and the active editor is the note the tree was built from.
+   */
   private async followCursor(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (
@@ -328,6 +345,7 @@ export class OutlineTreeProvider
     }
   }
 
+  /** Whether headings show their tags beside them, from `deckard.outline.showTags`. */
   private areTagsShown(): boolean {
     return vscode.workspace
       .getConfiguration('deckard')
@@ -343,6 +361,10 @@ export class OutlineTreeProvider
     );
   }
 
+  /**
+   * Whether a heading lists the tags it inherits from the headings and front
+   * matter above it, from `deckard.outline.inheritedTags` for the note's folder.
+   */
   private areInheritedTagsShown(uri: vscode.Uri): boolean {
     return vscode.workspace
       .getConfiguration('deckard', uri)
@@ -407,6 +429,24 @@ export async function pickOutlineTag(
     { placeHolder },
   );
   return choice?.key;
+}
+
+/**
+ * What the view says above the tree: that the note has no headings, that
+ * none carries the tag it is narrowed to, or nothing when headings are shown.
+ */
+function describeOutlineMessage(
+  roots: readonly OutlineNode[],
+  shown: readonly OutlineNode[],
+  filter: { label: string } | undefined,
+): string | undefined {
+  if (roots.length === 0) {
+    return noHeadingsMessage;
+  }
+  if (shown.length === 0 && filter) {
+    return `No heading in this note carries ${filter.label}.`;
+  }
+  return undefined;
 }
 
 /**

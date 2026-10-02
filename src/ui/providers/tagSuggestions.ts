@@ -4,14 +4,17 @@ import { findFencedLines, hasAtxHeadingClosingHashes } from '../../domain/markdo
 import {
   getTagCompletionContext,
   matchesTagCompletion,
+  TagCompletionContext,
 } from '../../domain/markdown/completionContext';
 import { WorkspaceIndex } from '../../core/types';
+import type { TagInfo } from '../../domain/model/tags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 import { whenPublished } from '../../core/workspace/publishing';
 import { isParkedFile, isParkedOnlyTag } from '../../domain/index/parked';
 import { readPersonMarker } from '../commands/parseSettings';
 
+/** What tag completion reads from the indexer. */
 interface TagIndexSource {
   readonly ready: Promise<void>;
   readonly published?: Promise<void>;
@@ -22,6 +25,7 @@ interface TagIndexSource {
   getFilePath?(uri: vscode.Uri): string;
 }
 
+/** Whether tag completion is on for a document, from `deckard.enableTagAutocomplete`. */
 type TagAutocompleteEnabled = (document: vscode.TextDocument) => boolean;
 
 /** Where tags are completed: every Markdown file, which the provider narrows to notes. */
@@ -134,56 +138,98 @@ export class TagCompletionProvider implements vscode.Disposable {
     }
 
     await whenPublished(this.indexer);
-    const query = context.query.toLowerCase();
     const index = this.indexer.getSnapshot();
     // A tag only parked notes carry is left out, except while writing in a
     // parked note, where those are the tags in use.
     const filePath = this.indexer.getFilePath?.(document.uri);
     const offerParked = filePath !== undefined && isParkedFile(index, filePath);
-    return [...index.tags.values()]
-      .filter((tag) =>
-        matchesTagCompletion(tag, context.marker, query, personMarker),
-      )
-      .filter((tag) => offerParked || !isParkedOnlyTag(index, tag.key))
-      .filter(
-        (tag) =>
-          context.marker !== '#' || !/^#?\d+$/.test(tag.key),
-      )
-      .sort((left, right) => left.label.localeCompare(right.label))
-      .map((tag) => {
-        const label =
-          context.marker === personMarker && tag.key.startsWith('@')
-            ? `${personMarker}${tag.key.slice(1)}`
-            : context.marker === '@' && tag.key.startsWith('#tag-at/')
-              ? `@${tag.key.slice('#tag-at/'.length)}`
-            : tag.label;
-        const item = new vscode.CompletionItem(
-          label,
-          vscode.CompletionItemKind.Reference,
-        );
-        const entryLabel = tag.count === 1 ? 'entry' : 'entries';
-        item.detail = `${tag.count} ${entryLabel}`;
-        item.documentation = new vscode.MarkdownString(
-          `Used in ${tag.count} ${entryLabel}`,
-        );
-        item.filterText = label;
-        item.insertText = label;
-        item.range = {
-          inserting: new vscode.Range(
-            position.line,
-            context.startColumn,
-            position.line,
-            position.character,
-          ),
-          replacing: new vscode.Range(
-            position.line,
-            context.startColumn,
-            position.line,
-            context.endColumn,
-          ),
-        };
-        return item;
-      });
+    return selectTagCompletions(index, context, { personMarker, offerParked }).map((row) =>
+      toCompletionItem(row, context, position),
+    );
   }
+}
 
+/** One tag offered: what is written when it is picked, and how many entries carry it. */
+interface TagCompletion {
+  label: string;
+  count: number;
+}
+
+/**
+ * The indexed tags that complete what is typed, sorted by label. A tag only
+ * parked notes carry is left out unless `offerParked`, and after `#` a tag
+ * that is only a number is left out, since `#12` is more often an issue
+ * number than a tag.
+ */
+function selectTagCompletions(
+  index: WorkspaceIndex,
+  context: TagCompletionContext,
+  { personMarker, offerParked }: { personMarker: string; offerParked: boolean },
+): TagCompletion[] {
+  const query = context.query.toLowerCase();
+  return [...index.tags.values()]
+    .filter((tag) =>
+      matchesTagCompletion(tag, context.marker, query, personMarker),
+    )
+    .filter((tag) => offerParked || !isParkedOnlyTag(index, tag.key))
+    .filter(
+      (tag) =>
+        context.marker !== '#' || !/^#?\d+$/.test(tag.key),
+    )
+    .sort((left, right) => left.label.localeCompare(right.label))
+    .map((tag) => ({
+      label: completionLabel(tag, context.marker, personMarker),
+      count: tag.count,
+    }));
+}
+
+/**
+ * A tag as it is written after the marker typed: a person with the person
+ * marker in use, an `@` tag as `@name`, and any other tag as its label.
+ */
+function completionLabel(tag: TagInfo, marker: string, personMarker: string): string {
+  if (marker === personMarker && tag.key.startsWith('@')) {
+    return `${personMarker}${tag.key.slice(1)}`;
+  }
+  if (marker === '@' && tag.key.startsWith('#tag-at/')) {
+    return `@${tag.key.slice('#tag-at/'.length)}`;
+  }
+  return tag.label;
+}
+
+/**
+ * A completion that inserts up to the cursor, or replaces the whole token
+ * when completion is invoked in its middle, so no suffix is left doubled.
+ */
+function toCompletionItem(
+  { label, count }: TagCompletion,
+  context: TagCompletionContext,
+  position: vscode.Position,
+): vscode.CompletionItem {
+  const item = new vscode.CompletionItem(
+    label,
+    vscode.CompletionItemKind.Reference,
+  );
+  const entryLabel = count === 1 ? 'entry' : 'entries';
+  item.detail = `${count} ${entryLabel}`;
+  item.documentation = new vscode.MarkdownString(
+    `Used in ${count} ${entryLabel}`,
+  );
+  item.filterText = label;
+  item.insertText = label;
+  item.range = {
+    inserting: new vscode.Range(
+      position.line,
+      context.startColumn,
+      position.line,
+      position.character,
+    ),
+    replacing: new vscode.Range(
+      position.line,
+      context.startColumn,
+      position.line,
+      context.endColumn,
+    ),
+  };
+  return item;
 }

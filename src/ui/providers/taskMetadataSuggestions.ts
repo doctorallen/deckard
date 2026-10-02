@@ -15,6 +15,7 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readTaskMetadataFormat } from '../commands/taskActions';
 import { whenPublished } from '../../core/workspace/publishing';
 
+/** What the suggestions read from the indexer: the people and task ids to offer. */
 interface TaskIndexSource {
   readonly ready: Promise<void>;
   readonly published?: Promise<void>;
@@ -35,9 +36,11 @@ const TASK_CHECKBOX = /^\s*[-*+][ \t]+\[[ xX]\](?=[ \t])/;
 /** A `/` that starts a word, and whatever has been typed after it. */
 const SLASH_QUERY = /(?:^|[ \t])\/([A-Za-z-]*)$/;
 
+/** The priorities offered, highest first. */
 const PRIORITIES = ['highest', 'high', 'medium', 'low', 'lowest'];
 /** How many people the list offers before it becomes a list of everyone. */
 const PERSON_SUGGESTION_LIMIT = 8;
+/** The repeat rules offered as written; any other is typed into a placeholder. */
 const REPEAT_RULES = [
   'every day',
   'every weekday',
@@ -46,6 +49,7 @@ const REPEAT_RULES = [
   'every year',
 ];
 
+/** One field to add, and the value written for it. */
 interface MetadataSuggestion {
   label: string;
   field: TaskMetadataField;
@@ -166,6 +170,12 @@ export function readTaskMetadataSuggestionSettings(
   };
 }
 
+/**
+ * Every field that can be added, in the order offered: dates as of the day
+ * `now` falls on, priorities, repeat rules, the people the workspace names
+ * most, and the ids of open tasks to depend on. A field with a placeholder
+ * lets the author write any other value.
+ */
 function createSuggestions(
   now: number,
   index: WorkspaceIndex,
@@ -265,6 +275,10 @@ function collectOpenTaskIds(
     .map(([id, title]) => ({ id, title }));
 }
 
+/**
+ * A suggestion as the completion that writes it in the note's format,
+ * replacing the `/query` typed, and kept at its place in the list.
+ */
 function toCompletionItem(
   suggestion: MetadataSuggestion,
   format: TaskMetadataFormat,

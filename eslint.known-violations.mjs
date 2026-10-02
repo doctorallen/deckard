@@ -36,13 +36,6 @@ export default {
       "createTask",
       "overview"
     ],
-    "src/ui/preview/queryBlockHtml.ts": [
-      "(arrow function)",
-      "renderGroup"
-    ],
-    "src/ui/providers/linkSuggestions.ts": [
-      "completeBlockIds"
-    ],
     "src/ui/state/agendaState.ts": [
       "createDoneToday"
     ],
@@ -106,9 +99,6 @@ export default {
     "src/domain/query/queryParser.ts": [
       "createCondition",
       "tokenize"
-    ],
-    "src/ui/preview/queryBlockHtml.ts": [
-      "renderTask"
     ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
@@ -189,8 +179,6 @@ export default {
     "src/test/notes-graph-behavior.test.ts": 1,
     "src/test/relatedNotesFixture.ts": 1,
     "src/test/webviewPage.ts": 2,
-    "src/ui/preview/noteEmbeds.ts": 1,
-    "src/ui/preview/queryBlocks.ts": 3,
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 3,
     "src/ui/state/dashboardState.ts": 2,
@@ -206,10 +194,6 @@ export default {
     "src/ui/state/taskBoardState.ts": 2,
     "src/ui/state/taskLineMarks.ts": 1,
     "src/ui/state/tryNext.ts": 3,
-    "src/ui/views/agendaTree.ts": 3,
-    "src/ui/views/outlineTree.ts": 3,
-    "src/ui/views/taskStatusBar.ts": 3,
-    "src/ui/views/wordCountStatusBar.ts": 2,
     "src/ui/webview/helpHtml.ts": 1,
     "src/ui/webview/relatedNotesDebugHtml.ts": 1,
     "src/ui/webview/searchPage.ts": 2,
@@ -265,9 +249,6 @@ export default {
     ],
     "src/test/webviewPage.ts": [
       "openWebviewPage"
-    ],
-    "src/ui/providers/tagSuggestions.ts": [
-      "provideCompletionItems"
     ],
     "src/ui/state/agendaState.ts": [
       "createAgenda"
@@ -342,9 +323,6 @@ export default {
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/naming.test.ts": 1,
     "src/test/tag-grouping.test.ts": 1,
-    "src/ui/preview/queryBlockHtml.ts": 2,
-    "src/ui/providers/editorReferences.ts": 1,
-    "src/ui/providers/tagSuggestions.ts": 1,
     "src/ui/state/agendaState.ts": 3,
     "src/ui/state/assistantTools.ts": 1,
     "src/ui/state/calendarState.ts": 2,
@@ -352,9 +330,7 @@ export default {
     "src/ui/state/notesGraphState.ts": 1,
     "src/ui/state/referenceState.ts": 2,
     "src/ui/state/resultTable.ts": 3,
-    "src/ui/state/taskBoardState.ts": 6,
-    "src/ui/views/agendaTree.ts": 3,
-    "src/ui/views/outlineTree.ts": 1
+    "src/ui/state/taskBoardState.ts": 6
   },
   "no-unused-vars": {
     "test/ui/checkContrast.js": 2,
@@ -366,14 +342,12 @@ export default {
     "src/domain/markdown/taskSteps.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
-    "src/ui/preview/queryBlockHtml.ts": 1,
     "src/ui/state/assistantTools.ts": 2,
     "src/ui/state/calendarState.ts": 2,
     "src/ui/state/noteLinks.ts": 1,
     "src/ui/state/referenceState.ts": 1,
     "src/ui/state/tagGrouping.ts": 1,
     "src/ui/state/taskBoardState.ts": 1,
-    "src/ui/views/taskStatusBar.ts": 1,
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
@@ -385,7 +359,6 @@ export default {
     "src/ui/state/dashboardState.ts": 1,
     "src/ui/state/entryScope.ts": 1,
     "src/ui/state/outlineState.ts": 1,
-    "src/ui/state/taskBoardState.ts": 1,
-    "src/ui/views/outlineTree.ts": 1
+    "src/ui/state/taskBoardState.ts": 1
   }
 };

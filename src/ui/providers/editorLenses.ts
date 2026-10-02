@@ -22,6 +22,7 @@ import { LINK_MENTIONS_COMMAND } from '../commands/unlinkedMentions';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { whenPublished } from '../../core/workspace/publishing';
 
+/** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {
   readonly ready: Promise<void>;
   readonly published?: Promise<void>;

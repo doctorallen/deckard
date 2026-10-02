@@ -16,6 +16,7 @@ import {
   createLinkPreview,
   createReferenceSummary,
   createTagSummary,
+  HeadingReferences,
   LinkPreview,
   TagSummary,
 } from '../state/referenceState';
@@ -24,6 +25,10 @@ import { resolveSourceUri } from '../commands/navigation';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { readParseOptions } from '../commands/parseSettings';
 
+/** The `[[link]]` found under the cursor, and the columns it spans. */
+type WikiLinkAt = NonNullable<ReturnType<typeof findWikiLinkAt>>;
+
+/** What the counts and hovers read from the indexer. */
 interface ReferenceIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
@@ -117,6 +122,10 @@ export class EditorReferences
     );
   }
 
+  /**
+   * The counts for one note as it stands in the editor: who links to the
+   * note, on its first line, then each heading's counts in heading order.
+   */
   private createCodeLenses(document: vscode.TextDocument): LazyCodeLens[] {
     const file = this.indexer.parse(document.uri, document.getText());
     const summary = createReferenceSummary(file, this.getBacklinks());
@@ -138,53 +147,72 @@ export class EditorReferences
     const headings = new Map(
       summary.headings.map((heading) => [heading.line, heading]),
     );
-    for (const section of file.sections.filter((entry) => !entry.isInline)) {
-      const line = section.startLine - 1;
-      const range = new vscode.Range(line, 0, line, 0);
-      const heading = headings.get(line);
-      if (heading && heading.references.length > 0) {
-        lenses.push(
-          createReferencesLens(
-            document.uri,
-            range,
-            pluralize(heading.references.length, 'reference'),
-            () => locateLinks(heading.references),
-          ),
-        );
-      }
-      if (heading && heading.openTasks.length > 0) {
-        lenses.push(
-          createReferencesLens(
-            document.uri,
-            range,
-            pluralize(heading.openTasks.length, 'open task'),
-            async () =>
-              heading.openTasks.map(
-                (task) =>
-                  new vscode.Location(
-                    document.uri,
-                    new vscode.Position(
-                      task.lineNumber - 1,
-                      Math.max(task.checkboxColumn - 1, 0),
-                    ),
+    const sections = file.sections.filter((entry) => !entry.isInline);
+    return [
+      ...lenses,
+      ...sections.flatMap((section) =>
+        this.lensesForSection(document, file, section, headings.get(section.startLine - 1)),
+      ),
+    ];
+  }
+
+  /**
+   * One heading's counts, in this order: the references to it, its open
+   * tasks, and the entries sharing a tag written on it. A count of zero gets
+   * no lens.
+   */
+  private lensesForSection(
+    document: vscode.TextDocument,
+    file: ParsedFile,
+    section: Section,
+    heading: HeadingReferences | undefined,
+  ): LazyCodeLens[] {
+    const line = section.startLine - 1;
+    const range = new vscode.Range(line, 0, line, 0);
+    const lenses: LazyCodeLens[] = [];
+    if (heading && heading.references.length > 0) {
+      lenses.push(
+        createReferencesLens(
+          document.uri,
+          range,
+          pluralize(heading.references.length, 'reference'),
+          () => locateLinks(heading.references),
+        ),
+      );
+    }
+    if (heading && heading.openTasks.length > 0) {
+      lenses.push(
+        createReferencesLens(
+          document.uri,
+          range,
+          pluralize(heading.openTasks.length, 'open task'),
+          async () =>
+            heading.openTasks.map(
+              (task) =>
+                new vscode.Location(
+                  document.uri,
+                  new vscode.Position(
+                    task.lineNumber - 1,
+                    Math.max(task.checkboxColumn - 1, 0),
                   ),
-              ),
-          ),
-        );
-      }
-      // Related Notes can focus only a tagged heading. A heading nothing
-      // shares a tag with gets no lens at all: it used to carry a line
-      // reading "No entries share a tag" that could not even be clicked.
-      if ((section.headingTags?.length ?? 0) > 0) {
-        const sharedTagCount = this.countSharedTagEntries(file, section);
-        if (sharedTagCount > 0) {
-          lenses.push(
-            new LazyCodeLens(range, () =>
-              this.createRelatedCommand(document, section, sharedTagCount),
+                ),
             ),
-          );
-        }
-      }
+        ),
+      );
+    }
+    // Related Notes can focus only a tagged heading. A heading nothing
+    // shares a tag with gets no lens at all: it used to carry a line
+    // reading "No entries share a tag" that could not even be clicked.
+    if ((section.headingTags?.length ?? 0) === 0) {
+      return lenses;
+    }
+    const sharedTagCount = this.countSharedTagEntries(file, section);
+    if (sharedTagCount > 0) {
+      lenses.push(
+        new LazyCodeLens(range, () =>
+          this.createRelatedCommand(document, section, sharedTagCount),
+        ),
+      );
     }
     return lenses;
   }
@@ -217,23 +245,44 @@ export class EditorReferences
 
     const link = findWikiLinkAt(lines[position.line] ?? '', position.character);
     if (link) {
-      const preview = createLinkPreview(
-        this.getIndex(),
-        this.getBacklinks(),
-        link.target,
-        this.indexer.getFilePath(document.uri),
-      );
-      return new vscode.Hover(
-        await renderLinkPreview(preview),
-        new vscode.Range(
-          position.line,
-          link.startColumn,
-          position.line,
-          link.endColumn,
-        ),
-      );
+      return this.provideLinkHover(document, position, link);
     }
+    return this.provideTagHover(document, position, text);
+  }
 
+  /** A preview of the note a `[[link]]` names, over the link's own range. */
+  private async provideLinkHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    link: WikiLinkAt,
+  ): Promise<vscode.Hover> {
+    const preview = createLinkPreview(
+      this.getIndex(),
+      this.getBacklinks(),
+      link.target,
+      this.indexer.getFilePath(document.uri),
+    );
+    return new vscode.Hover(
+      await renderLinkPreview(preview),
+      new vscode.Range(
+        position.line,
+        link.startColumn,
+        position.line,
+        link.endColumn,
+      ),
+    );
+  }
+
+  /**
+   * A summary of the tag under the cursor, read with the note's own parse
+   * settings so it finds the tags the index found; nothing when the cursor
+   * is on no tag, or on one the index has no entries for.
+   */
+  private async provideTagHover(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    text: string,
+  ): Promise<vscode.Hover | undefined> {
     const options = readParseOptions(document.uri);
     const span = extractTagSpans(
       text,
@@ -300,19 +349,26 @@ export class EditorReferences
     return countSharedTagEntries(this.getIndex(), file.filePath, ownTags);
   }
 
+  /** The last published index, or the indexer's snapshot before one arrives. */
   private getIndex(): WorkspaceIndex {
     this.index ??= this.indexer.getSnapshot();
     return this.index;
   }
 
+  /** The backlinks of the current index, built on first use after each update. */
   private getBacklinks(): BacklinkIndex {
     this.backlinks ??= buildBacklinkIndex(this.getIndex());
     return this.backlinks;
   }
 }
 
+/** The files the counts and hovers are registered for. */
 const markdownFiles: vscode.DocumentSelector = { pattern: '**/*.md' };
 
+/**
+ * Whether the counts or the hovers are on for a document's folder. The
+ * counts are also off in zen.
+ */
 function readSetting(
   document: vscode.TextDocument,
   name: 'referenceCounts' | 'hoverPreviews',
@@ -402,6 +458,11 @@ async function renderLinkPreview(
   return markdown;
 }
 
+/**
+ * Summarizes a tag: how many notes and tasks carry it, its hub note, the
+ * entries the summary lists, how many more there are, and a link to the tag's
+ * overview. Only the overview command may run from it.
+ */
 async function renderTagSummary(
   summary: TagSummary,
   tagKey: string,
@@ -425,7 +486,7 @@ async function renderTagSummary(
     );
   }
   for (const entry of summary.entries) {
-    const box = entry.task ? (entry.completed ? '☑ ' : '☐ ') : '';
+    const box = describeTaskBox(entry);
     lines.push(
       `- ${box}${await linkToLine(entry.title, entry.filePath, entry.line)} · ${escapeMarkdown(entry.fileName)}`,
     );
@@ -441,6 +502,14 @@ async function renderTagSummary(
   const markdown = new vscode.MarkdownString(lines.join('\n'));
   markdown.isTrusted = { enabledCommands: ['deckard.showTagOverview'] };
   return markdown;
+}
+
+/** The checkbox a summary entry starts with: none for a note, else done or open. */
+function describeTaskBox(entry: TagSummary['entries'][number]): string {
+  if (!entry.task) {
+    return '';
+  }
+  return entry.completed ? '☑ ' : '☐ ';
 }
 
 /** A link that opens a file at a line, or plain text when the file is gone. */
