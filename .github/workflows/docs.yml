@@ -14,10 +14,27 @@ name: Docs
 # a workflow deployment takes its domain from there, not from a CNAME file.
 # The domain's DNS needs a CNAME record pointing at doctorallen.github.io.
 
+# A push to master builds and publishes. A pull request, or a push to a
+# refactor branch, builds the same site and stops there, so a page that
+# breaks the build is caught before anything goes public.
 on:
   push:
     branches:
       - master
+      - 'refactor/**'
+    paths:
+      - docs/guide/**
+      - docs/images/**
+      - docs/site/**
+      - docs/architecture/**
+      # The architecture section's layer graph is drawn from the source and
+      # the rules, so either changing redraws it.
+      - src/**
+      - .dependency-cruiser.cjs
+      - scripts/stage-architecture.js
+      - resources/lockup.png
+      - .github/workflows/docs.yml
+  pull_request:
     paths:
       - docs/guide/**
       - docs/images/**
@@ -36,10 +53,6 @@ permissions:
   contents: read
   pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -110,6 +123,11 @@ jobs:
 
   deploy:
     needs: build
+    # Only master publishes; one deployment at a time, never cancelled.
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment:
       name: github-pages
