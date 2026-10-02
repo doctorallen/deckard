@@ -47,6 +47,8 @@ suite('Note Actions', () => {
     assert.strictEqual(above(['   ## Plan', 'text']), true, 'up to three spaces in');
     assert.strictEqual(above(['    # Code', 'text']), false, 'four spaces in is code');
     assert.strictEqual(above(['#tag', 'text']), false, 'a tag');
+    assert.strictEqual(above(['```', '# not a heading', '```', 'text']), false, 'a line in fenced code');
+    assert.strictEqual(above(['# Plan', '```', '# not a heading', 'text']), true, 'the heading above the code');
   });
 
   test('opens Related Notes for the heading only inside a tagged entry', () => {
