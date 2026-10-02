@@ -294,6 +294,8 @@ async function pickReviewPeriod(): Promise<Exclude<NotePeriod, 'day'> | undefine
 
 /**
  * Opens the note for a period, writing its review in when the note is new.
+ * The folder is chosen once, and the review is written into the note that
+ * opens.
  */
 export async function openPeriodicNoteWithReview(
   indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
@@ -304,10 +306,13 @@ export async function openPeriodicNoteWithReview(
   if (!folder) {
     return undefined;
   }
-  const isNew = !(await findExistingPeriodicNote(folder, period, new Date()));
-  const noteUri = await ensurePeriodicNote(folder, period, new Date());
+  const day = new Date();
+  const isNew = !(await findExistingPeriodicNote(folder, period, day));
+  const noteUri = await ensurePeriodicNote(folder, period, day);
   if (isNew && isReviewOnCreateEnabled(folder.uri)) {
-    await writeReview(indexer, writes, { period, day: new Date(), silent: true });
+    // Handed the note, the review asks for no folder of its own: a second
+    // ask in a multi-root workspace could pick another folder's note.
+    await writeReview(indexer, writes, { period, day, silent: true, noteUri });
   }
   const document = await vscode.workspace.openTextDocument(noteUri);
   await vscode.window.showTextDocument(document, { preview: false });
