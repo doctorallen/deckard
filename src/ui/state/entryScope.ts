@@ -43,40 +43,58 @@ export function createEntryScope(
   if (!entry) {
     return undefined;
   }
-
-  const tagLabels = new Map<string, string>();
-  const tagWeights = new Map<string, number>();
-  const tagSources = new Map<string, EntryTagSource>();
-  const addTag = (
-    key: string,
-    label: string,
-    weight: number,
-    source: string,
-    context: EntryTagContext,
-  ): void => {
-    const currentWeight = tagWeights.get(key);
-    if (currentWeight === undefined || weight > currentWeight) {
-      tagLabels.set(key, label);
-      tagWeights.set(key, weight);
-      tagSources.set(key, { context, source });
-    }
-  };
+  const tags = new EntryTags();
   const explicitEntryTags =
     entry.associationTagGroups?.flat() ??
     ('headingTags' in entry ? (entry.headingTags ?? []) : []);
   explicitEntryTags.forEach((tag) =>
-    addTag(
-      tag.key,
-      tag.label,
-      1,
-      'Written on the selected entry',
-      'selected',
-    ),
+    tags.add(tag, 1, 'Written on the selected entry', 'selected'),
   );
+  addParentTags(tags, file, 'heading' in entry ? entry.parentSectionId : entry.sectionId);
+  if ('heading' in entry) {
+    addChildTags(tags, file, entry.id);
+    return scopeOfSection(file, entry, tags);
+  }
+  return scopeOfTask(file, entry, tags);
+}
 
+/** The tagged entry a line belongs to, as findTaggedEntry finds it. */
+type TaggedEntry = NonNullable<ReturnType<typeof findTaggedEntry>>;
+
+/**
+ * An entry's tags as they are gathered. A tag met again keeps the label,
+ * weight, and source of its heaviest sighting; on a tie, the first.
+ */
+class EntryTags {
+  public readonly labels = new Map<string, string>();
+  public readonly weights = new Map<string, number>();
+  public readonly sources = new Map<string, EntryTagSource>();
+
+  /** Records a tag at a weight, unless it is already held at that weight or more. */
+  public add(
+    tag: Pick<TagReference, 'key' | 'label'>,
+    weight: number,
+    source: string,
+    context: EntryTagContext,
+  ): void {
+    const currentWeight = this.weights.get(tag.key);
+    if (currentWeight !== undefined && weight <= currentWeight) {
+      return;
+    }
+    this.labels.set(tag.key, tag.label);
+    this.weights.set(tag.key, weight);
+    this.sources.set(tag.key, { context, source });
+  }
+}
+
+/** The tags on each heading above the entry, weighted 0.5 / depth, nearest first. */
+function addParentTags(
+  tags: EntryTags,
+  file: ParsedFile,
+  firstParentId: string | undefined,
+): void {
   const sections = new Map(file.sections.map((section) => [section.id, section]));
-  let parentSectionId =
-    'heading' in entry ? entry.parentSectionId : entry.sectionId;
+  let parentSectionId = firstParentId;
   let depth = 1;
   while (parentSectionId) {
     const parent = sections.get(parentSectionId);
@@ -84,9 +102,8 @@ export function createEntryScope(
       break;
     }
     parent.headingTags?.forEach((tag) =>
-      addTag(
-        tag.key,
-        tag.label,
+      tags.add(
+        tag,
         0.5 / depth,
         `Parent ancestry: ${depth === 1 ? 'one level up' : `${depth} levels up`} (0.5 / ${depth})`,
         'parent',
@@ -95,115 +112,115 @@ export function createEntryScope(
     parentSectionId = parent.parentSectionId;
     depth += 1;
   }
+}
 
-  if ('heading' in entry) {
-    const childrenByParent = new Map<string, Section[]>();
-    const childItemsByParent = new Map<string, Section[]>();
-    file.sections.forEach((section) => {
-      if (!section.parentSectionId) {
+/** A heading's children by kind: sub-headings, inline sections, and tasks, by parent id. */
+interface ChildIndex {
+  children: Map<string, Section[]>;
+  childItems: Map<string, Section[]>;
+  childTasks: Map<string, ParsedFile['tasks']>;
+}
+
+/** Indexes a note's sub-headings, inline sections, and tasks by the section that holds them. */
+function indexChildren(file: ParsedFile): ChildIndex {
+  const index: ChildIndex = { children: new Map(), childItems: new Map(), childTasks: new Map() };
+  file.sections.forEach((section) => {
+    if (!section.parentSectionId) {
+      return;
+    }
+    const byParent = section.isInline ? index.childItems : index.children;
+    const held = byParent.get(section.parentSectionId) ?? [];
+    held.push(section);
+    byParent.set(section.parentSectionId, held);
+  });
+  file.tasks.forEach((task) => {
+    if (!task.sectionId) {
+      return;
+    }
+    const childTasks = index.childTasks.get(task.sectionId) ?? [];
+    childTasks.push(task);
+    index.childTasks.set(task.sectionId, childTasks);
+  });
+  return index;
+}
+
+/**
+ * The tags below a heading entry: each sub-heading's at 0.5 / depth, and
+ * each inline item's and task's at 0.5 / depth one level further down,
+ * walked depth first, every child once.
+ */
+function addChildTags(tags: EntryTags, file: ParsedFile, entryId: string): void {
+  const { children, childItems, childTasks } = indexChildren(file);
+  const visitedChildren = new Set<string>();
+  const visitedChildItems = new Set<string>();
+  const addItemTags = (
+    items: ReadonlyArray<{ id: string; associationTagGroups?: TagReference[][] }>,
+    itemDepth: number,
+  ): void => {
+    items.forEach((child) => {
+      if (visitedChildItems.has(child.id)) {
         return;
       }
-      if (section.isInline) {
-        const childItems = childItemsByParent.get(section.parentSectionId) ?? [];
-        childItems.push(section);
-        childItemsByParent.set(section.parentSectionId, childItems);
-        return;
-      }
-      const children = childrenByParent.get(section.parentSectionId) ?? [];
-      children.push(section);
-      childrenByParent.set(section.parentSectionId, children);
+      visitedChildItems.add(child.id);
+      const distance = itemDepth === 1 ? 'one level down' : `${itemDepth} levels down`;
+      (child.associationTagGroups ?? []).flat().forEach((tag) =>
+        tags.add(tag, 0.5 / itemDepth, `Child item: ${distance} (0.5 / ${itemDepth})`, 'childItem'),
+      );
     });
-    const childTasksByParent = new Map<string, typeof file.tasks>();
-    file.tasks.forEach((task) => {
-      if (!task.sectionId) {
+  };
+  const addChildContext = (parentId: string, childDepth: number): void => {
+    addItemTags(childItems.get(parentId) ?? [], childDepth + 1);
+    addItemTags(childTasks.get(parentId) ?? [], childDepth + 1);
+    (children.get(parentId) ?? []).forEach((child) => {
+      if (visitedChildren.has(child.id)) {
         return;
       }
-      const childTasks = childTasksByParent.get(task.sectionId) ?? [];
-      childTasks.push(task);
-      childTasksByParent.set(task.sectionId, childTasks);
-    });
-    const visitedChildren = new Set<string>();
-    const visitedChildItems = new Set<string>();
-    const addChildItemTags = (
-      tags: TagReference[],
-      itemDepth: number,
-    ): void => {
-      const distance =
-        itemDepth === 1
-          ? 'one level down'
-          : `${itemDepth} levels down`;
-      tags.forEach((tag) =>
-        addTag(
-          tag.key,
-          tag.label,
-          0.5 / itemDepth,
-          `Child item: ${distance} (0.5 / ${itemDepth})`,
-          'childItem',
+      visitedChildren.add(child.id);
+      (child.headingTags ?? []).forEach((tag) =>
+        tags.add(
+          tag,
+          0.5 / childDepth,
+          `Child heading: ${childDepth === 1 ? 'one level down' : `${childDepth} levels down`} (0.5 / ${childDepth})`,
+          'child',
         ),
       );
-    };
-    const addChildItemContext = (
-      parentId: string,
-      itemDepth: number,
-    ): void => {
-      (childItemsByParent.get(parentId) ?? []).forEach((child) => {
-        if (visitedChildItems.has(child.id)) {
-          return;
-        }
-        visitedChildItems.add(child.id);
-        addChildItemTags((child.associationTagGroups ?? []).flat(), itemDepth);
-      });
-      (childTasksByParent.get(parentId) ?? []).forEach((child) => {
-        if (visitedChildItems.has(child.id)) {
-          return;
-        }
-        visitedChildItems.add(child.id);
-        addChildItemTags((child.associationTagGroups ?? []).flat(), itemDepth);
-      });
-    };
-    const addChildContext = (parentId: string, childDepth: number): void => {
-      addChildItemContext(parentId, childDepth + 1);
-      (childrenByParent.get(parentId) ?? []).forEach((child) => {
-        if (visitedChildren.has(child.id)) {
-          return;
-        }
-        visitedChildren.add(child.id);
-        (child.headingTags ?? []).forEach((tag) =>
-          addTag(
-            tag.key,
-            tag.label,
-            0.5 / childDepth,
-            `Child heading: ${childDepth === 1 ? 'one level down' : `${childDepth} levels down`} (0.5 / ${childDepth})`,
-            'child',
-          ),
-        );
-        addChildContext(child.id, childDepth + 1);
-      });
-    };
-    addChildContext(entry.id, 1);
+      addChildContext(child.id, childDepth + 1);
+    });
+  };
+  addChildContext(entryId, 1);
+}
 
-    const section = {
-      ...entry,
-      tags: [...tagLabels.keys()],
-      tagLabels: Object.fromEntries(tagLabels),
-    };
-    return {
-      file: {
-        ...file,
-        content: entry.rawContent,
-        sections: [section],
-        tasks: file.tasks.filter((task) => task.sectionId === entry.id),
-        frontmatterTags: [],
-        links: entry.links,
-      },
-      tagWeights,
-      tagSources,
-    };
-  }
+/** A heading entry as a note of its own: the section, carrying every gathered tag, and its tasks. */
+function scopeOfSection(file: ParsedFile, entry: Section, tags: EntryTags): EntryScope {
+  const section = {
+    ...entry,
+    tags: [...tags.labels.keys()],
+    tagLabels: Object.fromEntries(tags.labels),
+  };
+  return {
+    file: {
+      ...file,
+      content: entry.rawContent,
+      sections: [section],
+      tasks: file.tasks.filter((task) => task.sectionId === entry.id),
+      frontmatterTags: [],
+      links: entry.links,
+    },
+    tagWeights: tags.weights,
+    tagSources: tags.sources,
+  };
+}
+
+/** A task entry as a note of its own: the one task, carrying every gathered tag. */
+function scopeOfTask(
+  file: ParsedFile,
+  entry: Exclude<TaggedEntry, Section>,
+  tags: EntryTags,
+): EntryScope {
   const task = {
     ...entry,
-    tags: [...tagLabels.keys()],
-    tagLabels: Object.fromEntries(tagLabels),
+    tags: [...tags.labels.keys()],
+    tagLabels: Object.fromEntries(tags.labels),
   };
   return {
     file: {
@@ -214,8 +231,8 @@ export function createEntryScope(
       frontmatterTags: [],
       links: [],
     },
-    tagWeights,
-    tagSources,
+    tagWeights: tags.weights,
+    tagSources: tags.sources,
   };
 }
 

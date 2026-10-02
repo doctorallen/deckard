@@ -43,25 +43,6 @@ export default {
     "src/ui/providers/linkSuggestions.ts": [
       "completeBlockIds"
     ],
-    "src/ui/state/agendaState.ts": [
-      "createDoneToday"
-    ],
-    "src/ui/state/dashboardState.ts": [
-      "createTagOverviewCard"
-    ],
-    "src/ui/state/dashboardWidgets.ts": [
-      "createWidget"
-    ],
-    "src/ui/state/entryScope.ts": [
-      "(arrow function)"
-    ],
-    "src/ui/state/quickFindState.ts": [
-      "matchTags",
-      "rankEntries"
-    ],
-    "src/ui/state/taskBoardState.ts": [
-      "createCard"
-    ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ]
@@ -74,8 +55,7 @@ export default {
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/quickFindActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 1,
-    "src/ui/commands/taskSteps.ts": 1,
-    "src/ui/state/quickFindState.ts": 1
+    "src/ui/commands/taskSteps.ts": 1
   },
   complexity: {
     "scripts/capture-dashboard-screenshot.mjs": [
@@ -125,25 +105,6 @@ export default {
     ],
     "src/ui/preview/queryBlockHtml.ts": [
       "renderTask"
-    ],
-    "src/ui/state/agendaState.ts": [
-      "createAgenda"
-    ],
-    "src/ui/state/calendarState.ts": [
-      "createCalendar"
-    ],
-    "src/ui/state/dashboardState.ts": [
-      "createSearchPageSnapshot"
-    ],
-    "src/ui/state/dashboardWidgets.ts": [
-      "createWidget"
-    ],
-    "src/ui/state/quickFindState.ts": [
-      "buildQuickFindResults"
-    ],
-    "src/ui/state/taskBoardState.ts": [
-      "createCard",
-      "resolveTagMove"
     ],
     "src/ui/webview/pages/calendar/calendarController.ts": [
       "handle"
@@ -211,10 +172,6 @@ export default {
     "src/ui/commands/workspaceWrites.ts": 2,
     "src/ui/preview/noteEmbeds.ts": 1,
     "src/ui/preview/queryBlocks.ts": 3,
-    "src/ui/state/agendaState.ts": 3,
-    "src/ui/state/dashboardState.ts": 2,
-    "src/ui/state/quickFindState.ts": 4,
-    "src/ui/state/taskBoardState.ts": 2,
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 3,
     "src/ui/views/taskStatusBar.ts": 3,
@@ -300,27 +257,6 @@ export default {
     "src/ui/providers/tagSuggestions.ts": [
       "provideCompletionItems"
     ],
-    "src/ui/state/agendaState.ts": [
-      "createAgenda"
-    ],
-    "src/ui/state/calendarState.ts": [
-      "createCalendar",
-      "createCalendarDay"
-    ],
-    "src/ui/state/dashboardState.ts": [
-      "createQuerySuggestions",
-      "createSearchPageSnapshot"
-    ],
-    "src/ui/state/dashboardWidgets.ts": [
-      "createWidget"
-    ],
-    "src/ui/state/entryScope.ts": [
-      "createEntryScope"
-    ],
-    "src/ui/state/quickFindState.ts": [
-      "buildEmptyResults",
-      "rankEntries"
-    ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],
@@ -371,10 +307,6 @@ export default {
     "src/ui/preview/queryBlockHtml.ts": 2,
     "src/ui/providers/editorReferences.ts": 1,
     "src/ui/providers/tagSuggestions.ts": 1,
-    "src/ui/state/agendaState.ts": 3,
-    "src/ui/state/calendarState.ts": 2,
-    "src/ui/state/dashboardWidgets.ts": 1,
-    "src/ui/state/taskBoardState.ts": 6,
     "src/ui/views/agendaTree.ts": 3,
     "src/ui/views/outlineTree.ts": 1
   },
@@ -396,8 +328,6 @@ export default {
     "src/ui/commands/taskBoardActions.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/preview/queryBlockHtml.ts": 1,
-    "src/ui/state/calendarState.ts": 2,
-    "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/taskStatusBar.ts": 1,
     "test/ui/checkContrast.js": 1
   },
@@ -415,9 +345,6 @@ export default {
     "src/ui/commands/savedSearchHome.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
     "src/ui/commands/tidyPreferences.ts": 1,
-    "src/ui/state/dashboardState.ts": 1,
-    "src/ui/state/entryScope.ts": 1,
-    "src/ui/state/taskBoardState.ts": 1,
     "src/ui/views/outlineTree.ts": 1
   }
 };
