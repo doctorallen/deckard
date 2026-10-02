@@ -85,6 +85,15 @@ export const HOME_WIDGET_LIMIT = 30;
  */
 export const QUICK_ADD_MAX_LENGTH = 1000;
 
+/**
+ * Whether Gone quiet can watch a namespace: a word of letters, digits,
+ * dashes, and underscores that starts with a letter. Its gear offers only
+ * these, and the host keeps only these.
+ */
+export function isWatchableNamespace(namespace: string): boolean {
+  return namespace.length <= 64 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace);
+}
+
 /** Whether a value, read from storage or from a choice, names a kind of widget. */
 export function isWidgetKind(value: unknown): value is DashboardWidgetKind {
   return typeof value === 'string' && Object.hasOwn(WIDGET_KINDS, value);

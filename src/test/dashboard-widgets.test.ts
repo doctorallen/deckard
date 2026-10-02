@@ -4,6 +4,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { normalizeDashboardWidgets } from '../core/storage/preferencesSchema';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createQueryContext } from '../domain/query/queryContext';
 import { DashboardWidgetConfig, PersistedPreferences, WorkspaceIndex } from '../domain/model';
@@ -85,6 +86,17 @@ suite('Dashboard Home widgets', () => {
     ]);
     assert.ok(broken.error, 'a search that does not parse says why');
     assert.deepStrictEqual(broken.tasks, []);
+  });
+
+  test('Gone quiet offers only namespaces Home keeps as the one to watch', () => {
+    const files = [parseMarkdown('notes/q.md', '# Plan #2026/q1\n# Ren #person/ren\n# Atlas #project/atlas\n')];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const [quiet] = widgets([{ id: 'q', kind: 'quietPeople', width: 'half', count: 5 }], index);
+    assert.deepStrictEqual(quiet.namespaces, ['person', 'project']);
+    for (const namespace of quiet.namespaces ?? []) {
+      const [kept] = normalizeDashboardWidgets([{ id: 'q', kind: 'quietPeople', width: 'half', namespace }]);
+      assert.strictEqual(kept.namespace ?? 'person', namespace);
+    }
   });
 
   test('the agenda leaves what needs a new date to a line under its list', () => {
