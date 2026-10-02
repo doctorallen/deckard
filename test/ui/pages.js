@@ -1,9 +1,9 @@
 // The rendered HTML of every Deckard webview, built from the compiled sources
 // with VS Code replaced by the e2e stub. The pages are the ones the mocha
 // suites walk, from src/test/pages.ts, and each comes through the shared page
-// loader, so the webview checks see one self-contained page whether its
-// script is inline or a bundle. A new page is added once, in the catalog, and
-// every check covers it.
+// loader, so the webview checks see one self-contained page, with the bundle
+// and the sheets its shell links inlined. A new page is added once, in the
+// catalog, and every check covers it.
 const path = require('node:path');
 const { existsSync } = require('node:fs');
 

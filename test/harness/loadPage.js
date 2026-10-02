@@ -176,8 +176,6 @@ function loadPage(html, options = {}) {
       throw new Error(`${attributes.get('src')} contains "</script", so it cannot be inlined.`);
     }
     const nonce = attributes.get('nonce') ?? pageNonce;
-    // Marked, so the checks of template script text (checkWebviewScripts.js,
-    // and verifyWebviews.js's redeclared helpers) leave a bundle alone.
     const from = ` data-inlined-from="${attributes.get('src').replace(/"/g, '&quot;')}"`;
     return `<script${nonce ? ` nonce="${nonce}"` : ''}${writeAttributes(attributes, ['src', 'nonce'])}${from}>${source}</script>`;
   });
