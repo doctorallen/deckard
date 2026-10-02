@@ -1,9 +1,9 @@
 /**
  * A menu of choices under a control, as a board card's ⋯ opens: one menu
  * for every opener, a layer of the body outside `#app` whose contents are
- * a render root of their own. It closes on a choice, Escape, or a click
- * elsewhere, the arrow keys walk it, a choice's key works inside it, and
- * focus goes back to the control that opened it.
+ * a render root of their own. It closes on a choice, Escape, Tab, a click
+ * elsewhere, or focus leaving it; the arrow keys walk it, a choice's key
+ * works inside it, and focus goes back to the control that opened it.
  */
 import { render } from 'preact';
 
@@ -81,6 +81,15 @@ function MenuGroups({ groups, checks }: { readonly groups: readonly ActionMenuGr
 
 /** Closes the menu, if it is open, and gives focus back to its control. */
 export function closeActionMenu(): void {
+  hideMenu(true);
+}
+
+/**
+ * Hides the open menu and tells its control so; focus goes back to the
+ * control only when `returnFocus` says, since focus that left the menu for
+ * somewhere else is where the reader put it.
+ */
+function hideMenu(returnFocus: boolean): void {
   if (!menu || menu.hidden) {
     return;
   }
@@ -93,7 +102,7 @@ export function closeActionMenu(): void {
   }
 
   was.setAttribute('aria-expanded', 'false');
-  if (was.focus) {
+  if (returnFocus && was.focus) {
     was.focus();
   }
 }
@@ -117,7 +126,28 @@ function onClick(event: MouseEvent): void {
   closeActionMenu();
 }
 
-/** The open menu's keys: Escape, a choice's own key, and the arrows, Home, and End. */
+/**
+ * The key a row shows works in the open menu too, so the hint is true in
+ * both places: 2 in the menu chooses High. True when the key chose.
+ */
+function chooseByKey(open: HTMLElement, event: KeyboardEvent): boolean {
+  if (event.key.length !== 1 || event.metaKey || event.ctrlKey || event.altKey) {
+    return false;
+  }
+  const keyed = Array.prototype.find.call(open.querySelectorAll<HTMLElement>('[data-menu-key]'), (item: HTMLElement) => item.dataset.menuKey === event.key) as HTMLElement | undefined;
+  if (!keyed) {
+    return false;
+  }
+  event.preventDefault();
+  keyed.click();
+  return true;
+}
+
+/**
+ * The open menu's keys: Escape, Tab, a choice's own key, and the arrows,
+ * Home, and End. Only a key pressed in the menu is its own: a menu left
+ * open behind the search box took a t typed there as Due today.
+ */
 function onKeydown(event: KeyboardEvent): void {
   if (!menu || menu.hidden) {
     return;
@@ -127,17 +157,16 @@ function onKeydown(event: KeyboardEvent): void {
     closeActionMenu();
     return;
   }
-  // The key a row shows works in the open menu too, so the hint is true in
-  // both places: 2 in the menu chooses High.
-  if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
-    const keyed = Array.prototype.find.call(menu.querySelectorAll<HTMLElement>('[data-menu-key]'), (item: HTMLElement) => item.dataset.menuKey === event.key) as HTMLElement | undefined;
-    if (keyed) {
-      event.preventDefault();
-      keyed.click();
-      return;
-    }
+  if (!(event.target instanceof Node && menu.contains(event.target))) {
+    return;
   }
-  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+  // Tab leaves a menu, as it leaves any menu: it closes, and Tab moves on
+  // from the control that opened it.
+  if (event.key === 'Tab') {
+    closeActionMenu();
+    return;
+  }
+  if (chooseByKey(menu, event) || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
     return;
   }
   const items = Array.from(menu.querySelectorAll<HTMLElement>('[data-menu-value]'));
@@ -154,6 +183,14 @@ function onKeydown(event: KeyboardEvent): void {
   items[next].focus();
 }
 
+/** Focus that moves somewhere outside the open menu closes it there, as a click outside it does. */
+function onFocusIn(event: FocusEvent): void {
+  if (!menu || menu.hidden || !(event.target instanceof Node) || menu.contains(event.target)) {
+    return;
+  }
+  hideMenu(false);
+}
+
 /** The menu's element, `#action-menu`, appended to the body, with its listeners, made once. */
 function menuElement(): HTMLElement {
   if (menu) {
@@ -168,6 +205,7 @@ function menuElement(): HTMLElement {
   menu = element;
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', onKeydown);
+  document.addEventListener('focusin', onFocusIn);
   return element;
 }
 

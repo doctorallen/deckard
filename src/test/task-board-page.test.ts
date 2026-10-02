@@ -34,6 +34,33 @@ suite('Task Board page', () => {
     return { page, taskId: board.columns[0].cards[0].taskId };
   };
 
+  /** The board the host would send for these notes, laid out as `layout` says. */
+  const boardOf = (files: Record<string, string>, layout: Record<string, unknown> = {}, query = '') => {
+    const index = buildWorkspaceIndex(new Map(Object.entries(files).map(([path, text]) => [path, parseMarkdown(path, text)])));
+    const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    try {
+      return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board', ...layout } as never, search: { query }, options, tagTitleDisplayMode: 'inline' });
+    } finally {
+      preferences.repository.dispose();
+    }
+  };
+
+  /** The page, drawing `board`. */
+  const show = (board: unknown): WebviewPage => {
+    page = openWebviewPage(renderPage('taskBoard'), board);
+    return page;
+  };
+
+  /** A key pressed on `target`, as a reader presses it; the event, to read what the page did with it. */
+  const press = (shown: WebviewPage, target: Element, key: string, init: KeyboardEventInit = {}): KeyboardEvent => {
+    const event = new shown.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  /** Two tasks in one note: Alpha has a status, and Beta has none. */
+  const TWO = { 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta\n' };
+
   test('a column header counts its cards against its limit, and its overdue ones', () => {
     const lines = Array.from({ length: 5 }, (_, number) => `- [ ] Task ${number} #status/doing 📅 2026-09-0${number + 1}`);
     const index = buildWorkspaceIndex(
@@ -243,5 +270,22 @@ suite('Task Board page', () => {
     const { page } = open();
     page.find('.board-card .task-title').dispatchEvent(new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
     assert.strictEqual((page.find('#action-menu') as HTMLElement).hidden, false);
+  });
+
+  test('a card\'s menu closes when Tab or focus leaves it, and keys typed elsewhere stay there', () => {
+    const shown = show(boardOf(TWO));
+    const menu = () => shown.find('#action-menu') as HTMLElement;
+    shown.click('.board-card [data-action="board-menu"]');
+    press(shown, shown.document.activeElement as Element, 'Tab');
+    assert.strictEqual(menu().hidden, true, 'Tab closes the menu');
+
+    shown.click('.board-card [data-action="board-menu"]');
+    assert.strictEqual(menu().hidden, false);
+    const box = shown.find('[data-action="query-input"]') as HTMLInputElement;
+    box.focus();
+    assert.strictEqual(menu().hidden, true, 'focus moving to the search box closes the menu');
+    assert.strictEqual(shown.document.activeElement, box, 'and stays where it went');
+    press(shown, box, 't');
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'a t typed in the search box moves no task');
   });
 });
