@@ -370,9 +370,6 @@ export default {
       "getQueryEditorScript",
       "getTipScript"
     ],
-    "src/ui/webview/dashboardHtml.ts": [
-      "getDashboardHtml"
-    ],
     "src/ui/webview/helpHtml.ts": [
       "buildHelpHtml"
     ],

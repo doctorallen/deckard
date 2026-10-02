@@ -4,7 +4,7 @@
 
 ## How pages are built today
 
-*Since Phase 6 step 4.2, Stats is a Preact page on the shared core ([Rendering with Preact](#rendering-with-preact)), since step 4.4 the Task Board is too, and since step 4.5 the search page; the rest of this section describes the pages not yet moved.* Each such page's host function still writes its page's script as one template literal. Since Phase 6 step 3 it hands that body to `buildPageShell`, which writes the CSP `<meta>` and links the page's style sheets from `dist/webview/` (see [Bundling and loading](#bundling-and-loading)); the body keeps one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
+*Since Phase 6 step 4.2, Stats is a Preact page on the shared core ([Rendering with Preact](#rendering-with-preact)), since step 4.4 the Task Board is too, since step 4.5 the search page, and since step 4.7 the Dashboard; the rest of this section describes the pages not yet moved.* Each such page's host function still writes its page's script as one template literal. Since Phase 6 step 3 it hands that body to `buildPageShell`, which writes the CSP `<meta>` and links the page's style sheets from `dist/webview/` (see [Bundling and loading](#bundling-and-loading)); the body keeps one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
 
 This has costs. The compiler never sees page code, so `test/ui/checkWebviewScripts.js` extracts it by regex and runs `tsc` with `strict: false`. Every redraw assigns `app.innerHTML`, and `renderKeepingPlace` exists to restore the focus and scroll that each redraw loses. Until step 3, seven of nine builders hand-wrote their CSP, and the copies had drifted. Everything below replaces this model. [docs/components.md](../components.md) documents the current mechanism until Phase 6 rewrites it.
 
@@ -134,7 +134,7 @@ The page context compiles JSX with the automatic runtime and `jsxImportSource: '
 
 `src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency, and each Preact page's bundle carries its own copy, with what it uses of the shared core; see [One bundle per page](#one-bundle-per-page).
 
-Stats (`src/webview/stats/main.tsx`), the Task Board (`src/webview/taskBoard/main.tsx`), the search page (`src/webview/searchPage/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), the calendar page (`src/webview/calendarPage/main.tsx`), the Notes Graph (`src/webview/notesGraph/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `taskBoard.js`, `searchPage.js`, `calendar.js`, `calendarPage.js`, `notesGraph.js`, and `help.js`; every other page still runs the inline script its builder writes. The two calendars are two entries over `src/webview/shared/calendar/`. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
+Stats (`src/webview/stats/main.tsx`), the Task Board (`src/webview/taskBoard/main.tsx`), the search page (`src/webview/searchPage/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), the calendar page (`src/webview/calendarPage/main.tsx`), the Notes Graph (`src/webview/notesGraph/main.tsx`), the Dashboard (`src/webview/dashboard/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `taskBoard.js`, `searchPage.js`, `calendar.js`, `calendarPage.js`, `notesGraph.js`, `dashboard.js`, and `help.js`; every other page still runs the inline script its builder writes. The two calendars are two entries over `src/webview/shared/calendar/`. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
 
 1. the policy `getContentSecurityPolicy` builds (next section);
 2. for a page with `bundle`, `<meta name="deckard-theme" content="…">`, the theme's name, which a gear's theme row reads (`readThemeName`);
@@ -315,6 +315,23 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 | `tagMenu.tsx` | `openTagContextMenu(event, target)`, Rename tag and Park tag or Unpark tag; `openContextMenu(event, items)`, whatever a page offers at the pointer; `closeTagContextMenu()`, `isTagContextMenuOpen()`, `hasTagContextMenu()`, and `tagContextKey()`; and `setParkedTags`, `isParkedTag`, and `parkTagMenuItem`. The menu is `#tag-context-menu`, a layer of the body whose rows are `<ContextMenuItem>`s in a render root |
 | `resultTabs.tsx`, `pageSteps.tsx` | `<ResultTabs tabs active label>`, `resultPanelAttributes(id)`, and `installResultTabKeys()`, the arrow keys between the tabs; `<PageSteps paging action attributes noun>`, `pageNumbers`, and `describePageRange` |
 | `markWords.ts` | `markWords(root, words, options)`: the searched words marked in `<mark>` where they are written, outside controls, tags, and code, returning what takes the marks out again |
+
+### Home and the Tags tab
+
+*As built in Phase 6 step 4.7.* The Dashboard (`src/webview/dashboard/`) is drawn from one store on the shared core, and takes the shared parts lane A wrote: the query editor for Home's search box, the task row, ranked rows for its tags and, while Home is arranged, its widgets, the metric for its three tiles, the gear, and the undo toast. No other page draws a Home widget, so Home's parts stay in its folder.
+
+| Module | What it holds |
+| --- | --- |
+| `main.tsx` | The page as it runs: the store, the listeners in the order the template registered them, arranging Home (adding, removing with Undo, resizing, ranking, and each widget's settings), the tag search told to the host once typing settles, and what the host sends: `state`, `addWidget`, and `quickAddResult` |
+| `header.tsx` | The page's name, the three tiles, the gear, and the Home and Tags tabs |
+| `home.tsx` | Home: the bar it is arranged from, the line saying what is new or that it can be arranged, the way in for a workspace with no notes, the grid, and `widgetChoices`, what + Add widget offers and the host hands Related Notes |
+| `widgets.tsx`, `widgetBodies.tsx`, `rows.tsx` | One widget in its frame, with its gear and pager; what each kind shows; and the rows they list |
+| `tagsTab.tsx`, `tagNames.ts` | The Tags tab, and how it reads a tag's namespace and name and narrows the tags |
+| `model.ts`, `keptView.ts`, `homeContext.ts`, `icons.tsx` | The page's own state, what it keeps with `setState`, what a widget is drawn with, and its glyphs |
+
+Which widgets there are, and what each can do, is `domain/dashboard/widgetCatalog.ts`'s `WIDGET_KINDS`, which the host's preferences schema reads to keep a stored widget; a tag key's namespace is `domain/markdown/tagKeys.ts`'s, which the parser reads too (D1). A widget's id is made on the page, so the new widget is drawn at once with its mark.
+
+What the template did to the page outside a draw, the page still does, and squares with the next draw: the tag columns are laid out by script and their buttons marked at once, and listened to on the button so the gear stays open; a widget's gear is open exactly when the reader left it open; and the widget just added is marked and focused after the state that shows it, and unmarked before the next draw, as every template draw dropped the mark until the next state. A select is given the value its template marked selected, which Preact puts back on every draw.
 
 ### The Notes Graph
 

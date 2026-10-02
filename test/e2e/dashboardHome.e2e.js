@@ -758,11 +758,11 @@ test('the gear turns zen on through the host, and the page carries the marker', 
     );
 
     // A page drawn while the setting is on carries the marker the sheet needs.
-    const { panel: second } = await openDashboard();
+    const { panel: second, view: secondView } = await openDashboard();
     assert.ok(second.webview.html.includes('<body class="zen">'), 'zen marks the body');
 
     // Nothing was taken off the page to achieve it.
-    assert.ok(second.webview.html.includes('class="eyebrow"'), 'the eyebrow is still drawn');
+    assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');
   } finally {
     vscode._test.settings.delete('deckard.zenMode');
     vscode._test.configurationUpdates.length = 0;
