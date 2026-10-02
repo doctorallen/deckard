@@ -119,11 +119,18 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
       },
       setGraphScope: (message, page) => {
         this.scopeChosen = true;
+        const drawn = this.drawnScope();
         this.scope = {
           skipPeriodic: message.skipPeriodic ?? this.scope.skipPeriodic,
           local: message.local,
           depth: Math.max(1, Math.min(MAXIMUM_LOCAL_GRAPH_DEPTH, message.depth)),
         };
+        // Hops out with the whole workspace drawn changes nothing drawn, and
+        // the whole graph is many megabytes at thousands of notes.
+        if (this.snapshot && this.drawnScope() === drawn) {
+          this.postFocus(page);
+          return;
+        }
         page.refresh();
       },
     };
@@ -281,6 +288,18 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
     // The whole workspace is drawn, and stays as it is; only the line
     // naming the note it would be drawn around changes.
     this.postFocus(page);
+  }
+
+  /**
+   * What the scope draws: the whole workspace, or the neighborhood of one
+   * note so far out, passing daily notes through or not. Two scopes that
+   * say the same draw the same graph.
+   */
+  private drawnScope(): string {
+    if (!this.scope.local || !this.focusPath) {
+      return 'workspace';
+    }
+    return `${this.focusPath}|${this.scope.depth}|${this.scope.skipPeriodic}`;
   }
 
   /**

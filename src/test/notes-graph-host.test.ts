@@ -214,7 +214,7 @@ suite('Notes graph host', () => {
   });
 
   test('redraws for a change of kinds or scope, and not for kinds it already shows', async () => {
-    const { host, controller, send, states } = openGraph();
+    const { host, controller, surface, send, states } = openGraph();
     try {
       await send({ type: 'setGraphFilter', showNotes: true, showTasks: true });
       assert.strictEqual(states().length, 0);
@@ -226,12 +226,35 @@ suite('Notes graph host', () => {
       await send({ type: 'setGraphScope', local: true, depth: 9 });
       assert.strictEqual(states().length, 1, 'deeper than the graph draws is refused');
       await send({ type: 'setGraphScope', local: false, depth: 3, skipPeriodic: false });
-      assert.strictEqual(states().length, 2);
-      assert.deepStrictEqual(
-        [states()[1].data.focus?.local, states()[1].data.focus?.depth, states()[1].data.focus?.skipPeriodic],
-        [false, 3, false],
-      );
+      assert.strictEqual(states().length, 1, 'the whole workspace, drawn as it was, is not sent again');
+      const focus = surface.webview.posted.at(-1) as { type: string; focus: { local: boolean; depth: number; skipPeriodic: boolean } };
+      assert.deepStrictEqual([focus.type, focus.focus.local, focus.focus.depth, focus.focus.skipPeriodic], ['focus', false, 3, false]);
       assert.strictEqual((controller as unknown as { scopeChosen: boolean }).scopeChosen, true);
+    } finally {
+      host.dispose();
+    }
+  });
+
+  test('sends the graph again for a scope that draws a different graph, and only the focus otherwise', async () => {
+    const { host, controller, send, states, types } = openGraph((uri) => uri.path);
+    try {
+      (controller as unknown as { rememberNote(page: unknown, editor: unknown): void })
+        .rememberNote(host, { document: { uri: vscode.Uri.file('/notes/atlas.md') } });
+      host.refresh();
+      const drawn = () => states().length;
+      await send({ type: 'setGraphScope', local: false, depth: 2 });
+      assert.strictEqual(drawn(), 1, 'Hops out with the whole workspace drawn');
+      await send({ type: 'setGraphScope', local: true, depth: 2 });
+      assert.strictEqual(drawn(), 2, 'around the note');
+      assert.strictEqual(states()[1].data.focus?.depth, 2);
+      await send({ type: 'setGraphScope', local: true, depth: 3 });
+      await send({ type: 'setGraphScope', local: true, depth: 3, skipPeriodic: false });
+      assert.strictEqual(drawn(), 4, 'each hop and Pass through daily notes, around the note');
+      await send({ type: 'setGraphScope', local: false, depth: 3, skipPeriodic: false });
+      assert.strictEqual(drawn(), 5, 'the whole workspace again');
+      await send({ type: 'setGraphScope', local: false, depth: 1, skipPeriodic: true });
+      assert.strictEqual(drawn(), 5);
+      assert.strictEqual(types().at(-1), 'focus');
     } finally {
       host.dispose();
     }
