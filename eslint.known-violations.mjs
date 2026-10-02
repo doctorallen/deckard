@@ -5,16 +5,6 @@
 // violation regenerates it, and the list only shrinks.
 export default {
   "@typescript-eslint/max-params": {
-    "src/domain/markdown/parser.ts": [
-      "(arrow function)",
-      "collectTagSpans",
-      "createFrontmatterTagSpans",
-      "createInlineSection",
-      "createSection",
-      "createTagSpans",
-      "findInlineSections",
-      "findTasks"
-    ],
     "src/domain/markdown/taskLineEdits.ts": [
       "setTaskDate",
       "setTaskLineCompletion",
@@ -76,12 +66,6 @@ export default {
     ],
     "src/core/mcp/mcpProtocol.ts": [
       "handleMcpMessage"
-    ],
-    "src/domain/markdown/parser.ts": [
-      "(arrow function)",
-      "findInlineSections",
-      "frontmatterValueToTag",
-      "parseMarkdown"
     ],
     "src/domain/query/queryEvaluator.ts": [
       "matchesIs"
@@ -168,7 +152,6 @@ export default {
     "src/core/storage/searchStoreWorker.ts": 1,
     "src/core/storage/searchStoreWorkerClient.ts": 2,
     "src/core/workspace/scanner.ts": 3,
-    "src/domain/markdown/parser.ts": 4,
     "src/domain/query/queryLinks.ts": 2,
     "src/domain/query/queryTypes.ts": 6,
     "src/test/calendar-day.test.ts": 1,
@@ -242,12 +225,6 @@ export default {
     "scripts/capture-dashboard-screenshot.mjs": [
       "capture",
       "writeCompanionExtension"
-    ],
-    "src/domain/markdown/parser.ts": [
-      "findInlineSections",
-      "findTasks",
-      "parseFrontmatter",
-      "parseMarkdown"
     ],
     "src/domain/query/queryEvaluator.ts": [
       "matchesIs"
@@ -351,7 +328,6 @@ export default {
   },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
-    "src/domain/markdown/parser.ts": 1,
     "src/domain/notes/periodicNotes.ts": 1,
     "src/domain/query/queryDates.ts": 2,
     "src/domain/query/queryFormat.ts": 1,
@@ -381,7 +357,6 @@ export default {
     "test/ui/surfaces.js": 1
   },
   "unicorn/no-negated-condition": {
-    "src/domain/markdown/parser.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,
@@ -402,7 +377,6 @@ export default {
     "test/ui/checkContrast.js": 1
   },
   "unicorn/prefer-early-return": {
-    "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
     "src/ui/commands/chooseTheme.ts": 1,

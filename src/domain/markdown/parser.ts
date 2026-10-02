@@ -16,7 +16,14 @@ import {
 import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
 import { findFrontmatterEnd, splitFrontmatterValues, unquote } from './frontmatter';
 import { findListParents, findParentTaskLine } from './listNesting';
-import { findFencedLines, isTaskLineOf, matchHeading, matchTaskLine, TaskLineShape } from './lineShapes';
+import {
+  findFencedLines,
+  isTaskLineOf,
+  matchHeading,
+  matchTaskLine,
+  TaskLineMatch,
+  TaskLineShape,
+} from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 
@@ -30,16 +37,19 @@ export { findFencedLines } from './lineShapes';
  */
 export const PARSE_FORMAT = 'code-and-links';
 
+/** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
   lineNumber: number;
   level: number;
   text: string;
 }
 
+/** A list item's marker, by how far in it is written. */
 interface ListItemMatch {
   indentation: number;
 }
 
+/** What a note's front matter says, as the parser keeps it. */
 interface Frontmatter {
   tags: TagReference[];
   links: string[];
@@ -83,7 +93,9 @@ const nextWeekdayPattern =
 const namespacePattern = /^[a-z][a-z0-9_-]*$/;
 const reservedNamespace = 'tag-at';
 
+/** How a note is read: the settings that change what the parser finds. */
 export interface MarkdownParseOptions {
+  /** False reads tagged lines as `noteBoundaries: 'heading'` does; the setting that preceded it. */
   parseInlineTags?: boolean;
   /** What counts as a note inside a file; see `deckard.noteBoundaries`. */
   noteBoundaries?: NoteBoundaries;
@@ -97,7 +109,28 @@ export interface MarkdownParseOptions {
   assigneeFromPersonTag?: boolean;
 }
 
+/** Namespace aliases, lowercased, each to the namespace it stands for: `proj` to `project`. */
 export type EntityNamespaceAliases = Readonly<Record<string, string>>;
+
+/** The tag settings a note is read with: namespace aliases, and the people marker. */
+interface TagSettings {
+  aliases?: EntityNamespaceAliases;
+  personMarker?: string;
+}
+
+/**
+ * What every entry of one note is built from, worked out once per parse:
+ * its lines, the lines inside code fences and front matter, the dates its
+ * entries carry, the front-matter tags they inherit, and the people marker.
+ */
+interface NoteContext {
+  filePath: string;
+  lines: string[];
+  fencedLines: Set<number>;
+  dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'>;
+  frontmatterTags: TagReference[];
+  personMarker: string;
+}
 
 /**
  * Where one note ends and the next begins.
@@ -156,6 +189,7 @@ export function getEntityNamespaceAliases(
   return aliases;
 }
 
+/** Follows an alias through aliases of aliases to the namespace it ends at, stopping at a loop. */
 function resolveNamespaceAlias(
   namespace: string,
   aliases: Record<string, string>,
@@ -194,11 +228,10 @@ export function parseMarkdown(
 ): ParsedFile {
   const lines = content.split(/\r?\n/);
   const personMarker = getPersonMarker(options.personMarker);
-  const frontmatter = parseFrontmatter(
-    lines,
-    options.entityNamespaceAliases,
+  const frontmatter = parseFrontmatter(lines, {
+    aliases: options.entityNamespaceAliases,
     personMarker,
-  );
+  });
   const fencedLines = findFencedLines(lines);
   if (frontmatter.endLine !== undefined) {
     for (let lineIndex = 0; lineIndex <= frontmatter.endLine; lineIndex += 1) {
@@ -212,76 +245,28 @@ export function parseMarkdown(
       .filter((heading) => heading.level === 1)
       .map((heading) => heading.text),
   );
-  // Loose task dates such as "next Friday" are read from the day the note is
-  // about. The file's modified time changes whenever the note is edited or
-  // the repository is cloned, so it is only the last resort.
-  const dateAnchor =
-    firstIsoDate(
-      dailyDate,
-      frontmatter.date,
-      frontmatter.created,
-      frontmatter.updated,
-    ) ?? metadata?.updatedAt;
-  // A clone resets file times too, so the dates a note states come first. A
-  // daily note keeps the earlier of its day and its file's creation: a clone
-  // never moves it past its day, and a plan written ahead keeps its own day.
-  const dailyAt = firstIsoDate(dailyDate);
-  const fileCreatedAt = metadata?.createdAt;
-  const dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'> = {
-    createdAt:
-      firstIsoDate(frontmatter.created, frontmatter.date) ??
-      (dailyAt !== undefined && fileCreatedAt !== undefined
-        ? Math.min(dailyAt, fileCreatedAt)
-        : (dailyAt ?? fileCreatedAt)),
-    updatedAt: firstIsoDate(frontmatter.updated) ?? metadata?.updatedAt,
-  };
-  const headingSections = headings.map((heading, headingIndex) =>
-    createSection(
-      filePath,
-      lines,
-      headings,
-      heading,
-      headingIndex,
-      dates,
-      frontmatter.tags,
-      personMarker,
-    ),
-  );
-  const taggedLines = findInlineSections(
+  const { dateAnchor, dates } = readNoteDates(frontmatter, dailyDate, metadata);
+  const context: NoteContext = {
     filePath,
     lines,
     fencedLines,
-    headingSections,
     dates,
-    frontmatter.tags,
+    frontmatterTags: frontmatter.tags,
     personMarker,
-  );
+  };
   // Outside `line`, a tagged line is not a note: its tags stay on the line
   // and the heading holding it is what a search returns. The old
   // `parseInlineTags: false` dropped those tags entirely; read as `heading`
   // they keep answering, through the heading that holds them.
-  const inlineSections = foldTaggedLines(
-    taggedLines,
-    headingSections,
-    lines,
+  const boundaries =
     options.parseInlineTags === false
       ? 'heading'
-      : options.noteBoundaries ?? 'line',
-  );
-  const sections = [...headingSections, ...inlineSections].sort(
-    (left, right) => left.startLine - right.startLine,
-  );
-  const tasks = findTasks(
-    filePath,
-    lines,
-    sections,
-    fencedLines,
-    dates,
-    frontmatter.tags,
-    personMarker,
+      : options.noteBoundaries ?? 'line';
+  const sections = buildSections(context, headings, boundaries);
+  const tasks = findTasks(context, sections, {
     dateAnchor,
-    options.assigneeFromPersonTag ?? false,
-  );
+    assigneeFromPersonTag: options.assigneeFromPersonTag ?? false,
+  });
 
   const blockIds = findBlockIds(lines, fencedLines);
 
@@ -306,6 +291,67 @@ export function parseMarkdown(
         }
       : {}),
   }, options.entityNamespaceAliases);
+}
+
+/**
+ * The days a note's dates count from: the day loose task dates such as
+ * "next Friday" are read from, and the created and updated times its
+ * entries carry.
+ */
+function readNoteDates(
+  frontmatter: Frontmatter,
+  dailyDate: string | undefined,
+  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
+): { dateAnchor: number | undefined; dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'> } {
+  // Loose task dates such as "next Friday" are read from the day the note is
+  // about. The file's modified time changes whenever the note is edited or
+  // the repository is cloned, so it is only the last resort.
+  const dateAnchor =
+    firstIsoDate(
+      dailyDate,
+      frontmatter.date,
+      frontmatter.created,
+      frontmatter.updated,
+    ) ?? metadata?.updatedAt;
+  // A clone resets file times too, so the dates a note states come first. A
+  // daily note keeps the earlier of its day and its file's creation: a clone
+  // never moves it past its day, and a plan written ahead keeps its own day.
+  const dailyAt = firstIsoDate(dailyDate);
+  const fileCreatedAt = metadata?.createdAt;
+  const dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'> = {
+    createdAt:
+      firstIsoDate(frontmatter.created, frontmatter.date) ??
+      (dailyAt !== undefined && fileCreatedAt !== undefined
+        ? Math.min(dailyAt, fileCreatedAt)
+        : (dailyAt ?? fileCreatedAt)),
+    updatedAt: firstIsoDate(frontmatter.updated) ?? metadata?.updatedAt,
+  };
+  return { dateAnchor, dates };
+}
+
+/**
+ * The note's entries in line order: a section for each heading, and the
+ * tagged lines the boundaries keep as notes of their own, the rest folded
+ * into the heading that holds them.
+ */
+function buildSections(
+  context: NoteContext,
+  headings: HeadingMatch[],
+  boundaries: NoteBoundaries,
+): Section[] {
+  const headingSections = headings.map((_heading, headingIndex) =>
+    createSection(context, headings, headingIndex),
+  );
+  const taggedLines = findInlineSections(context, headingSections);
+  const inlineSections = foldTaggedLines(
+    taggedLines,
+    headingSections,
+    context.lines,
+    boundaries,
+  );
+  return [...headingSections, ...inlineSections].sort(
+    (left, right) => left.startLine - right.startLine,
+  );
 }
 
 /** The first of these YYYY-MM-DD values that is a real date. */
@@ -424,276 +470,296 @@ export function formatEntityTitle(kind: string, name: string): string {
   return `${formatKeyWords(kind)}: ${formatKeyWords(name)}`;
 }
 
-  /**
-   * Parses the small YAML subset used for portable entity metadata. Unsupported
-   * YAML remains ordinary Markdown and does not prevent notes from indexing.
-   */
-  function parseFrontmatter(
-    lines: string[],
-    entityNamespaceAliases?: EntityNamespaceAliases,
-    personMarker?: string,
-  ): Frontmatter {
-    const end = findFrontmatterEnd(lines, 'dashes');
-    if (end === undefined) {
-      return { tags: [], links: [], tagSpans: [] };
-    }
-
-    const values = new Map<string, string[]>();
-    const tagSpans: HeadingTagSpan[] = [];
-    let currentKey: string | undefined;
-    lines.slice(1, end).forEach((line, lineIndex) => {
-      const lineNumber = lineIndex + 2;
-      const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
-      if (property) {
-        currentKey = property[1].toLowerCase();
-        values.set(currentKey, splitFrontmatterValues(property[2], { keepEmptyValue: true }));
-        const valueStart = line.indexOf(property[2], property[1].length + 1);
-        tagSpans.push(
-          ...createFrontmatterTagSpans(
-            currentKey,
-            property[2],
-            lineNumber,
-            valueStart,
-            entityNamespaceAliases,
-            personMarker,
-          ),
-        );
-        return;
-      }
-      const listItem = line.match(/^\s*-\s+(.+?)\s*$/);
-      if (listItem && currentKey) {
-        values.get(currentKey)?.push(unquote(listItem[1]));
-        tagSpans.push(
-          ...createFrontmatterTagSpans(
-            currentKey,
-            listItem[1],
-            lineNumber,
-            line.indexOf(listItem[1]),
-            entityNamespaceAliases,
-            personMarker,
-          ),
-        );
-      }
-    });
-
-    const tags: TagReference[] = [];
-    const links: string[] = [];
-    values.forEach((fieldValues, key) => {
-      if (key === 'links') {
-        fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
-        return;
-      }
-      if (key === 'aliases' || key === 'alias') {
-        return;
-      }
-      fieldValues.forEach((value) => {
-        const tag = frontmatterValueToTag(
-          getTagField(key),
-          value,
-          entityNamespaceAliases,
-          personMarker,
-        );
-        if (tag) {
-          tags.push(tag);
-        }
-      });
-    });
-
-    const aliases = [
-      ...new Set(
-        [...(values.get('aliases') ?? []), ...(values.get('alias') ?? [])]
-          .map((alias) => alias.trim())
-          .filter(Boolean),
-      ),
-    ];
-
-    return {
-      tags: deduplicateTagReferences(tags),
-      links: [...new Set(links)],
-      ...(aliases.length > 0 ? { aliases } : {}),
-      tagSpans,
-      endLine: end,
-      ...createHub(values, entityNamespaceAliases, personMarker),
-      ...findFrontmatterDates(values),
-    };
+/**
+ * Parses the small YAML subset used for portable entity metadata. Unsupported
+ * YAML remains ordinary Markdown and does not prevent notes from indexing.
+ */
+function parseFrontmatter(lines: string[], settings: TagSettings): Frontmatter {
+  const end = findFrontmatterEnd(lines, 'dashes');
+  if (end === undefined) {
+    return { tags: [], links: [], tagSpans: [] };
   }
+  const { values, tagSpans } = readFrontmatterValues(lines, end, settings);
+  const { tags, links } = frontmatterToTags(values, settings);
+  const aliases = [
+    ...new Set(
+      [...(values.get('aliases') ?? []), ...(values.get('alias') ?? [])]
+        .map((alias) => alias.trim())
+        .filter(Boolean),
+    ),
+  ];
 
-  /** The `date:`, `created:`, and `updated:` values that start with a date. */
-  function findFrontmatterDates(
-    values: Map<string, string[]>,
-  ): Pick<Frontmatter, 'date' | 'created' | 'updated'> {
-    const read = (key: string) =>
-      values.get(key)?.[0]?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
-    return {
-      date: read('date'),
-      created: read('created'),
-      updated: read('updated'),
-    };
-  }
+  return {
+    tags: deduplicateTagReferences(tags),
+    links: [...new Set(links)],
+    ...(aliases.length > 0 ? { aliases } : {}),
+    tagSpans,
+    endLine: end,
+    ...createHub(values, settings),
+    ...findFrontmatterDates(values),
+  };
+}
 
-  /**
-   * Reads a hub note: the tags its `describes:` names, and the rest of its
-   * front matter as properties whose values may themselves be tags.
-   */
-  function createHub(
-    values: Map<string, string[]>,
-    entityNamespaceAliases?: EntityNamespaceAliases,
-    personMarker?: string,
-  ): { hub?: NoteHub } {
-    const describes = (values.get('describes') ?? [])
-      .map((value) =>
-        frontmatterValueToTag(
-          'tags',
-          value,
-          entityNamespaceAliases,
-          personMarker,
+/**
+ * The front matter's fields, lowercased, each with its values: those on the
+ * field's own line, then the `- item` lines under it. Also the spans of the
+ * tags those values name, for the editor to draw.
+ */
+function readFrontmatterValues(
+  lines: string[],
+  end: number,
+  settings: TagSettings,
+): { values: Map<string, string[]>; tagSpans: HeadingTagSpan[] } {
+  const values = new Map<string, string[]>();
+  const tagSpans: HeadingTagSpan[] = [];
+  let currentKey: string | undefined;
+  lines.slice(1, end).forEach((line, lineIndex) => {
+    const lineNumber = lineIndex + 2;
+    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    if (property) {
+      currentKey = property[1].toLowerCase();
+      values.set(currentKey, splitFrontmatterValues(property[2], { keepEmptyValue: true }));
+      const valueStart = line.indexOf(property[2], property[1].length + 1);
+      tagSpans.push(
+        ...createFrontmatterTagSpans(
+          { field: currentKey, rawValue: property[2], lineNumber, valueStart },
+          settings,
         ),
-      )
-      .filter((tag): tag is TagReference => tag !== undefined);
-    if (describes.length === 0) {
-      return {};
+      );
+      return;
     }
+    const listItem = line.match(/^\s*-\s+(.+?)\s*$/);
+    if (!listItem || !currentKey) {
+      return;
+    }
+    values.get(currentKey)?.push(unquote(listItem[1]));
+    tagSpans.push(
+      ...createFrontmatterTagSpans(
+        { field: currentKey, rawValue: listItem[1], lineNumber, valueStart: line.indexOf(listItem[1]) },
+        settings,
+      ),
+    );
+  });
+  return { values, tagSpans };
+}
 
-    return {
-      hub: {
-        describes: deduplicateTagReferences(describes),
-        properties: [...values]
-          .filter(([name]) => !hubPropertyExclusions.has(name))
-          .map(([name, fieldValues]) => ({
-            name,
-            values: fieldValues.map((text) => {
-              const tag = frontmatterValueToTag(
-                name,
-                text,
-                entityNamespaceAliases,
-                personMarker,
-              );
-              return tag ? { text, tag } : { text };
-            }),
-          })),
-      },
-    };
+/**
+ * The tags the front matter's values name, field by field, and the wiki
+ * links its `links:` field holds. Aliases name the note, not a tag.
+ */
+function frontmatterToTags(
+  values: Map<string, string[]>,
+  settings: TagSettings,
+): { tags: TagReference[]; links: string[] } {
+  const tags: TagReference[] = [];
+  const links: string[] = [];
+  values.forEach((fieldValues, key) => {
+    if (key === 'links') {
+      fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
+      return;
+    }
+    if (key === 'aliases' || key === 'alias') {
+      return;
+    }
+    fieldValues.forEach((value) => {
+      const tag = frontmatterValueToTag(getTagField(key), value, settings);
+      if (tag) {
+        tags.push(tag);
+      }
+    });
+  });
+  return { tags, links };
+}
+
+/** The `date:`, `created:`, and `updated:` values that start with a date. */
+function findFrontmatterDates(
+  values: Map<string, string[]>,
+): Pick<Frontmatter, 'date' | 'created' | 'updated'> {
+  const read = (key: string) =>
+    values.get(key)?.[0]?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  return {
+    date: read('date'),
+    created: read('created'),
+    updated: read('updated'),
+  };
+}
+
+/**
+ * Reads a hub note: the tags its `describes:` names, and the rest of its
+ * front matter as properties whose values may themselves be tags.
+ */
+function createHub(
+  values: Map<string, string[]>,
+  settings: TagSettings,
+): { hub?: NoteHub } {
+  const describes = (values.get('describes') ?? [])
+    .map((value) => frontmatterValueToTag('tags', value, settings))
+    .filter((tag): tag is TagReference => tag !== undefined);
+  if (describes.length === 0) {
+    return {};
   }
 
-  function frontmatterValueToTag(
-    field: string,
-    value: string,
-    entityNamespaceAliases?: EntityNamespaceAliases,
-    personMarker?: string,
-  ): TagReference | undefined {
-    const existing = extractTags(
-      value,
-      entityNamespaceAliases,
-      personMarker,
-    )[0];
-    if (existing) {
-      return existing;
-    }
-    if (field === 'tag' || field === 'tags') {
-      const namespacedValue = value
-        .trim()
-        .match(
-          /^#?([A-Za-z][A-Za-z0-9_-]*(?:\/[A-Za-z0-9][A-Za-z0-9_-]*)+)$/,
-        );
-      if (namespacedValue) {
-        const label = `#${namespacedValue[1]}`;
-        return {
-          key: normalizeTagKey(label.toLowerCase(), entityNamespaceAliases),
-          label,
-        };
-      }
-    }
-    const slug = toSlug(value);
-    if (!slug) {
-      return undefined;
-    }
-    if (field === 'person' || field === 'people') {
-      return {
-        key: `@${slug}`,
-        label: `${getPersonMarker(personMarker)}${slug}`,
-      };
-    }
-    const namespace =
-      field === 'organization' || field === 'organizations'
-        ? 'org'
-        : field.replace(/s$/, '');
-    if (
-      namespace === 'project' ||
-      namespace === 'topic' ||
-      namespace === 'org' ||
-      namespace === 'meeting'
-    ) {
-      return {
-        key: `#${namespace}/${slug}`,
-        label: `#${namespace}/${slug}`,
-      };
-    }
-    if (field === 'tag' || field === 'tags') {
-      return { key: `#${slug}`, label: `#${slug}` };
-    }
+  return {
+    hub: {
+      describes: deduplicateTagReferences(describes),
+      properties: [...values]
+        .filter(([name]) => !hubPropertyExclusions.has(name))
+        .map(([name, fieldValues]) => ({
+          name,
+          values: fieldValues.map((text) => {
+            const tag = frontmatterValueToTag(name, text, settings);
+            return tag ? { text, tag } : { text };
+          }),
+        })),
+    },
+  };
+}
+
+/**
+ * The tag a front-matter value names, read by its field: a value written as
+ * a tag is that tag; under `tags:` a `namespace/name` path is a namespaced
+ * tag, and any other word a plain one; under `person:`, `project:`,
+ * `topic:`, `organization:`, `meeting:` and their plurals, the value names
+ * an entity of that kind. Undefined for any other field, or a value with
+ * nothing a tag can be made of.
+ */
+function frontmatterValueToTag(
+  field: string,
+  value: string,
+  settings: TagSettings,
+): TagReference | undefined {
+  const existing = extractTags(value, settings.aliases, settings.personMarker)[0];
+  if (existing) {
+    return existing;
+  }
+  const namespaced = readNamespacedTagValue(field, value, settings.aliases);
+  if (namespaced) {
+    return namespaced;
+  }
+  const slug = toSlug(value);
+  if (!slug) {
     return undefined;
   }
+  return slugToTag(field, slug, settings.personMarker);
+}
 
-  function createFrontmatterTagSpans(
-    field: string,
-    rawValue: string,
-    lineNumber: number,
-    valueStart: number,
-    entityNamespaceAliases?: EntityNamespaceAliases,
-    personMarker?: string,
-  ): HeadingTagSpan[] {
-    const trimmed = rawValue.trim();
-    if (!trimmed || valueStart < 0) {
+/** A `namespace/name` path written under `tags:` without its `#`, as the tag it names. */
+function readNamespacedTagValue(
+  field: string,
+  value: string,
+  aliases?: EntityNamespaceAliases,
+): TagReference | undefined {
+  if (field !== 'tag' && field !== 'tags') {
+    return undefined;
+  }
+  const namespacedValue = value
+    .trim()
+    .match(
+      /^#?([A-Za-z][A-Za-z0-9_-]*(?:\/[A-Za-z0-9][A-Za-z0-9_-]*)+)$/,
+    );
+  if (!namespacedValue) {
+    return undefined;
+  }
+  const label = `#${namespacedValue[1]}`;
+  return {
+    key: normalizeTagKey(label.toLowerCase(), aliases),
+    label,
+  };
+}
+
+/** The tag a slugged value makes under its field: a person, an entity, a plain tag, or none. */
+function slugToTag(field: string, slug: string, personMarker?: string): TagReference | undefined {
+  if (field === 'person' || field === 'people') {
+    return {
+      key: `@${slug}`,
+      label: `${getPersonMarker(personMarker)}${slug}`,
+    };
+  }
+  const namespace =
+    field === 'organization' || field === 'organizations'
+      ? 'org'
+      : field.replace(/s$/, '');
+  if (
+    namespace === 'project' ||
+    namespace === 'topic' ||
+    namespace === 'org' ||
+    namespace === 'meeting'
+  ) {
+    return {
+      key: `#${namespace}/${slug}`,
+      label: `#${namespace}/${slug}`,
+    };
+  }
+  if (field === 'tag' || field === 'tags') {
+    return { key: `#${slug}`, label: `#${slug}` };
+  }
+  return undefined;
+}
+
+/** One front-matter value as written, and where: its field, its 1-based line, and its first column. */
+interface FrontmatterValueAt {
+  field: string;
+  rawValue: string;
+  lineNumber: number;
+  valueStart: number;
+}
+
+/**
+ * The spans of the tags a front-matter value names, one per comma-separated
+ * item, or per item of a `[a, b]` list, each starting past any quote.
+ */
+function createFrontmatterTagSpans(
+  { field, rawValue, lineNumber, valueStart }: FrontmatterValueAt,
+  settings: TagSettings,
+): HeadingTagSpan[] {
+  const trimmed = rawValue.trim();
+  if (!trimmed || valueStart < 0) {
+    return [];
+  }
+
+  const isArray = trimmed.startsWith('[') && trimmed.endsWith(']');
+  const content = isArray ? trimmed.slice(1, -1) : rawValue;
+  const contentStart =
+    valueStart +
+    (isArray
+      ? rawValue.indexOf('[') + 1
+      : 0);
+  let offset = 0;
+
+  return content.split(',').flatMap((item) => {
+    const leading = item.length - item.trimStart().length;
+    const sourceValue = item.trim();
+    const value = unquote(sourceValue);
+    const tag = frontmatterValueToTag(getTagField(field), value, settings);
+    const quoteOffset = /^['"]/.test(sourceValue) ? 1 : 0;
+    const startColumn = contentStart + offset + leading + quoteOffset;
+    offset += item.length + 1;
+
+    if (!tag || !value) {
       return [];
     }
 
-    const isArray = trimmed.startsWith('[') && trimmed.endsWith(']');
-    const content = isArray ? trimmed.slice(1, -1) : rawValue;
-    const contentStart =
-      valueStart +
-      (isArray
-        ? rawValue.indexOf('[') + 1
-        : 0);
-    let offset = 0;
+    return [
+      {
+        key: tag.key,
+        label: tag.label,
+        lineNumber,
+        startColumn,
+        endColumn: startColumn + value.length,
+      },
+    ];
+  });
+}
 
-    return content.split(',').flatMap((item) => {
-      const leading = item.length - item.trimStart().length;
-      const sourceValue = item.trim();
-      const value = unquote(sourceValue);
-      const tag = frontmatterValueToTag(
-        getTagField(field),
-        value,
-        entityNamespaceAliases,
-        personMarker,
-      );
-      const quoteOffset = /^['"]/.test(sourceValue) ? 1 : 0;
-      const startColumn = contentStart + offset + leading + quoteOffset;
-      offset += item.length + 1;
-
-      if (!tag || !value) {
-        return [];
-      }
-
-      return [
-        {
-          key: tag.key,
-          label: tag.label,
-          lineNumber,
-          startColumn,
-          endColumn: startColumn + value.length,
-        },
-      ];
-    });
-  }
-
-  function toSlug(value: string): string | undefined {
-    const slug = value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    return slug || undefined;
-  }
+/** A value as a tag name: lowercased, each run of other characters a hyphen, none at the ends. */
+function toSlug(value: string): string | undefined {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || undefined;
+}
 
 /**
  * Keeps the older heading-only span contract for callers that need it.
@@ -702,7 +768,7 @@ export function formatEntityTitle(kind: string, name: string): string {
  * callers that opt into inline tags use `extractTagSpans` directly.
  */
 export function extractHeadingTagSpans(content: string): HeadingTagSpan[] {
-  return collectTagSpans(content, false, false);
+  return collectTagSpans(content, { parseInlineTags: false, includeFrontmatter: false }, {});
 }
 
 /**
@@ -719,26 +785,30 @@ export function extractTagSpans(
 ): HeadingTagSpan[] {
   return collectTagSpans(
     content,
-    parseInlineTags,
-    true,
-    entityNamespaceAliases,
-    personMarker,
+    { parseInlineTags, includeFrontmatter: true },
+    { aliases: entityNamespaceAliases, personMarker },
   );
 }
 
+/** Which tag spans collectTagSpans reads besides the headings'. */
+interface SpanScope {
+  /** Tags on lines other than headings. */
+  parseInlineTags: boolean;
+  /** Tags the front matter names. */
+  includeFrontmatter: boolean;
+}
+
+/**
+ * The spans of a note's tags in line order, the front matter's first when
+ * asked for, and nothing inside a fence or, as content, inside front matter.
+ */
 function collectTagSpans(
   content: string,
-  parseInlineTags: boolean,
-  includeFrontmatter: boolean,
-  entityNamespaceAliases?: EntityNamespaceAliases,
-  personMarker?: string,
+  scope: SpanScope,
+  settings: TagSettings,
 ): HeadingTagSpan[] {
   const lines = content.split(/\r?\n/);
-  const frontmatter = parseFrontmatter(
-    lines,
-    entityNamespaceAliases,
-    personMarker,
-  );
+  const frontmatter = parseFrontmatter(lines, settings);
   const fencedLines = findFencedLines(lines);
 
   const contentSpans = lines.flatMap((line, lineIndex) => {
@@ -754,27 +824,19 @@ function collectTagSpans(
       const headingTextStart = line.indexOf(heading.text);
       return createTagSpans(
         heading.text,
-        lineIndex + 1,
-        headingTextStart,
-        entityNamespaceAliases,
-        personMarker,
+        { lineNumber: lineIndex + 1, columnOffset: headingTextStart },
+        settings,
       );
     }
 
-    if (!parseInlineTags) {
+    if (!scope.parseInlineTags) {
       return [];
     }
 
-    return createTagSpans(
-      line,
-      lineIndex + 1,
-      0,
-      entityNamespaceAliases,
-      personMarker,
-    );
+    return createTagSpans(line, { lineNumber: lineIndex + 1, columnOffset: 0 }, settings);
   });
 
-  return includeFrontmatter
+  return scope.includeFrontmatter
     ? [...frontmatter.tagSpans, ...contentSpans]
     : contentSpans;
 }
@@ -787,15 +849,14 @@ function collectTagSpans(
  */
 function createTagSpans(
   text: string,
-  lineNumber: number,
-  columnOffset: number,
-  entityNamespaceAliases?: EntityNamespaceAliases,
-  personMarker?: string,
+  at: { lineNumber: number; columnOffset: number },
+  settings: TagSettings,
 ): HeadingTagSpan[] {
+  const { lineNumber, columnOffset } = at;
   return findTagMatches(
     text,
-    entityNamespaceAliases,
-    personMarker,
+    settings.aliases,
+    settings.personMarker,
   ).map((match) => ({
     key: match.key,
     label: match.label,
@@ -859,6 +920,7 @@ function normalizeParsedTagReferences(
   return parsed;
 }
 
+/** References with their keys normalized, each key once, keeping the first spelling met. */
 function normalizeTagReferences(
   references: TagReference[],
   entityNamespaceAliases?: EntityNamespaceAliases,
@@ -871,10 +933,6 @@ function normalizeTagReferences(
   return [...normalized.values()];
 }
 
-/**
- * Whether a tag key names a person: an `@` tag, whatever marker was typed for
- * it, or one under the `#person/` namespace.
- */
 /**
  * The person a task is for: the one its 👤 field names, and nobody otherwise.
  *
@@ -909,6 +967,10 @@ function personTagName(value: string): string {
   return separator < 0 ? bare : bare.slice(separator + 1);
 }
 
+/**
+ * Whether a tag key names a person: an `@` tag, whatever marker was typed for
+ * it, or one under the `#person/` namespace.
+ */
 export function isPersonTag(key: string): boolean {
   return key.startsWith('@') || key.toLocaleLowerCase().startsWith('#person/');
 }
@@ -936,6 +998,10 @@ export function readPerson(
   return undefined;
 }
 
+/**
+ * A `#namespace/name` key with its namespace resolved through the aliases,
+ * so `#proj/atlas` becomes `#project/atlas`. Any other key is returned as is.
+ */
 function normalizeTagKey(
   key: string,
   entityNamespaceAliases?: EntityNamespaceAliases,
@@ -968,16 +1034,19 @@ export function stripTags(text: string, personMarker?: string): string {
   return text
     .replace(
       getTagPattern(getPersonMarker(personMarker)),
-      (fullMatch, prefix: string, marker: string, rawName: string, offset: number) =>
-        isNumericHashTag(marker, rawName) ||
-        isInRanges(skipped, offset + prefix.length)
+      (fullMatch: string, prefix: string, ...rest: [string, string, number]) => {
+        const [marker, rawName, offset] = rest;
+        return isNumericHashTag(marker, rawName) ||
+          isInRanges(skipped, offset + prefix.length)
           ? fullMatch
-          : prefix,
+          : prefix;
+      },
     )
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
 }
 
+/** A tag found in some text, with the columns of its marker and name. */
 interface TagMatch extends TagReference {
   start: number;
   end: number;
@@ -1006,21 +1075,34 @@ function findTagMatches(
 
     return [
       {
-        key:
-          marker === activePersonMarker
-            ? `@${rawName.toLowerCase()}`
-            : marker === '@'
-              ? `#tag-at/${rawName.toLowerCase()}`
-            : normalizeTagKey(
-                `${marker}${rawName.toLowerCase()}`,
-                entityNamespaceAliases,
-              ),
+        key: tagKeyFor(marker, rawName, activePersonMarker, entityNamespaceAliases),
         label: `${marker}${rawName}`,
         start: markerIndex,
         end: markerIndex + marker.length + rawName.length,
       },
     ];
   });
+}
+
+/**
+ * The key a tag is indexed by. The people marker makes a person, `@dana`,
+ * whatever character it is; an `@` that is not the people marker is a plain
+ * tag kept apart under `#tag-at/`; a `#` tag has its namespace's alias
+ * resolved. Names are lowercased, so spelling never splits a tag.
+ */
+function tagKeyFor(
+  marker: string,
+  rawName: string,
+  activePersonMarker: string,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): string {
+  if (marker === activePersonMarker) {
+    return `@${rawName.toLowerCase()}`;
+  }
+  if (marker === '@') {
+    return `#tag-at/${rawName.toLowerCase()}`;
+  }
+  return normalizeTagKey(`${marker}${rawName.toLowerCase()}`, entityNamespaceAliases);
 }
 
 /** The tag pattern for one people marker, compiled. */
@@ -1091,15 +1173,12 @@ function findHeadings(
  * same or higher level, matching Markdown's nested-section structure.
  */
 function createSection(
-  filePath: string,
-  lines: string[],
+  context: NoteContext,
   headings: HeadingMatch[],
-  heading: HeadingMatch,
   headingIndex: number,
-  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
-  frontmatterTags: TagReference[] = [],
-  personMarker?: string,
 ): Section {
+  const { filePath, lines, dates, frontmatterTags, personMarker } = context;
+  const heading = headings[headingIndex];
   const nextBoundary = headings
     .slice(headingIndex + 1)
     .find((candidate) => candidate.level <= heading.level);
@@ -1140,8 +1219,8 @@ function createSection(
     startLine: heading.lineNumber,
     endLine,
     bodyEndLine,
-    createdAt: metadata?.createdAt,
-    updatedAt: metadata?.updatedAt,
+    createdAt: dates.createdAt,
+    updatedAt: dates.updatedAt,
   };
 }
 
@@ -1223,6 +1302,7 @@ function findNearestParentHeading(
   return undefined;
 }
 
+/** A heading section's id, from its note, its line, and its words. */
 function createHeadingSectionId(
   filePath: string,
   heading: HeadingMatch,
@@ -1238,117 +1318,155 @@ function createHeadingSectionId(
  * task, avoiding duplicate dashboard counts for checklist lines.
  */
 function findInlineSections(
-  filePath: string,
-  lines: string[],
-  fencedLines: Set<number>,
+  context: NoteContext,
   headingSections: Section[],
-  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
-  frontmatterTags: TagReference[] = [],
-  personMarker?: string,
 ): Section[] {
   const sections: Section[] = [];
   let lineIndex = 0;
-
-  while (lineIndex < lines.length) {
-    const line = lines[lineIndex];
-    if (
-      fencedLines.has(lineIndex) ||
-      isParsedHeading(line) ||
-      isTaskLineOf(line, taskShape) ||
-      // A task migrated to another day is neither a task nor a note.
-      isTaskLineOf(line, MIGRATED_TASK_LINE)
-    ) {
-      lineIndex += 1;
-      continue;
+  while (lineIndex < context.lines.length) {
+    const read = readTaggedEntry(context, headingSections, lineIndex);
+    if (read.section) {
+      sections.push(read.section);
     }
-
-    const listItem = getListItemMatch(line);
-    if (listItem) {
-      const localTags = extractTags(line, undefined, personMarker);
-      if (localTags.length > 0) {
-        const lineNumber = lineIndex + 1;
-        const endLine = findListItemEndLine(
-          lines,
-          lineIndex,
-          listItem.indentation,
-        );
-        const rawContent = lines.slice(lineIndex, endLine).join('\n');
-        sections.push(
-          createInlineSection(
-            filePath,
-            line,
-            lineNumber,
-            endLine,
-            rawContent,
-            [localTags],
-            frontmatterTags,
-            findNearestSection(headingSections, lineNumber)?.id,
-            metadata,
-          ),
-        );
-      }
-      lineIndex += 1;
-      continue;
-    }
-
-    const localTags = extractTags(line, undefined, personMarker);
-    if (localTags.length === 0) {
-      lineIndex += 1;
-      continue;
-    }
-
-    const startLineIndex = lineIndex;
-    const paragraphLines = [line];
-    lineIndex += 1;
-    while (lineIndex < lines.length) {
-      const continuation = lines[lineIndex];
-      if (
-        fencedLines.has(lineIndex) ||
-        isParsedHeading(continuation) ||
-        isTaskLineOf(continuation, taskShape) ||
-        getListItemMatch(continuation) ||
-        extractTags(continuation, undefined, personMarker).length === 0
-      ) {
-        break;
-      }
-      paragraphLines.push(continuation);
-      lineIndex += 1;
-    }
-
-    const lineNumber = startLineIndex + 1;
-    const rawContent =
-      paragraphLines.length > 1 ? paragraphLines.join('\n') : '';
-    sections.push(
-      createInlineSection(
-        filePath,
-        line,
-        lineNumber,
-        lineNumber + paragraphLines.length - 1,
-        rawContent,
-        paragraphLines.map((paragraphLine) =>
-          extractTags(paragraphLine, undefined, personMarker),
-        ),
-        frontmatterTags,
-        findNearestSection(headingSections, lineNumber)?.id,
-        metadata,
-      ),
-    );
+    lineIndex = read.nextIndex;
   }
-
   return sections;
 }
 
-function createInlineSection(
-  filePath: string,
-  sourceLine: string,
-  lineNumber: number,
-  endLine: number,
-  rawContent: string,
-  associationTagGroups: TagReference[][],
-  frontmatterTags: TagReference[],
-  parentSectionId: string | undefined,
-  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
-): Section {
+/** What reading from one line found: an entry, or none, and the line to read next. */
+interface EntryReading {
+  section?: Section;
+  nextIndex: number;
+}
+
+/**
+ * The tagged entry that starts on a line, if one does. A line in a fence,
+ * a heading, or a task, open, done, or migrated, starts none.
+ */
+function readTaggedEntry(
+  context: NoteContext,
+  headingSections: Section[],
+  lineIndex: number,
+): EntryReading {
+  const line = context.lines[lineIndex];
+  if (
+    context.fencedLines.has(lineIndex) ||
+    isParsedHeading(line) ||
+    isTaskLineOf(line, taskShape) ||
+    // A task migrated to another day is neither a task nor a note.
+    isTaskLineOf(line, MIGRATED_TASK_LINE)
+  ) {
+    return { nextIndex: lineIndex + 1 };
+  }
+  const listItem = getListItemMatch(line);
+  if (listItem) {
+    return {
+      section: readTaggedListItem(context, headingSections, lineIndex, listItem.indentation),
+      nextIndex: lineIndex + 1,
+    };
+  }
+  return readTaggedParagraph(context, headingSections, lineIndex);
+}
+
+/**
+ * A tagged list item as an entry, running through its indented children;
+ * undefined when the item's own line has no tag. Its children are read as
+ * lines of their own after it.
+ */
+function readTaggedListItem(
+  context: NoteContext,
+  headingSections: Section[],
+  lineIndex: number,
+  indentation: number,
+): Section | undefined {
+  const { lines, personMarker } = context;
+  const line = lines[lineIndex];
+  const localTags = extractTags(line, undefined, personMarker);
+  if (localTags.length === 0) {
+    return undefined;
+  }
+  const lineNumber = lineIndex + 1;
+  const endLine = findListItemEndLine(lines, lineIndex, indentation);
+  return createInlineSection(context, {
+    sourceLine: line,
+    lineNumber,
+    endLine,
+    rawContent: lines.slice(lineIndex, endLine).join('\n'),
+    associationTagGroups: [localTags],
+    parentSectionId: findNearestSection(headingSections, lineNumber)?.id,
+  });
+}
+
+/**
+ * A tagged paragraph as one entry: the line and each tagged line after it,
+ * up to a fence, a heading, a task, a list item, or an untagged line. A
+ * line with no tag starts none.
+ */
+function readTaggedParagraph(
+  context: NoteContext,
+  headingSections: Section[],
+  lineIndex: number,
+): EntryReading {
+  const { lines, fencedLines, personMarker } = context;
+  const line = lines[lineIndex];
+  const localTags = extractTags(line, undefined, personMarker);
+  if (localTags.length === 0) {
+    return { nextIndex: lineIndex + 1 };
+  }
+
+  const paragraphLines = [line];
+  let next = lineIndex + 1;
+  while (next < lines.length) {
+    const continuation = lines[next];
+    if (
+      fencedLines.has(next) ||
+      isParsedHeading(continuation) ||
+      isTaskLineOf(continuation, taskShape) ||
+      getListItemMatch(continuation) ||
+      extractTags(continuation, undefined, personMarker).length === 0
+    ) {
+      break;
+    }
+    paragraphLines.push(continuation);
+    next += 1;
+  }
+
+  const lineNumber = lineIndex + 1;
+  return {
+    section: createInlineSection(context, {
+      sourceLine: line,
+      lineNumber,
+      endLine: lineNumber + paragraphLines.length - 1,
+      rawContent: paragraphLines.length > 1 ? paragraphLines.join('\n') : '',
+      associationTagGroups: paragraphLines.map((paragraphLine) =>
+        extractTags(paragraphLine, undefined, personMarker),
+      ),
+      parentSectionId: findNearestSection(headingSections, lineNumber)?.id,
+    }),
+    nextIndex: next,
+  };
+}
+
+/** A tagged line or paragraph, as findInlineSections found it. */
+interface InlineEntry {
+  /** The entry's first line, which names it and makes its id. */
+  sourceLine: string;
+  lineNumber: number;
+  endLine: number;
+  /** The whole entry's text, or empty for a one-line paragraph. */
+  rawContent: string;
+  /** Each line's tags, a group per line. */
+  associationTagGroups: TagReference[][];
+  parentSectionId: string | undefined;
+}
+
+/**
+ * A tagged line as a section: its words are its heading, it carries the
+ * front matter's tags with its own, and its links are read from its text.
+ */
+function createInlineSection(context: NoteContext, entry: InlineEntry): Section {
+  const { filePath, frontmatterTags, dates } = context;
+  const { sourceLine, lineNumber, endLine, rawContent, associationTagGroups, parentSectionId } = entry;
   const localTags = associationTagGroups.flat();
   const inlineTags = mergeTagReferences(frontmatterTags, localTags);
   return {
@@ -1370,8 +1488,8 @@ function createInlineSection(
     startLine: lineNumber,
     endLine,
     bodyEndLine: endLine,
-    createdAt: metadata?.createdAt,
-    updatedAt: metadata?.updatedAt,
+    createdAt: dates.createdAt,
+    updatedAt: dates.updatedAt,
   };
 }
 
@@ -1382,18 +1500,11 @@ function createInlineSection(
  * changed before applying a one-character edit.
  */
 function findTasks(
-  filePath: string,
-  lines: string[],
+  context: NoteContext,
   sections: Section[],
-  fencedLines: Set<number>,
-  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
-  frontmatterTags: TagReference[] = [],
-  personMarker?: string,
-  /** The day loose dates such as "next Friday" count from. */
-  dateAnchor?: number,
-  /** See `readAssignee`. */
-  assigneeFromPersonTag = false,
+  options: TaskReadOptions,
 ): Task[] {
+  const { filePath, lines, fencedLines } = context;
   const listParents = findListParents(lines, fencedLines);
   const idsByLine = new Map<number, string>();
   const tasks = lines.flatMap((line, lineIndex): Task[] => {
@@ -1404,71 +1515,100 @@ function findTasks(
     if (!match) {
       return [];
     }
-
-    const lineNumber = lineIndex + 1;
-    const section = findNearestSection(sections, lineNumber);
-    const inlineTags = extractTags(match.body, undefined, personMarker);
-    const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
-    const inheritedLabels =
-      section?.tagLabels ??
-      Object.fromEntries(frontmatterTags.map((tag) => [tag.key, tag.label]));
-    const tags = mergeTags(
-      inheritedTags,
-      inlineTags.map((tag) => tag.key),
-    );
-    const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
-    const checkboxColumn = match.indent.length + match.bullet.length + 2;
-    const checkboxValue = match.mark as ' ' | 'x' | 'X';
-    // Obsidian Tasks markers become fields and leave the title, so a ✅ date
-    // is never read as a due date and titles read the way Tasks shows them.
-    const { metadata: fields, title } = parseTaskMetadata(match.body);
-    const dueDate =
-      fields.due !== undefined
-        ? toTaskDate(fields.due)
-        : findTaskDate(title, dateAnchor);
-
-    const id = createId('task', `${filePath}:${lineNumber}:${match.body}`);
+    const id = createId('task', `${filePath}:${lineIndex + 1}:${match.body}`);
     idsByLine.set(lineIndex, id);
     const parentLine = findParentTaskLine(lines, listParents, lineIndex);
     const parentTaskId = parentLine === undefined ? undefined : idsByLine.get(parentLine);
-
-    return [
-      {
-        id,
-        filePath,
-        sectionId: section?.id,
-        title: title || match.body,
-        completed: checkboxValue !== ' ',
-        tags,
-        tagLabels,
-        associationTagGroups: [inlineTags],
-        dueAt: dueDate?.at,
-        dueText: dueDate?.text,
-        ...omitUndefined({
-          assignee: readAssignee(
-            fields.assignee,
-            inlineTags,
-            assigneeFromPersonTag,
-          ),
-          scheduledAt: parseIsoDate(fields.scheduled),
-          startAt: parseIsoDate(fields.start),
-          doneAt: parseIsoDate(fields.done),
-          priority: fields.priority,
-          recurrence: fields.recurrence,
-          dependencyId: fields.id,
-          dependsOn: fields.dependsOn.length > 0 ? fields.dependsOn : undefined,
-        }),
-        lineNumber,
-        checkboxColumn,
-        checkboxValue,
-        sourceLineText: line,
-        createdAt: metadata?.createdAt,
-        updatedAt: metadata?.updatedAt,
-        ...(parentTaskId !== undefined ? { parentTaskId } : {}),
-      },
-    ];
+    return [readTask(context, sections, { line, lineIndex, match, id, parentTaskId }, options)];
   });
   return summarizeSteps(tasks);
+}
+
+/** How a note's tasks are read beyond the note itself. */
+interface TaskReadOptions {
+  /** The day loose dates such as "next Friday" count from. */
+  dateAnchor?: number;
+  /** See `readAssignee`. */
+  assigneeFromPersonTag: boolean;
+}
+
+/** A task line findTasks found, with its id and its parent task's. */
+interface FoundTask {
+  line: string;
+  lineIndex: number;
+  match: TaskLineMatch;
+  id: string;
+  parentTaskId: string | undefined;
+}
+
+/**
+ * One task line as a task: its own tags with those of the section around
+ * it, or the front matter's when no section holds it, and the fields its
+ * metadata gives it.
+ */
+function readTask(
+  context: NoteContext,
+  sections: Section[],
+  found: FoundTask,
+  options: TaskReadOptions,
+): Task {
+  const { filePath, frontmatterTags, personMarker, dates } = context;
+  const { line, lineIndex, match, id, parentTaskId } = found;
+  const lineNumber = lineIndex + 1;
+  const section = findNearestSection(sections, lineNumber);
+  const inlineTags = extractTags(match.body, undefined, personMarker);
+  const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
+  const inheritedLabels =
+    section?.tagLabels ??
+    Object.fromEntries(frontmatterTags.map((tag) => [tag.key, tag.label]));
+  const tags = mergeTags(
+    inheritedTags,
+    inlineTags.map((tag) => tag.key),
+  );
+  const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
+  const checkboxColumn = match.indent.length + match.bullet.length + 2;
+  const checkboxValue = match.mark as ' ' | 'x' | 'X';
+  // Obsidian Tasks markers become fields and leave the title, so a ✅ date
+  // is never read as a due date and titles read the way Tasks shows them.
+  const { metadata: fields, title } = parseTaskMetadata(match.body);
+  const dueDate =
+    fields.due === undefined
+      ? findTaskDate(title, options.dateAnchor)
+      : toTaskDate(fields.due);
+
+  return {
+    id,
+    filePath,
+    sectionId: section?.id,
+    title: title || match.body,
+    completed: checkboxValue !== ' ',
+    tags,
+    tagLabels,
+    associationTagGroups: [inlineTags],
+    dueAt: dueDate?.at,
+    dueText: dueDate?.text,
+    ...omitUndefined({
+      assignee: readAssignee(
+        fields.assignee,
+        inlineTags,
+        options.assigneeFromPersonTag,
+      ),
+      scheduledAt: parseIsoDate(fields.scheduled),
+      startAt: parseIsoDate(fields.start),
+      doneAt: parseIsoDate(fields.done),
+      priority: fields.priority,
+      recurrence: fields.recurrence,
+      dependencyId: fields.id,
+      dependsOn: fields.dependsOn.length > 0 ? fields.dependsOn : undefined,
+    }),
+    lineNumber,
+    checkboxColumn,
+    checkboxValue,
+    sourceLineText: line,
+    createdAt: dates.createdAt,
+    updatedAt: dates.updatedAt,
+    ...(parentTaskId === undefined ? {} : { parentTaskId }),
+  };
 }
 
 /**
@@ -1495,10 +1635,6 @@ function summarizeSteps(tasks: Task[]): Task[] {
   return tasks;
 }
 
-/**
- * The day a daily note is for: a YYYY-MM-DD file name, or failing that a
- * top-level heading that holds such a date.
- */
 /**
  * Whether a note is named for a week or a month, as
  * `week-2026-09-13-2026-09-19.md` and `month-september-2026.md` are, or as
@@ -1539,6 +1675,10 @@ export function isPeriodicNoteFile(file: Pick<ParsedFile, 'filePath' | 'sections
   return isPeriodicNotePath(file.filePath) || isDailyNoteFile(file);
 }
 
+/**
+ * The day a daily note is for: a YYYY-MM-DD file name, or failing that a
+ * top-level heading that holds such a date.
+ */
 export function findDailyNoteDate(
   filePath: string,
   topLevelHeadings: readonly string[],
@@ -1552,11 +1692,13 @@ export function findDailyNoteDate(
     .find((date): date is string => date !== undefined);
 }
 
+/** A task's due date as a local midnight, with the words it was read from. */
 interface TaskDate {
   at: number;
   text: string;
 }
 
+/** A Tasks due date as a task date, or undefined when it is no real day. */
 function toTaskDate(value: string): TaskDate | undefined {
   const at = parseIsoDate(value);
   return at === undefined ? undefined : { at, text: value };
@@ -1589,7 +1731,7 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
 
   const monthDate = text.match(monthDatePattern);
   if (monthDate && anchor !== undefined) {
-    const month = monthNumbers[monthDate[1].toLowerCase()];
+    const month = MONTH_NUMBERS[monthDate[1].toLowerCase()];
     const year = monthDate[3]
       ? Number(monthDate[3])
       : new Date(anchor).getFullYear();
@@ -1603,7 +1745,7 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   const nextWeekday = text.match(nextWeekdayPattern);
   if (nextWeekday && anchor !== undefined) {
     const date = new Date(anchor);
-    const targetDay = weekdayNames.indexOf(nextWeekday[1].toLowerCase());
+    const targetDay = WEEKDAY_NAMES.indexOf(nextWeekday[1].toLowerCase());
     const offset = ((targetDay - date.getDay() + 7) % 7) || 7;
     date.setDate(date.getDate() + offset);
     date.setHours(0, 0, 0, 0);
@@ -1612,9 +1754,6 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
 
   return undefined;
 }
-
-const monthNumbers = MONTH_NUMBERS;
-const weekdayNames = WEEKDAY_NAMES;
 
 /**
  * The block ids a note carries, each with the one-based line it marks.
@@ -1664,6 +1803,7 @@ export function listItemIndentation(line: string): number | undefined {
   return getListItemMatch(line)?.indentation;
 }
 
+/** A bullet or numbered list item's marker, or undefined for any other line. */
 function getListItemMatch(line: string): ListItemMatch | undefined {
   const match = line.match(listItemPattern) ?? line.match(orderedListItemPattern);
   return match ? { indentation: match[1].length } : undefined;
@@ -1697,6 +1837,7 @@ export function findListItemEndLine(
   return lines.length;
 }
 
+/** How many whitespace characters a line starts with. */
 function getLeadingWhitespaceLength(line: string): number {
   return line.match(/^\s*/)?.[0].length ?? 0;
 }
@@ -1708,6 +1849,7 @@ function mergeTags(sectionTags: string[], inlineTags: string[]): string[] {
   return [...new Set([...sectionTags, ...inlineTags])];
 }
 
+/** Inherited tags then local ones, each key once, with the last spelling of a key kept. */
 function mergeTagReferences(
   inherited: TagReference[],
   local: TagReference[],
@@ -1715,6 +1857,10 @@ function mergeTagReferences(
   return deduplicateTagReferences([...inherited, ...local]);
 }
 
+/**
+ * Each key once, in the place it is first met, with the spelling it is last
+ * met with.
+ */
 function deduplicateTagReferences(tags: TagReference[]): TagReference[] {
   const deduplicated = new Map<string, TagReference>();
   tags.forEach((tag) => deduplicated.set(tag.key, tag));
@@ -1761,10 +1907,6 @@ function stripClosingHeadingHashes(text: string): string {
 }
 
 /**
- * Creates deterministic IDs so persisted ranks and access counts survive a
- * workspace rescan without storing metadata in the Markdown source.
- */
-/**
  * The id a task line gets, so an edit that rewrites the line can carry the
  * task's place in the rank order across to the line it becomes.
  *
@@ -1784,6 +1926,9 @@ export function getTaskLineId(
 }
 
 /**
+ * A deterministic id, so persisted ranks and access counts survive a
+ * workspace rescan without storing metadata in the Markdown source.
+ *
  * An id is two independent 32-bit hashes of the same text. One alone let two
  * of 5,000 notes' sections share an id about one time in five, and the index
  * keeps one entry per id, so the other vanished. Two make that about one in
