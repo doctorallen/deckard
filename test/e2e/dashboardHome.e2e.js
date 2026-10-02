@@ -272,6 +272,14 @@ test('a Dashboard opened on the Tags tab tells Related Notes what Home can add',
   assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
 });
 
+test('a widget added is announced by its name alone', async () => {
+  const { view } = await openDashboard();
+  view.click(view.find('[data-action="customize-home"]'));
+  view.change(view.find('[data-action="add-widget"]'), 'recentNotes');
+  await delay(20);
+  assert.strictEqual(view.find('#live-status').textContent, 'Added Recently opened to the top of Home.');
+});
+
 test('a widget Related Notes adds while the Tags tab shows is added on Home, in view', async () => {
   const { view, panel, preferences } = await openDashboard(createIndex(), (store) =>
     store.homeWidgets.setDashboardMode('browse'),

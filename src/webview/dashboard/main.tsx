@@ -432,8 +432,9 @@ function revealNewWidget(): void {
   newWidgetMark.tabindex = element.getAttribute('tabindex');
   element.setAttribute('tabindex', '-1');
   element.focus?.({ preventScroll: true });
-  const title = element.querySelector('.home-widget-title');
-  announce(`Added ${title ? String(title.textContent).trim() : 'a widget'} to the top of Home.`);
+  // The widget's name, as its frame is labeled: the title's text also
+  // holds the grip and the count.
+  announce(`Added ${element.getAttribute('aria-label') || 'a widget'} to the top of Home.`);
   const id = newWidget.id;
   setTimeout(() => {
     document.querySelector(`.home-widget[data-widget-id="${id}"]`)?.classList.remove('is-new');
