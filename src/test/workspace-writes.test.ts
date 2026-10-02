@@ -163,6 +163,30 @@ suite('Workspace writes', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('puts back a note saved with a byte order mark, mark and all', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.file(path.join(root.fsPath, 'note.md'));
+    const mark = Buffer.from([0xef, 0xbb, 0xbf]);
+    await vscode.workspace.fs.writeFile(note, Buffer.concat([mark, Buffer.from('One #a tag.\n', 'utf8')]));
+    const history = new WorkspaceWriteHistory();
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(note, lineRange(0, 4, 6), '#b');
+    const written = await history.write(edit, { label: 'the rename of #a', preview: 'never' });
+    assert.deepStrictEqual(
+      written.notes.map(({ before, after }) => ({ before, after })),
+      [{ before: 'One #a tag.\n', after: 'One #b tag.\n' }],
+    );
+
+    const undone = await history.undo();
+    assert.strictEqual(undone?.restored, 1, 'the mark on disk is no change since the write');
+    assert.deepStrictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(note)),
+      Buffer.concat([mark, Buffer.from('One #a tag.\n', 'utf8')]),
+    );
+    await deleteTemporaryRoot(root);
+  });
+
   test('puts back what the write changed outside the notes', async () => {
     const root = await createTemporaryRoot();
     const note = vscode.Uri.joinPath(root, 'note.md');

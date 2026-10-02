@@ -6,13 +6,14 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createLinkRewriteEdit, LinkMaintenance } from '../ui/commands/linkMaintenance';
+import { createLinkRewriteEdit, LinkMaintenance, renameHeadingCommand } from '../ui/commands/linkMaintenance';
 import {
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
 import { planNoteRenameRewrites } from '../domain/links/linkRewrites';
 import type { LinkService } from '../services/linkService';
 import { WorkspaceIndex } from '../domain/model';
+import { useDiskWorkspace } from './diskWorkspace';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -166,6 +167,77 @@ suite('Link maintenance', () => {
       willRename.dispose();
       didRename.dispose();
     }
+  });
+});
+
+suite('Rename Heading', () => {
+  // In the extension host this runs against VS Code; under the e2e
+  // stand-in, against a workspace on disk modeled on it.
+  let putBackWorkspace: () => void = () => undefined;
+  suiteSetup(() => {
+    putBackWorkspace = useDiskWorkspace();
+  });
+  suiteTeardown(() => putBackWorkspace());
+
+  test('renames a heading in a note saved with a byte order mark, which the editor leaves out', async () => {
+    const root = await createTemporaryRoot();
+    const mark = Buffer.from([0xef, 0xbb, 0xbf]);
+    const reviewUri = vscode.Uri.file(path.join(root.fsPath, 'Vendor review.md'));
+    const logUri = vscode.Uri.file(path.join(root.fsPath, 'Log.md'));
+    await vscode.workspace.fs.writeFile(reviewUri, Buffer.concat([mark, Buffer.from('Notes\n# Vendor review\n', 'utf8')]));
+    await vscode.workspace.fs.writeFile(logUri, Buffer.from('Read [[Vendor review#Vendor review]] today.\n', 'utf8'));
+    // The index can hold the text as read from disk, mark and all.
+    const index = indexOf({
+      [reviewUri.fsPath]: '\uFEFFNotes\n# Vendor review\n',
+      [logUri.fsPath]: 'Read [[Vendor review#Vendor review]] today.\n',
+    });
+    const document = await vscode.workspace.openTextDocument(reviewUri);
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const replaced: [string, unknown][] = [
+      ['activeTextEditor', { document, selection: { active: new vscode.Position(1, 3) } }],
+      ['showInputBox', async () => 'Supplier review'],
+      ['showInformationMessage', async (message: string) => void shown.push(message)],
+    ];
+    const shown: string[] = [];
+    const kept = replaced.map(([key]) => Object.getOwnPropertyDescriptor(window, key));
+    replaced.forEach(([key, value]) => Object.defineProperty(window, key, { configurable: true, get: () => value }));
+    // Two notes would open the refactor preview, which no one is here to accept.
+    const settings = vscode.workspace.getConfiguration('deckard');
+    const preview = settings.inspect('previewWorkspaceWrites')?.globalValue;
+    await settings.update('previewWorkspaceWrites', 'never', vscode.ConfigurationTarget.Global);
+    try {
+      const renamed = await renameHeadingCommand(
+        {
+          ready: Promise.resolve(),
+          getSnapshot: () => index,
+          getFilePath: (uri) => uri.fsPath,
+          isNotesFile: () => true,
+          refresh: async () => undefined,
+        },
+        new WorkspaceWriteHistory(),
+      );
+      assert.strictEqual(renamed, 'Supplier review', shown.join('\n'));
+    } finally {
+      await settings.update('previewWorkspaceWrites', preview, vscode.ConfigurationTarget.Global);
+      replaced.forEach(([key], at) => {
+        const descriptor = kept[at];
+        if (descriptor) {
+          Object.defineProperty(window, key, descriptor);
+        } else {
+          delete window[key];
+        }
+      });
+    }
+    assert.deepStrictEqual(shown, ['Renamed the heading to "Supplier review" and the links to it in 1 other note.']);
+    assert.deepStrictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(reviewUri)),
+      Buffer.concat([mark, Buffer.from('Notes\n# Supplier review\n', 'utf8')]),
+    );
+    assert.strictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(logUri)).toString('utf8'),
+      'Read [[Vendor review#Supplier review]] today.\n',
+    );
+    await deleteTemporaryRoot(root);
   });
 });
 

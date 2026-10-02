@@ -375,8 +375,11 @@ interface UndoPlan {
   edit: vscode.WorkspaceEdit;
   /** The notes in that edit, saved once it lands. */
   documents: vscode.TextDocument[];
-  /** The notes nobody has open, written straight to disk. */
-  quiet: { uri: vscode.Uri; text: string }[];
+  /**
+   * The notes nobody has open, written straight to disk, each with the
+   * byte order mark it had there.
+   */
+  quiet: { uri: vscode.Uri; text: string; byteOrderMark: boolean }[];
   /** The notes changed since the write, or unreadable, which are left alone. */
   skippedUris: vscode.Uri[];
 }
@@ -389,7 +392,7 @@ interface UndoPlan {
 async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
   const edit = new vscode.WorkspaceEdit();
   const documents: vscode.TextDocument[] = [];
-  const quiet: { uri: vscode.Uri; text: string }[] = [];
+  const quiet: UndoPlan['quiet'] = [];
   const skippedUris: vscode.Uri[] = [];
 
   for (const note of notes) {
@@ -403,10 +406,8 @@ async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
     // The note has to be what the write left, both on disk and in any
     // editor holding it. Either one differing means someone has been here
     // since, and an Undo is not Deckard's to make.
-    if (
-      document.getText() !== note.after ||
-      (await readFile(note.uri)) !== note.after
-    ) {
+    const disk = await readFile(note.uri);
+    if (document.getText() !== note.after || disk?.text !== note.after) {
       skippedUris.push(note.uri);
       continue;
     }
@@ -417,7 +418,7 @@ async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
       edit.replace(note.uri, wholeDocument(document), note.before);
       documents.push(document);
     } else {
-      quiet.push({ uri: note.uri, text: note.before });
+      quiet.push({ uri: note.uri, text: note.before, byteOrderMark: disk.byteOrderMark });
     }
   }
   return { edit, documents, quiet, skippedUris };
@@ -438,9 +439,10 @@ async function applyUndo(plan: UndoPlan): Promise<boolean> {
     }
   }
   for (const note of plan.quiet) {
+    const text = Buffer.from(note.text, 'utf8');
     await vscode.workspace.fs.writeFile(
       note.uri,
-      Buffer.from(note.text, 'utf8'),
+      note.byteOrderMark ? Buffer.concat([BYTE_ORDER_MARK, text]) : text,
     );
   }
   return true;
@@ -566,15 +568,29 @@ function isOpenInEditor(uri: vscode.Uri): boolean {
   );
 }
 
-/** A note as it stands on disk, or nothing when it cannot be read. */
-async function readFile(uri: vscode.Uri): Promise<string | undefined> {
+/** The three bytes of a UTF-8 byte order mark. */
+const BYTE_ORDER_MARK = Buffer.from([0xef, 0xbb, 0xbf]);
+
+/**
+ * A note as it stands on disk, or nothing when it cannot be read. Its text
+ * leaves out a byte order mark, as VS Code's document does, so a note saved
+ * with one does not read as changed since; whether it had one is kept, so
+ * an Undo written to disk writes it back.
+ */
+async function readFile(
+  uri: vscode.Uri,
+): Promise<{ text: string; byteOrderMark: boolean } | undefined> {
+  let bytes: Buffer;
   try {
-    return Buffer.from(await vscode.workspace.fs.readFile(uri)).toString(
-      'utf8',
-    );
+    bytes = Buffer.from(await vscode.workspace.fs.readFile(uri));
   } catch {
     return undefined;
   }
+  const byteOrderMark = bytes.subarray(0, 3).equals(BYTE_ORDER_MARK);
+  return {
+    text: (byteOrderMark ? bytes.subarray(3) : bytes).toString('utf8'),
+    byteOrderMark,
+  };
 }
 
 /** The range that replaces a note's whole text. */
