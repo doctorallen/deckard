@@ -168,7 +168,7 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
         <div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>
         <div class="board-header-actions">
           <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
-          <HelpButton anchor="board" />
+          <HelpButton anchor="task-views" />
           <BoardViewOptions snapshot={snapshot} />
         </div>
       </header>
