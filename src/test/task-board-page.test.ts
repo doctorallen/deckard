@@ -359,4 +359,17 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(shown.posted.filter((message) => message.type === 'toggleTask').map((message) => message.completed), [true, false]);
     assert.strictEqual(shown.text('#live-status'), 'Reopened Beta.');
   });
+
+  test('a key that asks for what a card already has says so, and sends nothing', () => {
+    const shown = show(boardOf({ 'notes/a.md': '- [ ] Gamma 📅 2026-09-21\n- [ ] Delta 🔺\n' }));
+    const gamma = cardTitled(shown, 'Gamma');
+    gamma.focus();
+    press(shown, gamma, 't');
+    assert.strictEqual(shown.text('#live-status'), 'Gamma: Due is already Due today.');
+    const delta = cardTitled(shown, 'Delta');
+    delta.focus();
+    press(shown, delta, '1');
+    assert.strictEqual(shown.text('#live-status'), 'Delta: Priority is already Highest.');
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'neither is sent to be refused');
+  });
 });

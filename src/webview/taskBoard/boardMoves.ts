@@ -104,6 +104,17 @@ function applyMove(card: HTMLElement, columnId: string): void {
   focusCard(card);
 }
 
+/**
+ * What a card's menu says when the task already has the move `value`
+ * makes, "Draft spec: Priority is already High.", or undefined when it
+ * does not.
+ */
+function alreadyHas(card: HTMLElement, groups: readonly ActionMenuGroup[], value: string): string | undefined {
+  const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
+  const chosen = group ? group.items.find((item) => item.value === value) : undefined;
+  return chosen && chosen.checked ? `${taskTitleOf(card)}: ${(group && group.label) || 'It'} is already ${chosen.label}.` : undefined;
+}
+
 /** The board's moves, wired once by `installBoardMoves`. */
 class BoardMoves {
   public constructor(private readonly options: BoardMovesOptions) {}
@@ -144,7 +155,17 @@ class BoardMoves {
     board.lingerUntil = Date.now() + 800;
   }
 
+  /**
+   * Moves a card from a key. A key that asks for what the card's menu says
+   * the task already has is answered as the menu answers it, rather than
+   * sent to the host to be refused as a move that was not made.
+   */
   private moveCard(card: HTMLElement, column: string, said: string): void {
+    const already = alreadyHas(card, board.moves[cardKeyOf(card)] || [], column);
+    if (already) {
+      announce(already);
+      return;
+    }
     const from = String(card.dataset.cardColumn);
     applyMove(card, column);
     this.post({ type: 'moveTask', taskId: String(card.dataset.taskId), column, from });
@@ -233,13 +254,14 @@ class BoardMoves {
       this.post({ type: 'breakIntoSteps', taskId });
       return;
     }
+    const already = alreadyHas(card, groups, value);
+    if (already) {
+      announce(already);
+      return;
+    }
     // Said as the menu said it: "Draft spec: Priority, High."
     const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
     const chosen = group ? group.items.find((item) => item.value === value) : undefined;
-    if (chosen && chosen.checked) {
-      announce(`${taskTitleOf(card)}: ${(group && group.label) || 'It'} is already ${chosen.label}.`);
-      return;
-    }
     const from = String(card.dataset.cardColumn);
     applyMove(card, value);
     this.post({ type: 'moveTask', taskId, column: value, from });
