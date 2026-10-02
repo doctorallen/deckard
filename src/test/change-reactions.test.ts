@@ -37,6 +37,7 @@ const ROWS: Array<[string, WorkspaceChange, Reactions]> = [
   ['deckard.parseInlineTags rescans', settings('deckard.parseInlineTags'), RESCAN],
   ['deckard.noteBoundaries rescans', settings('deckard.noteBoundaries'), RESCAN],
   ['deckard.personMarker rescans', settings('deckard.personMarker'), RESCAN],
+  ['deckard.tasks.assigneeFromPersonTag rescans', settings('deckard.tasks.assigneeFromPersonTag'), RESCAN],
   ['deckard.templatesFolder rescans', settings('deckard.templatesFolder'), RESCAN],
   ['deckard.exclude rescans', settings('deckard.exclude'), RESCAN],
   ['files.exclude rescans', settings('files.exclude'), RESCAN],

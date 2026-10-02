@@ -73,6 +73,37 @@ suite('Front matter tags', () => {
     );
   });
 
+  test('an empty value names no tag, and a rewrite leaves none behind and keeps every other key', () => {
+    const empties = (list: string) => `---\ntitle: x\ntags:\n${list}owner: y\n---\n# A\n`;
+    for (const empty of ["''", '""']) {
+      assert.deepStrictEqual(readFrontmatterTagValues(`---\ntags: ${empty}\n---\n`), [], empty);
+      assert.strictEqual(
+        addFrontmatterTag(`---\ntitle: x\ntags: ${empty}\nowner: y\n---\n`, 'parked'),
+        '---\ntitle: x\ntags: [parked]\nowner: y\n---\n',
+        empty,
+      );
+      assert.strictEqual(removeFrontmatterTags(`---\ntags: ${empty}\n---\n`, ['parked']), undefined, empty);
+
+      assert.deepStrictEqual(readFrontmatterTagValues(empties(`  - ${empty}\n  - parked\n`)), ['parked'], empty);
+      assert.strictEqual(
+        removeFrontmatterTags(empties(`  - ${empty}\n  - parked\n`), ['parked']),
+        '---\ntitle: x\nowner: y\n---\n# A\n',
+        `${empty}: the field goes once no tag is left in it`,
+      );
+      assert.strictEqual(
+        removeFrontmatterTags(empties(`  - a\n  - ${empty}\n  - parked\n`), ['parked']),
+        empties('  - a\n'),
+        `${empty}: the empty item goes with the rewrite`,
+      );
+      assert.strictEqual(
+        addFrontmatterTag(empties(`  - ${empty}\n`), 'parked'),
+        empties('  - parked\n'),
+        `${empty}: the new tag takes the empty item's place`,
+      );
+      assert.strictEqual(removeFrontmatterTags(empties(`  - ${empty}\n`), ['parked']), undefined, empty);
+    }
+  });
+
   test('says when there was nothing to remove', () => {
     assert.strictEqual(removeFrontmatterTags('# A\n', ['parked']), undefined);
     assert.strictEqual(removeFrontmatterTags('---\ntags: [a]\n---\n', ['parked']), undefined);

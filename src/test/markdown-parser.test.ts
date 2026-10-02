@@ -13,6 +13,8 @@ import {
   parseMarkdown,
   stripTags,
 } from '../domain/markdown/parser';
+import { findLinkedBlock } from '../domain/index/backlinks';
+import { setTaskLineCompletion } from '../domain/markdown/taskLineEdits';
 
 suite('Markdown parser', () => {
   test('gives two entries whose old ids collided ids of their own', () => {
@@ -248,6 +250,26 @@ suite('Markdown parser', () => {
       ),
       'management',
     );
+  });
+
+  test('a namespace or block id named after a property of every object is read as written', () => {
+    const parsed = parseMarkdown(
+      'notes/fix.md',
+      '# Fix #constructor/x #toString/y\nThe line ^constructor',
+      undefined,
+      { entityNamespaceAliases: getEntityNamespaceAliases({ alias: 'constructor' }) },
+    );
+    assert.deepStrictEqual(parsed.sections[0].tags, ['#constructor/x', '#tostring/y']);
+    assert.deepStrictEqual(
+      extractTagSpans('# Fix #alias/x', true, getEntityNamespaceAliases({ alias: 'constructor' })).map(
+        (span) => span.key,
+      ),
+      ['#constructor/x'],
+      'an alias of a namespace named constructor resolves to it',
+    );
+    assert.deepStrictEqual(parsed.blockIds, { constructor: 2 });
+    assert.strictEqual(findLinkedBlock(parsed, 'constructor'), 2);
+    assert.strictEqual(findLinkedBlock(parsed, 'toString'), undefined);
   });
 
   test('uses the configured people marker and preserves @ as a generic tag', () => {
@@ -533,6 +555,19 @@ suite('Markdown parser', () => {
     assert.strictEqual(parsed.tasks[0].checkboxColumn, 3);
     assert.strictEqual(parsed.tasks[1].completed, true);
     assert.strictEqual(parsed.tasks[1].sectionId, parsed.sections[2].id);
+  });
+
+  test('finds the checkbox however many spaces or tabs sit before its bracket', () => {
+    const lines = ['-   [ ] Wide gap', '  *\t\t[ ] Two tabs', '+ [ ] One space'];
+    const parsed = parseMarkdown('notes/gaps.md', lines.join('\n'));
+    assert.deepStrictEqual(
+      parsed.tasks.map((task) => task.checkboxColumn),
+      lines.map((line) => line.indexOf('[') + 1),
+    );
+    parsed.tasks.forEach((task, index) => {
+      const done = setTaskLineCompletion(lines[index], task.checkboxColumn, { completed: true, doneDate: '2026-10-02' });
+      assert.strictEqual(done, `${lines[index].replace('[ ]', '[x]')} ✅ 2026-10-02`);
+    });
   });
 
   test('handles empty content and tasks before the first heading', () => {

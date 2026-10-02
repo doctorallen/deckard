@@ -13,23 +13,28 @@ export interface CaptureReading {
   recurrence?: string;
 }
 
-const PRIORITY_WORDS: Readonly<Record<string, TaskPriority>> = {
-  '!!!': 'highest',
-  '!!': 'high',
-  '!': 'medium',
-  p1: 'highest',
-  p2: 'high',
-  p3: 'medium',
-  p4: 'low',
-};
+/**
+ * The priority words, as the priority each stands for. A Map, not an object
+ * literal, because the key is a word the user typed: "Fix the constructor"
+ * must not read Object's prototype as a priority.
+ */
+const PRIORITY_WORDS: ReadonlyMap<string, TaskPriority> = new Map([
+  ['!!!', 'highest'],
+  ['!!', 'high'],
+  ['!', 'medium'],
+  ['p1', 'highest'],
+  ['p2', 'high'],
+  ['p3', 'medium'],
+  ['p4', 'low'],
+]);
 
-/** "daily" and its like, as the rule they stand for. */
-const REPEAT_WORDS: Readonly<Record<string, string>> = {
-  daily: 'every day',
-  weekly: 'every week',
-  monthly: 'every month',
-  yearly: 'every year',
-};
+/** "daily" and its like, as the rule they stand for; a Map for the same reason. */
+const REPEAT_WORDS: ReadonlyMap<string, string> = new Map([
+  ['daily', 'every day'],
+  ['weekly', 'every week'],
+  ['monthly', 'every month'],
+  ['yearly', 'every year'],
+]);
 
 const MONTH_NAME =
   '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
@@ -123,11 +128,11 @@ type TrailingReader = (words: string[], reading: TrailingReading, clock: DayCloc
 
 /** A priority word: `!!!` to `!`, or `p1` to `p4`. */
 function takePriority(words: string[], reading: TrailingReading): boolean {
-  const last = words[words.length - 1].toLowerCase();
-  if (reading.priority !== undefined || !PRIORITY_WORDS[last]) {
+  const priority = PRIORITY_WORDS.get(words[words.length - 1].toLowerCase());
+  if (reading.priority !== undefined || priority === undefined) {
     return false;
   }
-  reading.priority = PRIORITY_WORDS[last];
+  reading.priority = priority;
   words.pop();
   return true;
 }
@@ -140,9 +145,9 @@ function takeRecurrence(words: string[], reading: TrailingReading): boolean {
   if (reading.recurrence !== undefined) {
     return false;
   }
-  const last = words[words.length - 1].toLowerCase();
-  if (REPEAT_WORDS[last]) {
-    reading.recurrence = REPEAT_WORDS[last];
+  const repeat = REPEAT_WORDS.get(words[words.length - 1].toLowerCase());
+  if (repeat !== undefined) {
+    reading.recurrence = repeat;
     words.pop();
     return true;
   }

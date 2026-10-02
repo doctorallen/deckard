@@ -175,15 +175,15 @@ export interface HeadingMatch {
 }
 
 /**
- * How a heading's words are read. Both need a space or a tab after the
- * hashes, and neither reads words with a line terminator (`\r`, U+2028,
- * U+2029) inside them.
+ * How a heading's words are read. Words need a space or a tab between them
+ * and the hashes, and neither reads words with a line terminator (`\r`,
+ * U+2028, U+2029) inside them.
  *
  * - `kept`: the words run to the end of the line, closing hashes included,
- *   with trailing whitespace off (a trailing `\r` counts as whitespace);
- *   there must be at least one character, so `# ` is not a heading, though
- *   `#  ` is one whose words are a space. The parser reads headings this
- *   way and strips closing hashes itself.
+ *   with trailing whitespace off (a trailing `\r` counts as whitespace).
+ *   The words may be empty: `#`, `# `, and `#  ` are each a heading with no
+ *   words, as CommonMark and so the preview read them. The parser reads
+ *   headings this way and strips closing hashes itself.
  * - `dropped`: closing hashes and the spaces and tabs around them are off,
  *   and the words may be empty, so `# ` and `# #` are headings with no
  *   words; a trailing `\r` makes the line not a heading.
@@ -191,14 +191,14 @@ export interface HeadingMatch {
 export type HeadingClosingHashes = 'kept' | 'dropped';
 
 const HEADING_TEXT_PATTERNS: Readonly<Record<HeadingClosingHashes, RegExp>> = {
-  kept: /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/,
+  kept: /^ {0,3}(#{1,6})(?:[ \t]+(.*?)\s*|\r?)$/,
   dropped: /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*(?:#+[ \t]*)?$/,
 };
 
 /** A heading line's level and words, or undefined for a line that is not one. */
 export function matchHeading(line: string, closingHashes: HeadingClosingHashes): HeadingMatch | undefined {
   const match = HEADING_TEXT_PATTERNS[closingHashes].exec(line);
-  return match ? { level: match[1].length, text: match[2] } : undefined;
+  return match ? { level: match[1].length, text: match[2] ?? '' } : undefined;
 }
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;

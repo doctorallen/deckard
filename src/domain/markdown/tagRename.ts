@@ -1,4 +1,5 @@
 import type { HeadingTagSpan, TagReference } from '../model';
+import { isFrontmatterClose } from './frontmatter';
 import {
   EntityNamespaceAliases,
   extractTagSpans,
@@ -371,7 +372,7 @@ function getFrontmatterField(
 
   let currentField: string | undefined;
   for (let lineIndex = 1; lineIndex < lineNumber; lineIndex += 1) {
-    if (lines[lineIndex]?.trim() === '---') {
+    if (isFrontmatterClose(lines[lineIndex] ?? '')) {
       return undefined;
     }
     const property = lines[lineIndex]?.match(

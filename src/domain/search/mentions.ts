@@ -7,6 +7,7 @@ import { findCodeAndLinkRanges } from '../markdown/inlineRanges';
 import { ParsedFile, WorkspaceIndex } from '../model';
 import { escapeRegExp } from '../../shared/text';
 import { findFencedLines } from '../markdown/lineShapes';
+import { findFrontmatterEnd } from '../markdown/frontmatter';
 
 /** A note's name written in another note's prose, where a link could go. */
 export interface UnlinkedMention {
@@ -89,7 +90,7 @@ export function findUnlinkedMentions(
     }
     const lines = other.content.split(/\r?\n/);
     const fenced = findFencedLines(lines);
-    const frontmatterEnd = findFrontmatterEnd(lines);
+    const frontmatterEnd = findFrontmatterEnd(lines) ?? -1;
     lines.forEach((text, line) => {
       if (line <= frontmatterEnd || fenced.has(line) || /^ {0,3}#{1,6}\s/.test(text)) {
         return;
@@ -130,11 +131,3 @@ function blankRanges(text: string, line: string): string {
   return blanked;
 }
 
-/** The last line of a note's front matter, or -1 when it has none. */
-function findFrontmatterEnd(lines: readonly string[]): number {
-  if (lines[0]?.trim() !== '---') {
-    return -1;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end < 0 ? -1 : end;
-}

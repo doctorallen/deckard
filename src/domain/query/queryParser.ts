@@ -688,7 +688,7 @@ class Parser {
       return this.parseBareWord(word);
     }
 
-    const field = FIELD_ALIASES[word.value.toLowerCase()];
+    const field = lookupAlias(FIELD_ALIASES, word.value);
     if (!field) {
       this.diagnostics.push({
         message: `"${word.value}" is not a Deckard query field. Use one of: ${Object.keys(
@@ -877,8 +877,19 @@ function readAlias(
   value: string,
   refusal: string,
 ): ValueReading {
-  const normalized = aliases[value.toLowerCase()];
+  const normalized = lookupAlias(aliases, value);
   return normalized ? { value: normalized } : { message: `${refusal} — not "${value}".` };
+}
+
+/**
+ * What a word, in any case, names in one of the alias tables, or undefined
+ * when the table does not list it. Only the table's own keys count: the
+ * word is the user's, and `constructor` or `__proto__` read through plain
+ * indexing would find what every object inherits.
+ */
+function lookupAlias<Value>(aliases: Readonly<Record<string, Value>>, word: string): Value | undefined {
+  const key = word.toLowerCase();
+  return Object.hasOwn(aliases, key) ? aliases[key] : undefined;
 }
 
 /**

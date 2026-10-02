@@ -5,11 +5,15 @@ import { findFencedLines } from '../../domain/markdown/lineShapes';
 /** Context key for whether a section is focused, which offers the way back. */
 export const SECTION_FOCUSED = 'deckard.sectionFocused';
 
-/** The zero-based line of the heading a line is under, outside code. */
+/**
+ * The zero-based line of the heading a line is under, outside code. Hashes
+ * alone, `#`, are a heading with no words, as the parser and the preview
+ * read them.
+ */
 export function findHeadingLineAbove(lines: readonly string[], line: number): number | undefined {
   const fenced = findFencedLines([...lines]);
   for (let at = Math.min(line, lines.length - 1); at >= 0; at -= 1) {
-    if (!fenced.has(at) && /^#{1,6}[ \t]/.test(lines[at])) {
+    if (!fenced.has(at) && /^#{1,6}(?:[ \t]|$)/.test(lines[at])) {
       return at;
     }
   }

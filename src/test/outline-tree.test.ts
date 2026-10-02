@@ -1,5 +1,7 @@
 import * as assert from 'assert';
 
+import MarkdownIt = require('markdown-it');
+
 import { parseMarkdown } from '../domain/markdown/parser';
 import {
   buildOutline,
@@ -217,5 +219,34 @@ suite('Outline tree', () => {
       collectOutlineTags(roots).map((tag) => tag.label),
       ['#project/atlas', '#project/orion', '#topic/x'],
     );
+  });
+});
+
+suite('A heading with no words', () => {
+  test('hashes alone, with or without spaces after them, are an empty heading everywhere, as in the preview', () => {
+    const preview = new MarkdownIt();
+    for (const bare of ['#', '# ', '#   ']) {
+      const content = ['# Plan', 'Before.', bare, 'After.'].join('\n');
+      const headings = preview.parse(content, {}).filter((token) => token.type === 'heading_open');
+      assert.strictEqual(headings.length, 2, `the preview reads ${JSON.stringify(bare)} as a heading`);
+
+      const file = parseMarkdown('notes/a.md', content);
+      assert.deepStrictEqual(
+        file.sections.map((section) => [section.heading, section.headingLevel, section.startLine, section.endLine]),
+        [
+          ['Plan', 1, 1, 2],
+          ['', 1, 3, 4],
+        ],
+        `the parser ends Plan at ${JSON.stringify(bare)}`,
+      );
+      assert.deepStrictEqual(
+        buildOutline(file).map((node) => [node.label, node.line]),
+        [
+          ['Plan', 1],
+          ['Untitled heading', 3],
+        ],
+        `the Outline lists ${JSON.stringify(bare)}`,
+      );
+    }
   });
 });

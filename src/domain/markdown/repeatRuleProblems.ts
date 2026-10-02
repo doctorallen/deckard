@@ -1,3 +1,4 @@
+import { findFrontmatterEnd } from './frontmatter';
 import { matchTaskLine, TaskLineShape, findFencedLines } from './lineShapes';
 import { parseRecurrence, suggestRecurrence } from './recurrence';
 import { findTaskMetadataSpans } from './taskFields';
@@ -29,11 +30,7 @@ export interface RepeatRuleProblem {
  */
 export function findRepeatRuleProblems(lines: readonly string[]): RepeatRuleProblem[] {
   const fenced = findFencedLines([...lines]);
-  let skip = 0;
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-    skip = end > 0 ? end + 1 : 0;
-  }
+  const skip = (findFrontmatterEnd(lines) ?? -1) + 1;
   const problems: RepeatRuleProblem[] = [];
   lines.forEach((text, line) => {
     const task = matchTaskLine(text, OPEN_TASK);

@@ -74,7 +74,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   if (atCursor) {
     return atCursor;
   }
-  const frontMatterEnd = findFrontmatterEnd(lines, 'dashes');
+  const frontMatterEnd = findFrontmatterEnd(lines);
   if (frontMatterEnd !== undefined && start <= frontMatterEnd) {
     return { refused: 'frontMatter' };
   }

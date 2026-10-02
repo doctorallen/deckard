@@ -100,6 +100,29 @@ suite('Deckard query language', () => {
     assert.match(parsed.diagnostics[0].message, /not a Deckard query field/);
   });
 
+  test('a field or value named after a property of every object is unknown like any other', () => {
+    const unknownField = parseQuery('color:x');
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      const parsed = parseQuery(`${name}:x`);
+      assert.strictEqual(parsed.node, undefined, name);
+      assert.deepStrictEqual(
+        parsed.diagnostics.map((diagnostic) => diagnostic.message),
+        unknownField.diagnostics.map((diagnostic) => diagnostic.message.replace('"color"', `"${name}"`)),
+        name,
+      );
+      for (const field of ['is', 'has', 'no', 'task', 'priority']) {
+        const unknownValue = parseQuery(`${field}:bogus`);
+        const value = parseQuery(`${field}:${name}`);
+        assert.strictEqual(value.node, undefined, `${field}:${name}`);
+        assert.deepStrictEqual(
+          value.diagnostics.map((diagnostic) => diagnostic.message),
+          unknownValue.diagnostics.map((diagnostic) => diagnostic.message.replace('"bogus"', `"${name}"`)),
+          `${field}:${name}`,
+        );
+      }
+    }
+  });
+
   test('reports an unclosed group', () => {
     const parsed = parseQuery('(tag:#a AND tag:#b');
     assert.strictEqual(parsed.node, undefined);
@@ -519,6 +542,24 @@ suite('Deckard search page state', () => {
       parseQuery('created = soon').diagnostics[0]?.message,
       'created accepts a date such as 2026-09-13, friday, this-week, last-month, 2026-08, or a window such as 30d.',
     );
+  });
+
+  test('refuses a day the calendar does not have, as it refuses any other malformed date', () => {
+    for (const day of ['2026-02-31', '2026-02-29', '2026-13-01', '2026-04-31', '2026-00-10', '2026-01-00']) {
+      assert.strictEqual(
+        parseQuery(`due = ${day}`).diagnostics[0]?.message,
+        parseQuery('due = soon').diagnostics[0]?.message,
+        day,
+      );
+      assert.strictEqual(
+        parseQuery(`created = ${day}`).diagnostics[0]?.message,
+        parseQuery('created = soon').diagnostics[0]?.message,
+        day,
+      );
+      assert.strictEqual(resolveDateRange(day, Date.now(), 'past', 0), undefined, day);
+    }
+    assert.deepStrictEqual(parseQuery('due = 2028-02-29').diagnostics, [], 'a leap day is a day');
+    assert.deepStrictEqual(parseQuery('due = 2026-12-31').diagnostics, []);
   });
 
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {

@@ -77,7 +77,15 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   { settings: ['deckard.notesFolder'], rewatch: true, rescan: true },
   // Parse settings: each is in the parse fingerprint, so the rescan
   // reparses every note rather than reusing any.
-  { settings: ['deckard.parseInlineTags', 'deckard.noteBoundaries', 'deckard.personMarker'], rescan: true },
+  {
+    settings: [
+      'deckard.parseInlineTags',
+      'deckard.noteBoundaries',
+      'deckard.personMarker',
+      'deckard.tasks.assigneeFromPersonTag',
+    ],
+    rescan: true,
+  },
   // Which files are notes: the rescan reuses each note whose stat is unchanged.
   { settings: ['deckard.templatesFolder', 'deckard.exclude', 'files.exclude', 'search.exclude'], rescan: true },
 ];

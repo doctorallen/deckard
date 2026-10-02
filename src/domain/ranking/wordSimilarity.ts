@@ -333,7 +333,7 @@ function isCommonplace(model: LexicalModel, term: string): boolean {
 function getLexicalTerms(title: string, content: string): string[] {
   const ignored = STOP_WORDS;
   const clean = `${title}\n${content}`
-    .replace(/^---\s*$[\s\S]*?^---\s*$/m, ' ')
+    .replace(/^---\s*$[\s\S]*?^(?:---|\.\.\.)\s*$/m, ' ')
     .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
     .replace(/\[\[[^\]]+\]\]|https?:\/\/\S+|[#@][\w/-]+/g, ' ');
   const titleTerms = title

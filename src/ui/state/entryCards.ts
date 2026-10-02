@@ -12,6 +12,7 @@ import {
   getTitleTags,
 } from '../../domain/ranking/entryLabels';
 import { describeDueDate } from '../../domain/markdown/dueWording';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { TagOverviewHub } from '../protocol/searchPage';
 import { ParsedFile, Section, Task, TagTitleDisplayMode, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
 import { DashboardTask, TagOverviewCard } from '../protocol/shared';
@@ -341,11 +342,6 @@ function getFilePreamble(file: ParsedFile): string {
 /** A note's text below its front matter; all of it when the front matter is missing or never closed. */
 export function getFrontmatterBody(content: string): string {
   const lines = content.split(/\r?\n/);
-  if (lines[0]?.trim() !== '---') {
-    return content;
-  }
-  const endLine = lines.findIndex(
-    (line, index) => index > 0 && line.trim() === '---',
-  );
-  return endLine >= 0 ? lines.slice(endLine + 1).join('\n').replace(/^\n/, '') : content;
+  const endLine = findFrontmatterEnd(lines);
+  return endLine === undefined ? content : lines.slice(endLine + 1).join('\n').replace(/^\n/, '');
 }

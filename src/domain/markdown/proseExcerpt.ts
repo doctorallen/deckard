@@ -40,7 +40,7 @@ function cleanLine(line: string, personMarker?: string): string {
  */
 export function readProseLines(markdown: string, options: { personMarker?: string } = {}): string[] {
   let lines = markdown.split(/\r?\n/);
-  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  const frontmatterEnd = findFrontmatterEnd(lines);
   if (frontmatterEnd !== undefined) {
     lines = lines.slice(frontmatterEnd + 1);
   }

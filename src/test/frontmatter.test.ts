@@ -1,39 +1,105 @@
 import * as assert from 'assert';
 
 import { findFrontmatterEnd, splitFrontmatterValues, unquote } from '../domain/markdown/frontmatter';
+import {
+  addFrontmatterTag,
+  readFrontmatterTagValues,
+  removeFrontmatterTags,
+} from '../domain/markdown/frontmatterTags';
+import { findTagTarget } from '../domain/markdown/tagTarget';
+import { maskNoteForWords } from '../domain/markdown/wordCount';
+import { readMoveBlock } from '../domain/markdown/moveLines';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { readProseLines } from '../domain/markdown/proseExcerpt';
+import { findRepeatRuleProblems } from '../domain/markdown/repeatRuleProblems';
+import { replaceIndexedTag } from '../domain/markdown/tagRename';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { withoutFrontmatter } from '../domain/notes/embeds';
+import { createQueryContext } from '../domain/query/queryContext';
+import { getRelevantDate } from '../domain/ranking/recency';
+import { findUnlinkedMentions } from '../domain/search/mentions';
+import { getFrontmatterBody } from '../ui/state/entryCards';
+import { findTaskLineMarks } from '../ui/state/taskLineMarks';
 
 suite('Front matter bounds and values', () => {
-  test('both rules close on ---', () => {
-    const lines = ['---', 'tags: [a]', '---', 'body'];
-    assert.strictEqual(findFrontmatterEnd(lines, 'dashes'), 2);
-    assert.strictEqual(findFrontmatterEnd(lines, 'dashes-or-dots'), 2);
-  });
-
-  test('a ... closing line counts only for dashes-or-dots', () => {
-    const lines = ['---', 'tags: [a]', '...', 'body', '---'];
-    assert.strictEqual(findFrontmatterEnd(lines, 'dashes-or-dots'), 2);
-    assert.strictEqual(findFrontmatterEnd(lines, 'dashes'), 4);
-    assert.strictEqual(findFrontmatterEnd(['---', 'a: b', '...'], 'dashes'), undefined);
-  });
-
-  test('an indented closing line counts only for dashes', () => {
-    const lines = ['---', 'a: b', '  ---  ', 'body'];
-    assert.strictEqual(findFrontmatterEnd(lines, 'dashes'), 2);
-    assert.strictEqual(findFrontmatterEnd(lines, 'dashes-or-dots'), undefined);
-    assert.strictEqual(findFrontmatterEnd(['---', 'a: b', '---  '], 'dashes-or-dots'), 2);
+  test('front matter closes on --- or on YAML\'s ..., each trimmed', () => {
+    assert.strictEqual(findFrontmatterEnd(['---', 'tags: [a]', '---', 'body']), 2);
+    assert.strictEqual(findFrontmatterEnd(['---', 'tags: [a]', '...', 'body', '---']), 2);
+    assert.strictEqual(findFrontmatterEnd(['---', 'a: b', '  ---  ', 'body']), 2);
+    assert.strictEqual(findFrontmatterEnd(['---', 'a: b', '\t...  ']), 2);
+    assert.strictEqual(findFrontmatterEnd(['---', 'a: b', '....']), undefined);
   });
 
   test('a note must open with ---, whitespace around it allowed', () => {
-    assert.strictEqual(findFrontmatterEnd([' --- ', 'a: b', '---'], 'dashes'), 2);
-    assert.strictEqual(findFrontmatterEnd([' --- ', 'a: b', '---'], 'dashes-or-dots'), 2);
-    assert.strictEqual(findFrontmatterEnd(['...', 'a: b', '...'], 'dashes-or-dots'), undefined);
-    assert.strictEqual(findFrontmatterEnd(['# Title', '---', '---'], 'dashes'), undefined);
-    assert.strictEqual(findFrontmatterEnd([], 'dashes'), undefined);
+    assert.strictEqual(findFrontmatterEnd([' --- ', 'a: b', '---']), 2);
+    assert.strictEqual(findFrontmatterEnd(['...', 'a: b', '...']), undefined);
+    assert.strictEqual(findFrontmatterEnd(['# Title', '---', '---']), undefined);
+    assert.strictEqual(findFrontmatterEnd([]), undefined);
   });
 
   test('front matter that never closes is none', () => {
-    assert.strictEqual(findFrontmatterEnd(['---', 'a: b'], 'dashes'), undefined);
-    assert.strictEqual(findFrontmatterEnd(['---'], 'dashes-or-dots'), undefined);
+    assert.strictEqual(findFrontmatterEnd(['---', 'a: b']), undefined);
+    assert.strictEqual(findFrontmatterEnd(['---']), undefined);
+  });
+
+  test('every reader reads front matter closed by ... as it reads front matter closed by ---', () => {
+    const note = (closing: string) =>
+      [
+        '---',
+        'tags: [alpha]',
+        'created: 2026-01-05',
+        'aliases: [Atlas Plan]',
+        'todo:',
+        '- [ ] Draft 🔁 every blursday',
+        closing,
+        '# Atlas #alpha',
+        'Words about the Atlas Plan.',
+        '- [ ] Real task 📅 2020-01-01',
+      ].join('\n');
+    // A reader that returns the note writes its closing line back as it was.
+    const same = (text: string | undefined) => text?.replace('\n...\n', '\n---\n');
+    const context = createQueryContext(new Date(2026, 9, 2, 12).getTime());
+    const readers: Record<string, (text: string) => unknown> = {
+      parser: (text) => {
+        const file = parseMarkdown('notes/atlas.md', text);
+        return {
+          aliases: file.aliases,
+          createdAt: file.createdAt,
+          sections: file.sections.map((section) => [section.heading, section.tags]),
+          tasks: file.tasks.map((task) => [task.title, task.tags]),
+          relevantDate: getRelevantDate(file)?.source,
+        };
+      },
+      'front-matter tags': (text) => readFrontmatterTagValues(text),
+      'add a tag': (text) => same(addFrontmatterTag(text, 'beta')),
+      'remove a tag': (text) => same(removeFrontmatterTags(text, ['alpha'])),
+      'rename a tag': (text) =>
+        same(replaceIndexedTag(text, '#alpha', { key: '#beta', label: '#beta' }).content),
+      'Move to…': (text) =>
+        readMoveBlock(text.split('\n'), {
+          start: { line: 1, character: 0 },
+          end: { line: 1, character: 0 },
+          isEmpty: true,
+        }),
+      'word count': (text) => maskNoteForWords(text.split('\n')),
+      excerpt: (text) => readProseLines(text),
+      'tag target': (text) => findTagTarget(text.split('\n'), 3),
+      embed: (text) => withoutFrontmatter(text),
+      'entry card': (text) => getFrontmatterBody(text),
+      'task line marks': (text) => findTaskLineMarks(text.split('\n'), context, { dim: true, hints: true }),
+      'repeat rules': (text) => findRepeatRuleProblems(text.split('\n')),
+      'unlinked mentions': (text) => {
+        const other = parseMarkdown('notes/atlas plan.md', '# Atlas Plan');
+        const file = parseMarkdown('notes/atlas.md', text);
+        const index = buildWorkspaceIndex(new Map([[other.filePath, other], [file.filePath, file]]));
+        return findUnlinkedMentions(other, index);
+      },
+    };
+    const dashes = parseMarkdown('notes/atlas.md', note('---'));
+    assert.deepStrictEqual(dashes.aliases, ['Atlas Plan'], 'the dashed note has front matter to agree on');
+    Object.entries(readers).forEach(([name, read]) => {
+      assert.deepStrictEqual(read(note('...')), read(note('---')), name);
+    });
   });
 
   test('values are split, trimmed, and unquoted', () => {

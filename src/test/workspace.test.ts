@@ -10,6 +10,7 @@ import {
   WorkspaceFileAccess,
   WorkspaceScanner,
 } from '../core/workspace/scanner';
+import { reactionsTo } from '../core/workspace/changeReactions';
 import { FileStat, FileType } from '../ports/fileSystem';
 import type { ResourceUri } from '../ports/uri';
 import type { FolderPattern } from '../ports/workspace';
@@ -480,6 +481,38 @@ suite('Workspace scanner and index', () => {
       `files ${workspaceFolder.uri.toString()}`,
       `search ${workspaceFolder.uri.toString()}`,
     ]);
+  });
+
+  test('every setting that changes how a note parses changes the parse fingerprint and rescans', () => {
+    // Each parse setting, set away from its default. A setting that changes
+    // getParseOptions but not the fingerprint would leave stale cached parses.
+    const parseSettings: Array<[string, unknown]> = [
+      ['deckard.parseInlineTags', false],
+      ['deckard.noteBoundaries', 'heading'],
+      ['deckard.entityNamespaceAliases', { proj: 'project' }],
+      ['deckard.personMarker', '~'],
+      ['deckard.tasks.assigneeFromPersonTag', true],
+    ];
+    const settings = new FakeSettings();
+    const folder = fakeFolder('/tmp/deckard-fingerprint', 'w');
+    const scanner = new WorkspaceScanner(createFakeAccess({ workspaceFolders: [folder], settings }));
+    const defaultOptions = JSON.stringify(scanner.getParseOptions(folder));
+    const defaultFingerprint = scanner.getParseFingerprint();
+    parseSettings.forEach(([name, value]) => {
+      settings.set(name, value);
+      assert.notStrictEqual(
+        JSON.stringify(scanner.getParseOptions(folder)),
+        defaultOptions,
+        `${name} changes how a note parses`,
+      );
+      assert.notStrictEqual(scanner.getParseFingerprint(), defaultFingerprint, `${name} changes the fingerprint`);
+      settings.set(name, undefined);
+      assert.ok(
+        reactionsTo({ kind: 'settings', affects: (section) => name === section || name.startsWith(`${section}.`) })
+          .rescan,
+        `${name} rescans`,
+      );
+    });
   });
 
   test('reads notes with workspace-relative paths', async () => {

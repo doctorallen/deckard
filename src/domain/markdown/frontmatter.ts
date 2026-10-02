@@ -1,38 +1,34 @@
 /**
  * Where a note's front matter ends, and how the values written in it are
- * read: the one copy of each rule the parser, the front-matter tag editors,
- * Move to…, excerpts, word counts, and tag targets share.
+ * read: the one copy of each rule that every reader of front matter shares,
+ * from the parser and the tag editors to excerpts, embeds, and the editor's
+ * decorations.
  *
- * The copies these replace disagreed on the closing line, so the rule is the
- * caller's: a note with `...` under its front matter has front matter for the
- * callers that take `...` and not for the others, as it always has.
+ * The copies these replace disagreed on the closing line: some took YAML's
+ * `...` and some did not, so a note closed with `...` had front matter for
+ * one feature and none for the next. Every reader now takes both.
  */
 
 /**
- * Which line closes front matter opened by `---`:
- *
- * - `dashes`: a line that is `---` once trimmed, so an indented `  ---`
- *   closes it too. The parser, Move to…, and the tag editors read it so.
- * - `dashes-or-dots`: `---` or YAML's `...`, at the very start of the line,
- *   with only whitespace after it. Excerpts, word counts, and tag targets
- *   read it so.
+ * Whether a line closes front matter: `---`, or YAML's document end `...`,
+ * once trimmed, so an indented `  ---` closes it as the parser has always
+ * read it.
  */
-export type FrontmatterClosing = 'dashes' | 'dashes-or-dots';
-
-const DASHES_OR_DOTS = /^(?:---|\.\.\.)\s*$/;
+export function isFrontmatterClose(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed === '---' || trimmed === '...';
+}
 
 /**
  * The 0-based line front matter closes on, or undefined when the note does
  * not open with a `---` line (whitespace around it allowed) or never closes
  * it.
  */
-export function findFrontmatterEnd(lines: readonly string[], closing: FrontmatterClosing): number | undefined {
+export function findFrontmatterEnd(lines: readonly string[]): number | undefined {
   if (lines[0]?.trim() !== '---') {
     return undefined;
   }
-  const closes =
-    closing === 'dashes' ? (line: string) => line.trim() === '---' : (line: string) => DASHES_OR_DOTS.test(line);
-  const end = lines.findIndex((line, index) => index > 0 && closes(line));
+  const end = lines.findIndex((line, index) => index > 0 && isFrontmatterClose(line));
   return end > 0 ? end : undefined;
 }
 

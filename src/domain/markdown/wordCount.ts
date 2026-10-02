@@ -59,7 +59,7 @@ export function maskNoteForWords(lines: readonly string[]): string[] {
 
 /** Blanks the front matter in `masked`, and says the first line after it. */
 function maskFrontmatter(lines: readonly string[], masked: string[]): number {
-  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  const frontmatterEnd = findFrontmatterEnd(lines);
   if (frontmatterEnd === undefined) {
     return 0;
   }
