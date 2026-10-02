@@ -148,8 +148,23 @@ const editor = createQueryEditor({
   label: 'Search notes and tasks',
 });
 
-/** Undo for a widget removed while customizing. */
-const widgetUndo = createUndoNotice<{ widget: DashboardWidgetConfig; index: number }>(() => redraw());
+/**
+ * Undo for a widget removed while customizing. Taken or lapsed with focus
+ * on it, focus goes back to the widget's Remove button if it is drawn
+ * again, or else to the widget now in its place.
+ */
+const widgetUndo = createUndoNotice<{ widget: DashboardWidgetConfig; index: number }>(() => redraw(), ({ index }) => widgetInPlaceOf(index));
+
+/**
+ * The widget now where a removed one was: the one after it, or the last
+ * when it was last, or Finish when Home has none left. Each is a tab stop
+ * while Home is arranged, so the next Tab goes on from there rather than
+ * from the top of the page.
+ */
+function widgetInPlaceOf(index: number): HTMLElement | null {
+  const frames = Array.from(document.querySelectorAll<HTMLElement>('.home-widget[data-widget-id]'));
+  return frames[Math.min(index, frames.length - 1)] ?? document.querySelector<HTMLElement>('[data-action="finish-customizing"]');
+}
 
 /** Keeps the page's presentation state, so a data refresh keeps the tab shown. */
 function saveView(): void {
