@@ -165,6 +165,17 @@ test('the gear\'s Theme row runs Choose Theme', async () => {
   assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
 });
 
+test('Help opens at Search', async () => {
+  const { view } = await openSearch('planning');
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('.help-button'));
+  await settle();
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.showHelp'),
+    [{ command: 'deckard.showHelp', args: ['search'] }],
+  );
+});
+
 test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   const { view, panel } = await openOverview();
   assert.strictEqual(title(view), 'Project: Atlas');

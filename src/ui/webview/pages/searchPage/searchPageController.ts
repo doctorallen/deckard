@@ -164,7 +164,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setTagOverviewLayout: (message) => preferences.display.setTagOverviewLayout(message.layout),
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
-      openHelp: openHelp(),
+      openHelp: openHelp('search'),
       saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
       excludeHubLinks: () => excludeHubLinks(),
