@@ -111,7 +111,7 @@ suite('Related Notes debug host', () => {
       const { options, ...made0 } = panel.options as { options: vscode.WebviewPanelOptions & vscode.WebviewOptions };
       assert.deepStrictEqual(made0, { viewType: 'deckard.relatedNotesDebug', title: 'Deckard: Related Notes Debug' });
       assert.deepStrictEqual({ ...options, localResourceRoots: roots(options) }, {
-        retainContextWhenHidden: true,
+        retainContextWhenHidden: false,
         enableFindWidget: true,
         localResourceRoots: DEBUG_ROOTS,
       });

@@ -1,6 +1,7 @@
 import type * as vscode from 'vscode';
 
 import type { CalendarSnapshot } from '../ui/protocol/calendar';
+import type { SidebarNotesPageState } from '../ui/protocol/sidebarNotes';
 import type { DeckardStatsSnapshot } from '../ui/protocol/stats';
 import type { EntryRelatedNotesDiagnostic } from '../ui/webview/sidebarNotes';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
@@ -83,7 +84,12 @@ const EMPTY_DIAGNOSTIC = {
 export const PAGES: readonly CatalogPage[] = [
   { id: 'dashboard', title: 'Dashboard', render: (context) => getDashboardHtml(context.webview, context.extensionUri) },
   { id: 'searchPage', title: 'search page', render: (context) => getSearchPageHtml(context.webview, context.extensionUri) },
-  { id: 'sidebarNotes', title: 'Related Notes', render: (context) => getSidebarNotesHtml(context.webview, context.extensionUri, '1.0.0') },
+  {
+    id: 'sidebarNotes',
+    title: 'Related Notes',
+    render: (context) => getSidebarNotesHtml(context.webview, context.extensionUri, '1.0.0', { snapshot: context.state as SidebarNotesPageState | undefined }),
+    readsInertState: true,
+  },
   { id: 'notesGraph', title: 'Notes Graph', render: (context) => getNotesGraphHtml(context.webview, context.extensionUri) },
   {
     id: 'help',

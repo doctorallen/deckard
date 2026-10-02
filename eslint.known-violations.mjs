@@ -362,9 +362,6 @@ export default {
       "formatReview",
       "summarizeReview"
     ],
-    "src/ui/webview/calendarDay.ts": [
-      "getCalendarDayScript"
-    ],
     "src/ui/webview/components.ts": [
       "getComponentScript",
       "getQueryEditorScript",

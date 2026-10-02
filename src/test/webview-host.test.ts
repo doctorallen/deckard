@@ -204,6 +204,23 @@ suite('WebviewHost', () => {
       }
     });
 
+    test('a snapshot the controller posts itself is kept as the last sent, and drawn again from when hidden', async () => {
+      const { host, surface } = openPage({ readsInertState: true });
+      try {
+        const delivered = host.postState({ count: 7 });
+        assert.strictEqual(await delivered, true, 'it resolves as the webview\'s postMessage does');
+        assert.deepStrictEqual(surface.webview.postedOf('state'), [{ type: 'state', data: { count: 7 } }]);
+        surface.setVisible(false);
+        assert.strictEqual(surface.renders, 2);
+        assert.match(String(surface.html), /\{"count":7\}$/, 'the hidden page carries what the controller posted');
+        surface.setVisible(true);
+        assert.strictEqual(surface.webview.postedOf('state').length, 1, 'shown, it missed nothing');
+      } finally {
+        host.dispose();
+      }
+      assert.strictEqual(host.postState({ count: 8 }), undefined, 'with no page open, nothing is posted');
+    });
+
     test('a page kept running, one that does not read inert state, or one newly attached is left alone when hidden', () => {
       for (const options of [{ readsInertState: true, retainContextWhenHidden: true }, {}]) {
         const { host, surface } = openPage(options);

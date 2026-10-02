@@ -45,7 +45,7 @@ export interface WebviewHostOptions {
  * and view adapters do that, and attach what they made here.
  */
 export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
-  implements PageContext, vscode.Disposable
+  implements PageContext<TSnapshot>, vscode.Disposable
 {
   private readonly disposables: vscode.Disposable[] = [];
   private sessionDisposables: vscode.Disposable[] = [];
@@ -180,6 +180,22 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
   /** Sends the page one message, while it is open. */
   public post(message: PageMessage): void {
     void this.current?.webview.postMessage(message);
+  }
+
+  /**
+   * Posts a snapshot the controller built itself, and keeps it as the last
+   * sent, as `send` does for one the host built; undefined while no page is
+   * open.
+   */
+  public postState(data: TSnapshot): Thenable<boolean> | undefined {
+    const surface = this.current;
+    if (!surface) {
+      return undefined;
+    }
+    this.isStale = false;
+    this.lastSent = data;
+    const message: StateMessage<TSnapshot> = { type: 'state', data };
+    return surface.webview.postMessage(message);
   }
 
   /** Resolves when the index first has notes to show, or at once without one. */

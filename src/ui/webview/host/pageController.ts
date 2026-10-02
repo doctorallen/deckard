@@ -7,9 +7,10 @@ import type { PageScripts, WebviewSurface } from './surface';
 
 /**
  * What a page's controller and its message handlers may ask of the host
- * that shows it.
+ * that shows it. `TSnapshot` is the page's snapshot, for a controller that
+ * posts its own (`postState`).
  */
-export interface PageContext {
+export interface PageContext<TSnapshot = unknown> {
   /**
    * Sends the page its snapshot now, or, while it is hidden, notes that it
    * is out of date so it is sent when the page is shown again.
@@ -17,6 +18,15 @@ export interface PageContext {
   refresh(): void;
   /** Sends the page one message, while it is open. */
   post(message: PageMessage): void;
+  /**
+   * Posts `data` as the page's state now, for a controller that builds,
+   * times, and logs its own snapshot rather than asking `refresh` to, as
+   * Related Notes does. It is kept as the last snapshot sent, which a
+   * hidden page that is not kept running is drawn again from (Q2), as one
+   * `refresh` sent would be. Resolves as the webview's `postMessage`
+   * does; undefined while no page is open.
+   */
+  postState(data: TSnapshot): Thenable<boolean> | undefined;
   /** Sets the page's HTML again, in the theme it is drawn in now, while it is open. */
   renderHtml(): void;
   /** The panel or view the page is shown in, while it is open. */
@@ -45,7 +55,7 @@ export interface SnapshotTiming {
 
 /** What a page needs from the webview it is shown in. */
 export interface PageOptions {
-  /** Keep the page running while its tab is hidden; see decision 0006. */
+  /** Keep the page running while its tab is hidden; see decision 0017, which superseded 0006. */
   readonly retainContextWhenHidden: boolean;
   /** Offer VS Code's find widget on the page. */
   readonly enableFindWidget: boolean;

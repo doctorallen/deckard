@@ -33,6 +33,7 @@ This inventory lists every format Deckard writes and later reads back, so that a
 | 23 | Notes graph state, view type `deckard.notesGraph` | webview state | none | `notes-graph-behavior.test.ts`, `parked-views.test.ts`, `webview-saved-state.test.ts` |
 | 24 | Calendar page state, view type `deckard.calendarPage` | webview state | none | `webview-saved-state.test.ts` |
 | 24a | Help state, view type `deckard.help`, since Phase 6 step 4.1: `{ guide?: { page, anchor? }, scrollY, drawn }`, read only by the drawing of the page that saved it | webview state | `drawn`, a hash of the HTML's nonce | `help-page.test.ts` |
+| 24b | Related Notes state, view `deckard.relatedNotes`, since Phase 6 step 4.6: what the reader chose in it, and its scroll | webview state | none | `webview-saved-state.test.ts` |
 | 25 | Entry ids, tag keys, and Find keys stored inside rows 1, 9, and 17 | inside other formats | none | `preferences-prune.test.ts`, `preferences.test.ts`; relative only |
 | 26 | Settings Deckard writes | `settings.json` | none | `exclude-folders.test.ts`, `settings.test.ts`; partly |
 
@@ -231,7 +232,7 @@ The plan's list does not include this store.
 
 ## Webview state
 
-VS Code keeps what a page passes to `setState` and hands it back when it restores the panel after a reload, through the serializers registered at `src/extension.ts:892` to `:916`. A page restored after an upgrade receives state written by the old script. Seven panel view types are serialized: `deckard.dashboard`, `deckard.stats`, `deckard.help`, `deckard.notesGraph`, `deckard.calendarPage`, `deckard.taskBoard`, and `deckard.tagOverview`. `stats` keeps no state, and `help` kept none before Phase 6 step 4.1 (row 24a). The sidebar views `deckard.relatedNotes` and `deckard.calendar` are webview views (`src/extension.ts:631`, `:636`). The sidebar calendar runs the calendar script but never writes state, because its layout control is drawn only on the page (since Phase 6 step 4.3, its own bundle, `src/webview/calendar/main.tsx`, writes none at all).
+VS Code keeps what a page passes to `setState` and hands it back when it restores the panel after a reload, through the serializers registered at `src/extension.ts:892` to `:916`. A page restored after an upgrade receives state written by the old script. Seven panel view types are serialized: `deckard.dashboard`, `deckard.stats`, `deckard.help`, `deckard.notesGraph`, `deckard.calendarPage`, `deckard.taskBoard`, and `deckard.tagOverview`. `stats` keeps no state, and `help` kept none before Phase 6 step 4.1 (row 24a). The sidebar views `deckard.relatedNotes` and `deckard.calendar` are webview views (`src/extension.ts:631`, `:636`); VS Code hands a view's state back to the page it loads again, though a view has no serializer. Related Notes kept none before Phase 6 step 4.6 (row 24b). The sidebar calendar runs the calendar script but never writes state, because its layout control is drawn only on the page (since Phase 6 step 4.3, its own bundle, `src/webview/calendar/main.tsx`, writes none at all).
 
 The ten `getState()` calls the plan counts are `calendarHtml.ts:114`, `:352`; `searchPageHtml.ts:161`, `:552`, `:564`, `:715`; `dashboardHtml.ts:271`; `taskBoardHtml.ts:540`, `:545`; and `notesGraphHtml.ts:295`, all under `src/ui/webview/`. The `getState` option at `components.ts:3617` is a host-state callback, not the VS Code API. The shared scroll helpers `rememberScroll` and `restoreScroll` (`src/ui/webview/components.ts:1769`, `:1780`) merge `scrollY` into a page's state.
 
@@ -273,6 +274,13 @@ No test restores a page from saved state. The harness starts its kept state as `
 - **Written:** `setLayout` and `rememberScroll`, `src/webview/calendarPage/main.tsx`; `scrollY` at most every 200 ms as the page scrolls.
 - **Read by the page:** `keptLayout` and `restoreScroll` on the first draw, `src/webview/calendarPage/main.tsx`. Anything but `'week'` reads as `'month'`, as before, and a `scrollY` that is not a number is not read. The host's `restore` (`src/ui/webview/calendarPage.ts`) ignores the state.
 - **Pinned by:** `webview-saved-state.test.ts` loads the page with `{ layout: 'week' }` and asserts the week layout, and with other values, which read as the month; `calendar.test.ts` asserts what the page keeps.
+
+### 24b. Related Notes
+
+- **Shape:** since Phase 6 step 4.6, as the view is no longer kept running while hidden: `{ noteLimit: number; noteListKey: string; showEveryActiveTag: boolean; contextOpen: boolean; linksOpen: { linked: boolean; mentions: boolean }; openLinkSections: string[]; expandedRefine: string[]; shownGroups: string[]; scrollY?: number }`. `noteListKey` names the list `noteLimit` counts for, as `JSON.stringify([state, activeFileName, activeEntryTitle, relatedNotesSortMode, hideDailyNotes, Boolean(similar)])`; a link row is named `filePath:line`.
+- **Written:** `keepChoices`, `src/webview/sidebarNotes/main.tsx`, after each draw and each fold of the context or a Links group, merged over what was kept; `scrollY` by `rememberScroll` at most every 200 ms as the view scrolls.
+- **Read by the page:** `readChoices`, `src/webview/sidebarNotes/model.ts`, when its script starts, and `restoreScroll` on its first draw. A value of the wrong kind reads as a new view's choice: `noteLimit` only as a finite number over 50, the flags only as booleans (`linksOpen.linked` true unless kept false), the lists only their strings. The host reads none of it.
+- **Pinned by:** `webview-saved-state.test.ts` loads the view with every choice, with a list it did not count for, with Refine and the calendar's day, and with values of the wrong kind, and asserts what it draws and what it keeps.
 
 ## 25. Keys stored inside other formats
 

@@ -12,12 +12,6 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
 
-function assertWebviewScriptParses(html: string): void {
-  const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(script);
-  assert.doesNotThrow(() => new Function(script));
-}
-
 /** Deckard's own manifest, which the Help page is built from. */
 function extension(): vscode.Extension<unknown> {
   const found = vscode.extensions.all.find(
@@ -735,7 +729,42 @@ suite('Webview contracts', () => {
   test('renders formatted related-note relevance explanations', () => {
     const html = withSheets(renderPage('sidebarNotes'));
 
-    assertWebviewScriptParses(html);
+    // Each result explains its score: the reasons, then each signal's
+    // weight to two places, and the adjustment for a common tag in points.
+    const page = openWebviewPage(renderPage('sidebarNotes'), {
+      activeFileName: 'today.md',
+      activeTags: [],
+      tagTitleDisplayMode: 'inline',
+      state: 'ready',
+      notes: [{
+        sectionId: 'section-1', filePath: 'notes/atlas.md', title: 'Actions', fileName: 'atlas.md', sourceLine: 12,
+        headingPath: ['Atlas', 'Harbor', 'Pier', 'Actions'], titleTags: [], matchedTags: [], matchCount: 1, totalTagCount: 1, overlap: 1,
+        relevanceScore: 84,
+        reasons: ['Shares #project/atlas', 'Linked from this note'],
+        relevanceEvidence: {
+          directTagWeight: 1.5, associationWeight: 0.4, normalizedAssociationWeight: 0.4, appliedAssociationWeight: 0.4,
+          entryLinkWeight: 0, fileLinkWeight: 0.25, lexicalWeight: 0, recencyWeight: 0, specificityPenalty: 0.2, lexicalTerms: [],
+        },
+      }],
+    });
+    try {
+      assert.deepStrictEqual(
+        page.findAll('.relevance-tooltip-header strong').map((cell) => cell.textContent),
+        ['Relevance score', '84%'],
+      );
+      assert.deepStrictEqual(page.findAll('.relevance-tooltip li').map((reason) => reason.textContent), ['Shares #project/atlas', 'Linked from this note']);
+      assert.deepStrictEqual(
+        page.findAll('.relevance-weights > *').map((cell) => cell.textContent),
+        ['Shared-tag weight', '1.50', 'Association weight', '0.40', 'File-link weight', '0.25', 'Specificity adjustment', '-20 pts'],
+      );
+      assert.strictEqual(page.text('.relevance-reason'), 'Shares #project/atlas', 'the first reason under the card');
+      // Where the result sits, with the file's own name and the entry's left
+      // off, each step joined by the chevron the rule below colors.
+      assert.strictEqual(page.text('.heading-path'), 'Harbor > Pier');
+      assert.strictEqual(page.findAll('.heading-path .heading-path-joiner').length, 1);
+    } finally {
+      page.dispose();
+    }
                                         // Writing a link to a result is held to what the sidebar does; see the
     // Related Notes behavior suite. The rule that keeps the button out of the
     // way is style, which only a rendered page can be asked about.
@@ -784,12 +813,6 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       html.includes(
         '.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        'renderHeadingPath(note.headingPath, fileName, note.title)',
       ),
       true,
     );

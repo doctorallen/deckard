@@ -91,32 +91,49 @@ export function logRelatedNotes(message: string): void {
  */
 export class SidebarNotesController implements PageController<SidebarNotesPageState, SidebarNotesPageToHost> {
   public readonly name = 'Related Notes';
+  /**
+   * The view is not kept running while hidden (Q1 of
+   * docs/implementation/20-webviews.md): hidden, its HTML is set again with
+   * the last state it posted, which it draws when shown, and what the reader
+   * chose in it comes back from its own setState. Its HTML carries no state
+   * built when it is set: ranking for a note takes 1,924 ms median on the
+   * 5,000-note bench (185 ms on 1,000), far over Q3's 50 ms, so it opens on
+   * its loading line and is posted its state, as before.
+   */
   public readonly options: PageOptions = {
-    retainContextWhenHidden: true,
+    retainContextWhenHidden: false,
     enableFindWidget: false,
     followIndexing: false,
     refreshWhenShown: 'never',
     onChromeChange: 'none',
+    readsInertState: true,
   };
   public readonly handlers: MessageHandlers<SidebarNotesPageToHost>;
   /** The host the sidebar is run by, from when it subscribes. */
-  private page: PageContext | undefined;
+  private page: PageContext<SidebarNotesPageState> | undefined;
   private entryContext: EntryContext | undefined;
   private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
   private refreshHandle: ReturnType<typeof setTimeout> | undefined;
   /** Whether the first scan has finished, which tells indexing from missing. */
   private indexed = false;
+  /**
+   * The state last posted, and the day it was ranked on, while nothing it
+   * was ranked from has changed since: the index, the editor and its entry,
+   * the pages in front, the preferences, and the settings. Undefined once
+   * anything has, or while nothing has been posted.
+   */
+  private current: { state: SidebarNotesPageState; day: string } | undefined;
 
   /** Reads from `sidebar.indexer` and `sidebar.preferences`, and checks clicks through `sidebar.navigation`. */
   public constructor(private readonly sidebar: SidebarNotesControllerOptions) {
     this.handlers = { ...this.createNavigationHandlers(), ...this.createWriteHandlers(), ...this.createSettingHandlers() };
   }
 
-  /** The sidebar's HTML, which is logged each time it is set. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
+  /** The sidebar's HTML, carrying `state` when the host hands it one, which is logged each time it is set. */
+  public html(webview: vscode.Webview, theme: DeckardTheme, state?: SidebarNotesPageState): string {
     logRelatedNotes('Rendering Related Notes webview HTML.');
-    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, theme);
+    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, { theme, snapshot: state });
   }
 
   /** Narrows a message the page sent, after logging that it came. */
@@ -144,7 +161,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * progress, the active search, the editor and its cursor, the theme and
    * zen, and the settings ranking reads.
    */
-  public subscribe(page: PageContext): vscode.Disposable[] {
+  public subscribe(page: PageContext<SidebarNotesPageState>): vscode.Disposable[] {
     this.page = page;
     const { indexer, activeSearch, activeCalendar, activeHome } = this.sidebar;
     const disposables: vscode.Disposable[] = [];
@@ -165,6 +182,10 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       );
     }
     disposables.push(activeSearch.onDidChange(() => this.refresh()), ...this.followEditor());
+    // The ranking reads the preferences, and not every write to them redraws
+    // the sidebar, so any write means the state last posted may be out of date.
+    const { reader } = this.sidebar.preferences;
+    disposables.push(reader.onDidChange(() => this.forgetCurrent()), reader.onDidRecordVisit(() => this.forgetCurrent()));
     disposables.push(
       // The theme or zen changing reloads the page, and the state is sent
       // again at once rather than when the page asks.
@@ -202,14 +223,23 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     logRelatedNotes(`Related Notes visibility changed: ${visible}.`);
     this.sidebar.activeSearch.setSidebarVisible(visible);
     this.sidebar.activeCalendar?.setSidebarVisible(visible);
-    if (visible) {
-      this.refresh();
+    if (!visible) {
+      return;
     }
+    // A view shown with nothing changed since its last state draws that
+    // state from its HTML (Q2), and is sent it again when it says ready;
+    // ranking again would find the same.
+    if (this.currentState()) {
+      logRelatedNotes('Related Notes state is unchanged since it was hidden; not ranking again.');
+      return;
+    }
+    this.refresh();
   }
 
   /** VS Code let the view go, so the sidebar is no longer open. */
   public onDidDetach(): void {
     logRelatedNotes('Related Notes webview disposed.');
+    this.forgetCurrent();
     this.sidebar.activeSearch.setSidebarVisible(false);
     this.sidebar.activeCalendar?.setSidebarVisible(false);
   }
@@ -320,18 +350,33 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   /**
    * Sends the current sidebar projection only when the view is attached and
    * shown; a hidden sidebar is refreshed when it is shown again. Each call
-   * ends a refresh waiting on the cursor.
+   * ends a refresh waiting on the cursor. A refresh that cannot send means
+   * something changed that the view has not been sent.
+   *
+   * With `reuse`, the state last posted is sent again, not ranked again,
+   * while nothing it was ranked from has changed: for a view VS Code loaded
+   * again, which says ready and has been sent, or has in its HTML, that
+   * state already.
    */
-  private refresh(): void {
+  private refresh(reuse = false): void {
     clearTimeout(this.refreshHandle);
     this.refreshHandle = undefined;
-    const surface = this.surface;
-    if (!surface) {
+    const page = this.page;
+    const surface = page?.surface;
+    if (!page || !surface) {
+      this.forgetCurrent();
       logRelatedNotes('Skipped Related Notes refresh because no webview is attached.');
       return;
     }
     if (!surface.visible) {
+      this.forgetCurrent();
       logRelatedNotes('Skipped Related Notes refresh because the view is hidden.');
+      return;
+    }
+    const kept = reuse ? this.currentState() : undefined;
+    if (kept) {
+      logRelatedNotes('Related Notes state is unchanged since it was ranked; sending it again.');
+      this.post(page, kept);
       return;
     }
 
@@ -344,7 +389,29 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       `Sending Related Notes state: ${snapshot.state}${describeSource(snapshot)}, ${snapshot.notes.length} note entries.`,
     );
     const state: SidebarNotesPageState = { ...snapshot, parkedTags: listedParkedTags(this.sidebar.indexer) };
-    void surface.webview.postMessage({ type: 'state', data: state }).then(
+    this.current = { state, day: today() };
+    this.post(page, state);
+  }
+
+  /**
+   * The state last posted, while nothing it was ranked from has changed
+   * since and the day has not turned, which moves how recent each note is.
+   */
+  private currentState(): SidebarNotesPageState | undefined {
+    return this.current && this.current.day === today() ? this.current.state : undefined;
+  }
+
+  /** Something the ranking reads has changed, so the state last posted may be out of date. */
+  private forgetCurrent(): void {
+    this.current = undefined;
+  }
+
+  /**
+   * Posts a state through the host, which keeps it to draw a hidden view
+   * again from, and logs whether it was delivered.
+   */
+  private post(page: PageContext<SidebarNotesPageState>, state: SidebarNotesPageState): void {
+    void page.postState(state)?.then(
       (delivered) =>
         logRelatedNotes(
           `Related Notes state delivery ${delivered ? 'succeeded' : 'was skipped because the webview is not live'}.`,
@@ -358,9 +425,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const { indexer, navigation } = this.sidebar;
     const openTagPage = (tagKey: string) => this.sidebar.onOpenTag(tagKey);
     return {
+      // A view VS Code loaded again, when it was shown or its theme changed,
+      // is sent the state it was last sent unless something has changed.
       ready: () => {
         logRelatedNotes('Related Notes webview is ready; refreshing state.');
-        this.refresh();
+        this.refresh(true);
       },
       openDashboard: () => vscode.commands.executeCommand('deckard.showDashboard'),
       openNotesGraph: () => vscode.commands.executeCommand('deckard.showNotesGraph'),
@@ -462,6 +531,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /** Redraws for a setting the ranking or its titles read. */
   private onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent): void {
+    // The ranking reads settings it does not redraw for, such as the board's
+    // status namespace, so any of Deckard's means the state may be out of date.
+    if (event.affectsConfiguration('deckard')) {
+      this.forgetCurrent();
+    }
     if (
       event.affectsConfiguration('deckard.enableKeywordLinks') ||
       event.affectsConfiguration('deckard.relatedNotesAssociationMinimumSupport') ||
@@ -511,6 +585,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /** Refreshes once a burst of cursor moves, such as a held arrow key, ends. */
   private scheduleRefresh(): void {
+    this.forgetCurrent();
     clearTimeout(this.refreshHandle);
     this.refreshHandle = setTimeout(() => {
       this.refreshHandle = undefined;
@@ -898,6 +973,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     }
     await source.applySearch(refineQueryText(state.query.text, message.clause, message.mode, facet.applied[0]));
   }
+}
+
+/** Today, as the state last posted remembers the day it was ranked on. */
+function today(): string {
+  return new Date().toDateString();
 }
 
 /** Whether two cursor or manual contexts name the same entry. */

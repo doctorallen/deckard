@@ -160,8 +160,9 @@ test('changing Sort re-orders the list at once', async () => {
     view.change(view.find('[data-action="set-related-notes-sort"]'), 'newest');
     await settle();
     assert.strictEqual(first(), 'notes/note-005.md', 'the newest note leads');
-    assert.ok(
-      'selected' in view.find('.related-notes-sort option[value="newest"]').attributes,
+    assert.strictEqual(
+      view.find('.related-notes-sort option[value="newest"]').selected,
+      true,
       'and the select says so',
     );
     view.change(view.find('[data-action="set-related-notes-sort"]'), 'oldest');

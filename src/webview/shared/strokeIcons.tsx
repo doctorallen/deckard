@@ -45,10 +45,13 @@ export function CheckIcon() {
   );
 }
 
-/** Two arrows, up and down, beside a control that sorts. */
-export function SortIcon() {
+/**
+ * Two arrows, up and down, beside a control that sorts, under the class
+ * its control's sheet sizes it by: `control-icon-svg` unless it says.
+ */
+export function SortIcon({ className }: { readonly className?: string } = {}) {
   return (
-    <StrokeIcon className="control-icon-svg">
+    <StrokeIcon className={className ?? 'control-icon-svg'}>
       <path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2" />
     </StrokeIcon>
   );
@@ -98,6 +101,34 @@ export function SourceIcon() {
   return (
     <StrokeIcon>
       <path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5" />
+    </StrokeIcon>
+  );
+}
+
+/** An arrow leaving a box: a control that opens what it names in a tab of its own. */
+export function OpenInNewIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" />
+    </StrokeIcon>
+  );
+}
+
+/** A chevron pointing right: a row that unfolds, or a way on. */
+export function ChevronRightIcon() {
+  return (
+    <StrokeIcon>
+      <path d="m6 3 5 5-5 5" />
+    </StrokeIcon>
+  );
+}
+
+/** Two links of a chain: a control that writes a link. */
+export function LinkIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2-2a2.47 2.47 0 0 0-3.5-3.5l-.8.8" />
+      <path d="M9.5 6.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.47 2.47 0 0 0 3.5 3.5l.8-.8" />
     </StrokeIcon>
   );
 }

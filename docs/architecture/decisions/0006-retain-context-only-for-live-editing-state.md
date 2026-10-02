@@ -1,6 +1,6 @@
 # 0006. `retainContextWhenHidden` only where live editing state exists
 
-**Status:** Accepted (2026-09-30)
+**Status:** Superseded by [0017](0017-retain-context-on-four-pages.md) (2026-10-02). Accepted (2026-09-30).
 
 ## Context
 

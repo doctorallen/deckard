@@ -1031,13 +1031,11 @@ function tidyPreferencesOnUpdate(
 function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'>): void {
   const { sidebarNotes, calendar, outline, agenda } = views;
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      'deckard.relatedNotes',
-      sidebarNotes,
-      { webviewOptions: { retainContextWhenHidden: true } },
-    ),
-    // The Calendar is not kept running while hidden (Q1 of
-    // docs/implementation/20-webviews.md); its controller says so too.
+    // Neither Related Notes nor the Calendar is kept running while hidden
+    // (Q1 of docs/implementation/20-webviews.md); their controllers say so too.
+    vscode.window.registerWebviewViewProvider('deckard.relatedNotes', sidebarNotes, {
+      webviewOptions: { retainContextWhenHidden: false },
+    }),
     vscode.window.registerWebviewViewProvider('deckard.calendar', calendar, {
       webviewOptions: { retainContextWhenHidden: false },
     }),

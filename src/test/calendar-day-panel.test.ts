@@ -5,17 +5,16 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createQueryContext } from '../domain/query/queryContext';
 import type { CalendarDayDetail } from '../ui/protocol/calendar';
 import { createCalendarDay } from '../ui/state/calendarState';
-import { getCalendarDayScript } from '../ui/webview/calendarDay';
-import { getComponentScript } from '../ui/webview/components';
 import { bundleShared } from './sharedBundle';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /**
- * The calendar's day panel (src/webview/shared/calendar/dayPanel.tsx)
- * against the template script it replaces (calendarDay.ts), which Related
- * Notes still draws: each day drawn both ways must be the same DOM, node
- * for node, so the panel looks the same in the calendars and in Related
- * Notes, and Related Notes can take the component when it moves.
+ * The calendar's day panel (src/webview/shared/calendar/dayPanel.tsx), as
+ * the calendars and Related Notes draw it: every kind of row and group a
+ * day can hold. It was held here, node for node, to the template script it
+ * replaced (calendarDay.ts) until Related Notes, the last page to draw that
+ * script, moved; test:dom's sidebarNotesCalendarDay surface and the
+ * recorded suites hold it now.
  */
 
 /** Friday 2026-09-25, mid-morning. */
@@ -74,55 +73,24 @@ function createDays(): Array<[string, CalendarDayDetail]> {
   ];
 }
 
-suite('The calendar day panel draws what its template drew', () => {
-  let legacy: WebviewPage;
+suite('The calendar day panel draws every kind of row', () => {
   let core: WebviewPage;
   suiteSetup(() => {
-    const script = `(function () {\n  const vscode = acquireVsCodeApi();\n${getComponentScript('replicant')}\n${getCalendarDayScript()}\n  window.legacy = { renderCalendarDayPanel: renderCalendarDayPanel, shownGroups: shownGroups };\n}());`;
-    legacy = openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${script}</script></body></html>`);
     const bundle = bundleShared(['calendar/dayPanel']);
     core = openWebviewPage(`<!DOCTYPE html><html><head></head><body><main id="app"></main><div id="live-status"></div><script>${bundle}</script></body></html>`);
   });
   suiteTeardown(() => {
-    legacy.dispose();
     core.dispose();
   });
 
   type Helpers = Record<string, (...args: unknown[]) => unknown>;
-  const old = () => (legacy.window as unknown as { legacy: Helpers & { shownGroups: Set<string> } }).legacy;
   const shared = () => (core.window as unknown as { shared: Helpers }).shared;
 
-  /** A container's inputs with their checked state as an attribute, which the template wrote and Preact sets as a property. */
-  const settle = (container: Element): Element => {
-    container.querySelectorAll('input').forEach((input) => {
-      input.toggleAttribute('checked', (input as HTMLInputElement).checked);
-    });
-    container.normalize();
-    return container;
-  };
-  const drawnBefore = (day: CalendarDayDetail): Element => {
-    const container = legacy.document.createElement('div');
-    container.innerHTML = String(old().renderCalendarDayPanel(JSON.parse(JSON.stringify(day))));
-    return settle(container);
-  };
   const drawnNow = (day: CalendarDayDetail, shownGroups: string[]): Element => {
     const container = core.document.createElement('div');
     shared().render(shared().h(shared().DayPanel, { day: JSON.parse(JSON.stringify(day)), shownGroups }), container);
-    return settle(container);
+    return container;
   };
-
-  test('each day, with its groups folded to five rows and then shown whole', () => {
-    for (const [what, day] of createDays()) {
-      old().shownGroups.clear();
-      const before = drawnBefore(day);
-      const now = drawnNow(day, []);
-      assert.ok(before.isEqualNode(now), `${what}\n  before: ${before.innerHTML}\n  now:    ${now.innerHTML}`);
-      ['due', 'scheduled', 'repeats'].forEach((group) => old().shownGroups.add(group));
-      const wholeBefore = drawnBefore(day);
-      const wholeNow = drawnNow(day, ['due', 'scheduled', 'repeats']);
-      assert.ok(wholeBefore.isEqualNode(wholeNow), `${what}, shown whole\n  before: ${wholeBefore.innerHTML}\n  now:    ${wholeNow.innerHTML}`);
-    }
-  });
 
   test('the days draw every kind of row: tags in titles, steps, Done, a repeat, and Search all', () => {
     const days = createDays();
@@ -140,5 +108,13 @@ suite('The calendar day panel draws what its template drew', () => {
     assert.ok(later.querySelector('.day-group[aria-label="Repeats"] .repeat-mark'), 'a repeat has its mark where the checkbox goes');
     assert.ok(drawnNow(days[1][1], []).querySelector('.parked-label'));
     assert.ok(drawnNow(days[2][1], []).querySelector('.empty'));
+  });
+
+  test('a group shows its first five rows, and every row once it is shown whole', () => {
+    const day = createDays()[0][1];
+    const scheduled = (shownGroups: string[]) => drawnNow(day, shownGroups).querySelectorAll('.day-group[aria-label="Scheduled"] .task-row').length;
+    assert.strictEqual(scheduled([]), 5);
+    assert.strictEqual(scheduled(['scheduled']), 7);
+    assert.strictEqual(drawnNow(day, ['scheduled']).querySelector('[data-action="show-group"][data-group="scheduled"]'), null);
   });
 });
