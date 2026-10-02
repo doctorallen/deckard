@@ -339,6 +339,29 @@ suite('The shared search box draws and does what the template script did', () =>
     assertSame('closed');
   });
 
+  test('a word every object inherits, such as constructor, is no field, as in the host\'s parser', () => {
+    const shared = (core.window as unknown as {
+      shared: {
+        fieldFor(word: string, aliases: Record<string, string>): unknown;
+        parseConditionText(text: string, aliases: Record<string, string>): unknown;
+        valueContext(prefix: string, aliases: Record<string, string>): unknown;
+      };
+    }).shared;
+    // The aliases arrive from the host as a copy, an object like any other.
+    const aliases = core.window.JSON.parse(JSON.stringify(viewOf('').suggestions.aliases)) as Record<string, string>;
+    for (const word of ['constructor', 'toString', '__proto__']) {
+      assert.strictEqual(shared.fieldFor(word, aliases), undefined, word);
+      assert.strictEqual(shared.valueContext(`${word}:x`, aliases), undefined, word);
+      assert.deepStrictEqual(
+        JSON.parse(JSON.stringify(shared.parseConditionText(`${word}:x`, aliases))),
+        { field: 'text', operator: 'contains', value: `${word}:x`, supported: true, text: '' },
+        word,
+      );
+    }
+    assert.strictEqual(shared.fieldFor('due', aliases), 'due', 'a field still is one');
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(shared.valueContext('is:ov', aliases))), { field: 'is', token: 'ov' });
+  });
+
   test('the plain words of a search, which a page filters by at once', () => {
     const shared = (core.window as unknown as { shared: { previewWords(text: string): string[] } }).shared;
     for (const text of ['vendor review', 'vendor = x review', 'a OR b', 'tag = #x word', '#tag word -no "quoted" and && w', 'due <= 7d plan']) {
