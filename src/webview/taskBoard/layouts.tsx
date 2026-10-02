@@ -65,6 +65,9 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
     return <div key="empty" class="empty">{snapshot.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture.'}</div>;
   }
   const sort = table.sort;
+  // The title is the column the reader cannot leave out, wherever the
+  // columns put it; the checkbox and the menu are named by it.
+  const titleAt = table.columns.findIndex((column) => column.id === 'title');
   return (
     <table key="table" class="result-table" aria-label="Tasks">
       <thead>
@@ -90,12 +93,12 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
       </thead>
       <tbody>
         {table.rows.map((row) => {
-          const title = row.cells[0] ? row.cells[0].text : '';
+          const title = row.cells[titleAt] ? row.cells[titleAt].text : '';
           return (
             <tr key={row.taskId} class={row.completed ? 'result-row completed' : 'result-row'} tabIndex={0} data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
               <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} checked={row.completed} aria-label={`Toggle ${title}`} /></td>
               {row.cells.map((cell, at) => {
-                const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === 0 ? 'result-title' : ''].filter(Boolean).join(' ');
+                const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === titleAt ? 'result-title' : ''].filter(Boolean).join(' ');
                 // A cell's Markdown is drawn from its tokens, as a board
                 // card's title is; everything else is data.
                 return <td class={classes || undefined}>{cell.tokens ? <Inline tokens={cell.tokens} /> : cell.text}</td>;
