@@ -213,6 +213,34 @@ suite('Calendar', () => {
     }
   });
 
+  test('End past the grid asks for the next month with no day, not with one an earlier step left waiting', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const september = createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true });
+    const page = openWebviewPage(renderPage('calendar'), september);
+    try {
+      const day = (date: string) => page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      const key = (date: string, name: string) => {
+        day(date).focus();
+        day(date).dispatchEvent(new page.window.KeyboardEvent('keydown', { key: name, bubbles: true }));
+      };
+      // A step down past the last row waits for October 7th, but a save
+      // sends September again before October is drawn.
+      key('2026-09-30', 'ArrowDown');
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-07' });
+      page.send(september);
+      // No grid draws a short row today, so one is made here by taking the
+      // row's last two days out, and End from its first falls past the edge.
+      day('2026-10-02').remove();
+      day('2026-10-03').remove();
+      key('2026-09-27', 'End');
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' }, 'the host keeps the chosen day\'s place');
+      page.send(createCalendar(index, '2026-10', createQueryContext(now), { dayPanel: true }));
+      assert.notStrictEqual((page.document.activeElement as HTMLElement | null)?.dataset.date, '2026-10-07', 'and the old step is not focused');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('draws a repeating task on each later date its rule lands on, quieter than a due date', () => {
     const repeating = buildWorkspaceIndex(new Map([
       ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],
