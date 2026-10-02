@@ -458,4 +458,15 @@ suite('Task Board page', () => {
     });
     assert.strictEqual(open.length, 1, `open: ${open.join(', ')}`);
   });
+
+  test('Shift+F10 and the menu key on a table row open its menu, as a right-click does', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+    const row = shown.find('.result-row') as HTMLElement;
+    row.focus();
+    press(shown, row, 'F10', { shiftKey: true });
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'Shift+F10 opens it');
+    press(shown, shown.document.activeElement as Element, 'Escape');
+    press(shown, row, 'ContextMenu');
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'so does the menu key');
+  });
 });
