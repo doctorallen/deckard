@@ -2,10 +2,38 @@
  * What a tag's page shows above its results: the note that describes the
  * tag, and the quiet lines on how else the tag is reached.
  */
+import type { ComponentChild } from 'preact';
+
 import type { SearchPageSnapshot, SearchPageTag, SearchPageTagNotes, TagOverviewHub } from '../../ui/protocol/searchPage';
 import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
+
+/**
+ * A property's values joined by commas, a tag as the control that opens
+ * it, each run of words one text node, as the template wrote them: Chrome
+ * lays out the edge between two text nodes apart.
+ */
+function propertyValues(values: TagOverviewHub['properties'][number]['values']): ComponentChild[] {
+  const drawn: ComponentChild[] = [];
+  values.forEach((value, index) => {
+    const separator = index > 0 ? ', ' : '';
+    const last = drawn[drawn.length - 1];
+    if (value.tag) {
+      if (typeof last === 'string') {
+        drawn[drawn.length - 1] = last + separator;
+      } else if (separator) {
+        drawn.push(separator);
+      }
+      drawn.push(<TagButton tag={value.tag} className="inline-tag" />);
+    } else if (typeof last === 'string') {
+      drawn[drawn.length - 1] = last + separator + value.text;
+    } else {
+      drawn.push(separator + value.text);
+    }
+  });
+  return drawn;
+}
 
 /** The hub note's front-matter properties, a tag among their values drawn as the control that opens it. */
 function HubProperties({ hub }: { readonly hub: TagOverviewHub }) {
@@ -14,7 +42,7 @@ function HubProperties({ hub }: { readonly hub: TagOverviewHub }) {
       {hub.properties.map((property) => (
         <div>
           <dt>{property.name}</dt>
-          <dd>{property.values.map((value, index) => [index > 0 ? ', ' : null, value.tag ? <TagButton tag={value.tag} className="inline-tag" /> : value.text])}</dd>
+          <dd>{propertyValues(property.values)}</dd>
         </div>
       ))}
     </dl>

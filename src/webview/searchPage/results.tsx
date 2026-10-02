@@ -111,11 +111,12 @@ function OtherResults({ kind, view }: { readonly kind: ResultKind; readonly view
 /** A pane's heading, with its count in the side-by-side layout, where there are no tabs to carry it. */
 function PaneHeader({ kind, view }: { readonly kind: ResultKind; readonly view: ResultsView }) {
   const count = resultCounts(view.snapshot)[kind];
+  const heading = kind === 'notes' ? 'Notes' : 'Tasks';
   return (
     <div class="overview-pane-header">
       <h2 id={`${kind}-heading`} class="overview-pane-heading">
-        {kind === 'notes' ? 'Notes' : 'Tasks'}
-        {view.snapshot.layout === 'split' ? [' (', <span data-search-count={kind}>{count}</span>, ')'] : null}
+        {/* One text node before the count, as the template wrote it: Chrome lays out a node's edge apart. */}
+        {view.snapshot.layout === 'split' ? [`${heading} (`, <span data-search-count={kind}>{count}</span>, ')'] : heading}
       </h2>
       <PaneActions kind={kind} count={count} />
     </div>

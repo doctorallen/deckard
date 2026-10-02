@@ -155,8 +155,8 @@ export function SearchCard({ card, position, display, opened }: SearchCardProps)
       <div class="card-header">
         <CardTitle card={card} titleDisplay={display.titleDisplay} />
         <div class="source">
-          {formatSourceLocation(fileName, card.startLine)}
-          {card.via === 'hubLink' ? [' ', <span class="card-via">Links the hub note</span>] : null}
+          {`${formatSourceLocation(fileName, card.startLine)}${card.via === 'hubLink' ? ' ' : ''}`}
+          {card.via === 'hubLink' ? <span class="card-via">Links the hub note</span> : null}
         </div>
         {steps.length ? <div key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null}
       </div>

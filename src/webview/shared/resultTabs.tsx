@@ -48,7 +48,7 @@ export function ResultTabs({ tabs, active, label }: { readonly tabs: readonly Re
               aria-controls={resultPanelId(tab.id)}
               tabIndex={selected ? 0 : -1}
             >
-              {tab.label} (<span data-search-count={tab.id}>{tab.count}</span>)
+              {`${tab.label} (`}<span data-search-count={tab.id}>{tab.count}</span>)
             </button>
           );
         })}
