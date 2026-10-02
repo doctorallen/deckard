@@ -272,6 +272,21 @@ test('a Dashboard opened on the Tags tab tells Related Notes what Home can add',
   assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
 });
 
+test('Escape closes a widget\'s gear and hands focus back to it', async () => {
+  const { view, panel, lastState } = await openDashboard();
+  view.click(view.find('[data-action="customize-home"]'));
+  const gear = () => view.find('.home-widget[data-widget-id="tasks"] .home-widget-options');
+  gear().open = true;
+  view.fire('toggle', gear());
+  const choice = gear().querySelector('[data-action="set-widget-count"]');
+  choice.focus();
+  view.keydown(choice, 'Escape');
+  assert.strictEqual(gear().open, false);
+  assert.strictEqual(view.document.activeElement, gear().querySelector('summary'));
+  panel._deliver(lastState());
+  assert.strictEqual(gear().open, false, 'and it stays closed when Home is drawn again');
+});
+
 test('a widget added is announced by its name alone', async () => {
   const { view } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));

@@ -786,8 +786,27 @@ function moveBetweenTabs(event: KeyboardEvent, element: Element): boolean {
   return true;
 }
 
+/**
+ * Escape closes the widget gear focus is in and hands focus back to the
+ * gear, as the page's own gear does; true when it did.
+ */
+function closeWidgetOptions(event: KeyboardEvent, element: Element | null): boolean {
+  const options = event.key === 'Escape' && element ? element.closest<HTMLDetailsElement>('.home-widget-options[open]') : null;
+  if (!options) {
+    return false;
+  }
+  event.preventDefault();
+  options.open = false;
+  view.openWidgetOptions = undefined;
+  options.querySelector<HTMLElement>('summary')?.focus();
+  return true;
+}
+
 document.addEventListener('keydown', (event) => {
   const element = event.target instanceof Element ? event.target : null;
+  if (closeWidgetOptions(event, element)) {
+    return;
+  }
   // The search box takes / only where it is on screen.
   const inSearch = Boolean(element && element.closest('[data-suggest-key]'));
   if ((inSearch || (view.mode === 'home' && findWidget('search'))) && editor.handleKeydown(event)) {
