@@ -35,7 +35,7 @@
 | **Deckard: Add Task** | The same editor when the cursor is not on a task: the same shortcut writes a new one. |
 | **Deckard: Break into Steps…** | Writes steps under the task on the cursor's line; see [Breaking a task into steps](tasks.md#breaking-a-task-into-steps). |
 | **Deckard: Toggle Task Done** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> elsewhere. Completes the tasks under every cursor and selection, or reopens them if all are done, writing the ✅ date and a repeating task's next occurrence. |
-| **Deckard: Capture** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> elsewhere. Adds a task to today's note without leaving the current editor. |
+| **Deckard: Capture** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> elsewhere. Adds a task to today's note without leaving the current editor. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the last daily note's unfinished tasks into today's, creating it if needed. |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |

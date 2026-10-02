@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- **Capture's shortcut is Cmd/Ctrl+Shift+Alt+N.** Cmd/Ctrl+Shift+Alt+C is
+  VS Code's own Copy Relative Path of Active File on macOS and Linux, which
+  Deckard's shortcut took over. To keep the old one, bind `deckard.capture`
+  to it in Keyboard Shortcuts.
+
 ## 1.23.1 - 2026-09-27
 
 ### Changed

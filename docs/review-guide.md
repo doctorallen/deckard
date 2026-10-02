@@ -619,7 +619,7 @@ Open it with <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>
 
 ## Capture
 
-Open it with <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd>
+Open it with <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>
 (**Deckard: Capture**).
 
 - [ ] **Stays open when you click away.** Type something, then click into the

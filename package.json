@@ -1338,8 +1338,8 @@
       },
       {
         "command": "deckard.capture",
-        "key": "ctrl+shift+alt+c",
-        "mac": "cmd+shift+alt+c"
+        "key": "ctrl+shift+alt+n",
+        "mac": "cmd+shift+alt+n"
       },
       {
         "command": "deckard.createDailyNote",
