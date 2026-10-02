@@ -32,6 +32,9 @@ suite('Focus Section', () => {
     const lines = ['# Plan', 'text', '```', '# not a heading', '```', 'more'];
     assert.strictEqual(findHeadingLineAbove(lines, 5), 0);
     assert.strictEqual(findHeadingLineAbove(['no heading', 'here'], 1), undefined);
+    for (const bare of ['#', '# ', '#   ']) {
+      assert.strictEqual(findHeadingLineAbove(['# Plan', 'text', bare, 'under it'], 3), 2, JSON.stringify(bare));
+    }
   });
 
   test('folds all but the section, opens its sub-headings, and says so in a key', async () => {

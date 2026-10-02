@@ -135,12 +135,16 @@ suite('Line shapes: headings', () => {
     }
   });
 
-  test('kept reads the words with their closing hashes and needs one character', () => {
+  test('kept reads the words with their closing hashes, and hashes alone as a heading with none', () => {
     assert.deepStrictEqual(matchHeading('## Plan ##  ', 'kept'), { level: 2, text: 'Plan ##' });
     assert.deepStrictEqual(matchHeading('# Title\r', 'kept'), { level: 1, text: 'Title' });
-    assert.deepStrictEqual(matchHeading('#  ', 'kept'), { level: 1, text: ' ' });
-    assert.strictEqual(matchHeading('# ', 'kept'), undefined);
-    assert.strictEqual(matchHeading('#', 'kept'), undefined);
+    for (const line of ['#', '# ', '#  ', '#\t', '#\r', '   #']) {
+      assert.deepStrictEqual(matchHeading(line, 'kept'), { level: 1, text: '' }, JSON.stringify(line));
+    }
+    assert.deepStrictEqual(matchHeading('###', 'kept'), { level: 3, text: '' });
+    for (const line of ['#tag', '#\u00a0', '#######', '    #']) {
+      assert.strictEqual(matchHeading(line, 'kept'), undefined, JSON.stringify(line));
+    }
   });
 
   test('dropped takes the closing hashes off and allows no words', () => {
