@@ -68,6 +68,33 @@ suite('Preference snapshots through the file-system port', () => {
     store.repository.dispose();
   });
 
+  test('keeps two copies written in one millisecond, the later listed first', async () => {
+    const files = new FakeFileSystem();
+    const store = createPreferences(new MemoryStore());
+    const at = new Date('2026-09-22T19:43:14.277Z');
+    const snapshots = new PreferenceSnapshots(storage, store.reader, files, () => at);
+    await store.favorites.toggleFavorite('#project/relay');
+    await snapshots.writeNow();
+    await store.favorites.toggleFavorite('#project/atlas');
+    await snapshots.writeNow();
+    await store.favorites.toggleFavorite('#project/mesh');
+    await snapshots.writeNow();
+
+    assert.deepStrictEqual(
+      [...files.files.keys()].map((file) => path.basename(file)).sort(),
+      ['2026-09-22T19-43-14-277Z-1.json', '2026-09-22T19-43-14-277Z-2.json', '2026-09-22T19-43-14-277Z.json'],
+    );
+    const listed = await snapshots.list();
+    assert.deepStrictEqual(
+      await Promise.all(listed.map(async (snapshot) => ((await snapshots.read(snapshot)) as { favoriteTags: string[] }).favoriteTags)),
+      [['#project/relay', '#project/atlas', '#project/mesh'], ['#project/relay', '#project/atlas'], ['#project/relay']],
+      'each copy kept, newest first',
+    );
+    assert.ok(listed.every((snapshot) => snapshot.at.getTime() === at.getTime()));
+    snapshots.dispose();
+    store.repository.dispose();
+  });
+
   test('writes and lists nothing without a storage folder', async () => {
     const files = new FakeFileSystem();
     const store = createPreferences(new MemoryStore());

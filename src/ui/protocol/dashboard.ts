@@ -64,6 +64,11 @@ export interface DashboardTag {
   label: string;
   count: number;
   isFavorite: boolean;
+  /**
+   * The namespace the Tags tab groups and names the tag by, as the parser
+   * reads an entity's: `person` for an @ tag, empty for none.
+   */
+  namespace: string;
 }
 
 /** An entity as the Dashboard ranks it. */

@@ -785,12 +785,13 @@ function savedFilterIdentity(filter: SavedFilter): string {
 
 /**
  * Ensures filters remain valid version-one preference data, even when read
- * from an old or manually modified global-state value.
+ * from an old or manually modified global-state value. Anything but a list
+ * reads as no filters, as a malformed filter in the list reads as none.
  */
-export function normalizeSavedFilters(values: SavedFilter[] | undefined): SavedFilter[] {
+export function normalizeSavedFilters(values: unknown): SavedFilter[] {
   const seenTagSets = new Set<string>();
   const seenIds = new Set<string>();
-  return (values ?? []).flatMap((value) => {
+  return (Array.isArray(values) ? values : []).flatMap((value) => {
     const filter = readSavedFilter(value);
     if (!filter) {
       return [];

@@ -61,7 +61,7 @@ A page computes some things for itself, from rules the host also applies or that
 | --- | --- | --- |
 | `domain/graph/communities.ts` | The graph's groups and the links it draws: `buildCommunities`, `choosePrimaryTags`, and `selectSalientEdges` | The Notes Graph (`view.ts`, `model.ts`) |
 | `domain/markdown/calendar.ts` | The date steps both calendars take: `stepDate`, `sameShownDayIn`, `isWeekend`, `chooseFocusDay`, and `stepCalendar` | The calendars' shared parts (`shared/calendar/`) and the calendar page |
-| `domain/markdown/tagKeys.ts` | A tag key's namespace and its words, read as the parser reads them: `readTagNamespace` and `formatKeyWords` | The Dashboard's Tags tab |
+| `domain/markdown/tagKeys.ts` | A namespace's words for its filter: `formatKeyWords`. The namespace itself comes from the host, read by the parser's `getEntityNamespace` (which reads a key through `readTagNamespace`, here too) | The Dashboard's Tags tab |
 | `domain/tasks/taskColumns.ts` | Whether a status column or a board namespace the reader typed can be taken: `checkNewStatusColumn` and `checkStatusNamespace` | The Task Board's settings |
 | `domain/dashboard/widgetCatalog.ts` | Which Home widgets there are, and what each can do: `WIDGET_KINDS` and `isWidgetKind` | The Dashboard |
 

@@ -18,6 +18,7 @@ import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { createHubNote } from '../../../commands/hubNote';
 import { openResultAt, ResultOpening } from '../../../commands/navigation';
+import { settingTarget, writeSetting } from '../../../commands/settings';
 import { setPinned } from '../../../commands/pinNote';
 import { readQueryContext } from '../../../commands/queryContext';
 import { mergeIndexedTag } from '../../../commands/renameTag';
@@ -166,11 +167,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       openHelp: openHelp(),
       saveTagOverviewFilter: () => this.saveSearch(),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
-      // A preference about every tag's page, so it is the user's.
-      excludeHubLinks: () =>
-        vscode.workspace
-          .getConfiguration('deckard')
-          .update('tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global),
+      excludeHubLinks: () => excludeHubLinks(),
       createHubNote: async () => {
         const tagKey = this.currentSnapshot().tag?.key;
         if (tagKey) {
@@ -679,4 +676,16 @@ function getTagTitleDisplayMode(): TagTitleDisplayMode {
       .getConfiguration('deckard')
       .get<unknown>('tagTitleDisplayMode', 'inline'),
   );
+}
+
+/**
+ * A tag page's Leave Them Out, beside the entries listed only because they
+ * link from the tag's hub note: turns
+ * `deckard.tagOverview.includeHubLinks` off for every tag's page, where the
+ * value in force is set. It was always written to the user's settings, so
+ * in a workspace that set it the page kept listing them. Returns whether it
+ * was written.
+ */
+export function excludeHubLinks(): Promise<boolean> {
+  return writeSetting('tagOverview.includeHubLinks', false, settingTarget('tagOverview.includeHubLinks'));
 }

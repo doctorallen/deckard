@@ -348,7 +348,7 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 | `header.tsx` | The page's name, the three tiles, the gear, and the Home and Tags tabs |
 | `home.tsx` | Home: the bar it is arranged from, the line saying what is new or that it can be arranged, the way in for a workspace with no notes, the grid, and `widgetChoices`, what + Add widget offers and the host hands Related Notes |
 | `widgets.tsx`, `widgetBodies.tsx`, `rows.tsx` | One widget in its frame, with its gear and pager; what each kind shows; and the rows they list |
-| `tagsTab.tsx`, `tagNames.ts` | The Tags tab, and how it reads a tag's namespace and name and narrows the tags |
+| `tagsTab.tsx`, `tagNames.ts` | The Tags tab, and how it names a tag by the namespace the host sends and narrows the tags |
 | `model.ts`, `keptView.ts`, `homeContext.ts`, `icons.tsx` | The page's own state, what it keeps with `setState`, what a widget is drawn with, and its glyphs |
 
 Which widgets there are, and what each can do, is `domain/dashboard/widgetCatalog.ts`'s `WIDGET_KINDS`, which the host's preferences schema reads to keep a stored widget; a tag key's namespace is `domain/markdown/tagKeys.ts`'s, which the parser reads too (D1). A widget's id is made on the page, so the new widget is drawn at once with its mark.

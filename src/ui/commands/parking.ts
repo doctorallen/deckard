@@ -142,15 +142,13 @@ class NoteDocumentEdit implements ParkingEdit<vscode.Uri, WriteHandle> {
 
 /**
  * Where a parking setting is written: where it is already set most
- * specifically, else the folder's own settings in a multi-root workspace and
- * the workspace's otherwise, or the user's when `unset` is `global`. The
- * value is read from that same place, so a user-level value is not copied
- * into the workspace.
+ * specifically, else the folder's own settings in a multi-root workspace
+ * and the workspace's otherwise. The value is read from that same place,
+ * so a user-level value is not copied into the workspace.
  */
 function settingPlace(
   key: string,
   scope?: vscode.Uri,
-  unset: 'default' | 'global' = 'default',
 ): { configuration: vscode.WorkspaceConfiguration; target: vscode.ConfigurationTarget; current: unknown } {
   const configuration = vscode.workspace.getConfiguration('deckard', scope);
   const inspected = configuration.inspect(key);
@@ -160,8 +158,8 @@ function settingPlace(
   if (inspected?.workspaceValue !== undefined) {
     return { configuration, target: vscode.ConfigurationTarget.Workspace, current: inspected.workspaceValue };
   }
-  if (inspected?.globalValue !== undefined || unset === 'global') {
-    return { configuration, target: vscode.ConfigurationTarget.Global, current: inspected?.globalValue };
+  if (inspected?.globalValue !== undefined) {
+    return { configuration, target: vscode.ConfigurationTarget.Global, current: inspected.globalValue };
   }
   const multiRoot = vscode.workspace.workspaceFile !== undefined && scope !== undefined;
   return {
@@ -171,12 +169,30 @@ function settingPlace(
   };
 }
 
+/**
+ * The levels a setting can be set at for a folder, most specific first:
+ * the folder's own settings in a multi-root workspace (in a single folder
+ * they are the workspace's), the workspace's, and the user's.
+ */
+function settingLevels(key: string, scope: vscode.Uri): SettingPlace[] {
+  const configuration = vscode.workspace.getConfiguration('deckard', scope);
+  const inspected = configuration.inspect(key);
+  const multiRoot = vscode.workspace.workspaceFile !== undefined;
+  const levels: [vscode.ConfigurationTarget, unknown][] = [
+    ...(multiRoot ? [[vscode.ConfigurationTarget.WorkspaceFolder, inspected?.workspaceFolderValue] as [vscode.ConfigurationTarget, unknown]] : []),
+    [vscode.ConfigurationTarget.Workspace, inspected?.workspaceValue],
+    [vscode.ConfigurationTarget.Global, inspected?.globalValue],
+  ];
+  return levels.map(([target, current]) => ({ current, write: (value) => writeSetting(key, value, target, configuration) }));
+}
+
 /** The parking settings as VS Code writes them, saying so when a write is refused. */
 const vscodeParkingSettings: ParkingSettings<vscode.Uri> = {
-  place(key: string, scope?: vscode.Uri, unset?: 'default' | 'global'): SettingPlace {
-    const { configuration, target, current } = settingPlace(key, scope, unset);
+  place(key: string, scope?: vscode.Uri): SettingPlace {
+    const { configuration, target, current } = settingPlace(key, scope);
     return { current, write: (value) => writeSetting(key, value, target, configuration) };
   },
+  levels: settingLevels,
 };
 
 /**

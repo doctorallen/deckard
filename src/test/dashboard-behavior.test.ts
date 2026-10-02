@@ -117,6 +117,24 @@ suite('Dashboard behavior', () => {
       ...changes,
     });
 
+  test('groups and names a tag by the namespace the parser reads, not its key as written', () => {
+    const index = buildWorkspaceIndex(new Map([['notes/acme.md', parseMarkdown('notes/acme.md', '# Acme #org/acme')]]));
+    // The index keys its tags canonically, so a key written another way can
+    // only be made by hand; the parser reads its alias and its case.
+    const acme = index.tags.get('#org/acme')!;
+    index.tags.set('#Organization/Beta', { ...acme, key: '#Organization/Beta', label: '#Organization/Beta' });
+    store = createPreferences(new MemoryMemento());
+    const preferences = { ...store.reader.value, dashboardViewState: { mode: 'browse' as const, tagSearchQuery: '' } };
+    page = openWebviewPage(renderPage('dashboard'), {
+      ...createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) }),
+    });
+
+    const kinds = page.findAll('.entity-kind').map((kind) => kind.textContent);
+    assert.deepStrictEqual(kinds, ['org', 'org']);
+    const options = page.findAll('[data-action="set-tag-namespace"] option').map((option) => option.getAttribute('value'));
+    assert.deepStrictEqual(options.filter((value) => value && value !== '/'), ['org'], 'one namespace to filter by');
+  });
+
   test('leads with what is overdue, due today, and open, each a search', () => {
     const { page, snapshot } = open();
     const labels = page
@@ -293,7 +311,7 @@ suite('Dashboard behavior', () => {
 
   test('sends each tag\'s name and count, and draws the Tags tab only when it is open', () => {
     const { page, snapshot } = open();
-    assert.deepStrictEqual(Object.keys(snapshot.tags[0]).sort(), ['count', 'isFavorite', 'key', 'label']);
+    assert.deepStrictEqual(Object.keys(snapshot.tags[0]).sort(), ['count', 'isFavorite', 'key', 'label', 'namespace']);
     assert.deepStrictEqual(Object.keys(snapshot.entities[0] ?? { count: 0, isFavorite: false, key: '', kind: '', label: '' }).sort(), ['count', 'isFavorite', 'key', 'kind', 'label']);
     assert.strictEqual(page.findAll('.tag-row').length, 0, 'Home builds no tag rows');
     page.click('[data-action="set-dashboard-mode"][data-dashboard-mode="browse"]');

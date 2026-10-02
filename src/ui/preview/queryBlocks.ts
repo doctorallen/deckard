@@ -18,6 +18,7 @@ import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
 import { WorkspaceIndex } from '../../domain/model';
+import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 
 /** The one thing the blocks need from the indexer: its published snapshots. */
 interface IndexSource {
@@ -77,11 +78,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       onDidRender: () => {
         this.previewReadsIndex = true;
       },
-      getStatusNamespace: () =>
-        vscode.workspace
-          .getConfiguration('deckard')
-          .get<string>('board.statusNamespace', 'status')
-          .trim() || 'status',
+      getStatusNamespace: () => readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       getQueryContext: (now: number) => readQueryContext(now),
     };
     return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);

@@ -253,7 +253,7 @@ suite('Dashboard host', () => {
     }
   });
 
-  test('is the active source while its panel is in front, and stays one when disposed of', () => {
+  test('is the active source while its panel is in front, and not once disposed of', () => {
     const home = openHome();
     try {
       assert.strictEqual(home.activeHome.active, home.source, 'a panel opened in front');
@@ -269,8 +269,8 @@ suite('Dashboard host', () => {
       assert.strictEqual(home.activeHome.active, home.source);
       home.host.dispose();
       // Disposing of Home stops its panel's listeners before closing it, so
-      // it never says it left the front.
-      assert.strictEqual(home.activeHome.active, home.source);
+      // the close is never heard; disposing releases it instead.
+      assert.strictEqual(home.activeHome.active, undefined, 'a disposed Home is not in front');
       assert.strictEqual(reopened.closed, true);
     } finally {
       home.dispose();

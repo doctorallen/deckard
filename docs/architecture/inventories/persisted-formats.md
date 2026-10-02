@@ -207,7 +207,7 @@ The plan's list does not include this store.
 ## 17. Preference snapshots
 
 - **Where:** `storageUri/preference-snapshots/` (`src/core/storage/preferenceSnapshots.ts:44`), created at `src/extension.ts:293`. Nothing is written with no `storageUri`.
-- **File name:** the write time as `2026-09-22T19-43-14-277Z.json` (`nameFromDate`, `:131`; `dateFromName`, `:135`). A name that does not parse is ignored when listing (`:68`). The newest `SNAPSHOTS_KEPT = 20` (`:18`) are kept.
+- **File name:** the write time as `2026-09-22T19-43-14-277Z.json` (`nameFromDate`, `:131`; `dateFromName`, `:135`); a second copy written in the same millisecond is `2026-09-22T19-43-14-277Z-1.json`, then `-2` (`freeName`, since the fix after Phase 7). A name that does not parse is ignored when listing (`:68`). The newest `SNAPSHOTS_KEPT = 20` (`:18`) are kept.
 - **Body:** the bare preferences blob, pretty-printed (`:113`).
 - **Written:** `src/core/storage/preferenceSnapshots.ts:105`, two seconds after each change.
 - **Read:** `list` (`:52`) and `read` (`:73`), then `readExport` (`src/ui/commands/preferenceBackups.ts:164`), which accepts a bare blob only when `version === 1` and `favoriteTags` is an array (`:78`). `importPreferences` normalizes it (`src/core/storage/preferences.ts:1169`).

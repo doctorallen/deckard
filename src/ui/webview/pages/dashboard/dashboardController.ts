@@ -271,6 +271,16 @@ export class DashboardController implements PageController<DashboardPageState, D
   }
 
   /**
+   * Home disposed of is no longer in front. The host drops the panel's
+   * listeners before it closes the panel, so onDidDetach never hears that
+   * close, and Home used to stay the active source, with Related Notes
+   * offering widgets for a page that was gone.
+   */
+  public dispose(): void {
+    this.activeHome?.release(this.home.source);
+  }
+
+  /**
    * Opens a saved view where it was saved: on the Task Board, or on a search
    * page with its query, or its tags that still exist joined by AND.
    */

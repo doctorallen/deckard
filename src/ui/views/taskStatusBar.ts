@@ -5,6 +5,7 @@ import { listOverdueTasks } from '../commands/agendaActions';
 import { QueryContext } from '../../domain/query/queryContext';
 import { escapeMarkdown } from '../../shared/text';
 import { readQueryContext } from '../commands/queryContext';
+import { clearSetting } from '../commands/settings';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 import { WorkspaceIndex } from '../../domain/model';
 
@@ -161,19 +162,13 @@ const REMINDER_ACTIONS: Record<string, () => Thenable<unknown>> = {
 };
 
 /**
- * Clears `deckard.taskReminderTime` where it was set, so a workspace's own
- * hour is the one undone.
+ * Turns the daily reminder off: clears `deckard.taskReminderTime` where the
+ * hour in force is set, so a workspace's own hour is the one undone. When
+ * the user's settings hold another hour, which clearing the workspace's
+ * would bring into force, the workspace is given no hour instead.
  */
-function turnOffReminders(): Thenable<void> {
-  const configuration = vscode.workspace.getConfiguration('deckard');
-  const setting = configuration.inspect<string>('taskReminderTime');
-  return configuration.update(
-    'taskReminderTime',
-    undefined,
-    setting?.workspaceValue === undefined
-      ? vscode.ConfigurationTarget.Global
-      : vscode.ConfigurationTarget.Workspace,
-  );
+export function turnOffReminders(): Promise<boolean> {
+  return clearSetting('taskReminderTime', '');
 }
 
 /**

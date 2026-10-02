@@ -40,6 +40,7 @@ import type { PageChrome } from '../../components';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
 import { RelatedNotesRankingOptions } from '../../../../domain/ranking/relatedNotesContext';
+import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
@@ -792,7 +793,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       hidePeriodicNotes: this.sidebar.preferences.reader.value.hideDailyNotes === true,
       // The board's status is how a task moves, not what a note is about.
       excludedTagNamespaces: [
-        vscode.workspace.getConfiguration('deckard').get<string>('board.statusNamespace', 'status').trim() || 'status',
+        readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       ],
     };
   }

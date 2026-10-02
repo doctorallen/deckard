@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { createQueryContext, QueryContext } from '../../domain/query/queryContext';
-import { TaskPolicy } from '../../domain/tasks/taskPolicy';
+import { readStatusNamespace, TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { readWeekStart } from './datePrompt';
 
 /**
@@ -25,7 +25,7 @@ export function readQueryContext(now: number = Date.now()): QueryContext {
 /**
  * How Deckard reads tasks, from settings: `deckard.tasks.needsNewDateAfterDays`
  * as a whole number of days, 0 or more (30 for anything that is not a
- * number); `deckard.board.statusNamespace` trimmed (`status` when empty); and
+ * number); `deckard.board.statusNamespace` as readStatusNamespace reads it; and
  * `deckard.tasks.onHoldStatuses` trimmed and lowercased, its blanks and
  * non-strings dropped (`waiting` and `someday` when it is not a list).
  */
@@ -35,8 +35,7 @@ export function readTaskPolicy(): TaskPolicy {
   const onHold = configuration.get<unknown>('tasks.onHoldStatuses', ['waiting', 'someday']);
   return {
     needsNewDateAfterDays: Number.isFinite(days) ? Math.max(0, Math.round(days)) : 30,
-    statusNamespace:
-      configuration.get<string>('board.statusNamespace', 'status').trim() || 'status',
+    statusNamespace: readStatusNamespace(configuration),
     onHoldStatuses: Array.isArray(onHold)
       ? onHold.filter((status): status is string => typeof status === 'string')
           .map((status) => status.trim().toLowerCase())

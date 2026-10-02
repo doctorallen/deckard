@@ -6,12 +6,12 @@ import {
   readAgendaGroupNamespace,
   readAgendaGrouping,
   readAgendaQuery,
-  readStatusNamespace,
   readUpcomingDays,
 } from '../domain/tasks/agendaGroups';
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
+import { readStatusNamespace } from '../domain/tasks/taskPolicy';
 import type { Configuration } from '../ports/configuration';
 import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
@@ -89,7 +89,7 @@ export interface AgendaServiceOptions<G extends AgendaGroupLike> {
   /** The settings and moment a piece of work is done in, read as it starts. */
   readQueryContext(): QueryContext;
   model: AgendaModel<G>;
-  /** Writes a `deckard` setting where the reader's own settings are; whether it was. */
+  /** Writes a `deckard` setting where the value in force is set; whether it was. */
   writeSetting(key: string, value: unknown): PromiseLike<boolean>;
 }
 
@@ -339,9 +339,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     return {
       queryContext,
       statuses: configuration.get<string[]>('board.statuses', []) ?? [],
-      statusNamespace:
-        configuration.get<string>('board.statusNamespace', 'status').trim() ||
-        'status',
+      statusNamespace: readStatusNamespace(configuration),
       format: readMetadataFormat(configuration),
     };
   }

@@ -18,6 +18,7 @@ import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
 import { formatCaptureLine } from '../../domain/capture/captureLines';
 import { Task } from '../../domain/model';
+import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 
@@ -28,19 +29,13 @@ const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
  */
 export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
-  const namespace = configuration.get<string>(
-    'board.statusNamespace',
-    'status',
-  );
   const statuses = configuration.get<unknown>(
     'board.statuses',
     DEFAULT_STATUSES,
   );
   return {
     queryContext,
-    statusNamespace: /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace)
-      ? namespace.toLowerCase()
-      : 'status',
+    statusNamespace: readStatusNamespace(configuration),
     statuses: (Array.isArray(statuses) ? statuses : DEFAULT_STATUSES)
       .filter(
         (status): status is string =>

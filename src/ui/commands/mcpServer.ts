@@ -16,7 +16,7 @@ import {
   PARSE_ERROR,
 } from '../../core/mcp/mcpProtocol';
 import { measure, measureAsync } from '../../shared/timing';
-import { writeSetting } from './settings';
+import { settingTarget, writeSetting } from './settings';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { ASSISTANT_TOOLS, ToolRunners } from '../state/assistantTools';
 import { addTask, changeTask } from './assistantWrites';
@@ -190,11 +190,10 @@ export class DeckardMcpServer implements vscode.Disposable {
       if (choice !== 'Turn On') {
         return;
       }
-      const written = await writeSetting(
-        'mcpServer.enabled',
-        true,
-        vscode.ConfigurationTarget.Global,
-      );
+      // Where the value in force is set: written to the user's settings,
+      // a workspace that turned the server off kept it off, and the setup
+      // copied next named a server that was not running.
+      const written = await writeSetting('mcpServer.enabled', true, settingTarget('mcpServer.enabled'));
       if (!written) {
         return;
       }

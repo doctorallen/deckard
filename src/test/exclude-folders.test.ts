@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import {
   listExcludedFolders,
+  planKeyRemoval,
   readExcludeKey,
   relativeExcludeKey,
   withExcludeKey,
@@ -46,6 +47,29 @@ suite('Exclude from Deckard', () => {
     assert.deepStrictEqual(withExcludeKey({ a: true }, 'notes/archive', true), { a: true, 'notes/archive': true });
     assert.deepStrictEqual(withExcludeKey({ a: true, 'notes/archive': true }, 'notes/archive', false), { a: true });
     assert.deepStrictEqual(withExcludeKey(undefined, 'b', true), { b: true });
+  });
+
+  test('takes a key out where it is in force, and overrides it where a less specific level holds it too', () => {
+    const levels = (folder: unknown, workspace: unknown, user: unknown) => [
+      { target: 'folder', value: folder },
+      { target: 'workspace', value: workspace },
+      { target: 'user', value: user },
+    ];
+    assert.deepStrictEqual(planKeyRemoval(levels(undefined, { other: true }, { archive: true }), 'archive'), {
+      target: 'user',
+      value: {},
+    });
+    assert.deepStrictEqual(planKeyRemoval(levels({ 'archive/': true, other: true }, undefined, undefined), 'archive'), {
+      target: 'folder',
+      value: { other: true },
+    });
+    assert.deepStrictEqual(
+      planKeyRemoval(levels(undefined, { archive: true }, { 'archive/': true }), 'archive'),
+      { target: 'workspace', value: { 'archive/': false } },
+      "the user's key, spelled its own way, would come into force",
+    );
+    assert.strictEqual(planKeyRemoval(levels(undefined, { archive: false }, { archive: true }), 'archive'), undefined, 'already brought back');
+    assert.strictEqual(planKeyRemoval(levels(undefined, { '**/archive': true }, undefined), 'archive'), undefined, 'a pattern names no one folder');
   });
 
   test('refuses the notes folder, a folder outside it, and the templates folder', () => {

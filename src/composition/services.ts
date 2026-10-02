@@ -78,7 +78,7 @@ import { StatsPanel } from '../ui/webview/stats';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
-import { setZenMode, syncZenModeContext } from '../ui/webview/zenMode';
+import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
@@ -94,7 +94,7 @@ import { AgendaService } from '../services/agendaService';
 import { isWhatsNewShown, WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { TryNextLedger } from '../ui/commands/tryNext';
-import { writeSetting } from '../ui/commands/settings';
+import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
 import { carrySectionIds } from '../domain/ranking/frecency';
 import { findUnlinkedMentions } from '../domain/search/mentions';
@@ -933,7 +933,8 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
       resolveMove: resolveTaskMove,
       isNamespaceName,
     },
-    writeSetting: (key, value) => writeSetting(key, value, vscode.ConfigurationTarget.Global),
+    // Where the grouping in force is set, so a workspace's own is the one changed.
+    writeSetting: (key, value) => writeSetting(key, value, settingTarget(key)),
   });
   const agenda = new AgendaTreeProvider(
     indexer,
@@ -1082,7 +1083,7 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  */
 function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
   void syncOutlineFollowCursorContext();
-  void syncZenModeContext();
+  context.subscriptions.push(watchZenModeContext());
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

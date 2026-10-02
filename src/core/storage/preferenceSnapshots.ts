@@ -42,12 +42,14 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
   /**
    * Copies `source` into `preference-snapshots` under `storageUri`, the
    * workspace's storage folder, reading and writing through `fileSystem`;
-   * with no storage folder, it writes and lists nothing.
+   * with no storage folder, it writes and lists nothing. `now` names each
+   * copy; a test fixes it.
    */
   public constructor(
     storageUri: U | undefined,
     private readonly source: SnapshotSource,
     private readonly fileSystem: FileSystem<U>,
+    private readonly now: () => Date = () => new Date(),
   ) {
     this.folder = storageUri
       ? fileSystem.joinPath(storageUri, 'preference-snapshots')
@@ -71,12 +73,11 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
     }
     return entries
       .filter(([name, type]) => type === FileType.File && /\.json$/.test(name))
-      .map(([name]) => ({
-        uri: this.fileSystem.joinPath(folder, name),
-        at: dateFromName(name),
-      }))
+      .map(([name]) => ({ name, at: dateFromName(name) }))
       .filter((snapshot) => !Number.isNaN(snapshot.at.getTime()))
-      .sort((a, b) => b.at.getTime() - a.at.getTime());
+      // Copies of one millisecond are told apart by their count, the higher the newer.
+      .sort((a, b) => b.at.getTime() - a.at.getTime() || countFromName(b.name) - countFromName(a.name))
+      .map(({ name, at }) => ({ uri: this.fileSystem.joinPath(folder, name), at }));
   }
 
   /** Reads one copy back. Throws if it is not what Deckard wrote. */
@@ -122,7 +123,8 @@ export class PreferenceSnapshots<U extends ResourceUri = ResourceUri> implements
     }
     const job = async (): Promise<void> => {
       await this.fileSystem.createDirectory(folder);
-      const name = `${nameFromDate(new Date())}.json`;
+      const taken = new Set((await this.fileSystem.readDirectory(folder)).map(([existing]) => existing));
+      const name = freeName(nameFromDate(this.now()), taken);
       const body = JSON.stringify(this.source.value, null, 2);
       await this.fileSystem.writeFile(
         this.fileSystem.joinPath(folder, name),
@@ -146,14 +148,33 @@ export function nameFromDate(date: Date): string {
 }
 
 /**
- * The time a copy was written, read back from a nameFromDate name. A name it
+ * The file name for a copy named `stem`, a nameFromDate name: `<stem>.json`,
+ * or, when a copy of the same millisecond is already there, `<stem>-1.json`,
+ * `<stem>-2.json`, and so on. Two copies written in one millisecond used to
+ * get one name, and the second overwrote the first.
+ */
+export function freeName(stem: string, taken: ReadonlySet<string>): string {
+  let name = `${stem}.json`;
+  for (let count = 1; taken.has(name); count += 1) {
+    name = `${stem}-${count}.json`;
+  }
+  return name;
+}
+
+/**
+ * The time a copy was written, read back from a freeName name. A name it
  * cannot read gives an Invalid Date, which list() drops.
  */
 export function dateFromName(name: string): Date {
   const stem = name.replace(/\.json$/, '');
   const iso = stem.replace(
-    /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/,
+    /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z(?:-\d+)?$/,
     '$1T$2:$3:$4.$5Z',
   );
   return new Date(iso);
+}
+
+/** Which copy of its millisecond a freeName name is: 0 for the first. */
+function countFromName(name: string): number {
+  return Number(/Z-(\d+)\.json$/.exec(name)?.[1] ?? 0);
 }

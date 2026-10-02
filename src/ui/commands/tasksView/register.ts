@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import type { Services } from '../../../composition/services';
 import { getAgendaQuery, pickAgendaGrouping, registerAgendaCommands } from '../agendaActions';
-import { settingTarget, writeSetting } from '../settings';
+import { clearSetting } from '../settings';
 import { registerCommand } from '../runCommand';
 
 /**
@@ -29,7 +29,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       taskBoard.show(getAgendaQuery()),
     ),
     registerCommand('deckard.clearAgendaQuery', async () => {
-      if (await writeSetting('agenda.query', undefined, settingTarget('agenda.query'))) {
+      if (await clearSetting('agenda.query', '')) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
       }
     }),

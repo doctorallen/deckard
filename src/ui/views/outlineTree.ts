@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { Debouncer } from '../../shared/debounce';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { measure } from '../../shared/timing';
-import { writeSetting } from '../commands/settings';
+import { settingTarget, writeSetting } from '../commands/settings';
 import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader';
 import {
   buildOutline,
@@ -393,14 +393,13 @@ export async function syncOutlineFollowCursorContext(): Promise<void> {
 }
 
 /**
- * Turns following on or off for every window, matching how the setting reads.
+ * Turns following on or off where the value in force is set: the
+ * workspace's settings when they set it, else the user's. It was always
+ * written to the user's, so in a workspace that set it the toggle wrote,
+ * nothing changed, and the title kept offering the same button.
  */
 export async function setOutlineFollowCursor(enabled: boolean): Promise<void> {
-  const written = await writeSetting(
-    'outline.followCursor',
-    enabled,
-    vscode.ConfigurationTarget.Global,
-  );
+  const written = await writeSetting('outline.followCursor', enabled, settingTarget('outline.followCursor'));
   if (written) {
     await syncOutlineFollowCursorContext();
   }

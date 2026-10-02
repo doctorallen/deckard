@@ -1,5 +1,5 @@
 import { createExcludeMatcher } from '../core/workspace/scanner';
-import { findWrittenKey, readExcludeKey, relativeExcludeKey, withExcludeKey } from '../domain/index/excludeKeys';
+import { findWrittenKey, planKeyRemoval, readExcludeKey, relativeExcludeKey, withExcludeKey } from '../domain/index/excludeKeys';
 import { ParkedRules, toParkedTagKey } from '../domain/index/parked';
 import { countNotesIn, parkedTagSettingValue, parkingFolder, parkingTags } from '../domain/index/parkingRules';
 import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
@@ -46,14 +46,22 @@ export interface SettingPlace {
   write(value: unknown): Promise<boolean>;
 }
 
-/**
- * Where a `deckard.*` setting is written for a resource. The place is where
- * the setting is already set most specifically; when nothing sets it, the
- * folder's own settings in a multi-root workspace and the workspace's
- * otherwise, or the user's when `unset` is `global`.
- */
+/** Where a `deckard.*` setting is written for a resource. */
 export interface ParkingSettings<U extends ResourceUri> {
-  place(key: string, scope?: U, unset?: 'default' | 'global'): SettingPlace;
+  /**
+   * Where the setting is already set most specifically; when nothing sets
+   * it, the folder's own settings in a multi-root workspace and the
+   * workspace's otherwise.
+   */
+  place(key: string, scope?: U): SettingPlace;
+  /**
+   * Every level the setting can be set at for `scope`, most specific
+   * first: the folder's own settings in a multi-root workspace, the
+   * workspace's, and the user's. An object such as `deckard.parked.folders`
+   * is merged across them, a key's value coming from the most specific
+   * level that holds it, so taking a key out has to find that level.
+   */
+  levels(key: string, scope: U): SettingPlace[];
 }
 
 /** What one Park Note or Unpark Note writes, which names it in the Undo prompt. */
@@ -299,7 +307,7 @@ export class ParkingService<U extends ResourceUri, Handle> {
     return {
       kind: 'excluded',
       name: place.name,
-      ...(exact ? { parkInstead: () => this.parkExcluded(index, place, exact) } : {}),
+      ...(exact ? { parkInstead: () => this.parkExcluded(index, place) } : {}),
     };
   }
 
@@ -309,12 +317,11 @@ export class ParkingService<U extends ResourceUri, Handle> {
     if (!place) {
       return { kind: 'refused', reason: 'outside-workspace' };
     }
-    const parked = this.collaborators.settings.place('parked.folders', place.root.uri);
-    const written = findWrittenKey(parked.current, place.name);
-    if (!written) {
+    const removal = this.planFolderKeyRemoval('parked.folders', place);
+    if (!removal) {
       return this.whyNotUnparked(place);
     }
-    if (!(await parked.write(withExcludeKey(parked.current, written, false)))) {
+    if (!(await removal.target.write(removal.value))) {
       return { kind: 'not-written' };
     }
     return { kind: 'unparked', name: place.name, notes: countNotesIn(index, place.indexPath) };
@@ -454,15 +461,28 @@ export class ParkingService<U extends ResourceUri, Handle> {
   }
 
   /** Takes a folder's exact key out of `deckard.exclude`, then parks it. */
-  private async parkExcluded(index: WorkspaceIndex, place: FolderPlace<U>, exact: string): Promise<ParkFolderOutcome> {
-    // The key was found in the effective value, so some place sets it; the
-    // user's settings are the fallback Park Folder has always named should
-    // none of the three hold it.
-    const exclude = this.collaborators.settings.place('exclude', place.root.uri, 'global');
-    if (!(await exclude.write(withExcludeKey(exclude.current, exact, false)))) {
+  private async parkExcluded(index: WorkspaceIndex, place: FolderPlace<U>): Promise<ParkFolderOutcome> {
+    // The key was found in the merged value, so some level holds it as true.
+    const removal = this.planFolderKeyRemoval('exclude', place);
+    if (!removal || !(await removal.target.write(removal.value))) {
       return { kind: 'not-written' };
     }
     return this.parkPlace(index, place);
+  }
+
+  /**
+   * What takes a folder's key out of an object setting merged across
+   * levels, wherever the key in force is set; undefined when no level
+   * names the folder by a `true` key. Unpark Folder and Park Instead used
+   * to look only at the most specific level that set anything, so a key
+   * in the user's settings, beside a workspace that set others, stayed.
+   */
+  private planFolderKeyRemoval(key: 'exclude' | 'parked.folders', place: FolderPlace<U>) {
+    const levels = this.collaborators.settings.levels(key, place.root.uri);
+    return planKeyRemoval(
+      levels.map((level) => ({ target: level, value: level.current })),
+      place.name,
+    );
   }
 
   /** Adds a folder the exclude setting does not leave out to `deckard.parked.folders`. */
