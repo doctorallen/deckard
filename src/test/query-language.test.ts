@@ -544,6 +544,24 @@ suite('Deckard search page state', () => {
     );
   });
 
+  test('refuses a day the calendar does not have, as it refuses any other malformed date', () => {
+    for (const day of ['2026-02-31', '2026-02-29', '2026-13-01', '2026-04-31', '2026-00-10', '2026-01-00']) {
+      assert.strictEqual(
+        parseQuery(`due = ${day}`).diagnostics[0]?.message,
+        parseQuery('due = soon').diagnostics[0]?.message,
+        day,
+      );
+      assert.strictEqual(
+        parseQuery(`created = ${day}`).diagnostics[0]?.message,
+        parseQuery('created = soon').diagnostics[0]?.message,
+        day,
+      );
+      assert.strictEqual(resolveDateRange(day, Date.now(), 'past', 0), undefined, day);
+    }
+    assert.deepStrictEqual(parseQuery('due = 2028-02-29').diagnostics, [], 'a leap day is a day');
+    assert.deepStrictEqual(parseQuery('due = 2026-12-31').diagnostics, []);
+  });
+
   test('resolves a week by the day it starts on, and a weekday by its direction', () => {
     // Friday 2026-09-25, noon.
     const now = new Date(2026, 8, 25, 12).getTime();

@@ -1,4 +1,4 @@
-import { addDays, DAY_MS, startOfDay } from '../markdown/calendar';
+import { addDays, DAY_MS, parseIsoDate, startOfDay } from '../markdown/calendar';
 import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
 
 /**
@@ -108,18 +108,17 @@ function readWindow(normalized: string, { now, direction }: RangeContext): Range
       };
 }
 
-/** A `YYYY-MM-DD` day, as that one day from its local midnight. */
+/**
+ * A `YYYY-MM-DD` day, as that one day from its local midnight. A day the
+ * calendar does not have, such as `2026-02-31`, names no time rather than
+ * rolling over into March.
+ */
 function readIsoDay(normalized: string): RangeReading {
-  const absolute = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
-  if (!absolute) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
     return undefined;
   }
-  const start = new Date(
-    Number(absolute[1]),
-    Number(absolute[2]) - 1,
-    Number(absolute[3]),
-  ).getTime();
-  if (Number.isNaN(start)) {
+  const start = parseIsoDate(normalized);
+  if (start === undefined) {
     return { range: undefined };
   }
   return { range: { start, end: start + DAY_MS, isWindow: false } };
