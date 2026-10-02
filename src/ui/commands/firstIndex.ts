@@ -16,10 +16,12 @@ import { readQueryContext } from './queryContext';
  * and only for a workspace Deckard had never stored anything for.
  */
 
+/** The global-state key that records the summary was shown, so it is said only once. */
 export const FIRST_INDEX_SUMMARY_SHOWN = 'deckard.firstIndexSummaryShown';
 /** At this many notes, the summary also says how to leave folders out. */
 export const LARGE_WORKSPACE_NOTES = 3000;
 
+/** What the first index read: the numbers the summary sentence is made of. */
 export interface FirstIndexCounts {
   notes: number;
   openTasks: number;
@@ -65,6 +67,7 @@ export function countFirstIndex(
   return { notes: index.files.size, openTasks: open.length, overdue, tags: index.tags.size };
 }
 
+/** The facts that decide whether the summary is shown at all. */
 export interface FirstIndexGate {
   /** Nothing was stored for this workspace before this activation. */
   newToDeckard: boolean;

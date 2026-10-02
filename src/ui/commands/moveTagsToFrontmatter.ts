@@ -17,6 +17,7 @@ import {
 import { TagReference } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
+/** A front-matter field tags are moved into, by the entity kind they name. */
 type FrontmatterTagGroup =
   | 'people'
   | 'projects'
@@ -25,6 +26,7 @@ type FrontmatterTagGroup =
   | 'meetings'
   | 'tags';
 
+/** The fields in the order they are written into the front matter. */
 const frontmatterGroups: FrontmatterTagGroup[] = [
   'people',
   'projects',
@@ -150,7 +152,7 @@ export function moveInlineTagsToFrontmatterContent(
   return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join('\n');
 }
 
-
+/** The values the note's front matter already holds, by the field they are under. */
 function collectFrontmatterValues(
   lines: string[],
   frontmatter: { end: number } | undefined,
@@ -182,6 +184,10 @@ function collectFrontmatterValues(
   return values;
 }
 
+/**
+ * The front-matter lines that are kept as they are: every field except the
+ * tag fields, which are written again with the moved tags merged in.
+ */
 function getRetainedFrontmatterLines(lines: string[]): string[] {
   const retained: string[] = [];
   let skippingSupportedField = false;
@@ -204,6 +210,7 @@ function getRetainedFrontmatterLines(lines: string[]): string[] {
   return retained;
 }
 
+/** The field a tag is moved into: its entity kind's, or `tags` for any other. */
 function getFrontmatterGroup(tag: TagReference): FrontmatterTagGroup {
   switch (getEntityKind(tag)) {
     case 'person':
@@ -216,11 +223,13 @@ function getFrontmatterGroup(tag: TagReference): FrontmatterTagGroup {
       return 'organizations';
     case 'meeting':
       return 'meetings';
+    case undefined:
     default:
       return 'tags';
   }
 }
 
+/** How a tag is written in front matter: without its marker or its kind's namespace. */
 function getFrontmatterValue(tag: TagReference): string {
   if (tag.key.startsWith('@')) {
     return tag.key.slice(1);
@@ -234,6 +243,7 @@ function getFrontmatterValue(tag: TagReference): string {
   return tag.label.startsWith('#') ? tag.label.slice(1) : tag.label;
 }
 
+/** The tag field a front-matter key is, singular or plural; undefined for any other key. */
 function getFrontmatterGroupForField(
   field: string,
 ): FrontmatterTagGroup | undefined {
@@ -261,6 +271,7 @@ function getFrontmatterGroupForField(
   }
 }
 
+/** Adds a value to its field, unless it is blank or the field holds it already, in any case. */
 function addFrontmatterValue(
   values: Map<FrontmatterTagGroup, string[]>,
   group: FrontmatterTagGroup,
@@ -271,8 +282,9 @@ function addFrontmatterValue(
     return;
   }
   const groupValues = values.get(group) ?? [];
-  if (!groupValues.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
-    groupValues.push(normalized);
-    values.set(group, groupValues);
+  if (groupValues.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
+    return;
   }
+  groupValues.push(normalized);
+  values.set(group, groupValues);
 }

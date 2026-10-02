@@ -107,6 +107,7 @@ export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>):
   return parts.join(', ');
 }
 
+/** The index a write reads, once it has finished loading. */
 interface WriteIndexSource {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
@@ -118,29 +119,49 @@ export interface WriteAnswer {
   isError?: boolean;
 }
 
+/** The note a task is added to, or the refusal the assistant is answered with. */
+type TargetNote = { uri: vscode.Uri } | { refusal: WriteAnswer };
+
+/**
+ * The note `input` names, which must be indexed, or else today's daily note
+ * in the first workspace folder, created if it is missing.
+ */
+async function resolveTargetNote(index: WorkspaceIndex, input: AddTaskInput): Promise<TargetNote> {
+  let uri: vscode.Uri | undefined;
+  if (input.note) {
+    if (!index.files.has(input.note)) {
+      return { refusal: { text: `No indexed note is at "${input.note}". Paths are workspace-relative, as deckard_query reports them.`, isError: true } };
+    }
+    uri = await resolveSourceUri(input.note);
+  } else {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    if (!folder) {
+      return { refusal: { text: 'No folder is open, so there is no daily note to add to.', isError: true } };
+    }
+    uri = await ensureDailyNote(folder);
+  }
+  if (!uri) {
+    return { refusal: { text: `The note "${input.note}" could not be opened.`, isError: true } };
+  }
+  return { uri };
+}
+
+/**
+ * Adds `input.text` as an open task to the note it names, or to today's daily
+ * note, through the refactor preview. Refuses a note the index does not hold,
+ * and answers with an error when the reader declines the preview.
+ */
 export async function addTask(
   indexer: WriteIndexSource,
   history: WorkspaceWriteHistory,
   input: AddTaskInput,
 ): Promise<WriteAnswer> {
   await indexer.ready;
-  const index = indexer.getSnapshot();
-  let uri: vscode.Uri | undefined;
-  if (input.note) {
-    if (!index.files.has(input.note)) {
-      return { text: `No indexed note is at "${input.note}". Paths are workspace-relative, as deckard_query reports them.`, isError: true };
-    }
-    uri = await resolveSourceUri(input.note);
-  } else {
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    if (!folder) {
-      return { text: 'No folder is open, so there is no daily note to add to.', isError: true };
-    }
-    uri = await ensureDailyNote(folder);
+  const target = await resolveTargetNote(indexer.getSnapshot(), input);
+  if ('refusal' in target) {
+    return target.refusal;
   }
-  if (!uri) {
-    return { text: `The note "${input.note}" could not be opened.`, isError: true };
-  }
+  const { uri } = target;
   const document = await vscode.workspace.openTextDocument(uri);
   const line = addedTaskLine(input.text);
   const insertion = getCaptureInsertion(document.getText(), line);
@@ -159,6 +180,12 @@ export async function addTask(
   };
 }
 
+/**
+ * Makes the requested changes to the task at `input.note` line `input.line`,
+ * through the refactor preview. Refuses when no task is indexed there, or
+ * when the line no longer reads as the index knows it, so a stale answer
+ * cannot rewrite whatever is there now.
+ */
 export async function changeTask(
   indexer: WriteIndexSource,
   history: WorkspaceWriteHistory,
@@ -206,17 +233,23 @@ export async function changeTask(
   if (!written.applied) {
     return { text: 'The user declined the change in the preview. Nothing was written.', isError: true };
   }
-  const repeat =
-    completion.next !== undefined
-      ? `\nIt repeats, so the next one was added above it: ${completion.next}`
-      : completion.unreadRule !== undefined
-        ? `\nIts repeat rule "${completion.unreadRule}" could not be read, so no next one was added.`
-        : '';
   return {
-    text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}${repeat}\nThe user can take it back with Deckard: Undo Last Change.`,
+    text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}${describeRepeat(completion)}\nThe user can take it back with Deckard: Undo Last Change.`,
   };
 }
 
+/** The sentence on a repeat's next occurrence, or on its unreadable rule; empty for a task that does not repeat. */
+function describeRepeat(completion: CompletionWrite): string {
+  if (completion.next !== undefined) {
+    return `\nIt repeats, so the next one was added above it: ${completion.next}`;
+  }
+  if (completion.unreadRule !== undefined) {
+    return `\nIts repeat rule "${completion.unreadRule}" could not be read, so no next one was added.`;
+  }
+  return '';
+}
+
+/** The text cut to 60 characters with an ellipsis, so a preview label stays one line. */
 function shorten(text: string): string {
   return text.length > 60 ? `${text.slice(0, 59)}…` : text;
 }

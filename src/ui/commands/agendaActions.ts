@@ -513,6 +513,12 @@ export interface AgendaCommandServices {
  */
 export function registerAgendaCommands(services: AgendaCommandServices): vscode.Disposable[] {
   const { view, agenda, writes, indexer, preferences } = services;
+  /**
+   * A command that sets the due date of the tasks the view's node or
+   * selection stands for, to the date `date` asks for by the tasks' subject.
+   * Nothing is done when there are no tasks, or when `date` answers null
+   * (cancelled); undefined clears the date.
+   */
   const dueFromView = (date: (subject: string) => Promise<string | undefined | null>) =>
     async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
       const tasks = view.tasksFor(node, selected);
@@ -524,7 +530,10 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
         await setTasksDue(writes, tasks, chosen, agenda.rescheduleContext());
       }
     };
-  // A named day is read on the day the menu item is chosen.
+  /**
+   * The date a named day stands for. It is read on the day the menu item is
+   * chosen, not when the command was registered.
+   */
   const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice, Date.now()));
   return [
     registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),

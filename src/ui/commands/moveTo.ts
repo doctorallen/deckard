@@ -272,6 +272,11 @@ export function suggestNoteName(line: string): string {
   return words.join(' ');
 }
 
+/**
+ * Where a new note named `name` goes: the notes folder of the workspace
+ * folder `from` is in, or else of the first one. Undefined when the name
+ * cannot be a file name or no folder is open.
+ */
 async function newNoteUri(
   indexer: IndexReader<vscode.Uri>,
   from: vscode.Uri,
@@ -282,6 +287,7 @@ async function newNoteUri(
   return fileName && folder ? vscode.Uri.joinPath(indexer.getNotesFolderUri(folder), fileName) : undefined;
 }
 
+/** Says nothing was moved because the lines changed while the destination was being chosen. */
 function reportStaleMove(): Thenable<unknown> {
   return reportFailure({
     outcome: 'Deckard did not move it: the lines changed while you were choosing where.',
@@ -295,16 +301,7 @@ function announceMove(
   created: boolean,
   handle: WriteHandle,
 ): void {
-  const tasks = sources.flatMap((source) => source.block.openTasks ?? []);
-  const lineCount = sources.reduce((total, source) => total + source.block.lines.length, 0);
-  const allTasks = sources.every((source) => source.block.openTasks !== undefined);
-  const what = created
-    ? `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`
-    : allTasks && tasks.length === 1
-      ? `"${describeTask(sources[0].block.lines[0])}"`
-      : allTasks
-        ? `${tasks.length} tasks`
-        : `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`;
+  const what = describeMoved(sources, created);
   const where = created ? `a new note, ${target.name}` : target.name;
   handle.offerUndo(
     `Moved ${what} to ${where}.`,
@@ -318,6 +315,25 @@ function announceMove(
   );
 }
 
+/**
+ * What moved, as the announcement names it: one task by its title, several
+ * by their count, and anything else, or anything moved into a new note, by
+ * its lines.
+ */
+function describeMoved(sources: readonly MoveSource[], created: boolean): string {
+  const tasks = sources.flatMap((source) => source.block.openTasks ?? []);
+  const lineCount = sources.reduce((total, source) => total + source.block.lines.length, 0);
+  const allTasks = sources.every((source) => source.block.openTasks !== undefined);
+  if (created || !allTasks) {
+    return `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`;
+  }
+  if (tasks.length === 1) {
+    return `"${describeTask(sources[0].block.lines[0])}"`;
+  }
+  return `${tasks.length} tasks`;
+}
+
+/** A task's title without its tags, cut to 60 characters, as an announcement quotes it. */
 function describeTask(line: string): string {
   const title = stripTags(parseTaskDraft(line).description).replace(/\s+/g, ' ').trim();
   return title.length > 60 ? `${title.slice(0, 57)}…` : title;
@@ -329,8 +345,13 @@ function describeTask(line: string): string {
  * on almost every line.
  */
 export class MoveToActions implements vscode.CodeActionProvider {
+  /** Offers the action only in notes `indexer` counts as being in the notes folder. */
   public constructor(private readonly indexer: Pick<IndexReader, 'isNotesFile'>) {}
 
+  /**
+   * Move to… on a task line, or on any selection, in a note; nothing on an
+   * empty cursor on a line that is not a task, or outside the notes folder.
+   */
   public provideCodeActions(
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,

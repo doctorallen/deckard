@@ -51,7 +51,8 @@ export function placeQueryBlock(
   const body = block.endsWith('\n') ? block : `${block}\n`;
   const after = blank(line) || blank(at) ? '' : '\n';
   const blockLines = body.split('\n').length - 1;
-  // The cursor lands on the line after the closing fence.
+  // The cursor goes below the closing fence, not inside the block, so the
+  // reader keeps writing the note without first leaving the block.
   return { line: at, text: `${before}${body}${after}`, endsAt: at + (before ? 1 : 0) + blockLines };
 }
 

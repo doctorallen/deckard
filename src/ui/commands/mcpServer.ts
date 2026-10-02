@@ -81,6 +81,10 @@ export class DeckardMcpServer implements vscode.Disposable {
   private readonly tools: readonly McpTool[];
   private readonly version: string;
 
+  /**
+   * Keeps the server in step with `deckard.mcpServer.*`. It does not start
+   * listening here; `restart` does, once the settings say to.
+   */
   public constructor(options: McpServerOptions) {
     this.indexer = options.indexer;
     this.history = options.history;
@@ -137,15 +141,18 @@ export class DeckardMcpServer implements vscode.Disposable {
     return typeof address === 'object' && address ? address.port : port;
   }
 
+  /** Closes the server and every open connection; nothing when it is not running. */
   public async stop(): Promise<void> {
     const server = this.server;
     this.server = undefined;
-    if (server) {
-      server.closeAllConnections();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (!server) {
+      return;
     }
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 
+  /** Stops following the settings and closes the server, without waiting for it. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     void this.stop();
@@ -201,6 +208,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     );
   }
 
+  /** Reset MCP Server Token: replaces the token and says each client must be set up again. */
   public async resetTokenCommand(): Promise<void> {
     await this.resetToken();
     void vscode.window.showInformationMessage(
@@ -208,6 +216,11 @@ export class DeckardMcpServer implements vscode.Disposable {
     );
   }
 
+  /**
+   * Answers one HTTP request: refuses another site's page, a missing or wrong
+   * token, any other path, and any method but POST, then answers the MCP
+   * message in the body.
+   */
   private async handle(
     request: IncomingMessage,
     response: ServerResponse,
@@ -267,6 +280,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     sendJson(response, 200, answer);
   }
 
+  /** Whether the request carries the token, compared in constant time so its bytes cannot be guessed by timing. */
   private isAuthorized(header: string | undefined): boolean {
     const presented = /^Bearer\s+(\S+)$/i.exec(header ?? '')?.[1];
     if (!presented || !this.token) {
@@ -277,6 +291,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     return given.length === expected.length && timingSafeEqual(given, expected);
   }
 
+  /** What the MCP protocol layer answers with: the server's name, its instructions, and the tools run on the index. */
   private createHandlers(): McpHandlers {
     return {
       serverInfo: { name: 'deckard', version: this.version },
@@ -336,6 +351,7 @@ function isLocalOrigin(origin: string): boolean {
   }
 }
 
+/** The request body as text; rejects a body over `limit` bytes, which is read but not kept. */
 function readBody(request: IncomingMessage, limit: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -358,10 +374,12 @@ function readBody(request: IncomingMessage, limit: number): Promise<string> {
   });
 }
 
+/** Ends the response with a plain-text body. */
 function sendText(response: ServerResponse, status: number, text: string): void {
   response.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' }).end(text);
 }
 
+/** Ends the response with a JSON body. */
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
 }

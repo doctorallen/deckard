@@ -53,6 +53,11 @@ export class AssistantTools implements vscode.Disposable {
   /** Whether the user has let an assistant read notes in this session. */
   private allowed = false;
 
+  /**
+   * Registers the four tools with VS Code (or with `register`, in a test).
+   * Each answers only while `deckard.assistantTools` is on and the user has
+   * agreed to it.
+   */
   public constructor(
     private readonly indexer: IndexSource,
     /** The history the add-task and change-task tools write to. */

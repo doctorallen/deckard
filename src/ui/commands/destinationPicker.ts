@@ -18,10 +18,12 @@ export type Destination =
   | { kind: 'today' }
   | { kind: 'newNote' };
 
+/** A picker row, and the place it stands for; separators carry none. */
 export interface DestinationItem extends vscode.QuickPickItem {
   destination?: Destination;
 }
 
+/** Which destinations to offer besides headings, and which headings to leave out. */
 export interface DestinationOptions {
   /** Offer today's note, named by its file. */
   today?: { fileName: string };

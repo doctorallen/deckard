@@ -43,13 +43,16 @@ export class SectionFocus implements vscode.Disposable {
    * the messages: VS Code's, or a test's that only records them.
    */
   public constructor(private readonly deps: FocusDeps = defaultDeps) {
-    // Clears the focused state when the editor moves to another note.
-    this.subscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
-      if (this.focusedIn !== undefined && editor?.document.uri.toString() !== this.focusedIn) {
-        this.focusedIn = undefined;
-        void this.deps.execute('setContext', SECTION_FOCUSED, false);
-      }
-    });
+    this.subscription = vscode.window.onDidChangeActiveTextEditor((editor) => this.follow(editor));
+  }
+
+  /** Clears the focused state when the editor moves to another note than the one focused. */
+  private follow(editor: vscode.TextEditor | undefined): void {
+    if (this.focusedIn === undefined || editor?.document.uri.toString() === this.focusedIn) {
+      return;
+    }
+    this.focusedIn = undefined;
+    void this.deps.execute('setContext', SECTION_FOCUSED, false);
   }
 
   /**
@@ -76,7 +79,7 @@ export class SectionFocus implements vscode.Disposable {
     }
     const lines = Array.from({ length: document.lineCount }, (_, at) => document.lineAt(at).text);
     const heading =
-      headingLine !== undefined ? headingLine - 1 : findHeadingLineAbove(lines, editor.selection.active.line);
+      headingLine === undefined ? findHeadingLineAbove(lines, editor.selection.active.line) : headingLine - 1;
     if (heading === undefined) {
       deps.inform('Put the cursor under a heading to focus its section.');
       return false;

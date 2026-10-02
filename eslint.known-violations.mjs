@@ -70,8 +70,6 @@ export default {
     "src/domain/index/parked.ts": 1,
     "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/query/queryEvaluator.ts": 3,
-    "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/quickFindActions.ts": 1,
     "src/ui/commands/taskEditor.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
@@ -111,12 +109,6 @@ export default {
     "src/domain/query/queryParser.ts": [
       "createCondition",
       "tokenize"
-    ],
-    "src/ui/commands/bulkEdit.ts": [
-      "describeBulkEditResult"
-    ],
-    "src/ui/commands/checkSetup.ts": [
-      "buildSetupReport"
     ],
     "src/ui/commands/quickFind.ts": [
       "accept",
@@ -208,17 +200,6 @@ export default {
     "src/test/notes-graph-behavior.test.ts": 1,
     "src/test/relatedNotesFixture.ts": 1,
     "src/test/webviewPage.ts": 2,
-    "src/ui/commands/activeNoteContext.ts": 2,
-    "src/ui/commands/assistantTools.ts": 1,
-    "src/ui/commands/assistantWrites.ts": 2,
-    "src/ui/commands/bulkEdit.ts": 1,
-    "src/ui/commands/checkSetup.ts": 4,
-    "src/ui/commands/chooseTheme.ts": 2,
-    "src/ui/commands/destinationPicker.ts": 2,
-    "src/ui/commands/firstIndex.ts": 2,
-    "src/ui/commands/linkEntity.ts": 1,
-    "src/ui/commands/mcpServer.ts": 4,
-    "src/ui/commands/moveTo.ts": 2,
     "src/ui/commands/noteVisits.ts": 5,
     "src/ui/commands/notify.ts": 2,
     "src/ui/commands/pinNote.ts": 2,
@@ -309,15 +290,6 @@ export default {
     "src/test/webviewPage.ts": [
       "openWebviewPage"
     ],
-    "src/ui/commands/bulkEdit.ts": [
-      "applyBulkEdit"
-    ],
-    "src/ui/commands/checkSetup.ts": [
-      "buildSetupReport"
-    ],
-    "src/ui/commands/extractHeading.ts": [
-      "replaceSectionWithLink"
-    ],
     "src/ui/commands/quickFind.ts": [
       "toPickItems"
     ],
@@ -407,9 +379,6 @@ export default {
     "src/test/fixtures/legacyWorkspaceIndex.ts": 1,
     "src/test/naming.test.ts": 1,
     "src/test/tag-grouping.test.ts": 1,
-    "src/ui/commands/assistantWrites.ts": 1,
-    "src/ui/commands/bulkEdit.ts": 2,
-    "src/ui/commands/moveTo.ts": 2,
     "src/ui/preview/queryBlockHtml.ts": 2,
     "src/ui/providers/editorReferences.ts": 1,
     "src/ui/providers/tagSuggestions.ts": 1,
@@ -434,8 +403,6 @@ export default {
     "src/domain/markdown/taskSteps.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
-    "src/ui/commands/assistantWrites.ts": 2,
-    "src/ui/commands/focusSection.ts": 1,
     "src/ui/commands/notify.ts": 1,
     "src/ui/commands/pinNote.ts": 1,
     "src/ui/commands/settings.ts": 1,
@@ -457,10 +424,6 @@ export default {
     "src/domain/markdown/parser.ts": 1,
     "src/domain/query/queryEdit.ts": 1,
     "src/test/webviewPage.ts": 1,
-    "src/ui/commands/chooseTheme.ts": 1,
-    "src/ui/commands/focusSection.ts": 1,
-    "src/ui/commands/mcpServer.ts": 1,
-    "src/ui/commands/moveTagsToFrontmatter.ts": 1,
     "src/ui/commands/noteVisits.ts": 1,
     "src/ui/commands/savedSearchHome.ts": 1,
     "src/ui/commands/taskSteps.ts": 1,
