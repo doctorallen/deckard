@@ -80,13 +80,26 @@ function recountColumn(column: HTMLElement | null): void {
 }
 
 /**
+ * A card's menu once a move shows: the choice it moved to is checked in its
+ * group, as the host's next state will check it.
+ */
+function movedMenu(groups: readonly ActionMenuGroup[], value: string): ActionMenuGroup[] {
+  return groups.map((group) => (group.items.some((item) => item.value === value && item.checked !== undefined)
+    ? { ...group, items: group.items.map((item) => ({ ...item, checked: item.value === value })) }
+    : group));
+}
+
+/**
  * A move shows at once: the card goes to the top of its new column, both
  * counts change, and it is marked pending until the host's next state
  * replaces the board. A move to a column this grouping does not draw, such
- * as a priority on a status board, marks the card where it is.
+ * as a priority on a status board, marks the card where it is. Its menu
+ * goes with it, under the card's new key, so its ⋯ opens before the host
+ * answers.
  */
 function applyMove(card: HTMLElement, columnId: string): void {
   listsChanged();
+  const groups = board.moves[cardKeyOf(card)];
   const from = card.closest<HTMLElement>('.board-column');
   const to = Array.from(document.querySelectorAll<HTMLElement>('.task-board .board-column')).find((column) => column.dataset.columnId === columnId);
   if (to && to !== from) {
@@ -98,6 +111,9 @@ function applyMove(card: HTMLElement, columnId: string): void {
     board.tabStop = cardKeyOf(card);
     recountColumn(from);
     recountColumn(to);
+  }
+  if (groups) {
+    board.moves[cardKeyOf(card)] = movedMenu(groups, columnId);
   }
   card.classList.add('is-pending');
   card.setAttribute('aria-busy', 'true');

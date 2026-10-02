@@ -372,4 +372,17 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.text('#live-status'), 'Delta: Priority is already Highest.');
     assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'neither is sent to be refused');
   });
+
+  test('a card moved at once opens its menu before the host answers, checked where it went', () => {
+    const shown = show(boardOf(TWO));
+    const beta = cardTitled(shown, 'Beta');
+    beta.focus();
+    press(shown, beta, ']');
+    (beta.querySelector('[data-action="board-menu"]') as HTMLElement).click();
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'the menu opens');
+    assert.deepStrictEqual(
+      shown.findAll('#action-menu [aria-checked="true"]').map((item) => item.getAttribute('data-menu-value')),
+      ['status:todo', 'priority:', 'due:'],
+    );
+  });
 });
