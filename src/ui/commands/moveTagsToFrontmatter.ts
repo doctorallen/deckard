@@ -13,7 +13,7 @@ import {
   endsInComment,
   formatYamlValue,
   getFrontmatterBounds,
-  splitValues,
+  splitQuotedValues,
 } from '../../domain/markdown/frontmatterTags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { TagReference } from '../../domain/model';
@@ -217,7 +217,8 @@ function collectFrontmatterValues(
     if (property) {
       currentGroup = getFrontmatterGroupForField(property[1]);
       if (currentGroup) {
-        splitValues(property[2]).forEach((value) =>
+        // As YAML reads them, so a quoted value holding a comma is written back whole.
+        splitQuotedValues(property[2]).forEach((value) =>
           addFrontmatterValue(values, currentGroup!, value),
         );
       }
@@ -235,7 +236,8 @@ function collectFrontmatterValues(
 
 /**
  * The front-matter lines that are kept as they are: every field except the
- * tag fields, which are written again with the moved tags merged in.
+ * tag fields, which are written again with the moved tags merged in, and
+ * every comment and blank line, wherever it is, since neither is a value.
  */
 function getRetainedFrontmatterLines(lines: string[]): string[] {
   const retained: string[] = [];
@@ -251,7 +253,7 @@ function getRetainedFrontmatterLines(lines: string[]): string[] {
       return;
     }
 
-    if (!skippingSupportedField) {
+    if (!skippingSupportedField || /^\s*(?:#|$)/.test(line)) {
       retained.push(line);
     }
   });
