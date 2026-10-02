@@ -6,6 +6,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDeckardStatsSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { createCalendar } from '../ui/state/calendarState';
+import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 import { ENABLED } from '../ui/webview/components';
 import { deckardThemes } from '../ui/webview/themes';
 import { PAGES, renderablePages, renderPage } from './pages';
@@ -202,10 +203,15 @@ suite('Component primitives', () => {
         stats: createDeckardStatsSnapshot(index, store.reader.value, [], Date.now()),
         calendar: createCalendar(index, '2026-09', createQueryContext(Date.now())),
         calendarPage: createCalendar(index, '2026-09', createQueryContext(Date.now()), { dayPanel: true, layout: 'page' }),
+        sidebarNotes: {
+          ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+          parkedTags: [],
+        },
       };
-      // A calendar still says it is ready when it loads, as it always has, so
-      // its host sends a snapshot newer than the one its HTML carried.
-      const asks: Partial<Record<string, unknown[]>> = { calendar: [{ type: 'ready' }], calendarPage: [{ type: 'ready' }] };
+      // A calendar and Related Notes still say they are ready when they load,
+      // as they always have, so the host sends a snapshot newer than the one
+      // the HTML carried.
+      const asks: Partial<Record<string, unknown[]>> = { calendar: [{ type: 'ready' }], calendarPage: [{ type: 'ready' }], sidebarNotes: [{ type: 'ready' }] };
       const embedding = PAGES.filter((entry) => entry.readsInertState);
       assert.ok(embedding.length >= 1, 'at least Stats reads its first snapshot from its shell');
       for (const entry of embedding) {

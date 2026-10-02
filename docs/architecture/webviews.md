@@ -4,7 +4,7 @@
 
 ## How pages are built today
 
-*Since Phase 6 step 4.2, Stats is a Preact page on the shared core ([Rendering with Preact](#rendering-with-preact)), since step 4.4 the Task Board is too, and since step 4.5 the search page; the rest of this section describes the pages not yet moved.* Each such page's host function still writes its page's script as one template literal. Since Phase 6 step 3 it hands that body to `buildPageShell`, which writes the CSP `<meta>` and links the page's style sheets from `dist/webview/` (see [Bundling and loading](#bundling-and-loading)); the body keeps one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
+*Since Phase 6 step 4.2, Stats is a Preact page on the shared core ([Rendering with Preact](#rendering-with-preact)), since step 4.4 the Task Board is too, since step 4.5 the search page, and since step 4.6 Related Notes; the rest of this section describes the pages not yet moved.* Each such page's host function still writes its page's script as one template literal. Since Phase 6 step 3 it hands that body to `buildPageShell`, which writes the CSP `<meta>` and links the page's style sheets from `dist/webview/` (see [Bundling and loading](#bundling-and-loading)); the body keeps one inline `<script nonce>`. The script interpolates the shared component script, 105.9 KB of it, as untyped text. Four pages also interpolate the 67.8 KB query editor script. The Dashboard renders to 339.8 KB.
 
 This has costs. The compiler never sees page code, so `test/ui/checkWebviewScripts.js` extracts it by regex and runs `tsc` with `strict: false`. Every redraw assigns `app.innerHTML`, and `renderKeepingPlace` exists to restore the focus and scroll that each redraw loses. Until step 3, seven of nine builders hand-wrote their CSP, and the copies had drifted. Everything below replaces this model. [docs/components.md](../components.md) documents the current mechanism until Phase 6 rewrites it.
 
@@ -134,7 +134,7 @@ The page context compiles JSX with the automatic runtime and `jsxImportSource: '
 
 `src/webview/tsconfig.json` type-checks page code against the DOM, with no Node types, strict and `noEmit`. It also lists the domain modules a page may import (D1 in [layers.md](layers.md)), so they are held to the browser's types before a page imports one. The root `tsconfig.json` leaves `src/webview` to it, and `npm run check-types` runs both. ESLint lints `.tsx` with the rules for `.ts`, and forbids `preact/compat` and `react` in `src/webview`. Preact 10.29.8 is a pinned dependency, and each Preact page's bundle carries its own copy, with what it uses of the shared core; see [One bundle per page](#one-bundle-per-page).
 
-Stats (`src/webview/stats/main.tsx`), the Task Board (`src/webview/taskBoard/main.tsx`), the search page (`src/webview/searchPage/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), the calendar page (`src/webview/calendarPage/main.tsx`), the Notes Graph (`src/webview/notesGraph/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `taskBoard.js`, `searchPage.js`, `calendar.js`, `calendarPage.js`, `notesGraph.js`, and `help.js`; every other page still runs the inline script its builder writes. The two calendars are two entries over `src/webview/shared/calendar/`. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
+Stats (`src/webview/stats/main.tsx`), the Task Board (`src/webview/taskBoard/main.tsx`), the search page (`src/webview/searchPage/main.tsx`), Related Notes (`src/webview/sidebarNotes/main.tsx`), the Calendar view (`src/webview/calendar/main.tsx`), the calendar page (`src/webview/calendarPage/main.tsx`), the Notes Graph (`src/webview/notesGraph/main.tsx`), and Help (`src/webview/help/main.ts`) have script entries, built to `dist/webview/stats.js`, `taskBoard.js`, `searchPage.js`, `sidebarNotes.js`, `calendar.js`, `calendarPage.js`, `notesGraph.js`, and `help.js`; every other page still runs the inline script its builder writes. The two calendars are two entries over `src/webview/shared/calendar/`. What step 3 moved is the CSS and the document around the body. Every builder returns `buildPageShell({ webview, extensionUri, page, title, nonce, theme, zen, csp, bodyAttributes, body, bundle, state })`, which writes:
 
 1. the policy `getContentSecurityPolicy` builds (next section);
 2. for a page with `bundle`, `<meta name="deckard-theme" content="…">`, the theme's name, which a gear's theme row reads (`readThemeName`);
@@ -291,7 +291,7 @@ Lane B's shared components are in `src/webview/shared/calendar/`, written with t
 | `session.ts` | `new CalendarSession({ initial, view, afterFullDraw, stepsByDay })`: a calendar's store, its host's snapshots each drawn whole, and what both calendars do: `selectDay`, `redraw`, `focusWhenDrawn`, `onGridKey`, `onDoubleClick`, and the `actions` of the controls both draw. Choosing a day only marks it until the next full draw, as the template's `selectDay` did (`marked` and `tabStop` in `model.ts`). `send` posts a calendar message |
 | `model.ts` | `CalendarState`, and the words and choices both calendars share: `dueTone`, `describeDay`, `dayClasses`, `isDrawn`, `drawnWeekdays`, `markedDate`, `tabStopDate`, `withGroupShown` |
 | `grid.tsx`, `calendarIcon.tsx` | `<CalendarGrid snapshot weeks label multiselectable days>`, with `<WeekdayRow>` and each week's `<WeekRail>`; each calendar draws its own days. `<CalendarIcon>` |
-| `dayPanel.tsx` | `<DayPanel day shownGroups>`, the chosen day as the calendars and Related Notes show it, and `installDayPanel({ send, showGroup })`, which wires every panel on the page once. `src/test/calendar-day-panel.test.ts` holds it to `calendarDay.ts`, which Related Notes still draws |
+| `dayPanel.tsx` | `<DayPanel day shownGroups>`, the chosen day as the calendars and Related Notes show it, and `installDayPanel({ send, showGroup })`, which wires every panel on the page once; Related Notes' `send` wraps each message in its `calendarDay` envelope. `src/test/calendar-day-panel.test.ts` held it to the template script it replaced, `calendarDay.ts`, until Related Notes moved and that script went |
 | `taskRow.tsx` | `<DayTaskRow item leading trailing>`, the panel's own task row until the shared one exists; it sets the host's sanitized `renderedTitle` as the template did, in one place |
 | `events.ts` | `eventElement(event)` |
 
@@ -316,6 +316,22 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 | `resultTabs.tsx`, `pageSteps.tsx` | `<ResultTabs tabs active label>`, `resultPanelAttributes(id)`, and `installResultTabKeys()`, the arrow keys between the tabs; `<PageSteps paging action attributes noun>`, `pageNumbers`, and `describePageRange` |
 | `markWords.ts` | `markWords(root, words, options)`: the searched words marked in `<mark>` where they are written, outside controls, tags, and code, returning what takes the marks out again |
 
+### Related Notes
+
+*As built in Phase 6 step 4.6.* Related Notes (`src/webview/sidebarNotes/`) is a view in the sidebar, drawn with `startPage` from one store holding the host's last state. What the reader chose there, which the host never hears of, stays in one `choices` object of the page's, as the template's script kept it: how many results Show more has drawn and for which list, the note's tags all shown, the context and the Links groups open, the link rows unfolded, the Refine facets opened past five, and the calendar day's groups shown whole.
+
+| Module | What it holds |
+| --- | --- |
+| `main.tsx` | The page: its context, the heading over its list, what each state lists, and Links; the listeners, on the document in the order the template added them; and the store's draws, each closing the tag menu as the template's did |
+| `model.ts` | The store and the reader's choices, the list's page size, which list Show more counts for, and how many lines of each excerpt show |
+| `context.tsx` | What the sidebar is about: the note or entry, with its own tags, or the page in front; and the related notes' sort and gear |
+| `cards.tsx` | A ranked result's card, a graph node's connections, the entries worded like a note with no tags, and Home's widgets to add |
+| `links.tsx` | Linked from and Mentioned without a link |
+| `refine.tsx` | Refine: the active search's values, folded at five |
+| `weights.tsx` | The weight rail where the sidebar draws it: beside each of the note's tags, and as each result's relevance with its breakdown |
+
+It draws the calendar's day with lane B's `<DayPanel>`, the tag menu, `markWords` with `{ wordStart }`, and the shared core's rail, tag label, and gear. Two things the template did to the DOM after a draw are put back before the next, so Preact finds the page as it drew it: the words each result shares with the note, marked in its excerpt after every draw, and a relevance breakdown its score opened, which every template draw closed.
+
 ### The Notes Graph
 
 *As built in Phase 6 step 4.8.* The Notes Graph (`src/webview/notesGraph/`) has no `#app`: its template wrote the canvas and its panels straight into the body. So `main.tsx` renders `<GraphBody>` (`controls.tsx`) into `document.body`, ahead of the script, with the template's whitespace between elements as text nodes. It keeps one store and draws synchronously, as [decision 0014](decisions/0014-pages-render-synchronously-from-one-store.md) asks, but not through `startPage`: the indexing line, the busy mark, the disabled-click guard, and Escape's provenance were never on the graph, so it installs the tip alone, and draws Reset's Undo with `<UndoNotice>`.
@@ -339,7 +355,7 @@ The canvas is one element with a ref, outside what Preact changes: the frame loo
 - The Group list takes its value only where the template set it, so a group kept from before a graph arrives does not empty the list's selection.
 - Reset's offer of Undo goes on any later input or change, heard before the control as the template heard it, but drawn by the control's own handler: a draw before the handler would put a checkbox or slider back to the setting it is changing.
 
-What a page written on the core has to know, learned on Stats, the calendars, the Task Board, the search page, and the Notes Graph:
+What a page written on the core has to know, learned on Stats, the calendars, the Task Board, the search page, the Notes Graph, and Related Notes:
 
 - **The old markup wins.** Write the elements, attributes, and text nodes the template wrote, including the empty `class=""` a choice that is not active carried; `test:dom` and the recorded suites compare them.
 - **Key siblings of different kinds.** Preact reuses an element at the same position. A reflected property it then takes away, such as `id`, is set to the empty string rather than removed, so a heading reused for another panel would keep `id=""`. Stats keys its attention panels and its most-viewed panels.
@@ -347,6 +363,7 @@ What a page written on the core has to know, learned on Stats, the calendars, th
 - **A list the page changes outside a draw is drawn afresh.** The Task Board moves a card at once, marks it completing, and drags cards and ranked rows; it keys those lists by a count of such changes (`listsChanged` in `src/webview/taskBoard/model.ts`), so the next draw makes them anew, as every template draw did, rather than patching elements the page moved. The search box puts back what it changes between draws, its completion lists and the buttons that need text, in `afterRender`.
 - **Write a run of words as the one text node the template wrote.** `test:dom` merges adjacent text, but Chrome lays out the edge between two text nodes apart: the search page's Tasks tab, drawn as `Tasks` and ` (` in two nodes, moved its glyphs a subpixel. Join the words in one string, as `` `${label} (` ``.
 - **What a page changes after a draw, it undoes before the next.** The search page marks the searched words after each state, replacing text nodes Preact made, and takes out a Show all whose body fits its three lines. Preact would patch, or insert beside, nodes that are no longer in the page, so the page puts both back before it draws again (`markWords` returns what does it), and Preact finds the page as it drew it. The draw then shows the words unmarked, as every template redraw did, until the next state marks them.
+- **A test reads a property where Preact writes one.** A select's chosen option is its `selected` property, which Preact sets; the template wrote the attribute. A test asks the option whether it is selected, which holds on both.
 - **What the DOM keeps outside props stays.** Preact compares props with the last ones it wrote, not with the DOM, so a value a page sets directly, such as the pair grid's roving `tabindex`, is not put back by a draw; Stats resets it in `afterDraw`, as each template redraw did. Focus on an element a draw keeps stays where it is, where the template's redraw dropped it.
 
 ## CSS and theming

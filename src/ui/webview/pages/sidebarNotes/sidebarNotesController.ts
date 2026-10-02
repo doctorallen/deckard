@@ -116,7 +116,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   /** The sidebar's HTML, which is logged each time it is set. */
   public html(webview: vscode.Webview, theme: DeckardTheme): string {
     logRelatedNotes('Rendering Related Notes webview HTML.');
-    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, theme);
+    return getSidebarNotesHtml(webview, this.sidebar.extensionUri, this.sidebar.extensionVersion, { theme });
   }
 
   /** Narrows a message the page sent, after logging that it came. */
