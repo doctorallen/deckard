@@ -172,6 +172,23 @@ suite('Task Board page', () => {
     assert.match(page.text('#live-status') ?? '', /Send the proposal was not moved\./);
   });
 
+  test('checking a task in the list says which task it completed, and reopened', () => {
+    const index = buildWorkspaceIndex(
+      new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-21\n')]]),
+    );
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const list = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'list' }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+    page = openWebviewPage(renderPage('taskBoard'), list);
+    const box = page.find('.task-row input[data-action="toggle-task"]') as HTMLInputElement;
+
+    box.checked = true;
+    box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    assert.strictEqual(page.text('#live-status'), 'Completed Send the proposal.');
+    box.checked = false;
+    box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    assert.strictEqual(page.text('#live-status'), 'Reopened Send the proposal.');
+  });
+
   test('a long column offers the rest of its cards', () => {
     const lines = Array.from({ length: 120 }, (_, number) => `- [ ] Task ${number} #status/doing`);
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', lines.join('\n'))]]));

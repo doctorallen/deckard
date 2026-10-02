@@ -91,11 +91,16 @@ export function HeadingPathSteps({ steps }: { readonly steps: readonly string[] 
 }
 
 /**
- * A task's title as a sentence names it, from its row or card: its words,
- * spaces folded, or "the task" when there is none.
+ * A task's title as a sentence names it, from its row or card or anything
+ * inside one: its words, spaces folded, or "the task" when there is none.
  */
 export function taskTitleOf(element: Element | null | undefined): string {
-  const row = element && element.closest ? element.closest('[data-task-id]') : null;
+  let row = element && element.closest ? element.closest('[data-task-id]') : null;
+  // A row's checkbox carries the task's id as well, so the row is the
+  // nearest element with an id that holds the title.
+  while (row && !row.querySelector('.task-title')) {
+    row = row.parentElement ? row.parentElement.closest('[data-task-id]') : null;
+  }
   const title = row ? row.querySelector('.task-title') : null;
   return title ? String(title.textContent).trim().replace(/\s+/g, ' ') : 'the task';
 }

@@ -188,7 +188,12 @@ suite('The shared task parts draw what the template script drew', () => {
     const now = drawnNow(element('TaskListRow', { item }));
     core.document.body.appendChild(now);
     try {
-      assert.strictEqual(shared().taskTitleOf(now.querySelector('input')), drawnByTemplate('task title of a row'));
+      // The template's helper stopped at the checkbox, which carries the
+      // task's id too, and named "the task"; its recording was corrected to
+      // the title when the helper was fixed.
+      assert.strictEqual(drawnByTemplate('task title of a row'), 'Read the brief now');
+      assert.strictEqual(shared().taskTitleOf(now.querySelector('input')), 'Read the brief now', 'from its checkbox');
+      assert.strictEqual(shared().taskTitleOf(now.querySelector('.task-row')), 'Read the brief now', 'from the row');
       assert.strictEqual(shared().taskTitleOf(core.document.body), 'the task');
     } finally {
       now.remove();
