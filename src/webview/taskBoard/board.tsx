@@ -184,7 +184,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   );
 }
 
-/** One column's draw: the column, its cards as shown, and the board's columns and settings. */
+/** One column's draw: the column, its cards, and the board's columns and settings. */
 interface ColumnProps {
   readonly column: TaskBoardColumn;
   readonly cards: readonly TaskBoardCard[];
@@ -194,8 +194,8 @@ interface ColumnProps {
 /** One column: its title and counts, + Add task, its cards, Show N more, and why it takes no card. */
 function BoardColumn({ column, cards, columns }: ColumnProps) {
   const count = cards.length + column.hiddenCount;
-  // Counted from the cards shown, so typed words that hide cards recount
-  // the overdue ones too. Done and Overdue itself need no such count.
+  // Done and Overdue itself need no count of the overdue. The page counts
+  // again from the cards typed words leave shown.
   const overdueCount = column.id === 'done' || column.id === 'due:overdue'
     ? 0
     : cards.filter((card) => card.overdue && !card.completed).length;
@@ -252,19 +252,18 @@ function StatusHint({ hint, namespace }: { readonly hint: { withoutStatus: numbe
 }
 
 /**
- * The board, from the host's columns. `isVisible` leaves out the cards the
- * words being typed hide. Drawing it makes each drawn card's menu, and
- * keeps the Tab stop on a card that is drawn.
+ * The board, from the host's columns. Drawing it makes each card's menu,
+ * and keeps the Tab stop on a card that is drawn; the page then hides the
+ * cards the words being typed leave out, and counts the columns again.
  */
-export function TaskBoard({ snapshot, isVisible }: { readonly snapshot: TaskBoardSnapshot; readonly isVisible: (card: TaskBoardCard) => boolean }) {
+export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   board.moves = {};
-  const shownBy = new Map(snapshot.columns.map((column) => [column, column.cards.filter(isVisible)]));
-  const shown = snapshot.columns.flatMap((column) => (shownBy.get(column) ?? []).map((card) => boardCardKey(column.id, card.taskId)));
-  if (board.tabStop === undefined || !shown.includes(board.tabStop)) {
-    board.tabStop = shown.length ? shown[0] : undefined;
+  const drawn = snapshot.columns.flatMap((column) => column.cards.map((card) => boardCardKey(column.id, card.taskId)));
+  if (board.tabStop === undefined || !drawn.includes(board.tabStop)) {
+    board.tabStop = drawn.length ? drawn[0] : undefined;
   }
   for (const column of snapshot.columns) {
-    for (const card of shownBy.get(column) ?? []) {
+    for (const card of column.cards) {
       board.moves[boardCardKey(column.id, card.taskId)] = taskCardMoves(card, column.id, snapshot.columns, snapshot.settings);
     }
   }
@@ -272,7 +271,7 @@ export function TaskBoard({ snapshot, isVisible }: { readonly snapshot: TaskBoar
     <>
       {snapshot.statusHint ? <StatusHint key="hint" hint={snapshot.statusHint} namespace={(snapshot.settings && snapshot.settings.statusNamespace) || 'status'} /> : null}
       <div key={`board-${board.generation}`} class="board task-board" aria-label="Task board">
-        {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={shownBy.get(column) ?? []} columns={snapshot.columns} />)}
+        {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={column.cards} columns={snapshot.columns} />)}
       </div>
     </>
   );

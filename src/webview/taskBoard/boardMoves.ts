@@ -72,11 +72,30 @@ function recountColumn(column: HTMLElement | null): void {
   const limit = column.dataset.limit === undefined ? undefined : Number(column.dataset.limit);
   const described = describeBoardColumn(title ? String(title.textContent) : '', count, limit, overdue);
   const counter = column.querySelector('.board-count');
-  if (counter) {
+  // Written only when it changed, so the text the draw made stays the one
+  // the next draw updates.
+  if (counter && counter.textContent !== described.count) {
     counter.textContent = described.count;
   }
   column.setAttribute('aria-label', described.name);
   column.classList.toggle('over-limit', limit !== undefined && count > limit);
+}
+
+/**
+ * Keeps the board with the cards the words being typed leave shown: each
+ * column counted again from them, and the Tab stop moved to the first of
+ * them when the words hid the card that held it.
+ */
+export function followShownCards(): void {
+  document.querySelectorAll<HTMLElement>('.task-board .board-column').forEach((column) => recountColumn(column));
+  const stop = document.querySelector<HTMLElement>('.task-board .board-card[tabindex="0"]');
+  const first = document.querySelector<HTMLElement>('.task-board .board-card:not([hidden])');
+  if ((stop && !stop.hidden) || !first) {
+    return;
+  }
+  stop?.setAttribute('tabindex', '-1');
+  first.setAttribute('tabindex', '0');
+  board.tabStop = cardKeyOf(first);
 }
 
 /**

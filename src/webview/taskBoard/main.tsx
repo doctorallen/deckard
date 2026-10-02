@@ -6,7 +6,7 @@
  * or puts the card back.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
-import type { TaskBoardCard, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
+import type { TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
@@ -23,7 +23,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
-import { installBoardMoves } from './boardMoves';
+import { followShownCards, installBoardMoves } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SortControl, TableSortNote, TaskList } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
@@ -95,27 +95,22 @@ const editor = createQueryEditor({
   ),
 });
 
-/** Hides the rows and cards that do not have every plain word being typed. */
+/**
+ * Hides the list's rows, the board's cards, and the table's rows that do
+ * not have every plain word being typed, by what each shows, file and line
+ * included, and keeps the board's counts and its Tab stop with the cards
+ * left. One check for every layout, run as the words are typed and after
+ * every draw: the board used to be drawn by a check of its own that left
+ * out the file's name, so a card the words showed vanished at the next
+ * draw, and a column counted cards the words had hidden.
+ */
 function filterTaskEntries(): void {
   const words = editor.previewWords(editor.currentText());
-  document.querySelectorAll<HTMLElement>('.task-list .task-row, .task-board .board-card').forEach((entry) => {
+  document.querySelectorAll<HTMLElement>('.task-list .task-row, .task-board .board-card, .result-table .result-row').forEach((entry) => {
     const text = String(entry.textContent).toLowerCase();
     entry.hidden = !words.every((word) => text.includes(word));
   });
-}
-
-/**
- * Whether a card has every plain word being typed. The board is drawn with
- * this so a column's count and its empty state follow the words, instead of
- * a heading counting cards that are no longer on screen.
- */
-function isCardVisible(card: TaskBoardCard): boolean {
-  const words = editor.previewWords(editor.currentText());
-  if (!words.length) {
-    return true;
-  }
-  const text = [card.title, (card.details || []).join(' ')].join(' ').toLowerCase();
-  return words.every((word) => text.includes(word));
+  followShownCards();
 }
 
 /** The gear: layout, the Tasks view, the table's columns, the status columns, theme, and zen. */
@@ -156,7 +151,7 @@ function BoardContent({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   if (snapshot.layout === 'table') {
     return <ResultTable snapshot={snapshot} />;
   }
-  return <TaskBoard snapshot={snapshot} isVisible={isCardVisible} />;
+  return <TaskBoard snapshot={snapshot} />;
 }
 
 /** The whole page: its header, the search box with its Refine row, and the tasks. */

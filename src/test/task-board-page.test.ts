@@ -394,4 +394,33 @@ suite('Task Board page', () => {
     shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'toggleRefused', taskId: beta.dataset.taskId, completed: true } }));
     assert.strictEqual(shown.text('#live-status'), 'Beta was not completed.');
   });
+
+  test('words typed in the box narrow every layout by what each entry shows, and the board recounts', () => {
+    /** Types `words` into the search box without running them. */
+    const type = (shown: WebviewPage, words: string): void => {
+      const box = shown.find('[data-action="query-input"]') as HTMLInputElement;
+      box.focus();
+      box.value = words;
+      box.dispatchEvent(new shown.window.Event('input', { bubbles: true }));
+    };
+    const shownCards = (shown: WebviewPage) => shown.findAll('.board-card').filter((card) => !(card as HTMLElement).hidden);
+    const files = { 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n', 'notes/atlas.md': '- [ ] Send the proposal #status/doing\n' };
+    const board = boardOf(files);
+    const shown = show(board);
+    type(shown, 'beta');
+    assert.deepStrictEqual(shownCards(shown).map((card) => card.querySelector('.task-title')?.textContent), ['Beta']);
+    assert.strictEqual(shown.find('.board-column[data-column-id="status:todo"] .board-count').textContent, '1', 'the column counts what the words leave');
+    assert.match(shown.find('.board-column[data-column-id="status:todo"]').getAttribute('aria-label') ?? '', /^Todo, 1 task/);
+    assert.deepStrictEqual(shownCards(shown).map((card) => card.getAttribute('tabindex')), ['0'], 'a card the words leave is the Tab stop');
+
+    // A card shown by its file's name is still shown once the board is drawn again.
+    type(shown, 'atlas');
+    shown.send(board);
+    assert.deepStrictEqual(shownCards(shown).map((card) => card.querySelector('.task-title')?.textContent), ['Send the proposal']);
+    shown.dispose();
+
+    const table = show(boardOf(files, { taskBoardLayout: 'table' }));
+    type(table, 'beta');
+    assert.strictEqual(table.findAll('.result-row').filter((row) => !(row as HTMLElement).hidden).length, 1, 'the table narrows as the list does');
+  });
 });
