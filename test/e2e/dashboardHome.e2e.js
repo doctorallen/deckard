@@ -634,6 +634,27 @@ test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
   assert.deepStrictEqual(shownTags(), ['#follow-up'], 'None leaves people out');
 });
 
+test('nested tags in one namespace are named apart in the Tags tab', async () => {
+  const note = parseMarkdown(
+    'notes/alpha.md',
+    '# Alpha #project/alpha/notes #project/beta/notes #project/atlas\nBody text.',
+    { createdAt: 1, updatedAt: 2 },
+    {},
+  );
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view } = await openDashboard(index);
+  view.click(view.find('[data-dashboard-mode="browse"]'));
+  await delay(20);
+  const name = (key) => view.find(`.tag-row[data-tag-key="${key}"] .tag-name`).textContent;
+  assert.strictEqual(name('#project/alpha/notes'), 'alpha/notes');
+  assert.strictEqual(name('#project/beta/notes'), 'beta/notes');
+  assert.strictEqual(name('#project/atlas'), 'atlas');
+  assert.strictEqual(
+    view.find('.tag-row[data-tag-key="#project/beta/notes"] [data-action="favorite-tag"]').getAttribute('aria-label'),
+    'Favorite beta/notes project',
+  );
+});
+
 test('a tag search kept from an earlier visit says so above the tags', async () => {
   const note = parseMarkdown(
     'notes/alpha.md',

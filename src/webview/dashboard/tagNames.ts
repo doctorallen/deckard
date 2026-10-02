@@ -14,11 +14,19 @@ export function tagNamespaceOf(tag: Pick<DashboardTag, 'namespace'>): string {
   return String(tag.namespace || '');
 }
 
-/** A tag's name and its namespace, as its row shows them: dashes and underscores as spaces. */
+/**
+ * A tag's name and its namespace, as its row shows them: dashes and
+ * underscores as spaces. The name is everything after the namespace, so
+ * #project/alpha/notes and #project/beta/notes read apart, as alpha/notes
+ * and beta/notes; a tag with no namespace is named by its last part.
+ */
 export function formatTagDisplay(tag: DashboardTag): { name: string; namespace: string } {
   const label = String(tag.label || tag.key || '');
   const labelValue = label.replace(/^[@#]/, '');
-  const name = labelValue.slice(labelValue.lastIndexOf('/') + 1).replace(/[-_]+/g, ' ');
+  const namespaced = Boolean(tagNamespaceOf(tag)) && labelValue.includes('/');
+  const name = labelValue
+    .slice(namespaced ? labelValue.indexOf('/') + 1 : labelValue.lastIndexOf('/') + 1)
+    .replace(/[-_]+/g, ' ');
   const namespace = tagNamespaceOf(tag).replace(/[-_]+/g, ' ');
   return { name: name || label, namespace };
 }
