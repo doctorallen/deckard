@@ -1,6 +1,8 @@
 import * as assert from 'assert';
 
-import { addedTaskLine, changeTaskLine, describeChange } from '../ui/commands/assistantWrites';
+import { addedTaskLine, addTask, changeTaskLine, describeChange } from '../ui/commands/assistantWrites';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { readAddTaskInput, readChangeTaskInput } from '../ui/state/assistantWriteInput';
 
 suite('Assistant writes', () => {
@@ -74,6 +76,22 @@ suite('Assistant writes', () => {
   test('a Dataview line stays a Dataview line', () => {
     const line = '- [ ] Ship it [due:: 2026-09-30]';
     assert.strictEqual(changeTaskLine({ line, changes: { priority: 'high' }, now: NOW }).text, '- [ ] Ship it [priority:: high] [due:: 2026-09-30]');
+  });
+
+  test('says when today\'s daily note cannot be made, rather than naming no note', async () => {
+    const index = buildWorkspaceIndex(new Map());
+    const history = new WorkspaceWriteHistory();
+    const answer = await addTask(
+      { ready: Promise.resolve(), getSnapshot: () => index },
+      history,
+      { text: 'Call Ren' },
+      () => Promise.reject(new Error('EACCES: permission denied')),
+    );
+    assert.deepStrictEqual(answer, {
+      text: "Today's daily note could not be made, so nothing was written.",
+      isError: true,
+    });
+    assert.strictEqual(history.lastWrite, undefined);
   });
 
   test('says what it is about to do, in words a preview can carry', () => {

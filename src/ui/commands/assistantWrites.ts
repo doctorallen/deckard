@@ -10,6 +10,7 @@ import { resolveSourceUri } from './navigation';
 import { completeDraft, writeEditedTask } from './taskEditor';
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { reportError } from '../../shared/timing';
 import { formatCaptureLine, getCaptureInsertion } from '../../domain/capture/captureLines';
 import { WorkspaceIndex } from '../../domain/model';
 import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
@@ -112,41 +113,60 @@ export interface WriteAnswer {
 type TargetNote = { uri: vscode.Uri } | { refusal: WriteAnswer };
 
 /**
- * The note `input` names, which must be indexed, or else today's daily note
- * in the first workspace folder, created if it is missing.
+ * Today's daily note in the first workspace folder, created if it is
+ * missing; undefined when no folder is open. Rejects when the note cannot
+ * be made, such as in a folder that cannot be written to.
  */
-async function resolveTargetNote(index: WorkspaceIndex, input: AddTaskInput): Promise<TargetNote> {
-  let uri: vscode.Uri | undefined;
+function ensureTodaysNote(): Promise<vscode.Uri | undefined> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  return folder ? ensureDailyNote(folder) : Promise.resolve(undefined);
+}
+
+/**
+ * The note `input` names, which must be indexed, or else today's daily note
+ * from `todaysNote`. A daily note that cannot be made is refused in words
+ * of its own, with the reason in Deckard's log, since there is no note
+ * name to give.
+ */
+async function resolveTargetNote(
+  index: WorkspaceIndex,
+  input: AddTaskInput,
+  todaysNote: () => Promise<vscode.Uri | undefined>,
+): Promise<TargetNote> {
   if (input.note) {
     if (!index.files.has(input.note)) {
       return { refusal: { text: `No indexed note is at "${input.note}". Paths are workspace-relative, as deckard_query reports them.`, isError: true } };
     }
-    uri = await resolveSourceUri(input.note);
-  } else {
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    if (!folder) {
-      return { refusal: { text: 'No folder is open, so there is no daily note to add to.', isError: true } };
-    }
-    uri = await ensureDailyNote(folder);
+    const uri = await resolveSourceUri(input.note);
+    return uri ? { uri } : { refusal: { text: `The note "${input.note}" could not be opened.`, isError: true } };
   }
-  if (!uri) {
-    return { refusal: { text: `The note "${input.note}" could not be opened.`, isError: true } };
+  let today: vscode.Uri | undefined;
+  try {
+    today = await todaysNote();
+  } catch (error) {
+    reportError("The assistant's task could not be added: today's daily note could not be made", error);
+    return { refusal: { text: "Today's daily note could not be made, so nothing was written.", isError: true } };
   }
-  return { uri };
+  return today
+    ? { uri: today }
+    : { refusal: { text: 'No folder is open, so there is no daily note to add to.', isError: true } };
 }
 
 /**
  * Adds `input.text` as an open task to the note it names, or to today's daily
  * note, through the refactor preview. Refuses a note the index does not hold,
- * and answers with an error when the reader declines the preview.
+ * or a daily note that cannot be made, and answers with an error when the
+ * reader declines the preview.
  */
 export async function addTask(
   indexer: WriteIndexSource,
   history: WorkspaceWriteHistory,
   input: AddTaskInput,
+  /** Today's daily note, made if missing; undefined when no folder is open. */
+  todaysNote: () => Promise<vscode.Uri | undefined> = ensureTodaysNote,
 ): Promise<WriteAnswer> {
   await indexer.ready;
-  const target = await resolveTargetNote(indexer.getSnapshot(), input);
+  const target = await resolveTargetNote(indexer.getSnapshot(), input, todaysNote);
   if ('refusal' in target) {
     return target.refusal;
   }
