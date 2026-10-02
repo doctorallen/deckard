@@ -5,7 +5,11 @@
  * and tag against the index as it is now.
  */
 import type { TaskBoardGroupBy, TaskSortMode } from '../../../../domain/model/preferences';
-import { isTaskColumnId } from '../../../../domain/tasks/taskColumns';
+import {
+  isBoardNamespace,
+  isStatusColumnList,
+  isTaskColumnId,
+} from '../../../../domain/tasks/taskColumns';
 import type {
   AddTaskToColumnMessage,
   BreakIntoStepsMessage,
@@ -40,15 +44,6 @@ import {
   narrowWith,
   onlyType,
 } from '../../host/narrowing';
-
-/** A status, as `deckard.board.statuses` allows one. */
-const BOARD_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-
-/** A namespace, as `deckard.board.statusNamespace` allows one. */
-const BOARD_NAMESPACE = /^[A-Za-z][A-Za-z0-9_-]*$/;
-
-/** The most status columns the gear may set. */
-const MAX_BOARD_STATUSES = 50;
 
 /** The board's groupings: the ones it can lay out. */
 function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
@@ -106,7 +101,7 @@ const narrowAddTaskToColumn: Narrower<AddTaskToColumnMessage> = (value) =>
  */
 const narrowSetBoardGroup: Narrower<SetBoardGroupMessage> = (value) => {
   if (value.groupBy === 'tag') {
-    return typeof value.namespace === 'string' && BOARD_NAMESPACE.test(value.namespace)
+    return isBoardNamespace(value.namespace)
       ? { type: 'setBoardGroup', groupBy: 'tag', namespace: value.namespace.toLowerCase() }
       : undefined;
   }
@@ -153,19 +148,16 @@ const narrowSetTaskSort: Narrower<SetTaskSortMessage> = (value) =>
 const narrowReorderTasks: Narrower<ReorderTasksMessage> = (value) =>
   isStringArray(value.taskIds) ? { type: 'reorderTasks', taskIds: [...value.taskIds] } : undefined;
 
-/** The status columns, in order: no more than the gear keeps, each a status the setting allows. */
+/**
+ * The status columns, in order: no more than the gear keeps, each a status
+ * the setting allows, by the validator the page checks them with.
+ */
 const narrowSetBoardStatuses: Narrower<SetBoardStatusesMessage> = (value) =>
-  Array.isArray(value.statuses) &&
-  value.statuses.length <= MAX_BOARD_STATUSES &&
-  value.statuses.every((status) => typeof status === 'string' && BOARD_NAME.test(status))
-    ? { type: 'setBoardStatuses', statuses: [...(value.statuses as string[])] }
-    : undefined;
+  isStatusColumnList(value.statuses) ? { type: 'setBoardStatuses', statuses: [...value.statuses] } : undefined;
 
 /** The statuses' namespace, as the setting allows one. */
 const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = (value) =>
-  typeof value.namespace === 'string' && BOARD_NAMESPACE.test(value.namespace)
-    ? { type: 'setBoardStatusNamespace', namespace: value.namespace }
-    : undefined;
+  isBoardNamespace(value.namespace) ? { type: 'setBoardStatusNamespace', namespace: value.namespace } : undefined;
 
 /** Each message the Task Board may send, and what it must hold. */
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
