@@ -1,12 +1,8 @@
 import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../markdown/lineShapes';
-import {
-  formatIsoDate,
-  parseTaskMetadata,
-  setTaskLineCompletion,
-  TaskMetadataFormat,
-  writeCompletion,
-} from '../markdown/taskMetadata';
 import { readStepsForNextOccurrence } from '../markdown/taskSteps';
+import { setTaskLineCompletion, writeCompletion } from '../markdown/taskLineEdits';
+import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
+import { formatIsoDate } from '../markdown/calendar';
 
 /**
  * Toggle Task Done's rule, the way Toggle Line Comment decides: which lines

@@ -10,7 +10,8 @@ import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml }
 import { escapeHtml } from '../../shared/html';
 import { GUIDE_IMAGE_BASE } from './pages/help/guideLinks';
 import { describeHelpCommands, type HelpManifest, linkCommandNames, renderCommandName } from './pages/help/helpManifest';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { getDeckardTheme } from './themes';
+import { type DeckardTheme } from './themeNames';
 
 /** A short line for what a command is for, beyond the name it goes by. */
 const COMMAND_NOTES: Readonly<Record<string, string>> = {

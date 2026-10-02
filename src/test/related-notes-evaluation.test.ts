@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 
-import { RankedNote } from '../core/types';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 import { createEntryScope } from '../ui/state/entryScope';
 import { parseMarkdown } from '../domain/markdown/parser';
@@ -11,6 +10,7 @@ import {
   UNTAGGED_NOTE,
   UNTAGGED_RELEVANT,
 } from './relatedNotesFixture';
+import { RankedNote } from '../domain/model';
 
 /** The ranked results for a case, as `path:line`. */
 function rank(workspace: ReturnType<typeof createEvaluationWorkspace>, testCase: EvaluationCase): RankedNote[] {

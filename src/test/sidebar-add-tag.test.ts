@@ -6,7 +6,6 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { NavigationService } from '../services/navigationService';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
@@ -16,6 +15,7 @@ import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebar
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { pageExtensionUri } from './pageWebview';
+import { WorkspaceIndex } from '../domain/model';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();

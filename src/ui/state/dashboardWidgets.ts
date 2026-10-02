@@ -7,38 +7,30 @@ import {
 } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
+import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
+import { createAgenda, selectAgendaTasks } from './agendaState';
+import { createDashboardSavedFilters, getSavedFilterQuery, sortTags } from './dashboardState';
+import { listQuietTags } from './peopleRecency';
+import { rankRelatedNotes } from './relatedNotesRanking';
+import { sortRelatedNotes } from '../../domain/ranking/relatedNotesOrder';
+import { RelatedNotesRankingOptions } from '../../domain/ranking/relatedNotesContext';
+import { collectFileTags } from '../../domain/ranking/relatedNotes';
+import { resolvePin } from '../../domain/notes/pins';
+import { pinKey } from '../../core/storage/preferencesSchema';
+import { frecencyScore } from '../../domain/ranking/frecency';
+import { getFileName } from '../../shared/paths';
+import { createSearchPageSnapshot } from './searchPageState';
+import { createQueryViewState, describeTagMatches } from './querySuggestions';
+import { createDashboardTask, sortTasks } from './entryCards';
+import { ResultPaging } from '../protocol/shared';
 import {
-  DashboardTryNext,
-  DashboardWidget,
   DashboardWidgetConfig,
   DashboardWidgetKind,
   PersistedPreferences,
-  ResultPaging,
   TagTitleDisplayMode,
   WorkspaceIndex,
-} from '../../core/types';
-import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
-import { createAgenda, selectAgendaTasks } from './agendaState';
-import {
-  createDashboardSavedFilters,
-  createDashboardTask,
-  createQueryViewState,
-  createSearchPageSnapshot,
-  describeTagMatches,
-  getFileName,
-  getSavedFilterQuery,
-  sortTags,
-  sortTasks,
-} from './dashboardState';
-import { frecencyScore } from './frecency';
-import { listQuietTags } from './peopleRecency';
-import { pinKey, resolvePin } from './pinnedNotes';
-import {
-  collectFileTags,
-  rankRelatedNotes,
-  RelatedNotesRankingOptions,
-  sortRelatedNotes,
-} from './relatedNotesRanking';
+} from '../../domain/model';
+import { DashboardTryNext, DashboardWidget } from '../protocol/dashboard';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** How many entries a tag needs before Home suggests it a hub note. */

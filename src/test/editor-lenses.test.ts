@@ -5,20 +5,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { ParsedFile, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  findLinkProblems,
-  findMissingNoteNames,
-} from '../ui/commands/linkHealth';
 import { linkMentions } from '../ui/commands/unlinkedMentions';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
-import {
-  findDailyNoteActions,
-  findEmbedProblems,
-  findTaskDependencies,
-  findUnlinkedMentions,
-} from '../ui/state/editorLensState';
+import { findDailyNoteActions, findEmbedProblems, findTaskDependencies } from '../ui/state/editorLensState';
+import { findUnlinkedMentions } from '../domain/search/mentions';
+import { findLinkProblems, findMissingNoteNames } from '../domain/links/linkProblems';
+import { ParsedFile, WorkspaceIndex } from '../domain/model';
 
 suite('Editor lenses', () => {
   suite('task dependencies', () => {

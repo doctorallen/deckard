@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import { stripTags } from '../../domain/markdown/parser';
-import { Section } from '../../core/types';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findHeadingAtLine } from '../../domain/notes/headingLookup';
@@ -20,10 +19,7 @@ import {
   reportStale,
 } from './notify';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
-
-export type { ReplaceOutcome } from '../../services/linkService';
-export { findHeadingAtLine };
-export { getExtractedNoteFileName };
+import { Section } from '../../domain/model';
 
 /**
  * Takes the heading the cursor is in, or one chosen from every note's, out

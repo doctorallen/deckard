@@ -4,16 +4,17 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
-import { PersistedPreferences, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createAgenda } from '../ui/state/agendaState';
-import { createDashboardTask, createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createAgendaTreeServices } from './taskWrites';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createDashboardTask } from '../ui/state/entryCards';
+import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const NOTE = [
   '# Offsite',

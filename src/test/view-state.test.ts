@@ -6,37 +6,26 @@ import { tokenizeInline } from '../domain/markdown/inline';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  createDeckardStatsSnapshot,
-  createDashboardSnapshot,
-  createDashboardTask,
-  createSearchPageSnapshot,
-  sortDashboardNotes,
-  sortEntities,
-  sortTasks,
-  sortTagOverviewCards,
-  sortTags,
-  findSnippetStart,
-} from '../ui/state/dashboardState';
+import { createDashboardSnapshot, sortEntities, sortTags } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
-import {
-  createSidebarSnapshot,
-  rankRelatedNotes,
-  sortRelatedNotes,
-} from '../ui/state/relatedNotesRanking';
+import { createSidebarSnapshot, rankRelatedNotes } from '../ui/state/relatedNotesRanking';
 import { createEntryScope } from '../ui/state/entryScope';
+import { createQueryContext } from '../domain/query/queryContext';
+import { TagOverviewCard } from '../ui/protocol/shared';
 import {
   ParsedFile,
   Entity,
   PersistedPreferences,
   RankedNote,
   Section,
-  TagOverviewCard,
   TagInfo,
   Task,
   WorkspaceIndex,
-} from '../core/types';
-import { createQueryContext } from '../domain/query/queryContext';
+} from '../domain/model';
+import { sortRelatedNotes } from '../domain/ranking/relatedNotesOrder';
+import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/searchPageState';
+import { createDashboardTask, sortDashboardNotes, sortTasks, sortTagOverviewCards } from '../ui/state/entryCards';
+import { createDeckardStatsSnapshot } from '../ui/state/statsState';
 
 const defaultPreferences: PersistedPreferences = {
   version: 1,

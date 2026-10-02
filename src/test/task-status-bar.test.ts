@@ -3,7 +3,6 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   countDueTasks,
@@ -16,6 +15,7 @@ import {
   TaskStatusBar,
 } from '../ui/views/taskStatusBar';
 import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(

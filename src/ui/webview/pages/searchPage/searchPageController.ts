@@ -23,13 +23,6 @@ import { readQueryContext } from '../../../commands/queryContext';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
-import {
-  createQueryViewState,
-  createSearchPageSnapshot,
-  evaluateSearchPage,
-  normalizeTagTitleDisplayMode,
-  resolveQueryTagIntersection,
-} from '../../../state/dashboardState';
 import { formatQueryBlock } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
@@ -38,6 +31,9 @@ import { chooseTheme, openHelp, openTag, parkTag, renameTag, setZenMode, toggleT
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowSearchPageMessage } from './messages';
+import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
+import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
+import { createQueryViewState } from '../../../state/querySuggestions';
 
 /**
  * The preference services a search page reads and writes: the blob it

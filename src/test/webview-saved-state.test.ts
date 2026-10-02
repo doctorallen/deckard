@@ -4,12 +4,13 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createCalendar } from '../ui/state/calendarState';
-import { createDashboardSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { renderPage } from './pages';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 /**
  * What each page reads back from the state VS Code kept for it across a

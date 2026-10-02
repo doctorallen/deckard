@@ -13,7 +13,6 @@ import {
 import { FileStat, FileType } from '../ports/fileSystem';
 import type { ResourceUri } from '../ports/uri';
 import type { FolderPattern } from '../ports/workspace';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { setTimingLog } from '../shared/timing';
 import {
   createFakeAccess,
@@ -25,6 +24,7 @@ import {
 } from './fakeWorkspace';
 import { normalizeIndex } from './normalizeIndex';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 const defaultPreferences = {
   searchPageSize: 30 as const,

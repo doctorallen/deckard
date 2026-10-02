@@ -4,8 +4,8 @@
  * rows and groups, removable terms, facets, and completions.
  *
  * They live in the domain model rather than beside the parser in
- * `core/query/queryTypes`, which re-exports them, because the pages' snapshot
- * types carry a `QueryViewState` and may import only the domain model.
+ * `domain/query/queryTypes`, because the pages' snapshot types carry a
+ * `QueryViewState` and the protocol may import only the domain model.
  */
 
 /**

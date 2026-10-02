@@ -4,10 +4,10 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { parseQuery } from '../domain/query/queryParser';
 import { createPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
 import { listStatsTags } from '../ui/webview/pages/stats/statsController';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/statsState';
 
 suite('Stats: notes that could not be read', () => {
   const index = () =>

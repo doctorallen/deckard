@@ -16,9 +16,9 @@ import {
 } from '../domain/markdown/taskSteps';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
-import { Task } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
+import { Task } from '../domain/model';
 
 function tasksOf(markdown: string): Task[] {
   return parseMarkdown('notes/plan.md', markdown).tasks;

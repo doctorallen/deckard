@@ -3,22 +3,11 @@ import * as assert from 'assert';
 import { tokenizeInline } from '../domain/markdown/inline';
 
 import { createPreferences } from './preferenceServices';
-import {
-  PersistedPreferences,
-  TagReference,
-  Task,
-  TaskBoardGroupBy,
-  WorkspaceIndex,
-} from '../core/types';
-import {
-  createTaskBoard,
-  layoutTaskBoard,
-  resolveTaskMove,
-  setTaskStatusTag,
-  TaskBoardOptions,
-} from '../ui/state/taskBoardState';
+import { createTaskBoard, layoutTaskBoard, resolveTaskMove, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { isAwaitingIndex } from '../ui/webview/pages/taskBoard/taskBoardController';
 import { createQueryContext } from '../domain/query/queryContext';
+import { setTaskStatusTag } from '../domain/tasks/boardMoves';
+import { PersistedPreferences, TagReference, Task, TaskBoardGroupBy, WorkspaceIndex } from '../domain/model';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();

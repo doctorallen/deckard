@@ -1,9 +1,9 @@
-import { Task } from '../../core/types';
 import { FavoritesService } from '../../core/storage/preferencesFavorites';
 import { SavedSearchesService } from '../../core/storage/preferencesSavedSearches';
 import { PinService } from '../../services/pinService';
 import { QuickFindItem } from '../state/quickFindState';
 import { keyLabel } from './quickFindKeys';
+import { Task } from '../../domain/model';
 
 /**
  * Everything a row of Find can do, for Cmd+. to list: grouped as a menu is,

@@ -2,15 +2,12 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  createLocalGraphSnapshot,
-  createNotesGraphConnections,
-  createNotesGraphSnapshot,
-  findNoteNodeIds,
-  graphInputsChanged,
-  toWire,
-} from '../ui/state/notesGraphState';
-import { NotesGraphSnapshot, ParsedFile } from '../core/types';
+import { toWire } from '../ui/state/notesGraphState';
+import { NotesGraphSnapshot, ParsedFile } from '../domain/model';
+import { graphInputsChanged } from '../domain/graph/graphChanges';
+import { createNotesGraphSnapshot } from '../domain/graph/notesGraph';
+import { createNotesGraphConnections } from '../domain/graph/graphConnections';
+import { createLocalGraphSnapshot, findNoteNodeIds } from '../domain/graph/localGraph';
 
 suite('Notes graph state', () => {
   test('draws one note and what it is attached to, a hop at a time', () => {

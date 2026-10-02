@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
 import { describeDateChange } from '../ui/commands/agendaActions';
@@ -9,6 +8,7 @@ import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 /** The workspace of some notes by path, each created on the morning of 25 September 2026. */
 export function indexOf(notes: Record<string, string>): WorkspaceIndex {

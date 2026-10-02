@@ -1,28 +1,22 @@
 import { getFileName } from '../../shared/paths';
-import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskMetadata';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
 import { pluralize } from '../../shared/text';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+
+import { compareTasksByColumn, parseTaskColumns, TableTask } from './resultTable';
+import { isTaskColumnId, TASK_COLUMNS } from '../../domain/tasks/taskColumns';
 import {
   ParsedFile,
   Section,
   Task,
   TaskPriority,
   WorkspaceIndex,
-} from '../../core/types';
-import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-
-export { stripTrailingTags } from '../../domain/ranking/entryLabels';
-import {
-  compareTasksByColumn,
-  isTaskColumnId,
-  parseTaskColumns,
   TableSortDirection,
-  TableTask,
-  TASK_COLUMNS,
   TaskColumnId,
-} from './resultTable';
+} from '../../domain/model';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The

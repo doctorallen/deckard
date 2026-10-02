@@ -51,7 +51,7 @@ const pageOptions = {
 const pages = modules.pageCatalog.PAGES.map((page) => [page.id, () => loadPage(modules.pageCatalog.renderPage(page.id, pageOptions))]);
 
 /** Every theme Deckard ships, read from the manifest the themes declare. */
-const { deckardThemes } = modules.themes;
+const { deckardThemes } = modules.themeNames;
 
 /**
  * Renders every page with one theme applied, as [name, html] pairs. The page

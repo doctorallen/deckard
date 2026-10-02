@@ -11,8 +11,6 @@ import {
   WEEKDAY_NAMES,
 } from './calendar';
 
-export { MONTH_NUMBERS, WEEKDAY_NAMES } from './calendar';
-
 /**
  * One way to read a date written in plain words.
  *

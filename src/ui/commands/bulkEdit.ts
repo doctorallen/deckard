@@ -6,19 +6,14 @@ import {
   getPersonMarker,
   hasAtxHeadingClosingHashes,
 } from '../../domain/markdown/parser';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  setTaskDate,
-  setTaskLineCompletion,
-  writeCompletion,
-} from '../../domain/markdown/taskMetadata';
 import { pluralize } from '../../shared/text';
-import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
+import { Section, Task } from '../../domain/model';
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { CompletionWrite, setTaskDate, setTaskLineCompletion, writeCompletion } from '../../domain/markdown/taskLineEdits';
 
 /**
  * One edit made to many results at once.

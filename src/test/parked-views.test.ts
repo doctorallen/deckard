@@ -3,16 +3,17 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { createPreferences } from './preferenceServices';
-import { PersistedPreferences } from '../core/types';
 import { buildSetupReport, SetupFacts } from '../ui/commands/checkSetup';
 import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
-import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
 import { collectNoteLinks } from '../ui/state/noteLinks';
-import { createNotesGraphSnapshot, graphInputsChanged } from '../ui/state/notesGraphState';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { graphInputsChanged } from '../domain/graph/graphChanges';
+import { createNotesGraphSnapshot } from '../domain/graph/notesGraph';
+import { createDeckardStatsSnapshot } from '../ui/state/statsState';
+import { PersistedPreferences } from '../domain/model';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
   const store = createPreferences({

@@ -3,7 +3,6 @@ import { reportFailure, reportNeedsFolder } from './notify';
 
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
-import { WorkspaceIndex } from '../../core/types';
 import { findLinkProblems, LinkProblem } from '../../domain/links/linkProblems';
 import { parseWikiTarget } from '../../domain/index/backlinks';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
@@ -14,9 +13,7 @@ import {
 } from '../../core/workspace/publishing';
 import { LinkNoteService } from '../../services/linkService';
 import { vscodeLinkNotes } from './linkMaintenancePorts';
-
-export { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkProblems';
-export type { LinkProblem } from '../../domain/links/linkProblems';
+import { WorkspaceIndex } from '../../domain/model';
 
 interface LinkHealthSource {
   readonly ready: Promise<void>;

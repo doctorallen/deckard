@@ -10,16 +10,7 @@ import type {
   CalendarSnapshot,
 } from '../../../protocol/calendar';
 import { setTaskDateField } from '../../../commands/agendaActions';
-import {
-  chooseTargetFolder,
-  ensurePeriodicNote,
-  findPeriodicNoteNames,
-  formatLocalDate,
-  getPeriodicNote,
-  listDailyNotes,
-  NotePeriod,
-  parseLocalDate,
-} from '../../../commands/dailyNote';
+import { chooseTargetFolder, ensurePeriodicNote } from '../../../commands/dailyNote';
 import { readWeekStart } from '../../../commands/datePrompt';
 import { openSourceAt } from '../../../commands/navigation';
 import { readQueryContext } from '../../../commands/queryContext';
@@ -30,6 +21,14 @@ import type { MessageHandlers, PageContext, PageController, PageOptions } from '
 import { ready } from '../../host/sharedHandlers';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowCalendarMessage } from './messages';
+import {
+  findPeriodicNoteNames,
+  formatLocalDate,
+  getPeriodicNote,
+  listDailyNotes,
+  NotePeriod,
+  parseLocalDate,
+} from '../../../../domain/notes/periodicNotes';
 
 /** The index a calendar reads its days, notes, and tasks from. */
 export interface CalendarIndex {

@@ -5,12 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { ParsedFile } from '../core/types';
 import { resolveSampleTokens, sampleFileName } from '../ui/commands/sampleWorkspace';
-
-// Kept here for the suites that import it with the corpus; it lives on its
-// own so a suite that needs only it does not reach the sample workspace.
-export { normalizeIndex } from './normalizeIndex';
+import { ParsedFile } from '../domain/model';
 
 /** The repository's root, which the sample workspace and the development notes are read from. */
 const repositoryRoot = path.join(__dirname, '..', '..');

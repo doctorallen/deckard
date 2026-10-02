@@ -4,9 +4,9 @@ import { listOverdueTasks } from '../commands/agendaActions';
 
 import { QueryContext } from '../../domain/query/queryContext';
 import { escapeMarkdown } from '../../shared/text';
-import { WorkspaceIndex } from '../../core/types';
 import { readQueryContext } from '../commands/queryContext';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
+import { WorkspaceIndex } from '../../domain/model';
 
 /** Open tasks that want attention today: overdue ones, and today's. */
 export interface DueTaskCounts {

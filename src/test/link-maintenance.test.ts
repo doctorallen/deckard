@@ -5,16 +5,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  createLinkRewriteEdit,
-  LinkMaintenance,
-  planNoteRenameRewrites,
-} from '../ui/commands/linkMaintenance';
+import { createLinkRewriteEdit, LinkMaintenance } from '../ui/commands/linkMaintenance';
 import {
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
+import { planNoteRenameRewrites } from '../domain/links/linkRewrites';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(

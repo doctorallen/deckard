@@ -1,8 +1,9 @@
 import * as assert from 'assert';
 
-import { RankedNote, SidebarNotesSnapshot } from '../core/types';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
+import { SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
+import { RankedNote } from '../domain/model';
 
 /**
  * What the Related Notes sidebar does with the results it is given.

@@ -5,8 +5,8 @@ import {
   describeRepeatRuleProblem,
   findRepeatRuleProblems,
 } from '../../domain/markdown/repeatRuleProblems';
-import { suggestRecurrence } from '../../domain/markdown/taskMetadata';
 import { measure } from '../../shared/timing';
+import { suggestRecurrence } from '../../domain/markdown/recurrence';
 
 /** The code a diagnostic carries, which its quick fixes look for. */
 const UNREADABLE_REPEAT = 'unreadable-repeat';

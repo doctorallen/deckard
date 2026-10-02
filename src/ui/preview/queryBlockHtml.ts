@@ -1,8 +1,6 @@
 import type MarkdownIt from 'markdown-it';
 
-import { formatIsoDate, describeDueDate } from '../../domain/markdown/taskMetadata';
 import { QueryContext } from '../../domain/query/queryContext';
-import { WorkspaceIndex } from '../../core/types';
 import { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
 import {
   getQueryBlockSnapshot,
@@ -14,17 +12,13 @@ import {
   QueryBlockSnapshot,
   toTableTask,
 } from '../state/queryBlockState';
-import {
-  createTaskCells,
-  DEFAULT_TASK_COLUMNS,
-  getTaskColumn,
-  TaskColumnId,
-} from '../state/resultTable';
+import { createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn } from '../state/resultTable';
 import { escapeHtml, escapeHtmlText } from '../../shared/html';
 import { tokenizeInlineWithoutWikiLinks } from '../../domain/markdown/inline';
 import type { InlineToken } from '../../domain/model/inline';
-
-export { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
+import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
+import { describeDueDate } from '../../domain/markdown/dueWording';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 
 /** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;

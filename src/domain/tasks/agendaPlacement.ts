@@ -1,5 +1,4 @@
-import { SHORT_WEEKDAY_NAMES } from '../markdown/calendar';
-import { formatIsoDate } from '../markdown/taskMetadata';
+import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../markdown/calendar';
 import { Task } from '../model';
 import { needsNewDate, TaskPolicy } from './taskPolicy';
 

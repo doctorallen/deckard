@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { normalizePinnedNotes, pinKey } from '../core/storage/preferences';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createPinForLine, resolvePin } from '../ui/state/pinnedNotes';
+import { createPinForLine, resolvePin } from '../domain/notes/pins';
+import { WorkspaceIndex } from '../domain/model';
+import { normalizePinnedNotes, pinKey } from '../core/storage/preferencesSchema';
 
 const note = [
   '# Atlas', // 1

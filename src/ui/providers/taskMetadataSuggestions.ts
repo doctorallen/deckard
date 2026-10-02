@@ -1,19 +1,13 @@
 import * as vscode from 'vscode';
 
-import { findFencedLines, isPersonTag } from '../../domain/markdown/parser';
-import {
-  addDays,
-  formatIsoDate,
-  formatTaskMetadata,
-  parseTaskMetadata,
-  startOfDay,
-  TaskMetadataField,
-  TaskMetadataFormat,
-} from '../../domain/markdown/taskMetadata';
-import { WorkspaceIndex } from '../../core/types';
+import { isPersonTag } from '../../domain/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readTaskMetadataFormat } from '../commands/taskActions';
 import { whenPublished } from '../../core/workspace/publishing';
+import { WorkspaceIndex } from '../../domain/model';
+import { formatTaskMetadata, parseTaskMetadata, TaskMetadataField, TaskMetadataFormat } from '../../domain/markdown/taskFields';
+import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { findFencedLines } from '../../domain/markdown/lineShapes';
 
 /** What the suggestions read from the indexer: the people and task ids to offer. */
 interface TaskIndexSource {

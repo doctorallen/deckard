@@ -4,7 +4,8 @@ import type { SidebarNotesPageState } from '../protocol/sidebarNotes';
 import { createNonce, loadingHtml } from './components';
 import { buildPageShell } from './host/pageShell';
 import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { getDeckardTheme } from './themes';
+import { type DeckardTheme } from './themeNames';
 
 /**
  * The Related Notes sidebar's shell: its bundle, `dist/webview/sidebarNotes.js`,

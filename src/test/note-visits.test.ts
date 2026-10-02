@@ -6,7 +6,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { NoteVisits, NoteVisitWindow, sectionForVisit } from '../ui/commands/noteVisits';
-import { carrySectionIds } from '../ui/state/frecency';
+import { carrySectionIds } from '../domain/ranking/frecency';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

@@ -1,11 +1,6 @@
 import * as vscode from 'vscode';
 import { DeckardTheme, deckardThemes } from './themeNames';
 
-// The names live in themeNames.ts, so the preview can name a theme without
-// VS Code; every module that reads them from here still does.
-export { deckardThemeNames, deckardThemes } from './themeNames';
-export type { DeckardTheme } from './themeNames';
-
 /**
  * The theme the pages draw in: the one `preview` (the ThemePreview) is
  * showing, if any, and otherwise the configured theme, falling back when

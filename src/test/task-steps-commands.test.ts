@@ -5,9 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { formatIsoDate } from '../domain/markdown/taskMetadata';
 import { toggleTask } from '../ui/commands/taskActions';
-import { toggleTaskLines } from '../ui/commands/toggleTaskDone';
 import {
   addTaskSteps,
   buildSuggestPrompt,
@@ -18,6 +16,8 @@ import {
 } from '../ui/commands/taskSteps';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { createTaskWrites } from './taskWrites';
+import { toggleTaskLines } from '../domain/tasks/toggleLines';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 type Shown = unknown[][];
 

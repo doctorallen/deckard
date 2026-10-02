@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { BlockToken, buildBlockExcerpt } from '../domain/markdown/blockExcerpt';
-import { InlineToken } from '../domain/markdown/inline';
+import { buildBlockExcerpt } from '../domain/markdown/blockExcerpt';
+import { BlockToken, InlineToken } from '../domain/model';
 
 /** Inline tokens as their words, with a break as `/`, for stating a block's contents briefly. */
 function words(tokens: readonly InlineToken[]): string {

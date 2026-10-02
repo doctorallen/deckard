@@ -1,22 +1,9 @@
 /**
  * The notes graph as the page receives it. The graph itself is built in
- * `src/domain/graph`, and re-exported from here so its importers compile as
- * before; what stays is the trimming only the page reads.
+ * `src/domain/graph`; what is here is the trimming only the page reads.
  */
-import {
-  NotesGraphNode,
-  NotesGraphSnapshot,
-  NotesGraphWireSnapshot,
-} from '../../core/types';
-
-export { graphInputsChanged, graphSignature } from '../../domain/graph/graphChanges';
-export { createNotesGraphConnections } from '../../domain/graph/graphConnections';
-export {
-  createLocalGraphSnapshot,
-  findNoteNodeIds,
-  MAXIMUM_LOCAL_GRAPH_DEPTH,
-} from '../../domain/graph/localGraph';
-export { createNotesGraphSnapshot } from '../../domain/graph/notesGraph';
+import { NotesGraphWireSnapshot } from '../protocol/notesGraph';
+import { NotesGraphNode, NotesGraphSnapshot } from '../../domain/model';
 
 /** Which kinds of node the page shows. Tags are always sent. */
 export interface NotesGraphKinds {

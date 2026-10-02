@@ -7,8 +7,9 @@
  */
 
 import * as vscode from 'vscode';
-import { DeckardTheme, deckardThemeCss } from './themes';
+import { deckardThemeCss } from './themes';
 import type { ThemePreview } from './themePreview';
+import { DeckardTheme } from './themeNames';
 
 /**
  * What a page shows before its first state arrives: `#app`, busy, holding

@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 
-import { EntryRelatedNotesDiagnostic } from './sidebarNotes';
 import { createNonce } from './components';
 import { buildPageShell } from './host/pageShell';
 import { escapeHtml } from '../../shared/html';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { getDeckardTheme } from './themes';
 import { isZenModeEnabled } from './zenMode';
+import { type DeckardTheme } from './themeNames';
+import { EntryRelatedNotesDiagnostic } from './pages/sidebarNotes/sidebarNotesController';
 
 /** What each term on the page means, shown above the candidates. */
 const DIAGNOSTIC_GUIDE = `<section class="guide" aria-labelledby="debug-guide-title">

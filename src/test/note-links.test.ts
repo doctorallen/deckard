@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { collectNoteLinks, createLinksSearchQuery } from '../ui/state/noteLinks';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
+import { WorkspaceIndex } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 8, 25, 12).getTime();

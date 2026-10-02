@@ -2,8 +2,8 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { TagInfo, WorkspaceIndex } from '../core/types';
 import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
+import { TagInfo, WorkspaceIndex } from '../domain/model';
 
 suite('Tag suggestions', () => {
   test('offers nothing in a Markdown file that is not a note', async () => {

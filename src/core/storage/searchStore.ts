@@ -2,7 +2,6 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import type { Disposable } from '../../ports/events';
-import { ParsedFile } from '../types';
 import {
   CacheChanges,
   compareToStored,
@@ -14,6 +13,7 @@ import {
 } from './searchDatabase';
 import { SearchWorkerClient } from './searchStoreWorkerClient';
 import { decodeParsedFile, encodeParsedFile } from './parsedFileCodec';
+import { ParsedFile } from '../../domain/model';
 
 /** How many cached notes are read between turns of the extension host. */
 const PARSED_PAGE_SIZE = 500;

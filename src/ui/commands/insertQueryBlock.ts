@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { PreferencesReader } from '../../core/storage/preferences';
 import { formatQueryBlock } from '../state/queryBlockState';
 import { getSavedFilterQuery } from '../state/dashboardState';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /** One row of the picker: a saved or recent search, or what is typed. */
 interface QueryBlockItem extends vscode.QuickPickItem {

@@ -25,10 +25,9 @@ import { openSourceAt, resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
-import { normalizeTagTitleDisplayMode } from '../../../state/dashboardState';
 import { createEntryScope, EntryTagContext, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
-import { createSidebarSnapshot, RelatedNotesRankingOptions } from '../../../state/relatedNotesRanking';
+import { createSidebarSnapshot } from '../../../state/relatedNotesRanking';
 import type { ActiveCalendar } from '../../activeCalendar';
 import type { ActiveHome } from '../../activeHome';
 import type { ActiveSearch } from '../../activeSearch';
@@ -40,6 +39,8 @@ import { getSidebarNotesHtml } from '../../sidebarNotesHtml';
 import type { DeckardTheme } from '../../themeNames';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
+import { RelatedNotesRankingOptions } from '../../../../domain/ranking/relatedNotesContext';
+import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;

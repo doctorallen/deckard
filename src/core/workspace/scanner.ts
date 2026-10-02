@@ -17,9 +17,7 @@ import {
 } from '../../domain/markdown/parser';
 import { reportError } from '../../shared/timing';
 import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
-import { ParsedFile,
-  UnreadableNote,
-} from '../types';
+import { ParsedFile, UnreadableNote } from '../../domain/model';
 
 /**
  * What the scanner reads the workspace through: its folders, finding and

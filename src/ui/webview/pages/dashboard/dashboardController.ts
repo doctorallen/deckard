@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { isDefaultHomeLayout, PreferenceServices } from '../../../../core/storage/preferences';
+import { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { listedParkedTags } from '../../../../domain/index/parked';
 import type { DashboardColumnCount, DashboardMode, PersistedPreferences } from '../../../../domain/model/preferences';
@@ -19,12 +19,7 @@ import { readQueryContext } from '../../../commands/queryContext';
 import type { TaskWrites } from '../../../commands/taskActions';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../../../commands/tryNext';
 import type { WhatsNew } from '../../../commands/whatsNew';
-import {
-  createDashboardSnapshot,
-  getSavedFilterQuery,
-  mergeOrder,
-  normalizeTagTitleDisplayMode,
-} from '../../../state/dashboardState';
+import { createDashboardSnapshot, getSavedFilterQuery, mergeOrder } from '../../../state/dashboardState';
 import { createDashboardWidgets } from '../../../state/dashboardWidgets';
 import type { TryNextSuggestion } from '../../../state/tryNext';
 import type { ActiveHome, HomeSource, HomeWidgetChoice } from '../../activeHome';
@@ -41,6 +36,8 @@ import {
 } from '../../host/sharedHandlers';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowDashboardMessage } from './messages';
+import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
+import { isDefaultHomeLayout } from '../../../../core/storage/preferencesSchema';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {

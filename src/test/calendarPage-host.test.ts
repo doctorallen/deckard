@@ -5,7 +5,6 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { CalendarMessage, CalendarPagePageToHost, CalendarSnapshot } from '../ui/protocol/calendar';
-import { formatLocalDate } from '../ui/commands/dailyNote';
 import { ActiveCalendar, CalendarDaySource } from '../ui/webview/activeCalendar';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { CalendarPageController } from '../ui/webview/pages/calendarPage/calendarPageController';
@@ -16,6 +15,7 @@ import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
 import { pageExtensionUri, pageWebview } from './pageWebview';
 import { openWebviewPage } from './webviewPage';
+import { formatLocalDate } from '../domain/notes/periodicNotes';
 
 const today = formatLocalDate(new Date());
 

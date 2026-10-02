@@ -12,7 +12,7 @@ const modules = require('../harness/modules.js');
 const { DashboardPanel } = modules.dashboard;
 const { createPreferences } = modules.preferenceServices;
 const { parseMarkdown } = modules.parser;
-const { buildWorkspaceIndex } = modules.indexer;
+const { buildWorkspaceIndex } = modules.indexState;
 const { ThemePreview } = modules.themePreview;
 
 /** Longer than the page's search debounce. */

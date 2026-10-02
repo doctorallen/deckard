@@ -1,18 +1,19 @@
 import * as vscode from 'vscode';
 
-import { findFencedLines, hasAtxHeadingClosingHashes } from '../../domain/markdown/parser';
+import { hasAtxHeadingClosingHashes } from '../../domain/markdown/parser';
 import {
   getTagCompletionContext,
   matchesTagCompletion,
   TagCompletionContext,
 } from '../../domain/markdown/completionContext';
-import { WorkspaceIndex } from '../../core/types';
 import type { TagInfo } from '../../domain/model/tags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 import { whenPublished } from '../../core/workspace/publishing';
 import { isParkedFile, isParkedOnlyTag } from '../../domain/index/parked';
 import { readPersonMarker } from '../commands/parseSettings';
+import { WorkspaceIndex } from '../../domain/model';
+import { findFencedLines } from '../../domain/markdown/lineShapes';
 
 /** What tag completion reads from the indexer. */
 interface TagIndexSource {

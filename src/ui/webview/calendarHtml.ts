@@ -4,7 +4,8 @@ import type { CalendarSnapshot } from '../protocol/calendar';
 import { createNonce, loadingHtml } from './components';
 import { buildPageShell } from './host/pageShell';
 import { isZenModeEnabled } from './zenMode';
-import { type DeckardTheme, getDeckardTheme } from './themes';
+import { getDeckardTheme } from './themes';
+import { type DeckardTheme } from './themeNames';
 
 /**
  * A calendar's shell: the sidebar Calendar, whose bundle,

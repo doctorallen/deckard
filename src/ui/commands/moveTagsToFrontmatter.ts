@@ -9,13 +9,10 @@ import {
   getPersonMarker,
   isBuiltInEntityKind,
 } from '../../domain/markdown/parser';
-import {
-  getFrontmatterBounds,
-  splitValues,
-  unquote,
-} from '../../domain/markdown/frontmatterTags';
-import { TagReference } from '../../core/types';
+import { getFrontmatterBounds, splitValues } from '../../domain/markdown/frontmatterTags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { TagReference } from '../../domain/model';
+import { unquote } from '../../domain/markdown/frontmatter';
 
 /** A front-matter field tags are moved into, by the entity kind they name. */
 type FrontmatterTagGroup =

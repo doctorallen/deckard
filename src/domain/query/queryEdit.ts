@@ -8,14 +8,10 @@
  */
 import { formatQuery } from './queryFormat';
 import { parseQuery } from './queryParser';
-import {
-  ParsedQuery,
-  QueryBuilderJoin,
-  QueryConditionNode,
-  QueryNode,
-  QueryTermChip,
-} from './queryTypes';
-import { escapeRegExp, isWildcard } from './queryValues';
+import { ParsedQuery, QueryConditionNode, QueryNode } from './queryTypes';
+import { isWildcard } from './queryValues';
+import { escapeRegExp } from '../../shared/text';
+import { QueryBuilderJoin, QueryTermChip } from '../model';
 
 /** One term of a query as the search box shows it, with the query as it reads without it. */
 export type QueryTerm = QueryTermChip;

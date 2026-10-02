@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
-import { parseTaskMetadata } from '../../domain/markdown/taskMetadata';
 import {
   findCheckboxColumn,
   findStepFamily,
@@ -10,11 +9,12 @@ import {
   splitTypedSteps,
 } from '../../domain/markdown/taskSteps';
 import { measureAsync, reportError } from '../../shared/timing';
-import { Task } from '../../core/types';
 import type { IndexReader } from '../../core/workspace/indexReader';
-import { countSteps } from '../../domain/tasks/taskLines';
+import { countSteps, quoteTitle } from '../../domain/tasks/taskLines';
 import { describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
-import { quoteTitle, TaskWrites } from './taskActions';
+import { TaskWrites } from './taskActions';
+import { Task } from '../../domain/model';
+import { parseTaskMetadata } from '../../domain/markdown/taskFields';
 
 /**
  * Break into Steps…: a list that grows one step per Enter, shown with the

@@ -5,15 +5,12 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { createNextOccurrence, parseRecurrence } from '../domain/markdown/taskMetadata';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { QUERY_FIELDS, QUERY_HAS_VALUES, QUERY_IS_VALUES, QueryNode } from '../domain/query/queryTypes';
-import { ParsedFile, WorkspaceIndex } from '../core/types';
 import { findMissingLinkTargets } from '../domain/index/backlinks';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { computeParked } from '../domain/index/parked';
-import { listDailyNotes } from '../ui/commands/dailyNote';
 import {
   getSampleStorageUri,
   installSample,
@@ -25,8 +22,12 @@ import {
 } from '../ui/commands/sampleWorkspace';
 import { createAgenda } from '../ui/state/agendaState';
 import { rankSimilarWording } from '../ui/state/relatedNotesRanking';
-import { findTagLookalikes, findTagMergeCandidates } from '../ui/state/tagHygiene';
 import { createQueryContext } from '../domain/query/queryContext';
+import { findTagLookalikes, findTagMergeCandidates } from '../domain/ranking/tagHygiene';
+import { listDailyNotes } from '../domain/notes/periodicNotes';
+import { ParsedFile, WorkspaceIndex } from '../domain/model';
+import { parseRecurrence } from '../domain/markdown/recurrence';
+import { createNextOccurrence } from '../domain/markdown/taskLineEdits';
 
 suite('Sample workspace', () => {
   const extensionUri = vscode.Uri.file(path.resolve(__dirname, '..', '..'));

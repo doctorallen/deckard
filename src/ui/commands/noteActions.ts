@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
 import { isTaskLine } from '../../domain/markdown/taskDraft';
-import { pinKey } from '../../core/storage/preferences';
-import { WorkspaceIndex } from '../../core/types';
-import { createPinForLine } from '../state/pinnedNotes';
+import { createPinForLine } from '../../domain/notes/pins';
+import { WorkspaceIndex } from '../../domain/model';
+import { pinKey } from '../../core/storage/preferencesSchema';
 
 /** Where the cursor is, which decides what a note's actions are. */
 export interface NoteActionState {

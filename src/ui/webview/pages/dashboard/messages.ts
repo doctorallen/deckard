@@ -3,7 +3,6 @@
  * may send must hold. The host still checks each tag, line, and saved search
  * a message names against the index and preferences as they are now.
  */
-import { normalizeDashboardWidgets } from '../../../../core/storage/preferences';
 import type { DashboardMode, DashboardSearchField, TagSortMode } from '../../../../domain/model/preferences';
 import { isObject } from '../../../../shared/guards';
 import type {
@@ -45,6 +44,7 @@ import {
   narrowWith,
   onlyType,
 } from '../../host/narrowing';
+import { normalizeDashboardWidgets } from '../../../../core/storage/preferencesSchema';
 
 /** A quick-add task is one line. */
 const MAX_QUICK_ADD_LENGTH = 1000;

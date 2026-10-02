@@ -1,4 +1,4 @@
-import { ParsedFile, Section, TagReference } from '../../core/types';
+import { ParsedFile, Section, TagReference } from '../../domain/model';
 
 /**
  * The tagged entry a line belongs to: a task on that line with tags of its

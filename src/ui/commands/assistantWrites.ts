@@ -4,19 +4,16 @@ import {
   parseTaskDraft,
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  TaskMetadataFormat,
-} from '../../domain/markdown/taskMetadata';
-import { WorkspaceIndex } from '../../core/types';
 import { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
-import { formatCaptureLine, getCaptureInsertion } from './capture';
 import { ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 import { completeDraft, writeEditedTask } from './taskEditor';
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { formatCaptureLine, getCaptureInsertion } from '../../domain/capture/captureLines';
+import { WorkspaceIndex } from '../../domain/model';
+import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
+import { CompletionWrite } from '../../domain/markdown/taskLineEdits';
 
 /**
  * What an assistant may write, and how.
@@ -34,14 +31,6 @@ import { WorkspaceWriteHistory } from './workspaceWrites';
  * knows there: an assistant working from a stale answer must not rewrite
  * whatever is on that line now.
  */
-
-export {
-  ADD_TASK_TOOL_NAME,
-  CHANGE_TASK_TOOL_NAME,
-  readAddTaskInput,
-  readChangeTaskInput,
-} from '../state/assistantWriteInput';
-export type { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
 
 /** The task line an added task becomes. */
 export function addedTaskLine(text: string): string {
@@ -254,4 +243,3 @@ function shorten(text: string): string {
   return text.length > 60 ? `${text.slice(0, 59)}…` : text;
 }
 
-export { formatIsoDate as formatDayForTask };

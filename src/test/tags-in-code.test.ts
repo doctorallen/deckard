@@ -11,7 +11,7 @@ import { appendTagToLine } from '../ui/commands/bulkEdit';
 import { moveInlineTagsToFrontmatterContent } from '../ui/commands/moveTagsToFrontmatter';
 import { replaceIndexedTag } from '../domain/markdown/tagRename';
 import { getTagCompletionContext } from '../domain/markdown/completionContext';
-import { setTaskNamespaceTags, setTaskStatusTag } from '../ui/state/taskBoardState';
+import { setTaskNamespaceTags, setTaskStatusTag } from '../domain/tasks/boardMoves';
 
 const keys = (text: string): string[] => extractTags(text).map((tag) => tag.key);
 

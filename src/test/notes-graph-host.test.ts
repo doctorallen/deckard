@@ -5,7 +5,6 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
-import type { NotesGraphWireSnapshot, SidebarGraphContext } from '../core/types';
 import { NavigationService } from '../services/navigationService';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import {
@@ -17,6 +16,7 @@ import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { pageExtensionUri } from './pageWebview';
+import type { NotesGraphWireSnapshot, SidebarGraphContext } from '../ui/protocol/notesGraph';
 
 /** A note with an entry, a plain line, a task, and a link; one that only links; one that does neither. */
 const NOTES: Array<[string, string]> = [

@@ -4,13 +4,14 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
-import { SearchPageSize, SearchPageSnapshot } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { SearchPageSnapshot } from '../ui/protocol/searchPage';
+import { SearchPageSize } from '../domain/model';
 
 /**
  * What a search page does, driven as VS Code drives it: the host's state goes

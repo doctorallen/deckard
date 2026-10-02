@@ -4,12 +4,14 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createQueryContext } from '../domain/query/queryContext';
-import { createDashboardSnapshot, createSearchPageSnapshot } from '../ui/state/dashboardState';
-import { deckardThemes, getDeckardTheme } from '../ui/webview/themes';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
+import { getDeckardTheme } from '../ui/webview/themes';
 import { createPreferences } from './preferenceServices';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
+import { deckardThemes } from '../ui/webview/themeNames';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 /** Deckard's own manifest, which the Help page is built from. */
 function extension(): vscode.Extension<unknown> {

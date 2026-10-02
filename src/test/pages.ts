@@ -1,7 +1,6 @@
 import type { CalendarSnapshot } from '../ui/protocol/calendar';
 import type { SidebarNotesPageState } from '../ui/protocol/sidebarNotes';
 import type { DeckardStatsSnapshot } from '../ui/protocol/stats';
-import type { EntryRelatedNotesDiagnostic } from '../ui/webview/sidebarNotes';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml, HelpOptions } from '../ui/webview/helpHtml';
@@ -13,6 +12,7 @@ import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { pageExtensionUri, pageWebview } from './pageWebview';
+import type { EntryRelatedNotesDiagnostic } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 
 /**
  * What a page is rendered with besides the stand-in webview: what Help reads

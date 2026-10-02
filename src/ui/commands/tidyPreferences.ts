@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { StalePreferences } from '../../core/storage/preferences';
 import { pluralize } from '../../shared/text';
-import { WorkspaceIndex } from '../../core/types';
+import { WorkspaceIndex } from '../../domain/model';
+import { StalePreferences } from '../../core/storage/preferencesMaintenance';
 
 /**
  * Removing what points nowhere, on request.

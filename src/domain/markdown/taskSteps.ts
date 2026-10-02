@@ -7,7 +7,7 @@ import {
 } from './listNesting';
 import { isHeadingLine, isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
-import { setTaskLineCompletion } from './taskMetadata';
+import { setTaskLineCompletion } from './taskLineEdits';
 
 /**
  * Steps: checkbox tasks written under a task, and what Deckard says and

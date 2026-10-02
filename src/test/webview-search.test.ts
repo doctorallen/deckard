@@ -4,8 +4,6 @@ import { buildBlockExcerpt } from '../domain/markdown/blockExcerpt';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
-import type { ParsedFile } from '../core/types';
-import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/dashboardState';
 import { normalizeBody } from '../../test/harness/domSnapshot';
 import * as corpus from './indexCorpus';
 import { renderMarkdown } from './legacyMarkdown';
@@ -13,6 +11,8 @@ import { createPreferences, TestPreferences } from './preferenceServices';
 import { bundleShared } from './sharedBundle';
 import { templateRecords } from './templateRecords';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { createSearchPageSnapshot, findSnippetStart } from '../ui/state/searchPageState';
+import type { ParsedFile } from '../domain/model';
 
 /**
  * The search page's shared parts (src/webview/shared: blockExcerpt and

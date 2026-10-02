@@ -1,12 +1,7 @@
 import * as assert from 'assert';
 
-import {
-  addedTaskLine,
-  changeTaskLine,
-  describeChange,
-  readAddTaskInput,
-  readChangeTaskInput,
-} from '../ui/commands/assistantWrites';
+import { addedTaskLine, changeTaskLine, describeChange } from '../ui/commands/assistantWrites';
+import { readAddTaskInput, readChangeTaskInput } from '../ui/state/assistantWriteInput';
 
 suite('Assistant writes', () => {
   const NOW = Date.UTC(2026, 8, 21, 12);

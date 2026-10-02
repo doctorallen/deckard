@@ -18,11 +18,11 @@ import {
 import { measure, measureAsync } from '../../shared/timing';
 import { writeSetting } from './settings';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
-import { WorkspaceIndex } from '../../core/types';
 import { ASSISTANT_TOOLS, ToolRunners } from '../state/assistantTools';
 import { addTask, changeTask } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { WorkspaceIndex } from '../../domain/model';
 
 /** Where the server answers, on 127.0.0.1. */
 export const MCP_PATH = '/mcp';

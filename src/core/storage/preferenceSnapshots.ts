@@ -1,7 +1,7 @@
 import type { Disposable, Event } from '../../ports/events';
 import { FileSystem, FileType } from '../../ports/fileSystem';
 import type { ResourceUri } from '../../ports/uri';
-import { PersistedPreferences } from '../types';
+import { PersistedPreferences } from '../../domain/model';
 
 /** How many copies are kept; the oldest past this many are deleted after each write. */
 export const SNAPSHOTS_KEPT = 20;

@@ -9,12 +9,12 @@ import type { NavigationService } from '../../../../services/navigationService';
 import type { DeckardStatsSnapshot, StatsPageToHost } from '../../../protocol/stats';
 import { createMissingNotes, reportCreatedNotes } from '../../../commands/linkHealth';
 import { resolveSourceUri } from '../../../commands/navigation';
-import { createDeckardStatsSnapshot } from '../../../state/dashboardState';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { openSource, openTag } from '../../host/sharedHandlers';
 import { getStatsHtml } from '../../statsHtml';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowStatsMessage } from './messages';
+import { createDeckardStatsSnapshot } from '../../../state/statsState';
 
 /** What the Stats page reads, and whom it asks to open a tag. */
 export interface StatsControllerOptions {

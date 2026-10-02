@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { reportFailure } from './notify';
 
-import { pinKey } from '../../core/storage/preferences';
-import { PinnedNote, WorkspaceIndex } from '../../core/types';
-import { createPinForLine, resolvePin } from '../state/pinnedNotes';
+import { createPinForLine, resolvePin } from '../../domain/notes/pins';
+import { PinnedNote, WorkspaceIndex } from '../../domain/model';
+import { pinKey } from '../../core/storage/preferencesSchema';
 
 /**
  * Pinning the note you are in, wherever you are in it.

@@ -8,11 +8,6 @@ import {
 } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { pluralize } from '../../shared/text';
-import {
-  TagInfo,
-  TagReference,
-  WorkspaceIndex,
-} from '../../core/types';
 import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import { TagMergeSummary } from '../../domain/index/tagMerge';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
@@ -28,6 +23,7 @@ import {
 import { resolveSourceUri } from './navigation';
 import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
+import { TagInfo, TagReference, WorkspaceIndex } from '../../domain/model';
 
 /**
  * What a rename or merge writes through besides the notes: the history that

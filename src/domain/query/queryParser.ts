@@ -4,10 +4,7 @@ import { normalizeFolder } from './queryValues';
 import {
   ParsedQuery,
   QueryConditionNode,
-  QueryDiagnostic,
-  QueryField,
   QueryNode,
-  QueryOperator,
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
   QUERY_HAS_VALUES,
@@ -18,9 +15,7 @@ import {
   QUERY_OPERATOR_SYMBOLS,
   describeOperator,
 } from './queryTypes';
-
-export { readLinkValue } from './queryLinks';
-export { describeOperator } from './queryTypes';
+import { QueryDiagnostic, QueryField, QueryOperator } from '../model';
 
 /**
  * Parses DQL, the Deckard query language.

@@ -1,19 +1,11 @@
-import {
-  formatIsoDate,
-  startOfDay,
-  TASK_PRIORITY_RANKS,
-  describeDueDate,
-} from '../../domain/markdown/taskMetadata';
 import type { InlineToken } from '../../domain/model/inline';
 import { QueryContext } from '../../domain/query/queryContext';
-import {
-  TableCell,
-  TableSort,
-  TableSortDirection,
-  TaskColumnId,
-  TaskPriority,
-} from '../../core/types';
 import { TASK_COLUMNS, TaskColumn } from '../../domain/tasks/taskColumns';
+import { TableSort, TaskColumnId, TaskPriority } from '../../domain/model';
+import { TableCell } from '../protocol/taskBoard';
+import { describeDueDate } from '../../domain/markdown/dueWording';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
+import { formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * A query's results as rows, with the query's own fields as columns.
@@ -23,10 +15,6 @@ import { TASK_COLUMNS, TaskColumn } from '../../domain/tasks/taskColumns';
  * the same thing, sorts the same way, and is named the same way wherever it
  * is shown. The surfaces differ only in how they draw a cell.
  */
-
-export type { TableCell, TableSort, TableSortDirection, TaskColumnId };
-export { isTaskColumnId, TASK_COLUMNS } from '../../domain/tasks/taskColumns';
-export type { TaskColumn } from '../../domain/tasks/taskColumns';
 
 /** The columns a table shows until asked for others. */
 export const DEFAULT_TASK_COLUMNS: readonly TaskColumnId[] = [

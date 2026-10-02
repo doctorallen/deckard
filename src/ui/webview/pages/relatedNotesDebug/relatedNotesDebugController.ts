@@ -3,9 +3,9 @@ import type * as vscode from 'vscode';
 import type { RelatedNotesDebugPageToHost } from '../../../protocol/relatedNotesDebug';
 import type { MessageHandlers, PageController, PageOptions } from '../../host/pageController';
 import { getRelatedNotesDebugHtml } from '../../relatedNotesDebugHtml';
-import type { EntryRelatedNotesDiagnostic } from '../../sidebarNotes';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowRelatedNotesDebugMessage } from './messages';
+import type { EntryRelatedNotesDiagnostic } from '../sidebarNotes/sidebarNotesController';
 
 /**
  * The Related Notes debug page: the full evidence calculation for one

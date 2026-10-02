@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { ParsedFile } from '../core/types';
 import {
   appendTagToLine,
   applyBulkEdit,
@@ -20,6 +19,7 @@ import {
 } from '../ui/commands/bulkEditPrompts';
 import { DATE_INPUT_ERROR, validateDateInput } from '../ui/commands/datePrompt';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { ParsedFile } from '../domain/model';
 
 const note = [
   '# Atlas #project/atlas',

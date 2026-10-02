@@ -15,13 +15,7 @@ import {
   visitConditions,
 } from '../query/queryFormat';
 import { parseQuery } from '../query/queryParser';
-import { QueryFacet, QueryFacetValue } from '../query/queryTypes';
-import {
-  ParsedFile,
-  Section,
-  Task,
-  WorkspaceIndex,
-} from '../model';
+import { ParsedFile, Section, Task, WorkspaceIndex, QueryFacet, QueryFacetValue } from '../model';
 import { noteTitle } from '../index/backlinks';
 import {
   isParkedFile,

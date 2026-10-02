@@ -9,7 +9,6 @@ import type {
   NotesGraphSetFilterMessage,
   NotesGraphSetScopeMessage,
 } from '../../../protocol/notesGraph';
-import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../../../state/notesGraphState';
 import {
   Narrower,
   NarrowingTable,
@@ -18,6 +17,7 @@ import {
   narrowWith,
   onlyType,
 } from '../../host/narrowing';
+import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../../../../domain/graph/localGraph';
 
 /** A node to select, by any non-empty id; the host finds it in the graph. */
 const narrowSelectNode: Narrower<NotesGraphSelectNodeMessage> = (value) =>

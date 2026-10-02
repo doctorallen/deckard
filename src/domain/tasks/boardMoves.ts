@@ -1,23 +1,13 @@
 import { escapeRegExp } from '../../shared/text';
-import { SHORT_WEEKDAY_NAMES } from '../markdown/calendar';
+import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
 import { findCodeAndLinkRanges, isInRanges } from '../markdown/inlineRanges';
 import { parseMarkdown, readPerson } from '../markdown/parser';
-import {
-  addDays,
-  appendToTaskText,
-  formatIsoDate,
-  parseTaskMetadata,
-  setTaskAssignee,
-  setTaskDate,
-  setTaskLineCompletion,
-  setTaskPriority,
-  startOfDay,
-  TaskMetadataFormat,
-} from '../markdown/taskMetadata';
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
 import { isStatusColumnName } from './taskColumns';
+import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
+import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
 
 /**
  * What dropping a task on a board column means for its line.

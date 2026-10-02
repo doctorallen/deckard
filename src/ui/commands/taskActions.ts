@@ -1,8 +1,6 @@
 import * as vscode from 'vscode';
 
-import { parseTaskMetadata, TaskMetadataFormat } from '../../domain/markdown/taskMetadata';
 import { CompletionFamily, countSteps, quoteTitle, readMetadataFormat } from '../../domain/tasks/taskLines';
-import { Task } from '../../core/types';
 import {
   Completion,
   LineRevert,
@@ -23,9 +21,8 @@ import {
   reportStale,
 } from './notify';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
-
-export type { TaskRankKeeper } from '../../services/taskService';
-export { quoteTitle } from '../../domain/tasks/taskLines';
+import { Task } from '../../domain/model';
+import { parseTaskMetadata, TaskMetadataFormat } from '../../domain/markdown/taskFields';
 
 /**
  * What an edit to a task reaches: the task service, which makes every edit

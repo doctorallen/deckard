@@ -1,10 +1,5 @@
 import { parseMarkdown } from '../domain/markdown/parser';
 import {
-  formatIsoDate,
-  setTaskLineCompletion,
-  writeCompletion,
-} from '../domain/markdown/taskMetadata';
-import {
   findCheckboxColumn,
   findStepFamily,
   formatStepLines,
@@ -27,6 +22,8 @@ import type { Clock } from '../ports/clock';
 import type { Configuration } from '../ports/configuration';
 import type { EditApplier, HistoryWriter, NoteText, TextRange } from '../ports/editApplier';
 import type { ResourceUri } from '../ports/uri';
+import { setTaskLineCompletion, writeCompletion } from '../domain/markdown/taskLineEdits';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 /**
  * Every edit Deckard makes to a task: rewriting its line, from its checkbox

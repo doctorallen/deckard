@@ -2,15 +2,9 @@ import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { resolveColumnCapture } from '../../domain/tasks/boardMoves';
+import { resolveColumnCapture, isValidStatusName } from '../../domain/tasks/boardMoves';
 import { QueryContext } from '../../domain/query/queryContext';
-import { Task } from '../../core/types';
-import {
-  isValidStatusName,
-  resolveTaskMove,
-  TaskBoardOptions,
-  TaskMoveContext,
-} from '../state/taskBoardState';
+import { resolveTaskMove, TaskBoardOptions, TaskMoveContext } from '../state/taskBoardState';
 import {
   readTaskMetadataFormat,
   TaskWrites,
@@ -19,9 +13,11 @@ import {
   updateTaskLine,
 } from './taskActions';
 import { writeSetting } from './settings';
-import { captureToToday, formatCaptureLine } from './capture';
+import { captureToToday } from './capture';
 import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
+import { formatCaptureLine } from '../../domain/capture/captureLines';
+import { Task } from '../../domain/model';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 

@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 
-import { ParsedFile, WorkspaceIndex } from '../../core/types';
 import { noteTitle } from '../../domain/index/backlinks';
 import { LinkService } from '../../services/linkService';
 import { createLinkService, toWorkspaceEdit } from './linkMaintenancePorts';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { ParsedFile, WorkspaceIndex } from '../../domain/model';
 
 /** The command the Link mentions lens runs. */
 export const LINK_MENTIONS_COMMAND = 'deckard.linkMentions';

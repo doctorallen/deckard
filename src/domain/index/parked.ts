@@ -2,8 +2,6 @@ import { QueryNode } from '../query/queryTypes';
 import { ParkedState, ParsedFile, Section, Task, WorkspaceIndex } from '../model';
 import { someHeadingAncestor } from './associationEvidence';
 
-export type { ParkedState };
-
 /**
  * What parks a note, a heading, or a task: `deckard.parked.folders` and
  * `deckard.parked.tags`, read once per change to either setting.

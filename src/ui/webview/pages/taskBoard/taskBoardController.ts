@@ -27,7 +27,7 @@ import {
 } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
-import { mergeOrder, normalizeTagTitleDisplayMode } from '../../../state/dashboardState';
+import { mergeOrder } from '../../../state/dashboardState';
 import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBlockState';
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
@@ -36,6 +36,7 @@ import { chooseTheme, openHelp, openSource, openTag, ready, setZenMode } from '.
 import { getTaskBoardHtml } from '../../taskBoardHtml';
 import type { DeckardTheme } from '../../themeNames';
 import { narrowTaskBoardMessage } from './messages';
+import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** What the Task Board searches for until it is told otherwise. */
 export const DEFAULT_TASK_BOARD_QUERY = 'is:open';

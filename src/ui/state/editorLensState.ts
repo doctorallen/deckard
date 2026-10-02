@@ -1,5 +1,4 @@
 import { findDailyNoteDate } from '../../domain/markdown/parser';
-import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
   parseWikiTarget,
@@ -8,9 +7,7 @@ import {
 import { findAdjacentDailyNote, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { planRollover } from '../../domain/notes/rolloverPlan';
 import { createSourceParser, findEmbedLines, resolveEmbed } from '../../domain/notes/embeds';
-
-export { findUnlinkedMentions } from '../../domain/search/mentions';
-export type { UnlinkedMention } from '../../domain/search/mentions';
+import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
 
 /**
  * What the editor's action lenses decide, apart from VS Code. Each function

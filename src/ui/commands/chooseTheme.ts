@@ -1,12 +1,8 @@
 import * as vscode from 'vscode';
 
-import {
-  deckardThemeNames,
-  deckardThemes,
-  DeckardTheme,
-  getDeckardTheme,
-} from '../webview/themes';
+import { getDeckardTheme } from '../webview/themes';
 import { settingTarget, writeSetting } from './settings';
+import { deckardThemeNames, deckardThemes, DeckardTheme } from '../webview/themeNames';
 
 /**
  * Choose Theme…: a quick pick of Deckard's eight themes that shows each on

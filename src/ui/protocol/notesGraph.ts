@@ -12,16 +12,7 @@ import type {
 } from '../../domain/model/graph';
 import type { MessageOf, StateMessage } from './messaging';
 
-export type {
-  NotesGraphConnection,
-  NotesGraphEdge,
-  NotesGraphEdgeType,
-  NotesGraphFocus,
-  NotesGraphLinkCounts,
-  NotesGraphNode,
-  NotesGraphNodeKind,
-  NotesGraphSnapshot,
-} from '../../domain/model/graph';
+export type { NotesGraphEdgeType, NotesGraphNode } from '../../domain/model/graph';
 
 /**
  * An edge as the page receives it: without its id, which is its two ends and

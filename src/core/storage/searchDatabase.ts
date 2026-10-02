@@ -2,8 +2,8 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync, StatementSync } from 'node:sqlite';
 
-import { ParsedFile, Section } from '../types';
 import { encodeParsedFile } from './parsedFileCodec';
+import { ParsedFile, Section } from '../../domain/model';
 
 /**
  * The full-text cache's database: its layout, and the writes that keep it in

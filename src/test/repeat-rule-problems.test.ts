@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { describeRepeatRuleProblem, findRepeatRuleProblems } from '../domain/markdown/repeatRuleProblems';
-import { parseRecurrence, suggestRecurrence } from '../domain/markdown/taskMetadata';
+import { parseRecurrence, suggestRecurrence } from '../domain/markdown/recurrence';
 
 suite('Repeat rule problems', () => {
   test('suggests the nearest rules Deckard can read', () => {

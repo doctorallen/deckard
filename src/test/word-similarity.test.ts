@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createLexicalModel, createMoreLikeThisModel, getLexicalWeight } from '../ui/state/wordSimilarity';
+import { createLexicalModel, createMoreLikeThisModel, getLexicalWeight } from '../domain/ranking/wordSimilarity';
 
 /** What the wording two entries share counts for, and what it does not. */
 suite('Word similarity', () => {

@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { SearchStore } from '../core/storage/searchStore';
-import { ParsedFile } from '../core/types';
+import { ParsedFile } from '../domain/model';
 
 suite('Local search store', () => {
   test('persists and searches saved Markdown text locally', () => {

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import { measure, measureAsync } from '../../shared/timing';
-import { WorkspaceIndex } from '../../core/types';
 import {
   ASSISTANT_TOOLS,
   AssistantTool,
@@ -10,14 +9,11 @@ import {
   ToolAnswer,
   ToolRunners,
 } from '../state/assistantTools';
-import {
-  ADD_TASK_TOOL_NAME,
-  addTask,
-  CHANGE_TASK_TOOL_NAME,
-  changeTask,
-} from './assistantWrites';
+import { addTask, changeTask } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
+import { ADD_TASK_TOOL_NAME, CHANGE_TASK_TOOL_NAME } from '../state/assistantWriteInput';
+import { WorkspaceIndex } from '../../domain/model';
 
 interface IndexSource {
   readonly ready: Promise<void>;

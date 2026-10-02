@@ -1,11 +1,7 @@
 import * as assert from 'assert';
 
-import {
-  DEFAULT_DASHBOARD_WIDGETS,
-  isDefaultHomeLayout,
-  pinKey,
-} from '../core/storage/preferences';
 import { createPreferences } from './preferenceServices';
+import { DEFAULT_DASHBOARD_WIDGETS, isDefaultHomeLayout, pinKey } from '../core/storage/preferencesSchema';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();

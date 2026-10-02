@@ -5,16 +5,14 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import {
-  createDashboardSnapshot,
-  createSearchPageSnapshot,
-} from '../ui/state/dashboardState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { pageSheets, readSheet } from './sheets';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
 class MemoryMemento implements vscode.Memento {

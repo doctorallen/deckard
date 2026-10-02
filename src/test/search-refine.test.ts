@@ -17,13 +17,10 @@ import { parseQuery } from '../domain/query/queryParser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createPreferences } from './preferenceServices';
 import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
-import {
-  createQuerySuggestions,
-  createSearchPageSnapshot,
-  tagMentionWord,
-} from '../ui/state/dashboardState';
-import { buildSearchFacets } from '../ui/state/searchFacets';
 import { createQueryContext } from '../domain/query/queryContext';
+import { buildSearchFacets } from '../domain/search/facets';
+import { createSearchPageSnapshot, tagMentionWord } from '../ui/state/searchPageState';
+import { createQuerySuggestions } from '../ui/state/querySuggestions';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

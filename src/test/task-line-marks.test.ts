@@ -2,10 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { findTaskMetadataSpans, parseTaskMetadata } from '../domain/markdown/taskMetadata';
 import { TaskLineDecorations } from '../ui/providers/taskLineDecorations';
 import { findTaskLineMarks } from '../ui/state/taskLineMarks';
 import { createQueryContext } from '../domain/query/queryContext';
+import { findTaskMetadataSpans, parseTaskMetadata } from '../domain/markdown/taskFields';
 
 /** Friday 2026-09-25, mid-morning. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();

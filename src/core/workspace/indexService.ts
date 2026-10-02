@@ -9,13 +9,13 @@ import {
   SearchStore,
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../../shared/timing';
-import { ParsedFile, Task, UnreadableNote, WorkspaceIndex } from '../types';
 import type { ChangeTarget, QueuedChange } from './changeWatcher';
 import type { IndexContents, IndexScanStatus, IndexSearch, RefreshOptions } from './indexReader';
 import { IndexState, NoteChange } from '../../domain/index/indexState';
 import { computeParked, NO_PARKED_RULES, ParkedRules } from '../../domain/index/parked';
 import { FileStamp, WorkspaceScanner, describeError } from './scanner';
 import type { ViewPublisher } from './viewPublisher';
+import { ParsedFile, Task, UnreadableNote, WorkspaceIndex } from '../../domain/model';
 
 /** What the index service can be given beyond its scanner, cache, and publisher. */
 export interface IndexServiceOptions {

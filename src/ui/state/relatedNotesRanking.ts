@@ -1,40 +1,28 @@
 /**
  * The Related Notes sidebar's snapshot for one note: the note's tags, the
  * entries the ranking in `src/domain/ranking` relates to it, and, for a note
- * with no tags, the entries worded like it. The ranking engine is
- * re-exported from here, so its importers compile as before.
+ * with no tags, the entries worded like it.
  */
 
-import {
-  ParsedFile,
-  RankedNote,
-  RelatedNotesSortMode,
-  TagTitleDisplayMode,
-  TagReference,
-  SidebarTag,
-  SidebarNotesSnapshot,
-  WorkspaceIndex,
-} from '../../core/types';
 import { getFileName } from '../../shared/paths';
 import { countTagMatches } from '../../domain/query/queryEvaluator';
-import {
-  collectFileTags,
-  rankRelatedNotes as rankRelatedNotesFor,
-  RelatedNotesRankingAt,
-  RelatedNotesRankingOptions,
-} from '../../domain/ranking/relatedNotes';
+import { collectFileTags, rankRelatedNotes as rankRelatedNotesFor } from '../../domain/ranking/relatedNotes';
 import { sortRelatedNotes } from '../../domain/ranking/relatedNotesOrder';
 import {
   findSimilarWording,
   rankSimilarWording as rankSimilarWordingFor,
   SimilarEntry,
 } from '../../domain/ranking/similarWording';
-
-export { collectFileTags } from '../../domain/ranking/relatedNotes';
-export type { RelatedNotesRankingAt, RelatedNotesRankingOptions } from '../../domain/ranking/relatedNotes';
-export { sortRelatedNotes } from '../../domain/ranking/relatedNotesOrder';
-export { suggestTagsFromSimilar } from '../../domain/ranking/similarWording';
-export type { SimilarEntry } from '../../domain/ranking/similarWording';
+import { RelatedNotesRankingAt, RelatedNotesRankingOptions } from '../../domain/ranking/relatedNotesContext';
+import { SidebarTag, SidebarNotesSnapshot } from '../protocol/sidebarNotes';
+import {
+  ParsedFile,
+  RankedNote,
+  RelatedNotesSortMode,
+  TagTitleDisplayMode,
+  TagReference,
+  WorkspaceIndex,
+} from '../../domain/model';
 
 /** How Related Notes is drawn for one note, beyond the note itself. */
 export interface SidebarSnapshotOptions {

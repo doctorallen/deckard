@@ -4,13 +4,14 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
-import { DashboardSnapshot, PersistedPreferences } from '../core/types';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
+import { PersistedPreferences } from '../domain/model';
+import { DashboardSnapshot } from '../ui/protocol/dashboard';
 
 /**
  * What the Dashboard does with the workspace it is given, driven as VS Code

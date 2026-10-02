@@ -10,7 +10,7 @@ const { SidebarNotesView } = modules.sidebarNotes;
 const { ActiveSearch } = modules.activeSearch;
 const { createPreferences } = modules.preferenceServices;
 const { parseMarkdown } = modules.parser;
-const { buildWorkspaceIndex } = modules.indexer;
+const { buildWorkspaceIndex } = modules.indexState;
 const { WorkspaceWriteHistory } = modules.workspaceWrites;
 const { ThemePreview } = modules.themePreview;
 

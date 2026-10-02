@@ -8,7 +8,6 @@ import type {
   IndexSearch,
   IndexUpdates,
 } from '../../core/workspace/indexReader';
-import { createQuerySuggestions } from '../state/dashboardState';
 import {
   buildQuickFindResults,
   findChoiceKey,
@@ -16,7 +15,6 @@ import {
   QuickFindResults,
 } from '../state/quickFindState';
 import { describeDistance, formatShortDay, parseDatePhrase } from '../../domain/markdown/dates';
-import { parseIsoDate } from '../../domain/markdown/taskMetadata';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
 import { captureToToday, formatCapture } from './capture';
@@ -24,15 +22,18 @@ import { readQueryContext } from './queryContext';
 import { createWikiLink } from './insertLink';
 import { createLinkedNote } from './linkHealth';
 import { openSourceAt } from './navigation';
-import { Task } from '../../core/types';
 import { LinkNoteService } from '../../services/linkService';
 import { PinService } from '../../services/pinService';
-import { askForDueDate, dueDateFor, pickReschedule, setTasksDue } from './agendaActions';
+import { askForDueDate, pickReschedule, setTasksDue } from './agendaActions';
 import { buildRowActions, ROW_ACTIONS, RowActionHost, RowActionId, rowKey } from './quickFindActions';
 import { quoteTaskTitle, TaskWrites, toggleTask } from './taskActions';
 import { keyLabel } from './quickFindKeys';
 import { shortSelection } from './selectionSeed';
 import { whenPublished } from '../../core/workspace/publishing';
+import { dueDateFor } from '../../domain/tasks/reschedule';
+import { Task } from '../../domain/model';
+import { parseIsoDate } from '../../domain/markdown/calendar';
+import { createQuerySuggestions } from '../state/querySuggestions';
 
 /** Set while Quick Find is open, so Tab completes in it and nowhere else. */
 export const QUICK_FIND_CONTEXT = 'deckard.quickFindOpen';
@@ -100,8 +101,6 @@ export function findDailyNoteRow(
     description: distance ? `${date} · ${distance}` : date,
   };
 }
-
-export { keyLabel, rowKey };
 
 /** The preference services Find reads and writes through. */
 export type QuickFindPreferences = Pick<

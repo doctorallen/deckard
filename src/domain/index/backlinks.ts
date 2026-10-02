@@ -1,5 +1,6 @@
-import { findFencedLines, stripTags } from '../markdown/parser';
+import { stripTags } from '../markdown/parser';
 import { ParsedFile, Section, WorkspaceIndex } from '../model';
+import { findFencedLines } from '../markdown/lineShapes';
 
 /**
  * Wiki links between notes, found once per index so the editor can count and

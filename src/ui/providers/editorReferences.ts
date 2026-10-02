@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 
-import { extractTagSpans, findFencedLines } from '../../domain/markdown/parser';
+import { extractTagSpans } from '../../domain/markdown/parser';
 import { escapeMarkdown, pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
-import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 import {
   BacklinkIndex,
   buildBacklinkIndex,
@@ -24,6 +23,8 @@ import { createEntryScope } from '../state/entryScope';
 import { resolveSourceUri } from '../commands/navigation';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { readParseOptions } from '../commands/parseSettings';
+import { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
+import { findFencedLines } from '../../domain/markdown/lineShapes';
 
 /** The `[[link]]` found under the cursor, and the columns it spans. */
 type WikiLinkAt = NonNullable<ReturnType<typeof findWikiLinkAt>>;

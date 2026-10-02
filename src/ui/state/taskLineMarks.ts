@@ -1,11 +1,8 @@
-import { matchTaskLine, TaskLineShape } from '../../domain/markdown/lineShapes';
-import { findFencedLines } from '../../domain/markdown/parser';
-import {
-  describeDueDate,
-  findTaskMetadataSpans,
-  parseIsoDate,
-} from '../../domain/markdown/taskMetadata';
+import { matchTaskLine, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
 import { QueryContext } from '../../domain/query/queryContext';
+import { parseIsoDate } from '../../domain/markdown/calendar';
+import { findTaskMetadataSpans } from '../../domain/markdown/taskFields';
+import { describeDueDate } from '../../domain/markdown/dueWording';
 
 /** A stretch of one line, zero-based. */
 export interface LineSpan {

@@ -1,19 +1,17 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
+import { parseTaskMetadata } from '../domain/markdown/taskFields';
+import { parseRecurrence, PROJECTED_REPEATS, projectRepeats } from '../domain/markdown/recurrence';
+import { formatIsoDate } from '../domain/markdown/calendar';
 import {
   createNextOccurrence,
-  formatIsoDate,
-  parseRecurrence,
-  parseTaskMetadata,
-  PROJECTED_REPEATS,
-  projectRepeats,
   setTaskAssignee,
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
   writeCompletion,
-} from '../domain/markdown/taskMetadata';
+} from '../domain/markdown/taskLineEdits';
 
 const at = (year: number, month: number, day: number): number =>
   new Date(year, month - 1, day).getTime();

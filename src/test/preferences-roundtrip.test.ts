@@ -1,9 +1,9 @@
 import * as assert from 'assert';
 import { createHash } from 'node:crypto';
 
-import { pinKey } from '../core/storage/preferences';
-import type { PersistedPreferences, TaskColumnId } from '../core/types';
 import { createPreferences, TestPreferences } from './preferenceServices';
+import type { PersistedPreferences, TaskColumnId } from '../domain/model';
+import { pinKey } from '../core/storage/preferencesSchema';
 
 /**
  * The persisted preferences format, pinned byte for byte.

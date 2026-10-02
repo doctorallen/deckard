@@ -1,8 +1,8 @@
 import { readCaptureText } from '../markdown/captureWords';
 import { DatePhraseOptions } from '../markdown/dates';
 import { isTaskLineOf, TaskLineShape } from '../markdown/lineShapes';
-import { TaskMetadataFormat } from '../markdown/taskMetadata';
 import { Section } from '../model';
+import { TaskMetadataFormat } from '../markdown/taskFields';
 
 /**
  * How Capture writes what was typed, and where in a note it goes. Pure, so

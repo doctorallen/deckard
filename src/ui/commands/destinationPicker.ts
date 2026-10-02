@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 
 import { stripTags } from '../../domain/markdown/parser';
-import { PreferencesReader } from '../../core/storage/preferences';
-import { PersistedPreferences, Section, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from '../state/dashboardState';
-import { frecencyScore } from '../state/frecency';
-import { findPinnedSection } from '../state/pinnedNotes';
 import { showQuickPickUntilHidden } from './prompts';
+import { findPinnedSection } from '../../domain/notes/pins';
+import { frecencyScore } from '../../domain/ranking/frecency';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { PersistedPreferences, Section, WorkspaceIndex } from '../../domain/model';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
  * Where Capture Under a Heading and Move to… put something: a heading, and

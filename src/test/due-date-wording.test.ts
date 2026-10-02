@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { describeDueDate } from '../domain/markdown/taskMetadata';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
+import { describeDueDate } from '../domain/markdown/dueWording';
 
 /**
  * A due date is read for its distance from today, and cited by its date, so

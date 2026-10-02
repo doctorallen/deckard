@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-import type { SidebarGraphContext } from '../../core/types';
 import { NavigationService } from '../../services/navigationService';
 import type { SidebarNotesPageState, SidebarNotesPageToHost } from '../protocol/sidebarNotes';
 import { pageResourceRoots } from './host/pageShell';
@@ -12,11 +11,7 @@ import {
   SidebarNotesController,
   SidebarNotesControllerOptions,
 } from './pages/sidebarNotes/sidebarNotesController';
-
-export { createEntryScope, findTaggedEntry } from '../state/entryScope';
-export type { EntryScope, EntryTagContext, EntryTagSource } from '../state/entryScope';
-export { findMatchingEntryLine } from './pages/sidebarNotes/sidebarNotesController';
-export type { EntryRelatedNotesDiagnostic, SidebarNotesPreferences } from './pages/sidebarNotes/sidebarNotesController';
+import type { SidebarGraphContext } from '../protocol/notesGraph';
 
 /** What Related Notes is built from. */
 export type SidebarNotesViewOptions = Omit<SidebarNotesControllerOptions, 'navigation'>;

@@ -1,7 +1,7 @@
-import { markMigrated } from '../markdown/taskMetadata';
 import { findLastDescendantLine } from '../markdown/taskSteps';
 import type { Task } from '../model';
 import type { RolloverMode } from './rolloverPlan';
+import { markMigrated } from '../markdown/taskLineEdits';
 
 /**
  * What carrying a rollover plan's tasks into today's note does to the text:
