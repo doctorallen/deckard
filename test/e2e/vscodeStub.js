@@ -54,6 +54,16 @@ class Selection {
   }
 }
 
+/** An edit to make across notes: each replace, in order, and nothing of its API besides. */
+class WorkspaceEdit {
+  constructor() {
+    this.replaces = [];
+  }
+  replace(uri, range, newText) {
+    this.replaces.push({ uri, range, newText });
+  }
+}
+
 /** A link a document link provider returns: a range and where it goes. */
 class DocumentLink {
   constructor(range, target) {
@@ -299,6 +309,7 @@ module.exports = {
   Range,
   Position,
   Selection,
+  WorkspaceEdit,
   DocumentLink,
   MarkdownString,
   ThemeColor,

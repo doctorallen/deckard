@@ -15,6 +15,7 @@ import { formatCaptureLine, getCaptureInsertion } from '../../domain/capture/cap
 import { WorkspaceIndex } from '../../domain/model';
 import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
 import { CompletionWrite } from '../../domain/markdown/taskLineEdits';
+import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 
 /**
  * What an assistant may write, and how.
@@ -49,6 +50,8 @@ export interface ChangeTaskLineOptions {
   eol?: string;
   /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. On by default. */
   addDoneDate?: boolean;
+  /** The steps a repeating task's next occurrence takes, unchecked; none by default. */
+  steps?: readonly string[];
 }
 
 /**
@@ -64,6 +67,7 @@ export function changeTaskLine({
   fallbackFormat = 'emoji',
   eol = '\n',
   addDoneDate = true,
+  steps = [],
 }: ChangeTaskLineOptions): CompletionWrite {
   const before: TaskDraft = parseTaskDraft(line, fallbackFormat);
   let draft = before;
@@ -82,7 +86,7 @@ export function changeTaskLine({
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
     draft = completeDraft(draft, now, addDoneDate);
   }
-  return writeEditedTask({ before, edited: draft, now, eol });
+  return writeEditedTask({ before, edited: draft, now, eol, steps });
 }
 
 /** One line saying what changed, for the preview's label and the answer. */
@@ -227,6 +231,8 @@ export async function changeTask(
     fallbackFormat: readTaskMetadataFormat(configuration),
     eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
     addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
+    // A next occurrence takes the task's steps back unchecked, as a checkbox's does.
+    steps: readStepsForNextOccurrence(document.getText().split(/\r?\n/), task.lineNumber - 1),
   });
   const replacement = completion.text;
   if (replacement === current.text) {
