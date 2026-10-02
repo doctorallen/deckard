@@ -5,6 +5,7 @@ import { isTaskLine } from '../../domain/markdown/taskDraft';
 import { createPinForLine } from '../../domain/notes/pins';
 import { WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
+import { readIndexAsEdited } from './pinNote';
 
 /** Where the cursor is, which decides what a note's actions are. */
 export interface NoteActionState {
@@ -82,7 +83,8 @@ export function readNoteActionState(
 ): NoteActionState {
   const line = editor.selection.active.line;
   const filePath = deps.index.getFilePath(editor.document.uri);
-  const index = deps.index.getSnapshot();
+  // The cursor's line is the editor's, so an unsaved note is read as shown.
+  const index = readIndexAsEdited(deps.index.getSnapshot(), filePath, editor.document);
   const file = index.files.get(filePath);
   const oneBased = line + 1;
   const containing = (file?.sections ?? []).filter(
