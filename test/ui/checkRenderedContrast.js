@@ -55,6 +55,12 @@ const ICON_CONTROLS = ['.week-label', '.board-move', '.insert-link', '.zoom-cont
  */
 const HOVERED_TEXT = ['.day'];
 
+/**
+ * Text a page holds hidden and shows only for a moment, by selector, which
+ * is shown to be measured: the Notes Graph's note that it is simulating.
+ */
+const REVEALED = ['#sim-note'];
+
 /** What the page measures about its own colors, written for the dump. */
 const PROBE = `
 (function () {
@@ -117,7 +123,8 @@ const PROBE = `
   const failures = [];
   const seen = new Set();
   // The colors of an element's own words against what is behind them, in a
-  // state: 'rest', or 'hovered' with the pointer over the element.
+  // state: 'rest', 'hovered' with the pointer over the element, or 'shown'
+  // for text a page holds hidden until it has something to say.
   function checkText(el, state) {
     if (el.closest('[aria-hidden="true"], #layout-probe, script, style, svg, [hidden]')) return;
     // A control that cannot be used is exempt, as WCAG has it.
@@ -205,6 +212,14 @@ const PROBE = `
     if (el.matches(icons)) checkIcon(el, 'hovered');
     else [el, ...el.querySelectorAll('*')].forEach(function (node) { checkText(node, 'hovered'); });
     path.forEach(function (node) { node.classList.remove(hoverClass); });
+  }
+  // Shown: what a page draws only for a moment is put in view, measured,
+  // and hidden again.
+  for (const el of document.querySelectorAll(${JSON.stringify(REVEALED.join(', '))})) {
+    if (!el.hidden) continue;
+    el.hidden = false;
+    [el, ...el.querySelectorAll('*')].forEach(function (node) { checkText(node, 'shown'); });
+    el.hidden = true;
   }
   const pre = document.createElement('pre');
   pre.id = 'layout-probe';
