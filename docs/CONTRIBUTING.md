@@ -71,17 +71,36 @@ review asks it of every block and comment the change adds.
 
 ## Webview components
 
-Shared styling and page-script helpers live in `src/ui/webview/components.ts`,
-documented in [components.md](components.md). Reuse a component rather than
-restyling one locally, and add a new one there once a second page needs it.
-Run `npm run test:ui` after changing it: the webviews are built from template
-literals, so the compiler cannot see a broken style sheet or inline script.
-Run `npm run test:layout` too when the change touches layout — a scroll
-container, a column, a hover — since only that suite lays the pages out, and
-`npm run test:visual` when it touches how anything looks, since only that one
-sees a backdrop, a glow, or a control that moved. When the change in looks is
-meant, record it with `npm run test:visual -- --update` and commit the
-baselines it rewrites.
+Each page is a bundle built from `src/webview/<page>/`: `main.tsx` and the
+page's own components and modules, and `page.css` for its rules. What two or
+more pages draw lives in `src/webview/shared/`, Preact components beside the
+sheets they are drawn with, documented in [components.md](components.md).
+The host only writes the page's shell (`src/ui/webview/<page>Html.ts`,
+through `buildPageShell`) and sends its snapshot; what the page and its host
+say to each other is typed once, in `src/ui/protocol/<page>.ts`.
+
+To change a page:
+
+- **Change what it draws** in its view, and what it does in its
+  `listenForActions` table or its listeners. A page draws from one store:
+  change the state with `store.update`, and never edit the DOM a draw made
+  unless you put it back before the next draw.
+- **Reuse a component** from `shared/` rather than drawing a look of your
+  own, and move one there once a second page needs it. A component in
+  `shared/` changes every page that draws it.
+- **Keep the markup.** `npm run test:dom` compares every surface's DOM with
+  its golden, and a change in what a reader sees is named in its commit and
+  re-recorded there with `npm run test:dom -- --update`.
+
+`npm run check-types` checks the page code against the DOM, and
+`npm run lint` keeps a page from importing host code, another page, or any
+package but Preact. Neither can see a sheet, so run `npm run test:ui` after
+changing one, `npm run test:layout` when the change touches layout — a
+scroll container, a column, a hover — since only that suite lays the pages
+out, and `npm run test:visual` when it touches how anything looks, since only
+that one sees a backdrop, a glow, or a control that moved. When the change in
+looks is meant, record it with `npm run test:visual -- --update` and commit
+the baselines it rewrites.
 
 ## Running the development host
 

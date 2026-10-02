@@ -31,8 +31,8 @@ src/
       pages/<page>/ Host controller and snapshot builder for each page.
     protocol/      Message and snapshot types shared by host and page.
   webview/         Browser code, bundled by esbuild.
-    shared/        components, query editor, calendar day, html escaping, CSS.
-    <page>/        main.ts and page.css
+    shared/        The Preact core, the parts pages share, the calendars', and the sheets.
+    <page>/        main.tsx, the page's own components, and page.css
   composition/     createServices, the features list, and runFeatures: the
                    composition root's other half.
   extension.ts     Composition root only.
@@ -47,6 +47,20 @@ src/
 | `ui` | Adapters: command handlers, providers, tree views, webview hosts, and the protocol | `services`, `domain`, and `vscode`. `ui/protocol` may import only `domain/model` |
 | `webview` | Page code that runs in the sandbox | Its own folder, `webview/shared`, `ui/protocol`, the domain modules D1 names, and Preact |
 | `extension.ts`, `composition` | The composition root: `createServices` builds the ports and services, each feature registers against them, and `startServices` starts the index | Every layer. `extension.ts` and `composition/services.ts` are the only modules that may import `platform` |
+
+### D1: the domain modules a page may import
+
+A page computes some things for itself, from rules the host also applies or that only the page needs at the speed of a keystroke. Those rules stay in `domain`, and a page imports them by name: decision D1 of [the webviews plan](../implementation/20-webviews.md). The list is `PAGE_DOMAIN_MODULES` in [`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs), which `pages-import-protocol-and-shared` reads, and the same five files are in `src/webview/tsconfig.json`, so each is type-checked against the browser's types before a page imports it. As Phase 6 left it:
+
+| Module | What a page computes with it | Imported by |
+| --- | --- | --- |
+| `domain/graph/communities.ts` | The graph's groups and the links it draws: `buildCommunities`, `choosePrimaryTags`, and `selectSalientEdges` | The Notes Graph (`view.ts`, `model.ts`) |
+| `domain/markdown/calendar.ts` | The date steps both calendars take: `stepDate`, `sameDayIn`, `isWeekend`, `chooseFocusDay`, and `stepCalendar` | The calendars' shared parts (`shared/calendar/`) and the calendar page |
+| `domain/markdown/tagKeys.ts` | A tag key's namespace and its words, read as the parser reads them: `readTagNamespace` and `formatKeyWords` | The Dashboard's Tags tab |
+| `domain/tasks/taskColumns.ts` | Whether a status column or a board namespace the reader typed can be taken: `checkNewStatusColumn` and `checkStatusNamespace` | The Task Board's settings |
+| `domain/dashboard/widgetCatalog.ts` | Which Home widgets there are, and what each can do: `WIDGET_KINDS` and `isWidgetKind` | The Dashboard |
+
+Each imports nothing but types from `domain/model`, and `domain-is-pure` keeps it free of `vscode` and I/O, so what a page bundles from it is the rule and nothing more. A module joins the list in the change whose page first needs it, in both places.
 
 `ui/commands/<feature>` exists now. Eleven feature modules, from `setup` to `search`, each export `register(context, services)`, which registers its commands through `registerCommand` and takes what they use from the `Services` object `createServices` builds; [services.md](services.md#composition) lists them. A feature imports the `Services` type from `composition/services.ts`, type-only, and reaches the page hosts through it, since a command may not import a page host's module. The commands whose handlers were not already in `ui/commands` moved into their feature's module.
 
@@ -104,7 +118,7 @@ Some examples from the audit:
 | `platform-implements-ports` | `platform` importing what uses it |
 | `only-the-composition-root-imports-platform` | Any module but `extension.ts` and `composition/services.ts` importing `platform` |
 | `protocol-is-shared-types` | `ui/protocol` importing anything but `domain/model` |
-| `pages-import-protocol-and-shared`, `pages-not-to-other-pages` | Page code importing host code, or another page's folder. Besides its own folder, `webview/shared`, and `ui/protocol`, a page may import the pure domain modules named for it (decision D1 of [20-webviews.md](../implementation/20-webviews.md)): `domain/graph/communities`, `domain/markdown/calendar`, `domain/tasks/taskColumns`, the Home widget catalog, `domain/dashboard/widgetCatalog`, and the tag-key reader, `domain/markdown/tagKeys`, which the parser and the Dashboard's Tags tab both read a key with. `domain-is-pure` keeps them free of `vscode` and I/O. |
+| `pages-import-protocol-and-shared`, `pages-not-to-other-pages` | Page code importing host code, or another page's folder. Besides its own folder, `webview/shared`, and `ui/protocol`, a page may import the five pure domain modules D1 names ([above](#d1-the-domain-modules-a-page-may-import)). |
 | `pages-ship-only-preact` | Page code importing any package but Preact, since whatever a page imports is bundled into it and ships |
 | `host-not-to-page-code` | Host code importing page code, which it reaches only by URI |
 | `search-worker-never-reaches-vscode` | The worker's closure reaching `vscode`, which fails only at runtime |
