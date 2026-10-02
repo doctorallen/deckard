@@ -127,6 +127,19 @@ suite('What Move to… moves', () => {
     assert.strictEqual(suggestNoteName('- [ ] Plan [draft] for Q3'), 'Plan draft for Q3');
   });
 
+  test('suggests a name without the dot a sentence ends in, which no file name can end in', () => {
+    for (const line of ['- [ ] Fix the roof.', 'Call the bank...', '- Ask Dana. ?']) {
+      const name = suggestNoteName(line);
+      assert.strictEqual(validateExtractedNoteName(name), undefined, `${line} → ${name}`);
+    }
+    assert.strictEqual(suggestNoteName('- [ ] Fix the roof.'), 'Fix the roof');
+    assert.strictEqual(suggestNoteName('Version 2.1 notes'), 'Version 2.1 notes', 'a dot inside the name stays');
+  });
+
+  test('says a name may not end in a dot, when the box refuses one', () => {
+    assert.match(validateExtractedNoteName('Fix the roof.') ?? '', /not ending in a dot/);
+  });
+
   test('links to the heading chosen even after the index has read its note again', () => {
     const before = parseMarkdown('plan.md', '# Plan\n\n## Calls\n- [ ] Ren\n');
     const chosen = before.sections.find((section) => section.heading === 'Calls');

@@ -56,7 +56,7 @@ export async function extractHeadingCommand(
 export function validateExtractedNoteName(name: string): string | undefined {
   return getLinkableNoteFileName(name)
     ? undefined
-    : 'Use a name a link can open, without / \\ : * ? " < > | # ^ [ or ].';
+    : 'Use a name a link can open, without / \\ : * ? " < > | # ^ [ or ], and not ending in a dot.';
 }
 
 /** The heading to extract, where it is, and the note it becomes. */

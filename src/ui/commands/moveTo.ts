@@ -298,7 +298,8 @@ export function readSectionTarget(
 
 /**
  * The first eight words of a line, without its marker, tags, or metadata,
- * nor any character a file name or the link left behind cannot hold.
+ * nor any character a file name or the link left behind cannot hold, nor
+ * the dots a sentence ends in, since a file name cannot end in one.
  */
 export function suggestNoteName(line: string): string {
   const draft = parseTaskDraft(line.replace(/^\s*(?:[-*+]|\d+[.)])\s+(?!\[)/, ''));
@@ -308,7 +309,7 @@ export function suggestNoteName(line: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 8);
-  return words.join(' ');
+  return words.join(' ').replace(/[. ]+$/, '');
 }
 
 /**
