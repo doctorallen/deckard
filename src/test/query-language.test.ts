@@ -623,6 +623,25 @@ suite('Deckard search page state', () => {
     assert.deepStrictEqual(parseQuery('due = 2026-12-31').diagnostics, []);
   });
 
+  test('refuses a window or a day written with a minus sign, rather than reading it as a day ahead', () => {
+    for (const value of ['-7d', '"-3-days"', '-friday']) {
+      assert.strictEqual(
+        parseQuery(`due = ${value}`).diagnostics[0]?.message,
+        parseQuery('due = soon').diagnostics[0]?.message,
+        value,
+      );
+      assert.strictEqual(
+        parseQuery(`updated > ${value}`).diagnostics[0]?.message,
+        parseQuery('updated > soon').diagnostics[0]?.message,
+        value,
+      );
+    }
+    // A plus sign says ahead, as it does in a date box, and dashes still stand for spaces.
+    for (const value of ['+2w', '3-days-ago', 'next-friday']) {
+      assert.deepStrictEqual(parseQuery(`due = ${value}`).diagnostics, [], value);
+    }
+  });
+
   test('takes "feb 29" as a date, since some years have it, and refuses a day no year has', () => {
     for (const text of ['due <= "feb 29"', 'due = "29 february"', 'created >= "feb 29"', 'done = "feb 29"']) {
       assert.deepStrictEqual(parseQuery(text).diagnostics, [], text);

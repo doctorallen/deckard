@@ -128,9 +128,14 @@ function readPeriod(normalized: string, { now, weekStart }: RangeContext): Range
 /**
  * Any other day in plain words, with `-` for a space: `friday`,
  * `end-of-month`, `"oct 3"`. A bare weekday points back for the dates a
- * note or task already has, and ahead for the ones a task is due.
+ * note or task already has, and ahead for the ones a task is due. A value
+ * that starts with `-` is not one: read as a space, `-7d` would be seven
+ * days ahead, the opposite of what the minus sign says.
  */
 function readPhraseDay(normalized: string, { now, direction, weekStart }: RangeContext): RangeReading {
+  if (normalized.startsWith('-')) {
+    return undefined;
+  }
   const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
     direction,
     weekStart,
