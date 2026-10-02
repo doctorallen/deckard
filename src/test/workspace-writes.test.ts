@@ -318,6 +318,8 @@ suite('An Undo offered on a message', () => {
   onDisk();
 
   const WRITTEN_SINCE = 'Deckard has changed your notes again since, so use Deckard: Undo Last Change.';
+  const WRITTEN_WHILE_ASKED =
+    'Deckard changed your notes again while you were deciding, so nothing was undone. Run Deckard: Undo Last Change again to see the newer change.';
 
   /** A write to one note, as the history keeps it; nothing on disk. */
   function writeOf(label: string): WorkspaceWrite {
@@ -369,6 +371,31 @@ suite('An Undo offered on a message', () => {
       });
       assert.deepStrictEqual(messages.said, [WRITTEN_SINCE]);
       assert.strictEqual(history.lastWrite?.label, 'the rename of #a', 'the later write is still there to take back');
+      assert.strictEqual(refreshed, 0);
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test('Undo Last Change takes nothing back when Deckard writes while its question is open', async () => {
+    const history = new WorkspaceWriteHistory();
+    history.remember(writeOf('the rename of #a'));
+    let refreshed = 0;
+    const messages = listen((text) => {
+      if (text.startsWith('Undo ')) {
+        // Another command's write lands while the reader decides.
+        history.remember(writeOf('carrying 2 tasks forward'));
+        return 'Undo';
+      }
+      return undefined;
+    });
+    try {
+      const result = await history.undoLast(async () => {
+        refreshed += 1;
+      });
+      assert.strictEqual(result, undefined);
+      assert.deepStrictEqual(messages.said, ['Undo the rename of #a?', WRITTEN_WHILE_ASKED]);
+      assert.strictEqual(history.lastWrite?.label, 'carrying 2 tasks forward', 'the write the reader never saw is kept');
       assert.strictEqual(refreshed, 0);
     } finally {
       messages.restore();
