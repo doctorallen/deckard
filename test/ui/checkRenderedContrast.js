@@ -13,14 +13,15 @@
 // 3:1 between what marks its edge and what is around it (1.4.11).
 //
 //   npm run test:layout
-//   CONTRAST_ONLY=fellowship:taskBoard   one surface, a theme, or a page
+//   CONTRAST_ONLY=fellowship:taskBoardByTag   one surface, a theme, or a page
 const path = require('node:path');
 const os = require('node:os');
 const { mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 
 const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
-const { chrome, createSurfaces, buildPage, isPicked, measure, passes } = require('./checkLayout.js');
+const { chrome, createSurfaces, buildPage, measure, passes } = require('./checkLayout.js');
+const { pickSurfaces } = require('../harness/surfacePicks.js');
 
 if (!chrome) {
   console.log('rendered contrast check skipped: no Chrome found (set CHROME_PATH)');
@@ -180,16 +181,17 @@ function checkSurfaces(dir) {
   for (const [theme, zen] of passes()) {
     const label = zen ? `${theme}+zen` : theme;
     const rendered = new Map(renderPagesForTheme(theme, { zen }));
-    for (const surface of createSurfaces().filter((entry) => isPicked(process.env.CONTRAST_ONLY, label, entry.page))) {
-      const file = path.join(dir, `${label}-${surface.page}.html`);
+    // Named by surface, not page: the Task Board's two surfaces share a page.
+    for (const { surface, name } of pickSurfaces(createSurfaces(), process.env.CONTRAST_ONLY, label)) {
+      const file = path.join(dir, `${label}-${name}.html`);
       writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE));
       const failures = surfaceFailures(file, surface, theme);
       if (failures.length === 0) {
-        console.log(`  ok   ${label.padEnd(16)} ${surface.page}`);
+        console.log(`  ok   ${label.padEnd(16)} ${name}`);
         continue;
       }
       failed += 1;
-      console.log(`  FAIL ${label.padEnd(16)} ${surface.page}`);
+      console.log(`  FAIL ${label.padEnd(16)} ${name}`);
       for (const failure of failures) {
         console.log(describeFailure(failure));
       }

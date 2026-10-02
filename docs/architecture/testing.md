@@ -36,6 +36,7 @@ The Node harnesses share three modules in `test/harness/`, so a page or a file c
 | `loadPage.js` | Makes a page self-contained: each `<script src>` and stylesheet `<link>` that names a file of the extension is inlined with the page's nonce and marked `data-inlined-from`. A sheet's `url()`s are resolved against the sheet, and the nonce is added to `style-src` for a sheet the policy admits by its origin, so Chrome admits the inline copy exactly when VS Code would admit the link. jsdom runs only inline scripts, Chrome opens a page as an iframe's `srcdoc`, and the text checks read one string, so every harness passes its page through here |
 | `modules.js` | Names each compiled module the harnesses load once, as a lazy getter, so a file move is one edit |
 | `importGraph.js` | Reads the import graph with the project's own dependency-cruiser configuration |
+| `surfacePicks.js` | Picks the surfaces a check draws from its `*_ONLY` variable, and names each by its surface name, since the Task Board's two surfaces share a page. The rendered contrast check uses it |
 
 Tests that assert on CSS text read the sheets as written under `src/webview`, through `src/test/sheets.ts`: `readSheet` and `themeSheet` read one file, `expandSheet` puts each `@import` in place as esbuild does, `linkedSheets` lists the sheets a page's shell links in cascade order, and `pageSheets` and `withSheets` give every rule a page draws with, the latter after its HTML. `verifyWebviews.js` holds the zen sheet, as written, to be the last layer of every loaded page.
 
