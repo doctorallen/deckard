@@ -7,11 +7,11 @@
 // phase of the refactor that removes a known violation regenerates the file
 // with `npm run lint:deps:baseline`, so the list only shrinks.
 //
-// The rules come in two sets. The first holds the folders that exist today to
-// the directions docs/implementation/19-refactor.md §1.2 calls wrong. The
-// second describes the target layers of §2.1, which are empty until the phases
-// that create them, so nothing is known against them: a file placed there must
-// follow them from its first commit.
+// The rules come in two sets. The first holds the folders that existed when
+// the rules arrived to the directions docs/implementation/19-refactor.md §1.2
+// calls wrong. The second describes the layers of §2.1, which the refactor
+// created, so nothing is known against them: a file placed there follows them
+// from its first commit.
 
 /** The extension host's API, which exists only inside VS Code. */
 const VSCODE = '^vscode$';

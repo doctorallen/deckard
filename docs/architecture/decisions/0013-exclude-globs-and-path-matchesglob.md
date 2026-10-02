@@ -4,7 +4,7 @@
 
 ## Context
 
-The index leaves out what `files.exclude`, `search.exclude`, and `deckard.exclude` name. [`createExcludeMatcher`](../../../src/core/workspace/scanner.ts) reads those settings the way VS Code reads `files.exclude`: it hands the patterns to `picomatch` with `{ dot: true }`, since VS Code's `*` matches names that start with a dot, and tries every prefix of a path, so a pattern that names a folder also leaves out what is inside it. `parking.ts` uses the same matcher.
+The index leaves out what `files.exclude`, `search.exclude`, and `deckard.exclude` name. [`createExcludeMatcher`](../../../src/core/workspace/scanner.ts) reads those settings the way VS Code reads `files.exclude`: it hands the patterns to `picomatch` with `{ dot: true }`, since VS Code's `*` matches names that start with a dot, and tries every prefix of a path, so a pattern that names a folder also leaves out what is inside it. `ParkingService` ([`src/services/parkingService.ts`](../../../src/services/parkingService.ts)) uses the same matcher.
 
 `picomatch` is one package, inlined into `dist/extension.js`. The plan's goal is a host bundle with no third-party code (§2.7), and Node has shipped `path.matchesGlob` since 22.5. It takes no options, so the plan made the swap depend on a check: the swap happens only if `path.matchesGlob` on the extension host's Node agrees with `picomatch` on every exclude pattern the tests hold.
 

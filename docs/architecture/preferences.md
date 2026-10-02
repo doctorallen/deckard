@@ -1,6 +1,6 @@
 # Preferences
 
-**Status: current and target.** The first part of this page describes preferences as they work after Phase 4 of [the refactor plan](../implementation/19-refactor.md). The last part describes what the plan still changes; each phase rewrites this page to describe what then exists.
+**Status: current.** This page describes preferences as they work after the last phase of [the refactor plan](../implementation/19-refactor.md). The last part records what the plan changed.
 
 Preferences are what Deckard remembers that is not in the notes: favorites, pins, saved searches, view counts, task order, Home widgets, and layout choices. Deckard never writes this state into a Markdown file. It lives in VS Code's `Memento` storage.
 
@@ -21,7 +21,7 @@ Phase 3 split the one 1,834-line `PreferencesStore` into a repository, a pure sc
 | `preferencesDisplay.ts` | `DisplayService`: sort modes, column counts, render mode, page sizes, and the Related Notes options |
 | `preferencesTagRenames.ts` | `TagRenames`: the cascade that moves what a renamed tag held to its new key |
 | `preferencesMaintenance.ts` | `PreferencesMaintenance`: pruning against the index, the stale-choice check, and restoring a blob |
-| `preferences.ts` | `PreferenceServices`, the set a caller picks its services from, and the schema's helpers and the maintenance types, re-exported where callers have always imported them |
+| `preferences.ts` | `PreferenceServices`, the set a caller picks its services from. The schema's helpers and limits, and the maintenance and repository types, are imported from the modules that declare them |
 
 Each service is a small class over the repository. It reads the blob as it stands and makes each change with one `update`, as the store's method did. `PreferencesStore`, the facade that held them all through Phase 3, was deleted in Phase 4. [`preferenceSnapshots.ts`](../../src/core/storage/preferenceSnapshots.ts) keeps rolling copies, and [`src/ui/commands/preferenceBackups.ts`](../../src/ui/commands/preferenceBackups.ts) exports and imports them.
 
@@ -98,15 +98,16 @@ Three rules keep pruning from destroying data:
 
 Deckard once had a bug that emptied favorites, pins, and view counts, and the data came back only because it could be reconstructed. So `PreferenceSnapshots` writes a copy into the workspace's storage under `preference-snapshots/` each time preferences change, two seconds after a burst settles, and keeps the last 20. `Deckard: Restore Favorites, Pins, and Searches` offers them. Export writes the blob as JSON with `version: 1`.
 
-## What the plan changes
+## What the plan changed
 
 The blob on disk and its migrations stay byte-compatible. Phase 3 moved the code that reads and writes it, and Phase 4 its callers, and nothing else.
 
 | Phase | Change |
 | --- | --- |
-| 1 | `preferences.ts` stopped importing `isTaskColumnId` from `ui/state/resultTable`, a `core` to `ui` import. |
-| 2 | The store sits on a `KeyValueStore` port instead of `vscode.Memento`, and its `EventEmitter` left core. Its tests run under `test:unit`. |
+| 1 | Done: `preferences.ts` stopped importing `isTaskColumnId` from `ui/state/resultTable`, a `core` to `ui` import. |
+| 2 | Done: the store sits on a `KeyValueStore` port instead of `vscode.Memento`, and its `EventEmitter` left core. Its tests run under `test:unit`. |
 | 3 | Done: `PreferencesStore` split into a repository, a pure schema, services, and `PreferencesMaintenance.prune(index)`, with the store kept as a facade. |
 | 4 | Done: callers take the services they use, and `PreferencesStore` is deleted. |
+| 7 | Done: `preferences.ts` no longer re-exports the schema's helpers and limits or the maintenance and repository types; each caller imports them from the module that declares them. |
 
 The facade kept the old surface working for one phase, so no caller changed in Phase 3; Phase 4 ported the round-trip test to drive the repository and services with the same inputs and the same expected values. The round-trip test, `preferences.test.ts`, `preferences-prune.test.ts`, and `preferences-invariants.test.ts` gate the split; `preferences-schema.test.ts` covers the schema's helpers and `preferences-maintenance.test.ts` the prune by snapshot. The formats and their pinning tests are listed in [inventories/persisted-formats.md](inventories/persisted-formats.md).

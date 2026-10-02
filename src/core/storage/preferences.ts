@@ -1,7 +1,7 @@
-// Where callers import the preferences from: the schema's helpers and
-// limits, the maintenance types, and the set of services a caller picks the
-// ones it uses from. Each service lives in a module of its own beside this
-// one, over PreferencesRepository.
+// The set of preference services a caller picks the ones it uses from. Each
+// service lives in a module of its own beside this one, over
+// PreferencesRepository, and the schema's helpers and limits are imported
+// from preferencesSchema.ts.
 import type { DisplayService } from './preferencesDisplay';
 import type { FavoritesService } from './preferencesFavorites';
 import type { HomeWidgetsService } from './preferencesHomeWidgets';

@@ -12,9 +12,8 @@ import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShe
  * Keeping the view state-driven lets the host choose between active-note and
  * active-tag contexts while this document remains a simple navigation surface.
  *
- * The page no longer shows the extension's version. The parameter stays until
- * the view takes an options object (19-refactor.md, Phase 5), so its callers
- * and the harnesses that pin them do not change before then.
+ * The page no longer shows the extension's version, so the parameter that
+ * carries it is unused; it is kept so the hosts that pass it are unchanged.
  */
 export function getSidebarNotesHtml(
   webview: ShellWebview,
