@@ -7,6 +7,7 @@
  */
 import { render } from 'preact';
 
+import { walkMenu } from './menuKeys';
 import { CheckIcon } from './strokeIcons';
 
 /** One choice: its value, its words, whether it is the entry's own (a single choice), and its key. */
@@ -166,21 +167,9 @@ function onKeydown(event: KeyboardEvent): void {
     closeActionMenu();
     return;
   }
-  if (chooseByKey(menu, event) || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-    return;
+  if (!chooseByKey(menu, event)) {
+    walkMenu(menu, event, '[data-menu-value]');
   }
-  const items = Array.from(menu.querySelectorAll<HTMLElement>('[data-menu-value]'));
-  const index = items.indexOf(document.activeElement as HTMLElement);
-  let next = (index - 1 + items.length) % items.length;
-  if (event.key === 'Home') {
-    next = 0;
-  } else if (event.key === 'End') {
-    next = items.length - 1;
-  } else if (event.key === 'ArrowDown') {
-    next = (index + 1) % items.length;
-  }
-  event.preventDefault();
-  items[next].focus();
 }
 
 /** Focus that moves somewhere outside the open menu closes it there, as a click outside it does. */

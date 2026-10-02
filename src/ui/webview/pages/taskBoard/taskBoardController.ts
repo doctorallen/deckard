@@ -317,7 +317,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       setZenMode: setZenMode(),
       chooseTheme: chooseTheme(),
       ready: ready(),
-      openHelp: openHelp(),
+      // Help opens at its Tasks view and Task board section, not its top.
+      openHelp: openHelp('task-views'),
       // Only a task's own line opens: the board lists nothing else.
       openSource: openSource({ indexer, navigation, policy: 'tasks' }),
       openTag: openTag({ indexer, navigation, policy: 'exact', openTag: (tagKey) => this.board.openTag(tagKey) }),

@@ -336,4 +336,19 @@ suite('Task Board host', () => {
       board.dispose();
     }
   });
+
+  test('its Help button opens Help at the Task board', async () => {
+    const board = openBoard();
+    const commands = vscode.commands as unknown as Record<string, unknown>;
+    const executeCommand = commands.executeCommand;
+    const calls: unknown[][] = [];
+    commands.executeCommand = async (...args: unknown[]) => void calls.push(args);
+    try {
+      await board.send({ type: 'openHelp' });
+      assert.deepStrictEqual(calls, [['deckard.showHelp', 'task-views']]);
+    } finally {
+      commands.executeCommand = executeCommand;
+      board.dispose();
+    }
+  });
 });

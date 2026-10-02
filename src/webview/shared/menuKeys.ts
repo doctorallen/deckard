@@ -20,6 +20,38 @@ export function returnFocusFromMenu(): void {
   }
 }
 
+/** The keys that walk an open menu. */
+const WALK_KEYS = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+
+/**
+ * Walks an open menu from the keyboard: Down and Up to the next or previous
+ * of its items, round the ends, and Home and End to the first or last.
+ * `items` selects its items. Returns whether the key was one of these.
+ * Every menu walks the same way: a board card's, and the one a right-click
+ * opens on a tag or a card, which ignored the arrows before.
+ */
+export function walkMenu(menu: HTMLElement, event: KeyboardEvent, items: string): boolean {
+  if (!WALK_KEYS.includes(event.key)) {
+    return false;
+  }
+  const choices = Array.from(menu.querySelectorAll<HTMLElement>(items));
+  if (!choices.length) {
+    return false;
+  }
+  const index = choices.indexOf(document.activeElement as HTMLElement);
+  let next = (index - 1 + choices.length) % choices.length;
+  if (event.key === 'Home') {
+    next = 0;
+  } else if (event.key === 'End') {
+    next = choices.length - 1;
+  } else if (event.key === 'ArrowDown') {
+    next = (index + 1) % choices.length;
+  }
+  event.preventDefault();
+  choices[next].focus();
+  return true;
+}
+
 /** Whether a key asks for the menu of what has focus: the menu key, Shift+F10, or Alt+Enter. */
 export function isMenuKey(event: KeyboardEvent): boolean {
   return event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey) || (event.key === 'Enter' && event.altKey);
