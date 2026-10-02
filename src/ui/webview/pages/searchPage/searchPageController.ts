@@ -116,6 +116,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private notePage = 1;
   private taskPage = 1;
   /**
+   * The page size those numbers count in. The size is one preference for
+   * every search page, so another page may change it under this one.
+   */
+  private pagedAt: number | undefined;
+  /**
    * The words the reader is typing but has not committed. They narrow the
    * whole search rather than the page of it on screen, so what the box
    * promises while it is typed in is what Enter delivers.
@@ -152,13 +157,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         page.refresh();
       },
       previewSearch: (message, page) => this.previewSearch(page, message.words),
-      setResultsPerPage: async (message) => {
-        // A different page size is a different set of pages, and the number
-        // the reader was on means nothing in it, so both lists start again.
-        this.notePage = 1;
-        this.taskPage = 1;
-        await preferences.display.setSearchPageSize(message.size);
-      },
+      // Every open search page starts its lists again at the new size,
+      // when it next draws.
+      setResultsPerPage: (message) => preferences.display.setSearchPageSize(message.size),
       setRenderMode: (message) => preferences.display.setRenderMode(message.mode),
       setTagOverviewSort: (message) => preferences.display.setTagOverviewSortMode(message.mode),
       setTagOverviewLayout: (message) => preferences.display.setTagOverviewLayout(message.layout),
@@ -334,6 +335,14 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private createSnapshot(): SearchPageSnapshot {
     const index = this.search.indexer.getSnapshot();
     const preferences = this.search.preferences.reader.value;
+    // A different page size is a different set of pages, and the number
+    // the reader was on means nothing in it, so both lists start again,
+    // whichever page changed the size.
+    if (this.pagedAt !== undefined && this.pagedAt !== preferences.searchPageSize) {
+      this.notePage = 1;
+      this.taskPage = 1;
+    }
+    this.pagedAt = preferences.searchPageSize;
     const queryContext = readQueryContext();
     const snapshot = createSearchPageSnapshot(
       index,

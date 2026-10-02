@@ -441,6 +441,24 @@ test('a page number pressed keeps focus once the numbers around it move', async 
   }
 });
 
+test('a page size chosen on one search page starts every page from its first page', async () => {
+  const { view, panels } = await openSearch('#work', { index: createManyNotesIndex(300) });
+  await panels.showQuery('#work AND prose');
+  const other = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
+  const otherView = mountWebview(other.webview.html, other);
+  other._toWebview.forEach((message) => other._deliver(message));
+  const current = (page) => page.find('.pagination .is-current').textContent;
+
+  otherView.press(otherView.findAll('.pagination button').find((button) => button.getAttribute('aria-label') === 'Page 2 of notes'));
+  await settle();
+  assert.strictEqual(current(otherView), '2');
+
+  view.change(view.find('[data-action="set-results-per-page"]'), '50');
+  await settle();
+  assert.strictEqual(current(view), '1');
+  assert.strictEqual(current(otherView), '1', 'the second page of thirty is not the second of fifty');
+});
+
 test('Save keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
