@@ -42,3 +42,6 @@ button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, 
 .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--green); background: var(--panel-raised); box-shadow: inset 3px 0 0 var(--green), 0 0 14px rgba(118, 255, 99, .16); }
 .favorite-toggle { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }
 .favorite-toggle.favorite { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }
+/* A day outside the month, hovered, sits on the green hover ground, where
+   the muted green read at 1.78:1; it takes the border's deep green, 5.71:1. */
+.day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--slate-border); }

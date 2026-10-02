@@ -500,6 +500,20 @@ function firstColorToken(value) {
   return match ? match[1] : text;
 }
 
+/**
+ * The background a rule declares, as text. `background: none` is the
+ * shorthand with no image and its color left out, which sets the color to
+ * transparent: the element draws no fill of its own, and a weaker rule's
+ * fill does not reach it.
+ */
+function backgroundOf(declarations, tokens) {
+  const shorthand = resolveValue(declarations.background, tokens);
+  if (shorthand !== undefined && /^none$/i.test(shorthand.trim())) {
+    return 'transparent';
+  }
+  return shorthand ?? resolveValue(declarations['background-color'], tokens);
+}
+
 /** Every rule that declares a color or a background, with its state. */
 function buildDeclarations(rules, tokens) {
   const declared = [];
@@ -517,9 +531,7 @@ function buildDeclarations(rules, tokens) {
         Boolean(declaredColor) &&
         /^(inherit|currentcolor|unset|initial)$/i.test(declaredColor.trim());
       const color = inherits ? undefined : resolveValue(declaredColor, tokens);
-      const background =
-        resolveValue(rule.declarations.background, tokens) ??
-        resolveValue(rule.declarations['background-color'], tokens);
+      const background = backgroundOf(rule.declarations, tokens);
       if (!color && !background && !inherits) {
         return;
       }
@@ -843,21 +855,15 @@ const { readGoldens } = require('../harness/domGoldens.js');
 const path = require('node:path');
 
 /**
- * The problems recorded as known. Every entry there now is this model
- * misreading the sheets, not a color a reader sees, as the calendar drawn
- * in Chrome with its hover and focus rules applied showed:
- *
- * - `button.week-label` and `button.day` are written `background: none`,
- *   which `resolveValue` does not read as a background, so the model hands
- *   them the theme's `button` fill: LCARS's cyan at rest, and Cooper's,
- *   Fellowship's, Synthwave's, and Tomcat's fill on hover. The browser
- *   draws both on the calendar's own ground, where the week mark's icon
- *   reads at 6.48:1 to 9.1:1 hovered and focused, and LCARS's days at
- *   15.41:1, and 9.27:1 outside the month.
- * - LCARS's week mark did fail, another way: its icon took the theme's
- *   black button ink on the calendar's black, at 1:1. That is fixed, and
- *   checkRenderedContrast.js holds it (`ICON_CONTROLS`); this model reads no
- *   icon, so it still reports what it misread.
+ * The problems recorded as known, as `<theme> · <element> · <state>`. It is
+ * empty: anything this model finds below AA fails. The eleven it once held
+ * were the calendar's day and week buttons, written `background: none`,
+ * which the model read as no background declared, handing them the
+ * theme's `button` fill; `backgroundOf` reads it as transparent, as the
+ * browser does. This model reads no icons, and it settles a hovered
+ * element's color by its state before its specificity, so the calendar's
+ * icons and a hovered day outside the month are measured as drawn, in
+ * checkRenderedContrast.js.
  */
 const BASELINE = path.join(__dirname, 'contrast-baseline.json');
 /** The element shapes frozen from the page text; see contrastShapes. */
