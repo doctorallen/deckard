@@ -12,7 +12,12 @@
 import type { ComponentChild } from 'preact';
 
 import { sameShownDayIn, stepDate } from '../../../domain/markdown/calendar';
-import type { CalendarMessage, CalendarSnapshot } from '../../../ui/protocol/calendar';
+import type {
+  CalendarMessage,
+  CalendarSelectDayMessage,
+  CalendarShowMonthMessage,
+  CalendarSnapshot,
+} from '../../../ui/protocol/calendar';
 import type { StateMessage } from '../../../ui/protocol/messaging';
 import { type ActionHandler, onHostMessage, type PageStore, startPage } from '../page';
 import { post } from '../vscode';
@@ -84,6 +89,8 @@ export class CalendarSession<S extends CalendarState> {
   private pendingFocusDate: string | undefined;
   /** The chosen day's message to the host, sent after a pause. */
   private selectTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The chosen day still waiting for that pause, to be sent. */
+  private waitingDate: string | undefined;
 
   /** Starts the calendar and draws it, if its shell carried a snapshot. */
   public constructor(private readonly definition: CalendarDefinition<S>) {
@@ -131,7 +138,24 @@ export class CalendarSession<S extends CalendarState> {
     }
     this.store.update({ chosen: date, marked: date } as Partial<S>);
     clearTimeout(this.selectTimer);
-    this.selectTimer = setTimeout(() => send({ type: 'selectDay', date }), 120);
+    this.waitingDate = date;
+    this.selectTimer = setTimeout(() => this.sendWaitingDate(), 120);
+  }
+
+  /**
+   * Asks the host for another month or day. A chosen day still waiting to
+   * be sent would arrive after the step and take the calendar back, so a
+   * step that names its day lets it go, and one that does not sends it
+   * first, since the host steps from the chosen day.
+   */
+  public sendStep(message: CalendarShowMonthMessage | CalendarSelectDayMessage): void {
+    if (message.date) {
+      clearTimeout(this.selectTimer);
+      this.waitingDate = undefined;
+    } else {
+      this.sendWaitingDate();
+    }
+    send(message);
   }
 
   /** Gives a day the grid's tab stop at the next full draw. */
@@ -191,6 +215,16 @@ export class CalendarSession<S extends CalendarState> {
     send({ type: 'openDay', date: day.dataset.date as string });
   };
 
+  /** Sends the chosen day still waiting, if one is, at once. */
+  private sendWaitingDate(): void {
+    clearTimeout(this.selectTimer);
+    const date = this.waitingDate;
+    this.waitingDate = undefined;
+    if (date) {
+      send({ type: 'selectDay', date });
+    }
+  }
+
   /** What a full draw does after drawing: what the template's redraw took away goes. */
   private afterDraw(): void {
     if (!this.fullDraw) {
@@ -235,7 +269,7 @@ export class CalendarSession<S extends CalendarState> {
     const month = key === 'PageUp' ? shown.previousMonth : shown.nextMonth;
     const date = sameShownDayIn(day.dataset.date as string, month, Boolean(shown.hideWeekends));
     this.focusWhenDrawn(date);
-    send(shown.dayPanel ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
+    this.sendStep(shown.dayPanel ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
   }
 
   /** A step past the weeks drawn: to the day stepped to, or to the next month. */
@@ -247,17 +281,17 @@ export class CalendarSession<S extends CalendarState> {
       // day's place. A day an earlier step was still waiting on is let go,
       // so it is neither sent nor focused when that month is drawn.
       this.pendingFocusDate = undefined;
-      send({ type: 'showMonth', month: shown.nextMonth });
+      this.sendStep({ type: 'showMonth', month: shown.nextMonth });
       return;
     }
     const stepped = stepDate(day.dataset.date as string, step, Boolean(shown.hideWeekends));
     this.focusWhenDrawn(stepped);
     if (this.definition.stepsByDay?.()) {
-      send({ type: 'selectDay', date: stepped });
+      this.sendStep({ type: 'selectDay', date: stepped });
       return;
     }
     const month = step < 0 ? shown.previousMonth : shown.nextMonth;
-    send(shown.dayPanel ? { type: 'showMonth', month, date: stepped } : { type: 'showMonth', month });
+    this.sendStep(shown.dayPanel ? { type: 'showMonth', month, date: stepped } : { type: 'showMonth', month });
   }
 
   /** The controls both calendars draw, by their `data-action`. */
@@ -278,7 +312,7 @@ export class CalendarSession<S extends CalendarState> {
       'show-month': (element) => {
         const month = element.getAttribute('data-month') as string;
         const date = element.getAttribute('data-date');
-        send(date ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
+        this.sendStep(date ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
       },
       'open-note': (element) => send({ type: 'openNote', filePath: element.getAttribute('data-file-path') as string }),
     };

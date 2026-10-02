@@ -415,4 +415,33 @@ suite('Calendar', () => {
       kept.dispose();
     }
   });
+
+  test('a day chosen just before a step never takes the calendar back to the month it left', async () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const steps = (page: ReturnType<typeof openWebviewPage>) =>
+      page.posted.filter((message) => message.type === 'selectDay' || message.type === 'showMonth');
+    const pause = () => new Promise((resolve) => setTimeout(resolve, 200));
+    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }));
+    try {
+      page.click('.day-cell[data-drop-date="2026-09-15"]');
+      page.document.body.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: ']', bubbles: true, cancelable: true }));
+      await pause();
+      assert.deepStrictEqual(steps(page), [{ type: 'showMonth', month: '2026-10', date: '2026-10-15' }], 'the step names its day, so the one waiting is let go');
+    } finally {
+      page.dispose();
+    }
+    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }));
+    try {
+      sidebar.click('.calendar-grid .day[data-date="2026-09-15"]');
+      sidebar.click('[data-action="show-month"][data-month="2026-10"]');
+      await pause();
+      assert.deepStrictEqual(
+        steps(sidebar),
+        [{ type: 'selectDay', date: '2026-09-15' }, { type: 'showMonth', month: '2026-10' }],
+        'the step names no day, so the host is told the chosen one first, and steps from it',
+      );
+    } finally {
+      sidebar.dispose();
+    }
+  });
 });

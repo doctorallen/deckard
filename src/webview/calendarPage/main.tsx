@@ -72,14 +72,14 @@ function step(by: number): void {
     hideWeekends: Boolean(snapshot.hideWeekends),
   });
   session.focusWhenDrawn(next.date);
-  send(next.month ? { type: 'showMonth', month: next.month, date: next.date } : { type: 'selectDay', date: next.date });
+  session.sendStep(next.month ? { type: 'showMonth', month: next.month, date: next.date } : { type: 'selectDay', date: next.date });
 }
 
 /** Back to today, in its month. */
 function goToday(): void {
   const snapshot = session.store.state.snapshot as CalendarSnapshot;
   session.focusWhenDrawn(snapshot.today);
-  send({ type: 'showMonth', month: snapshot.currentMonth, date: snapshot.today });
+  session.sendStep({ type: 'showMonth', month: snapshot.currentMonth, date: snapshot.today });
 }
 
 /** The page's controls, by their `data-action`, after those both calendars draw. */
