@@ -13,7 +13,7 @@ import { TagRenames } from '../core/storage/preferencesTagRenames';
 import { TaskLayoutService } from '../core/storage/preferencesTaskLayout';
 import { UsageService } from '../core/storage/preferencesUsage';
 import { SearchStore } from '../core/storage/searchStore';
-import { setTimingLog } from '../shared/timing';
+import { reportError, setTimingLog } from '../shared/timing';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import type { IndexRoles } from '../core/workspace/indexReader';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -380,9 +380,13 @@ export function startServices(services: Services): void {
   // the index starts; each index update redraws it after that.
   services.views.taskStatusBar.refresh();
 
-  void services.indexer.start().then(async () => {
-    await services.preferences.maintenance.prune(services.indexer.getSnapshot());
-  });
+  // Nothing awaits this, so a failure is logged here rather than lost.
+  void services.indexer
+    .start()
+    .then(async () => {
+      await services.preferences.maintenance.prune(services.indexer.getSnapshot());
+    })
+    .catch((error: unknown) => reportError('Could not finish the first index', error));
 }
 
 /**

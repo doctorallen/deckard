@@ -337,10 +337,16 @@ export class IndexService<U extends ResourceUri = ResourceUri>
   /** Folds a batch's changes into the index and the full-text cache, and publishes them. */
   private applyChanges(changes: readonly NoteChange[]): void {
     changes.forEach((change) => {
-      if (change.file) {
-        this.searchStore?.upsert(change.file);
-      } else {
-        this.searchStore?.remove(change.filePath);
+      // The cache only speeds up search and the next start; a disk too full
+      // to write it must not keep a saved note from every view.
+      try {
+        if (change.file) {
+          this.searchStore?.upsert(change.file);
+        } else {
+          this.searchStore?.remove(change.filePath);
+        }
+      } catch (error) {
+        reportError(`Could not update the search cache for ${change.filePath}`, error);
       }
     });
     // Only the changed notes' parts of the index are worked out again; the
@@ -562,16 +568,25 @@ export class IndexService<U extends ResourceUri = ResourceUri>
     this.cachedScan = undefined;
   }
 
-  /** Writes the notes and the scan's counts to the full-text cache. */
+  /**
+   * Writes the notes and the scan's counts to the full-text cache. A write
+   * that fails, such as on a full disk, is logged and the scan stands: the
+   * cache only speeds up search and the next start.
+   */
   private persistToCache(fingerprint: string): void {
-    measure(
-      'Rebuild search index',
-      () => {
-        this.searchStore?.replace(this.state.files.values(), this.cacheFingerprint(fingerprint));
-        this.searchStore?.writeLastScan(this.lastScan);
-      },
-      () => `${this.state.files.size} notes`,
-    );
+    try {
+      measure(
+        'Rebuild search index',
+        () => {
+          this.searchStore?.replace(this.state.files.values(), this.cacheFingerprint(fingerprint));
+          this.searchStore?.writeLastScan(this.lastScan);
+        },
+        () => `${this.state.files.size} notes`,
+      );
+    } catch (error) {
+      reportError('Could not write the search cache', error);
+      return;
+    }
     // What the store handed to its worker is still being written. The
     // log says when it lands, because until then a search finds a note
     // by its title and tags but not yet by the words inside it.
