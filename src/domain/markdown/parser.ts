@@ -1564,7 +1564,7 @@ function readTask(
     inlineTags.map((tag) => tag.key),
   );
   const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
-  const checkboxColumn = match.indent.length + match.bullet.length + 2;
+  const checkboxColumn = match.opening.length;
   const checkboxValue = match.mark as ' ' | 'x' | 'X';
   // Obsidian Tasks markers become fields and leave the title, so a ✅ date
   // is never read as a due date and titles read the way Tasks shows them.

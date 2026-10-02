@@ -14,6 +14,7 @@ import {
   stripTags,
 } from '../domain/markdown/parser';
 import { findLinkedBlock } from '../domain/index/backlinks';
+import { setTaskLineCompletion } from '../domain/markdown/taskLineEdits';
 
 suite('Markdown parser', () => {
   test('gives two entries whose old ids collided ids of their own', () => {
@@ -554,6 +555,19 @@ suite('Markdown parser', () => {
     assert.strictEqual(parsed.tasks[0].checkboxColumn, 3);
     assert.strictEqual(parsed.tasks[1].completed, true);
     assert.strictEqual(parsed.tasks[1].sectionId, parsed.sections[2].id);
+  });
+
+  test('finds the checkbox however many spaces or tabs sit before its bracket', () => {
+    const lines = ['-   [ ] Wide gap', '  *\t\t[ ] Two tabs', '+ [ ] One space'];
+    const parsed = parseMarkdown('notes/gaps.md', lines.join('\n'));
+    assert.deepStrictEqual(
+      parsed.tasks.map((task) => task.checkboxColumn),
+      lines.map((line) => line.indexOf('[') + 1),
+    );
+    parsed.tasks.forEach((task, index) => {
+      const done = setTaskLineCompletion(lines[index], task.checkboxColumn, { completed: true, doneDate: '2026-10-02' });
+      assert.strictEqual(done, `${lines[index].replace('[ ]', '[x]')} ✅ 2026-10-02`);
+    });
   });
 
   test('handles empty content and tasks before the first heading', () => {
