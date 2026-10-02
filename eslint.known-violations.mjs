@@ -15,8 +15,7 @@ export default {
       "findInlineSections",
       "findTasks"
     ],
-    "src/domain/markdown/taskMetadata.ts": [
-      "(arrow function)",
+    "src/domain/markdown/taskLineEdits.ts": [
       "setTaskDate",
       "setTaskLineCompletion",
       "writeCompletion"
@@ -63,7 +62,6 @@ export default {
     ]
   },
   "@typescript-eslint/switch-exhaustiveness-check": {
-    "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/query/queryEvaluator.ts": 3,
     "src/ui/commands/bulkEdit.ts": 1,
     "src/ui/commands/moveTagsToFrontmatter.ts": 1,
@@ -79,26 +77,11 @@ export default {
     "src/core/mcp/mcpProtocol.ts": [
       "handleMcpMessage"
     ],
-    "src/domain/markdown/captureWords.ts": [
-      "readCaptureText"
-    ],
-    "src/domain/markdown/dates.ts": [
-      "readPhrase"
-    ],
-    "src/domain/markdown/moveLines.ts": [
-      "readMoveBlock"
-    ],
     "src/domain/markdown/parser.ts": [
       "(arrow function)",
       "findInlineSections",
       "frontmatterValueToTag",
       "parseMarkdown"
-    ],
-    "src/domain/markdown/taskMetadata.ts": [
-      "parseRecurrence"
-    ],
-    "src/domain/markdown/wordCount.ts": [
-      "maskNoteForWords"
     ],
     "src/domain/query/queryEvaluator.ts": [
       "matchesIs"
@@ -185,13 +168,7 @@ export default {
     "src/core/storage/searchStoreWorker.ts": 1,
     "src/core/storage/searchStoreWorkerClient.ts": 2,
     "src/core/workspace/scanner.ts": 3,
-    "src/domain/markdown/captureWords.ts": 2,
-    "src/domain/markdown/dates.ts": 1,
-    "src/domain/markdown/inlineRanges.ts": 1,
-    "src/domain/markdown/moveLines.ts": 2,
     "src/domain/markdown/parser.ts": 4,
-    "src/domain/markdown/taskDraft.ts": 1,
-    "src/domain/markdown/taskMetadata.ts": 4,
     "src/domain/query/queryLinks.ts": 2,
     "src/domain/query/queryTypes.ts": 6,
     "src/test/calendar-day.test.ts": 1,
@@ -253,9 +230,6 @@ export default {
   "max-depth": {
     "scripts/build-walkthrough-images.mjs": 1,
     "scripts/capture-dashboard-screenshot.mjs": 4,
-    "src/domain/markdown/captureWords.ts": 1,
-    "src/domain/markdown/tagTarget.ts": 1,
-    "src/domain/markdown/wordCount.ts": 1,
     "src/domain/query/queryParser.ts": 2,
     "src/test/naming.test.ts": 1,
     "test/ui/checkContrast.js": 2,
@@ -269,17 +243,11 @@ export default {
       "capture",
       "writeCompanionExtension"
     ],
-    "src/domain/markdown/dates.ts": [
-      "readPhrase"
-    ],
     "src/domain/markdown/parser.ts": [
       "findInlineSections",
       "findTasks",
       "parseFrontmatter",
       "parseMarkdown"
-    ],
-    "src/domain/markdown/taskMetadata.ts": [
-      "parseRecurrence"
     ],
     "src/domain/query/queryEvaluator.ts": [
       "matchesIs"
@@ -383,9 +351,7 @@ export default {
   },
   "no-nested-ternary": {
     "src/core/workspace/scanner.ts": 1,
-    "src/domain/markdown/dates.ts": 1,
     "src/domain/markdown/parser.ts": 1,
-    "src/domain/markdown/taskMetadata.ts": 2,
     "src/domain/notes/periodicNotes.ts": 1,
     "src/domain/query/queryDates.ts": 2,
     "src/domain/query/queryFormat.ts": 1,
@@ -416,7 +382,6 @@ export default {
   },
   "unicorn/no-negated-condition": {
     "src/domain/markdown/parser.ts": 2,
-    "src/domain/markdown/taskSteps.ts": 2,
     "src/domain/query/queryLinks.ts": 1,
     "src/test/note-links.test.ts": 1,
     "src/ui/commands/assistantWrites.ts": 2,

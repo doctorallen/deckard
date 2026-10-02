@@ -31,8 +31,14 @@ export interface MoveBlock {
   openTasks?: Array<{ line: number; checkboxColumn: number }>;
 }
 
+/**
+ * Why a move takes nothing: the block holds a heading, the cursor is on a
+ * blank line, the block reaches into front matter, or it would cut a code
+ * fence in two.
+ */
 export type MoveRefusalReason = 'heading' | 'blank' | 'frontMatter' | 'splitFence';
 
+/** A move that takes nothing, and why. */
 export interface MoveRefusal {
   refused: MoveRefusalReason;
 }
@@ -59,71 +65,115 @@ const ANY_TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX>' };
  * item above.
  */
 export function readMoveBlock(lines: readonly string[], selection: MoveSelection): MoveBlock | MoveRefusal {
-  let start = selection.start.line;
+  const start = selection.start.line;
   let end = selection.end.line;
   if (!selection.isEmpty && end > start && selection.end.character === 0) {
     end -= 1;
   }
-  if (selection.isEmpty) {
-    const text = lines[start] ?? '';
-    if (isHeadingLine(text, HEADING)) {
-      return { refused: 'heading' };
-    }
-    if (!text.trim()) {
-      return { refused: 'blank' };
-    }
+  const atCursor = selection.isEmpty ? refuseAtCursor(lines[start] ?? '') : undefined;
+  if (atCursor) {
+    return atCursor;
   }
   const frontMatterEnd = findFrontmatterEnd(lines, 'dashes');
   if (frontMatterEnd !== undefined && start <= frontMatterEnd) {
     return { refused: 'frontMatter' };
   }
-  // The last top-level item brings its children with it.
   const indents = rangeOf(start, end)
     .filter((line) => (lines[line] ?? '').trim())
     .map((line) => leading(lines[line]));
   const base = Math.min(...indents);
+  end = trimTrailingBlanks(lines, start, extendToChildren(lines, start, end, base));
+  const refused = refuseBlock(lines, start, end);
+  if (refused) {
+    return refused;
+  }
+
+  const topLevel = rangeOf(start, end).filter(
+    (line) => (lines[line] ?? '').trim() && leading(lines[line]) === base,
+  );
+  const openTasks = readOpenTasks(lines, topLevel);
+  return {
+    start,
+    end,
+    lines: rangeOf(start, end).map((line) => lines[line]),
+    listItem: listItemIndentation(lines[start] ?? '') !== undefined,
+    ...(openTasks && openTasks.length > 0 ? { openTasks } : {}),
+  };
+}
+
+/** Why the line under a cursor cannot be moved alone: a heading, or a blank line. */
+function refuseAtCursor(text: string): MoveRefusal | undefined {
+  if (isHeadingLine(text, HEADING)) {
+    return { refused: 'heading' };
+  }
+  if (!text.trim()) {
+    return { refused: 'blank' };
+  }
+  return undefined;
+}
+
+/**
+ * The block's last line once the last top-level item brings its children
+ * with it: the nearest item at the block's own indentation, looking up from
+ * the end, extends the block to its last child. A line of prose at or left
+ * of that indentation stops the look.
+ */
+function extendToChildren(lines: readonly string[], start: number, end: number, base: number): number {
   for (let line = end; line >= start; line -= 1) {
     const indentation = listItemIndentation(lines[line] ?? '');
     if (indentation !== undefined && indentation === base) {
-      end = Math.max(end, findListItemEndLine([...lines], line, indentation) - 1);
-      break;
+      return Math.max(end, findListItemEndLine([...lines], line, indentation) - 1);
     }
     if ((lines[line] ?? '').trim() && leading(lines[line]) <= base) {
-      break;
+      return end;
     }
   }
-  while (end > start && !(lines[end] ?? '').trim()) {
-    end -= 1;
+  return end;
+}
+
+/** The block's last line with the blank lines at its end left behind. */
+function trimTrailingBlanks(lines: readonly string[], start: number, end: number): number {
+  let last = end;
+  while (last > start && !(lines[last] ?? '').trim()) {
+    last -= 1;
   }
+  return last;
+}
+
+/**
+ * Why a block cannot move: a heading inside it, or a fence cut in two,
+ * where the block starts or ends inside a fence it does not hold whole.
+ */
+function refuseBlock(lines: readonly string[], start: number, end: number): MoveRefusal | undefined {
   if (rangeOf(start, end).some((line) => isHeadingLine(lines[line] ?? '', HEADING))) {
     return { refused: 'heading' };
   }
   const fenced = findFencedLines([...lines]);
-  // A fence cut in two: the block starts or ends inside one it does not hold whole.
   if (
     (fenced.has(start) && fenced.has(start - 1)) ||
     (fenced.has(end) && fenced.has(end + 1))
   ) {
     return { refused: 'splitFence' };
   }
+  return undefined;
+}
 
-  const block = rangeOf(start, end).map((line) => lines[line]);
-  const topLevel = rangeOf(start, end).filter(
-    (line) => (lines[line] ?? '').trim() && leading(lines[line]) === base,
-  );
-  const openTasks = topLevel.every((line) => isTaskLineOf(lines[line], OPEN_TASK))
-    ? topLevel.map((line) => ({
-        line,
-        checkboxColumn: (matchTaskLine(lines[line], OPEN_TASK) as TaskLineMatch).opening.length,
-      }))
-    : undefined;
-  return {
-    start,
-    end,
-    lines: block,
-    listItem: listItemIndentation(lines[start] ?? '') !== undefined,
-    ...(openTasks && openTasks.length > 0 ? { openTasks } : {}),
-  };
+/**
+ * The top-level items with their checkbox columns when every one is an open
+ * task, which a move can leave behind marked `[>]`; otherwise undefined.
+ */
+function readOpenTasks(
+  lines: readonly string[],
+  topLevel: readonly number[],
+): MoveBlock['openTasks'] {
+  const matches = topLevel.map((line) => matchTaskLine(lines[line], OPEN_TASK));
+  if (!matches.every((match) => match !== undefined)) {
+    return undefined;
+  }
+  return topLevel.map((line, index) => ({
+    line,
+    checkboxColumn: (matches[index] as TaskLineMatch).opening.length,
+  }));
 }
 
 /** Whether a line is a task of any kind, open, done, or migrated. */
@@ -222,10 +272,12 @@ export function lineOffsets(text: string): number[] {
   return offsets;
 }
 
+/** How many whitespace characters a line starts with. */
 function leading(line: string): number {
   return /^\s*/.exec(line)?.[0].length ?? 0;
 }
 
+/** The line numbers from `start` to `end`, both included; none when `end` is before `start`. */
 function rangeOf(start: number, end: number): number[] {
   return Array.from({ length: Math.max(0, end - start + 1) }, (_, offset) => start + offset);
 }

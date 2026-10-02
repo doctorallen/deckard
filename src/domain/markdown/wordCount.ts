@@ -12,9 +12,14 @@ export const READING_WORDS_PER_MINUTE = 238;
 
 /** A task line whose checkbox and metadata are masked: any mark but `[>]`. */
 const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+/** A list item's marker, after which an indented line continues the item rather than starting code. */
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]/;
+/** A `^block-id` at the end of a line, which Markdown hides from a reader. */
 const BLOCK_ID = /[ \t]+\^[A-Za-z0-9-]+[ \t]*$/;
+/** Four spaces or a tab in: the indentation of an indented code block. */
+const CODE_INDENT = /^(?: {4}|\t)/;
 
+/** Every character of some text but its line breaks, as a space. */
 function blank(text: string): string {
   return text.replace(/[^\n]/g, ' ');
 }
@@ -22,6 +27,16 @@ function blank(text: string): string {
 /** Blanks a stretch of a line to spaces, so its columns are kept. */
 function blankRange(line: string, start: number, end: number): string {
   return line.slice(0, start) + ' '.repeat(Math.max(0, end - start)) + line.slice(end);
+}
+
+/** What masking carries from one line to the next. */
+interface MaskState {
+  /** Whether an HTML comment opened above is still open. */
+  inComment: boolean;
+  /** Whether the line above was indented code. */
+  inIndentedCode: boolean;
+  /** The last line with anything on it, as written. */
+  lastText: string | undefined;
 }
 
 /**
@@ -33,76 +48,116 @@ function blankRange(line: string, start: number, end: number): string {
  */
 export function maskNoteForWords(lines: readonly string[]): string[] {
   const masked = [...lines];
-  let start = 0;
-  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
-  if (frontmatterEnd !== undefined) {
-    for (let at = 0; at <= frontmatterEnd; at += 1) {
-      masked[at] = blank(masked[at]);
-    }
-    start = frontmatterEnd + 1;
-  }
+  const start = maskFrontmatter(lines, masked);
   const fenced = findFencedLines([...lines]);
-  let inComment = false;
-  let inIndentedCode = false;
-  let lastText: string | undefined;
+  const state: MaskState = { inComment: false, inIndentedCode: false, lastText: undefined };
   for (let at = start; at < masked.length; at += 1) {
-    let line = masked[at];
-    if (fenced.has(at)) {
-      masked[at] = blank(line);
-      continue;
-    }
-    // Indented code: four spaces in, after a blank line, and not under a list.
-    const indented = /^(?: {4}|\t)/.test(line) && line.trim() !== '';
-    const previousBlank = at === 0 || lines[at - 1].trim() === '';
-    if (indented && (inIndentedCode || (previousBlank && !(lastText !== undefined && (LIST_ITEM.test(lastText) || /^(?: {4}|\t)/.test(lastText)))))) {
-      inIndentedCode = true;
-      masked[at] = blank(line);
-      continue;
-    }
-    if (line.trim() !== '') {
-      inIndentedCode = false;
-      lastText = line;
-    }
-
-    // HTML comments, which may run over several lines.
-    let cursor = 0;
-    while (cursor < line.length) {
-      if (inComment) {
-        const close = line.indexOf('-->', cursor);
-        const end = close < 0 ? line.length : close + 3;
-        line = blankRange(line, cursor, end);
-        inComment = close < 0;
-        cursor = end;
-      } else {
-        const open = line.indexOf('<!--', cursor);
-        if (open < 0) {
-          break;
-        }
-        inComment = true;
-        cursor = open;
-      }
-    }
-
-    line = line.replace(/`+[^`]*?`+/g, blank);
-    line = line.replace(/<https?:\/\/[^>]*>/g, blank);
-    line = line.replace(/(\[[^\]]*\])(\([^)]*\))/g, (_whole, text: string, target: string) => text + blank(target));
-    line = line.replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, (whole, target: string, alias: string) =>
-      `  ${blank(target)} ${alias}  `.slice(0, whole.length),
-    );
-    const task = matchTaskLine(line, TASK_LINE);
-    if (task) {
-      const offset = task.head.length;
-      let body = line.slice(offset);
-      for (const span of findTaskMetadataSpans(body)) {
-        body = blankRange(body, span.start, span.end);
-      }
-      line = blank(task.head) + body;
-    } else {
-      line = line.replace(BLOCK_ID, blank);
-    }
-    masked[at] = line;
+    masked[at] = maskLine(lines, at, fenced, state);
   }
   return masked;
+}
+
+/** Blanks the front matter in `masked`, and says the first line after it. */
+function maskFrontmatter(lines: readonly string[], masked: string[]): number {
+  const frontmatterEnd = findFrontmatterEnd(lines, 'dashes-or-dots');
+  if (frontmatterEnd === undefined) {
+    return 0;
+  }
+  for (let at = 0; at <= frontmatterEnd; at += 1) {
+    masked[at] = blank(masked[at]);
+  }
+  return frontmatterEnd + 1;
+}
+
+/** One line after the front matter, masked, with `state` carried on to the next. */
+function maskLine(lines: readonly string[], at: number, fenced: ReadonlySet<number>, state: MaskState): string {
+  const line = lines[at];
+  if (fenced.has(at)) {
+    return blank(line);
+  }
+  if (isIndentedCode(lines, at, state)) {
+    state.inIndentedCode = true;
+    return blank(line);
+  }
+  if (line.trim() !== '') {
+    state.inIndentedCode = false;
+    state.lastText = line;
+  }
+  return maskInline(maskComments(line, state));
+}
+
+/**
+ * Whether a line is indented code: four spaces or a tab in, and either
+ * under more indented code or after a blank line. After a blank line, a
+ * line indented under a list item or under another indented line continues
+ * that text, as Markdown reads it, rather than starting code.
+ */
+function isIndentedCode(lines: readonly string[], at: number, state: MaskState): boolean {
+  const line = lines[at];
+  if (!CODE_INDENT.test(line) || line.trim() === '') {
+    return false;
+  }
+  if (state.inIndentedCode) {
+    return true;
+  }
+  const previousBlank = at === 0 || lines[at - 1].trim() === '';
+  return previousBlank && opensCodeAfter(state.lastText);
+}
+
+/** Whether an indented line after a blank line can start code under this text. */
+function opensCodeAfter(lastText: string | undefined): boolean {
+  return lastText === undefined || !(LIST_ITEM.test(lastText) || CODE_INDENT.test(lastText));
+}
+
+/**
+ * The line with its HTML comments blanked. A comment shows nothing in
+ * preview, so a reader never sees its words; one opened on a line hides
+ * everything until it closes, so whether it is still open is carried to
+ * the next line in `state`.
+ */
+function maskComments(text: string, state: MaskState): string {
+  let line = text;
+  let cursor = 0;
+  while (cursor < line.length) {
+    if (state.inComment) {
+      const close = line.indexOf('-->', cursor);
+      const end = close < 0 ? line.length : close + 3;
+      line = blankRange(line, cursor, end);
+      state.inComment = close < 0;
+      cursor = end;
+      continue;
+    }
+    const open = line.indexOf('<!--', cursor);
+    if (open < 0) {
+      break;
+    }
+    state.inComment = true;
+    cursor = open;
+  }
+  return line;
+}
+
+/**
+ * The line with its inline code, autolinks, link addresses, wiki-link
+ * targets that have an alias, and a task's checkbox and metadata or a
+ * prose line's block id blanked.
+ */
+function maskInline(text: string): string {
+  let line = text.replace(/`+[^`]*?`+/g, blank);
+  line = line.replace(/<https?:\/\/[^>]*>/g, blank);
+  line = line.replace(/(\[[^\]]*\])(\([^)]*\))/g, (_whole, linkText: string, target: string) => linkText + blank(target));
+  line = line.replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, (whole, target: string, alias: string) =>
+    `  ${blank(target)} ${alias}  `.slice(0, whole.length),
+  );
+  const task = matchTaskLine(line, TASK_LINE);
+  if (!task) {
+    return line.replace(BLOCK_ID, blank);
+  }
+  let body = line.slice(task.head.length);
+  for (const span of findTaskMetadataSpans(body)) {
+    body = blankRange(body, span.start, span.end);
+  }
+  return blank(task.head) + body;
 }
 
 /**
@@ -146,6 +201,7 @@ export function countNoteWords(masked: readonly string[], ranges?: readonly Word
   return count;
 }
 
+/** A count with its noun, `1 word` or `1,234 words`, grouped as US English writes it. */
 function words(count: number): string {
   return `${count.toLocaleString('en-US')} ${count === 1 ? 'word' : 'words'}`;
 }

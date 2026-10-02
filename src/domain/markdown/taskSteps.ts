@@ -108,7 +108,7 @@ export function findStepFamily(lines: readonly string[], lineIndex: number): Ste
     }
   });
   steps.sort((left, right) => left - right);
-  return { ...(parent !== undefined ? { parent } : {}), steps };
+  return { ...(parent === undefined ? {} : { parent }), steps };
 }
 
 /** A checked task, `[x]` or `[X]`, indented by spaces and tabs only. */
@@ -170,9 +170,9 @@ export function planStepInsertion(lines: readonly string[], taskLineIndex: numbe
   return {
     afterLine: findLastDescendantLine(lines, taskLineIndex),
     indent:
-      firstStep !== undefined
-        ? lines[firstStep].match(/^[ \t]*/)?.[0] ?? ''
-        : taskIndent + readNestingStep(lines, taskIndent),
+      firstStep === undefined
+        ? taskIndent + readNestingStep(lines, taskIndent)
+        : lines[firstStep].match(/^[ \t]*/)?.[0] ?? '',
     marker: marker === '*' || marker === '+' ? marker : '-',
   };
 }

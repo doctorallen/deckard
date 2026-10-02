@@ -18,7 +18,6 @@ import {
  * means the draft has to carry everything the line held, including the parts
  * Deckard does not offer to edit.
  */
-
 export interface TaskDraft {
   /** The whitespace and list marker before the checkbox, as written. */
   prefix: string;

@@ -8,6 +8,7 @@
  * `#Heading` in `[[#Heading]]` or a `` `#tag` `` in code is none of them.
  */
 
+/** A stretch of one line, by columns, where a `#` or `@` is text rather than a tag. */
 export interface InlineRange {
   /** First column in the range. */
   start: number;

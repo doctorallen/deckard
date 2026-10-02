@@ -15,6 +15,7 @@ export interface TagTarget {
   label: string;
 }
 
+/** A list item's marker, bullet or numbered, which makes the line itself a target. */
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]+/;
 
 /** The lines of the note's front matter, 0-based, if it opens with some. */
@@ -30,11 +31,63 @@ function findFrontMatter(lines: readonly string[]): Set<number> {
   return held;
 }
 
+/** The heading on a line, labeled by its words without tags, or undefined for any other line. */
 function headingTarget(lines: readonly string[], index: number): TagTarget | undefined {
   const match = matchHeading(lines[index], 'dropped');
   return match
     ? { line: index + 1, kind: 'heading', label: stripTags(match.text) || match.text }
     : undefined;
+}
+
+/** A line itself as the target, 0-based in, labeled by its 1-based number. */
+function lineTarget(index: number): TagTarget {
+  return { line: index + 1, kind: 'line', label: `line ${index + 1}` };
+}
+
+/**
+ * The first heading met walking from `from` by `step` (1 down, -1 up) to
+ * the note's edge, past the skipped lines.
+ */
+function firstHeading(
+  lines: readonly string[],
+  skipped: ReadonlySet<number>,
+  from: number,
+  step: 1 | -1,
+): TagTarget | undefined {
+  for (let index = from; index >= 0 && index < lines.length; index += step) {
+    if (skipped.has(index)) {
+      continue;
+    }
+    const heading = headingTarget(lines, index);
+    if (heading) {
+      return heading;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The target a cursor on a line outside front matter and code finds
+ * without looking below it: the heading it is on, the list item it is on,
+ * the nearest heading above, or the line of prose it is on.
+ */
+function targetAtCursor(
+  lines: readonly string[],
+  skipped: ReadonlySet<number>,
+  cursor: number,
+): TagTarget | undefined {
+  const onHeading = headingTarget(lines, cursor);
+  if (onHeading) {
+    return onHeading;
+  }
+  if (LIST_ITEM.test(lines[cursor])) {
+    return lineTarget(cursor);
+  }
+  const above = firstHeading(lines, skipped, cursor - 1, -1);
+  if (above) {
+    return above;
+  }
+  return lines[cursor].trim() === '' ? undefined : lineTarget(cursor);
 }
 
 /**
@@ -51,35 +104,14 @@ export function findTagTarget(lines: readonly string[], cursorLine: number): Tag
   while (cursor >= 0 && skipped.has(cursor)) {
     cursor -= 1;
   }
-  if (cursor >= 0) {
-    const onHeading = headingTarget(lines, cursor);
-    if (onHeading) {
-      return onHeading;
-    }
-    if (LIST_ITEM.test(lines[cursor])) {
-      return { line: cursor + 1, kind: 'line', label: `line ${cursor + 1}` };
-    }
-    for (let index = cursor - 1; index >= 0; index -= 1) {
-      if (!skipped.has(index)) {
-        const above = headingTarget(lines, index);
-        if (above) {
-          return above;
-        }
-      }
-    }
-    if (lines[cursor].trim() !== '') {
-      return { line: cursor + 1, kind: 'line', label: `line ${cursor + 1}` };
-    }
+  const atCursor = cursor >= 0 ? targetAtCursor(lines, skipped, cursor) : undefined;
+  if (atCursor) {
+    return atCursor;
   }
-  const start = Math.max(cursor, 0);
-  for (let index = start; index < lines.length; index += 1) {
-    if (!skipped.has(index)) {
-      const below = headingTarget(lines, index);
-      if (below) {
-        return below;
-      }
-    }
+  const below = firstHeading(lines, skipped, Math.max(cursor, 0), 1);
+  if (below) {
+    return below;
   }
   const first = lines.findIndex((line, index) => !skipped.has(index) && line.trim() !== '');
-  return first < 0 ? undefined : { line: first + 1, kind: 'line', label: `line ${first + 1}` };
+  return first < 0 ? undefined : lineTarget(first);
 }

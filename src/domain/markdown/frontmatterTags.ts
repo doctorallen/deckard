@@ -35,19 +35,32 @@ function sameTag(written: string, tag: string): boolean {
   return bare(written) === bare(tag);
 }
 
+/** The tags field's line: its name, `tag` or `tags` in any case, and what follows the colon. */
 const TAGS_FIELD = /^(tags?)[ \t]*:[ \t]*(.*?)[ \t]*$/i;
+/** One item of a YAML block list: its indentation and its value. */
 const LIST_ITEM = /^([ \t]+)-[ \t]+(.*?)[ \t]*$/;
 
+/** The tags field as written. */
 interface TagsField {
+  kind: 'field';
   /** The field's line. */
   line: number;
+  /** The field's name as written, `tags` or `tag` in its own case. */
+  name: string;
   /** What follows the colon. */
   inline: string;
   /** The block list's lines under it, with their values. */
   items: { line: number; value: string; indent: string }[];
 }
 
-function findTagsField(lines: readonly string[], end: number): TagsField | undefined | 'unreadable' {
+/**
+ * What the front matter says about tags: no tags field, a field Deckard
+ * cannot safely rewrite, or the field.
+ */
+type TagsFieldReading = { kind: 'none' } | { kind: 'unreadable' } | TagsField;
+
+/** Reads the first tags field between the front matter's fences, `end` being the closing one. */
+function findTagsField(lines: readonly string[], end: number): TagsFieldReading {
   for (let line = 1; line < end; line += 1) {
     const match = lines[line].match(TAGS_FIELD);
     if (!match) {
@@ -65,17 +78,18 @@ function findTagsField(lines: readonly string[], end: number): TagsField | undef
     // A value on the field's line and a list under it is not YAML Deckard
     // can safely rewrite.
     if (inline && items.length > 0) {
-      return 'unreadable';
+      return { kind: 'unreadable' };
     }
     // A flow list across lines, or any other value Deckard cannot read.
     if (inline.startsWith('[') && !inline.endsWith(']')) {
-      return 'unreadable';
+      return { kind: 'unreadable' };
     }
-    return { line, inline, items };
+    return { kind: 'field', line, name: match[1], inline, items };
   }
-  return undefined;
+  return { kind: 'none' };
 }
 
+/** The note's line ending, CRLF when any line has one, so a rewrite keeps it. */
 function lineEnding(content: string): string {
   return content.includes('\r\n') ? '\r\n' : '\n';
 }
@@ -94,14 +108,13 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
     return `---${eol}tags: [${value}]${eol}---${eol}${content}`;
   }
   const field = findTagsField(lines, bounds.end);
-  if (field === 'unreadable') {
+  if (field.kind === 'unreadable') {
     return undefined;
   }
-  if (!field) {
+  if (field.kind === 'none') {
     lines.splice(bounds.end, 0, `tags: [${value}]`);
     return lines.join(eol);
   }
-  const name = lines[field.line].match(TAGS_FIELD)?.[1] ?? 'tags';
   if (field.items.length > 0) {
     if (field.items.some((item) => sameTag(item.value, value))) {
       return undefined;
@@ -114,7 +127,7 @@ export function addFrontmatterTag(content: string, tag: string): string | undefi
   if (values.some((written) => sameTag(written, value))) {
     return undefined;
   }
-  lines[field.line] = `${name}: [${[...values, value].join(', ')}]`;
+  lines[field.line] = `${field.name}: [${[...values, value].join(', ')}]`;
   return lines.join(eol);
 }
 
@@ -134,32 +147,15 @@ export function removeFrontmatterTags(
     return undefined;
   }
   const field = findTagsField(lines, bounds.end);
-  if (!field || field === 'unreadable') {
+  if (field.kind !== 'field') {
     return undefined;
   }
   const removes = (written: string) => tags.some((tag) => sameTag(written, tag));
-  const drop = new Set<number>();
-  if (field.items.length > 0) {
-    const gone = field.items.filter((item) => removes(item.value));
-    if (gone.length === 0) {
-      return undefined;
-    }
-    gone.forEach((item) => drop.add(item.line));
-    if (gone.length === field.items.length) {
-      drop.add(field.line);
-    }
-  } else {
-    const values = splitValues(field.inline);
-    const kept = values.filter((written) => !removes(written));
-    if (kept.length === values.length) {
-      return undefined;
-    }
-    if (kept.length === 0) {
-      drop.add(field.line);
-    } else {
-      const name = lines[field.line].match(TAGS_FIELD)?.[1] ?? 'tags';
-      lines[field.line] = `${name}: [${kept.join(', ')}]`;
-    }
+  const drop = field.items.length > 0
+    ? dropFromBlockList(field, removes)
+    : dropFromInline(lines, field, removes);
+  if (!drop) {
+    return undefined;
   }
   const next = lines.filter((_, index) => !drop.has(index));
   const end = bounds.end - drop.size;
@@ -170,6 +166,44 @@ export function removeFrontmatterTags(
   return next.join(eol);
 }
 
+/**
+ * The lines to drop to take tags out of a block list: each item that goes,
+ * and the field's own line when every item goes. Undefined when none goes.
+ */
+function dropFromBlockList(field: TagsField, removes: (written: string) => boolean): Set<number> | undefined {
+  const gone = field.items.filter((item) => removes(item.value));
+  if (gone.length === 0) {
+    return undefined;
+  }
+  const drop = new Set(gone.map((item) => item.line));
+  if (gone.length === field.items.length) {
+    drop.add(field.line);
+  }
+  return drop;
+}
+
+/**
+ * Takes tags out of a field written on one line: rewrites the line in
+ * `lines` with the values kept, or, when none is kept, says to drop the
+ * line. Undefined when no value goes.
+ */
+function dropFromInline(
+  lines: string[],
+  field: TagsField,
+  removes: (written: string) => boolean,
+): Set<number> | undefined {
+  const values = splitValues(field.inline);
+  const kept = values.filter((written) => !removes(written));
+  if (kept.length === values.length) {
+    return undefined;
+  }
+  if (kept.length === 0) {
+    return new Set([field.line]);
+  }
+  lines[field.line] = `${field.name}: [${kept.join(', ')}]`;
+  return new Set();
+}
+
 /** The values of the front matter's tags field, as written. */
 export function readFrontmatterTagValues(content: string): string[] | undefined {
   const lines = content.split(/\r?\n/);
@@ -178,10 +212,10 @@ export function readFrontmatterTagValues(content: string): string[] | undefined 
     return [];
   }
   const field = findTagsField(lines, bounds.end);
-  if (field === 'unreadable') {
+  if (field.kind === 'unreadable') {
     return undefined;
   }
-  if (!field) {
+  if (field.kind === 'none') {
     return [];
   }
   return field.items.length > 0 ? field.items.map((item) => item.value) : splitValues(field.inline);
