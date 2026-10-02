@@ -589,4 +589,52 @@ suite('Task Board page', () => {
     press(shown, cardTitled(shown, 'Beta'), ']');
     assert.deepStrictEqual(moves().slice(2).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: beta?.taskId, column: 'status:doing' }]);
   });
+
+  test('a list or table row\'s second edit before the host answers its first waits, and goes with the task\'s new id', () => {
+    for (const layout of ['list', 'table']) {
+      const shown = show(boardOf(TWO, { taskBoardLayout: layout, taskSortMode: 'created' }));
+      const rowTitled = (title: string): HTMLElement => {
+        const row = shown.findAll('.task-row, .result-row').find((candidate) => candidate.textContent?.includes(title));
+        assert.ok(row, `${layout}: a row titled ${title}`);
+        return row as HTMLElement;
+      };
+      const sent = (type: string) => shown.posted.filter((message) => message.type === type);
+      const choose = (value: string): void => {
+        (rowTitled('Beta').querySelector('[data-action="task-row-menu"]') as HTMLElement).click();
+        shown.click(`#action-menu [data-menu-value="${value}"]`);
+      };
+      const firstId = rowTitled('Beta').dataset.taskId;
+
+      choose('status:doing');
+      choose('priority:high');
+      const box = rowTitled('Beta').querySelector('input[data-action="toggle-task"]') as HTMLInputElement;
+      box.checked = true;
+      box.dispatchEvent(new shown.window.Event('change', { bubbles: true }));
+      assert.deepStrictEqual(sent('moveTask').map(({ taskId, column }) => ({ taskId, column })), [{ taskId: firstId, column: 'status:doing' }],
+        `${layout}: the second is not sent with the id the first is about to change`);
+      assert.strictEqual(sent('toggleTask').length, 0, `${layout}: nor is the completion`);
+      assert.strictEqual(shown.text('#live-status'), 'Completed Beta.', `${layout}: though it is said at once`);
+
+      // The first is written, and the task's line and id changed. The next
+      // edit goes with the new id, one at a time.
+      const doing = boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/doing\n' }, { taskBoardLayout: layout, taskSortMode: 'created' });
+      shown.send(doing);
+      const doingId = rowTitled('Beta').dataset.taskId;
+      assert.notStrictEqual(doingId, firstId);
+      assert.deepStrictEqual(sent('moveTask').slice(1).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: doingId, column: 'priority:high' }], layout);
+      assert.strictEqual(sent('toggleTask').length, 0, `${layout}: the completion waits on the priority`);
+
+      shown.send(boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/doing ⏫\n' }, { taskBoardLayout: layout, taskSortMode: 'created' }));
+      const highId = rowTitled('Beta').dataset.taskId;
+      assert.deepStrictEqual(sent('toggleTask').map(({ taskId, completed }) => ({ taskId, completed })), [{ taskId: highId, completed: true }], layout);
+      assert.strictEqual((rowTitled('Beta').querySelector('input[data-action="toggle-task"]') as HTMLInputElement).checked, true, `${layout}: its box shows it`);
+
+      // A refusal leaves the id as it was, so the next edit goes at once.
+      shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'toggleRefused', taskId: highId, completed: true } }));
+      choose('priority:low');
+      assert.deepStrictEqual(sent('moveTask').slice(2).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: highId, column: 'priority:low' }], layout);
+      page?.dispose();
+      page = undefined;
+    }
+  });
 });

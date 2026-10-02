@@ -8,7 +8,7 @@
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
-import { closeActionMenu, openActionMenu } from '../shared/actionMenu';
+import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
 import { installKeySheet, type KeySection } from '../shared/keySheet';
 import { installMenuKeys } from '../shared/menuKeys';
@@ -23,7 +23,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
-import { type BoardScroll, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
+import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SortControl, TableSortNote, TaskList } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
@@ -273,24 +273,37 @@ installBoardMoves({
 });
 installViewOptions();
 
+/** A list or table row's menu groups, from what the host says its task has now, or undefined with none. */
+function rowMoves(row: HTMLElement): ActionMenuGroup[] | undefined {
+  const snapshot = shown();
+  const menu = snapshot && snapshot.taskMenus && snapshot.taskMenus[String(row.dataset.taskId)];
+  return menu && snapshot
+    ? taskCardMoves({ current: menu.current, completed: row.classList.contains('completed'), steps: menu.steps }, '', [], snapshot.settings)
+    : undefined;
+}
+
+/** Whether a row's menu says its task already has the move `value` makes. */
+function rowAlreadyHas(row: HTMLElement, value: string): boolean {
+  return Boolean(rowMoves(row)?.some((group) => group.items.some((item) => item.value === value && item.checked)));
+}
+
 /**
  * A list or table row's menu: the board card's status, priority, due,
  * steps, done, and Move to…, from what the host says the task has now. The
- * row is drawn again when the note is written, so nothing moves at once.
+ * row is drawn again when the note is written, so nothing moves at once,
+ * and a choice made before then waits for it, by which time the task may
+ * have what was chosen.
  */
 function openRowMenu(opener: HTMLElement): boolean {
   const row = opener.closest<HTMLElement>('.task-row, .result-row');
-  const taskId = String(opener.dataset.taskId);
-  const snapshot = shown();
-  const menu = snapshot && snapshot.taskMenus && snapshot.taskMenus[taskId];
-  if (!row || !menu || !snapshot) {
+  const groups = row ? rowMoves(row) : undefined;
+  if (!row || !groups) {
     return false;
   }
-  const groups = taskCardMoves({ current: menu.current, completed: row.classList.contains('completed'), steps: menu.steps }, '', [], snapshot.settings);
   openActionMenu(opener, groups, (value) => {
     if (value === 'pick-date' || value === 'move-to' || value === 'break-steps') {
       const types = { 'pick-date': 'pickTaskDate', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
-      post({ type: types[value], taskId });
+      editRow(row, (drawn) => ({ type: types[value], taskId: String(drawn.dataset.taskId) }), post);
       return;
     }
     const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
@@ -299,10 +312,35 @@ function openRowMenu(opener: HTMLElement): boolean {
       announce(`${taskTitleOf(row)}: ${(group && group.label) || 'It'} is already ${chosen.label}.`);
       return;
     }
-    post({ type: 'moveTask', taskId, column: value });
+    editRow(row, (drawn) => (rowAlreadyHas(drawn, value) ? undefined : { type: 'moveTask', taskId: String(drawn.dataset.taskId), column: value }), post);
     announce(`${taskTitleOf(row)}: ${group && group.label ? `${group.label}, ` : ''}${chosen ? chosen.label : value}.`);
   });
   return true;
+}
+
+/**
+ * Completes or reopens a list or table row's task from its checkbox. Held
+ * behind the task's last edit, the task may be so already by the time it
+ * goes; otherwise its box, which the host's draw set, shows it again.
+ */
+function toggleRow(box: HTMLInputElement): void {
+  const row = box.closest<HTMLElement>('.task-row, .result-row');
+  const completed = box.checked;
+  announce(`${completed ? 'Completed ' : 'Reopened '}${taskTitleOf(box)}.`);
+  if (!row) {
+    post({ type: 'toggleTask', taskId: String(box.dataset.taskId), completed });
+    return;
+  }
+  editRow(row, (drawn) => {
+    if (drawn.classList.contains('completed') === completed) {
+      return undefined;
+    }
+    const drawnBox = drawn.querySelector<HTMLInputElement>('input[data-action="toggle-task"]');
+    if (drawnBox) {
+      drawnBox.checked = completed;
+    }
+    return { type: 'toggleTask', taskId: String(drawn.dataset.taskId), completed };
+  }, post);
 }
 
 /** Adds or removes one of the table's columns, keeping the order the picker lists them in. */
@@ -497,8 +535,7 @@ document.addEventListener('change', (event) => {
     post({ type: 'setTaskSort', mode: target.value as never });
   }
   if (target.dataset.action === 'toggle-task') {
-    post({ type: 'toggleTask', taskId: String(target.dataset.taskId), completed: target.checked });
-    announce(`${target.checked ? 'Completed ' : 'Reopened '}${taskTitleOf(target)}.`);
+    toggleRow(target);
   }
   if (target.dataset.action === 'toggle-table-column') {
     toggleColumn(String(target.dataset.value), target.checked);

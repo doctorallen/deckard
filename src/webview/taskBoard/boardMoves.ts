@@ -1,8 +1,10 @@
 /**
  * Moving cards: a card's keys, its menu, its checkbox, opening it, and
  * dragging it between columns. A move shows at once, and the host's next
- * state confirms it or puts the card back. Listeners sit on the document,
- * installed once, so the page may draw its board freely.
+ * state confirms it or puts the card back. An edit to a task whose last
+ * edit the host has not answered waits for it, on a card or on a list or
+ * table row. Listeners sit on the document, installed once, so the page
+ * may draw its board freely.
  */
 import type { TaskBoardMessage } from '../../ui/protocol/taskBoard';
 import { type ActionMenuGroup, openActionMenu } from '../shared/actionMenu';
@@ -193,11 +195,12 @@ function applyMove(card: HTMLElement, columnId: string): void {
 const unanswered = new Set<string>();
 
 /**
- * The edits a card was given while its task's last edit was unanswered,
- * in order: where the task is written, the column its card was in, and
- * how to send the edit for the card the host draws there next.
+ * The edits a card or a list or table row was given while its task's last
+ * edit was unanswered, in order: where the task is written, the column its
+ * card was in (none for a row), and how to send the edit for the card or
+ * row the host draws there next.
  */
-const held: { written: string; column: string; send: (card: HTMLElement) => void }[] = [];
+const held: { written: string; column: string | undefined; send: (entry: HTMLElement) => void }[] = [];
 
 /** An attribute selector for one data attribute, its value escaped. */
 function attributeSelector(name: string, value: string): string {
@@ -210,21 +213,33 @@ function writtenAt(card: HTMLElement): string {
 }
 
 /**
- * Sends the edits held for cards while their task's last edit was
+ * The card or row drawn now where a held edit's task is written: a card in
+ * the column it was in when the edit was asked for, else in any, or a list
+ * or table row.
+ */
+function heldEntry(edit: { written: string; column: string | undefined }): HTMLElement | null {
+  if (edit.column === undefined) {
+    return document.querySelector<HTMLElement>(`.task-row${edit.written}, .result-row${edit.written}`);
+  }
+  return document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}${attributeSelector('card-column', edit.column)}`)
+    || document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}`);
+}
+
+/**
+ * Sends the edits held for cards and rows while their task's last edit was
  * unanswered, once the host's next state is drawn, which answers it: the
  * host draws again when the write reaches the index. Each goes to the card
- * written where its task is written, in the column it was in when it was
- * asked for, and with the id the state gives the task; an edit for a task
- * the board no longer draws is dropped. Edits of one task go one state at
- * a time, in order.
+ * or row written where its task is written, a card in the column it was in
+ * when it was asked for, and with the id the state gives the task; an edit
+ * for a task the page no longer draws is dropped. Edits of one task go one
+ * state at a time, in order.
  */
 export function sendHeldEdits(): void {
   unanswered.clear();
   const waiting = held.splice(0);
   const busy = new Set<string>();
   for (const edit of waiting) {
-    const card = document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}${attributeSelector('card-column', edit.column)}`)
-      || document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}`);
+    const card = heldEntry(edit);
     if (!card) {
       continue;
     }
@@ -244,19 +259,40 @@ export function settleRefusedEdit(taskId: string): void {
 }
 
 /**
- * Sends a card's edit now, or, while its task's last edit is unanswered,
- * shows it now with `showNow` and holds it until a state gives the task its
- * new id. Two quick keys on a card used to send the second with the id the
- * first had just made stale, and the host refused it.
+ * Sends a card's or a row's edit now, or, while its task's last edit is
+ * unanswered, shows it now with `showNow` and holds it until a state gives
+ * the task its new id. Two quick keys on a card used to send the second
+ * with the id the first had just made stale, and the host refused it.
  */
-function whenAnswered(card: HTMLElement, send: (card: HTMLElement) => void, showNow?: () => void): void {
-  if (!unanswered.has(String(card.dataset.taskId))) {
-    send(card);
+function whenAnswered(entry: HTMLElement, send: (entry: HTMLElement) => void, showNow?: () => void): void {
+  if (!unanswered.has(String(entry.dataset.taskId))) {
+    send(entry);
     return;
   }
-  const at = { written: writtenAt(card), column: String(card.dataset.cardColumn) };
+  const column = entry.classList.contains('board-card') ? String(entry.dataset.cardColumn) : undefined;
   showNow?.();
-  held.push({ ...at, send });
+  held.push({ written: writtenAt(entry), column, send });
+}
+
+/**
+ * Sends a list or table row's edit now, or holds it while its task's last
+ * edit is unanswered, as a card's is: two quick edits on one row sent the
+ * second with the id the first had just made stale. `edit` makes the
+ * message for the row drawn when it goes, or nothing when there is nothing
+ * left to send. A completion or a move rewrites the task's line, so its
+ * task's next edit waits for the host's answer.
+ */
+export function editRow(row: HTMLElement, edit: (row: HTMLElement) => TaskBoardMessage | undefined, post: Post): void {
+  whenAnswered(row, (drawn) => {
+    const message = edit(drawn);
+    if (!message) {
+      return;
+    }
+    if (message.type === 'toggleTask' || message.type === 'moveTask') {
+      unanswered.add(message.taskId);
+    }
+    post(message);
+  });
 }
 
 /**
