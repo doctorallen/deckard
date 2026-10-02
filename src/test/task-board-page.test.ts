@@ -58,6 +58,13 @@ suite('Task Board page', () => {
     return event;
   };
 
+  /** A card on the page, by the words its title starts with. */
+  const cardTitled = (shown: WebviewPage, title: string): HTMLElement => {
+    const card = shown.findAll('.board-card').find((candidate) => candidate.querySelector('.task-title')?.textContent?.startsWith(title));
+    assert.ok(card, `a card titled ${title}`);
+    return card as HTMLElement;
+  };
+
   /** Two tasks in one note: Alpha has a status, and Beta has none. */
   const TWO = { 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta\n' };
 
@@ -287,5 +294,26 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.document.activeElement, box, 'and stays where it went');
     press(shown, box, 't');
     assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'a t typed in the search box moves no task');
+  });
+
+  test('after the host confirms a key edit, focus and the next key stay on the task that was edited', () => {
+    const shown = show(boardOf(TWO));
+    cardTitled(shown, 'Beta').focus();
+    press(shown, cardTitled(shown, 'Beta'), ']');
+    // The edit rewrites the task's line, which gives it a new id.
+    const moved = boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n' });
+    shown.send(moved);
+    assert.strictEqual(shown.document.activeElement, cardTitled(shown, 'Beta'), 'focus is on Beta, not the card at its old place');
+    press(shown, shown.document.activeElement as Element, ']');
+    const beta = moved.columns.flatMap((column) => column.cards).find((card) => card.title === 'Beta');
+    assert.strictEqual(shown.lastPosted('moveTask')?.taskId, beta?.taskId, 'the next ] moves Beta');
+
+    // A priority sorts the column again, and focus follows the task.
+    shown.dispose();
+    const sorted = show(boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo\n' }));
+    cardTitled(sorted, 'Beta').focus();
+    press(sorted, cardTitled(sorted, 'Beta'), '1');
+    sorted.send(boardOf({ 'notes/a.md': '- [ ] Alpha #status/todo\n- [ ] Beta #status/todo 🔺\n' }));
+    assert.strictEqual(sorted.document.activeElement, cardTitled(sorted, 'Beta'));
   });
 });
