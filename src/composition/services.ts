@@ -1036,8 +1036,10 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
       sidebarNotes,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
+    // The Calendar is not kept running while hidden (Q1 of
+    // docs/implementation/20-webviews.md); its controller says so too.
     vscode.window.registerWebviewViewProvider('deckard.calendar', calendar, {
-      webviewOptions: { retainContextWhenHidden: true },
+      webviewOptions: { retainContextWhenHidden: false },
     }),
   );
   const outlineView = vscode.window.createTreeView('deckard.outline', {

@@ -56,6 +56,8 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
   private lastSent: TSnapshot | undefined;
   /** Whether the hidden page's HTML already carries `lastSent`. */
   private resetWhileHidden = false;
+  /** Whether the index has had notes to show, so a snapshot built now draws them. */
+  private published = false;
   private readonly indexer: HostIndexer | undefined;
   private readonly themePreview: WebviewHostOptions['themePreview'];
 
@@ -73,6 +75,12 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
     this.indexer = options.indexer;
     this.themePreview = options.themePreview;
     if (this.indexer) {
+      whenPublished(this.indexer).then(
+        () => {
+          this.published = true;
+        },
+        () => undefined,
+      );
       this.disposables.push(
         onIndexUpdateInTurn(
           this.indexer,
@@ -135,12 +143,16 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
 
   /**
    * Sets the page's HTML again, in the theme it is drawn in now. A hidden
-   * page that is reset when hidden carries the last snapshot it was sent.
+   * page that is reset when hidden carries the last snapshot it was sent;
+   * a shown page that embeds its snapshot carries one built now.
    */
   public renderHtml(): void {
     const surface = this.current;
-    const state = surface && !surface.visible && this.resetsWhenHidden() ? this.lastSent : undefined;
-    surface?.render((webview) => this.controller.html(webview, getDeckardTheme(this.themePreview), state));
+    if (!surface) {
+      return;
+    }
+    const state = this.stateForHtml(surface);
+    surface.render((webview) => this.controller.html(webview, getDeckardTheme(this.themePreview), state));
   }
 
   /**
@@ -199,6 +211,45 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
       return measure(timing.name, () => this.send(surface, build()));
     }
     return this.send(surface, measure(timing.name, build));
+  }
+
+  /**
+   * The snapshot the page's HTML carries: for a shown page, one built now
+   * if it embeds its snapshot; for a hidden one, the last it was sent if it
+   * is reset when hidden; otherwise none.
+   */
+  private stateForHtml(surface: WebviewSurface): TSnapshot | undefined {
+    if (surface.visible) {
+      return this.snapshotToEmbed();
+    }
+    return this.resetsWhenHidden() ? this.lastSent : undefined;
+  }
+
+  /**
+   * A snapshot to build into the HTML of a shown page that embeds its
+   * snapshot, once the index has notes to show and the page is ready for
+   * one: built and timed as one sent is, and kept as the last sent.
+   * Otherwise undefined, and the page shows its loading line until a
+   * snapshot is posted.
+   */
+  private snapshotToEmbed(): TSnapshot | undefined {
+    const options = this.controller.options;
+    if (
+      options.embedsSnapshot !== true ||
+      options.readsInertState !== true ||
+      options.hasSnapshot === false ||
+      !this.published ||
+      this.controller.isReady?.() === false
+    ) {
+      return undefined;
+    }
+    const timing = options.measure ?? { name: this.controller.name };
+    const build = (): TSnapshot | undefined => this.controller.buildSnapshot();
+    const data = timing === false ? build() : measure(timing.name, build);
+    if (data !== undefined) {
+      this.lastSent = data;
+    }
+    return data;
   }
 
   /**

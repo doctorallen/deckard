@@ -4,7 +4,8 @@
  * metadata, date phrases, and the parser's prose dates all use.
  *
  * Every timestamp here is a local time, and a day is the local calendar day
- * it falls in, so a daylight-saving change never shifts a date.
+ * it falls in, so a daylight-saving change never shifts a date. The
+ * calendar pages' steps, at the end, work on `YYYY-MM-DD` dates instead.
  */
 
 /**
@@ -119,4 +120,121 @@ export function addMonths(timestamp: number, months: number): number {
   const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
   target.setDate(Math.min(date.getDate(), daysInMonth(target)));
   return target.getTime();
+}
+
+/*
+ * The calendar pages' own steps, on `YYYY-MM-DD` dates as the pages carry
+ * them. A page reads its dates as UTC days, so no time zone or
+ * daylight-saving change moves one; a page imports these to step and focus
+ * without asking its host (D1 in docs/architecture/layers.md).
+ */
+
+/** A `YYYY-MM-DD` date as its parts, month 1-based. */
+function readDateParts(date: string): [number, number, number] {
+  const [year, month, day] = date.split('-').map(Number);
+  return [year, month, day];
+}
+
+/** A `YYYY-MM-DD` date moved by some days, as `YYYY-MM-DD`. */
+export function shiftDate(date: string, days: number): string {
+  const [year, month, day] = readDateParts(date);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/** Whether a `YYYY-MM-DD` date is a Saturday or a Sunday. */
+export function isWeekend(date: string): boolean {
+  const [year, month, day] = readDateParts(date);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return weekday === 0 || weekday === 6;
+}
+
+/**
+ * A date, or, with the weekends hidden, the first weekday from it going one
+ * way: `direction` 1 is later, -1 earlier.
+ */
+export function skipWeekend(date: string, direction: number, hideWeekends: boolean): string {
+  let at = date;
+  while (hideWeekends && isWeekend(at)) {
+    at = shiftDate(at, direction);
+  }
+  return at;
+}
+
+/**
+ * A key's step from a day, as a date. `step` is how many cells the key
+ * moves along the drawn grid: a row down is a week whichever number of days
+ * the row draws (five with the weekends hidden, seven without), and a step
+ * onto a hidden weekend goes on to the next weekday that way.
+ */
+export function stepDate(date: string, step: number, hideWeekends: boolean): string {
+  const columns = hideWeekends ? 5 : 7;
+  const days = Math.abs(step) === columns ? Math.sign(step) * 7 : step;
+  return skipWeekend(shiftDate(date, days), Math.sign(step) || 1, hideWeekends);
+}
+
+/** The same day of the month in another month, `YYYY-MM`, or that month's last day. */
+export function sameDayIn(date: string, month: string): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const last = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return `${month}-${String(Math.min(Number(date.slice(8, 10)), last)).padStart(2, '0')}`;
+}
+
+/** What the focus-day choice reads of a drawn day. */
+export interface FocusableDay {
+  readonly date: string;
+  readonly isToday: boolean;
+  /** Whether the day is in the month shown, rather than a neighbor's. */
+  readonly inMonth: boolean;
+}
+
+/**
+ * The one day of a calendar's grid that takes Tab: the chosen day, when one
+ * is chosen and the focused day is not drawn; else the focused day, when it
+ * is drawn; else today, else the first day of the month. `days` are the
+ * days the grid draws; `chosen` is the chosen day only where a calendar
+ * chooses one (its day panel is on).
+ */
+export function chooseFocusDay(
+  days: readonly FocusableDay[],
+  focused: string | undefined,
+  chosen: string | undefined,
+): string | undefined {
+  const has = (date: string | undefined): boolean => Boolean(date) && days.some((day) => day.date === date);
+  if (has(chosen) && !has(focused)) {
+    return chosen;
+  }
+  if (has(focused)) {
+    return focused;
+  }
+  return days.find((day) => day.isToday)?.date ?? days.find((day) => day.inMonth)?.date;
+}
+
+/** Where a calendar steps from, and the months either side of the one it shows. */
+export interface CalendarStepFrom {
+  /** The chosen day, or today when none is chosen. */
+  readonly date: string;
+  /** The months before and after the one shown, `YYYY-MM`. */
+  readonly previousMonth: string;
+  readonly nextMonth: string;
+  /** Whether the weekends are hidden, so a step lands on a weekday. */
+  readonly hideWeekends: boolean;
+}
+
+/**
+ * A step of the calendar page a month or a week back (`by` -1) or on (1),
+ * keeping the chosen day's place. A week moves the day seven days, in the
+ * month the day lands in. A month moves to the same day of the month before
+ * or after, or its last day, then on to a weekday if the weekends are
+ * hidden, and names that month.
+ */
+export function stepCalendar(
+  layout: 'month' | 'week',
+  by: number,
+  from: CalendarStepFrom,
+): { readonly month?: string; readonly date: string } {
+  if (layout === 'week') {
+    return { date: shiftDate(from.date, 7 * by) };
+  }
+  const month = by < 0 ? from.previousMonth : from.nextMonth;
+  return { month, date: skipWeekend(sameDayIn(from.date, month), 1, from.hideWeekends) };
 }

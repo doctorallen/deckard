@@ -230,6 +230,79 @@ suite('WebviewHost', () => {
     });
   });
 
+  suite('a page whose snapshot is cheap to build (Q3)', () => {
+    /** A page that embeds its snapshot, over an index, on a surface that keeps its HTML. */
+    const openPage = (options: Partial<PageOptions>, controllerOptions: Partial<PageController<{ count: number }, TestPageToHost>> = {}) => {
+      const { controller } = createController({ readsInertState: true, embedsSnapshot: true, ...options });
+      const { indexer } = createIndexer();
+      const themePreview = new ThemePreview();
+      const host = new WebviewHost(
+        { ...controller, ...controllerOptions, html: (_webview, theme, state) => `<p>${theme}</p>${state === undefined ? '' : JSON.stringify(state)}` },
+        { indexer, themePreview },
+      );
+      const surface = new FakeSurface();
+      surface.htmlWebview = {} as vscode.Webview;
+      return { host, surface, themePreview };
+    };
+    /** Lets the index's publish reach the host. */
+    const published = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    test('carries a snapshot built for its HTML once the index has notes, timed as one sent is, and hidden, carries it again unbuilt', async () => {
+      const early = openPage({});
+      try {
+        early.host.attach(early.surface);
+        assert.match(String(early.surface.html), /^<p>[a-z]+<\/p>$/, 'before the index has notes, the loading line');
+      } finally {
+        early.host.dispose();
+      }
+      const { host, surface, themePreview } = openPage({ onChromeChange: 'reload' });
+      try {
+        await published();
+        const lines = captureTimingLog(() => host.attach(surface));
+        assert.match(String(surface.html), /\{"count":0\}$/, 'drawn on its first frame');
+        assert.deepStrictEqual(lines, ['Test page: N ms'], 'timed under its name, as a post is');
+        assert.deepStrictEqual(surface.webview.posted, [], 'and nothing posted');
+        themePreview.show('cooper');
+        assert.strictEqual(surface.html, '<p>cooper</p>{"count":1}', 'a theme change builds it afresh');
+        surface.setVisible(false);
+        assert.strictEqual(surface.html, '<p>cooper</p>{"count":1}', 'hidden, it carries the last it had, not built again');
+        themePreview.show('lcars');
+        assert.strictEqual(surface.html, '<p>lcars</p>{"count":1}', 'nor through a theme change while hidden');
+      } finally {
+        host.dispose();
+      }
+    });
+
+    test('a page kept running builds nothing while hidden, and a page that does not read inert state, has no snapshot, or is not ready carries none', async () => {
+      const retained = openPage({ retainContextWhenHidden: true, onChromeChange: 'reload' });
+      try {
+        await published();
+        retained.host.attach(retained.surface);
+        retained.surface.setVisible(false);
+        retained.themePreview.show('cooper');
+        assert.strictEqual(retained.surface.html, '<p>cooper</p>', 'hidden, nothing is built');
+      } finally {
+        retained.host.dispose();
+      }
+      const cases: Array<[Partial<PageOptions>, Partial<PageController<{ count: number }, TestPageToHost>>]> = [
+        [{ readsInertState: false }, {}],
+        [{ hasSnapshot: false }, {}],
+        [{}, { isReady: () => false }],
+        [{ embedsSnapshot: false }, {}],
+      ];
+      for (const [options, controller] of cases) {
+        const { host, surface } = openPage(options, controller);
+        try {
+          await published();
+          host.attach(surface);
+          assert.match(String(surface.html), /^<p>[a-z]+<\/p>$/, JSON.stringify(options));
+        } finally {
+          host.dispose();
+        }
+      }
+    });
+  });
+
   test('on a theme or zen change: resets the HTML and sends the snapshot, or only resets it, or leaves the page', () => {
     for (const [onChromeChange, renders, states] of [['redraw', 2, 1], ['reload', 2, 0], ['none', 1, 0]] as const) {
       const { controller } = createController({ onChromeChange });

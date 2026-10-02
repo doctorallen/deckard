@@ -189,6 +189,9 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
     const other = view
       .findAll('[data-action="open-day"]')
       .find((button) => !button.querySelector('.note-dot') && button.getAttribute('data-date') !== today);
+    // Read before the click: a day in another month moves the calendar to
+    // it, and the page may draw another day into the same button.
+    const chosen = other.getAttribute('data-date');
     const asked = vscode._test.shown.info.length;
     view.click(other);
     await new Promise((resolve) => setTimeout(resolve, 160));
@@ -196,8 +199,8 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
     assert.deepStrictEqual(opened, [], 'a click opens nothing');
     assert.strictEqual(vscode._test.shown.info.length, asked, 'and asks nothing');
     const posted = view.posted.filter((message) => message.type === 'selectDay');
-    assert.strictEqual(posted[posted.length - 1].date, other.getAttribute('data-date'));
-    assert.strictEqual(day(other.getAttribute('data-date')).classList.contains('selected'), true, 'the host draws it chosen');
+    assert.strictEqual(posted[posted.length - 1].date, chosen);
+    assert.strictEqual(day(chosen).classList.contains('selected'), true, 'the host draws it chosen');
 
     const html = host.webview.html;
     await configuration.update('calendar.dayPanel', false);

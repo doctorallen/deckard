@@ -1,12 +1,13 @@
 // A chosen day of the calendar: its daily note, the tasks due, scheduled,
 // repeating, and done that day, and the notes created on it.
 //
-// The calendar page draws it beside the month, the sidebar Calendar under
-// it, and Related Notes in its own pane while the calendar page is the
-// active editor. Each page's sheet imports src/webview/shared/calendarDay.css,
-// each page injects the script here, and calls installCalendarDayPanel once
-// with how it posts to its host, since Related Notes posts through its own
-// host to the calendar's.
+// Related Notes draws it in its own pane while the calendar page is the
+// active editor: its sheet imports src/webview/shared/calendarDay.css, its
+// page injects the script here, and calls installCalendarDayPanel once with
+// how it posts to its host, since it posts through its own host to the
+// calendar's. Both calendars draw src/webview/shared/calendar/dayPanel.tsx,
+// the same panel as a component, which calendar-day-panel.test holds to
+// this one node for node.
 import { calendarIcon } from './icons';
 
 /**

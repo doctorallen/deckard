@@ -248,4 +248,59 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('the page draws again as its template did: a layout chosen in the gear closes it, and a snapshot folds Done and drops a drag\'s marks', () => {
+    const now = new Date(2026, 8, 13, 10);
+    const done = buildWorkspaceIndex(new Map([
+      ['notes/a.md', note('notes/a.md', '- [ ] Call Ren 📅 2026-09-13\n- [x] Filed 📅 2026-09-12 ✅ 2026-09-13\n')],
+    ]));
+    const snapshot = createCalendar(done, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
+    const page = openWebviewPage(renderPage('calendarPage'), snapshot);
+    try {
+      const gear = page.find('.view-options') as HTMLDetailsElement;
+      gear.open = true;
+      page.click('.view-options [data-action="set-calendar-layout"][data-value="week"]');
+      assert.ok(page.find('.calendar-page-body').classList.contains('is-week'));
+      assert.strictEqual((page.find('.view-options') as HTMLDetailsElement).open, false, 'the gear the layout was chosen in closes');
+
+      (page.find('.day-panel details.day-group') as HTMLDetailsElement).open = true;
+      const chip = page.find('.cal-chip[data-kind="due"]');
+      chip.dispatchEvent(new page.window.Event('dragstart', { bubbles: true }));
+      page.find('.day-cell[data-drop-date="2026-09-14"]').dispatchEvent(new page.window.Event('dragover', { bubbles: true, cancelable: true }));
+      assert.ok(chip.classList.contains('dragging'));
+      assert.ok(page.find('.day-cell[data-drop-date="2026-09-14"]').classList.contains('drop-target'));
+      page.send(snapshot);
+      assert.strictEqual((page.find('.day-panel details.day-group') as HTMLDetailsElement).open, false, 'Done folds again');
+      assert.strictEqual(page.findAll('.dragging, .drop-target, .is-pending').length, 0, 'a drag\'s marks go');
+      page.find('.day-cell[data-drop-date="2026-09-15"]').dispatchEvent(new page.window.Event('drop', { bubbles: true, cancelable: true }));
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId: chip.getAttribute('data-task-id'), field: 'due', date: '2026-09-15' });
+      assert.strictEqual(page.findAll('.is-pending').length, 0, 'a chip drawn again since the drag began is not marked');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('the page keeps its layout and where it was scrolled, and draws with them when VS Code loads it again', async () => {
+    const now = new Date(2026, 8, 13, 10);
+    const snapshot = createCalendar(index, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
+    const page = openWebviewPage(renderPage('calendarPage'), snapshot);
+    try {
+      assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
+      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
+      assert.deepStrictEqual(page.savedState(), { layout: 'week' });
+      page.window.dispatchEvent(new page.window.Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepStrictEqual(page.savedState(), { layout: 'week', scrollY: 0 });
+    } finally {
+      page.dispose();
+    }
+    // Drawn from its shell, as a hidden page is when it is shown again.
+    const kept = openWebviewPage(renderPage('calendarPage', { state: snapshot }), undefined, { savedState: { layout: 'week', scrollY: 120 } });
+    try {
+      assert.ok(kept.find('.calendar-page-body').classList.contains('is-week'), 'the week it was left on');
+      assert.deepStrictEqual(kept.savedState(), { layout: 'week', scrollY: 120 }, 'and nothing it kept is lost');
+    } finally {
+      kept.dispose();
+    }
+  });
 });

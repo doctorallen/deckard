@@ -113,6 +113,11 @@ async function bench(size) {
   // decides whether the page's HTML carries it (docs/implementation/
   // 20-webviews.md, Q3: under 50 ms, it is embedded).
   row('Stats snapshot (median of 5)', ms(timeStatsSnapshot(index, now)));
+  // Both calendars' snapshots, timed by the Calendar line their controller
+  // writes, for the same rule: the sidebar's month, and the page's month
+  // with its day panel.
+  row('Calendar snapshot, sidebar (median of 5)', ms(timeCalendarSnapshot(index, now, {})));
+  row('Calendar snapshot, page (median of 5)', ms(timeCalendarSnapshot(index, now, { layout: 'page', dayPanel: true })));
 
   // The parsed-note cache's codec.
   if (codec.encodeParsedFile) {
@@ -316,6 +321,30 @@ function timeStatsSnapshot(index, now) {
     log.lines.length = 0;
     measure('Stats', () => createDeckardStatsSnapshot(index, preferences, [], now));
     return readTiming(log.lines, ['Stats']);
+  });
+  setTimingLog(undefined);
+  return median(timings.filter((value) => value !== undefined));
+}
+
+/**
+ * The median of five builds of a calendar's snapshot over `index`, for the
+ * month `now` is in, each read from the `Calendar` line `measure` writes, as
+ * the calendars' controller times it. `options` are the page's, or none for
+ * the sidebar's. An older checkout without the state builder prints a dash.
+ */
+function timeCalendarSnapshot(index, now, options) {
+  const { createCalendar } = load('calendarState');
+  const { createQueryContext } = load('queryContext');
+  if (!createCalendar || !createQueryContext || !measure) {
+    return NaN;
+  }
+  const month = new Date(now).toISOString().slice(0, 7);
+  const log = captureLog();
+  setTimingLog(log);
+  const timings = [0, 1, 2, 3, 4].map(() => {
+    log.lines.length = 0;
+    measure('Calendar', () => createCalendar(index, month, createQueryContext(now), { showRepeats: true, showWeekends: true, ...options }));
+    return readTiming(log.lines, ['Calendar']);
   });
   setTimingLog(undefined);
   return median(timings.filter((value) => value !== undefined));

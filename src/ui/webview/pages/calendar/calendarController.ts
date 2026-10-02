@@ -244,17 +244,22 @@ export interface CalendarViewControllerOptions {
 export class CalendarViewController implements PageController<CalendarSnapshot, CalendarPageToHost> {
   public readonly name = 'Calendar';
   /**
-   * The view's registration keeps it running while hidden. A theme or zen
+   * The view is not kept running while hidden (Q1 of
+   * docs/implementation/20-webviews.md): hidden, its HTML is set again with
+   * the last month it was sent, which it draws when shown. A theme or zen
    * change only resets the HTML; the page then reloads and asks for its
-   * state with `ready`.
+   * state with `ready`. Its HTML carries the month, built when it is set
+   * (15 ms median on the 5,000-note bench, under Q3's 50 ms).
    */
   public readonly options: PageOptions = {
-    retainContextWhenHidden: true,
+    retainContextWhenHidden: false,
     enableFindWidget: false,
     followIndexing: false,
     onChromeChange: 'reload',
     // CalendarController times the calendar it builds.
     measure: false,
+    readsInertState: true,
+    embedsSnapshot: true,
   };
   public readonly narrow = narrowCalendarMessage;
   public readonly handlers: MessageHandlers<CalendarPageToHost>;
@@ -270,9 +275,9 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
     this.handlers = calendarHandlers(this.calendar);
   }
 
-  /** The sidebar Calendar's HTML. */
-  public html(webview: vscode.Webview, theme: DeckardTheme): string {
-    return getCalendarHtml(webview, this.view.extensionUri, { theme });
+  /** The sidebar Calendar's HTML, carrying the month when given one. */
+  public html(webview: vscode.Webview, theme: DeckardTheme, state?: CalendarSnapshot): string {
+    return getCalendarHtml(webview, this.view.extensionUri, { theme, state });
   }
 
   /** The month as it is now. */
