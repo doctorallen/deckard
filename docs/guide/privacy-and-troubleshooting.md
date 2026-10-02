@@ -23,7 +23,7 @@ Before a task edit or extraction, Deckard checks the source is unchanged since i
 
 **Favorites, pins, and saved searches** are never deleted on their own. When their tag or note is gone, `Deckard: Tidy Favorites, Pins, and Saved Searches` lists them and asks before removing them.
 
-**Copies:** Deckard keeps the last twenty copies. `Deckard: Restore Favorites, Pins, and Searches from a Copy` takes one back. `Deckard: Export Favorites, Pins, and Searches` writes a JSON file that `Deckard: Import` reads back.
+**Copies:** Deckard keeps the last twenty copies. `Deckard: Restore Favorites, Pins, and Searches from a Copy` takes one back. `Deckard: Export Favorites, Pins, and Searches` writes a JSON file that `Deckard: Import` reads back. Import and Restore write a copy of what is there before they replace it, so either can be taken back with Restore; a window with no folder open keeps no copies, and says so before it replaces anything.
 
 ## Limitations and troubleshooting
 

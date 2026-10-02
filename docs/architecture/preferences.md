@@ -96,7 +96,7 @@ Three rules keep pruning from destroying data:
 
 ## Copies and export
 
-Deckard once had a bug that emptied favorites, pins, and view counts, and the data came back only because it could be reconstructed. So `PreferenceSnapshots` writes a copy into the workspace's storage under `preference-snapshots/` each time preferences change, two seconds after a burst settles, and keeps the last 20. `Deckard: Restore Favorites, Pins, and Searches` offers them. Export writes the blob as JSON with `version: 1`.
+Deckard once had a bug that emptied favorites, pins, and view counts, and the data came back only because it could be reconstructed. So `PreferenceSnapshots` writes a copy into the workspace's storage under `preference-snapshots/` each time preferences change, two seconds after a burst settles, and keeps the last 20. `Deckard: Restore Favorites, Pins, and Searches` offers them. Import and Restore call `writeNow` once the reader confirms and before they replace anything, since preferences chosen in an earlier session have no copy until something changes in this one; a copy that cannot be written stops the replace. Export writes the blob as JSON with `version: 1`.
 
 ## What the plan changed
 

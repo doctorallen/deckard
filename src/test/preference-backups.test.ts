@@ -11,6 +11,7 @@ import {
   SNAPSHOTS_KEPT,
 } from '../core/storage/preferenceSnapshots';
 import { createPreferences } from './preferenceServices';
+import { FakeFileSystem, fileUri } from './fakeWorkspace';
 import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import {
   createExport,
@@ -189,7 +190,7 @@ suite('Importing preferences', () => {
       assert.strictEqual(describePreferences(readExport(file).preferences), '1 favorite tag');
       const reader = importing(file);
       try {
-        await importPreferences(store);
+        await importPreferences(store, new PreferenceSnapshots(undefined, store.reader, new FakeFileSystem()));
       } finally {
         reader.restore();
       }
@@ -199,6 +200,68 @@ suite('Importing preferences', () => {
       assert.deepStrictEqual(store.reader.value.pinnedNotes ?? [], [], 'a list the file leaves out is emptied');
       await store.pins.pinNote({ filePath: 'notes/relay.md' });
     }
+    store.repository.dispose();
+  });
+
+  test('keeps a copy of what it replaces, even when nothing changed in this session', async () => {
+    const state = new MemoryMemento();
+    const workspaceState = new MemoryMemento();
+    const earlier = createPreferences(state, workspaceState);
+    await earlier.favorites.toggleFavorite('#project/atlas');
+    earlier.repository.dispose();
+    // A later session: nothing has changed yet, so no copy has been written.
+    const store = createPreferences(state, workspaceState);
+    const files = new FakeFileSystem();
+    const snapshots = new PreferenceSnapshots(fileUri('/storage/workspace'), store.reader, files);
+    const reader = importing(createExport({ ...store.reader.value, favoriteTags: ['#project/relay'] }));
+    try {
+      await importPreferences(store, snapshots);
+    } finally {
+      reader.restore();
+      snapshots.dispose();
+    }
+    assert.match(reader.details[0], /and is copied first so it can be restored\.$/);
+    assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/relay']);
+    const copies = await snapshots.list();
+    assert.strictEqual(copies.length, 1);
+    assert.deepStrictEqual(readExport(await snapshots.read(copies[0])).preferences.favoriteTags, ['#project/atlas']);
+    store.repository.dispose();
+  });
+
+  test('says no copy is kept when no folder is open', async () => {
+    const store = createPreferences(new MemoryMemento());
+    const reader = importing(createExport(store.reader.value));
+    try {
+      await importPreferences(store, new PreferenceSnapshots(undefined, store.reader, new FakeFileSystem()));
+    } finally {
+      reader.restore();
+    }
+    assert.match(reader.details[0], /With no folder open, Deckard keeps no copy of it, so it cannot be restored\.$/);
+    store.repository.dispose();
+  });
+
+  test('replaces nothing when the copy cannot be written', async () => {
+    const store = createPreferences(new MemoryMemento());
+    await store.favorites.toggleFavorite('#project/atlas');
+    const files = new FakeFileSystem();
+    files.writeFile = async () => {
+      throw new Error('ENOSPC: no space left on device');
+    };
+    const snapshots = new PreferenceSnapshots(fileUri('/storage/workspace'), store.reader, files);
+    const reader = importing(createExport({ ...store.reader.value, favoriteTags: ['#project/relay'] }));
+    try {
+      await importPreferences(store, snapshots);
+    } finally {
+      reader.restore();
+      snapshots.dispose();
+    }
+    assert.ok(
+      reader.said.some((text) =>
+        text.startsWith('Deckard could not keep a copy of what this workspace remembers, so nothing was replaced.'),
+      ),
+      reader.said.join('\n'),
+    );
+    assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/atlas']);
     store.repository.dispose();
   });
 });
