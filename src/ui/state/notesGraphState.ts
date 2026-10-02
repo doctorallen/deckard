@@ -21,16 +21,7 @@ export function toWire(
   snapshot: NotesGraphSnapshot,
   kinds: NotesGraphKinds,
 ): NotesGraphWireSnapshot {
-  const shown = (kind: NotesGraphNode['kind']): boolean => {
-    if (kind === 'note') {
-      return kinds.notes;
-    }
-    if (kind === 'task') {
-      return kinds.tasks;
-    }
-    return true;
-  };
-  const nodes = snapshot.nodes.filter((node) => shown(node.kind));
+  const nodes = selectShownNodes(snapshot, kinds);
   const hiddenNodeCount = snapshot.nodes.length - nodes.length;
   const kept = hiddenNodeCount > 0 ? new Set(nodes.map((node) => node.id)) : undefined;
   const edges = snapshot.edges
@@ -48,4 +39,18 @@ export function toWire(
     hiddenNodeCount,
     edgeCount: snapshot.edges.length,
   };
+}
+
+/** The graph's nodes of the kinds the page shows: what it is sent, and all it can select. */
+export function selectShownNodes(snapshot: NotesGraphSnapshot, kinds: NotesGraphKinds): NotesGraphNode[] {
+  const shown = (kind: NotesGraphNode['kind']): boolean => {
+    if (kind === 'note') {
+      return kinds.notes;
+    }
+    if (kind === 'task') {
+      return kinds.tasks;
+    }
+    return true;
+  };
+  return snapshot.nodes.filter((node) => shown(node.kind));
 }

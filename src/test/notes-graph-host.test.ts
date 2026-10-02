@@ -213,6 +213,23 @@ suite('Notes graph host', () => {
     }
   });
 
+  test("lists only the connections of kinds the page shows in Related Notes", async () => {
+    const { host, contexts, nodeOf, send } = openGraph();
+    try {
+      const atlas = nodeOf('note', '/notes/atlas.md');
+      await send({ type: 'selectNode', nodeId: atlas.id });
+      const kinds = () => contexts.at(-1)?.context?.connections.map((connection) => connection.node.kind);
+      assert.ok(kinds()?.includes('task'), 'the task is listed while tasks are shown');
+      await send({ type: 'setGraphFilter', showNotes: true, showTasks: false });
+      await send({ type: 'selectNode', nodeId: atlas.id });
+      assert.strictEqual(contexts.at(-1)?.context?.selectedNode?.id, atlas.id);
+      assert.ok(!kinds()?.includes('task'), `no task once the page hides tasks: ${kinds()?.join(', ')}`);
+      assert.ok((kinds()?.length ?? 0) > 0, 'the rest are still listed');
+    } finally {
+      host.dispose();
+    }
+  });
+
   test('redraws for a change of kinds or scope, and not for kinds it already shows', async () => {
     const { host, controller, surface, send, states } = openGraph();
     try {
