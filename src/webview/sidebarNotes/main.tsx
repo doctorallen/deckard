@@ -10,7 +10,7 @@ import type { ComponentChild } from 'preact';
 
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SidebarMessage, SidebarNotesPageState, SidebarNotesSnapshot } from '../../ui/protocol/sidebarNotes';
-import { DayPanel, installDayPanel } from '../shared/calendar/dayPanel';
+import { DayPanel, focusCreatedNote, installDayPanel } from '../shared/calendar/dayPanel';
 import { Loading } from '../shared/loading';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
@@ -182,6 +182,7 @@ let scrolled = false;
  */
 function afterDraw(): void {
   markSharedWords();
+  focusCreatedNote();
   if (!scrolled) {
     scrolled = true;
     restoreScroll(keptState());

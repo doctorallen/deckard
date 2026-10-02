@@ -18,6 +18,9 @@ import { TaskListRow } from '../taskRow';
 /** How many of a group's tasks are listed before Show more. */
 const DAY_ROWS = 5;
 
+/** The day whose daily note Create asked for, until a draw takes Create away. */
+let creatingDate: string | undefined;
+
 /** Where a row's button moves a task: tomorrow, or a day on from a later day. */
 type DayMove = CalendarDayDetail['move'];
 
@@ -188,7 +191,8 @@ function runPanelAction(target: Element, handlers: DayPanelHandlers): void {
   } else if (action === 'move-task') {
     handlers.send({ type: 'moveTask', taskId: value('data-task-id'), field: value('data-field') as 'due' | 'scheduled', date: value('data-date') });
   } else if (action === 'create-day') {
-    handlers.send({ type: 'createDay', date: value('data-date') });
+    creatingDate = value('data-date');
+    handlers.send({ type: 'createDay', date: creatingDate });
   } else if (action === 'search-created') {
     handlers.send({ type: 'searchCreated', date: value('data-date') });
   } else if (action === 'show-group') {
@@ -199,6 +203,23 @@ function runPanelAction(target: Element, handlers: DayPanelHandlers): void {
     group?.querySelectorAll<HTMLElement>('.task-row')[DAY_ROWS]?.focus();
   } else if (action === 'open-tag' && handlers.opensTags) {
     handlers.send({ type: 'openTag', tagKey: value('data-tag-key') });
+  }
+}
+
+/**
+ * After a draw, puts the focus on the daily note's Open, when the draw
+ * replaced the Create that asked for the note and so took the focus away
+ * with it. A page with a day panel calls it after each of its draws.
+ */
+export function focusCreatedNote(): void {
+  const date = creatingDate;
+  if (!date || document.querySelector(`.day-panel [data-action="create-day"][data-date="${date}"]`)) {
+    // Not asked, or the note has not appeared yet.
+    return;
+  }
+  creatingDate = undefined;
+  if (document.activeElement === document.body || document.activeElement === null) {
+    document.querySelector<HTMLElement>('.day-panel .day-note')?.focus();
   }
 }
 

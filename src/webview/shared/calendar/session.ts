@@ -21,6 +21,7 @@ import type {
 import type { StateMessage } from '../../../ui/protocol/messaging';
 import { type ActionHandler, onHostMessage, type PageStore, startPage } from '../page';
 import { post } from '../vscode';
+import { focusCreatedNote } from './dayPanel';
 import { eventElement } from './events';
 import { type CalendarState, selectedDateOf } from './model';
 
@@ -238,6 +239,7 @@ export class CalendarSession<S extends CalendarState> {
     this.fullDraw = false;
     this.drawCount += 1;
     foldDone();
+    focusCreatedNote();
     this.definition.afterFullDraw?.();
   }
 

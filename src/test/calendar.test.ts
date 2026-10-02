@@ -565,4 +565,24 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('Create in the day panel hands the focus to Open when the daily note appears', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }));
+    try {
+      const create = page.find('.day-panel [data-action="create-day"]') as HTMLElement;
+      create.focus();
+      create.click();
+      assert.deepStrictEqual(page.lastPosted('createDay'), { type: 'createDay', date: '2026-09-13' });
+      // A save elsewhere draws the panel again before the note is written.
+      page.send(createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }));
+      assert.strictEqual(page.document.activeElement, page.find('.day-panel [data-action="create-day"]'), 'Create keeps the focus until the note appears');
+      const daily = note('notes/2026-09-13.md', '# 2026-09-13');
+      const withNote = buildWorkspaceIndex(new Map([...files, daily].map((file) => [file.filePath, file])));
+      page.send(createCalendar(withNote, '2026-09', createQueryContext(now), { dayPanel: true }));
+      assert.strictEqual(page.document.activeElement, page.find('.day-panel .day-note'), 'on Open, not dropped to the page');
+    } finally {
+      page.dispose();
+    }
+  });
 });
