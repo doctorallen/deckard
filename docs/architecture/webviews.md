@@ -121,7 +121,7 @@ Each host does some things Stats does not. These are the options and hooks each 
 
 ## The protocol
 
-`src/ui/protocol/<page>.ts` declares each page's `HostToPage` and `PageToHost` message maps and its snapshot type. Both the host and the page import it, so a renamed field fails to compile on both sides. The shape follows `vscode-messenger`: each message is declared once as a request or a notification. A request and its response share a request id, as `moveTask` and `moveRefused` do.
+`src/ui/protocol/<page>.ts` declares each page's `HostToPage` and `PageToHost` message maps and its snapshot type. Both the host and the page import it, so a renamed field fails to compile on both sides. The shape follows `vscode-messenger`: each message is declared once as a request or a notification. A request and its response share a request id, as `moveTask` and `moveRefused` do on the Task Board and the calendar page.
 
 Page-to-host messages are untrusted, so the host narrows each one before handling it. The narrowing is hand-written, as in every surveyed extension, in one table of per-message functions shared across pages. It replaces the check-then-cast parsers in `messages.ts`. No validation library is added; see [decision 0004](decisions/0004-hand-written-message-narrowing.md).
 
@@ -317,7 +317,7 @@ Lane B's shared components are in `src/webview/shared/calendar/`, written with t
 | `dayPanel.tsx` | `<DayPanel day shownGroups>`, the chosen day as the calendars and Related Notes show it, and `installDayPanel({ send, showGroup })`, which wires every panel on the page once; Related Notes' `send` wraps each message in its `calendarDay` envelope. `src/test/calendar-day-panel.test.ts` held it to the template script it replaced, `calendarDay.ts`, until Related Notes moved and that script went. Its tasks are lane A's `<TaskListRow>` (step 6; the panel's own row, which set the host's sanitized `renderedTitle`, is gone) |
 | `events.ts` | `eventElement(event)` |
 
-The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `shiftDate`, `isWeekend`, `skipWeekend`, `stepDate`, `sameDayIn`, `chooseFocusDay`, and `stepCalendar`.
+The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `shiftDate`, `isWeekend`, `skipWeekend`, `stepDate`, `sameDayIn`, `sameShownDayIn`, `chooseFocusDay`, and `stepCalendar`.
 
 ### The task and search parts
 

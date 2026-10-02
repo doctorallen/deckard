@@ -191,7 +191,8 @@ export function CalendarPage({ state }: { readonly state: DrawnCalendarPage }) {
   const snapshot: CalendarSnapshot = state.snapshot;
   const week = state.layout === 'week' ? chosenWeek(state) : undefined;
   const shown: Shown = { week, title: week ? `${week.days[0].date} to ${week.days[6].date}` : snapshot.title };
-  const tabStop = tabStopDate(state);
+  const weeks = week ? [week] : snapshot.weeks;
+  const tabStop = tabStopDate(state, weeks);
   const days = (row: CalendarWeek) => row.days.filter((day) => isDrawn(snapshot, day)).map((day) => <PageDay state={state} day={day} tabStop={tabStop} />);
   // The chosen day beside the month, unless Related Notes is showing it.
   const panel = snapshot.dayPanel && !snapshot.dayInSidebar ? snapshot.selected : undefined;
@@ -206,7 +207,7 @@ export function CalendarPage({ state }: { readonly state: DrawnCalendarPage }) {
     <>
       <PageHeader state={state} shown={shown} />
       <div class={bodyClass}>
-        <CalendarGrid snapshot={snapshot} weeks={week ? [week] : snapshot.weeks} label={shown.title} multiselectable={false} days={days} />
+        <CalendarGrid snapshot={snapshot} weeks={weeks} label={shown.title} multiselectable={false} days={days} />
         {panel ? <DayPanel day={panel} shownGroups={state.shownGroups} /> : null}
       </div>
     </>

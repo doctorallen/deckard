@@ -182,6 +182,87 @@ suite('Calendar', () => {
     }
   });
 
+  test('with the weekends hidden, Page Down lands on a weekday the next month draws', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const key = (page: ReturnType<typeof openWebviewPage>, date: string, name: string) => {
+      const day = page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      day.focus();
+      day.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: name, bubbles: true }));
+    };
+    // October 10th, 2026 is a Saturday, and October 31st another.
+    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { showWeekends: false }));
+    try {
+      key(sidebar, '2026-09-10', 'PageDown');
+      assert.deepStrictEqual(sidebar.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' });
+      sidebar.send(createCalendar(index, '2026-10', createQueryContext(now), { showWeekends: false }));
+      assert.strictEqual((sidebar.document.activeElement as HTMLElement).dataset.date, '2026-10-12', 'on to Monday, which is drawn');
+    } finally {
+      sidebar.dispose();
+    }
+    const panel = openWebviewPage(
+      renderPage('calendar'),
+      createCalendar(index, '2026-09', createQueryContext(now), { showWeekends: false, dayPanel: true }),
+    );
+    try {
+      key(panel, '2026-09-10', 'PageDown');
+      assert.deepStrictEqual(panel.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-12' }, 'the day chosen is one the grid draws');
+      key(panel, '2026-09-30', 'PageDown');
+      assert.deepStrictEqual(panel.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-30' });
+    } finally {
+      panel.dispose();
+    }
+  });
+
+  test('End past the grid asks for the next month with no day, not with one an earlier step left waiting', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const september = createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true });
+    const page = openWebviewPage(renderPage('calendar'), september);
+    try {
+      const day = (date: string) => page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      const key = (date: string, name: string) => {
+        day(date).focus();
+        day(date).dispatchEvent(new page.window.KeyboardEvent('keydown', { key: name, bubbles: true }));
+      };
+      // A step down past the last row waits for October 7th, but a save
+      // sends September again before October is drawn.
+      key('2026-09-30', 'ArrowDown');
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10', date: '2026-10-07' });
+      page.send(september);
+      // No grid draws a short row today, so one is made here by taking the
+      // row's last two days out, and End from its first falls past the edge.
+      day('2026-10-02').remove();
+      day('2026-10-03').remove();
+      key('2026-09-27', 'End');
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' }, 'the host keeps the chosen day\'s place');
+      page.send(createCalendar(index, '2026-10', createQueryContext(now), { dayPanel: true }));
+      assert.notStrictEqual((page.document.activeElement as HTMLElement | null)?.dataset.date, '2026-10-07', 'and the old step is not focused');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('the Week layout keeps a day of the week it draws in the Tab order', () => {
+    const now = new Date(2026, 8, 13, 10).getTime();
+    const snapshot = (selectedDate: string) =>
+      createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page', selectedDate });
+    const page = openWebviewPage(renderPage('calendarPage', { state: snapshot('2026-09-08') }), undefined, { savedState: { layout: 'week' } });
+    try {
+      const tabStops = () => page.findAll('.calendar-grid .day[tabindex="0"]').map((day) => (day as HTMLElement).dataset.date);
+      assert.deepStrictEqual(tabStops(), ['2026-09-08']);
+      page.click('.calendar-grid .day[data-date="2026-09-09"]');
+      // The host chooses a day in another week, as the Related Notes day does.
+      page.send(snapshot('2026-09-22'));
+      assert.deepStrictEqual(
+        page.findAll('.calendar-grid .day').map((day) => (day as HTMLElement).dataset.date),
+        ['2026-09-20', '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26'],
+        'the chosen day\'s week is drawn',
+      );
+      assert.deepStrictEqual(tabStops(), ['2026-09-22'], 'the chosen day takes Tab, not the day focused in a week not drawn');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('draws a repeating task on each later date its rule lands on, quieter than a due date', () => {
     const repeating = buildWorkspaceIndex(new Map([
       ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],
@@ -273,8 +354,39 @@ suite('Calendar', () => {
       assert.strictEqual((page.find('.day-panel details.day-group') as HTMLDetailsElement).open, false, 'Done folds again');
       assert.strictEqual(page.findAll('.dragging, .drop-target, .is-pending').length, 0, 'a drag\'s marks go');
       page.find('.day-cell[data-drop-date="2026-09-15"]').dispatchEvent(new page.window.Event('drop', { bubbles: true, cancelable: true }));
-      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId: chip.getAttribute('data-task-id'), field: 'due', date: '2026-09-15' });
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId: chip.getAttribute('data-task-id'), field: 'due', date: '2026-09-15', requestId: 1 });
       assert.strictEqual(page.findAll('.is-pending').length, 0, 'a chip drawn again since the drag began is not marked');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('the page numbers each move, and a refusal names and puts back the move it refuses', () => {
+    const now = new Date(2026, 8, 13, 10);
+    const moving = buildWorkspaceIndex(new Map([['notes/a.md', note('notes/a.md', '- [ ] Call Ren 📅 2026-09-13\n')]]));
+    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(moving, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' }));
+    try {
+      const chip = page.find('.cal-chip[data-kind="due"]');
+      const taskId = chip.getAttribute('data-task-id');
+      const drag = (date: string) => {
+        chip.dispatchEvent(new page.window.Event('dragstart', { bubbles: true }));
+        page.find(`.day-cell[data-drop-date="${date}"]`).dispatchEvent(new page.window.Event('drop', { bubbles: true, cancelable: true }));
+      };
+      const refuse = (requestId: number) =>
+        page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId, requestId } }));
+      // Dragged twice before the host answers either move.
+      drag('2026-09-15');
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, field: 'due', date: '2026-09-15', requestId: 1 });
+      drag('2026-09-16');
+      assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, field: 'due', date: '2026-09-16', requestId: 2 });
+      assert.ok(chip.classList.contains('is-pending'));
+
+      refuse(1);
+      assert.strictEqual(page.text('#live-status'), '"Call Ren" was not moved to 2026-09-15.');
+      assert.ok(chip.classList.contains('is-pending'), 'the later move still waits');
+      refuse(2);
+      assert.strictEqual(page.text('#live-status'), '"Call Ren" was not moved to 2026-09-16.');
+      assert.ok(!chip.classList.contains('is-pending'), 'and the chip is put back once no move of it waits');
     } finally {
       page.dispose();
     }

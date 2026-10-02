@@ -11,7 +11,7 @@
  */
 import type { ComponentChild } from 'preact';
 
-import { sameDayIn, stepDate } from '../../../domain/markdown/calendar';
+import { sameShownDayIn, stepDate } from '../../../domain/markdown/calendar';
 import type { CalendarMessage, CalendarSnapshot } from '../../../ui/protocol/calendar';
 import type { StateMessage } from '../../../ui/protocol/messaging';
 import { type ActionHandler, onHostMessage, type PageStore, startPage } from '../page';
@@ -225,11 +225,15 @@ export class CalendarSession<S extends CalendarState> {
     this.selectDay(date);
   }
 
-  /** Page Up and Page Down: the same day of the month before or after. */
+  /**
+   * Page Up and Page Down: the same day of the month before or after, or,
+   * with the weekends hidden, a weekday of that month near it, since a
+   * hidden day can take neither the focus nor the choice.
+   */
   private stepMonth(day: HTMLElement, key: string): void {
     const shown = this.snapshot as CalendarSnapshot;
     const month = key === 'PageUp' ? shown.previousMonth : shown.nextMonth;
-    const date = sameDayIn(day.dataset.date as string, month);
+    const date = sameShownDayIn(day.dataset.date as string, month, Boolean(shown.hideWeekends));
     this.focusWhenDrawn(date);
     send(shown.dayPanel ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
   }
@@ -237,21 +241,23 @@ export class CalendarSession<S extends CalendarState> {
   /** A step past the weeks drawn: to the day stepped to, or to the next month. */
   private stepPastGrid(day: HTMLElement, step: number | undefined): void {
     const shown = this.snapshot as CalendarSnapshot;
-    const date = day.dataset.date as string;
-    if (step !== undefined && this.definition.stepsByDay?.()) {
-      const stepped = stepDate(date, step, Boolean(shown.hideWeekends));
-      this.focusWhenDrawn(stepped);
+    if (step === undefined) {
+      // Home and End past the last row ask for the next month, as the
+      // template's did, with no day of their own: the host keeps the chosen
+      // day's place. A day an earlier step was still waiting on is let go,
+      // so it is neither sent nor focused when that month is drawn.
+      this.pendingFocusDate = undefined;
+      send({ type: 'showMonth', month: shown.nextMonth });
+      return;
+    }
+    const stepped = stepDate(day.dataset.date as string, step, Boolean(shown.hideWeekends));
+    this.focusWhenDrawn(stepped);
+    if (this.definition.stepsByDay?.()) {
       send({ type: 'selectDay', date: stepped });
       return;
     }
-    if (step !== undefined) {
-      this.focusWhenDrawn(stepDate(date, step, Boolean(shown.hideWeekends)));
-    }
-    // Home and End past the last row ask for the next month, as the
-    // template's did, with any day a step was still waiting on.
-    const month = step !== undefined && step < 0 ? shown.previousMonth : shown.nextMonth;
-    const pending = this.pendingFocusDate;
-    send(shown.dayPanel && pending ? { type: 'showMonth', month, date: pending } : { type: 'showMonth', month });
+    const month = step < 0 ? shown.previousMonth : shown.nextMonth;
+    send(shown.dayPanel ? { type: 'showMonth', month, date: stepped } : { type: 'showMonth', month });
   }
 
   /** The controls both calendars draw, by their `data-action`. */

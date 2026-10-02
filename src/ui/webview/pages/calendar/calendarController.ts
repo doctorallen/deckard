@@ -41,8 +41,11 @@ export interface CalendarControllerHost {
   dayPanel: () => boolean;
   /** Draws the calendar again, after its month or day changed. */
   refresh: () => void;
-  /** Says a task was not moved, so a page that moved it at once can say so. */
-  refused?: (taskId: string) => void;
+  /**
+   * Says a task was not moved, so a page that moved it at once can say so,
+   * with the move's number when the page gave it one.
+   */
+  refused?: (taskId: string, requestId: number | undefined) => void;
 }
 
 /**
@@ -171,7 +174,7 @@ export class CalendarController {
     const task = this.indexer.getSnapshot().tasks.get(message.taskId);
     const moved = task && !task.completed ? await setTaskDateField(this.writes, task, message.field, message.date) : false;
     if (!moved) {
-      this.host.refused?.(message.taskId);
+      this.host.refused?.(message.taskId, message.requestId);
     }
   }
 

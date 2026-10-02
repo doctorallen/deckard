@@ -92,9 +92,16 @@ table {
   border-spacing: 0;
   background: color-mix(in srgb, var(--panel) 82%, var(--bg));
 }
+/* A candidate's evidence runs to eight columns: its headers wrap between
+   words, and its cells keep 12px a side, so it fits the page; a table still
+   too wide, at a narrow width or in a wider font, scrolls in its
+   .table-scroll rather than pushing the page sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
 th,
 td {
-  padding: 10px 16px;
+  padding: 10px 12px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   vertical-align: top;
@@ -104,7 +111,6 @@ th {
   font-weight: 700;
   text-align: left;
   background: color-mix(in srgb, var(--panel) 68%, var(--bg));
-  white-space: nowrap;
 }
 th small {
   color: var(--muted);
@@ -134,8 +140,6 @@ td:last-child {
     grid-template-columns: 1fr;
   }
   table {
-    display: block;
-    overflow-x: auto;
     white-space: nowrap;
   }
   td,

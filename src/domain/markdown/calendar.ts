@@ -179,6 +179,18 @@ export function sameDayIn(date: string, month: string): string {
   return `${month}-${String(Math.min(Number(date.slice(8, 10)), last)).padStart(2, '0')}`;
 }
 
+/**
+ * The same day of the month in another month, as `sameDayIn` finds it,
+ * and with the weekends hidden, the first weekday on from it in that
+ * month; when the month ends before one, the last weekday before it. A
+ * step to another month always lands on a day that month draws.
+ */
+export function sameShownDayIn(date: string, month: string, hideWeekends: boolean): string {
+  const day = sameDayIn(date, month);
+  const later = skipWeekend(day, 1, hideWeekends);
+  return later.startsWith(`${month}-`) ? later : skipWeekend(day, -1, hideWeekends);
+}
+
 /** What the focus-day choice reads of a drawn day. */
 export interface FocusableDay {
   readonly date: string;
@@ -224,8 +236,8 @@ export interface CalendarStepFrom {
  * A step of the calendar page a month or a week back (`by` -1) or on (1),
  * keeping the chosen day's place. A week moves the day seven days, in the
  * month the day lands in. A month moves to the same day of the month before
- * or after, or its last day, then on to a weekday if the weekends are
- * hidden, and names that month.
+ * or after, or its last day, then, if the weekends are hidden, to a weekday
+ * of that month (`sameShownDayIn`), and names that month.
  */
 export function stepCalendar(
   layout: 'month' | 'week',
@@ -236,5 +248,5 @@ export function stepCalendar(
     return { date: shiftDate(from.date, 7 * by) };
   }
   const month = by < 0 ? from.previousMonth : from.nextMonth;
-  return { month, date: skipWeekend(sameDayIn(from.date, month), 1, from.hideWeekends) };
+  return { month, date: sameShownDayIn(from.date, month, from.hideWeekends) };
 }

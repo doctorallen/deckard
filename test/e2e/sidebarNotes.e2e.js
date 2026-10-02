@@ -369,6 +369,73 @@ test('a note with no tags lists entries worded like it, through the real host', 
   }
 });
 
+test('an entry worded like a note with no tags opens on a click, and Insert link writes a link to it', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('/notes/today.md', '# Thursday\nThe northern route audit found Northwind late on deliveries again.'),
+    note('/notes/audit.md', '# Northwind audit #risk/vendor\nNorthwind deliveries on the northern route are late.'),
+    note('/notes/garden.md', '# Garden #hobby/garden\nTomatoes and beans.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
+  // The note's editor takes what Insert link writes, at its one cursor.
+  const written = [];
+  vscode.window.activeTextEditor = {
+    document: { uri: vscode.Uri.file('/notes/today.md'), languageId: 'markdown' },
+    selection: { active: { line: 0 } },
+    selections: [{ active: { line: 1 } }],
+    edit: async (change) => {
+      change({ replace: (_selection, text) => written.push(text) });
+      return true;
+    },
+  };
+  // Opening a line is recorded rather than done, since the stand-in has no
+  // editors. The paths are absolute, as there is no workspace folder.
+  const opened = [];
+  const { openTextDocument } = vscode.workspace;
+  const { showTextDocument } = vscode.window;
+  vscode.workspace.openTextDocument = (uri) => Promise.resolve({ uri, lineCount: 40 });
+  vscode.window.showTextDocument = (document) => {
+    const editor = { document, selection: undefined, revealRange: () => opened.push([document.uri.fsPath, editor.selection.active.line + 1]) };
+    return Promise.resolve(editor);
+  };
+  const preferences = createPreferences(createGlobalState());
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences,
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  try {
+    await settle();
+    const card = view.find('.similar-wording .note');
+    assert.strictEqual(card.getAttribute('data-file-path'), '/notes/audit.md');
+    assert.strictEqual(view.findAll('.note-list').length, 1, 'the entry is listed only as similar wording');
+    view.click(card);
+    await settle();
+    assert.deepStrictEqual(opened, [['/notes/audit.md', 1]]);
+    const audit = [...index.sections.values()].find((section) => section.filePath === '/notes/audit.md');
+    assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, { [audit.id]: 1 }, 'opening it counts a visit, as a related note does');
+    view.click(card.querySelector('[data-action="insert-link"]'));
+    await settle();
+    assert.deepStrictEqual(written, ['[[audit#Northwind audit]]']);
+  } finally {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+    vscode.workspace.openTextDocument = openTextDocument;
+    vscode.window.showTextDocument = showTextDocument;
+  }
+});
+
 test('Hide daily notes leaves a daily note out of Linked from, and says so', async () => {
   const note = (filePath, content, updatedAt) =>
     parseMarkdown(filePath, content, { createdAt: 1, updatedAt }, {});

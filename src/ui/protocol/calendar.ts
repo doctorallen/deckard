@@ -3,7 +3,7 @@
  * the month and the chosen day as they are drawn, and the messages both
  * send.
  */
-import type { MessageOf, StateMessage } from './messaging';
+import type { Correlated, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
@@ -193,8 +193,12 @@ export interface CalendarOpenTaskMessage {
   taskId: string;
 }
 
-/** A task moved to another day, by its due or its scheduled date. */
-export interface CalendarMoveTaskMessage {
+/**
+ * A task moved to another day, by its due or its scheduled date. The page
+ * numbers each move, and a refusal carries the number back; a move without
+ * one is still made, as it was before moves were numbered.
+ */
+export interface CalendarMoveTaskMessage extends Partial<Correlated> {
   type: 'moveTask';
   taskId: string;
   field: 'due' | 'scheduled';
@@ -215,9 +219,10 @@ export interface CalendarSetShowWeekendsMessage {
 
 /**
  * Says a task the page moved at once was not moved after all, so the page
- * puts it back and says so.
+ * puts it back and says so. It carries the move's number when the move had
+ * one, so the page knows which of its moves it was.
  */
-export interface CalendarMoveRefusedMessage {
+export interface CalendarMoveRefusedMessage extends Partial<Correlated> {
   type: 'moveRefused';
   taskId: string;
 }

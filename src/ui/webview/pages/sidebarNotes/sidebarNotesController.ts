@@ -639,7 +639,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       !openDocument ||
       !isMarkdownDocument(openDocument) ||
       this.getActiveFile() ||
-      // A entry chosen by hand keeps the pane on that entry, whatever the
+      // An entry chosen by hand keeps the pane on that entry, whatever the
       // editor is showing.
       this.entryContext?.source === 'manual'
     ) {

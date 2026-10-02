@@ -19,6 +19,24 @@ suite('Calendar page messages', () => {
     assert.strictEqual(narrowCalendarPageMessage({ type: 'moveTask', taskId: 't', field: 'start', date: '2026-09-26' }), undefined);
   });
 
+  test('accepts a move with its number, and refuses one whose number is not a request id', () => {
+    assert.deepStrictEqual(narrowCalendarPageMessage({ type: 'moveTask', taskId: 't', field: 'due', date: '2026-09-26', requestId: 3 }), {
+      type: 'moveTask',
+      taskId: 't',
+      field: 'due',
+      date: '2026-09-26',
+      requestId: 3,
+    });
+    for (const requestId of ['3', 1.5, -0.5, Number.MAX_SAFE_INTEGER + 1, null]) {
+      assert.strictEqual(
+        narrowCalendarPageMessage({ type: 'moveTask', taskId: 't', field: 'due', date: '2026-09-26', requestId }),
+        undefined,
+        String(requestId),
+      );
+    }
+    assert.strictEqual(narrowCalendarPageMessage({ type: 'moveTask', taskId: 't', field: 'due', date: '2026-09-26', requestId: 3, extra: 1 }), undefined);
+  });
+
   test("accepts the gear's settings as a choice and nothing else", () => {
     assert.deepStrictEqual(narrowCalendarPageMessage({ type: 'setShowRepeats', show: false }), { type: 'setShowRepeats', show: false });
     assert.deepStrictEqual(narrowCalendarPageMessage({ type: 'setShowWeekends', show: true }), { type: 'setShowWeekends', show: true });

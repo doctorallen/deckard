@@ -146,6 +146,9 @@ suite('Calendar page host', () => {
       await page.send({ type: 'moveTask', taskId: 'gone', field: 'due', date: today });
       assert.deepStrictEqual(page.types(), ['moveRefused', 'state']);
       assert.deepStrictEqual(page.surface.webview.posted[0], { type: 'moveRefused', taskId: 'gone' });
+      // A numbered move is refused under its number.
+      await page.send({ type: 'moveTask', taskId: 'gone', field: 'due', date: today, requestId: 7 });
+      assert.deepStrictEqual(page.surface.webview.posted[2], { type: 'moveRefused', taskId: 'gone', requestId: 7 });
     } finally {
       page.dispose();
     }

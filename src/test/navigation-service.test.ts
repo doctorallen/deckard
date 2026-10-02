@@ -124,7 +124,9 @@ function relatedRows(index: WorkspaceIndex, filePath: string, hideDailyNotes = f
 
 /**
  * What the sidebar's five handlers accepted before the policy, written as
- * they were: each found its row in a snapshot built for the click.
+ * they were: each found its row in a snapshot built for the click. The one
+ * change since is that an entry listed as similar wording, for a note with
+ * no tags, opens and takes a link as a related note does.
  */
 const BEFORE = {
   openSource(snapshot: SidebarNotesSnapshot, filePath: string, line: number): SourceLocation {
@@ -135,14 +137,18 @@ const BEFORE = {
     if (link) {
       return { kind: 'open', filePath: link.filePath, line: link.line };
     }
-    const note = snapshot.notes.find((candidate) => candidate.filePath === filePath && candidate.sourceLine === line);
+    const note = [...snapshot.notes, ...(snapshot.similar?.notes ?? [])].find(
+      (candidate) => candidate.filePath === filePath && candidate.sourceLine === line,
+    );
     if (!note) {
       return { kind: 'unknown' };
     }
     return { kind: 'open', filePath: note.filePath, line: note.sourceLine, ...(note.sectionId ? { visit: note.sectionId } : {}) };
   },
   insertLink: (snapshot: SidebarNotesSnapshot, filePath: string, line: number) =>
-    snapshot.notes.find((candidate) => candidate.filePath === filePath && candidate.sourceLine === line),
+    [...snapshot.notes, ...(snapshot.similar?.notes ?? [])].find(
+      (candidate) => candidate.filePath === filePath && candidate.sourceLine === line,
+    ),
   linkMention: (snapshot: SidebarNotesSnapshot, filePath: string, line: number, startColumn: number) =>
     snapshot.links?.mentions.find(
       (candidate) => candidate.filePath === filePath && candidate.line === line && candidate.startColumn === startColumn,
@@ -210,13 +216,21 @@ suite('NavigationService: Related Notes', () => {
     assert.deepStrictEqual(assertSameAsBefore(index, missing, 'missing'), { openSource: 0, insertLink: 0, linkMention: 0, addSuggestedTag: 0 });
   });
 
-  test('an entry listed only as similar wording opens nothing and takes no link, as before', () => {
+  test('an entry listed only as similar wording opens, counting its visit, and takes a link', () => {
     const index = relatedIndex(RELATED_NOTES);
     const today = relatedRows(index, '/notes/today.md');
     const similar = today.similar?.notes[0];
     assert.ok(similar, 'the untagged note lists similar wording');
-    assert.deepStrictEqual(navigation.resolveRelatedSource(today, similar.filePath, similar.sourceLine), { kind: 'unknown' });
-    assert.strictEqual(navigation.findRelatedNote(today, similar.filePath, similar.sourceLine), undefined);
+    assert.ok(!today.notes.some((note) => note.filePath === similar.filePath), 'and only as similar wording');
+    assert.ok(similar.sectionId);
+    assert.deepStrictEqual(navigation.resolveRelatedSource(today, similar.filePath, similar.sourceLine), {
+      kind: 'open',
+      filePath: similar.filePath,
+      line: similar.sourceLine,
+      visit: similar.sectionId,
+    });
+    assert.strictEqual(navigation.findRelatedNote(today, similar.filePath, similar.sourceLine), similar);
+    assert.strictEqual(navigation.findRelatedNote(today, similar.filePath, similar.sourceLine + 1), undefined, 'but not a line it does not start on');
   });
 
   test('after an index update, accepts what rows built from the new index list, and not what the old rows did', () => {

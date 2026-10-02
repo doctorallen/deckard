@@ -6,11 +6,13 @@
 // the ground an input sits on. This renders the surfaces the layout check
 // renders, in every theme, and asks the page itself what color each piece of
 // text is drawn in and what is painted behind it, and what an input's edge is
-// drawn in against the ground around it.
+// drawn in against the ground around it, and what draws the icon of a
+// control that has no words against the ground under it.
 //
 // WCAG 2.2 AA: text needs 4.5:1, large text 3:1, where large is 24px, or
 // 18.66px at bold (18pt and 14pt; points, not pixels). A text field needs
-// 3:1 between what marks its edge and what is around it (1.4.11).
+// 3:1 between what marks its edge and what is around it, and an icon that
+// is a control's only content 3:1 against what it is drawn on (1.4.11).
 //
 //   npm run test:layout
 //   CONTRAST_ONLY=fellowship:taskBoard   one surface, a theme, or a page
@@ -29,17 +31,18 @@ if (!chrome) {
 
 /**
  * Text drawn below AA that is known and not yet fixed, by theme, surface,
- * and element, zen or not. A surface added in Phase 6 step 1 found these on
- * a page that had never been drawn here before: Fellowship's Notes Graph
- * status line is 4.43:1 against the 4.5:1 it needs. They are listed rather
- * than fixed because the refactor changes nothing a reader sees; anything
- * else below AA still fails.
+ * and element, zen or not, as `<theme>:<surface> <kind> <element>`. It is
+ * empty: anything below AA fails.
  */
-const KNOWN = new Set([
-  'fellowship:notesGraph text div.status-line > span.graph-legend',
-  'fellowship:notesGraph text div.status-line > span.graph-legend > span.legend-word',
-  'fellowship:notesGraph text div.status-line > span',
-]);
+const KNOWN = new Set([]);
+
+/**
+ * Controls whose only content is an icon, by selector. WCAG asks 3:1 of
+ * the icon against what it is drawn on (1.4.11), and the text check never
+ * sees it. Only these are checked so far: the calendar's week mark, whose
+ * icon LCARS once drew in its buttons' black on the calendar's own black.
+ */
+const ICON_CONTROLS = ['.week-label'];
 
 /** What the page measures about its own colors, written for the dump. */
 const PROBE = `
@@ -139,6 +142,23 @@ const PROBE = `
       failures.push({ kind: 'edge', el: name(el), ratio: +best.toFixed(2), needed: 3, fg: style.borderBottomColor, bg: 'rgb(' + [outside.r, outside.g, outside.b].map(Math.round).join(', ') + ')' });
     }
   }
+  // An icon that is a control's only content: what draws its shape, its
+  // stroke or else its fill, against the ground under the control.
+  for (const el of document.querySelectorAll(${JSON.stringify(ICON_CONTROLS.join(', '))})) {
+    const shape = el.querySelector('svg');
+    if (!shape || !shown(el) || el.closest('[aria-hidden="true"], [hidden]')) continue;
+    const style = getComputedStyle(shape);
+    const paint = parse(style.stroke) || parse(style.fill);
+    if (!paint) continue;
+    const bg = ground(el);
+    const value = ratio(over({ r: paint.r, g: paint.g, b: paint.b, a: paint.a * opacity(shape) }, bg), bg);
+    if (value + 0.005 < 3) {
+      const key = name(el) + (style.stroke || style.fill);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      failures.push({ kind: 'icon', el: name(el), ratio: +value.toFixed(2), needed: 3, fg: parse(style.stroke) ? style.stroke : style.fill, bg: 'rgb(' + [bg.r, bg.g, bg.b].map(Math.round).join(', ') + ')' });
+    }
+  }
   const pre = document.createElement('pre');
   pre.id = 'layout-probe';
   pre.textContent = JSON.stringify([{ failures: failures }]);
@@ -206,7 +226,7 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 if (failed) {
-  console.log(`\n${failed} surface(s) with text or edges below WCAG AA`);
+  console.log(`\n${failed} surface(s) with text, edges, or icons below WCAG AA`);
   process.exit(1);
 }
 console.log('\nevery surface meets WCAG AA contrast as drawn');

@@ -842,6 +842,23 @@ const { createSurfaces } = require('./surfaces.js');
 const { readGoldens } = require('../harness/domGoldens.js');
 const path = require('node:path');
 
+/**
+ * The problems recorded as known. Every entry there now is this model
+ * misreading the sheets, not a color a reader sees, as the calendar drawn
+ * in Chrome with its hover and focus rules applied showed:
+ *
+ * - `button.week-label` and `button.day` are written `background: none`,
+ *   which `resolveValue` does not read as a background, so the model hands
+ *   them the theme's `button` fill: LCARS's cyan at rest, and Cooper's,
+ *   Fellowship's, Synthwave's, and Tomcat's fill on hover. The browser
+ *   draws both on the calendar's own ground, where the week mark's icon
+ *   reads at 6.48:1 to 9.1:1 hovered and focused, and LCARS's days at
+ *   15.41:1, and 9.27:1 outside the month.
+ * - LCARS's week mark did fail, another way: its icon took the theme's
+ *   black button ink on the calendar's black, at 1:1. That is fixed, and
+ *   checkRenderedContrast.js holds it (`ICON_CONTROLS`); this model reads no
+ *   icon, so it still reports what it misread.
+ */
 const BASELINE = path.join(__dirname, 'contrast-baseline.json');
 /** The element shapes frozen from the page text; see contrastShapes. */
 const SHAPES = path.join(__dirname, 'contrast-shapes.json');
