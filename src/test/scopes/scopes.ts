@@ -218,3 +218,20 @@ export async function assertWrittenWhereSet<T>(
     );
   }
 }
+
+/**
+ * Answers every quick pick the extension shows with the item `choose`
+ * picks, until disposed. Like the context keys, the picker is reached
+ * through the API object the tests share with the bundle.
+ */
+export function answerQuickPicks(
+  choose: (items: readonly vscode.QuickPickItem[]) => vscode.QuickPickItem | undefined,
+): vscode.Disposable {
+  const window = vscode.window as { showQuickPick: unknown };
+  const original = window.showQuickPick;
+  window.showQuickPick = async (items: readonly vscode.QuickPickItem[] | Thenable<readonly vscode.QuickPickItem[]>) =>
+    choose(await items);
+  return new vscode.Disposable(() => {
+    window.showQuickPick = original;
+  });
+}

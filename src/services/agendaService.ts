@@ -89,7 +89,7 @@ export interface AgendaServiceOptions<G extends AgendaGroupLike> {
   /** The settings and moment a piece of work is done in, read as it starts. */
   readQueryContext(): QueryContext;
   model: AgendaModel<G>;
-  /** Writes a `deckard` setting where the reader's own settings are; whether it was. */
+  /** Writes a `deckard` setting where the value in force is set; whether it was. */
   writeSetting(key: string, value: unknown): PromiseLike<boolean>;
 }
 

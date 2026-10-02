@@ -94,7 +94,7 @@ import { AgendaService } from '../services/agendaService';
 import { isWhatsNewShown, WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { TryNextLedger } from '../ui/commands/tryNext';
-import { writeSetting } from '../ui/commands/settings';
+import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
 import { carrySectionIds } from '../domain/ranking/frecency';
 import { findUnlinkedMentions } from '../domain/search/mentions';
@@ -933,7 +933,8 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
       resolveMove: resolveTaskMove,
       isNamespaceName,
     },
-    writeSetting: (key, value) => writeSetting(key, value, vscode.ConfigurationTarget.Global),
+    // Where the grouping in force is set, so a workspace's own is the one changed.
+    writeSetting: (key, value) => writeSetting(key, value, settingTarget(key)),
   });
   const agenda = new AgendaTreeProvider(
     indexer,
