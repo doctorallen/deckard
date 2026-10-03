@@ -19,6 +19,7 @@
 | **Deckard: Park Folder…** | Parks a folder by adding it to `deckard.parked.folders`; also on a folder's **Deckard** menu in the Explorer. **Deckard: Unpark Folder…** reverses it. |
 | **Deckard: Park Tag…** | Parks everything a tag finds by adding it to `deckard.parked.tags`; also on a tag's menu. **Deckard: Unpark Tag…** reverses it. |
 | **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists favorites, pins, and tag-set searches that point at nothing, and removes them if you confirm. |
+| **Deckard: Export Tasks as Calendar…** | Writes your dated tasks to a calendar file to import into a calendar app; see [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | **Deckard: Export Favorites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file. |
 | **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers. |
 | **Deckard: Restore Favorites, Pins, and Searches from a Copy** | Restores one of Deckard's automatic copies, after asking. |

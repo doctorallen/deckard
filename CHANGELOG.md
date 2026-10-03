@@ -25,6 +25,12 @@
   or date, a query block, a table of notes or tasks, or one of your
   templates, whose `{ask:…}` questions become tab stops.
 
+- **Your tasks in your calendar app.** `Deckard: Export Tasks as
+  Calendar…` writes your dated tasks to a calendar file, and
+  `deckard.calendar.exportFile` keeps one up to date for Apple Calendar,
+  Outlook, or Google Calendar to subscribe to. `deckard.calendar.exportQuery`
+  chooses which tasks it holds.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

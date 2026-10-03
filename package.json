@@ -620,6 +620,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.exportTaskCalendar",
+        "title": "Export Tasks as Calendar…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.exportPreferences",
         "title": "Export Favorites, Pins, and Searches",
         "category": "Deckard"
@@ -1693,6 +1698,20 @@
             "scope": "window",
             "order": 6,
             "markdownDescription": "The day a week starts on: in the Calendar, in weekly notes and their reviews, in a search's `this-week`, `last-week`, and `next-week`, and in *next week* and *end of week* typed as a date. A weekly note written before a change still opens for the week it mostly covers."
+          },
+          "deckard.calendar.exportFile": {
+            "type": "string",
+            "default": "",
+            "scope": "window",
+            "order": 7,
+            "markdownDescription": "A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to: each task an all-day event on its due date, or its scheduled date when it has no due date. A relative path is in the first workspace folder, such as `.deckard/tasks.ics`. Empty writes no file; `Deckard: Export Tasks as Calendar…` writes one once."
+          },
+          "deckard.calendar.exportQuery": {
+            "type": "string",
+            "default": "is:open",
+            "scope": "window",
+            "order": 8,
+            "markdownDescription": "The search whose dated tasks the calendar file holds, such as `is:open is:mine` or `#project/atlas is:open`. Empty is every open task."
           },
           "deckard.calendar.dayPanel": {
             "type": "boolean",
