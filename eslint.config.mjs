@@ -67,6 +67,8 @@ export default [
   {
     ignores: [
       'out/**', 'dist/**', 'node_modules/**', '.vscode-test/**', '.vscode/**',
+      // Worktrees kept inside the checkout are other branches, linted there.
+      '.claude/**', '.worktrees/**',
       'docs/**', 'resources/**', 'development/**', 'syntaxes/**', 'test/ui/visual-baseline/**',
       '*.vsix',
     ],
