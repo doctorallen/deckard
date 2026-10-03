@@ -69,7 +69,7 @@ td .command-link { display: inline-block; min-height: var(--control-height); }
 .whats-new-chip { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); color: var(--cyan); font: var(--text-xs) var(--font-mono); vertical-align: middle; }
 #whats-new h3 { margin-top: 16px; }
 kbd.shortcut { display: inline-block; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
-@media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
+@media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
 
 /* Help is a two-column reference: navigation beside the article. */
 main {
@@ -90,7 +90,14 @@ h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
   main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
   h1 { font-size: 24px; }
   .cards { grid-template-columns: 1fr; }
+  /* Once the map sits above the guide rather than beside it, it scrolls away
+     with the page: kept on screen, it covered what it leads to. Two columns
+     of links keep it short. */
+  nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+  .nav-title, .nav-group { grid-column: 1 / -1; }
+  .card[id] { scroll-margin-top: 8px; }
 }
+@media (max-width: 480px) { nav { grid-template-columns: 1fr; } }
 /* Read more: the way from a section's quick glance into the guide page. */
 .read-more { margin-top: 12px; }
 .read-more a, .guide-back { color: var(--cyan); font-family: var(--font-mono); font-size: var(--text-sm); }
