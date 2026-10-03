@@ -37,7 +37,7 @@ interface NoteCardProps {
 /** The shell a ranked result and a graph node's connection share. */
 function NoteCard(props: NoteCardProps) {
   return (
-    <article class={`note ${props.className}`} tabIndex={0} data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." {...props.attributes}>
+    <article class={`note ${props.className}`} tabIndex={0} data-tip-around="" data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." {...props.attributes}>
       <div class="note-header">
         <h2 class="note-title">{props.title}</h2>
         {props.trailing}

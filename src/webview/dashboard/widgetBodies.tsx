@@ -107,7 +107,7 @@ function RecentSearchesBody({ widget }: WidgetBodyProps) {
   return (
     <div class="home-list">
       {widget.queries.map((query, position) => (
-        <button key={`${position}:${query}`} type="button" class="row saved-filter-row home-row" data-action="open-search" data-query={query}>
+        <button key={`${position}:${query}`} type="button" class="row saved-filter-row home-row" data-action="open-search" data-query={query} data-tip-around="">
           <span class="home-row-label"><code>{query}</code></span>
         </button>
       ))}
