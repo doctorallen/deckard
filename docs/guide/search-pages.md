@@ -67,6 +67,29 @@ Migration of billing onto the new ledger.
 - **Untagged mentions.** For a tag name of three letters or more, the page says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
 - **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* **Leave them out** turns `deckard.tagOverview.includeHubLinks` off. While on, counts, tabs, pages, Bulk edit, and Export include them.
 
+### The Hubs view
+
+The **Hubs** view in the Deckard sidebar keeps notes under the hub notes of the tags they are about, as Notion's sidebar keeps pages under the pages they belong to. It starts collapsed; expand it, or drag it where you like.
+
+```
+HUBS
+▾ People
+  ▸ Dana Reyes
+▾ Projects
+  ▾ Atlas                    1 of 2 done
+      Kickoff
+    ▸ Ledger migration
+      Vendor review
+  ▸ Borealis
+```
+
+- Each tag namespace with a hub note heads a group: **Projects** for `#project/…`, **People** for `@` tags, and **Other tags** for a hub of a tag without one.
+- Under each hub are the notes about its tag: those whose front matter or first heading carries it. A line that mentions the tag in passing, such as in a daily note, does not file its note there; the tag's page still finds it.
+- A note can name its place outright with `up:` in its front matter, such as `up: "[[Ledger migration]]"` or a list of several. It is then filed only there, whatever its tags. A note named by `up:` that is no hub is listed under **Other notes**.
+- A hub under another hub, by its own tags or `up:`, nests under it. A note about two projects is under both.
+- Select a note to open it. A hub shows how far along its tag's tasks are, and its tag button opens the tag's page.
+- **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
+
 ### Merging tags
 
 Rename a tag to one that exists, or run `Deckard: Merge Tag…` and pick the tag to keep. Deckard shows how many entries each tag has, how many have both, and the kept tag's new total, and asks first: renaming back cannot separate them.

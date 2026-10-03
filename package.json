@@ -201,6 +201,10 @@
     ],
     "viewsWelcome": [
       {
+        "view": "deckard.hubs",
+        "contents": "Hub notes and the notes about their tags appear here, as pages under the pages they belong to.\n\nA hub note describes a tag with describes: in its front matter, such as describes: project/atlas. A note is filed under it when its front matter or first heading carries the tag, or when it says up: \"[[Atlas]]\".\n[Read about hub notes](https://deckard.esperinnovations.com/search-pages.html#hub-notes)"
+      },
+      {
         "view": "deckard.outline",
         "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
       },
@@ -548,6 +552,11 @@
         "title": "Rename Tag…"
       },
       {
+        "command": "deckard.hubs.openTagPage",
+        "title": "Open Tag's Page",
+        "icon": "$(tag)"
+      },
+      {
         "command": "deckard.agenda.editQuery",
         "title": "Edit What the Tasks View Lists…",
         "category": "Deckard",
@@ -775,6 +784,10 @@
         },
         {
           "command": "deckard.outline.renameTag",
+          "when": "false"
+        },
+        {
+          "command": "deckard.hubs.openTagPage",
           "when": "false"
         },
         {
@@ -1256,6 +1269,16 @@
       ],
       "view/item/context": [
         {
+          "command": "deckard.hubs.openTagPage",
+          "when": "view == deckard.hubs && viewItem == hubNote",
+          "group": "inline"
+        },
+        {
+          "command": "deckard.hubs.openTagPage",
+          "when": "view == deckard.hubs && viewItem == hubNote",
+          "group": "deckard@1"
+        },
+        {
           "command": "deckard.outline.openTagOverview",
           "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
           "group": "deckard@1"
@@ -1435,6 +1458,13 @@
           "name": "Tasks",
           "icon": "resources/views/tasks.svg",
           "contextualTitle": "Deckard Tasks"
+        },
+        {
+          "id": "deckard.hubs",
+          "name": "Hubs",
+          "icon": "resources/views/hubs.svg",
+          "contextualTitle": "Deckard Hubs",
+          "visibility": "collapsed"
         },
         {
           "id": "deckard.calendar",
@@ -2045,6 +2075,13 @@
             "scope": "resource",
             "default": true,
             "description": "Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.",
+            "order": 10
+          },
+          "deckard.editor.breadcrumbs": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing.",
             "order": 10
           },
           "deckard.editor.hubProgress": {

@@ -36,6 +36,12 @@
   as the text it names, each query block as its results, and each
   `[[link]]` as its words, ready for a chat, an email, or a pull request.
 
+- **Notes under their hubs.** The new **Hubs** view in the Deckard sidebar
+  lists each namespace's hub notes, and under each the notes about its tag,
+  as Notion's sidebar keeps pages under pages. A note names its place
+  outright with `up: "[[Atlas]]"`. A note's first line says where it sits,
+  such as *Projects › Atlas › Vendor review*.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

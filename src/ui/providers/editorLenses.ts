@@ -5,6 +5,7 @@ import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findDailyNoteActions, findEmbedProblems, findHubProgress, findTaskDependencies } from '../state/editorLensState';
 import { readQueryContext } from '../commands/queryContext';
+import { findBreadcrumbs } from '../state/hubTree';
 import { getPeriodicNoteUri } from '../commands/dailyNote';
 import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
@@ -24,6 +25,7 @@ interface LensIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
+  getUri?(filePath: string): vscode.Uri | undefined;
   isNotesFile(uri: vscode.Uri): boolean;
   parse(uri: vscode.Uri, content: string): ParsedFile;
 }
@@ -35,6 +37,8 @@ interface LensContext {
   index: WorkspaceIndex;
   /** Whether the note is in the notes folder Deckard indexes. */
   isNotesFile: boolean;
+  /** The file an index path names, to open it. */
+  uriOf(filePath: string): vscode.Uri | undefined;
 }
 
 /** One group of lenses, and the `deckard.editor.*` setting that shows it. */
@@ -45,7 +49,8 @@ interface LensGroup {
     | 'linkProblems'
     | 'embedProblems'
     | 'unlinkedMentions'
-    | 'hubProgress';
+    | 'hubProgress'
+    | 'breadcrumbs';
   provide(context: LensContext): LazyCodeLens[];
 }
 
@@ -66,6 +71,7 @@ export class EditorLenses
     { setting: 'embedProblems', provide: provideEmbedProblemLenses },
     { setting: 'unlinkedMentions', provide: provideUnlinkedMentionLenses },
     { setting: 'hubProgress', provide: provideHubProgressLenses },
+    { setting: 'breadcrumbs', provide: provideBreadcrumbLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -136,6 +142,7 @@ export class EditorLenses
           file: this.indexer.parse(document.uri, document.getText()),
           index: this.indexer.getSnapshot(),
           isNotesFile: this.indexer.isNotesFile(document.uri),
+          uriOf: (filePath) => this.indexer.getUri?.(filePath),
         };
         return groups.flatMap((group) => group.provide(context));
       },
@@ -255,6 +262,30 @@ function provideDailyNoteLenses({
     );
   }
   return lenses;
+}
+
+/**
+ * On a note's first line: where it sits under its hubs, from the namespace
+ * down, as the Hubs view files it, which opens the note above it. A note no
+ * hub holds has none.
+ */
+function provideBreadcrumbLenses({ file, index, isNotesFile, uriOf }: LensContext): LazyCodeLens[] {
+  if (!isNotesFile) {
+    return [];
+  }
+  const range = new vscode.Range(0, 0, 0, 0);
+  return findBreadcrumbs(index, file.filePath).map(
+    (crumb) =>
+      new LazyCodeLens(range, () => {
+        const parent = uriOf(crumb.parent);
+        return {
+          title: crumb.labels.join(' › '),
+          tooltip: `Open ${crumb.labels[crumb.labels.length - 2] ?? 'the note above this one'}`,
+          command: parent ? 'vscode.open' : '',
+          arguments: parent ? [parent] : [],
+        };
+      }),
+  );
 }
 
 /**
