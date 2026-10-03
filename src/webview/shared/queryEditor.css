@@ -61,12 +61,20 @@
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: var(--text-xs); }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
-   the theme's own look. */
+   the theme's own look. A page whose own action is the one the reader came
+   for, such as the Task Board's Save to Tasks view, marks it query-primary
+   and draws Search plain. */
 /* One filled control per page: the one the reader most likely wants. A
    chosen segment is drawn another way (see button.active), so filled means
    "do this" and nothing else. */
-.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
-.query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
+.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible), .query-bar-row .query-primary, .query-bar-row .query-primary:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible, .query-bar-row .query-primary:hover, .query-bar-row .query-primary:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
+/* A line above a search, or the list it narrows, that says what the reader
+   is looking at, with a way out: the Tags tab's kept search, and the Task
+   Board editing what the Tasks view lists. */
+.search-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--amber-bright); border-left-width: 4px; background: var(--panel-raised); color: var(--text); font: var(--text-sm) var(--font-mono); }
+.search-notice strong { color: var(--amber); }
+.search-notice button { min-height: 26px; text-transform: none; }
 .query-error { color: #FF8080; font: var(--text-xs) var(--font-mono); }
 .query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* The line of syntax stays put. Shown only while the box was in use, it

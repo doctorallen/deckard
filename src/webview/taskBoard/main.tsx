@@ -6,7 +6,7 @@
  * or puts the card back.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
-import type { TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
+import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
@@ -24,7 +24,7 @@ import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOpt
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
-import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SortControl, TableSortNote, TaskList } from './layouts';
+import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SaveSearchButton, SortControl, syncSaveToTasksView, TableSortNote, TaskList, TasksViewActions, TasksViewStrip } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
 
@@ -56,6 +56,9 @@ let scrolledTo = { x: 0, y: 0 };
 /** Where the board and its columns were scrolled when a draw began, put back after it. */
 let boardScrolledTo: BoardScroll | undefined;
 
+/** Set by Cancel until the plain board is drawn, which focus then goes to: its Save, in Save to Tasks view's place. */
+let focusSaveAfterLeaving = false;
+
 // What every page shares comes first, as the template's component script
 // did: the busy mark, the indexing line, tips, and the menu keys.
 const store = startPage<BoardPageState>({
@@ -65,8 +68,10 @@ const store = startPage<BoardPageState>({
   afterDraw: () => {
     filterTaskEntries();
     editor.afterRender();
+    syncSaveToTasksView(tasksViewListsBox());
     window.scrollTo(scrolledTo.x, scrolledTo.y);
     restoreBoardScroll(boardScrolledTo);
+    focusSaveOnceLeft();
   },
 });
 installMenuKeys();
@@ -84,20 +89,44 @@ const editor = createQueryEditor({
   render: () => redraw(),
   apply: (text) => post({ type: 'setBoardQuery', query: text }),
   clear: () => post({ type: 'setBoardQuery', query: '' }),
-  // Plain words hide the tasks they do not match at once; the rest waits for Enter.
-  onDraft: () => filterTaskEntries(),
+  // Plain words hide the tasks they do not match at once; the rest waits for
+  // Enter. Save to Tasks view can act as soon as the box changes.
+  onDraft: () => {
+    filterTaskEntries();
+    syncSaveToTasksView(tasksViewListsBox());
+  },
   placeholder: () => 'Search tasks: words, #tags, is:open, has:due, due < 7d, priority >= high…',
   label: 'Search tasks',
   resultKinds: ['tasks'],
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
   // Saving sits with the search it saves; the saved search reopens here.
+  // Opened to edit what the Tasks view lists, saving to the view comes first.
   actions: (hasText) => (
     <>
-      <button data-action="save-board-search" data-query-needs-text="" data-tip="Keep this search, named, on Home; it reopens on the Task Board" data-tip-disabled="Type a search to save it" aria-disabled={hasText ? undefined : 'true'}>Save</button>
+      {latest?.tasksViewMode ? <TasksViewActions listed={tasksViewListsBox()} hasText={hasText} /> : <SaveSearchButton label="Save" hasText={hasText} />}
       <button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>
     </>
   ),
+  ownPrimary: () => Boolean(latest?.tasksViewMode),
 });
+
+/**
+ * Whether the Tasks view lists what the box shows: the host says it lists
+ * the board's search, and nothing has been typed over it since.
+ */
+function tasksViewListsBox(): boolean {
+  const mode = latest?.tasksViewMode;
+  return Boolean(mode && mode.listed && editor.currentText().trim() === (latest?.query.text || '').trim());
+}
+
+/** After Cancel, puts focus on the plain board's Save once it is drawn, so it is not lost with the strip. */
+function focusSaveOnceLeft(): void {
+  if (!focusSaveAfterLeaving || shown()?.tasksViewMode) {
+    return;
+  }
+  focusSaveAfterLeaving = false;
+  document.querySelector<HTMLElement>('[data-action="save-board-search"]')?.focus();
+}
 
 /**
  * Hides the list's rows, the board's cards, and the table's rows that do
@@ -172,6 +201,7 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
           <BoardViewOptions snapshot={snapshot} />
         </div>
       </header>
+      {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
       {editor.bar(<StatusControls snapshot={snapshot} />)}
       {editor.facets()}
       <section key="tasks" class="board-area" aria-label="Tasks"><BoardContent snapshot={snapshot} /></section>
@@ -433,6 +463,12 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'open-tag': (target) => post({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
   // What the box shows is what Save keeps, whether or not Enter ran it.
   'save-board-search': () => post({ type: 'saveBoardSearch', query: editor.currentText() }),
+  // And what Save to Tasks view keeps; the host runs it, or shows its error.
+  'save-to-tasks-view': () => post({ type: 'saveToTasksView', query: editor.currentText() }),
+  'leave-tasks-view-mode': () => {
+    focusSaveAfterLeaving = true;
+    post({ type: 'leaveTasksViewMode' });
+  },
   'set-table-sort': (target) => post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value as never } : { type: 'setTableSort' }),
   'use-for-agenda': () => post({ type: 'useSearchForAgenda' }),
   'toggle-available': (_target, snapshot) => post({ type: 'setBoardQuery', query: snapshot.availableToggleQuery || 'is:available' }),
@@ -569,6 +605,9 @@ function receiveState(next: TaskBoardSnapshot): void {
   vscodeApi().setState({
     query: next.query.text,
     ...(previous.query === next.query.text && typeof previous.scrollY === 'number' ? { scrollY: previous.scrollY } : {}),
+    // The host reopens a board kept across a reload as the Tasks view's
+    // search editor only when it was one.
+    ...(next.tasksViewMode ? { tasksViewMode: true } : {}),
   });
   redraw({ snapshot: next });
   if (first) {
@@ -598,6 +637,11 @@ onHostMessage<ToggleRefusedMessage>('toggleRefused', (message) => {
   const entry = Array.from(document.querySelectorAll<HTMLElement>('.board-card, .task-row, .result-row')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
   settleRefusedEdit(String(message.taskId));
   announce(`${entry ? taskTitleOf(entry) : 'The task'} was not ${message.completed ? 'completed' : 'reopened'}.`);
+});
+// A search Save to Tasks view saved: the host says what the view lists
+// now, and the page says it, as the host's notice does.
+onHostMessage<SavedToTasksViewMessage>('savedToTasksView', (message) => {
+  announce(message.query ? `The Tasks view lists "${message.query}" now.` : 'The Tasks view lists every open task now.');
 });
 onHostMessage<StateMessage<TaskBoardSnapshot>>('state', (message) => {
   const wait = lingerRemaining();

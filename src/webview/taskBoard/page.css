@@ -13,6 +13,10 @@ header { align-items: flex-start; }
 .board-area { margin-top: 12px; }
 .board-area [hidden] { display: none; }
 .task-list .empty { margin-top: 0; }
+/* Above the search box while the board edits what the Tasks view lists: the
+   search notice's look, with what to do next said more quietly. */
+.tasks-view-strip > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.tasks-view-strip-note { color: var(--muted); font-size: var(--text-xs); }
 
 /* The status column editor inside the gear's menu. */
 .board-settings { display: grid; gap: 6px; width: min(280px, 80vw); text-transform: none; }

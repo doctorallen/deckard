@@ -80,6 +80,12 @@ export interface QueryEditorOptions {
    * pointer while a search is typed.
    */
   readonly actions?: (hasText: boolean) => ComponentChildren;
+  /**
+   * True while one of `actions` is the bar's filled button, marked
+   * `query-primary`, so Search is drawn as the others are: one filled
+   * control to a page.
+   */
+  readonly ownPrimary?: () => boolean;
 }
 
 /** A search box, as a page draws and drives it. */
@@ -575,6 +581,11 @@ class SearchBox implements QueryEditor {
     return <TermChips terms={terms} join={query.termsJoin || 'and'} />;
   }
 
+  /** Search's class: filled, unless the page's own action is the filled one now. */
+  private searchClass(): string | undefined {
+    return this.options.ownPrimary?.() ? undefined : 'query-apply';
+  }
+
   public bar(statusControls?: ComponentChildren): ComponentChild {
     const value = this.currentText();
     const hasText = Boolean(String(value).trim());
@@ -609,7 +620,7 @@ class SearchBox implements QueryEditor {
             />
             <SuggestionBox suggestKey="query" />
           </span>
-          <button class="query-apply" data-action="apply-query" data-tip="Run this search">Search</button>
+          <button class={this.searchClass()} data-action="apply-query" data-tip="Run this search">Search</button>
           <button data-action="clear-query" data-query-clears="" data-tip="Clear the search" data-tip-disabled={this.clearReason()} aria-disabled={this.canClear(value) ? undefined : 'true'}>Clear</button>
           {this.options.actions ? this.options.actions(hasText) : null}
         </div>

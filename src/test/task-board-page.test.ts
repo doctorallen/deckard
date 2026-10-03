@@ -660,4 +660,84 @@ suite('Task Board page', () => {
       page = undefined;
     }
   });
+  /** Types `words` into the search box without running them, as a reader does. */
+  const typeWords = (shown: WebviewPage, words: string): void => {
+    const box = shown.find('[data-action="query-input"]') as HTMLInputElement;
+    box.focus();
+    box.value = words;
+    box.dispatchEvent(new shown.window.Event('input', { bubbles: true }));
+  };
+
+  /** The search bar's own buttons, after the box and its terms, in the order Tab reaches them. */
+  const barButtons = (shown: WebviewPage) =>
+    shown.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action'));
+
+  test('a plain board has no Tasks view strip, and keeps its Save and its filled Search', () => {
+    const shown = show(boardOf(TWO, {}, 'is:open'));
+    assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
+    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-board-search', 'export-tasks']);
+    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
+    assert.ok(shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'Search is the filled button');
+    assert.strictEqual(shown.savedState() && (shown.savedState() as Record<string, unknown>).tasksViewMode, undefined);
+  });
+
+  test('opened from the Tasks view, it says so above the search box, and saves what the box shows to the view', () => {
+    const board = boardOf(TWO, {}, 'is:open');
+    const shown = show({ ...board, tasksViewMode: { listed: false } });
+    const strip = shown.find('.tasks-view-strip');
+    assert.strictEqual(strip.tagName, 'SECTION', 'a region');
+    const label = shown.document.getElementById(String(strip.getAttribute('aria-labelledby')));
+    assert.strictEqual(label?.textContent, 'Editing what the Tasks view lists', 'named by what it says');
+    assert.ok(strip.compareDocumentPosition(shown.find('.query-workspace')) & shown.window.Node.DOCUMENT_POSITION_FOLLOWING, 'above the search box');
+    const cancel = strip.querySelector('[data-action="leave-tasks-view-mode"]');
+    assert.strictEqual(cancel?.textContent, 'Cancel');
+    assert.ok(cancel?.getAttribute('data-tip'), 'its tip says what Cancel keeps');
+
+    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-to-tasks-view', 'save-board-search', 'export-tasks'], 'Save to Tasks view first, then Save as search');
+    const save = () => shown.find('[data-action="save-to-tasks-view"]');
+    assert.strictEqual(save().textContent, 'Save to Tasks view');
+    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save as search');
+    assert.ok(save().classList.contains('query-primary'), 'Save to Tasks view is the filled button');
+    assert.ok(!shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'and Search is not, one filled button to a page');
+    assert.strictEqual(save().getAttribute('aria-disabled'), null);
+    assert.ok(save().getAttribute('data-tip'));
+    assert.deepStrictEqual(shown.findAll('.tasks-view-strip [title], .query-bar-row [title]'), [], 'tips, not native titles');
+
+    // Typed and never run, as Save keeps it. A click focuses the button, as
+    // in Chrome, and the words typed stay in the box.
+    typeWords(shown, '#project/atlas');
+    (save() as HTMLElement).focus();
+    shown.click('[data-action="save-to-tasks-view"]');
+    assert.deepStrictEqual(shown.lastPosted('saveToTasksView'), { type: 'saveToTasksView', query: 'is:open AND #project/atlas' });
+    shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'savedToTasksView', query: '#project/atlas' } }));
+    assert.strictEqual(shown.text('#live-status'), 'The Tasks view lists "#project/atlas" now.', 'saving is said');
+    shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'savedToTasksView', query: '' } }));
+    assert.strictEqual(shown.text('#live-status'), 'The Tasks view lists every open task now.');
+
+    // The host runs what it saved, and says the view lists it.
+    shown.send({ ...boardOf(TWO, {}, 'is:open AND #project/atlas'), tasksViewMode: { listed: true } });
+    assert.ok(shown.find('.tasks-view-strip'), 'still editing the Tasks view, to refine it further');
+    assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'nothing to save until the box changes');
+    assert.strictEqual(save().getAttribute('data-tip-disabled'), 'The Tasks view lists this search');
+    const posted = shown.posted.length;
+    shown.click('[data-action="save-to-tasks-view"]');
+    assert.strictEqual(shown.posted.length, posted, 'held, it sends nothing');
+    typeWords(shown, 'is:mine');
+    assert.strictEqual(save().getAttribute('aria-disabled'), null, 'a change to the box can be saved');
+    typeWords(shown, '');
+    assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'and the box as the view lists it cannot');
+  });
+
+  test('Cancel asks the host to leave the mode, and the plain board it sends has its Save back, focused', () => {
+    const board = boardOf(TWO, {}, 'is:open');
+    const shown = show({ ...board, tasksViewMode: { listed: true } });
+    assert.deepStrictEqual(shown.savedState(), { query: 'is:open', tasksViewMode: true }, 'kept for a reload while it lives');
+    shown.click('[data-action="leave-tasks-view-mode"]');
+    assert.deepStrictEqual(shown.lastPosted('leaveTasksViewMode'), { type: 'leaveTasksViewMode' });
+    shown.send(board);
+    assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
+    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
+    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="save-board-search"]'), 'focus is not lost with Cancel');
+    assert.deepStrictEqual(shown.savedState(), { query: 'is:open' });
+  });
 });
