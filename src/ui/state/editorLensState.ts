@@ -7,7 +7,7 @@ import {
 import { findAdjacentDailyNote, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { planRollover } from '../../domain/notes/rolloverPlan';
 import { createSourceParser, findEmbedLines, resolveEmbed } from '../../domain/notes/embeds';
-import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
+import { collectTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import type { QueryContext } from '../../domain/query/queryContext';
 import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
 
@@ -243,8 +243,14 @@ export function findHubProgress(
   index: WorkspaceIndex,
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): HubProgress[] {
-  return (file.hub?.describes ?? []).flatMap((tag) => {
-    const progress = computeTagProgress(index, tag.key, context.now, context.taskPolicy);
+  const describes = file.hub?.describes ?? [];
+  if (!describes.length) {
+    return [];
+  }
+  // One pass over the tasks for every tag the note describes.
+  const counted = collectTagProgress(index, context.now, new Set(describes.map((tag) => tag.key)), context.taskPolicy);
+  return describes.flatMap((tag) => {
+    const progress = counted.get(tag.key);
     return progress
       ? [{ tagKey: tag.key, tagLabel: tag.label, text: describeTagProgress(progress, context.now, context.taskPolicy) }]
       : [];

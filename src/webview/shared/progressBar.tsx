@@ -9,9 +9,11 @@ export function ProgressBar({ done, total }: { readonly done: number; readonly t
   if (!total) {
     return null;
   }
-  const percent = Math.max(0, Math.min(100, Math.round((done / total) * 100)));
+  const complete = done >= total;
+  // Only all of it fills the bar: 199 of 200 would round to a full, finished-looking one.
+  const percent = complete ? 100 : Math.max(0, Math.min(99, Math.round((done / total) * 100)));
   return (
-    <span class={percent === 100 ? 'progress-bar is-complete' : 'progress-bar'} aria-hidden="true">
+    <span class={complete ? 'progress-bar is-complete' : 'progress-bar'} aria-hidden="true">
       <span class="progress-bar-fill" style={{ width: `${percent}%` }} />
     </span>
   );

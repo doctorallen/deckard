@@ -600,7 +600,8 @@ function buildProgressWidget({ index, options, config, widget, take }: WidgetBui
 /** The order Progress lists tags in: unfinished first, overdue among them first, then soonest due. */
 function compareProgress(left: TagProgress, right: TagProgress): number {
   const finished = (progress: TagProgress): number => (progress.done === progress.total ? 1 : 0);
-  const overdue = (progress: TagProgress): number => (progress.overdue > 0 ? 0 : 1);
+  // A task long past due wants attention as an overdue one does.
+  const overdue = (progress: TagProgress): number => (progress.overdue > 0 || progress.needsDate > 0 ? 0 : 1);
   const nextDue = (progress: TagProgress): number => progress.nextDue?.dueAt ?? Number.MAX_SAFE_INTEGER;
   return finished(left) - finished(right) || overdue(left) - overdue(right) || nextDue(left) - nextDue(right);
 }

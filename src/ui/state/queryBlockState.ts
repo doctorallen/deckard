@@ -206,6 +206,9 @@ export function parseQueryBlockInfo(
       options.warnings.push(warning);
     }
   }
+  if (options.noteColumns && options.view !== 'table') {
+    options.warnings.push('noteColumns= draws only with view=table; add view=table to see the notes as a table.');
+  }
   return options;
 }
 
@@ -218,7 +221,9 @@ type OptionReader = (value: string, options: QueryBlockOptions) => string | unde
 /** The options a query block's info string may set, by lowercased name. */
 const OPTION_READERS = new Map<string, OptionReader>([
   ['sort', (value, options) => {
-    const column = isTaskColumnId(value) ? value : readNoteColumn(value);
+    // A task column by its id or a name it goes by, such as for, or a note's.
+    const named = parseTaskColumns(value).columns.find((id) => id !== 'title');
+    const column = isTaskColumnId(value) ? value : (named ?? readNoteColumn(value));
     if (!column) {
       return `sort must be a column, such as title, due, priority, created, updated, or links, not "${value}".`;
     }
@@ -442,7 +447,8 @@ export function createQueryBlockSnapshot(
   }
 
   const results = evaluateQuery(index, parsed.node, reading.queryContext);
-  const table = options.view === 'table';
+  // A table reads the note columns, and so does a sort by one only notes have.
+  const table = options.view === 'table' || isNoteOnlySort(options.sort);
   const notes = [
     ...results.sections.map((section) => createSectionItem(section, index, table)),
     ...results.files.map((file) => createFileItem(file, index, table)),
@@ -507,7 +513,7 @@ function createSectionItem(
           tasks: (index.files.get(section.filePath)?.tasks ?? []).filter(
             (task) => task.lineNumber > section.startLine && task.lineNumber <= section.endLine,
           ),
-          tagKeys: section.tags,
+          tagKeys: collectSectionTagKeys(index, section),
           labels: section.tagLabels,
         })
       : {}),
@@ -538,6 +544,31 @@ function createFileItem(file: ParsedFile, index: WorkspaceIndex, table: boolean)
   };
 }
 
+/** Whether a sort names a column only notes have, which only the note columns can answer. */
+function isNoteOnlySort(sort: QueryBlockSort | undefined): boolean {
+  return sort === 'links' || sort === 'tasks' || sort === 'tags' || (typeof sort === 'string' && sort.startsWith('#'));
+}
+
+/**
+ * Every tag an entry carries as a search finds it: its own heading's, the
+ * headings' above it, and its note's front matter, as `noteTags` promises.
+ */
+function collectSectionTagKeys(index: WorkspaceIndex, section: Section): string[] {
+  const keys = new Set(section.tags);
+  const visited = new Set<string>();
+  for (let parentId = section.parentSectionId; parentId && !visited.has(parentId); ) {
+    visited.add(parentId);
+    const parent = index.sections.get(parentId);
+    if (!parent) {
+      break;
+    }
+    parent.tags.forEach((key) => keys.add(key));
+    parentId = parent.parentSectionId;
+  }
+  index.files.get(section.filePath)?.frontmatterTags.forEach((tag) => keys.add(tag.key));
+  return [...keys];
+}
+
 /**
  * What a table of notes shows of one entry besides its title and dates: the
  * notes that link to its note, its tasks and how many are done, and its tags.
@@ -556,7 +587,7 @@ function describeNoteColumns(
     linkCount: sources.size,
     taskTotal: tasks.length,
     taskDone: tasks.filter((task) => task.completed).length,
-    noteTags: entry.tagKeys.map((key) => ({ key, label: entry.labels[key] ?? key })),
+    noteTags: entry.tagKeys.map((key) => ({ key, label: entry.labels[key] ?? index.tags.get(key)?.label ?? key })),
   };
 }
 

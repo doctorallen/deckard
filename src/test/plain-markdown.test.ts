@@ -34,19 +34,39 @@ suite('Copy as Plain Markdown', () => {
   test('writes an embed as the text it names, three deep, and a broken one as its words', () => {
     assert.strictEqual(
       toPlainMarkdown('# Notes\n![[Atlas#Decision]]\n![[Missing]]', context),
-      '# Notes\n## Decision\nWe chose the ledger.\n- [ ] Send the proposal 📅 2026-10-09\n- [x] Pick a vendor\nMissing\n',
+      '# Notes\n\n## Decision\nWe chose the ledger.\n- [ ] Send the proposal 📅 2026-10-09\n- [x] Pick a vendor\n\nMissing\n',
     );
     const deep = toPlainMarkdown('![[Deep]]', context);
-    assert.ok(deep.includes('# Deep\n# Deeper\n# Deepest\nAtlas › Decision'), deep);
+    assert.ok(deep.includes('# Deep\n\n# Deeper\n\n# Deepest\n\nAtlas › Decision'), deep);
   });
 
   test('writes a query block as its results as they stand, a list or a table', () => {
     const list = toPlainMarkdown('Open:\n```deckard\n#project/atlas is:task\n```\nEnd', context);
-    assert.strictEqual(list, 'Open:\n- [ ] Send the proposal (due 2026-10-09)\n- [x] Pick a vendor\nEnd\n');
+    assert.strictEqual(list, 'Open:\n\n- [ ] Send the proposal (due 2026-10-09)\n- [x] Pick a vendor\n\nEnd\n');
     const table = toPlainMarkdown('```deckard view=table columns=due noteColumns=tasks\n#project/atlas\n```', context);
     assert.ok(table.includes('| Entry | Tasks |\n| --- | --- |\n| Atlas | 1 of 2 done |'), table);
     assert.ok(table.includes('| Task | Due |\n| --- | --- |\n| ☐ Send the proposal |'), table);
     assert.strictEqual(toPlainMarkdown('```deckard\n(broken\n```', context), '`(broken`\n');
     assert.strictEqual(toPlainMarkdown('```js\n[[Atlas]] ![[x]]\n```', context), '```js\n[[Atlas]] ![[x]]\n```\n', 'other code is left as written');
+  });
+
+  test('keeps a blank line around what it writes in, so the next line stays its own', () => {
+    const out = toPlainMarkdown('Open:\n```deckard\n#project/atlas is:task is:open\n```\nThanks.', context);
+    assert.strictEqual(out, 'Open:\n\n- [ ] Send the proposal (due 2026-10-09)\n\nThanks.\n');
+  });
+
+  test('treats a selection that starts with a rule as text, and leaves code’s blank lines alone', () => {
+    assert.strictEqual(toPlainMarkdown('---\nA paragraph.\n\n---\nMore', context, '# Note\n\n---\nA paragraph.\n\n---\nMore'), '---\nA paragraph.\n\n---\nMore\n');
+    assert.strictEqual(toPlainMarkdown('```py\ndef a():\n    pass\n\n\ndef b():\n    pass\n```', context), '```py\ndef a():\n    pass\n\n\ndef b():\n    pass\n```\n');
+  });
+
+  test('writes links in query results as their words, and an embed in an embed from its own note', () => {
+    const linked = indexOf({
+      'notes/A.md': '# A #project/x\n- [ ] Call [[Other|Bob]]',
+      'notes/Other.md': '# Other\n## Part\nsee:\n\n![[#B]]\n## B\nbtext',
+    });
+    const linkedContext = { index: linked, queryContext: createQueryContext(new Date(2026, 9, 3).getTime()) };
+    assert.strictEqual(toPlainMarkdown('```deckard\n#project/x is:task\n```', linkedContext), '- [ ] Call Bob\n');
+    assert.ok(toPlainMarkdown('![[Other#Part]]', linkedContext).includes('btext'));
   });
 });

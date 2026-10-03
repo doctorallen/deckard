@@ -46,7 +46,19 @@ export function toPlainMarkdown(
   context: PlainMarkdownContext,
   documentSource: string = text,
 ): string {
-  return writeOut(withoutFrontmatter(text), documentSource, context, 0).replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+  // Front matter is the whole note's; a selection that starts with a rule
+  // is not front matter, and keeps what follows it.
+  const body = text === documentSource ? withoutFrontmatter(text) : text;
+  return collapseBlankLines(writeOut(body, documentSource, context, 0)).replace(/^\n+/, '').trimEnd() + '\n';
+}
+
+/** Runs of blank lines as one, outside fenced code, where they are the code's own. */
+function collapseBlankLines(text: string): string {
+  const lines = text.split('\n');
+  const fenced = findFencedLines(lines);
+  return lines
+    .filter((line, at) => fenced.has(at) || line.trim() !== '' || at === 0 || lines[at - 1].trim() !== '' || fenced.has(at - 1))
+    .join('\n');
 }
 
 /** One piece of text written out, embeds `depth` deep already. */
@@ -71,7 +83,9 @@ function writeOut(text: string, documentSource: string, context: PlainMarkdownCo
   for (let line = 0; line < lines.length; line += 1) {
     const replacement = replaced.get(line);
     if (replacement) {
-      out.push(replacement.text);
+      // A blank line either side, so what follows is not read as part of a
+      // list item, a table row, or the embed's last paragraph.
+      out.push('', replacement.text, '');
       line = replacement.end;
       continue;
     }
@@ -129,7 +143,11 @@ function writeEmbed(target: string, documentSource: string, context: PlainMarkdo
   if (resolved.kind !== 'note') {
     return linkWords(target);
   }
-  return writeOut(resolved.content.trim(), resolved.content, context, depth + 1);
+  // An embed in what it names reads that note, not the part embedded here.
+  const source = resolved.href ? /^\/(.*)#L\d+$/.exec(resolved.href)?.[1] : undefined;
+  const sourcePath = source?.split('/').map(decodeURIComponent).join('/');
+  const sourceContent = sourcePath ? context.index.files.get(sourcePath)?.content : undefined;
+  return writeOut(resolved.content.trim(), sourceContent ?? documentSource, context, depth + 1);
 }
 
 /**
@@ -158,16 +176,22 @@ export function writeQueryBlock(query: string, options: QueryBlockOptions, conte
   return parts.join('\n\n');
 }
 
+/** A title with its `[[links]]` as their words, as the rest of the note is written. */
+function plainTitle(title: string): string {
+  return writeLine(title, findWikiLinkSpans(title));
+}
+
 /** A note as a list item: its title, and the note it is in when the title does not say. */
 function writeNoteItem(item: QueryBlockItem): string {
   const stem = item.fileName.replace(/\.md$/i, '');
-  return item.title === stem ? `- ${item.title}` : `- ${item.title} (${stem})`;
+  const title = plainTitle(item.title);
+  return item.title === stem ? `- ${title}` : `- ${title} (${stem})`;
 }
 
 /** A task as a list item, its box as it stands, its due date beside it. */
 function writeTaskItem(item: QueryBlockItem): string {
   const due = item.dueText ?? '';
-  return `- [${item.completed ? 'x' : ' '}] ${item.title}${due ? ` (due ${due})` : ''}`;
+  return `- [${item.completed ? 'x' : ' '}] ${plainTitle(item.title)}${due ? ` (due ${due})` : ''}`;
 }
 
 /** The notes as a Markdown table, in the block's note columns. */
@@ -175,7 +199,7 @@ function writeNoteTable(items: readonly QueryBlockItem[], options: QueryBlockOpt
   const columns = options.noteColumns ?? [...DEFAULT_NOTE_COLUMNS];
   return writeTable(
     columns.map((column) => noteColumnLabel(column)),
-    items.map((item) => columns.map((column) => describeNoteCell(item, column))),
+    items.map((item) => columns.map((column) => (column === 'title' ? plainTitle(item.title) : describeNoteCell(item, column)))),
   );
 }
 
@@ -186,7 +210,7 @@ function writeTaskTable(items: readonly QueryBlockItem[], options: QueryBlockOpt
     columns.map((column) => getTaskColumn(column).label),
     items.map((item) =>
       createTaskCells(toTableTask(item), columns, context.queryContext).map((cell, at) =>
-        columns[at] === 'title' ? `${item.completed ? '☑' : '☐'} ${cell.text}` : cell.text,
+        columns[at] === 'title' ? `${item.completed ? '☑' : '☐'} ${plainTitle(cell.text)}` : cell.text,
       ),
     ),
   );

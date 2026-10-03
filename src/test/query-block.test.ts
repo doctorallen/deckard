@@ -143,6 +143,10 @@ suite('Deckard query blocks', () => {
       const byTasks = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo(`deckard view=table sort=tasks dir=${dir}`)!, { queryContext: createQueryContext(Date.now()) });
       assert.deepStrictEqual(byTasks.notes.map((note) => note.title), ['Atlas', 'Borealis'], `a note with no tasks comes last, dir=${dir}`);
     }
+    const noTable = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard sort=links dir=desc')!, { queryContext: createQueryContext(Date.now()) });
+    assert.deepStrictEqual(noTable.notes.map((note) => note.title), ['Atlas', 'Borealis'], 'a sort only notes have works without view=table too');
+    assert.match(parseQueryBlockInfo('deckard noteColumns=links')!.warnings[0] ?? '', /only with view=table/);
+    assert.strictEqual(parseQueryBlockInfo('deckard sort=for')?.sort, 'assignee', 'a column by the name it goes by');
     const list = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard')!, { queryContext: createQueryContext(Date.now()) });
     assert.strictEqual(list.notes[0].linkCount, undefined, 'a list never counts links');
   });
@@ -480,6 +484,13 @@ suite('Deckard query blocks', () => {
       createPreviewSourceHref('notes/Q3 #1 plan.md', 12),
       '/notes/Q3%20%231%20plan.md#L12',
     );
+  });
+
+  test('a sub-heading carries the tags of the headings above it in a notes table', () => {
+    const files = [parseMarkdown('notes/atlas.md', '# Atlas #project/atlas #status/doing\n## Tasks\n- [ ] a\n- [x] b\n## Notes\nWords.')];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const snapshot = createQueryBlockSnapshot(index, 'tag = #project/* AND is:note', parseQueryBlockInfo('deckard view=table noteColumns=#status,tasks')!, { queryContext: createQueryContext(Date.now()) });
+    assert.deepStrictEqual(snapshot.notes.map((note) => [note.title, describeNoteCell(note, '#status')]), [['Atlas', 'doing'], ['Notes', 'doing'], ['Tasks', 'doing']]);
   });
 });
 
