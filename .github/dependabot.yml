@@ -1,0 +1,40 @@
+# Dependabot opens the pull requests that keep Deckard's dependencies
+# current: the actions the workflows pin by commit, and the npm packages.
+# Its pull requests go to dev, where every change lands before a release.
+#
+# A security update comes as soon as its advisory is published. The
+# routine updates come once a week, grouped so a week is one pull request
+# per ecosystem, and each waits a few days after its release so a broken
+# or withdrawn version is caught by others first. A major version comes in
+# a pull request of its own, since it may need changes here.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
