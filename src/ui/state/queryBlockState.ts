@@ -1,4 +1,5 @@
 import { getFileName } from '../../shared/paths';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
@@ -744,4 +745,28 @@ function compareDescending(left?: number, right?: number): number {
     return (left === undefined ? 1 : 0) - (right === undefined ? 1 : 0);
   }
   return right - left;
+}
+
+/** One cell of a table of notes, as text; empty when the entry has nothing to show there. */
+export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId): string {
+  switch (column) {
+    case 'title':
+      return item.title;
+    case 'note':
+      return item.fileName.replace(/\.md$/i, '');
+    case 'created':
+      return item.createdAt === undefined ? '' : formatIsoDate(item.createdAt);
+    case 'updated':
+      return item.updatedAt === undefined ? '' : formatIsoDate(item.updatedAt);
+    case 'links':
+      return item.linkCount ? String(item.linkCount) : '';
+    case 'tasks':
+      return item.taskTotal ? `${item.taskDone ?? 0} of ${item.taskTotal} done` : '';
+    case 'tags':
+      return (item.noteTags ?? []).map((tag) => tag.label).join(' ');
+    default: {
+      const namespace = noteColumnNamespace(column);
+      return namespace === undefined ? '' : namespaceValues(item, namespace).join(', ');
+    }
+  }
 }

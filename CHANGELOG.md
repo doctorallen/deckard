@@ -31,6 +31,11 @@
   Outlook, or Google Calendar to subscribe to. `deckard.calendar.exportQuery`
   chooses which tasks it holds.
 
+- **Copy a note for somewhere Deckard is not.** `Deckard: Copy as Plain
+  Markdown` copies the note, or the selection, with each embed written out
+  as the text it names, each query block as its results, and each
+  `[[link]]` as its words, ready for a chat, an email, or a pull request.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

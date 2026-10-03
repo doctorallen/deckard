@@ -2,11 +2,12 @@ import * as assert from 'assert';
 
 import MarkdownIt = require('markdown-it');
 
-import { addQueryBlockRenderer, describeNoteCell, renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
+import { addQueryBlockRenderer, renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   createQueryBlockSnapshot,
+  describeNoteCell,
   formatQueryBlock,
   describeQueryBlockCounts,
   findQueryBlocks,

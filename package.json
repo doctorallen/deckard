@@ -450,6 +450,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.copyAsPlainMarkdown",
+        "title": "Copy as Plain Markdown",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.showTagOverview",
         "title": "Open a Tag's Search Page…",
         "category": "Deckard"
@@ -857,6 +862,10 @@
           "when": "editorLangId == markdown"
         },
         {
+          "command": "deckard.copyAsPlainMarkdown",
+          "when": "editorLangId == markdown"
+        },
+        {
           "command": "deckard.moveTo",
           "when": "editorLangId == markdown"
         },
@@ -1051,6 +1060,10 @@
         {
           "command": "deckard.moveTo",
           "group": "3_move@1"
+        },
+        {
+          "command": "deckard.copyAsPlainMarkdown",
+          "group": "3_move@2"
         },
         {
           "command": "deckard.pinNote",

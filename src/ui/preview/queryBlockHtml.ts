@@ -5,7 +5,7 @@ import { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
 import {
   getQueryBlockSnapshot,
   describeQueryBlockCounts,
-  namespaceValues,
+  describeNoteCell,
   parseQueryBlockInfo,
   QueryBlockItem,
   QueryBlockMessage,
@@ -20,12 +20,7 @@ import type { InlineToken } from '../../domain/model/inline';
 import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { formatIsoDate } from '../../domain/markdown/calendar';
-import {
-  DEFAULT_NOTE_COLUMNS,
-  NoteColumnId,
-  noteColumnLabel,
-  noteColumnNamespace,
-} from '../../domain/notes/noteColumns';
+import { DEFAULT_NOTE_COLUMNS, NoteColumnId, noteColumnLabel } from '../../domain/notes/noteColumns';
 
 /** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
@@ -217,30 +212,6 @@ function renderNoteTable(snapshot: QueryBlockSnapshot, columns: readonly NoteCol
       : '',
     '</div>',
   ];
-}
-
-/** One cell of a table of notes, as text; empty when the entry has nothing to show there. */
-export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId): string {
-  switch (column) {
-    case 'title':
-      return item.title;
-    case 'note':
-      return item.fileName.replace(/\.md$/i, '');
-    case 'created':
-      return item.createdAt === undefined ? '' : formatIsoDate(item.createdAt);
-    case 'updated':
-      return item.updatedAt === undefined ? '' : formatIsoDate(item.updatedAt);
-    case 'links':
-      return item.linkCount ? String(item.linkCount) : '';
-    case 'tasks':
-      return item.taskTotal ? `${item.taskDone ?? 0} of ${item.taskTotal} done` : '';
-    case 'tags':
-      return (item.noteTags ?? []).map((tag) => tag.label).join(' ');
-    default: {
-      const namespace = noteColumnNamespace(column);
-      return namespace === undefined ? '' : namespaceValues(item, namespace).join(', ');
-    }
-  }
 }
 
 /**

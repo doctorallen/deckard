@@ -49,6 +49,15 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 - Embeds nest up to three deep.
 - An embed inside fenced code is left as code.
 
+### Copying a note for elsewhere
+
+Embeds, query blocks, and `[[links]]` mean something only to Deckard. `Deckard: Copy as Plain Markdown`, also in the editor's **Deckard** right-click menu, copies the note, or what is selected in it, written out for a chat, an email, or a pull request:
+
+- an embed becomes the text it names, three deep;
+- a query block becomes its results as they stand: a list of notes and tasks, or Markdown tables for `view=table`;
+- a `[[link]]` becomes its words, `[[Atlas#Decision]]` as *Atlas › Decision* and `[[Atlas|the plan]]` as *the plan*;
+- front matter and `^markers` are left out, and other code is left as written.
+
 ### Tags and people
 
 By default, use `@` for people and namespaced `#` tags for workspace entities:
