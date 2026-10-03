@@ -35,6 +35,7 @@ Three figures sit above Home: **Overdue** and **Due today**, as the [Tasks view]
 | **Tags without a hub** | Tags used at least three times with no [hub note](search-pages.md#hub-notes), each with **Create hub** | The Tags tab |
 | **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename** | The Tags tab |
 | **Gone quiet** | People, or another namespace, not written about for 30, 60, 90, or 180 days, with what is still open. **Only those with no open tasks** adds **Add next action**, which captures a task with the tag to today's note | The Tags tab |
+| **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2 of 6 done · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
 | **Pinned notes** | The notes you pinned, each with **×** to unpin | The note, at the heading you pinned |
 
 **Pinning** pins the entry (a heading and what is under it), not the file:
@@ -46,6 +47,8 @@ Three figures sit above Home: **Overdue** and **Due today**, as the [Tasks view]
 Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.
 
 **Gone quiet** watches people by default; its gear's **Namespace** chooses another your tags use, such as `project`. It offers each namespace that starts with a letter, so `#2026/q1` adds no `2026`. It reads `@` and `#person/…` tags, so one person written both ways counts as two tags ([Stats](#tags-that-look-alike) flags this). A name's date is its newest note's `updated:` field, daily note day, or file date.
+
+**Progress** lists `project` tags by default; its gear's **Namespace** chooses another, as Gone quiet's does. A tag's tasks are those a search for it finds: the tasks that carry it, and those under a heading or in a note that does. A [step](tasks.md) counts as part of its task, not as a task of its own. Selecting a row opens the tag's page, which shows the same bar.
 
 **Paging**, in a widget's gear, shows all entries a page at a time, 3, 5, 10, or 20 to a page. The Agenda widget and a saved search's results are not paged.
 

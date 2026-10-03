@@ -331,6 +331,12 @@ function updateWidget(widgetId: string | undefined, changes: Partial<DashboardWi
   }
 }
 
+/** The kind of the widget with this id, as Home holds it. */
+function widgetKindOf(widgetId: string | undefined): DashboardWidgetConfig['kind'] | undefined {
+  const snapshot = shown();
+  return snapshot ? widgetConfig(snapshot).find((widget) => widget.id === widgetId)?.kind : undefined;
+}
+
 /** Reorders Home's widgets by their ids; true when it did. */
 function rankWidget(reorder: (keys: string[]) => string[] | undefined): boolean {
   const snapshot = shown();
@@ -887,7 +893,12 @@ const CHANGES: Readonly<Record<string, (target: HTMLInputElement) => void>> = {
     }
   },
   'set-widget-filter': (target) => updateWidget(target.dataset.widgetId, { filterId: target.value }),
-  'set-widget-namespace': (target) => updateWidget(target.dataset.widgetId, { namespace: target.value === 'person' ? undefined : target.value, page: 1 }),
+  'set-widget-namespace': (target) => {
+    // A widget's own default is kept as no namespace, as the host keeps it.
+    const kind = widgetKindOf(target.dataset.widgetId);
+    const fallback = kind ? WIDGET_KINDS[kind].defaultNamespace : undefined;
+    updateWidget(target.dataset.widgetId, { namespace: target.value === fallback ? undefined : target.value, page: 1 });
+  },
   'set-widget-no-open-tasks': (target) => updateWidget(target.dataset.widgetId, { noOpenTasks: target.checked ? true : undefined, page: 1 }),
   // A different page size is a different set of pages, so the list is read
   // again from its top.

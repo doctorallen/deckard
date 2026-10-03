@@ -39,7 +39,8 @@ import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
 import { ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot } from '../protocol/searchPage';
+import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
+import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import {
   Entity,
   SearchPreview,
@@ -374,7 +375,32 @@ function buildTagPageBlock(
       lookalikes: findTagLookalikes(index, focusTag.key),
       hubLinkCount: viaHub.size,
       ...(hubTitle ? { hubTitle } : {}),
+      ...describeTagProgressLine(index, focusTag.key, context),
       ...describeTagMentions(index, focusTag, context),
+    },
+  };
+}
+
+/**
+ * How far along a tag's tasks are, for its page's progress line; nothing
+ * for a tag that finds no task.
+ */
+function describeTagProgressLine(
+  index: WorkspaceIndex,
+  tagKey: string,
+  context: QueryContext,
+): Pick<SearchPageTagNotes, 'progress'> {
+  const progress = computeTagProgress(index, tagKey, context.now);
+  if (!progress) {
+    return {};
+  }
+  return {
+    progress: {
+      done: progress.done,
+      total: progress.total,
+      overdue: progress.overdue,
+      label: describeTagProgress(progress, context.now, context.taskPolicy),
+      ...(progress.overdue > 0 ? { overdueQuery: `${tagKey} is:overdue -is:step` } : {}),
     },
   };
 }

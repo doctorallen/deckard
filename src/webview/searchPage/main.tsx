@@ -20,7 +20,7 @@ import { taskTitleOf } from '../shared/taskRow';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
-import { HubNote, TagNotes } from './hub';
+import { HubNote, TagNotes, TagProgress } from './hub';
 import { type ResultKind, resultCounts, Results } from './results';
 
 /** What the page draws from: the host's last snapshot, once there is one. */
@@ -117,6 +117,7 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
       {editor.bar()}
       {editor.facets()}
       <HubNote snapshot={snapshot} hubOpen={hubOpen} />
+      <TagProgress snapshot={snapshot} />
       <TagNotes snapshot={snapshot} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
       {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
@@ -385,6 +386,12 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'unpark-tag': (target) => {
     if (target.dataset.tagKey) {
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });
+    }
+  },
+  'show-overdue': (_target, snapshot) => {
+    const query = snapshot.tagPage && snapshot.tagPage.progress ? snapshot.tagPage.progress.overdueQuery : undefined;
+    if (query) {
+      send({ type: 'setOverviewQuery', query });
     }
   },
   'show-mentions': (_target, snapshot) => {

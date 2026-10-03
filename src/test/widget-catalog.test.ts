@@ -13,7 +13,7 @@ suite('Widget catalog', () => {
     assert.deepStrictEqual(Object.keys(WIDGET_KINDS), [
       'search', 'tasks', 'agenda', 'favoriteTags', 'topTags', 'savedSearches', 'recentSearches', 'recentNotes',
       'stats', 'savedQuery', 'todayNote', 'quickAdd', 'staleTasks', 'relatedNotes', 'tagPairs', 'unhubbedTags',
-      'newTags', 'quietPeople', 'pinnedNotes', 'tryNext',
+      'newTags', 'quietPeople', 'progress', 'pinnedNotes', 'tryNext',
     ]);
   });
 

@@ -7,6 +7,8 @@ import {
 import { findAdjacentDailyNote, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { planRollover } from '../../domain/notes/rolloverPlan';
 import { createSourceParser, findEmbedLines, resolveEmbed } from '../../domain/notes/embeds';
+import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
+import type { QueryContext } from '../../domain/query/queryContext';
 import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
 
 /**
@@ -220,4 +222,31 @@ function append<T>(map: Map<string, T[]>, key: string, value: T): void {
   } else {
     map.set(key, [value]);
   }
+}
+
+/** How far along one tag a hub note describes is, for the lens on its first line. */
+export interface HubProgress {
+  tagKey: string;
+  tagLabel: string;
+  /** "2 of 6 done · 1 overdue · next due in 3 days". */
+  text: string;
+}
+
+/**
+ * How far along each tag a hub note's `describes:` names is, in the order it
+ * names them; a tag with no task, and a note that describes nothing, has
+ * none. The note's own front matter is read from `file`, usually the editor's
+ * text; the tasks are the index's.
+ */
+export function findHubProgress(
+  file: ParsedFile,
+  index: WorkspaceIndex,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+): HubProgress[] {
+  return (file.hub?.describes ?? []).flatMap((tag) => {
+    const progress = computeTagProgress(index, tag.key, context.now);
+    return progress
+      ? [{ tagKey: tag.key, tagLabel: tag.label, text: describeTagProgress(progress, context.now, context.taskPolicy) }]
+      : [];
+  });
 }

@@ -5,6 +5,7 @@
 import type { ComponentChild } from 'preact';
 
 import type { SearchPageSnapshot, SearchPageTag, SearchPageTagNotes, TagOverviewHub } from '../../ui/protocol/searchPage';
+import { ProgressBar } from '../shared/progressBar';
 import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
@@ -83,6 +84,29 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
       {hub.rawContent.trim() ? <NoteBody rawContent={hub.rawContent} blocks={hub.bodyTokens} renderMode={snapshot.renderMode} /> : null}
       {hub.otherFilePaths.length ? <OtherHubNotes filePaths={hub.otherFilePaths} /> : null}
     </details>
+  );
+}
+
+/**
+ * How far along the tag's tasks are: a bar, the words, and, when some are
+ * overdue, a way to list them. Only a tag that finds a task has it.
+ */
+export function TagProgress({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
+  const progress = snapshot.tag && snapshot.tagPage ? snapshot.tagPage.progress : undefined;
+  if (!progress) {
+    return null;
+  }
+  return (
+    <div class="tag-progress">
+      <span class="eyebrow">Progress</span>
+      <ProgressBar done={progress.done} total={progress.total} />
+      <span class="tag-progress-label">
+        {progress.label}
+        {progress.overdueQuery
+          ? <>{' '}<button type="button" class="tag-note-action" data-action="show-overdue" data-tip="Search the tag’s overdue tasks">Show overdue</button></>
+          : null}
+      </span>
+    </div>
   );
 }
 

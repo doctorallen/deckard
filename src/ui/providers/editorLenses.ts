@@ -3,7 +3,8 @@ import * as vscode from 'vscode';
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { findDailyNoteActions, findEmbedProblems, findTaskDependencies } from '../state/editorLensState';
+import { findDailyNoteActions, findEmbedProblems, findHubProgress, findTaskDependencies } from '../state/editorLensState';
+import { readQueryContext } from '../commands/queryContext';
 import { getPeriodicNoteUri } from '../commands/dailyNote';
 import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
@@ -43,7 +44,8 @@ interface LensGroup {
     | 'dailyNoteActions'
     | 'linkProblems'
     | 'embedProblems'
-    | 'unlinkedMentions';
+    | 'unlinkedMentions'
+    | 'hubProgress';
   provide(context: LensContext): LazyCodeLens[];
 }
 
@@ -63,6 +65,7 @@ export class EditorLenses
     { setting: 'linkProblems', provide: provideLinkProblemLenses },
     { setting: 'embedProblems', provide: provideEmbedProblemLenses },
     { setting: 'unlinkedMentions', provide: provideUnlinkedMentionLenses },
+    { setting: 'hubProgress', provide: provideHubProgressLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -252,6 +255,24 @@ function provideDailyNoteLenses({
     );
   }
   return lenses;
+}
+
+/**
+ * On a hub note's first line: how far along the tasks of each tag it
+ * describes are, which opens the tag's page. A tag with no task has none.
+ */
+function provideHubProgressLenses({ file, index }: LensContext): LazyCodeLens[] {
+  const progress = findHubProgress(file, index, readQueryContext());
+  const range = new vscode.Range(0, 0, 0, 0);
+  return progress.map(
+    (entry) =>
+      new LazyCodeLens(range, () => ({
+        title: progress.length > 1 ? `${entry.tagLabel}: ${entry.text}` : `Progress: ${entry.text}`,
+        tooltip: `Open ${entry.tagLabel}'s page, with every task it finds`,
+        command: 'deckard.showTagOverview',
+        arguments: [entry.tagKey],
+      })),
+  );
 }
 
 /**

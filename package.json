@@ -2007,6 +2007,13 @@
             "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
             "order": 10
           },
+          "deckard.editor.hubProgress": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, on a hub note's first line, how far along the tasks of the tag it describes are: how many are done, how many are overdue, and when the next is due. A tag with no task shows nothing.",
+            "order": 10
+          },
           "deckard.editor.dimTaskMetadata": {
             "type": "boolean",
             "default": true,

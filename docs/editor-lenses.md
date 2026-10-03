@@ -38,6 +38,7 @@ settings beside `deckard.editor.referenceCounts`:
 - `deckard.editor.linkProblems`
 - `deckard.editor.embedProblems`
 - `deckard.editor.unlinkedMentions`
+- `deckard.editor.hubProgress`
 
 **Lenses sit on headings, the first line, fences, embeds, and tasks that have
 dependencies** — never on every task line.

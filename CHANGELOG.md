@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **See how far along a project is.** A tag's page shows a bar under its
+  hub and says how many of its tasks are done, how many are overdue, and
+  when the next is due, with **Show overdue**. The hub note says the same
+  on its first line in the editor, and Home's new **Progress** widget lists
+  every project's, or any namespace's, unfinished first.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights
