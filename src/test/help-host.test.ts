@@ -147,7 +147,7 @@ suite('Help host', () => {
         localResourceRoots: HELP_ROOTS,
       });
       assert.strictEqual(panel.webview.options.enableScripts, true);
-      assert.ok(String((panel.iconPath as vscode.Uri).fsPath).endsWith('resources/deckard.svg'));
+      assert.ok(String((panel.iconPath as vscode.Uri).path).endsWith('resources/deckard.svg'));
       assert.strictEqual(panel.htmls.length, 1);
       assert.strictEqual(anchorOf(panel.htmls[0]), 'whats-new');
       assert.match(panel.htmls[0], /1\.27\.0/);
@@ -225,7 +225,7 @@ suite('Help host', () => {
       await made[0].send({ type: 'openChangelog' });
       const ran = events.slice(before);
       assert.deepStrictEqual(ran.map(([command]) => command), ['deckard.showStats', 'markdown.showPreview']);
-      assert.ok(String((ran[1][1] as vscode.Uri).fsPath).endsWith('/tmp/deckard-extension/CHANGELOG.md'));
+      assert.ok(String((ran[1][1] as vscode.Uri).path).endsWith('/tmp/deckard-extension/CHANGELOG.md'));
     });
   });
 

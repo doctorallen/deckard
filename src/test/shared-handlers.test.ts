@@ -55,7 +55,7 @@ async function recordOpens(run: () => Promise<void>): Promise<Array<[string, num
     const editor = {
       document,
       selection: new vscode.Selection(0, 0, 0, 0),
-      revealRange: () => opens.push([document.uri.fsPath, editor.selection.active.line + 1, options.preview]),
+      revealRange: () => opens.push([document.uri.path, editor.selection.active.line + 1, options.preview]),
     };
     return editor;
   };

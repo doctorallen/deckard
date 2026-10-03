@@ -107,7 +107,7 @@ async function recordOpens(run: () => Promise<void>): Promise<string[]> {
   const opened: string[] = [];
   workspace.openTextDocument = async (uri: vscode.Uri) => ({ uri, lineCount: 40 });
   window.showTextDocument = async (document: { uri: vscode.Uri }) => {
-    opened.push(document.uri.fsPath);
+    opened.push(document.uri.path);
     return { document, revealRange: () => undefined };
   };
   try {

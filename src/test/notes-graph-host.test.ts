@@ -95,7 +95,7 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
       document,
       selection: new vscode.Selection(0, 0, 0, 0),
       revealRange: () =>
-        calls.push(['open', document.uri.fsPath, editor.selection.active.line + 1, options.preview, options.viewColumn === vscode.ViewColumn.Beside]),
+        calls.push(['open', document.uri.path, editor.selection.active.line + 1, options.preview, options.viewColumn === vscode.ViewColumn.Beside]),
     };
     return editor;
   };

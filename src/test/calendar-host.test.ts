@@ -83,7 +83,7 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
   // Recorded as it is shown, so a stand-in for VS Code without selections
   // records it too.
   window.showTextDocument = async (document: { uri: vscode.Uri }, options: { preview: boolean }) => {
-    calls.push(['open', document.uri.fsPath, options.preview]);
+    calls.push(['open', document.uri.path, options.preview]);
     return { document, revealRange: () => undefined };
   };
   try {

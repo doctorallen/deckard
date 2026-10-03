@@ -194,7 +194,10 @@ suite('Importing preferences', () => {
       } finally {
         reader.restore();
       }
-      assert.strictEqual(reader.said[0], 'Replace what this workspace remembers with the file /imports/deckard-preferences.json?');
+      assert.strictEqual(
+        reader.said[0],
+        `Replace what this workspace remembers with the file ${vscode.Uri.file('/imports/deckard-preferences.json').fsPath}?`,
+      );
       assert.match(reader.details[0], /^It holds 1 favorite tag\. /);
       assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/atlas']);
       assert.deepStrictEqual(store.reader.value.pinnedNotes ?? [], [], 'a list the file leaves out is emptied');

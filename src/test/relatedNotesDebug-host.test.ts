@@ -121,7 +121,7 @@ suite('Related Notes debug host', () => {
         { localResourceRoots: DEBUG_ROOTS },
         'the page runs no script, and loads its sheet from the built pages',
       );
-      assert.ok(String((panel.iconPath as vscode.Uri).fsPath).endsWith('resources/deckard.svg'));
+      assert.ok(String((panel.iconPath as vscode.Uri).path).endsWith('resources/deckard.svg'));
       assert.strictEqual(panel.title, 'Deckard: Related Notes Debug — Kickoff');
       assert.strictEqual(panel.htmls.length, 1);
       assert.match(panel.htmls[0], /Kickoff/);

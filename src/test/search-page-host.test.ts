@@ -129,7 +129,7 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
   commands.executeCommand = async (...call: unknown[]) => void calls.push(call);
   workspace.openTextDocument = async (uri: vscode.Uri) => ({ uri, lineCount: 40 });
   window.showTextDocument = async (document: { uri: vscode.Uri }, options: { preview: boolean; viewColumn?: number }) => {
-    calls.push(['open', document.uri.fsPath, options.preview, 'viewColumn' in options]);
+    calls.push(['open', document.uri.path, options.preview, 'viewColumn' in options]);
     return { document, selection: undefined, revealRange: () => undefined };
   };
   try {
@@ -309,7 +309,7 @@ suite('Search page host', () => {
         await page.send({ type: 'unparkNote', filePath: '/notes/beta.md' });
       });
       assert.deepStrictEqual(page.openedTags, ['#project/beta', '#project/beta', '#project/beta']);
-      assert.deepStrictEqual(calls.map(([command, argument]) => [command, typeof argument === 'string' ? argument : (argument as vscode.Uri).fsPath]), [
+      assert.deepStrictEqual(calls.map(([command, argument]) => [command, typeof argument === 'string' ? argument : (argument as vscode.Uri).path]), [
         ['deckard.parkTag', '#project/beta'],
         ['deckard.unparkTag', '#project/beta'],
         ['deckard.parkNote', '/notes/beta.md'],

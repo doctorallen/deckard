@@ -124,11 +124,11 @@ async function record(run: () => Promise<void>): Promise<unknown[][]> {
   const calls: unknown[][] = [];
   commands.executeCommand = async () => undefined;
   workspace.openTextDocument = async (uri: vscode.Uri) => {
-    calls.push(['document', uri.fsPath]);
+    calls.push(['document', uri.path]);
     return { uri, lineCount: 40, getText: () => '' };
   };
   window.showTextDocument = async (document: { uri: vscode.Uri }, options: { preview: boolean }) => {
-    calls.push(['open', document.uri.fsPath, options.preview, 'viewColumn' in options]);
+    calls.push(['open', document.uri.path, options.preview, 'viewColumn' in options]);
     return { document, selection: undefined, revealRange: () => undefined };
   };
   window.showInformationMessage = async (message: string) => void calls.push(['info', message]);
