@@ -134,10 +134,25 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   agendaListsThisSearch?: boolean;
   /** Whether the Tasks view lists every open task, its own default. */
   agendaQueryIsDefault?: boolean;
+  /**
+   * Present while the board was opened from the Tasks view's search icon to
+   * edit what the view lists: the page says so above its search box and
+   * saves to the view. Only that command sets it, and Cancel clears it.
+   */
+  tasksViewMode?: TasksViewMode;
   /** Whether the search asks for is:available, which lights Can start now. */
   availableOnly?: boolean;
   /** The search Can start now switches to. */
   availableToggleQuery?: string;
+}
+
+/** The board as the Tasks view's search editor. */
+export interface TasksViewMode {
+  /**
+   * Whether the Tasks view lists the board's search, as last run, so Save
+   * to Tasks view has nothing to do until the box shows another.
+   */
+  listed: boolean;
 }
 
 /** A task's current status, priority, and due choice, as the ⋯ menu marks them. */
@@ -287,6 +302,29 @@ export interface UseSearchForAgendaMessage {
   type: 'useSearchForAgenda';
 }
 
+/**
+ * Makes the Tasks view list the search the box shows, typed or run. Sent
+ * only while the board edits what the view lists.
+ */
+export interface SaveToTasksViewMessage {
+  type: 'saveToTasksView';
+  query: string;
+}
+
+/** Cancel: the board stops editing what the Tasks view lists, and the view keeps its search. */
+export interface LeaveTasksViewModeMessage {
+  type: 'leaveTasksViewMode';
+}
+
+/**
+ * The Tasks view lists a search the board saved to it now, without the
+ * board's own `is:open`; empty for every open task. The page says so.
+ */
+export interface SavedToTasksViewMessage {
+  type: 'savedToTasksView';
+  query: string;
+}
+
 /** Asks the board to show every task a column is holding back. */
 export interface ShowColumnRestMessage {
   type: 'showColumnRest';
@@ -341,6 +379,8 @@ export interface TaskBoardPageToHost {
   showColumnRest: ShowColumnRestMessage;
   saveBoardSearch: SaveBoardSearchMessage;
   useSearchForAgenda: UseSearchForAgendaMessage;
+  saveToTasksView: SaveToTasksViewMessage;
+  leaveTasksViewMode: LeaveTasksViewModeMessage;
   ready: SidebarReadyMessage;
   openSource: OpenSourceMessage;
   openTag: OpenTagMessage;
@@ -359,13 +399,15 @@ export interface TaskBoardPageToHost {
 
 /**
  * What the host sends the Task Board, by type: its snapshot, the first
- * scan's progress, and a move or a completion it could not write.
+ * scan's progress, a move or a completion it could not write, and a search
+ * it saved to the Tasks view.
  */
 export interface TaskBoardHostToPage {
   state: StateMessage<TaskBoardSnapshot>;
   indexing: IndexingMessage;
   moveRefused: MoveRefusedMessage;
   toggleRefused: ToggleRefusedMessage;
+  savedToTasksView: SavedToTasksViewMessage;
 }
 
 /** Messages from the Task Board. */

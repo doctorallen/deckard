@@ -24,9 +24,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       pickAgendaGrouping(agenda, indexer.getSnapshot()),
     ),
     // The board is the search editor: the view's search opens there to be
-    // tried and changed, and its Tasks view button keeps it.
+    // tried and changed, and its Save to Tasks view keeps it.
     registerCommand('deckard.agenda.editQuery', () =>
-      taskBoard.show(getAgendaQuery()),
+      taskBoard.editTasksViewSearch(getAgendaQuery()),
     ),
     registerCommand('deckard.clearAgendaQuery', async () => {
       if (await clearSetting('agenda.query', '')) {
