@@ -37,6 +37,20 @@ export function openSearchDatabase(databasePath: string): DatabaseSync {
     mkdirSync(dirname(databasePath), { recursive: true });
   }
   const database = new DatabaseSync(databasePath);
+  try {
+    prepareSearchDatabase(database);
+  } catch (error) {
+    // A file that is damaged, or not a database, fails here. Its handle is
+    // closed, so the file can be deleted and made again: Windows deletes no
+    // file a process still holds open.
+    database.close();
+    throw error;
+  }
+  return database;
+}
+
+/** Sets a newly opened cache's connection up, and makes its tables. */
+function prepareSearchDatabase(database: DatabaseSync): void {
   // The wait comes first: a connection that is closing, such as the worker
   // of the session before, holds the file for a moment, and switching the
   // journal must wait it out rather than fail.
@@ -92,7 +106,6 @@ export function openSearchDatabase(databasePath: string): DatabaseSync {
       value TEXT NOT NULL
     ) STRICT;
   `);
-  return database;
 }
 
 /** What a rescan compares a note against to tell whether it changed. */
