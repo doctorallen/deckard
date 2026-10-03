@@ -63,7 +63,7 @@ span: `due = next-week` is every day of next week.
    `weekly`, which offers **every week**.
 4. Put the cursor on *Clean the rain shells*, open **Deckard: Edit Task**,
    choose **Repeats**, and pick another rule, or write your own.
-5. Run **Deckard: Capture** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd>)
+5. Run **Deckard: Capture** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>)
    and type `Call Hush Baird friday p2 every week`. The line it will write is
    shown under the box, with a due date, a priority, and a rule, before
    anything is saved. Press Escape if you would rather not add it.

@@ -29,17 +29,21 @@ Windows and Linux.
    and the dates you can type in plain words.
 4. [Search](<04 Search.md>): Find, search pages, and the query language, with
    a search to run for every field.
-5. [Query blocks](<05 Query blocks.md>): live search results inside a note.
-6. [Tags and people](<06 Tags and people.md>): namespaces, hub notes, a
-   misspelled tag to merge, and a name written without its tag.
-7. [Links](<07 Links.md>): links to notes, headings, and lines, embeds, and a
-   link to a note that does not exist yet.
+5. [Query blocks](<05 Query blocks.md>): live search results inside a note,
+   a table of notes, and tasks you tick right in the preview.
+6. [Tags and people](<06 Tags and people.md>): namespaces, hub notes and the
+   Hubs view, a project's progress, a misspelled tag to merge, and a name
+   written without its tag.
+7. [Links](<07 Links.md>): links to notes, headings, and lines, embeds, a
+   link to a note that does not exist yet, and copying a note for elsewhere.
 8. [Daily notes and reviews](<08 Daily notes and reviews.md>): daily notes,
-   rollover, weekly reviews, and the calendar.
+   rollover, weekly reviews, the calendar, and your tasks in your own
+   calendar app.
 9. [Capture, move, and park](<09 Capture, move, and park.md>): Capture,
-   Move to…, Extract Heading, templates, and parked notes.
-10. [Home, Stats, and the graph](<10 Home, Stats, and the graph.md>): Home,
-    Related Notes, Stats, the Notes Graph, themes, and zen.
+   Move to…, Extract Heading, templates and the `/` menu, and parked notes.
+10. [Home, Stats, and the graph](<10 Home, Stats, and the graph.md>): Home and
+    its Progress widget, Related Notes, Stats, the Notes Graph, themes, and
+    zen.
 
 ## What else is here
 
@@ -53,6 +57,13 @@ Windows and Linux.
   [Argent Protocol](<projects/Argent Protocol.md>) for two projects,
   [Harbor](<teams/Harbor.md>) and [Wardens](<teams/Wardens.md>) for the
   teams, and [Sable Ortiz](<people/Sable Ortiz.md>) for a person.
+  [Receiver firmware](<projects/Receiver firmware.md>) is a sub-project,
+  filed under Ghostline Relay in the **Hubs** view by its `up:` front matter.
+- **Notes filed under the hubs**: the
+  [Relay route survey](<projects/Relay route survey.md>), under Ghostline
+  Relay by its project tag, and the
+  [Firmware bench log](<projects/Firmware bench log.md>), under Receiver
+  firmware by `up:` alone.
 - [Loose ends](<Loose ends.md>), a note with no tags, for Related Notes.
 - [Velvet Circuit](<archive/Velvet Circuit.md>), a finished project,
   parked.

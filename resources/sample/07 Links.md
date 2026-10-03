@@ -64,6 +64,14 @@ The threshold line, drawn from the relay note:
 8. Run **Deckard: Open Notes Graph Around This Note**. Solid lines are links
    you wrote, dashed lines a heading and the heading under it, and dotted
    lines a shared tag.
+9. Run **Deckard: Copy as Plain Markdown** here, then paste into a new
+   untitled file (<kbd>Cmd</kbd>+<kbd>N</kbd>). The embed is written out as
+   the line it names, each link is its words, such as *Ghostline Relay ›
+   Decision*, and the `^marker` is gone: ready for a chat, an email, or a
+   pull request. Select a few lines first to copy only those.
+10. In the Ghostline Relay note, put the cursor on the **Decision** heading
+    and run **Deckard: Rename Heading**. Every `[[Ghostline Relay#Decision]]`
+    link here is rewritten to the new name; **Undo** puts them back.
 
 Search by link in [[04 Search]]; the queries are there.
 

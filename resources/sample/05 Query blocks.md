@@ -28,6 +28,18 @@ included:
 is:open has:due -is:step -is:parked
 ```
 
+## Every project, as a table of notes
+
+With `view=table`, a block's notes are a table too, like a database in
+Notion. `noteColumns=` picks the columns: how many notes link to each entry,
+how far along its tasks are, its tags, its dates, or one namespace's tags,
+such as `#status`. Notes sort by any of them: this one puts the entries with
+the most open tasks first, and those with none last.
+
+```deckard view=table noteColumns=note,links,tasks,updated sort=tasks dir=desc
+tag = #project/* AND is:note
+```
+
 ## The five Wardens notes changed last
 
 `sort=` also orders notes by `title`, `created`, or `updated`, and `limit=`
@@ -56,9 +68,12 @@ is:done done = this-week
 
 1. Open the preview beside the editor
    (<kbd>Cmd</kbd>+<kbd>K</kbd> <kbd>V</kbd>). Each result links to its line.
-2. Complete a task listed in the first block, from the Tasks view or the
-   board. The preview updates, because a block refreshes when any note
-   changes.
+2. Select the box beside a task in the first block, in the preview. The
+   task is completed in its note, and the message offers **Undo**. The first
+   time, VS Code asks whether Deckard may open the link: choose **Open**.
+   Select the box again to reopen it. Completing a task from the Tasks view
+   or the board updates the preview too, because a block refreshes when any
+   note changes.
 3. Select **Open search page** above a block. The same search opens on a
    search page, where Refine can narrow it.
 4. Change `limit=5` to `limit=2` in the third block, and add `dir=asc` after
@@ -69,5 +84,11 @@ is:done done = this-week
    block**, then paste it here. It keeps the page's sort.
 7. Type a `#` inside a block: tag completion works there, even though the
    tags are not counted.
+8. On an empty line below, type `/table`. The `/` menu offers a **Notes
+   table** and a **Tasks table**: choose one, type a search, and open the
+   preview. Delete it afterward.
+9. In the projects table, change `noteColumns=` to add `tags` and save. A
+   cell with nothing to show stays empty, so what a note does have stands
+   out down its column.
 
 Next: [[06 Tags and people]]
