@@ -8,10 +8,14 @@ import {
   extractWikiLinks,
   getEntityNamespaceAliases,
   getEntityKind,
+  getEntityNamespace,
+  getPersonMarker,
   legacyIdOf,
   parseMarkdown,
   stripTags,
-} from '../core/markdown/parser';
+} from '../domain/markdown/parser';
+import { findLinkedBlock } from '../domain/index/backlinks';
+import { setTaskLineCompletion } from '../domain/markdown/taskLineEdits';
 
 suite('Markdown parser', () => {
   test('gives two entries whose old ids collided ids of their own', () => {
@@ -33,6 +37,44 @@ suite('Markdown parser', () => {
       { key: '#case', label: '#case' },
       { key: '#other', label: '#other' },
     ]);
+  });
+
+  test('reads a tag with letters beyond A to Z whole, and none inside a word', () => {
+    assert.deepStrictEqual(extractTags('Trip #café #naïve #über #日本 @José'), [
+      { key: '#café', label: '#café' },
+      { key: '#naïve', label: '#naïve' },
+      { key: '#über', label: '#über' },
+      { key: '#日本', label: '#日本' },
+      { key: '@josé', label: '@José' },
+    ]);
+    assert.deepStrictEqual(extractTags('café#latte and über@home'), []);
+    assert.deepStrictEqual(extractTags('#tag- #end_ #a/b/'), [
+      { key: '#tag', label: '#tag' },
+      { key: '#end_', label: '#end_' },
+      { key: '#a/b', label: '#a/b' },
+    ]);
+    assert.strictEqual(stripTags('Café trip #café'), 'Café trip');
+    const parsed = parseMarkdown('notes/trip.md', '---\ntags: [café]\n---\n# Trip');
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#café']);
+  });
+
+  test('reads a front-matter field with spaces before its colon, as YAML does', () => {
+    const content = '---\ntags : [parked]\nproject\t: Atlas\n---\n# Note';
+    const parsed = parseMarkdown('notes/note.md', content);
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#parked', '#project/atlas']);
+    assert.deepStrictEqual(
+      extractTagSpans(content).filter((span) => span.lineNumber <= 3).map((span) => [span.lineNumber, span.startColumn, span.endColumn]),
+      [[2, 8, 14], [3, 10, 15]],
+    );
+  });
+
+  test('a # in a bare web address is part of the address, not a tag', () => {
+    assert.deepStrictEqual(extractTags('Docs at https://docs.example.com/#install today'), []);
+    assert.deepStrictEqual(
+      extractTags('See http://x.example/page#part, then #real.').map((tag) => tag.key),
+      ['#real'],
+    );
+    assert.strictEqual(stripTags('Read https://x.example/#top #work'), 'Read https://x.example/#top');
   });
 
   test('ignores tags made only of numbers', () => {
@@ -236,17 +278,47 @@ suite('Markdown parser', () => {
       ),
       ['#project/atlas'],
     );
-    assert.strictEqual(
-      getEntityKind({ key: '#client/acme', label: '#client/acme' }, aliases),
-      'organization',
+    const [client] = extractTags('#client/acme', aliases);
+    assert.strictEqual(client.key, '#org/acme');
+    assert.strictEqual(getEntityKind(client, aliases), 'organization');
+    const [leadership] = extractTags('#leadership/performance', aliases);
+    assert.strictEqual(getEntityKind(leadership, aliases), 'management');
+  });
+
+  test('reads an entity\'s namespace from its key, which the parse already resolved, never aliasing it twice', () => {
+    // Indexed before `org` was remapped to `company`, or in a folder that
+    // does not remap it: the key says org.
+    const [indexed] = extractTags('#org/acme');
+    const remapped = getEntityNamespaceAliases({ org: 'company' });
+    assert.strictEqual(getEntityNamespace(indexed, remapped), 'org');
+    assert.strictEqual(getEntityKind(indexed, remapped), 'organization');
+
+    // Indexed under the remap: the key says company, with the aliases or without.
+    const [underRemap] = extractTags('#organization/acme', remapped);
+    assert.strictEqual(underRemap.key, '#company/acme');
+    assert.strictEqual(getEntityNamespace(underRemap, remapped), 'company');
+    assert.strictEqual(getEntityNamespace(underRemap), 'company');
+    assert.strictEqual(getEntityKind(underRemap), 'company');
+  });
+
+  test('a namespace or block id named after a property of every object is read as written', () => {
+    const parsed = parseMarkdown(
+      'notes/fix.md',
+      '# Fix #constructor/x #toString/y\nThe line ^constructor',
+      undefined,
+      { entityNamespaceAliases: getEntityNamespaceAliases({ alias: 'constructor' }) },
     );
-    assert.strictEqual(
-      getEntityKind(
-        { key: '#leadership/performance', label: '#leadership/performance' },
-        aliases,
+    assert.deepStrictEqual(parsed.sections[0].tags, ['#constructor/x', '#tostring/y']);
+    assert.deepStrictEqual(
+      extractTagSpans('# Fix #alias/x', true, getEntityNamespaceAliases({ alias: 'constructor' })).map(
+        (span) => span.key,
       ),
-      'management',
+      ['#constructor/x'],
+      'an alias of a namespace named constructor resolves to it',
     );
+    assert.deepStrictEqual(parsed.blockIds, { constructor: 2 });
+    assert.strictEqual(findLinkedBlock(parsed, 'constructor'), 2);
+    assert.strictEqual(findLinkedBlock(parsed, 'toString'), undefined);
   });
 
   test('uses the configured people marker and preserves @ as a generic tag', () => {
@@ -275,6 +347,20 @@ suite('Markdown parser', () => {
       ],
     );
     assert.strictEqual(stripTags('Team ~mara-vale @inbox', '~'), 'Team');
+  });
+
+  test('every people marker the setting accepts finds its people', () => {
+    const punctuation = [...'!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'];
+    const accepted = punctuation.filter((marker) => getPersonMarker(marker) === marker);
+    assert.ok(accepted.length > 1);
+    for (const marker of accepted) {
+      assert.strictEqual(stripTags(`Call ${marker}dana today`, marker), 'Call today', marker);
+      assert.deepStrictEqual(
+        extractTags(`Call ${marker}dana`, undefined, marker).map((tag) => tag.key),
+        ['@dana'],
+        marker,
+      );
+    }
   });
 
   test('inherits supported frontmatter entities into sections and tasks', () => {
@@ -325,6 +411,17 @@ suite('Markdown parser', () => {
         label: '#management/performance',
       }),
       'management',
+    );
+  });
+
+  test('reads a quoted list value holding a comma as one value, as YAML does', () => {
+    const content = '---\ntags: ["a, b", c, \'it\'\'s, here\']\n---\n# Note';
+    const parsed = parseMarkdown('notes/note.md', content);
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['#a-b', '#c', '#it-s-here']);
+    assert.deepStrictEqual(
+      extractTagSpans(content).filter((span) => span.lineNumber === 2).map((span) => [span.key, span.startColumn, span.endColumn]),
+      [['#a-b', 8, 12], ['#c', 15, 16], ['#it-s-here', 19, 30]],
+      'each span is the value between its quotes',
     );
   });
 
@@ -452,6 +549,26 @@ suite('Markdown parser', () => {
     );
   });
 
+  test('reads a month and day across New Year in the year it is nearer, within two months', () => {
+    const dueOn = (notePath: string, text: string, updatedAt?: number) => {
+      const parsed = parseMarkdown(notePath, text, updatedAt === undefined ? undefined : { updatedAt });
+      return new Date(parsed.tasks[0].dueAt ?? 0).toDateString();
+    };
+    assert.strictEqual(dueOn('2026-12-28.md', '# 2026-12-28\n- [ ] Call Ren Jan 5'), new Date(2027, 0, 5).toDateString());
+    assert.strictEqual(dueOn('2027-01-03.md', '- [ ] Pay the Dec 20 invoice'), new Date(2026, 11, 20).toDateString());
+    assert.strictEqual(
+      dueOn('notes/report.md', '- [ ] Submit the report Mar 1', new Date(2026, 4, 15).getTime()),
+      new Date(2026, 2, 1).toDateString(),
+      'a day further back in the same year stays in it',
+    );
+    assert.strictEqual(
+      dueOn('2026-12-28.md', '- [ ] Renew the lease Jun 30'),
+      new Date(2026, 5, 30).toDateString(),
+      'a day far from New Year stays in the note\'s year',
+    );
+    assert.strictEqual(dueOn('2026-12-28.md', '- [ ] Call Ren Jan 5, 2026'), new Date(2026, 0, 5).toDateString(), 'a written year wins');
+  });
+
   test('reads loose task dates from the day a daily note is for', () => {
     // Saved long afterwards, as after editing an old note or cloning the
     // repository, which must not move its dates.
@@ -518,6 +635,19 @@ suite('Markdown parser', () => {
     assert.strictEqual(parsed.tasks[0].checkboxColumn, 3);
     assert.strictEqual(parsed.tasks[1].completed, true);
     assert.strictEqual(parsed.tasks[1].sectionId, parsed.sections[2].id);
+  });
+
+  test('finds the checkbox however many spaces or tabs sit before its bracket', () => {
+    const lines = ['-   [ ] Wide gap', '  *\t\t[ ] Two tabs', '+ [ ] One space'];
+    const parsed = parseMarkdown('notes/gaps.md', lines.join('\n'));
+    assert.deepStrictEqual(
+      parsed.tasks.map((task) => task.checkboxColumn),
+      lines.map((line) => line.indexOf('[') + 1),
+    );
+    parsed.tasks.forEach((task, index) => {
+      const done = setTaskLineCompletion(lines[index], task.checkboxColumn, { completed: true, doneDate: '2026-10-02' });
+      assert.strictEqual(done, `${lines[index].replace('[ ]', '[x]')} ✅ 2026-10-02`);
+    });
   });
 
   test('handles empty content and tasks before the first heading', () => {
@@ -696,6 +826,29 @@ suite('Markdown parser', () => {
     assert.strictEqual(parsed.sections.length, 1);
     assert.strictEqual(parsed.tasks.length, 1);
     assert.strictEqual(parsed.tasks[0].title, 'Real task');
+  });
+
+  test('ignores an example fence inside a longer fence, and a fence inside a list item', () => {
+    const parsed = parseMarkdown(
+      'notes/guide.md',
+      [
+        '# How to write tasks',
+        '````markdown',
+        '```js',
+        '# Example heading #example',
+        '- [ ] Example task',
+        '```',
+        '````',
+        '- Steps',
+        '    ```',
+        '    - [ ] Not a task either',
+        '    ```',
+        '- [ ] Real task',
+      ].join('\n'),
+    );
+
+    assert.deepStrictEqual(parsed.sections.map((section) => section.heading), ['How to write tasks']);
+    assert.deepStrictEqual(parsed.tasks.map((task) => task.title), ['Real task']);
   });
 
   test('returns clickable tag spans for real headings only', () => {

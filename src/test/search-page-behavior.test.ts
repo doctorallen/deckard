@@ -2,14 +2,16 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { SearchPageSize, SearchPageSnapshot } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences, TestPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { SearchPageSnapshot } from '../ui/protocol/searchPage';
+import { SearchPageSize } from '../domain/model';
 
 /**
  * What a search page does, driven as VS Code drives it: the host's state goes
@@ -21,19 +23,19 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  */
 suite('Search page behavior', () => {
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
   const open = (
     notes: Record<string, string>,
     query: string,
-    options: Parameters<typeof createSearchPageSnapshot>[3] & {
+    options: Omit<Parameters<typeof createSearchPageSnapshot>[3], 'queryContext'> & {
       pageSize?: SearchPageSize;
     } = {},
   ): { page: WebviewPage; snapshot: SearchPageSnapshot } => {
@@ -45,17 +47,17 @@ suite('Search page behavior', () => {
         ]),
       ),
     );
-    store = new PreferencesStore(new MemoryMemento());
+    store = createPreferences(new MemoryMemento());
     const snapshot = createSearchPageSnapshot(
       index,
       options.pageSize === undefined
-        ? store.value
-        : { ...store.value, searchPageSize: options.pageSize },
+        ? store.reader.value
+        : { ...store.reader.value, searchPageSize: options.pageSize },
       query,
-      options,
+      { queryContext: createQueryContext(Date.now()), ...options },
     );
     page = openWebviewPage(
-      getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }),
+      renderPage('searchPage'),
       snapshot,
     );
     return { page, snapshot };
@@ -598,6 +600,7 @@ suite('Search page behavior', () => {
 
     assert.deepStrictEqual(page.lastPosted('saveTagOverviewFilter'), {
       type: 'saveTagOverviewFilter',
+      query: '#project/atlas',
     });
   });
 
@@ -657,6 +660,38 @@ suite('Search page behavior', () => {
       query: '#project/atlas',
       origin: '',
     });
+  });
+
+  test('marks the searched words in the results, and again after each draw', () => {
+    const { page, snapshot } = open(
+      { 'notes/a.md': '# Lift #work\nThe lift is stuck.\n- [ ] Fix the lift #work' },
+      'lift',
+    );
+    const marked = (): string[] => page.findAll('#app mark').map((mark) => String(mark.textContent));
+    assert.ok(marked().length > 0, 'the word is marked where it is written');
+    assert.ok(marked().every((word) => word.toLowerCase() === 'lift'));
+    assert.strictEqual(page.findAll('button mark, [data-tag-key] mark, code mark').length, 0, 'never in a control or a tag');
+
+    // A draw of the page's own, such as another tab, draws the results
+    // afresh and marks them again, as the next state from the host does.
+    page.click('[data-action="set-result-tab"][data-tab="tasks"]');
+    assert.ok(marked().length > 0, 'marked after a draw of the page\'s own');
+    assert.ok(marked().every((word) => word.toLowerCase() === 'lift'));
+    page.send(snapshot);
+    assert.ok(marked().length > 0);
+    assert.match(page.text('.card') ?? '', /The lift is stuck\./, 'the text reads as before');
+  });
+
+  test('marks a searched word that a pattern would read specially as written, and keeps its search', () => {
+    const { page } = open(
+      { 'notes/a.md': '# Languages\nLearning c++ and cxx.' },
+      'c++',
+    );
+
+    const marked = page.findAll('#app mark').map((mark) => String(mark.textContent));
+    assert.ok(marked.length > 0, 'the word is marked where it is written');
+    assert.ok(marked.every((word) => word === 'c++'), `only "c++" is marked: ${marked.join(', ')}`);
+    assert.deepStrictEqual(page.savedState(), { query: 'c++', origin: '' }, 'the state that marked it is kept for a window reload');
   });
 
   test('opens the page of a tag written on a card, not the note', () => {

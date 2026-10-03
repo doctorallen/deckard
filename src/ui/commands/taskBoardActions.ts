@@ -1,52 +1,36 @@
 import * as vscode from 'vscode';
 
-import { readCaptureText } from '../../core/markdown/captureWords';
+import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { parseMarkdown } from '../../core/markdown/parser';
-import { Task } from '../../core/types';
-import {
-  isValidStatusName,
-  resolveTaskMove,
-  TaskBoardOptions,
-  TaskMoveContext,
-} from '../state/taskBoardState';
+import { resolveColumnCapture } from '../../domain/tasks/boardMoves';
+import { QueryContext } from '../../domain/query/queryContext';
+import { resolveTaskMove, TaskBoardOptions, TaskMoveContext } from '../state/taskBoardState';
 import {
   readTaskMetadataFormat,
+  TaskWrites,
   toggleTask,
   quoteTaskTitle,
   updateTaskLine,
 } from './taskActions';
 import { writeSetting } from './settings';
-import { captureToToday, formatCaptureLine } from './capture';
+import { captureToToday } from './capture';
 import { appendTagToLine } from './bulkEdit';
-
-const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
+import { readQueryContext } from './queryContext';
+import { formatCaptureLine } from '../../domain/capture/captureLines';
+import { Task } from '../../domain/model';
+import { readBoardStatuses, readStatusNamespace } from '../../domain/tasks/taskPolicy';
 
 /**
  * Reads the task board settings. Every page that shows a board reads them
- * here, so the Task Board and the Dashboard lay out the same columns.
+ * here, so the Task Board and the Dashboard lay out the same columns. The
+ * board is built in `queryContext`, which its caller read as it began.
  */
-export function readTaskBoardOptions(): TaskBoardOptions {
+export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
-  const namespace = configuration.get<string>(
-    'board.statusNamespace',
-    'status',
-  );
-  const statuses = configuration.get<unknown>(
-    'board.statuses',
-    DEFAULT_STATUSES,
-  );
   return {
-    now: Date.now(),
-    statusNamespace: /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace)
-      ? namespace.toLowerCase()
-      : 'status',
-    statuses: (Array.isArray(statuses) ? statuses : DEFAULT_STATUSES)
-      .filter(
-        (status): status is string =>
-          typeof status === 'string' && isValidStatusName(status),
-      )
-      .map((status) => status.toLowerCase()),
+    queryContext,
+    statusNamespace: readStatusNamespace(configuration),
+    statuses: readBoardStatuses(configuration),
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
   };
@@ -64,9 +48,9 @@ export async function updateTaskBoardSetting(
   const configuration = vscode.workspace.getConfiguration('deckard');
   const current = configuration.inspect(`board.${key}`);
   const target =
-    current?.workspaceValue !== undefined
-      ? vscode.ConfigurationTarget.Workspace
-      : vscode.ConfigurationTarget.Global;
+    current?.workspaceValue === undefined
+      ? vscode.ConfigurationTarget.Global
+      : vscode.ConfigurationTarget.Workspace;
   await writeSetting(`board.${key}`, value, target, configuration);
 }
 
@@ -77,18 +61,20 @@ export async function updateTaskBoardSetting(
  * put a card it moved ahead of time back where it belongs.
  */
 export async function moveTaskToColumn(
+  writes: TaskWrites,
   task: Task,
   columnId: string,
   context: TaskMoveContext = {},
 ): Promise<boolean> {
-  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(), context);
+  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(readQueryContext()), context);
   switch (move.kind) {
     case 'unchanged':
       return false;
     case 'complete':
-      return toggleTask(task, true);
+      return toggleTask(writes, task, true);
     case 'edit':
       return updateTaskLine(
+        writes,
         task,
         (line) => move.edit(line),
         `Moved ${quoteTaskTitle(task)} to ${move.label}`,
@@ -114,22 +100,21 @@ export async function captureIntoColumn(columnId: string): Promise<boolean> {
     return false;
   }
   const configuration = vscode.workspace.getConfiguration('deckard');
-  let line = readCaptureText(
+  const queryContext = readQueryContext();
+  const line = readCaptureText(
     formatCaptureLine(text),
     readTaskMetadataFormat(configuration),
-    Date.now(),
+    queryContext.now,
     readDateOptions(),
   ).line;
-  const [task] = parseMarkdown('capture.md', line).tasks;
-  const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions()) : undefined;
-  if (move?.kind === 'refused') {
-    void vscode.window.showInformationMessage(move.reason);
+  const captured = resolveColumnCapture(line, (task) =>
+    resolveTaskMove(task, columnId, readTaskBoardOptions(queryContext)),
+  );
+  if (captured.kind === 'refused') {
+    void vscode.window.showInformationMessage(captured.reason);
     return false;
   }
-  if (move?.kind === 'edit') {
-    line = move.edit(line);
-  }
-  return captureToToday(text, line);
+  return captureToToday(text, captured.line);
 }
 
 /** `deckard.board.limits`, keeping only whole numbers of one or more. */

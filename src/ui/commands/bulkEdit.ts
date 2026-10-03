@@ -5,19 +5,15 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   hasAtxHeadingClosingHashes,
-} from '../../core/markdown/parser';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  setTaskDate,
-  setTaskLineCompletion,
-  writeCompletion,
-} from '../../core/markdown/taskMetadata';
-import { Section, Task } from '../../core/types';
+} from '../../domain/markdown/parser';
+import { pluralize } from '../../shared/text';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
 import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
+import { Section, Task } from '../../domain/model';
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { CompletionWrite, setTaskDate, setTaskLineCompletion, writeCompletion } from '../../domain/markdown/taskLineEdits';
 
 /**
  * One edit made to many results at once.
@@ -42,6 +38,10 @@ export type BulkEntry =
   | { kind: 'task'; task: Task }
   | { kind: 'section'; section: Section };
 
+/**
+ * What a bulk edit did: what it changed, what it left and why, and in how
+ * many notes, which is what its message is worded from.
+ */
 export interface BulkEditResult {
   /** Lines the edit changed. */
   changed: number;
@@ -71,8 +71,22 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
         : `clearing the due date of ${count}`;
     case 'dueEach':
       return `spreading the due dates of ${count}`;
-    default:
+    case 'tag':
       return `adding ${edit.tag} to ${count}`;
+  }
+}
+
+/** The verb a bulk edit's result sentence opens with, with its preposition. */
+function verbFor(edit: BulkEdit): string {
+  switch (edit.kind) {
+    case 'complete':
+      return edit.completed ? 'Completed' : 'Reopened';
+    case 'due':
+      return edit.date ? `Set the due date to ${edit.date} on` : 'Cleared the due date on';
+    case 'dueEach':
+      return 'Set a due date on';
+    case 'tag':
+      return `Added ${edit.tag} to`;
   }
 }
 
@@ -131,102 +145,141 @@ export function appendTagToLine(
  * so an edit made while the page was open is never overwritten.
  */
 export async function applyBulkEdit(
+  history: WorkspaceWriteHistory,
   entries: readonly BulkEntry[],
   edit: BulkEdit,
 ): Promise<BulkEditResult | undefined> {
-  const workspaceEdit = new vscode.WorkspaceEdit();
-  const paths = new Set<string>();
-  let changed = 0;
-  let unchanged = 0;
-  let stale = 0;
-  const staleNotes = new Map<string, vscode.Uri>();
-  const markStale = (count: number, uri?: vscode.Uri) => {
-    stale += count;
-    if (uri) {
-      staleNotes.set(uri.toString(), uri);
-    }
-  };
-  let unreadRules = 0;
-
-  const byPath = new Map<string, BulkEntry[]>();
-  entries.forEach((entry) => {
-    const filePath =
-      entry.kind === 'task' ? entry.task.filePath : entry.section.filePath;
-    byPath.set(filePath, [...(byPath.get(filePath) ?? []), entry]);
-  });
-
-  for (const [filePath, fileEntries] of byPath) {
-    const uri = await resolveSourceUri(filePath);
-    if (!uri) {
-      markStale(fileEntries.length);
-      continue;
-    }
-    let document: vscode.TextDocument;
-    try {
-      document = await vscode.workspace.openTextDocument(uri);
-    } catch {
-      markStale(fileEntries.length, uri);
-      continue;
-    }
-    const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-    const configuration = vscode.workspace.getConfiguration('deckard', uri);
-
-    fileEntries.forEach((entry) => {
-      const line = entry.kind === 'task' ? entry.task.lineNumber : entry.section.startLine;
-      if (line < 1 || line > document.lineCount) {
-        markStale(1, uri);
-        return;
-      }
-      const source = document.lineAt(line - 1);
-      const expected =
-        entry.kind === 'task'
-          ? entry.task.sourceLineText
-          : firstLine(entry.section.rawContent);
-      if (source.text !== expected) {
-        markStale(1, uri);
-        return;
-      }
-      const rewritten = rewrite(entry, edit, source.text, {
-        eol,
-        format: readTaskMetadataFormat(configuration),
-        addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
-        entityNamespaceAliases: getEntityNamespaceAliases(
-          configuration.get<unknown>('entityNamespaceAliases', {}),
-        ),
-        personMarker: getPersonMarker(
-          configuration.get<unknown>('personMarker', '@'),
-        ),
-      });
-      const replacement = rewritten?.text;
-      if (replacement === undefined || replacement === source.text) {
-        unchanged += 1;
-        return;
-      }
-      workspaceEdit.replace(uri, source.range, replacement);
-      paths.add(filePath);
-      changed += 1;
-      if (rewritten?.unreadRule !== undefined) {
-        unreadRules += 1;
-      }
-    });
+  const tally = new BulkTally();
+  for (const [filePath, fileEntries] of groupByPath(entries)) {
+    await tally.addNote(filePath, fileEntries, edit);
   }
 
+  const { changed, unchanged, stale, unreadRules } = tally;
   const left = {
     skipped: unchanged + stale,
     unchanged,
     stale,
-    staleUris: [...staleNotes.values()],
+    staleUris: [...tally.staleNotes.values()],
   };
   if (changed === 0) {
     return { changed: 0, ...left, notes: 0, unreadRules: 0 };
   }
-  const written = await applyWorkspaceWrite(workspaceEdit, {
+  const written = await history.write(tally.workspaceEdit, {
     label: describeBulkEdit(edit, changed),
     description: describeBulkEdit(edit, changed),
   });
   return written.applied
     ? { changed, ...left, notes: written.notes.length, unreadRules }
     : undefined;
+}
+
+/** The entries by the note they are in, each note in the order its first entry came. */
+function groupByPath(entries: readonly BulkEntry[]): Map<string, BulkEntry[]> {
+  const byPath = new Map<string, BulkEntry[]>();
+  entries.forEach((entry) => {
+    const filePath =
+      entry.kind === 'task' ? entry.task.filePath : entry.section.filePath;
+    byPath.set(filePath, [...(byPath.get(filePath) ?? []), entry]);
+  });
+  return byPath;
+}
+
+/** The one write a bulk edit builds, and the count of what it changed and left. */
+class BulkTally {
+  public readonly workspaceEdit = new vscode.WorkspaceEdit();
+  public changed = 0;
+  public unchanged = 0;
+  public stale = 0;
+  public readonly staleNotes = new Map<string, vscode.Uri>();
+  public unreadRules = 0;
+
+  /**
+   * Adds one note's entries to the write. A note that cannot be found or
+   * opened leaves all its entries stale.
+   */
+  public async addNote(
+    filePath: string,
+    fileEntries: readonly BulkEntry[],
+    edit: BulkEdit,
+  ): Promise<void> {
+    const uri = await resolveSourceUri(filePath);
+    if (!uri) {
+      this.markStale(fileEntries.length);
+      return;
+    }
+    let document: vscode.TextDocument;
+    try {
+      document = await vscode.workspace.openTextDocument(uri);
+    } catch {
+      this.markStale(fileEntries.length, uri);
+      return;
+    }
+    const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+    const configuration = vscode.workspace.getConfiguration('deckard', uri);
+    fileEntries.forEach((entry) =>
+      this.addEntry({ document, uri, eol, configuration }, entry, edit),
+    );
+  }
+
+  /**
+   * Adds one entry's rewritten line to the write, unless its line is no
+   * longer the one the index recorded (stale) or the edit leaves it as it is
+   * (unchanged).
+   */
+  private addEntry(note: OpenNote, entry: BulkEntry, edit: BulkEdit): void {
+    const { document, uri, eol, configuration } = note;
+    const line = entry.kind === 'task' ? entry.task.lineNumber : entry.section.startLine;
+    if (line < 1 || line > document.lineCount) {
+      this.markStale(1, uri);
+      return;
+    }
+    const source = document.lineAt(line - 1);
+    const expected =
+      entry.kind === 'task'
+        ? entry.task.sourceLineText
+        : firstLine(entry.section.rawContent);
+    if (source.text !== expected) {
+      this.markStale(1, uri);
+      return;
+    }
+    const rewritten = rewrite(entry, edit, source.text, {
+      eol,
+      format: readTaskMetadataFormat(configuration),
+      addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
+      entityNamespaceAliases: getEntityNamespaceAliases(
+        configuration.get<unknown>('entityNamespaceAliases', {}),
+      ),
+      personMarker: getPersonMarker(
+        configuration.get<unknown>('personMarker', '@'),
+      ),
+    });
+    const replacement = rewritten?.text;
+    if (replacement === undefined || replacement === source.text) {
+      this.unchanged += 1;
+      return;
+    }
+    this.workspaceEdit.replace(uri, source.range, replacement);
+    this.changed += 1;
+    if (rewritten?.unreadRule !== undefined) {
+      this.unreadRules += 1;
+    }
+  }
+
+  /** Counts `count` results as stale, and remembers their note when it is known. */
+  private markStale(count: number, uri?: vscode.Uri): void {
+    this.stale += count;
+    if (uri) {
+      this.staleNotes.set(uri.toString(), uri);
+    }
+  }
+}
+
+/** A note opened for a bulk edit, with what its lines are written in. */
+interface OpenNote {
+  document: vscode.TextDocument;
+  uri: vscode.Uri;
+  eol: string;
+  configuration: vscode.WorkspaceConfiguration;
 }
 
 interface RewriteOptions {
@@ -254,34 +307,37 @@ function rewrite(
   const task = entry.task;
   if (edit.kind === 'due') {
     return {
-      text: setTaskDate(line, task.checkboxColumn, 'due', edit.date, options.format),
+      text: setTaskDate(line, task.checkboxColumn, {
+        field: 'due',
+        date: edit.date,
+        preferredFormat: options.format,
+      }),
     };
   }
   if (edit.kind === 'dueEach') {
     const date = edit.dates.get(task.id);
     return date === undefined
       ? undefined
-      : { text: setTaskDate(line, task.checkboxColumn, 'due', date, options.format) };
+      : { text: setTaskDate(line, task.checkboxColumn, { field: 'due', date, preferredFormat: options.format }) };
   }
   if (task.completed === edit.completed) {
     return undefined;
   }
   const now = Date.now();
-  const completed = setTaskLineCompletion(
-    line,
-    task.checkboxColumn,
-    edit.completed,
-    options.addDoneDate ? formatIsoDate(now) : undefined,
-    options.format,
-  );
+  const completed = setTaskLineCompletion(line, task.checkboxColumn, {
+    completed: edit.completed,
+    doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
+    preferredFormat: options.format,
+  });
   if (!edit.completed) {
     return { text: completed };
   }
   // A repeating task is replaced by its next occurrence here too, so a bulk
   // completion leaves the same notes behind as one checkbox would.
-  return writeCompletion(completed, task.checkboxColumn, now, options.eol);
+  return writeCompletion(completed, task.checkboxColumn, { now, eol: options.eol });
 }
 
+/** A section's heading line, which is what the index recorded for it. */
 function firstLine(content: string): string {
   return content.split(/\r?\n/)[0] ?? '';
 }
@@ -300,19 +356,15 @@ export function describeBulkEditResult(
           result.staleUris?.length ? result.staleUris.map(noteName) : ['The note'],
         );
   }
-  const verb =
-    edit.kind === 'complete'
-      ? edit.completed
-        ? 'Completed'
-        : 'Reopened'
-      : edit.kind === 'due'
-        ? edit.date
-          ? `Set the due date to ${edit.date} on`
-          : 'Cleared the due date on'
-        : edit.kind === 'dueEach'
-          ? 'Set a due date on'
-          : `Added ${edit.tag} to`;
-  const left =
+  const verb = verbFor(edit);
+  const left = describeLeftAlone(unchanged, stale);
+  const rules = describeUnreadRules(result.unreadRules ?? 0);
+  return `${verb} ${pluralize(result.changed, 'result')} in ${pluralize(result.notes, 'note')}.${left}${rules}`;
+}
+
+/** The sentences on results left alone, as already asked or as stale; empty when none were. */
+function describeLeftAlone(unchanged: number, stale: number): string {
+  return (
     (unchanged === 0
       ? ''
       : ` ${unchanged} ${unchanged === 1 ? 'was' : 'were'} already as you asked.`) +
@@ -320,17 +372,17 @@ export function describeBulkEditResult(
       ? ''
       : ` ${stale} ${stale === 1 ? 'result' : 'results'} changed after Deckard last read ${
           stale === 1 ? 'it and was left as it is' : 'them and were left as they are'
-        }.`);
-  const unread = result.unreadRules ?? 0;
-  const rules =
-    unread === 0
-      ? ''
-      : ` Deckard could not read the repeat rule on ${
-          unread === 1 ? 'one' : unread
-        } of them, so no next one was added.`;
-  return `${verb} ${result.changed} ${
-    result.changed === 1 ? 'result' : 'results'
-  } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}${rules}`;
+        }.`)
+  );
+}
+
+/** The sentence on completed repeats whose rule could not be read; empty when there were none. */
+function describeUnreadRules(unread: number): string {
+  return unread === 0
+    ? ''
+    : ` Deckard could not read the repeat rule on ${
+        unread === 1 ? 'one' : unread
+      } of them, so no next one was added.`;
 }
 
 /**
@@ -344,6 +396,12 @@ export function bulkEditSeverity(result: BulkEditResult): 'info' | 'warning' | '
   }
   return stale > 0 || (result.unreadRules ?? 0) > 0 ? 'warning' : 'info';
 }
+
+/** The message a bulk edit that wrote is reported in, by its weight. */
+const SHOW_AT_SEVERITY: Record<'warning' | 'info', (text: string) => void> = {
+  warning: (text) => void vscode.window.showWarningMessage(text),
+  info: (text) => void vscode.window.showInformationMessage(text),
+};
 
 /** Says what a bulk edit did, at the weight of what happened. */
 export function reportBulkEditResult(
@@ -359,9 +417,8 @@ export function reportBulkEditResult(
       outcome: text,
       ...(uris.length === 1 ? { action: openNoteAction(uris[0]) } : {}),
     });
-  } else if (severity === 'warning') {
-    void vscode.window.showWarningMessage(text);
-  } else {
-    void vscode.window.showInformationMessage(text);
+    return;
   }
+  SHOW_AT_SEVERITY[severity](text);
 }
+

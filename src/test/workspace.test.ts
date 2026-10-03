@@ -1,11 +1,8 @@
 import * as assert from 'assert';
-import * as fs from 'fs';
-import * as path from 'path';
 
-import * as vscode from 'vscode';
-
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex, WorkspaceIndexer } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   collectExcludePatterns,
   createExcludeMatcher,
@@ -13,9 +10,22 @@ import {
   WorkspaceFileAccess,
   WorkspaceScanner,
 } from '../core/workspace/scanner';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
-import { setTimingLog } from '../core/timing';
-import { normalizeIndex } from './indexCorpus';
+import { reactionsTo } from '../core/workspace/changeReactions';
+import { FileStat, FileType } from '../ports/fileSystem';
+import type { ResourceUri } from '../ports/uri';
+import type { FolderPattern } from '../ports/workspace';
+import { setTimingLog } from '../shared/timing';
+import {
+  createFakeAccess,
+  fakeFolder,
+  FakeSettings,
+  FakeWorkspaceEvents,
+  fileUri,
+  joinUri,
+} from './fakeWorkspace';
+import { normalizeIndex } from './normalizeIndex';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 const defaultPreferences = {
   searchPageSize: 30 as const,
@@ -56,30 +66,26 @@ suite('Workspace scanner and index', () => {
       return;
     }
 
-    const workspaceUri = vscode.Uri.file('C:\\Temp\\Deckard');
-    const workspaceFolder = {
-      uri: workspaceUri,
-      name: 'deckard',
-      index: 0,
-    } as vscode.WorkspaceFolder;
-    const scanner = new WorkspaceScanner({
+    const workspaceUri = fileUri('C:\\Temp\\Deckard');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard', index: 0 };
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [],
       readFile: async () => Buffer.from('', 'utf8'),
-    });
+    }));
 
     assert.strictEqual(
-      scanner.getFilePath(vscode.Uri.file('c:\\temp\\deckard\\notes\\case.md')),
+      scanner.getFilePath(fileUri('c:\\temp\\deckard\\notes\\case.md')),
       'notes/case.md',
     );
   });
 
   test('says which notes it could not read, and why, rather than only logging it', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-unreadable');
-    const good = vscode.Uri.joinPath(workspaceUri, 'good.md');
-    const bad = vscode.Uri.joinPath(workspaceUri, 'notes', 'bad.md');
-    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
-    const scanner = new WorkspaceScanner({
+    const workspaceUri = fileUri('/tmp/deckard-unreadable');
+    const good = joinUri(workspaceUri, 'good.md');
+    const bad = joinUri(workspaceUri, 'notes', 'bad.md');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 };
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [good, bad],
       readFile: async (uri) => {
@@ -88,7 +94,7 @@ suite('Workspace scanner and index', () => {
         }
         return Buffer.from('# Good #project/atlas', 'utf8');
       },
-    });
+    }));
 
     const files = await scanner.scan();
 
@@ -98,27 +104,30 @@ suite('Workspace scanner and index', () => {
     ], 'one line of reason, not a stack');
 
     // The indexer carries it to where a reader can see it.
-    const indexer = new WorkspaceIndexer(scanner);
+    const indexer = createWorkspaceIndex({ scanner });
     await indexer.refresh();
     assert.deepStrictEqual(indexer.getUnreadable().map((note) => note.filePath), ['notes/bad.md']);
     indexer.dispose();
   });
 
   test('a save updates only that note in the index, and the index is still the full build', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-update');
-    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+    const workspaceUri = fileUri('/tmp/deckard-update');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 };
     const texts = new Map([
       ['a.md', '# A #project/atlas\n- [ ] Task #topic/maps'],
       ['b.md', '# B #project/atlas #topic/maps\n## Child #topic/detail'],
       ['c.md', '---\ntags: [area/home]\n---\nNo headings.'],
     ]);
-    const uriOf = (name: string) => vscode.Uri.joinPath(workspaceUri, name);
-    const scanner = new WorkspaceScanner({
+    const uriOf = (name: string) => joinUri(workspaceUri, name);
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [...texts.keys()].map(uriOf),
       readFile: async (uri) => Buffer.from(texts.get(uri.path.split('/').pop() ?? '') ?? '', 'utf8'),
-    });
-    const indexer = new WorkspaceIndexer(scanner);
+    }));
+    const events = new FakeWorkspaceEvents();
+    // A save of Deckard's own is read back at once, and a watcher's delete
+    // waits out the debounce.
+    const indexer = createWorkspaceIndex({ scanner, events, ownWrites: { take: () => true } });
     const lines: string[] = [];
     setTimingLog({
       logLevel: 2,
@@ -126,10 +135,6 @@ suite('Workspace scanner and index', () => {
       debug: (line) => lines.push(line),
       info: (line) => lines.push(line),
     });
-    const controller = indexer as unknown as {
-      queueUpsert(uri: vscode.Uri, content?: string, now?: boolean): void;
-      queueDelete(uri: vscode.Uri): void;
-    };
     const published = () =>
       new Promise<void>((resolve) => {
         const subscription = indexer.onDidUpdate(() => {
@@ -140,13 +145,13 @@ suite('Workspace scanner and index', () => {
     const fullBuild = () =>
       normalizeIndex(buildWorkspaceIndex(new Map(indexer.getSnapshot().files)));
     try {
-      await indexer.refresh();
+      await indexer.start();
       assert.ok(lines.some((line) => line.startsWith('Build index')));
 
       lines.length = 0;
       texts.set('a.md', '# A #project/atlas #topic/new\n- [ ] Task #topic/maps');
       let update = published();
-      controller.queueUpsert(uriOf('a.md'), undefined, true);
+      events.saves.fire({ uri: uriOf('a.md') });
       await update;
       assert.ok(
         lines.some((line) => /^Update index: .* \(1 note changed, 3 notes\)$/.test(line)),
@@ -158,7 +163,7 @@ suite('Workspace scanner and index', () => {
 
       texts.delete('b.md');
       update = published();
-      controller.queueDelete(uriOf('b.md'));
+      events.watchers[0].deleted.fire(uriOf('b.md'));
       await update;
       assert.deepStrictEqual([...indexer.getSnapshot().files.keys()], ['a.md', 'c.md']);
       assert.strictEqual(indexer.getSnapshot().tags.has('#topic/detail'), false);
@@ -170,17 +175,17 @@ suite('Workspace scanner and index', () => {
   });
 
   test('reads eight notes at a time, keeps the order found, and rereads only what changed', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-rescan');
-    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+    const workspaceUri = fileUri('/tmp/deckard-rescan');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 };
     const names = Array.from({ length: 30 }, (_, index) => `n${index}.md`);
     const texts = new Map(names.map((name, index) => [name, `# Note ${index} #topic/t${index % 4}`]));
     const times = new Map(names.map((name) => [name, 1000]));
-    const uriOf = (name: string) => vscode.Uri.joinPath(workspaceUri, name);
-    const nameOf = (uri: vscode.Uri) => uri.path.split('/').pop() ?? '';
+    const uriOf = (name: string) => joinUri(workspaceUri, name);
+    const nameOf = (uri: ResourceUri) => uri.path.split('/').pop() ?? '';
     let reading = 0;
     let mostAtOnce = 0;
     const reads: string[] = [];
-    const scanner = new WorkspaceScanner({
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => names.filter((name) => texts.has(name)).map(uriOf),
       readFile: async (uri) => {
@@ -193,18 +198,18 @@ suite('Workspace scanner and index', () => {
         return Buffer.from(texts.get(nameOf(uri)) ?? '', 'utf8');
       },
       stat: async (uri) => ({
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 1,
         mtime: times.get(nameOf(uri)) ?? 0,
         size: Buffer.byteLength(texts.get(nameOf(uri)) ?? '', 'utf8'),
       }),
-    });
+    }));
 
     const files = await scanner.scan();
     assert.deepStrictEqual(files.map((file) => file.filePath), names, 'in the order found');
     assert.strictEqual(mostAtOnce, 8, 'eight reads at a time, never more');
 
-    const indexer = new WorkspaceIndexer(scanner);
+    const indexer = createWorkspaceIndex({ scanner });
     try {
       await indexer.refresh();
       reads.length = 0;
@@ -229,13 +234,72 @@ suite('Workspace scanner and index', () => {
     }
   });
 
+  test('watches the notes pattern, and reads what a watcher or a save reports', async () => {
+    const workspaceFolder = fakeFolder('/tmp/deckard-watch', 'w');
+    const texts = new Map([['a.md', '# A #topic/one']]);
+    const nameOf = (uri: ResourceUri) => uri.path.split('/').pop() ?? '';
+    const settings = new FakeSettings();
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => [...texts.keys()].map((name) => joinUri(workspaceFolder.uri, name)),
+      readFile: async (uri) => Buffer.from(texts.get(nameOf(uri)) ?? '', 'utf8'),
+      settings,
+    }));
+    const events = new FakeWorkspaceEvents();
+    const indexer = createWorkspaceIndex({ scanner, events });
+    const published = () =>
+      new Promise<void>((resolve) => {
+        const subscription = indexer.onDidUpdate(() => {
+          subscription.dispose();
+          resolve();
+        });
+      });
+    try {
+      await indexer.start();
+      assert.deepStrictEqual(
+        events.watchers.map((watcher) => [watcher.pattern.folder, watcher.pattern.pattern]),
+        [[workspaceFolder, '**/*.md']],
+      );
+
+      texts.set('b.md', '# B #topic/two');
+      let update = published();
+      events.watchers[0].created.fire(joinUri(workspaceFolder.uri, 'b.md'));
+      await update;
+      assert.deepStrictEqual([...indexer.getSnapshot().files.keys()], ['a.md', 'b.md']);
+
+      texts.set('a.md', '# A #topic/three');
+      update = published();
+      events.saves.fire({ uri: joinUri(workspaceFolder.uri, 'a.md') });
+      await update;
+      assert.ok(indexer.getSnapshot().tags.has('#topic/three'), 'a save is read');
+
+      update = published();
+      events.watchers[0].deleted.fire(joinUri(workspaceFolder.uri, 'b.md'));
+      await update;
+      assert.deepStrictEqual([...indexer.getSnapshot().files.keys()], ['a.md']);
+
+      settings.set('deckard.notesFolder', 'notes');
+      events.changeSettings('deckard.notesFolder');
+      await indexer.ready;
+      assert.deepStrictEqual(
+        events.watchers.map((watcher) => [watcher.pattern.pattern, watcher.disposed]),
+        [['**/*.md', true], ['notes/**/*.md', false]],
+        'a new notes folder replaces the watcher',
+      );
+    } finally {
+      indexer.dispose();
+    }
+    assert.ok(events.watchers.every((watcher) => watcher.disposed), 'disposing stops watching');
+  });
+
   test('parks what deckard.parked.tags names, and redraws without reading a note when it changes', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-parked');
-    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
-    const noteUri = vscode.Uri.joinPath(workspaceUri, 'a.md');
+    const workspaceUri = fileUri('/tmp/deckard-parked');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 };
+    const noteUri = joinUri(workspaceUri, 'a.md');
     let reads = 0;
     let finds = 0;
-    const scanner = new WorkspaceScanner({
+    const settings = new FakeSettings();
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => {
         finds += 1;
@@ -245,9 +309,10 @@ suite('Workspace scanner and index', () => {
         reads += 1;
         return Buffer.from('# A\n- [ ] Idea #parked\n- [ ] Later #someday\n', 'utf8');
       },
-    });
-    const indexer = new WorkspaceIndexer(scanner);
-    const configuration = vscode.workspace.getConfiguration('deckard');
+      settings,
+    }));
+    const events = new FakeWorkspaceEvents();
+    const indexer = createWorkspaceIndex({ scanner, events });
     try {
       indexer.start();
       await indexer.ready;
@@ -262,31 +327,111 @@ suite('Workspace scanner and index', () => {
           resolve();
         });
       });
-      await configuration.update('parked.tags', ['someday'], vscode.ConfigurationTarget.Global);
+      settings.set('deckard.parked.tags', ['someday']);
+      events.changeSettings('deckard.parked.tags');
       await updated;
       assert.deepStrictEqual(titles(), ['Later']);
       assert.strictEqual(finds, scans, 'no rescan');
       assert.strictEqual(reads, readsBefore, 'no note read again');
     } finally {
-      await configuration.update('parked.tags', undefined, vscode.ConfigurationTarget.Global);
+      indexer.dispose();
+    }
+  });
+
+  test('reads a notes or templates folder setting that is not text as its default', async () => {
+    const workspaceUri = fileUri('/tmp/deckard-wrong-type');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-wrong-type', index: 0 };
+    const noteUri = joinUri(workspaceUri, 'case.md');
+    const templateUri = joinUri(workspaceUri, 'templates', 'meeting.md');
+    for (const [name, value] of [
+      ['notesFolder', null],
+      ['notesFolder', 5],
+      ['notesFolder', false],
+      ['templatesFolder', null],
+      ['templatesFolder', false],
+      ['templatesFolder', ['templates']],
+    ] as const) {
+      const scanner = new WorkspaceScanner(createFakeAccess({
+        workspaceFolders: [workspaceFolder],
+        settings: new FakeSettings({ [`deckard.${name}`]: value }),
+        findFiles: async () => [noteUri, templateUri],
+        readFile: async () => Buffer.from('# Case #project/atlas', 'utf8'),
+      }));
+      const written = `deckard.${name} = ${JSON.stringify(value)}`;
+      assert.deepStrictEqual((await scanner.scan()).map((file) => file.filePath), ['case.md'], written);
+      assert.strictEqual(scanner.isNotesFile(noteUri), true, written);
+      assert.strictEqual(scanner.isNotesFile(templateUri), false, written);
+      assert.strictEqual(scanner.getNotesFolderUri(workspaceFolder).path, workspaceUri.path, written);
+    }
+  });
+
+  test('keeps the notes of two workspace folders with the same name apart', async () => {
+    const work = fakeFolder('/home/me/work/notes', 'notes', 0);
+    const personal = fakeFolder('/home/me/personal/notes', 'notes', 1);
+    const workPlan = joinUri(work.uri, 'plan.md');
+    const personalPlan = joinUri(personal.uri, 'plan.md');
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: [work, personal],
+      findFiles: async (pattern) => [joinUri(pattern.folder.uri, 'plan.md')],
+      readFile: async (uri) =>
+        Buffer.from(uri.toString() === workPlan.toString() ? '# Work plan' : '# Holiday plan', 'utf8'),
+    }));
+
+    const files = await scanner.scan();
+
+    assert.deepStrictEqual(files.map((file) => [file.filePath, file.sections[0].heading]), [
+      ['notes/plan.md', 'Work plan'],
+      ['notes (2)/plan.md', 'Holiday plan'],
+    ]);
+    assert.strictEqual(scanner.getFilePath(personalPlan), 'notes (2)/plan.md');
+    assert.strictEqual(scanner.getUri('notes/plan.md')?.toString(), workPlan.toString());
+    assert.strictEqual(scanner.getUri('notes (2)/plan.md')?.toString(), personalPlan.toString());
+  });
+
+  test('reads a note saved with a byte order mark as if it had none, and does not reread it unchanged', async () => {
+    const workspaceUri = fileUri('/tmp/deckard-bom');
+    const noteUri = joinUri(workspaceUri, 'plan.md');
+    const bytes = Buffer.concat([
+      Buffer.from([0xef, 0xbb, 0xbf]),
+      Buffer.from('# Launch plan #project/atlas\n- [ ] Book the room\n', 'utf8'),
+    ]);
+    let reads = 0;
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: [{ uri: workspaceUri, name: 'w', index: 0 }],
+      findFiles: async () => [noteUri],
+      readFile: async () => {
+        reads += 1;
+        return bytes;
+      },
+      stat: async () => ({ type: FileType.File, ctime: 1, mtime: 1000, size: bytes.length }),
+    }));
+    const indexer = createWorkspaceIndex({ scanner });
+    try {
+      await indexer.refresh();
+      const [file] = indexer.getSnapshot().files.values();
+      assert.ok(!file.content.startsWith('\uFEFF'), 'the mark is not part of the text');
+      assert.deepStrictEqual(file.sections.map((section) => [section.heading, section.headingLevel]), [
+        ['Launch plan #project/atlas', 1],
+      ]);
+      assert.ok(indexer.getSnapshot().tags.has('#project/atlas'));
+      reads = 0;
+      await indexer.refresh();
+      assert.strictEqual(reads, 0, 'a rescan reads no note that has not changed');
+    } finally {
       indexer.dispose();
     }
   });
 
   test('leaves the templates folder out of the notes', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
-    const noteUri = vscode.Uri.joinPath(workspaceUri, 'case.md');
-    const templateUri = vscode.Uri.joinPath(workspaceUri, 'templates', 'meeting.md');
-    const workspaceFolder = {
-      uri: workspaceUri,
-      name: 'deckard-scanner',
-      index: 0,
-    } as vscode.WorkspaceFolder;
-    const scanner = new WorkspaceScanner({
+    const workspaceUri = fileUri('/tmp/deckard-scanner');
+    const noteUri = joinUri(workspaceUri, 'case.md');
+    const templateUri = joinUri(workspaceUri, 'templates', 'meeting.md');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-scanner', index: 0 };
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [noteUri, templateUri],
       readFile: async () => Buffer.from('# Meeting #project/atlas\n- [ ] Agenda', 'utf8'),
-    });
+    }));
 
     const files = await scanner.scan();
 
@@ -348,100 +493,124 @@ suite('Workspace scanner and index', () => {
   });
 
   test('asks findFiles to skip what search.exclude hides, such as node_modules', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-search-exclude');
-    const noteUri = vscode.Uri.joinPath(workspaceUri, 'readme.md');
-    const dependencyUri = vscode.Uri.joinPath(workspaceUri, 'pkg', 'node_modules', 'x', 'README.md');
-    const workspaceFolder = {
-      uri: workspaceUri,
-      name: 'deckard-search-exclude',
-      index: 0,
-    } as vscode.WorkspaceFolder;
-    const excludes: (vscode.GlobPattern | undefined)[] = [];
-    const scanner = new WorkspaceScanner({
+    const workspaceUri = fileUri('/tmp/deckard-search-exclude');
+    const noteUri = joinUri(workspaceUri, 'readme.md');
+    const dependencyUri = joinUri(workspaceUri, 'pkg', 'node_modules', 'x', 'README.md');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-search-exclude', index: 0 };
+    const excludes: (FolderPattern<ResourceUri> | undefined)[] = [];
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async (_include, exclude) => {
         excludes.push(exclude);
         return [noteUri, dependencyUri];
       },
       readFile: async () => Buffer.from('# Readme', 'utf8'),
-    });
+      // VS Code's default search.exclude, which hides node_modules.
+      settings: new FakeSettings({
+        'search.exclude': { '**/node_modules': true, '**/bower_components': true, '**/*.code-search': true },
+      }),
+    }));
 
-    // VS Code's default search.exclude hides node_modules.
     const files = await scanner.scan();
     const exclude = excludes[0];
-    assert.ok(exclude instanceof vscode.RelativePattern, 'an exclude is passed');
+    assert.ok(exclude, 'an exclude is passed');
+    assert.strictEqual(exclude.folder, workspaceFolder, 'relative to the workspace folder');
     assert.ok(exclude.pattern.includes('**/node_modules'), exclude.pattern);
     assert.deepStrictEqual(files.map((file) => file.filePath), ['readme.md']);
     assert.strictEqual(scanner.isNotesFile(dependencyUri), false);
   });
 
   test('leaves out notes that deckard.exclude or files.exclude matches', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-exclude');
-    const noteUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'case.md');
-    const archivedUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'archive', 'old.md');
-    const hiddenUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'hidden', 'secret.md');
-    const workspaceFolder = {
-      uri: workspaceUri,
-      name: 'deckard-exclude',
-      index: 0,
-    } as vscode.WorkspaceFolder;
-    const scanner = new WorkspaceScanner({
+    const workspaceUri = fileUri('/tmp/deckard-exclude');
+    const noteUri = joinUri(workspaceUri, 'notes', 'case.md');
+    const archivedUri = joinUri(workspaceUri, 'notes', 'archive', 'old.md');
+    const hiddenUri = joinUri(workspaceUri, 'notes', 'hidden', 'secret.md');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-exclude', index: 0 };
+    const scanner = new WorkspaceScanner(createFakeAccess({
       workspaceFolders: [workspaceFolder],
       // The fake returns every file, as a note saved in a hidden folder
       // reaches the scanner through a watcher or save event.
       findFiles: async () => [noteUri, archivedUri, hiddenUri],
       readFile: async () => Buffer.from('# Case #project/atlas', 'utf8'),
+      settings: new FakeSettings({
+        'deckard.exclude': { '**/archive': true },
+        'files.exclude': { '**/hidden': true },
+      }),
+    }));
+
+    const files = await scanner.scan();
+
+    assert.deepStrictEqual(files.map((file) => file.filePath), ['notes/case.md']);
+    assert.strictEqual(scanner.isNotesFile(noteUri), true);
+    assert.strictEqual(scanner.isNotesFile(archivedUri), false);
+    assert.strictEqual(scanner.isNotesFile(hiddenUri), false);
+  });
+
+  test('reads exclude and deckard settings at the folder, and deckard.parked.tags at the workspace', async () => {
+    const settings = new FakeSettings();
+    const workspaceFolder = fakeFolder('/tmp/deckard-scopes', 'w');
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => [joinUri(workspaceFolder.uri, 'a.md')],
+      readFile: async () => Buffer.from('# A', 'utf8'),
+      settings,
+    }));
+
+    await scanner.scan();
+    scanner.getParkedRules();
+    const scopes = new Set(settings.reads.map(({ section, scope }) => `${section} ${scope?.toString() ?? 'workspace'}`));
+    assert.deepStrictEqual([...scopes].sort(), [
+      `deckard ${workspaceFolder.uri.toString()}`,
+      'deckard workspace',
+      `files ${workspaceFolder.uri.toString()}`,
+      `search ${workspaceFolder.uri.toString()}`,
+    ]);
+  });
+
+  test('every setting that changes how a note parses changes the parse fingerprint and rescans', () => {
+    // Each parse setting, set away from its default. A setting that changes
+    // getParseOptions but not the fingerprint would leave stale cached parses.
+    const parseSettings: Array<[string, unknown]> = [
+      ['deckard.parseInlineTags', false],
+      ['deckard.noteBoundaries', 'heading'],
+      ['deckard.entityNamespaceAliases', { proj: 'project' }],
+      ['deckard.personMarker', '~'],
+      ['deckard.tasks.assigneeFromPersonTag', true],
+    ];
+    const settings = new FakeSettings();
+    const folder = fakeFolder('/tmp/deckard-fingerprint', 'w');
+    const scanner = new WorkspaceScanner(createFakeAccess({ workspaceFolders: [folder], settings }));
+    const defaultOptions = JSON.stringify(scanner.getParseOptions(folder));
+    const defaultFingerprint = scanner.getParseFingerprint();
+    parseSettings.forEach(([name, value]) => {
+      settings.set(name, value);
+      assert.notStrictEqual(
+        JSON.stringify(scanner.getParseOptions(folder)),
+        defaultOptions,
+        `${name} changes how a note parses`,
+      );
+      assert.notStrictEqual(scanner.getParseFingerprint(), defaultFingerprint, `${name} changes the fingerprint`);
+      settings.set(name, undefined);
+      assert.ok(
+        reactionsTo({ kind: 'settings', affects: (section) => name === section || name.startsWith(`${section}.`) })
+          .rescan,
+        `${name} rescans`,
+      );
     });
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    const filesConfiguration = vscode.workspace.getConfiguration('files');
-    await configuration.update(
-      'exclude',
-      { '**/archive': true },
-      vscode.ConfigurationTarget.Global,
-    );
-    await filesConfiguration.update(
-      'exclude',
-      { '**/hidden': true },
-      vscode.ConfigurationTarget.Global,
-    );
-
-    try {
-      const files = await scanner.scan();
-
-      assert.deepStrictEqual(files.map((file) => file.filePath), ['notes/case.md']);
-      assert.strictEqual(scanner.isNotesFile(noteUri), true);
-      assert.strictEqual(scanner.isNotesFile(archivedUri), false);
-      assert.strictEqual(scanner.isNotesFile(hiddenUri), false);
-    } finally {
-      await configuration.update(
-        'exclude',
-        undefined,
-        vscode.ConfigurationTarget.Global,
-      );
-      await filesConfiguration.update(
-        'exclude',
-        undefined,
-        vscode.ConfigurationTarget.Global,
-      );
-    }
   });
 
   test('reads notes with workspace-relative paths', async () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
-    const noteUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'case.md');
-    const textUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'case.txt');
-    const workspaceFolder = {
-      uri: workspaceUri,
-      name: 'deckard-scanner',
-      index: 0,
-    } as vscode.WorkspaceFolder;
-    const access: WorkspaceFileAccess = {
+    const workspaceUri = fileUri('/tmp/deckard-scanner');
+    const noteUri = joinUri(workspaceUri, 'notes', 'case.md');
+    const textUri = joinUri(workspaceUri, 'notes', 'case.txt');
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-scanner', index: 0 };
+    const access: WorkspaceFileAccess = createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [noteUri, textUri],
       readFile: async () =>
         Buffer.from('# Case @work\n\n- [ ] Follow lead', 'utf8'),
-      stat: async () => ({ ctime: 10, mtime: 20 }) as vscode.FileStat,
-    };
+      stat: async () => ({ ctime: 10, mtime: 20 }) as FileStat,
+    });
 
     const scanner = new WorkspaceScanner(access);
     const files = await scanner.scan();
@@ -458,17 +627,18 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(scanner.isNotesFile(noteUri), true);
     assert.strictEqual(scanner.isNotesFile(textUri), false);
     assert.strictEqual(
-      scanner.isNotesFile(vscode.Uri.joinPath(workspaceUri, 'README.md')),
+      scanner.isNotesFile(joinUri(workspaceUri, 'README.md')),
       true,
     );
   });
 
   test('does not parse non-Markdown files', () => {
-    const scanner = new WorkspaceScanner({
+    const scanner = new WorkspaceScanner(createFakeAccess({
+      workspaceFolders: undefined,
       findFiles: async () => [],
       readFile: async () => Buffer.from('', 'utf8'),
-    });
-    const textUri = vscode.Uri.file('/tmp/deckard-scanner/notes/case.txt');
+    }));
+    const textUri = fileUri('/tmp/deckard-scanner/notes/case.txt');
 
     assert.throws(
       () => scanner.parse(textUri, '# Not Markdown'),
@@ -571,22 +741,18 @@ suite('Workspace scanner and index', () => {
   });
 
   test('carries inline-only notes from scanner into tag overview', () => {
-    const workspaceUri = vscode.Uri.file('/tmp/deckard-inline-overview');
-    const noteUri = vscode.Uri.joinPath(
+    const workspaceUri = fileUri('/tmp/deckard-inline-overview');
+    const noteUri = joinUri(
       workspaceUri,
       'notes',
       'inline-only.md',
     );
-    const workspaceFolder = {
-      uri: workspaceUri,
-      name: 'deckard-inline-overview',
-      index: 0,
-    } as vscode.WorkspaceFolder;
-    const access: WorkspaceFileAccess = {
+    const workspaceFolder = { uri: workspaceUri, name: 'deckard-inline-overview', index: 0 };
+    const access: WorkspaceFileAccess = createFakeAccess({
       workspaceFolders: [workspaceFolder],
       findFiles: async () => [noteUri],
       readFile: async () => Buffer.from('Inline note #work', 'utf8'),
-    };
+    });
 
     const scanner = new WorkspaceScanner(access);
     const parsed = scanner.parse(noteUri, 'Inline note #work');
@@ -595,6 +761,7 @@ suite('Workspace scanner and index', () => {
       index,
       defaultPreferences,
       '#work',
+      { queryContext: createQueryContext(Date.now()) },
     );
 
     assert.strictEqual(snapshot.sections.length, 1);
@@ -629,6 +796,7 @@ suite('Workspace scanner and index', () => {
       index,
       defaultPreferences,
       '#project/neon-relay',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');

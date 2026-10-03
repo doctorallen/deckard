@@ -1,8 +1,9 @@
 import * as assert from 'assert';
 
-import { RankedNote, SidebarNotesSnapshot } from '../core/types';
-import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
+import { RankedNote } from '../domain/model';
 
 /**
  * What the Related Notes sidebar does with the results it is given.
@@ -20,7 +21,7 @@ suite('Related Notes behavior', () => {
 
   const open = (snapshot: Partial<SidebarNotesSnapshot>): WebviewPage => {
     page = openWebviewPage(
-      getSidebarNotesHtml({ cspSource: 'vscode-webview://deckard' }, '1.0.0'),
+      renderPage('sidebarNotes'),
       {
         activeFileName: 'today.md',
         activeTags: [],
@@ -202,6 +203,26 @@ suite('Related Notes behavior', () => {
       undefined,
       'writing a link does not also open the result',
     );
+  });
+
+  test('ranked again, the list keeps the focus on the result it was on, not on its place', () => {
+    const ranked = (...names: string[]) =>
+      names.map((name) => note({ sectionId: name, filePath: `notes/${name}.md`, title: name, fileName: `${name}.md`, sourceLine: 1 }));
+    const page = open({ notes: ranked('alpha', 'beta', 'gamma') });
+    const insert = page.find('.note[data-file-path="notes/gamma.md"] [data-action="insert-link"]') as HTMLElement;
+    insert.focus();
+    insert.click();
+    // Linking gamma raises it to the top.
+    page.send({ activeFileName: 'today.md', activeTags: [], tagTitleDisplayMode: 'inline', state: 'ready', notes: ranked('gamma', 'alpha', 'beta') });
+    const active = page.document.activeElement as HTMLElement;
+    assert.strictEqual(active.getAttribute('data-action'), 'insert-link');
+    assert.strictEqual(active.closest<HTMLElement>('.note')?.dataset.filePath, 'notes/gamma.md', 'Enter again would link the result chosen, not the one now in its place');
+  });
+
+  test('Insert link names a result with no title by the name its card shows', () => {
+    const page = open({ notes: [note({ title: '' })] });
+    assert.match(String(page.text('.note-title')), /atlas\.md/);
+    assert.strictEqual(page.find('.note [data-action="insert-link"]').getAttribute('aria-label'), 'Insert a link to atlas.md at the cursor');
   });
 
   test('opens a matching tag rather than the result carrying it', () => {

@@ -5,9 +5,11 @@
 // the index no longer has opens nothing.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
-const { StatsPanel } = require('../../out/ui/webview/stats.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const { mountWebview, createGlobalState } = require('./support.js');
+const modules = require('../harness/modules.js');
+const { StatsPanel } = modules.stats;
+const { createPreferences } = modules.preferenceServices;
+const { ThemePreview } = modules.themePreview;
 
 // The stub has no editor, so record what the host tries to open instead.
 const opened = [];
@@ -45,17 +47,6 @@ function createIndex() {
   };
 }
 
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
-  };
-}
-
 /** Lets the host finish handling a message the page posted. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -72,13 +63,20 @@ async function openStats(files = []) {
     getUnreadable: () => [],
     onDidUpdate: updates.event,
   };
-  const preferences = new PreferencesStore(createGlobalState());
-  await preferences.recordTagAccess('#project/relay');
-  await preferences.recordEntityAccess('#project/relay');
-  await preferences.recordSectionAccess(section.id);
+  const preferences = createPreferences(createGlobalState());
+  await preferences.usage.recordTagAccess('#project/relay');
+  await preferences.usage.recordEntityAccess('#project/relay');
+  await preferences.usage.recordSectionAccess(section.id);
   const openedTags = [];
-  const stats = new StatsPanel(indexer, preferences, { fsPath: '/ext' }, (tagKey) => {
-    openedTags.push(tagKey);
+  const themePreview = new ThemePreview();
+  const stats = new StatsPanel({
+    indexer,
+    preferences,
+    extensionUri: vscode.Uri.file('/ext'),
+    onOpenTag: (tagKey) => {
+      openedTags.push(tagKey);
+    },
+    themePreview,
   });
   await stats.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -86,13 +84,22 @@ async function openStats(files = []) {
   panel._toWebview.forEach((message) => panel._deliver(message));
   // Tags, canonical tags, then note entries, in page order.
   const rows = () => view.findAll('.stat-row');
-  return { view, panel, updates, index, preferences, openedTags, rows };
+  return { view, panel, updates, index, preferences, openedTags, rows, themePreview };
 }
 
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
-
 // ---------------------------------------------------------------------------
+
+test('a theme Choose Theme… previews redraws the page in it, and stopping puts the setting back', async () => {
+  const { panel, themePreview } = await openStats();
+  // The page links its theme's sheet, and its head names the theme for a gear.
+  const drawnIn = (theme, name) =>
+    panel.webview.html.includes(`dist/webview/themes/${theme}.css`) && panel.webview.html.includes(`<meta name="deckard-theme" content="${name}">`);
+  assert.ok(drawnIn('corpo', 'Corpo'), 'the configured theme at first');
+  themePreview.show('cooper');
+  assert.ok(drawnIn('cooper', 'Cooper'), 'the previewed theme');
+  themePreview.show(undefined);
+  assert.ok(drawnIn('corpo', 'Corpo'), 'the configured theme again');
+});
 
 test('each most-viewed list renders an openable row', async () => {
   const { rows } = await openStats();
@@ -132,7 +139,7 @@ test('Enter and Space open a canonical tag from the keyboard', async () => {
 
 test('clicking a most-viewed note entry opens its note and counts the view', async () => {
   const { view, preferences, rows } = await openStats();
-  const before = preferences.value.sectionAccessCounts[section.id];
+  const before = preferences.reader.value.sectionAccessCounts[section.id];
   view.click(rows()[2]);
   await settle();
   assert.deepStrictEqual(view.posted[view.posted.length - 1], {
@@ -141,12 +148,12 @@ test('clicking a most-viewed note entry opens its note and counts the view', asy
     line: 4,
   });
   assert.deepStrictEqual(opened, ['/notes/relay.md']);
-  assert.strictEqual(preferences.value.sectionAccessCounts[section.id], before + 1);
+  assert.strictEqual(preferences.reader.value.sectionAccessCounts[section.id], before + 1);
 });
 
 test('a note nothing links to is listed, and opens without counting a view', async () => {
   const { view, panel, updates, index, preferences, rows } = await openStats();
-  const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+  const { parseMarkdown } = modules.parser;
   // Front matter puts its heading below line 1, so no entry starts there.
   const lonely = parseMarkdown('/notes/lonely.md', '---\ntags: [relay]\n---\n# Lonely');
   index.files.set(lonely.filePath, lonely);
@@ -158,7 +165,7 @@ test('a note nothing links to is listed, and opens without counting a view', asy
   assert.strictEqual(row.querySelector('.label').textContent, 'lonely');
   assert.ok(!row.querySelector('.count'), 'with no view count');
 
-  const before = { ...preferences.value.sectionAccessCounts };
+  const before = { ...preferences.reader.value.sectionAccessCounts };
   view.click(row);
   await settle();
   assert.deepStrictEqual(view.posted[view.posted.length - 1], {
@@ -167,11 +174,11 @@ test('a note nothing links to is listed, and opens without counting a view', asy
     line: 1,
   });
   assert.deepStrictEqual(opened, ['/notes/lonely.md']);
-  assert.deepStrictEqual(preferences.value.sectionAccessCounts, before, 'no entry view is counted');
+  assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, before, 'no entry view is counted');
 });
 
 test('links that open no note are listed, open their search, and can be created', async () => {
-  const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+  const { parseMarkdown } = modules.parser;
   // Backlinks are read once per index, so the note is there from the start.
   const standup = parseMarkdown('/notes/standup.md', '# Standup\nPlan the [[Q4 offsite]] and [[q4 offsite]] soon, and [[Bad: name]].');
   const { view, panel } = await openStats([standup]);
@@ -211,7 +218,7 @@ test('a hidden Stats page skips updates and catches up when shown', async () => 
 
 test('a row the index no longer has opens nothing', async () => {
   const { view, index, preferences, openedTags, rows } = await openStats();
-  const before = { ...preferences.value.sectionAccessCounts };
+  const before = { ...preferences.reader.value.sectionAccessCounts };
   // The page still shows the rows; the host's index has moved on.
   index.tags.clear();
   index.sections.clear();
@@ -220,25 +227,6 @@ test('a row the index no longer has opens nothing', async () => {
   assert.strictEqual(view.posted.length, 3, 'every row still posted');
   assert.deepStrictEqual(openedTags, []);
   assert.deepStrictEqual(opened, []);
-  assert.deepStrictEqual(preferences.value.sectionAccessCounts, before);
+  assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, before);
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

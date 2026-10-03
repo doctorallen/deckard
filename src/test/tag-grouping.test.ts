@@ -1,10 +1,9 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery, readTaskTagKeys } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { Task, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery, readTaskTagKeys } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   formatNamespaceValue,
   listTaskNamespaces,
@@ -14,10 +13,14 @@ import { resolveTaskMove, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { createAgenda } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
-import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider, groupColumnId } from '../ui/views/agendaTree';
+import { AGENDA_TASK_MIME, AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createAgendaTreeServices } from './taskWrites';
+import { groupColumnId } from '../domain/tasks/agendaGroups';
+import { Task, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
-  now: new Date(2026, 8, 13, 9).getTime(),
+  queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),
   statusNamespace: 'status',
   statuses: ['todo'],
   format: 'emoji',
@@ -53,7 +56,10 @@ function taskNamed(index: WorkspaceIndex, word: string): Task {
 function moved(index: WorkspaceIndex, word: string, to: string, from?: string): string | undefined {
   const task = taskNamed(index, word);
   const move = resolveTaskMove(task, to, options, { index, from });
-  return move.kind === 'edit' ? move.edit(task.sourceLineText) : move.kind === 'refused' ? `refused: ${move.reason}` : move.kind;
+  if (move.kind === 'edit') {
+    return move.edit(task.sourceLineText);
+  }
+  return move.kind === 'refused' ? `refused: ${move.reason}` : move.kind;
 }
 
 suite('Grouping tasks by a tag namespace', () => {
@@ -63,7 +69,7 @@ suite('Grouping tasks by a tag namespace', () => {
     index.tasks.forEach((task) => {
       const held = readTaskTagKeys(index, task);
       keys.forEach((key) => {
-        const found = evaluateQuery(index, parseQuery(`tag = ${key}`).node).tasks.some(
+        const found = evaluateQuery(index, parseQuery(`tag = ${key}`).node, createQueryContext(Date.now())).tasks.some(
           (candidate) => candidate.id === task.id,
         );
         assert.strictEqual(held.has(key), found, `${task.title} / ${key}`);
@@ -140,7 +146,7 @@ suite('Grouping tasks by a tag namespace', () => {
   test('the Tasks view groups by a namespace, counting inherited tags, a task in each of its groups', () => {
     const index = indexOf({ 'a.md': NOTE });
     const groups = (namespace: string) =>
-      createAgenda(index, options.now, { upcomingDays: 7, groupBy: 'tag', groupNamespace: namespace }).map(
+      createAgenda(index, createQueryContext(options.queryContext.now), { upcomingDays: 7, groupBy: 'tag', groupNamespace: namespace }).map(
         (group) => [
           group.id,
           group.label,
@@ -152,7 +158,7 @@ suite('Grouping tasks by a tag namespace', () => {
       ['tag:context/computer', 'Computer', ['Draft']],
       ['tag:context/', 'No context', ['Loose', 'Pay']],
     ]);
-    const draft = createAgenda(index, options.now, { upcomingDays: 7, groupBy: 'tag', groupNamespace: 'context' })[0]
+    const draft = createAgenda(index, createQueryContext(options.queryContext.now), { upcomingDays: 7, groupBy: 'tag', groupNamespace: 'context' })[0]
       .entries.find((entry) => entry.title.startsWith('Draft'));
     assert.strictEqual(draft?.details[draft.details.length - 1], 'also in Computer');
     assert.deepStrictEqual(groups('project').map(([id, , titles]) => [id, (titles as string[]).length]), [['tag:project/atlas', 4]]);
@@ -171,10 +177,13 @@ suite('Grouping tasks by a tag namespace', () => {
     await configuration.update('agenda.groupBy', 'tag', vscode.ConfigurationTarget.Global);
     await configuration.update('agenda.groupNamespace', 'context', vscode.ConfigurationTarget.Global);
     const updates = new vscode.EventEmitter<WorkspaceIndex>();
-    const provider = new AgendaTreeProvider({
-      onDidUpdate: updates.event,
-      getTask: (taskId) => index.tasks.get(taskId),
-    });
+    const provider = new AgendaTreeProvider(
+      {
+        onDidUpdate: updates.event,
+        getTask: (taskId) => index.tasks.get(taskId),
+      },
+      createAgendaTreeServices((taskId) => index.tasks.get(taskId)),
+    );
     try {
       updates.fire(index);
       const groups = await provider.getChildren();

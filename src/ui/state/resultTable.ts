@@ -1,16 +1,11 @@
-import {
-  formatIsoDate,
-  startOfDay,
-  TASK_PRIORITY_RANKS,
-  describeDueDate,
-} from '../../core/markdown/taskMetadata';
-import {
-  TableCell,
-  TableSort,
-  TableSortDirection,
-  TaskColumnId,
-  TaskPriority,
-} from '../../core/types';
+import type { InlineToken } from '../../domain/model/inline';
+import { QueryContext } from '../../domain/query/queryContext';
+import { TASK_COLUMNS, TaskColumn } from '../../domain/tasks/taskColumns';
+import { TableSort, TaskColumnId, TaskPriority } from '../../domain/model';
+import { TableCell } from '../protocol/taskBoard';
+import { describeDueDate } from '../../domain/markdown/dueWording';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
+import { formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * A query's results as rows, with the query's own fields as columns.
@@ -21,33 +16,6 @@ import {
  * is shown. The surfaces differ only in how they draw a cell.
  */
 
-export type { TableCell, TableSort, TableSortDirection, TaskColumnId };
-
-export interface TaskColumn {
-  id: TaskColumnId;
-  label: string;
-  /** Written after `columns=` and shown in a picker; the id when omitted. */
-  aliases?: readonly string[];
-}
-
-/** Every column a task can have, in the order a picker offers them. */
-export const TASK_COLUMNS: readonly TaskColumn[] = [
-  { id: 'title', label: 'Task' },
-  { id: 'due', label: 'Due' },
-  { id: 'scheduled', label: 'Scheduled' },
-  { id: 'start', label: 'Start' },
-  { id: 'done', label: 'Done' },
-  { id: 'priority', label: 'Priority' },
-  { id: 'assignee', label: 'For', aliases: ['for', 'owner'] },
-  { id: 'status', label: 'Status' },
-  { id: 'tags', label: 'Tags' },
-  { id: 'note', label: 'Note', aliases: ['file', 'source'] },
-  { id: 'created', label: 'Created' },
-  { id: 'updated', label: 'Updated' },
-  { id: 'blockedBy', label: 'Blocked by', aliases: ['blocked', 'dependson'] },
-  { id: 'id', label: 'Id' },
-];
-
 /** The columns a table shows until asked for others. */
 export const DEFAULT_TASK_COLUMNS: readonly TaskColumnId[] = [
   'title',
@@ -57,6 +25,7 @@ export const DEFAULT_TASK_COLUMNS: readonly TaskColumnId[] = [
   'note',
 ];
 
+/** Each column's id and aliases, lowercased, to the column they name. */
 const COLUMN_BY_NAME = new Map<string, TaskColumnId>(
   TASK_COLUMNS.flatMap((column) =>
     [column.id, ...(column.aliases ?? [])].map(
@@ -88,10 +57,7 @@ export function parseTaskColumns(text: string): {
   return { columns, unknown };
 }
 
-export function isTaskColumnId(value: unknown): value is TaskColumnId {
-  return typeof value === 'string' && TASK_COLUMNS.some((column) => column.id === value);
-}
-
+/** A column's label and alignment; an id no column has falls back to the title column. */
 export function getTaskColumn(id: TaskColumnId): TaskColumn {
   return TASK_COLUMNS.find((column) => column.id === id) ?? TASK_COLUMNS[0];
 }
@@ -99,8 +65,8 @@ export function getTaskColumn(id: TaskColumnId): TaskColumn {
 /** What a table needs to know about a task, whichever shape it arrived in. */
 export interface TableTask {
   title: string;
-  /** `title` as rendered inline Markdown, sanitized. */
-  renderedTitle?: string;
+  /** `title` as inline Markdown tokens, for a table that draws its Markdown. */
+  titleTokens?: InlineToken[];
   completed: boolean;
   dueAt?: number;
   dueText?: string;
@@ -123,13 +89,16 @@ export interface TableTask {
   dependencyId?: string;
 }
 
-/** The cells of one task, in the order of `columns`. */
+/**
+ * The cells of one task, in the order of `columns`, its dates read against
+ * the context's today and task policy.
+ */
 export function createTaskCells(
   task: TableTask,
   columns: readonly TaskColumnId[],
-  now: number,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): TableCell[] {
-  const today = startOfDay(now);
+  const today = startOfDay(context.now);
   const date = (at: number | undefined): TableCell =>
     at === undefined ? { text: '' } : { text: formatIsoDate(at) };
   return columns.map((column): TableCell => {
@@ -137,21 +106,10 @@ export function createTaskCells(
       case 'title':
         return {
           text: task.title,
-          ...(task.renderedTitle ? { html: task.renderedTitle } : {}),
+          ...(task.titleTokens?.length ? { tokens: task.titleTokens } : {}),
         };
       case 'due':
-        // An open task's due date reads beside today; a done one keeps its date.
-        return task.dueAt === undefined
-          ? { text: task.dueText ?? '' }
-          : task.completed
-            ? { text: task.dueText ?? formatIsoDate(task.dueAt) }
-            : (() => {
-                const due = describeDueDate(task.dueAt, now, task.dueText);
-                return {
-                  text: due.label,
-                  ...(due.stale ? { kind: 'muted' as const } : task.dueAt < today ? { kind: 'overdue' as const } : {}),
-                };
-              })();
+        return dueCell(task, context, today);
       case 'scheduled':
         return date(task.scheduledAt);
       case 'start':
@@ -180,6 +138,32 @@ export function createTaskCells(
         return { text: '' };
     }
   });
+}
+
+/**
+ * The due cell. An open task's due date reads beside today, muted once it
+ * needs a new date and marked overdue once it has passed; a done one keeps
+ * its date as written.
+ */
+function dueCell(
+  task: TableTask,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  today: number,
+): TableCell {
+  if (task.dueAt === undefined) {
+    return { text: task.dueText ?? '' };
+  }
+  if (task.completed) {
+    return { text: task.dueText ?? formatIsoDate(task.dueAt) };
+  }
+  const due = describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText);
+  if (due.stale) {
+    return { text: due.label, kind: 'muted' };
+  }
+  if (task.dueAt < today) {
+    return { text: due.label, kind: 'overdue' };
+  }
+  return { text: due.label };
 }
 
 /**
@@ -235,6 +219,17 @@ export function compareTasksByColumn(
     if (b === undefined || b === '') {
       return -1;
     }
-    return sign * (a < b ? -1 : a > b ? 1 : 0);
+    return sign * compareKeys(a, b);
   };
+}
+
+/** -1, 0, or 1 as `a` sorts before, with, or after `b`. */
+function compareKeys(a: number | string, b: number | string): number {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
 }

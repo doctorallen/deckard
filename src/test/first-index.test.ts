@@ -2,8 +2,8 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   countFirstIndex,
   describeFirstIndex,
@@ -11,6 +11,7 @@ import {
   shouldSummarize,
   summarizeFirstIndex,
 } from '../ui/commands/firstIndex';
+import { createQueryContext } from '../domain/query/queryContext';
 
 function memento(): vscode.Memento {
   const store = new Map<string, unknown>();
@@ -49,7 +50,7 @@ suite('First index summary', () => {
       'a.md',
       '# A #project/atlas\n\n- [ ] Late 📅 2026-10-05\n- [ ] Long late 📅 2026-08-20\n- [ ] Undated\n- [x] Done 📅 2026-10-01\n',
     );
-    const counts = countFirstIndex(buildWorkspaceIndex(new Map([['a.md', file]])), now);
+    const counts = countFirstIndex(buildWorkspaceIndex(new Map([['a.md', file]])), createQueryContext(now));
     assert.deepStrictEqual(counts, { notes: 1, openTasks: 3, overdue: 1, tags: 1 });
   });
 

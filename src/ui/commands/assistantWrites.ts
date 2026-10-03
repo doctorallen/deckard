@@ -1,22 +1,21 @@
 import * as vscode from 'vscode';
 
 import {
-  formatTaskDraft,
   parseTaskDraft,
   TaskDraft,
-} from '../../core/markdown/taskDraft';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  TaskMetadataFormat,
-} from '../../core/markdown/taskMetadata';
-import { TaskPriority, WorkspaceIndex } from '../../core/types';
-import { formatCaptureLine, getCaptureInsertion } from './capture';
+} from '../../domain/markdown/taskDraft';
+import { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
 import { ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 import { completeDraft, writeEditedTask } from './taskEditor';
 import { readTaskMetadataFormat } from './taskActions';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { WorkspaceWriteHistory } from './workspaceWrites';
+import { reportError } from '../../shared/timing';
+import { formatCaptureLine, getCaptureInsertion } from '../../domain/capture/captureLines';
+import { WorkspaceIndex } from '../../domain/model';
+import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
+import { CompletionWrite } from '../../domain/markdown/taskLineEdits';
+import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 
 /**
  * What an assistant may write, and how.
@@ -35,82 +34,24 @@ import { applyWorkspaceWrite } from './workspaceWrites';
  * whatever is on that line now.
  */
 
-export const ADD_TASK_TOOL_NAME = 'deckard_add_task';
-export const CHANGE_TASK_TOOL_NAME = 'deckard_change_task';
-
-export interface AddTaskInput {
-  /** The task's words; metadata such as 📅 2026-09-20 or ⏫ may be written in them. */
-  text: string;
-  /** A workspace-relative note to add it to; today's daily note when absent. */
-  note?: string;
-}
-
-/** `null` clears a field; absent leaves it. */
-export interface ChangeTaskInput {
-  note: string;
-  line: number;
-  title?: string;
-  complete?: boolean;
-  due?: string | null;
-  priority?: TaskPriority | null;
-  assignee?: string | null;
-}
-
-const PRIORITIES: readonly TaskPriority[] = ['highest', 'high', 'medium', 'low', 'lowest'];
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_TEXT = 500;
-
-export function readAddTaskInput(value: unknown): AddTaskInput | undefined {
-  if (!isRecord(value) || typeof value.text !== 'string') {
-    return undefined;
-  }
-  const text = value.text.trim().replace(/\s+/g, ' ');
-  if (!text || text.length > MAX_TEXT) {
-    return undefined;
-  }
-  const note = typeof value.note === 'string' ? value.note.trim() : '';
-  return note ? { text, note } : { text };
-}
-
-export function readChangeTaskInput(value: unknown): ChangeTaskInput | undefined {
-  if (
-    !isRecord(value) ||
-    typeof value.note !== 'string' ||
-    !value.note.trim() ||
-    typeof value.line !== 'number' ||
-    !Number.isInteger(value.line) ||
-    value.line < 1
-  ) {
-    return undefined;
-  }
-  const input: ChangeTaskInput = { note: value.note.trim(), line: value.line };
-  if (value.title !== undefined) {
-    if (typeof value.title !== 'string' || !value.title.trim() || value.title.length > MAX_TEXT) {return undefined;}
-    input.title = value.title.trim().replace(/\s+/g, ' ');
-  }
-  if (value.complete !== undefined) {
-    if (typeof value.complete !== 'boolean') {return undefined;}
-    input.complete = value.complete;
-  }
-  if (value.due !== undefined) {
-    if (value.due !== null && (typeof value.due !== 'string' || !ISO_DAY.test(value.due))) {return undefined;}
-    input.due = value.due;
-  }
-  if (value.priority !== undefined) {
-    if (value.priority !== null && !PRIORITIES.includes(value.priority as TaskPriority)) {return undefined;}
-    input.priority = value.priority as TaskPriority | null;
-  }
-  if (value.assignee !== undefined) {
-    if (value.assignee !== null && (typeof value.assignee !== 'string' || !/^\S{1,80}$/.test(value.assignee))) {return undefined;}
-    input.assignee = value.assignee;
-  }
-  const fields = ['title', 'complete', 'due', 'priority', 'assignee'] as const;
-  return fields.some((field) => input[field] !== undefined) ? input : undefined;
-}
-
 /** The task line an added task becomes. */
 export function addedTaskLine(text: string): string {
   return formatCaptureLine(text);
+}
+
+/** A task line, the changes asked of it, and how it is written. */
+export interface ChangeTaskLineOptions {
+  line: string;
+  changes: Omit<ChangeTaskInput, 'note' | 'line'>;
+  now: number;
+  /** The format a line with no metadata yet is written in; emoji by default. */
+  fallbackFormat?: TaskMetadataFormat;
+  /** The note's line ending, which joins a repeat's next line; `\n` by default. */
+  eol?: string;
+  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. On by default. */
+  addDoneDate?: boolean;
+  /** The steps a repeating task's next occurrence takes, unchecked; none by default. */
+  steps?: readonly string[];
 }
 
 /**
@@ -119,15 +60,15 @@ export function addedTaskLine(text: string): string {
  * already uses. Completing a repeating task starts its next occurrence on
  * the line above, as a checkbox does.
  */
-export function changeTaskLine(
-  line: string,
-  changes: Omit<ChangeTaskInput, 'note' | 'line'>,
-  now: number,
-  fallbackFormat: TaskMetadataFormat = 'emoji',
+export function changeTaskLine({
+  line,
+  changes,
+  now,
+  fallbackFormat = 'emoji',
   eol = '\n',
-  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. */
   addDoneDate = true,
-): CompletionWrite {
+  steps = [],
+}: ChangeTaskLineOptions): CompletionWrite {
   const before: TaskDraft = parseTaskDraft(line, fallbackFormat);
   let draft = before;
   if (changes.title !== undefined) {
@@ -145,7 +86,7 @@ export function changeTaskLine(
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
     draft = completeDraft(draft, now, addDoneDate);
   }
-  return writeEditedTask(before, draft, now, eol);
+  return writeEditedTask({ before, edited: draft, now, eol, steps });
 }
 
 /** One line saying what changed, for the preview's label and the answer. */
@@ -160,6 +101,7 @@ export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>):
   return parts.join(', ');
 }
 
+/** The index a write reads, once it has finished loading. */
 interface WriteIndexSource {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
@@ -171,31 +113,74 @@ export interface WriteAnswer {
   isError?: boolean;
 }
 
-export async function addTask(indexer: WriteIndexSource, input: AddTaskInput): Promise<WriteAnswer> {
-  await indexer.ready;
-  const index = indexer.getSnapshot();
-  let uri: vscode.Uri | undefined;
+/** The note a task is added to, or the refusal the assistant is answered with. */
+type TargetNote = { uri: vscode.Uri } | { refusal: WriteAnswer };
+
+/**
+ * Today's daily note in the first workspace folder, created if it is
+ * missing; undefined when no folder is open. Rejects when the note cannot
+ * be made, such as in a folder that cannot be written to.
+ */
+function ensureTodaysNote(): Promise<vscode.Uri | undefined> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  return folder ? ensureDailyNote(folder) : Promise.resolve(undefined);
+}
+
+/**
+ * The note `input` names, which must be indexed, or else today's daily note
+ * from `todaysNote`. A daily note that cannot be made is refused in words
+ * of its own, with the reason in Deckard's log, since there is no note
+ * name to give.
+ */
+async function resolveTargetNote(
+  index: WorkspaceIndex,
+  input: AddTaskInput,
+  todaysNote: () => Promise<vscode.Uri | undefined>,
+): Promise<TargetNote> {
   if (input.note) {
     if (!index.files.has(input.note)) {
-      return { text: `No indexed note is at "${input.note}". Paths are workspace-relative, as deckard_query reports them.`, isError: true };
+      return { refusal: { text: `No indexed note is at "${input.note}". Paths are workspace-relative, as deckard_query reports them.`, isError: true } };
     }
-    uri = await resolveSourceUri(input.note);
-  } else {
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    if (!folder) {
-      return { text: 'No folder is open, so there is no daily note to add to.', isError: true };
-    }
-    uri = await ensureDailyNote(folder);
+    const uri = await resolveSourceUri(input.note);
+    return uri ? { uri } : { refusal: { text: `The note "${input.note}" could not be opened.`, isError: true } };
   }
-  if (!uri) {
-    return { text: `The note "${input.note}" could not be opened.`, isError: true };
+  let today: vscode.Uri | undefined;
+  try {
+    today = await todaysNote();
+  } catch (error) {
+    reportError("The assistant's task could not be added: today's daily note could not be made", error);
+    return { refusal: { text: "Today's daily note could not be made, so nothing was written.", isError: true } };
   }
+  return today
+    ? { uri: today }
+    : { refusal: { text: 'No folder is open, so there is no daily note to add to.', isError: true } };
+}
+
+/**
+ * Adds `input.text` as an open task to the note it names, or to today's daily
+ * note, through the refactor preview. Refuses a note the index does not hold,
+ * or a daily note that cannot be made, and answers with an error when the
+ * reader declines the preview.
+ */
+export async function addTask(
+  indexer: WriteIndexSource,
+  history: WorkspaceWriteHistory,
+  input: AddTaskInput,
+  /** Today's daily note, made if missing; undefined when no folder is open. */
+  todaysNote: () => Promise<vscode.Uri | undefined> = ensureTodaysNote,
+): Promise<WriteAnswer> {
+  await indexer.ready;
+  const target = await resolveTargetNote(indexer.getSnapshot(), input, todaysNote);
+  if ('refusal' in target) {
+    return target.refusal;
+  }
+  const { uri } = target;
   const document = await vscode.workspace.openTextDocument(uri);
   const line = addedTaskLine(input.text);
   const insertion = getCaptureInsertion(document.getText(), line);
   const edit = new vscode.WorkspaceEdit();
   edit.insert(uri, new vscode.Position(insertion.line, insertion.character), insertion.text);
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: 'Assistant: add a task',
     description: `Add "${shorten(input.text)}" to ${vscode.workspace.asRelativePath(uri)}`,
     preview: 'always',
@@ -208,7 +193,18 @@ export async function addTask(indexer: WriteIndexSource, input: AddTaskInput): P
   };
 }
 
-export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInput, now = Date.now()): Promise<WriteAnswer> {
+/**
+ * Makes the requested changes to the task at `input.note` line `input.line`,
+ * through the refactor preview. Refuses when no task is indexed there, or
+ * when the line no longer reads as the index knows it, so a stale answer
+ * cannot rewrite whatever is there now.
+ */
+export async function changeTask(
+  indexer: WriteIndexSource,
+  history: WorkspaceWriteHistory,
+  input: ChangeTaskInput,
+  now = Date.now(),
+): Promise<WriteAnswer> {
   await indexer.ready;
   const index = indexer.getSnapshot();
   const task = [...index.tasks.values()].find(
@@ -228,21 +224,23 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
   }
   const { note: _note, line: _line, ...changes } = input;
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
-  const completion = changeTaskLine(
-    current.text,
+  const completion = changeTaskLine({
+    line: current.text,
     changes,
     now,
-    readTaskMetadataFormat(configuration),
-    document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
-    configuration.get<boolean>('tasks.addDoneDate', true),
-  );
+    fallbackFormat: readTaskMetadataFormat(configuration),
+    eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
+    // A next occurrence takes the task's steps back unchecked, as a checkbox's does.
+    steps: readStepsForNextOccurrence(document.getText().split(/\r?\n/), task.lineNumber - 1),
+  });
   const replacement = completion.text;
   if (replacement === current.text) {
     return { text: 'The task already reads that way; nothing to change.' };
   }
   const edit = new vscode.WorkspaceEdit();
   edit.replace(uri, current.range, replacement);
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(edit, {
     label: 'Assistant: change a task',
     description: `${describeChange(changes)} — "${shorten(task.title)}" in ${task.filePath}`,
     preview: 'always',
@@ -250,23 +248,24 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
   if (!written.applied) {
     return { text: 'The user declined the change in the preview. Nothing was written.', isError: true };
   }
-  const repeat =
-    completion.next !== undefined
-      ? `\nIt repeats, so the next one was added above it: ${completion.next}`
-      : completion.unreadRule !== undefined
-        ? `\nIts repeat rule "${completion.unreadRule}" could not be read, so no next one was added.`
-        : '';
   return {
-    text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}${repeat}\nThe user can take it back with Deckard: Undo Last Change.`,
+    text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}${describeRepeat(completion)}\nThe user can take it back with Deckard: Undo Last Change.`,
   };
 }
 
+/** The sentence on a repeat's next occurrence, or on its unreadable rule; empty for a task that does not repeat. */
+function describeRepeat(completion: CompletionWrite): string {
+  if (completion.next !== undefined) {
+    return `\nIt repeats, so the next one was added above it: ${completion.next}`;
+  }
+  if (completion.unreadRule !== undefined) {
+    return `\nIts repeat rule "${completion.unreadRule}" could not be read, so no next one was added.`;
+  }
+  return '';
+}
+
+/** The text cut to 60 characters with an ellipsis, so a preview label stays one line. */
 function shorten(text: string): string {
   return text.length > 60 ? `${text.slice(0, 59)}…` : text;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-export { formatIsoDate as formatDayForTask };

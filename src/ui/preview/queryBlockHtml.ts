@@ -1,7 +1,7 @@
-import MarkdownIt = require('markdown-it');
+import type MarkdownIt from 'markdown-it';
 
-import { formatIsoDate, describeDueDate } from '../../core/markdown/taskMetadata';
-import { WorkspaceIndex } from '../../core/types';
+import { QueryContext } from '../../domain/query/queryContext';
+import { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
 import {
   getQueryBlockSnapshot,
   describeQueryBlockCounts,
@@ -12,14 +12,15 @@ import {
   QueryBlockSnapshot,
   toTableTask,
 } from '../state/queryBlockState';
-import { renderMarkdownInline } from '../webview/rendering';
-import {
-  createTaskCells,
-  DEFAULT_TASK_COLUMNS,
-  getTaskColumn,
-  TaskColumnId,
-} from '../state/resultTable';
+import { createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn } from '../state/resultTable';
+import { escapeHtml, escapeHtmlText } from '../../shared/html';
+import { tokenizeInlineWithoutWikiLinks } from '../../domain/markdown/inline';
+import type { InlineToken } from '../../domain/model/inline';
+import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
+import { describeDueDate } from '../../domain/markdown/dueWording';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 
+/** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
 
 /**
@@ -32,6 +33,8 @@ export interface QueryBlockPreviewSource {
   onDidRender?(): void;
   /** The namespace of status tags, from `deckard.board.statusNamespace`. */
   getStatusNamespace?(): string;
+  /** The settings a block is evaluated in, for a render made at `now`. */
+  getQueryContext(now: number): QueryContext;
 }
 
 /**
@@ -44,42 +47,51 @@ export function addQueryBlockRenderer(
   md: MarkdownIt,
   source: QueryBlockPreviewSource,
 ): MarkdownIt {
+  // markdown-it calls a rule with five arguments, so they are taken as one
+  // rest tuple and handed on unchanged.
   const fallback: FenceRule =
     md.renderer.rules.fence ??
-    ((tokens, index, options, _env, self) =>
+    ((...[tokens, index, options, , self]: Parameters<FenceRule>) =>
       self.renderToken(tokens, index, options));
 
-  md.renderer.rules.fence = (tokens, index, options, env, self) => {
+  md.renderer.rules.fence = (...args) => {
+    const [tokens, index] = args;
     const token = tokens[index];
     const blockOptions = parseQueryBlockInfo(token.info);
     if (!blockOptions) {
-      return fallback(tokens, index, options, env, self);
+      return fallback(...args);
     }
     source.onDidRender?.();
-    return renderQueryBlockHtml(
-      token.content,
-      blockOptions,
-      source.getIndex(),
-      token.map?.[0],
-      Date.now(),
-      source.getStatusNamespace?.(),
-    );
+    return renderQueryBlockHtml(token.content, blockOptions, source.getIndex(), {
+      queryContext: source.getQueryContext(Date.now()),
+      sourceLine: token.map?.[0],
+      statusNamespace: source.getStatusNamespace?.(),
+    });
   };
   return md;
 }
 
-/**
- * Renders one block. `sourceLine` is the zero-based line of the opening fence,
- * which the preview uses to keep scrolling in step with the editor.
- */
+/** How one block is rendered, beyond its query and options. */
+export interface QueryBlockRendering {
+  /** The settings and moment the block is evaluated, and its dates worded, in. */
+  queryContext: QueryContext;
+  /**
+   * The zero-based line of the opening fence, which the preview uses to keep
+   * scrolling in step with the editor.
+   */
+  sourceLine?: number;
+  /** The namespace of status tags; `status` unless given. */
+  statusNamespace?: string;
+}
+
+/** Renders one block, in the rendering's context. */
 export function renderQueryBlockHtml(
   queryText: string,
   options: QueryBlockOptions,
   index: WorkspaceIndex | undefined,
-  sourceLine?: number,
-  now: number = Date.now(),
-  statusNamespace = 'status',
+  rendering: QueryBlockRendering,
 ): string {
+  const { queryContext, sourceLine } = rendering;
   const open =
     sourceLine === undefined
       ? '<div class="deckard-query">'
@@ -94,7 +106,10 @@ export function renderQueryBlockHtml(
     ].join('');
   }
 
-  const snapshot = getQueryBlockSnapshot(index, queryText, options, statusNamespace);
+  const snapshot = getQueryBlockSnapshot(index, queryText, options, {
+    queryContext,
+    statusNamespace: rendering.statusNamespace ?? 'status',
+  });
   return [
     open,
     renderHeader(
@@ -102,23 +117,12 @@ export function renderQueryBlockHtml(
       snapshot.hasError ? undefined : describeQueryBlockCounts(snapshot),
     ),
     ...snapshot.messages.map(renderMessage),
-    ...(snapshot.hasError ? [] : renderResults(snapshot, options, now)),
+    ...(snapshot.hasError ? [] : renderResults(snapshot, options, queryContext)),
     '</div>',
   ].join('');
 }
 
-/**
- * Links a result to its source line.
- *
- * Deckard keys files by workspace-relative path, and the preview resolves a
- * link that starts with `/` against the workspace folder, so the key needs no
- * translation. `#L12` is the line fragment the preview understands.
- */
-export function createPreviewSourceHref(filePath: string, line: number): string {
-  const path = filePath.split('/').map(encodeURIComponent).join('/');
-  return `/${path}#L${Math.max(1, line)}`;
-}
-
+/** The block's label and query, and its counts when the query ran without error. */
 function renderHeader(query: string, counts?: string): string {
   return [
     '<div class="deckard-query-header">',
@@ -131,6 +135,7 @@ function renderHeader(query: string, counts?: string): string {
   ].join('');
 }
 
+/** A warning or error from evaluating the query; an error is marked so it reads as one. */
 function renderMessage(message: QueryBlockMessage): string {
   const className =
     message.severity === 'error'
@@ -139,20 +144,28 @@ function renderMessage(message: QueryBlockMessage): string {
   return `<p class="${className}">${escapeHtml(message.text)}</p>`;
 }
 
+/**
+ * The notes, then the tasks as a list or a table, or one line saying nothing
+ * matches when there are neither.
+ */
 function renderResults(
   snapshot: QueryBlockSnapshot,
   options: QueryBlockOptions,
-  now: number,
+  context: QueryContext,
 ): string[] {
   if (snapshot.noteCount === 0 && snapshot.taskCount === 0) {
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
   }
   return [
-    ...renderGroup('notes', 'Notes', snapshot.notes, snapshot.noteCount, renderNote),
+    ...renderGroup(
+      { kind: 'notes', label: 'Notes', items: snapshot.notes, total: snapshot.noteCount },
+      renderNote,
+    ),
     ...(options.view === 'table'
-      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], now)
-      : renderGroup('tasks', 'Tasks', snapshot.tasks, snapshot.taskCount, (item) =>
-          renderTask(item, now),
+      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context)
+      : renderGroup(
+          { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount },
+          (item) => renderTask(item, context),
         )),
   ];
 }
@@ -166,7 +179,7 @@ function renderResults(
 function renderTaskTable(
   snapshot: QueryBlockSnapshot,
   columns: readonly TaskColumnId[],
-  now: number,
+  context: QueryContext,
 ): string[] {
   if (snapshot.tasks.length === 0) {
     return [];
@@ -176,7 +189,7 @@ function renderTaskTable(
     .join('');
   const rows = snapshot.tasks.map((item) => {
     const done = item.completed === true;
-    const cells = createTaskCells(toTableTask(item), columns, now).map((cell, at) => {
+    const cells = createTaskCells(toTableTask(item), columns, context).map((cell, at) => {
       const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '']
         .filter(Boolean)
         .join(' ');
@@ -202,15 +215,20 @@ function renderTaskTable(
   ];
 }
 
+/** One list of results: its kind, its label, the items shown, and how many matched. */
+interface ResultGroup {
+  kind: 'notes' | 'tasks';
+  label: string;
+  items: QueryBlockItem[];
+  total: number;
+}
+
 /**
  * One labeled list. The label keeps notes and tasks apart, and the footer
  * says when `limit` has hidden some of them.
  */
 function renderGroup(
-  kind: 'notes' | 'tasks',
-  label: string,
-  items: QueryBlockItem[],
-  total: number,
+  { kind, label, items, total }: ResultGroup,
   renderItem: (item: QueryBlockItem) => string,
 ): string[] {
   if (items.length === 0) {
@@ -237,13 +255,13 @@ function renderNote(item: QueryBlockItem): string {
   return `<li class="deckard-query-item">${renderLink(item)}${renderMeta(item)}</li>`;
 }
 
-/**
- * Puts the checkbox in its own column so a wrapped title and its details line
- * up under the title rather than under the box.
- */
-
-/** A task's priority as the badge the pages draw: an arrow and the word. */
+/** The arrow each known priority is drawn with; medium has none. */
 const PRIORITY_MARKS: Record<string, string> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
+
+/**
+ * A task's priority as the badge the pages draw: an arrow and the word. A
+ * priority Deckard does not know is written out as text, without a badge.
+ */
 function renderPriority(priority: string): string {
   const key = priority.toLowerCase();
   if (!(key in PRIORITY_MARKS)) {
@@ -254,27 +272,18 @@ function renderPriority(priority: string): string {
   return `<span class="deckard-query-priority priority-${key}" title="${word} priority">${mark ? `<span aria-hidden="true">${mark}</span> ` : ''}${word}</span>`;
 }
 
-function renderTask(item: QueryBlockItem, now: number): string {
+/**
+ * One task row, its due date worded against the context's today and policy.
+ * The checkbox sits in its own column so a wrapped title and its details line
+ * up under the title rather than under the box.
+ */
+function renderTask(item: QueryBlockItem, context: QueryContext): string {
   const done = item.completed === true;
-  const due =
-    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, item.dueText) : undefined;
-  const overdue =
-    !done && item.dueAt !== undefined && item.dueAt < startOfDay(now) && !due?.stale;
-  // An open task's due date reads beside today, "overdue 12 days ·
-  // 2026-09-01", so the state is in the words and not the color alone.
-  const dueLabel =
-    item.dueAt !== undefined && !done
-      ? describeDueDate(item.dueAt, now, item.dueText).label
-      : item.dueText
-        ? `due ${item.dueText}`
-        : '';
   const details = [
-    dueLabel
-      ? `<span class="deckard-query-due${overdue ? ' is-overdue' : due?.stale ? ' is-stale' : ''}">${escapeHtml(dueLabel)}</span>`
-      : '',
-    item.scheduledAt !== undefined
-      ? `scheduled ${formatIsoDate(item.scheduledAt)}`
-      : '',
+    renderTaskDue(item, context),
+    item.scheduledAt === undefined
+      ? ''
+      : `scheduled ${formatIsoDate(item.scheduledAt)}`,
     item.priority ? renderPriority(item.priority) : '',
     item.recurrence ? `repeats ${escapeHtml(item.recurrence)}` : '',
   ]
@@ -291,19 +300,82 @@ function renderTask(item: QueryBlockItem, now: number): string {
   ].join('');
 }
 
+/**
+ * A task's due date as its details' lead, or nothing when it has none. An
+ * open task's due date reads beside today, "overdue 12 days · 2026-09-01",
+ * so the state is in the words and not the color alone; a done task keeps
+ * the date as written.
+ */
+function renderTaskDue(item: QueryBlockItem, context: QueryContext): string {
+  const { now, taskPolicy } = context;
+  const done = item.completed === true;
+  if (item.dueAt === undefined || done) {
+    return item.dueText ? `<span class="deckard-query-due">${escapeHtml(`due ${item.dueText}`)}</span>` : '';
+  }
+  const due = describeDueDate(item.dueAt, now, taskPolicy, item.dueText);
+  if (!due.label) {
+    return '';
+  }
+  const overdue = item.dueAt < startOfDay(now) && !due.stale;
+  return `<span class="deckard-query-due${dueClass(overdue, due.stale)}">${escapeHtml(due.label)}</span>`;
+}
+
+/** The class a due date adds: overdue wins over stale, and neither adds none. */
+function dueClass(overdue: boolean, stale: boolean | undefined): string {
+  if (overdue) {
+    return ' is-overdue';
+  }
+  return stale ? ' is-stale' : '';
+}
+
+/** An item's title, linked to its line in the source so a click opens it there. */
 function renderLink(item: QueryBlockItem): string {
   const href = createPreviewSourceHref(item.filePath, item.line);
   return `<a class="deckard-query-title" href="${escapeHtml(href)}">${renderTitleHtml(item.title)}</a>`;
 }
 
 /**
- * A title as rendered inline Markdown, with any link inside it flattened to
- * its words. The whole title is already one link to the task's source, and an
- * anchor inside an anchor is not valid HTML: the browser closes the outer one
- * early and the rest of the row's title stops opening anything.
+ * A title as inline Markdown, written from its tokens, with any link inside
+ * it flattened to its words. The whole title is already one link to the
+ * task's source, and an anchor inside an anchor is not valid HTML: the
+ * browser closes the outer one early and the rest of the row's title stops
+ * opening anything.
  */
 function renderTitleHtml(title: string): string {
-  return renderMarkdownInline(title).replace(/<a\b[^>]*>|<\/a>/g, '');
+  return writeInlineHtml(tokenizeInlineWithoutWikiLinks(title));
+}
+
+/**
+ * Tokens as the HTML the preview has always been given for them: what
+ * markdown-it wrote and sanitize-html kept, byte for byte. Text is escaped
+ * as the sanitizer escaped it, quotes left as written; a line break is
+ * `<br />` and the line's end; strikethrough, which the sanitizer stripped,
+ * is its words; and a link is its words, flattened as above. The tokens are
+ * read without wiki links, as markdown-it read them, so a wiki link token
+ * never comes; were one to, it would be its words.
+ */
+function writeInlineHtml(tokens: readonly InlineToken[]): string {
+  return tokens.map(writeInlineToken).join('');
+}
+
+/** One token as HTML, by the rules writeInlineHtml lists. */
+function writeInlineToken(token: InlineToken): string {
+  switch (token.kind) {
+    case 'text':
+    case 'wikiLink':
+      return escapeHtmlText(token.text);
+    case 'code':
+      return `<code>${escapeHtmlText(token.text)}</code>`;
+    case 'break':
+      return '<br />\n';
+    case 'strong':
+      return `<strong>${writeInlineHtml(token.children)}</strong>`;
+    case 'em':
+      return `<em>${writeInlineHtml(token.children)}</em>`;
+    case 'del':
+    case 'link':
+      return writeInlineHtml(token.children);
+  }
 }
 
 /**
@@ -332,17 +404,9 @@ function describeLocation(item: QueryBlockItem): string {
     .join(' · ');
 }
 
+/** Local midnight of the day a timestamp falls on. */
 function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }

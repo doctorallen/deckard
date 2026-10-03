@@ -7,6 +7,7 @@
  * tested without VS Code.
  */
 
+/** One `## ` section of the changelog: its version, its date once cut, and its Highlights bullets. */
 export interface Release {
   /** `1.23.0`, or `Unreleased`. */
   version: string;

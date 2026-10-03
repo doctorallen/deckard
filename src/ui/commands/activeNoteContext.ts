@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 
-import { findDailyNoteDate } from '../../core/markdown/parser';
+import { Debouncer } from '../../shared/debounce';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
+import { findFencedLines } from '../../domain/markdown/lineShapes';
+import { findDailyNoteDate } from '../../domain/markdown/parser';
 
 /** What the context needs to know about the index. */
 export interface ActiveNoteIndex {
@@ -21,28 +24,17 @@ const setContext: ContextSetter = (key, value) => {
  */
 export function readTopHeadings(lines: readonly string[]): string[] {
   const headings: string[] = [];
-  let fence: string | undefined;
-  let start = 0;
-  if (lines[0]?.trim() === '---') {
-    const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-    start = end > 0 ? end + 1 : 0;
-  }
+  const start = (findFrontmatterEnd(lines) ?? -1) + 1;
+  // Fenced code is found as the parser finds it, so the two agree on which
+  // headings are examples.
+  const fenced = findFencedLines(lines);
   for (let at = start; at < lines.length; at += 1) {
-    const line = lines[at];
-    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-    if (marker) {
-      if (fence === undefined) {
-        fence = marker;
-      } else if (marker[0] === fence[0] && marker.length >= fence.length) {
-        fence = undefined;
-      }
+    if (fenced.has(at)) {
       continue;
     }
-    if (fence === undefined) {
-      const heading = /^#[ \t]+(.+?)[ \t#]*$/.exec(line);
-      if (heading) {
-        headings.push(heading[1]);
-      }
+    const heading = /^#[ \t]+(.+?)[ \t#]*$/.exec(lines[at]);
+    if (heading) {
+      headings.push(heading[1]);
     }
   }
   return headings;
@@ -65,8 +57,13 @@ export function isDailyNoteText(filePath: string, lines: readonly string[]): boo
 export class ActiveNoteContext implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly state = new Map<string, boolean>();
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  /** The re-read waiting for typing in the active note to pause. */
+  private readonly pendingSync = new Debouncer(200);
 
+  /**
+   * Starts listening to the active editor, its typing, and Deckard's settings,
+   * and sets both keys for the editor already open.
+   */
   public constructor(
     private readonly index: ActiveNoteIndex,
     private readonly set: ContextSetter = setContext,
@@ -88,10 +85,9 @@ export class ActiveNoteContext implements vscode.Disposable {
     this.sync(vscode.window.activeTextEditor);
   }
 
+  /** Stops listening and drops any re-read still waiting on a pause in typing. */
   public dispose(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
+    this.pendingSync.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -111,16 +107,12 @@ export class ActiveNoteContext implements vscode.Disposable {
     this.update('deckard.isDailyNote', isDaily);
   }
 
+  /** Re-reads the active note once typing in it pauses, not on every keystroke. */
   private schedule(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-    this.timer = setTimeout(() => {
-      this.timer = undefined;
-      this.sync(vscode.window.activeTextEditor);
-    }, 200);
+    this.pendingSync.schedule(() => this.sync(vscode.window.activeTextEditor));
   }
 
+  /** Sets a key only when its value changed, so VS Code is not told the same thing twice. */
   private update(key: string, value: boolean): void {
     if (this.state.get(key) === value) {
       return;

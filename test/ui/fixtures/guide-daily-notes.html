@@ -1,0 +1,111 @@
+<h1 data-line="0" class="code-line" dir="auto" id="daily-notes-reviews-and-the-calendar">Daily notes, reviews, and the calendar</h1>
+<h2 data-line="2" class="code-line" dir="auto" id="daily-notes">Daily notes</h2>
+<p data-line="4" class="code-line" dir="auto">Run <code>Deckard: Create Daily Note</code>, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the button in the Context view. Deckard creates or opens a note named with the local date, such as <code>2026-08-30.md</code>.</p>
+<ul data-line="6" class="code-line" dir="auto">
+<li data-line="6" class="code-line" dir="auto"><code>Deckard: Open Previous Daily Note</code> and <code>Deckard: Open Next Daily Note</code> step to the nearest daily note before or after the current one. From another note they start from today.</li>
+<li data-line="7" class="code-line" dir="auto"><code>Deckard: Open Daily Note for Date…</code> lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day <a href="#" data-guide-page="tasks" data-guide-anchor="dates-in-plain-words">in plain words</a>, such as <code>last friday</code> or <code>2026-10-02</code>; a missing note is created from the template. <a href="#" data-guide-page="search" data-guide-anchor="find">Find</a> does the same when you type only a day.</li>
+<li data-line="8" class="code-line" dir="auto"><code>Deckard: Open Weekly Note</code> and <code>Deckard: Open Monthly Note</code> create or open <code>week-2026-09-13-2026-09-19.md</code> and <code>month-september-2026.md</code>. A week runs Sunday to Saturday, or from the day <code>deckard.calendar.weekStart</code> names.</li>
+<li data-line="9" class="code-line" dir="auto">Templates are <code>deckard.weeklyNoteTemplate</code> and <code>deckard.monthlyNoteTemplate</code>. <code>{week}</code> becomes <em>2026-09-13 to 2026-09-19</em>, <code>{month}</code> becomes <em>September 2026</em>, and <code>{date}</code> the period's first day.</li>
+<li data-line="10" class="code-line" dir="auto">Older names, <code>2026-W38.md</code> and <code>2026-09.md</code>, are still read and opened for their period.</li>
+</ul>
+<h3 data-line="12" class="code-line" dir="auto" id="writing-a-review">Writing a review</h3>
+<p data-line="14" class="code-line" dir="auto"><code>Deckard: Open Weekly Note</code> and <code>Deckard: Open Monthly Note</code> write a review into a note they create. <code>Deckard: Write a Review</code> writes or updates one for the current note's period, or one you pick.</p>
+<table data-line="16" class="code-line" dir="auto">
+<thead data-line="16" class="code-line" dir="auto">
+<tr data-line="16" class="code-line" dir="auto">
+<th>Section</th>
+<th>What it lists</th>
+</tr>
+</thead>
+<tbody data-line="18" class="code-line" dir="auto">
+<tr data-line="18" class="code-line" dir="auto">
+<td><strong>Completed</strong></td>
+<td>Tasks with a ✅ date in the period, oldest first</td>
+</tr>
+<tr data-line="19" class="code-line" dir="auto">
+<td><strong>Still open</strong></td>
+<td>Tasks due by the end of the period that are still open</td>
+</tr>
+<tr data-line="20" class="code-line" dir="auto">
+<td><strong>Coming up</strong></td>
+<td>Open tasks due, scheduled, or starting in the next week or month, soonest first</td>
+</tr>
+<tr data-line="21" class="code-line" dir="auto">
+<td><strong>Notes written</strong></td>
+<td>Notes created in the period</td>
+</tr>
+<tr data-line="22" class="code-line" dir="auto">
+<td><strong>Notes changed</strong></td>
+<td>Notes written earlier and changed in it</td>
+</tr>
+<tr data-line="23" class="code-line" dir="auto">
+<td><strong>New tags</strong></td>
+<td>Tags Deckard first saw in the period</td>
+</tr>
+</tbody>
+</table>
+<ul data-line="25" class="code-line" dir="auto">
+<li data-line="25" class="code-line" dir="auto">A summary line sits under the heading: <strong>Done:</strong> 12 (8 of 11 that were due) · <strong>Still open:</strong> 5 · <strong>Coming up:</strong> 9 · …</li>
+<li data-line="26" class="code-line" dir="auto"><code>deckard.periodicNote.reviewSections</code> adds your own sections, each a title and a search: <code>[{ &quot;title&quot;: &quot;Waiting on others&quot;, &quot;query&quot;: &quot;is:waiting&quot; }]</code>. Each lists up to 20 results. A search that does not parse says so in its section.</li>
+<li data-line="27" class="code-line" dir="auto">It is plain Markdown with <code>[[links]]</code>, headed <em>Review of 2026-09-13 to 2026-09-19</em>, between <code>&lt;!-- deckard:review --&gt;</code> and <code>&lt;!-- deckard:review:end --&gt;</code>. Running it again rewrites only that part. Deckard offers <strong>Open</strong> and <strong>Undo</strong>.</li>
+<li data-line="28" class="code-line" dir="auto">It adds no tags: titles are written without tags, and new tags are listed in a fenced block.</li>
+<li data-line="29" class="code-line" dir="auto"><code>deckard.periodicNote.review</code> turns off the review in newly created notes. The command still writes one.</li>
+</ul>
+<h3 data-line="31" class="code-line" dir="auto" id="carrying-unfinished-tasks-forward">Carrying unfinished tasks forward</h3>
+<p data-line="33" class="code-line" dir="auto"><code>deckard.dailyNote.rollover</code> sets what a newly created daily note does with earlier unfinished tasks:</p>
+<table data-line="35" class="code-line" dir="auto">
+<thead data-line="35" class="code-line" dir="auto">
+<tr data-line="35" class="code-line" dir="auto">
+<th>Setting</th>
+<th>A new daily note</th>
+</tr>
+</thead>
+<tbody data-line="37" class="code-line" dir="auto">
+<tr data-line="37" class="code-line" dir="auto">
+<td><code>off</code> <em>(default)</em></td>
+<td>starts from the template alone</td>
+</tr>
+<tr data-line="38" class="code-line" dir="auto">
+<td><code>move</code></td>
+<td>takes earlier daily notes' unfinished tasks out of them and into today's</td>
+</tr>
+<tr data-line="39" class="code-line" dir="auto">
+<td><code>migrate</code></td>
+<td>writes them into today's, and marks each line left behind <code>[&gt;]</code> with a link to today: <code>- [&gt;] Call Ren 📅 2026-09-20 → [[2026-09-25]]</code></td>
+</tr>
+<tr data-line="40" class="code-line" dir="auto">
+<td><code>copy</code></td>
+<td>the older name for <code>migrate</code></td>
+</tr>
+</tbody>
+</table>
+<ul data-line="42" class="code-line" dir="auto">
+<li data-line="42" class="code-line" dir="auto">Tasks come from <strong>every earlier daily note</strong>, oldest first, within <code>deckard.dailyNote.rolloverDays</code> (a week by default; <code>0</code> for no limit). Other notes are left alone.</li>
+<li data-line="43" class="code-line" dir="auto">Tasks are written exactly as they were, in order, under a <strong>Carried over</strong> heading at the end of today's note, one level below its first heading (<code>## Carried over</code> under <code># {date}</code>). A second rollover adds to it.</li>
+<li data-line="44" class="code-line" dir="auto"><a href="#" data-guide-page="tasks" data-guide-anchor="breaking-a-task-into-steps">Steps</a> travel with their task. <code>move</code> takes everything under the task; <code>migrate</code> copies its open steps and marks each line it leaves. A step whose task is not carried comes forward on its own at the top level.</li>
+<li data-line="45" class="code-line" dir="auto">A <code>[&gt;]</code> line is not a task, so it stops counting as open, and its link gives today's note a backlink.</li>
+<li data-line="46" class="code-line" dir="auto">A task is carried only if its line is unchanged since indexing and not already in today's note. In <code>migrate</code> mode, a task in several notes is carried once, from the newest. Only a note Deckard creates rolls tasks in.</li>
+<li data-line="47" class="code-line" dir="auto"><code>Deckard: Roll Unfinished Tasks Forward</code> does it on demand, whatever the setting, creating today's note if needed. It moves tasks unless the setting is <code>migrate</code> or <code>copy</code>.</li>
+<li data-line="48" class="code-line" dir="auto">The rollover is one write, with <strong>Open</strong> and <strong>Undo</strong> afterward. <code>Deckard: Undo Last Change</code> also undoes it.</li>
+</ul>
+<h2 data-line="50" class="code-line" dir="auto" id="calendar">Calendar</h2>
+<p data-line="52" class="code-line" dir="auto">The <strong>Calendar</strong> view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless <code>deckard.calendar.weekStart</code> or your display language starts them on Monday. Each day shows its date, a dot for a daily note, a count of open tasks due (orange once past, muted once more than 30 days gone), and, outlined, open tasks scheduled (⏳) that day.</p>
+<p data-line="54" class="code-line" dir="auto">Select a day, the mark beside a week, or the month's name to open its note; Deckard offers to create a missing one. The arrows step through months; <strong>Today</strong> returns.</p>
+<p data-line="56" class="code-line" dir="auto"><strong>The day panel.</strong> Turn on <code>deckard.calendar.dayPanel</code>, or choose <strong>Open Day Panel</strong> from the Calendar's <code>…</code> menu, to show the chosen day under the month. A click, Space, or arrow keys then choose a day; double-click or Enter opens its note. The panel shows:</p>
+<ul data-line="58" class="code-line" dir="auto">
+<li data-line="58" class="code-line" dir="auto">the day's name, such as <em>Friday, September 25 · Today</em>, and its daily note, <strong>Open</strong> or <strong>Create</strong>;</li>
+<li data-line="59" class="code-line" dir="auto">tasks due, then scheduled, five of each with <strong>Show 7 more</strong>, each with a checkbox and a <strong>Tomorrow</strong> button (<strong>Next day</strong> after tomorrow) that moves its date, with Undo;</li>
+<li data-line="60" class="code-line" dir="auto">tasks done that day, folded; uncheck to reopen;</li>
+<li data-line="61" class="code-line" dir="auto">notes created that day, apart from daily, weekly, and monthly notes. After five, <strong>Search all 14</strong> opens <code>created = 2026-09-25</code>.</li>
+</ul>
+<p data-line="63" class="code-line" dir="auto"><strong>Close Day Panel</strong> brings back one-click opening.</p>
+<p data-line="65" class="code-line" dir="auto"><strong>Repeats.</strong> A repeating task shows a muted <strong>↻</strong> on every later date its rule lands on in the visible weeks, and a <strong>Repeats</strong> group in the day panel. These dates are not written; a row opens the task. A <code>when done</code> rule shows only its next date. Turn this off with <code>deckard.calendar.showRepeats</code> or <strong>Turn Off Repeats</strong> in the <code>…</code> menu.</p>
+<p data-line="67" class="code-line" dir="auto"><strong>Weekends.</strong> Turn off <code>deckard.calendar.showWeekends</code>, or choose <strong>Hide Weekends</strong> from the <code>…</code> menu, to show five working days, in the sidebar and on the calendar page. <strong>Include Weekends</strong> brings them back.</p>
+<p data-line="69" class="code-line" dir="auto"><strong>The calendar page.</strong> <code>Deckard: Open Calendar</code>, or the calendar button in the Context or Calendar view title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with <strong>+3 more</strong>. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.</p>
+<ul data-line="71" class="code-line" dir="auto">
+<li data-line="71" class="code-line" dir="auto"><strong>Month</strong> and <strong>Week</strong> switch layouts.</li>
+<li data-line="72" class="code-line" dir="auto">Drag a due or scheduled task to another day to move its date. Repeats stay put.</li>
+<li data-line="73" class="code-line" dir="auto">Keys: <code>[</code> and <code>]</code> step, <code>t</code> returns to today, <code>m</code> and <code>w</code> switch the layout, <code>?</code> lists the keys.</li>
+</ul>
+<hr data-line="75" class="code-line" dir="auto">
+<p data-line="77" class="code-line" dir="auto">← <a href="#" data-guide-page="connections">Related notes, the graph, and the outline</a> · <a href="#" data-guide-page="README">All topics</a> · <a href="#" data-guide-page="organizing">Renaming, moving, and parking</a> →</p>

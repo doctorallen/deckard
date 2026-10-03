@@ -20,6 +20,8 @@
     <p class="tagline">{{ site.description }}</p>
   </div>
   <nav class="site-links" aria-label="Deckard">
+    <a href="{{ '/' | relative_url }}">Guide</a>
+    <a href="{{ '/architecture/' | relative_url }}">Architecture</a>
     <a href="https://github.com/{{ site.repository }}/releases/latest">Download</a>
     <a href="https://github.com/{{ site.repository }}/blob/master/CHANGELOG.md">Changelog</a>
     <a href="https://github.com/{{ site.repository }}">GitHub</a>
@@ -81,5 +83,22 @@
     });
   }());
 </script>
+{% if content contains 'language-mermaid' %}
+<script type="module">
+  // A ```mermaid fence reads as code on GitHub and as a diagram here. Kramdown
+  // wraps the fence's text in a highlighted <pre>, so each is replaced by the
+  // bare source Mermaid expects before it draws. Only a page with a diagram
+  // loads the script.
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12.0.0/dist/mermaid.esm.min.mjs';
+  document.querySelectorAll('.language-mermaid').forEach(function (block) {
+    var diagram = document.createElement('pre');
+    diagram.className = 'mermaid';
+    diagram.textContent = block.textContent;
+    block.replaceWith(diagram);
+  });
+  mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+  await mermaid.run({ querySelector: '.mermaid' });
+</script>
+{% endif %}
 </body>
 </html>

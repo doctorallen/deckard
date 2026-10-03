@@ -1,0 +1,803 @@
+<body
+  class="zen"
+> <canvas
+    aria-describedby="graph-legend"
+    aria-label="Notes graph. Press the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear."
+    height="800"
+    id="graph"
+    role="application"
+    tabindex="0"
+    width="1100"
+  ></canvas
+  > <span
+    class="visually-hidden"
+    id="graph-announce"
+    role="status"
+  ></span
+  > <div
+    class="empty-state"
+    id="empty-state"
+    style="display: none"
+  >No indexed notes yet — save a Markdown file with tags or links.</div
+  > <div
+    aria-label="Graph controls"
+    class="overlay"
+    role="group"
+  > <details
+      class="control-group"
+      open=""
+    > <summary
+      >Focus</summary
+      > <div
+        class="control-body"
+      > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="false"
+            data-dom-value="on"
+            data-tip="Draw only the note open in the editor and what it is connected to."
+            id="local-graph"
+            type="checkbox"
+          > Around this note</label
+        > <div
+          class="control-row"
+        ><label
+            for="local-depth"
+          >Hops out</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1"
+              data-tip="How many connections out from the note the graph reaches."
+              id="local-depth"
+              max="3"
+              min="1"
+              step="1"
+              type="range"
+            ><output
+              id="local-depth-out"
+            >1</output
+            ></div
+          ></div
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="false"
+            data-dom-value="on"
+            data-tip="Pass through daily, weekly, and monthly notes"
+            disabled=""
+            id="skip-periodic"
+            type="checkbox"
+          > Pass through daily notes</label
+        > <p
+          class="focus-note"
+          id="focus-note"
+        >Open a note to draw the graph around it.</p
+        > </div
+      > </details
+    > <details
+      class="control-group"
+      open=""
+    > <summary
+      >Filters</summary
+      > <div
+        class="control-body"
+      > <input
+          aria-label="Search graph nodes"
+          class="graph-search"
+          data-dom-value=""
+          data-tip="Filter note, task, and tag titles and file paths."
+          id="search"
+          placeholder="Search notes…"
+          type="search"
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="true"
+            data-dom-value="on"
+            data-tip="Show or hide note nodes and their visible links."
+            id="show-notes"
+            type="checkbox"
+          > Show notes</label
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="true"
+            data-dom-value="on"
+            data-tip="Show or hide task nodes and their visible links."
+            id="show-tasks"
+            type="checkbox"
+          > Show tasks</label
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="false"
+            data-dom-value="on"
+            data-tip="Show tag nodes and tag links; hidden tags still guide clustering."
+            id="show-tags"
+            type="checkbox"
+          > Show tags</label
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="true"
+            data-dom-value="on"
+            data-tip="Show nodes with no currently visible connections."
+            id="show-orphans"
+            type="checkbox"
+          > Show orphans</label
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="false"
+            data-dom-value="on"
+            data-tip="Draw only the wiki links written in your notes. Headings and tags still place each note, but are not drawn."
+            id="only-written-links"
+            type="checkbox"
+          > Only links I wrote</label
+        > <label
+          class="toggle-row"
+        ><input
+            data-dom-checked="false"
+            data-dom-value="on"
+            data-tip="Show parked notes, tasks, and tags. They are hidden unless this is on."
+            id="show-parked"
+            type="checkbox"
+          > Show parked</label
+        > <input
+          aria-label="Filter tag checklist"
+          class="tag-search"
+          data-dom-value=""
+          data-tip="Narrow the tag checklist without changing the graph."
+          id="tag-search"
+          placeholder="Filter tag list…"
+          type="search"
+        > <div
+          aria-label="Tag filters"
+          class="tag-list"
+          id="tag-list"
+          role="group"
+        ><label
+            class="toggle-row"
+          ><input
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-tip="Filter to nodes carrying the @dana tag."
+              type="checkbox"
+            ><span
+            >@dana</span
+            ><span
+              class="tag-count"
+            >15</span
+            ></label
+          ><label
+            class="toggle-row"
+          ><input
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-tip="Filter to nodes carrying the @ren-kade tag."
+              type="checkbox"
+            ><span
+            >@ren-kade</span
+            ><span
+              class="tag-count"
+            >1</span
+            ></label
+          ><label
+            class="toggle-row"
+          ><input
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-tip="Filter to nodes carrying the #meeting/standup tag."
+              type="checkbox"
+            ><span
+            >#meeting/standup</span
+            ><span
+              class="tag-count"
+            >1</span
+            ></label
+          ><label
+            class="toggle-row"
+          ><input
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-tip="Filter to nodes carrying the #project/atlas tag."
+              type="checkbox"
+            ><span
+            >#project/atlas</span
+            ><span
+              class="tag-count"
+            >14</span
+            ></label
+          ><label
+            class="toggle-row"
+          ><input
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-tip="Filter to nodes carrying the #status/doing tag."
+              type="checkbox"
+            ><span
+            >#status/doing</span
+            ><span
+              class="tag-count"
+            >40</span
+            ></label
+          ><label
+            class="toggle-row"
+          ><input
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-tip="Filter to nodes carrying the #topic/replicants tag."
+              type="checkbox"
+            ><span
+            >#topic/replicants</span
+            ><span
+              class="tag-count"
+            >13</span
+            ></label
+          ></div
+        > <div
+          class="control-row"
+          id="group-row"
+        ><label
+            for="group-filter"
+          >Group</label
+          ><select
+            class="graph-select"
+            data-dom-value=""
+            data-tip="Pick out one group: the others dim, and the view frames it. A click on a group's name does the same."
+            id="group-filter"
+          ><option
+              data-dom-selected="true"
+              data-dom-value=""
+            >All groups</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="#status/doing"
+            >status/doing · project/atlas (55)</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="#topic/replicants"
+            >topic/replicants (16)</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="@dana"
+            >@dana · topic/replicants (12)</option
+            ></select
+          ></div
+        > <button
+          class="clear-tags"
+          data-tip="Remove the tag filters and the group picked out."
+          id="clear-tags"
+          type="button"
+        >Clear filters</button
+        > </div
+      > </details
+    > <details
+      class="control-group"
+    > <summary
+      >Display</summary
+      > <div
+        class="control-body"
+      > <div
+          class="control-row"
+        ><label
+            for="node-size"
+          >Node size</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1"
+              data-tip="Scale node circles; larger nodes make highly connected items easier to spot."
+              id="node-size"
+              max="3"
+              min="0.5"
+              step="0.1"
+              type="range"
+            ><output
+              id="node-size-out"
+            >1.0</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="link-thickness"
+          >Link thickness</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1"
+              data-tip="Scale the width of visible edges."
+              id="link-thickness"
+              max="3"
+              min="0.5"
+              step="0.1"
+              type="range"
+            ><output
+              id="link-thickness-out"
+            >1.0</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="link-density"
+          >Links per note</label
+          ><div
+            class="slider-line"
+          ><span
+              aria-hidden="true"
+              class="slider-end"
+            >Fewer</span
+            ><input
+              aria-valuetext="fewest"
+              data-dom-value="0.3"
+              data-tip="How many of each note's strongest links are drawn. Fewer is easier to read. The sidebar's connections do not change."
+              data-words="fewest,fewer,about half,more,most"
+              id="link-density"
+              max="1"
+              min="0.15"
+              step="0.05"
+              type="range"
+            ><span
+              aria-hidden="true"
+              class="slider-end"
+            >More</span
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="label-threshold"
+          >Label fade zoom</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1.4"
+              data-tip="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer."
+              id="label-threshold"
+              max="4"
+              min="0.5"
+              step="0.1"
+              type="range"
+            ><output
+              id="label-threshold-out"
+            >1.4</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><span
+            class="control-label"
+            id="headings-label"
+          >Headings</span
+          ><div
+            aria-labelledby="headings-label"
+            class="graph-segmented segmented"
+            role="group"
+          ><button
+              aria-pressed="true"
+              data-headings="zoom"
+              data-tip="Zoomed out, draw each file as one node; zoomed in past Label fade zoom, draw its headings."
+              type="button"
+            >By zoom</button
+            ><button
+              aria-pressed="false"
+              data-headings="always"
+              data-tip="Draw every heading as a node of its own, at every zoom."
+              type="button"
+            >Always</button
+            ><button
+              aria-pressed="false"
+              data-headings="never"
+              data-tip="Draw each file as one node, at every zoom."
+              type="button"
+            >Never</button
+            ></div
+          ></div
+        > <details
+          class="advanced control-group"
+        > <summary
+          >Advanced</summary
+          > <div
+            class="control-body"
+          > <div
+              class="control-row"
+            ><label
+                for="tag-specificity"
+              >Favor rare tags</label
+              ><div
+                class="slider-line"
+              ><span
+                  aria-hidden="true"
+                  class="slider-end"
+                >Less</span
+                ><input
+                  aria-valuetext="most"
+                  data-dom-value="0.9"
+                  data-tip="How much more a tag on a few notes counts than a tag on nearly every note, when choosing which links to draw."
+                  data-words="least,less,about half,more,most"
+                  id="tag-specificity"
+                  max="1"
+                  min="0"
+                  step="0.05"
+                  type="range"
+                ><span
+                  aria-hidden="true"
+                  class="slider-end"
+                >More</span
+                ></div
+              ></div
+            > <div
+              class="control-row"
+            ><label
+                for="bridge-strength"
+              >Links between groups</label
+              ><div
+                class="slider-line"
+              ><span
+                  aria-hidden="true"
+                  class="slider-end"
+                >Fewer</span
+                ><input
+                  aria-valuetext="fewest"
+                  data-dom-value="0.15"
+                  data-tip="How strongly a note's other tags pull it toward other groups."
+                  data-words="fewest,fewer,about half,more,most"
+                  id="bridge-strength"
+                  max="1"
+                  min="0"
+                  step="0.05"
+                  type="range"
+                ><span
+                  aria-hidden="true"
+                  class="slider-end"
+                >More</span
+                ></div
+              ></div
+            > <label
+              class="toggle-row"
+            ><input
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Draw every link rather than each note's strongest. Busy on a large workspace."
+                id="show-all-links"
+                type="checkbox"
+              > Show every link</label
+            > </div
+          > </details
+        > </div
+      > </details
+    > <details
+      class="control-group"
+    > <summary
+      >Forces</summary
+      > <div
+        class="control-body"
+      > <div
+          class="control-row"
+        ><label
+            for="center-strength"
+          >Cluster centering</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="0.4"
+              data-tip="Pull community anchors gently toward the center of the viewport."
+              id="center-strength"
+              max="1"
+              min="0"
+              step="0.05"
+              type="range"
+            ><output
+              id="center-strength-out"
+            >0.40</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="cluster-cohesion"
+          >Cluster cohesion</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1.5"
+              data-tip="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."
+              id="cluster-cohesion"
+              max="3"
+              min="0.5"
+              step="0.1"
+              type="range"
+            ><output
+              id="cluster-cohesion-out"
+            >1.5</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="community-spacing"
+          >Community spacing</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1.2"
+              data-tip="Increase or reduce the distance between detected communities; changing it recomputes the layout framing."
+              id="community-spacing"
+              max="2.5"
+              min="0.6"
+              step="0.1"
+              type="range"
+            ><output
+              id="community-spacing-out"
+            >1.2</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="repel-strength"
+          >Repel strength</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="225"
+              data-tip="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart."
+              id="repel-strength"
+              max="2000"
+              min="50"
+              step="25"
+              type="range"
+            ><output
+              id="repel-strength-out"
+            >220</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="link-strength"
+          >Link strength</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="1"
+              data-tip="Increase or reduce the spring force along visible links."
+              id="link-strength"
+              max="2"
+              min="0"
+              step="0.05"
+              type="range"
+            ><output
+              id="link-strength-out"
+            >1.00</output
+            ></div
+          ></div
+        > <div
+          class="control-row"
+        ><label
+            for="link-distance"
+          >Link distance</label
+          ><div
+            class="slider-line"
+          ><input
+              data-dom-value="30"
+              data-tip="Set the target length of visible links; larger values spread connected nodes farther apart."
+              id="link-distance"
+              max="200"
+              min="10"
+              step="5"
+              type="range"
+            ><output
+              id="link-distance-out"
+            >32</output
+            ></div
+          ></div
+        > </div
+      > </details
+    > <details
+      class="control-group"
+    > <summary
+      >Relationships</summary
+      > <div
+        class="control-body"
+      > <p
+          class="relationship-note"
+        >The graph uses prevalence-aware groups: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p
+        > <p
+          class="relationship-note"
+        >Each group is named after the tags its notes carry more than the rest of the workspace does.</p
+        > <p
+          class="relationship-note"
+        >Links per note controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p
+        > <p
+          class="relationship-note"
+        >Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p
+        > </div
+      > </details
+    > </div
+  > <div
+    class="graph-zoom-controls"
+  > <div
+      aria-label="Zoom controls"
+      class="zoom-controls"
+      role="group"
+    > <button
+        aria-label="Zoom out"
+        data-tip="Zoom out the graph."
+        id="zoom-out"
+        type="button"
+      ><svg
+          aria-hidden="true"
+          class="toolbar-icon"
+          fill="none"
+          focusable="false"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          viewBox="0 0 16 16"
+        ><circle
+            cx="7"
+            cy="7"
+            r="4.5"
+          ></circle
+          ><path
+            d="m10.5 10.5 3 3M5 7h4"
+          ></path
+          ></svg
+        ></button
+      > <span
+        class="zoom-readout"
+        id="zoom-readout"
+      >217%</span
+      > <button
+        aria-label="Zoom in"
+        data-tip="Zoom in the graph."
+        id="zoom-in"
+        type="button"
+      ><svg
+          aria-hidden="true"
+          class="toolbar-icon"
+          fill="none"
+          focusable="false"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          viewBox="0 0 16 16"
+        ><circle
+            cx="7"
+            cy="7"
+            r="4.5"
+          ></circle
+          ><path
+            d="m10.5 10.5 3 3M7 5v4M5 7h4"
+          ></path
+          ></svg
+        ></button
+      > <button
+        aria-label="Fit graph to view"
+        data-tip="Fit the full graph in the current view."
+        id="zoom-fit"
+        type="button"
+      >Fit graph</button
+      > </div
+    > <button
+      class="reset-graph-settings"
+      data-tip="Restore all graph controls and filters, clear node momentum, and reframe the graph. Undo is offered for a few seconds."
+      id="reset-graph-settings"
+      type="button"
+    >Reset graph</button
+    > <span
+      aria-live="polite"
+      class="graph-reset-undo"
+      id="graph-reset-undo"
+      role="status"
+    ></span
+    > </div
+  > <div
+    class="status-line"
+  ><span
+      class="graph-legend"
+      id="graph-legend"
+    ><span
+        class="legend-note legend-swatch"
+      ></span
+      >Notes<span
+        class="legend-swatch legend-task"
+      ></span
+      >Tasks<span
+        class="legend-swatch legend-tag"
+      ></span
+      >Tags<svg
+        aria-hidden="true"
+        class="legend-line"
+        data-legend="wiki"
+        focusable="false"
+        viewBox="0 0 16 8"
+      ><line
+          x1="1"
+          x2="15"
+          y1="4"
+          y2="4"
+        ></line
+        ></svg
+      ><span
+        class="legend-word"
+      >Wiki link</span
+      ><svg
+        aria-hidden="true"
+        class="legend-line"
+        data-legend="heading"
+        focusable="false"
+        viewBox="0 0 16 8"
+      ><line
+          stroke-dasharray="5 3"
+          x1="1"
+          x2="15"
+          y1="4"
+          y2="4"
+        ></line
+        ></svg
+      ><span
+        class="legend-word"
+      >Heading</span
+      ><svg
+        aria-hidden="true"
+        class="legend-line"
+        data-legend="tag"
+        focusable="false"
+        viewBox="0 0 16 8"
+      ><line
+          stroke-dasharray="1 3"
+          stroke-linecap="round"
+          x1="1"
+          x2="15"
+          y1="4"
+          y2="4"
+        ></line
+        ></svg
+      ><span
+        class="legend-word"
+      >Tag</span
+      ><svg
+        aria-hidden="true"
+        class="legend-line"
+        data-legend="joined"
+        focusable="false"
+        hidden=""
+        viewBox="0 0 16 8"
+      ><line
+          stroke-dasharray="8 3 1 3"
+          x1="1"
+          x2="15"
+          y1="4"
+          y2="4"
+        ></line
+        ></svg
+      ><span
+        class="legend-word"
+        data-legend="joined"
+        hidden=""
+      >Through a daily note</span
+      ></span
+    ><span
+      id="status-counts"
+    >29 notes · 54 tasks · 69 of 242 links drawn · 3 groups</span
+    ><span
+      class="sim-note"
+      hidden=""
+      id="sim-note"
+    >Simulating…</span
+    ></div
+  > <div
+    aria-hidden="true"
+    class="tooltip"
+    id="tooltip"
+    style="display: none"
+  ></div
+  > </body
+>

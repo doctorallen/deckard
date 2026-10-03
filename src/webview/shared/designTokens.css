@@ -1,0 +1,95 @@
+/*
+ * The palette every webview starts from.
+ *
+ * Themes in `themes/` re-declare these after the base sheet, so a token may
+ * only be introduced here. Several pairs look like aliases at their default
+ * values — `--amber` and `--amber-bright` are both #FFB000 — but themes
+ * deliberately pull them apart, so they are separate tokens, not synonyms.
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #050608;
+  --bg-dark: #050608;
+  --panel: #0D1017;
+  --panel-bg: #0D1017;
+  --panel-raised: #121620;
+  --panel-deep: #050608;
+  --text: #D9E0E4;
+  --muted: #7D8792;
+  --line: #212936;
+  --slate-border: #212936;
+  --line-strong: #34445A;
+  /* The edge of a text field or a list box, which WCAG asks to stand 3:1
+     from the ground around it; the hairline --line is for dividers. */
+  --control-line: #5A6B82;
+  --cyan: #3ED4E8;
+  --cyan-bright: #5FE1F0;
+  --green: #66E066;
+  --toxic-green: #66E066;
+  --amber: #FFB000;
+  --amber-bright: #FFB000;
+  --amber-dim: #7A5400;
+  --favorite-red: #E05232;
+  --warning-orange: #FF5500;
+  --slate-olive: #3E4A42;
+  --grid-line: rgba(62, 212, 232, .05);
+  --font-display: var(--vscode-font-family, ui-sans-serif, sans-serif);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --edge: 2px;
+  --control-height: 30px;
+  /* The type scale. --text-md is the size the reader gave VS Code's own UI
+     (window.zoomLevel aside), so the pages grow and shrink with the editor
+     around them; the other steps sit one and two pixels either side of it.
+     Nothing a reader acts on is set below --text-xs: at a laptop's viewing
+     distance eleven pixels is where fluent reading starts to fall away, and
+     muted monospace text loses legibility sooner than that, so the small
+     steps never go under their floor whatever the editor is set to. */
+  --text-md: var(--vscode-font-size, 13px);
+  --text-xs: max(11px, calc(var(--text-md) - 2px));
+  --text-sm: max(12px, calc(var(--text-md) - 1px));
+  --text-lg: calc(var(--text-md) + 1px);
+  /* The spacing scale. Every padding, gap, and margin in the shared sheet
+     is one of these six steps, so a 6px gap never sits beside an 8px one,
+     and density is a matter of re-declaring the steps: zen does exactly
+     that, and restates no rule. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  /* The corner a control takes. The ends of a group of segments follow it,
+     so a theme that squares its buttons squares the group too. */
+  --control-radius: 2px;
+  /* What a control looks like while it is hovered, pressed, or active. A
+     theme re-declares the pair, never one half, so the text stays readable
+     on whatever the background becomes. */
+  --hover-bg: #121620;
+  --hover-fg: #FFB000;
+  /* What a chosen segment looks like: the tab, filter, or option in force.
+     A theme re-declares the pair, never one half. */
+  --chosen-bg: #FFB000;
+  --chosen-fg: #050608;
+  /* What a color means. Every rule that colors a state uses one of these,
+     never a palette color by name, so a hue carries one meaning: red is
+     danger, and only danger. A theme re-declares the palette; these follow
+     it, and a theme that wants a different mapping re-declares these too. */
+  --accent: var(--amber);
+  --danger: var(--favorite-red);
+  --favorite: var(--amber-bright);
+  --positive: var(--green);
+  --focus: var(--cyan);
+  /* A focus ring is drawn at least 2px in every theme, zen included, rather
+     than at the edge width, which is a hairline in Corpo and zen. */
+  --focus-width: 2px;
+  /* The stacking order, low to high. Every popover, menu, tip, sheet, and
+     drag ghost takes one of these, so a new one cannot land between two
+     others by accident: the drag ghost used to sit under the menus. */
+  --z-raised: 1;
+  --z-dropdown: 10;
+  --z-menu: 20;
+  --z-tooltip: 30;
+  --z-modal: 40;
+  --z-drag: 50;
+}

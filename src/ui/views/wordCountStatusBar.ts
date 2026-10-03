@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 
+import { Debouncer } from '../../shared/debounce';
 import {
   countNoteWords,
   describeWordCount,
   maskNoteForWords,
-} from '../../core/markdown/wordCount';
+} from '../../domain/markdown/wordCount';
 
+/** How long typing or selecting must pause before the note is counted again. */
 const RECOUNT_DELAY_MS = 250;
 
 /**
@@ -16,11 +18,16 @@ const RECOUNT_DELAY_MS = 250;
 export class WordCountStatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly disposables: vscode.Disposable[] = [];
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  /** The recount waiting for typing or selecting to pause. */
+  private readonly pendingRecount = new Debouncer(RECOUNT_DELAY_MS);
   /** The masked lines of one version of one note, reused for selections. */
   private cache: { uri: string; version: number; masked: string[]; total: number } | undefined;
   private visible = false;
 
+  /**
+   * Creates the item, starts listening to the active editor, its selection,
+   * and its text, and counts the note in front now.
+   */
   public constructor(private readonly isNotesFile: (uri: vscode.Uri) => boolean) {
     this.item = vscode.window.createStatusBarItem('deckard.wordCount', vscode.StatusBarAlignment.Right, 99);
     this.item.name = 'Deckard word count';
@@ -41,10 +48,9 @@ export class WordCountStatusBar implements vscode.Disposable {
     this.update();
   }
 
+  /** Drops a waiting recount, stops listening, and removes the item. */
   public dispose(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
+    this.pendingRecount.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -77,13 +83,8 @@ export class WordCountStatusBar implements vscode.Disposable {
     this.item.show();
   }
 
+  /** Counts again once typing or selecting pauses. */
   private schedule(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-    this.timer = setTimeout(() => {
-      this.timer = undefined;
-      this.update();
-    }, RECOUNT_DELAY_MS);
+    this.pendingRecount.schedule(() => this.update());
   }
 }

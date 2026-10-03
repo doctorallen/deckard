@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { reportFailure } from './notify';
 
-import { pinKey } from '../../core/storage/preferences';
-import { PinnedNote, WorkspaceIndex } from '../../core/types';
-import { createPinForLine, resolvePin } from '../state/pinnedNotes';
+import { parseMarkdown } from '../../domain/markdown/parser';
+import { createPinForLine, resolvePin } from '../../domain/notes/pins';
+import { PinnedNote, WorkspaceIndex } from '../../domain/model';
+import { pinKey } from '../../core/storage/preferencesSchema';
+import { readParseOptions } from './parseSettings';
 
 /**
  * Pinning the note you are in, wherever you are in it.
@@ -97,24 +99,36 @@ async function offerUndo(
   }
 }
 
+/** What Pin and Unpin read and write, and which entry they are about. */
+export interface SetNotePinnedOptions {
+  indexer: PinIndexSource;
+  preferences: PinStore;
+  /** Pin when true, unpin when false. */
+  pinned: boolean;
+  /** The note a hover link names; the active editor's when it names none. */
+  documentUri?: string;
+  /** The one-based line a hover link names; the cursor's when it names none. */
+  line?: number;
+}
+
 /**
  * The command: the entry the cursor is in, or the one a hover link names.
  *
  * The hover passes the line it was shown on, so pinning from there pins the
  * entry the hover was about rather than wherever the cursor happens to be.
  */
-export async function setNotePinnedCommand(
-  indexer: PinIndexSource,
-  preferences: PinStore,
-  pinned: boolean,
-  documentUri?: string,
-  line?: number,
-): Promise<PinnedNote | undefined> {
+export async function setNotePinnedCommand({
+  indexer,
+  preferences,
+  pinned,
+  documentUri,
+  line,
+}: SetNotePinnedOptions): Promise<PinnedNote | undefined> {
   await indexer.ready;
   const uri =
-    documentUri !== undefined
-      ? vscode.Uri.parse(documentUri)
-      : vscode.window.activeTextEditor?.document.uri;
+    documentUri === undefined
+      ? vscode.window.activeTextEditor?.document.uri
+      : vscode.Uri.parse(documentUri);
   if (!uri || !indexer.isNotesFile(uri)) {
     void vscode.window.showInformationMessage(
       'Open a note in the notes folder to pin it to Home.',
@@ -123,12 +137,53 @@ export async function setNotePinnedCommand(
   }
   const at =
     line ?? (vscode.window.activeTextEditor?.selection.active.line ?? 0) + 1;
-  return setPinned(
-    indexer.getSnapshot(),
-    preferences,
-    { filePath: indexer.getFilePath(uri), line: at },
-    pinned,
+  const filePath = indexer.getFilePath(uri);
+  // The line is the editor's, from the cursor or from a hover drawn on the
+  // editor's text, so the note is read as the editor shows it.
+  const document =
+    documentUri === undefined
+      ? vscode.window.activeTextEditor?.document
+      : vscode.workspace.textDocuments.find((open) => open.uri.toString() === uri.toString());
+  const index = document
+    ? readIndexAsEdited(indexer.getSnapshot(), filePath, document)
+    : indexer.getSnapshot();
+  return setPinned(index, preferences, { filePath, line: at }, pinned);
+}
+
+/** The editor's text of a note, and which edit of it that is. */
+type EditedDocument = Pick<vscode.TextDocument, 'uri' | 'isDirty' | 'version' | 'getText'>;
+
+/** The last note read as edited, kept while the cursor moves through one edit. */
+let lastEdited: { index: WorkspaceIndex; key: string; read: WorkspaceIndex } | undefined;
+
+/**
+ * The index with a note read as its editor shows it. The index holds a
+ * note as it was last saved, so with unsaved lines added or taken away a
+ * line in the editor falls under another heading there, and the wrong
+ * heading would be pinned or named. A saved note is the index's own.
+ */
+export function readIndexAsEdited(
+  index: WorkspaceIndex,
+  filePath: string,
+  document: EditedDocument,
+): WorkspaceIndex {
+  if (!document.isDirty) {
+    return index;
+  }
+  // The cursor moves far more often than the text changes, so one reading
+  // is kept for each edit of each note.
+  const key = `${document.uri.toString()}#${document.version}`;
+  if (lastEdited?.index === index && lastEdited.key === key) {
+    return lastEdited.read;
+  }
+  const files = new Map(index.files);
+  files.set(
+    filePath,
+    parseMarkdown(filePath, document.getText(), undefined, readParseOptions(document.uri)),
   );
+  const read: WorkspaceIndex = { ...index, files };
+  lastEdited = { index, key, read };
+  return read;
 }
 
 /** The hover link that pins the entry it is shown on. */
@@ -151,9 +206,10 @@ interface PinContextIndex extends PinIndexSource {
   onDidUpdate(listener: () => void): vscode.Disposable;
 }
 
+/** What the context key reads of the preferences: the pins, and when they may have changed. */
 interface PinContextStore {
-  isPinned(key: string): boolean;
-  onDidChange(listener: () => void): vscode.Disposable;
+  pins: { isPinned(key: string): boolean };
+  reader: { onDidChange(listener: () => void): vscode.Disposable };
 }
 
 /**
@@ -165,6 +221,7 @@ export class ActivePinContext implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private pinned: boolean | undefined;
 
+  /** Follows the cursor, the index, and the pins, and sets the key for the editor already active. */
   public constructor(
     private readonly indexer: PinContextIndex,
     private readonly preferences: PinContextStore,
@@ -176,11 +233,12 @@ export class ActivePinContext implements vscode.Disposable {
         this.sync(event.textEditor),
       ),
       indexer.onDidUpdate(sync),
-      preferences.onDidChange(sync),
+      preferences.reader.onDidChange(sync),
     );
     sync();
   }
 
+  /** Stops following; the context key keeps the value it last had. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
@@ -189,12 +247,13 @@ export class ActivePinContext implements vscode.Disposable {
   public sync(editor: vscode.TextEditor | undefined): void {
     let next = false;
     if (editor && this.indexer.isNotesFile(editor.document.uri)) {
+      const filePath = this.indexer.getFilePath(editor.document.uri);
       const pin = createPinForLine(
-        this.indexer.getSnapshot(),
-        this.indexer.getFilePath(editor.document.uri),
+        readIndexAsEdited(this.indexer.getSnapshot(), filePath, editor.document),
+        filePath,
         editor.selection.active.line + 1,
       );
-      next = pin !== undefined && this.preferences.isPinned(pinKey(pin));
+      next = pin !== undefined && this.preferences.pins.isPinned(pinKey(pin));
     }
     if (next === this.pinned) {
       return;

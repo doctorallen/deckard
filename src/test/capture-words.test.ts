@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { readCaptureText } from '../core/markdown/captureWords';
-import { formatNoteLine } from '../ui/commands/capture';
+import { readCaptureText } from '../domain/markdown/captureWords';
+import { formatNoteLine } from '../domain/capture/captureLines';
 
 suite('Capture reads its last words', () => {
   // Friday 2026-09-25, noon.
@@ -44,6 +44,15 @@ suite('Capture reads its last words', () => {
     assert.strictEqual(reading.line, '- [ ] Water plants ⏫ 🔁 every week 📅 2026-10-02');
     assert.strictEqual(read('Ship it !!!').priority, 'highest');
     assert.strictEqual(read('Stand-up daily').recurrence, 'every day');
+  });
+
+  test('a last word that names a property of every object is still a word', () => {
+    for (const word of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      const reading = read(`Fix the ${word}`);
+      assert.strictEqual(reading.line, `- [ ] Fix the ${word}`, word);
+      assert.strictEqual(reading.priority, undefined, word);
+      assert.strictEqual(reading.recurrence, undefined, word);
+    }
   });
 
   test('a capture with nothing to read is written exactly as typed', () => {

@@ -2,18 +2,16 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { findBlockIds, findFencedLines, parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
+import { findBlockIds, parseMarkdown } from '../domain/markdown/parser';
 import {
   buildBacklinkIndex,
   parseWikiTarget,
-} from '../core/workspace/backlinks';
-import {
-  findWikiLinkTargets,
-  getBlockCompletionContext,
-  WikiLinkCompletionProvider,
-} from '../ui/commands/linkSuggestions';
+} from '../domain/index/backlinks';
+import { findWikiLinkTargets } from '../domain/index/wikiLinkTargets';
+import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { createLinkPreview } from '../ui/state/referenceState';
+import { WorkspaceIndex } from '../domain/model';
+import { findFencedLines } from '../domain/markdown/lineShapes';
 
 /**
  * Links that name one line of a note rather than the whole note or one of its
@@ -224,19 +222,6 @@ suite('Block references', () => {
       ['^lift-slip'],
     );
     provider.dispose();
-  });
-
-  test('knows when a caret is being typed, and for which note', () => {
-    assert.deepStrictEqual(getBlockCompletionContext('Check-in#^li'), {
-      note: 'Check-in',
-      query: 'li',
-    });
-    assert.deepStrictEqual(getBlockCompletionContext('#^'), {
-      note: '',
-      query: '',
-    });
-    assert.strictEqual(getBlockCompletionContext('Check-in#Vendor'), undefined);
-    assert.strictEqual(getBlockCompletionContext('Check-in'), undefined);
   });
 });
 

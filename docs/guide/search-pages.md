@@ -79,7 +79,7 @@ Renaming a tag, merging tags, and renaming a heading rewrite notes you never ope
 
 - **Preview.** A write reaching more than one note opens in VS Code's refactor preview, each change under its note. Uncheck any to leave it out, then apply. Deckard reports only what landed.
 - `deckard.previewWorkspaceWrites` sets when this happens: `severalNotes` (the default), `always`, or `never`.
-- **Deckard: Undo Last Change** restores the notes from before that write, after saying how many. A note changed since, in the editor or on disk, is left alone and counted. Favorites and saved searches that followed a renamed tag move back.
+- **Deckard: Undo Last Change** restores the notes from before that write, after saying how many. A note changed since, in the editor or on disk, is left alone and counted. A move made with **Move to…**, tasks carried forward, and a heading renamed with its links go back together or not at all: if one of their notes changed since, Undo puts nothing back and names that note, and works again once the note is as Deckard left it. Favorites and saved searches that followed a renamed tag move back.
 - Only the last write is kept. For anything earlier, use version control.
 
 Set `deckard.enableHeadingTagRelationships` to `false` to refine by the tags the results carry instead of by related tags.

@@ -1,67 +1,53 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences, TestPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
-import { getCalendarHtml } from '../ui/webview/calendarHtml';
-import { ENABLED, getCardTagCss, getHighContrastCss, getPageTailCss, getZenCss } from '../ui/webview/components';
-import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getHelpHtml } from '../ui/webview/helpHtml';
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
-import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { getStatsHtml } from '../ui/webview/statsHtml';
-import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import { createCalendar } from '../ui/state/calendarState';
+import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
+import { ENABLED } from '../ui/webview/selectors';
+import { PAGES, renderablePages, renderPage } from './pages';
+import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { readGoldens } from '../../test/harness/domGoldens';
+import { createQueryContext } from '../domain/query/queryContext';
+import { deckardThemes } from '../ui/webview/themeNames';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createDeckardStatsSnapshot } from '../ui/state/statsState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
+import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,
  * disabled controls, tags that are too long, loading, and removals.
  */
 suite('Component primitives', () => {
-  const webview = {
-    cspSource: 'vscode-webview://deckard',
-    asWebviewUri: (resource: vscode.Uri) => resource,
-  } as unknown as vscode.Webview;
-  const pages: Array<[string, () => string]> = [
-    ['Dashboard', () => getDashboardHtml(webview, vscode.Uri.file('/deckard'))],
-    ['search page', () => getSearchPageHtml(webview)],
-    ['Related Notes', () => getSidebarNotesHtml(webview, '1.0.0')],
-    ['Notes Graph', () => getNotesGraphHtml(webview)],
-    ['Help', () => getHelpHtml(webview, vscode.Uri.file('/deckard'))],
-    ['Stats', () => getStatsHtml(webview)],
-    ['Task Board', () => getTaskBoardHtml(webview)],
-    ['Calendar', () => getCalendarHtml(webview)],
-  ];
-  const stylesOf = (html: string): string =>
-    [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n');
+  const pages = renderablePages(['dashboard', 'searchPage', 'sidebarNotes', 'notesGraph', 'help', 'stats', 'taskBoard', 'calendar']);
+  /** Every rule a page draws with, as written, in the order its shell links them. */
+  const stylesOf = (html: string): string => pageSheets(html);
 
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
   const NOW = Date.parse('2026-09-21T12:00:00Z');
   const openBoard = (markdown = '# Atlas #project/atlas\n- [ ] Send the proposal #project/atlas 📅 2026-09-21\n'): WebviewPage => {
     const index = buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', markdown)]]));
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard(
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard({
       index,
-      { ...store.value, taskBoardLayout: 'board' },
-      { query: '' },
-      { now: NOW, statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
-      'inline',
-    );
-    page = openWebviewPage(getTaskBoardHtml(webview), board);
+      preferences: { ...store.reader.value, taskBoardLayout: 'board' },
+      search: { query: '' },
+      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
+      tagTitleDisplayMode: 'inline',
+    });
+    page = openWebviewPage(renderPage('taskBoard'), board);
     return page;
   };
 
@@ -69,9 +55,9 @@ suite('Component primitives', () => {
     const index = buildWorkspaceIndex(new Map([
       ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #topic/replicants\nThe lift is stuck.\n- [ ] Chase it #project/atlas\n')],
     ]));
-    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const snapshot = createSearchPageSnapshot(index, store.value, query, {});
-    page = openWebviewPage(getSearchPageHtml(webview), { ...snapshot, ...extra });
+    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, query, { queryContext: createQueryContext(Date.now()) });
+    page = openWebviewPage(renderPage('searchPage'), { ...snapshot, ...extra });
     return page;
   };
   const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -84,7 +70,7 @@ suite('Component primitives', () => {
   const tip = (target: WebviewPage): HTMLElement | null => target.document.getElementById('deckard-tip');
 
   suite('disabled controls (9b)', () => {
-    /** Every selector in a sheet, with @media flattened. */
+    /** Every selector in a sheet, with `@media` flattened. */
     const selectorsOf = (css: string): string[] => {
       const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
       const selectors: string[] = [];
@@ -116,7 +102,7 @@ suite('Component primitives', () => {
 
     test('no hover rule on a control reaches a disabled one, in any theme', () => {
       const sheets = pages.map(([name, render]) => [name, stylesOf(render())] as const);
-      for (const theme of deckardThemes) {sheets.push([theme, getDeckardThemeCss(theme)]);}
+      for (const theme of deckardThemes) {sheets.push([theme, themeSheet(theme)]);}
       let guarded = 0;
       for (const [name, css] of sheets) {
         const found = selectorsOf(css).filter(unguarded);
@@ -151,12 +137,19 @@ suite('Component primitives', () => {
 
   suite('tags on cards (decision 4)', () => {
     test('the card-tag layer comes after the themes and high contrast, and before zen', () => {
-      const tail = getPageTailCss();
-      const layer = tail.indexOf(getCardTagCss());
-      assert.ok(layer > tail.indexOf(getHighContrastCss()), 'after high contrast, and so after the theme');
-      assert.ok(layer < tail.indexOf(getZenCss()), 'before zen');
-      assert.ok(getCardTagCss().includes('body .board-card button.tag-open:not(:hover):not(:focus-visible)'));
-      assert.doesNotMatch(getCardTagCss(), /white-space/, 'one-line geometry stays with the tag sheet');
+      for (const [name, render] of pages) {
+        const linked = linkedSheets(render());
+        assert.match(linked[1] ?? '', /^themes\/[a-z]+\.css$/, `${name}: the theme follows the page's own sheet`);
+        assert.strictEqual(linked[2], 'tail.css', `${name}: the tail follows the theme, last`);
+        assert.strictEqual(linked.length, 3, `${name}: links its sheet, its theme, and the tail`);
+      }
+      const tail = readSheet('shared/tail.css');
+      const layer = tail.indexOf('@import "./cardTag.css";');
+      assert.ok(layer > tail.indexOf('@import "./highContrast.css";'), 'after high contrast, and so after the theme');
+      assert.ok(layer < tail.indexOf('@import "./zen.css";'), 'before zen');
+      const cardTag = readSheet('shared/cardTag.css');
+      assert.ok(cardTag.includes('body .board-card button.tag-open:not(:hover):not(:focus-visible)'));
+      assert.doesNotMatch(cardTag, /white-space/, 'one-line geometry stays with the tag sheet');
     });
   });
 
@@ -187,14 +180,60 @@ suite('Component primitives', () => {
 
   suite('loading (9f)', () => {
     test('every page starts busy, with a loading line rather than an empty box', () => {
+      // Read from the loaded page, before any state, so it holds whether the
+      // loading line is in the markup or drawn by the page's script.
       for (const [name, render] of pages.filter(([name]) => !['Help', 'Notes Graph'].includes(name))) {
-        const html = render();
-        assert.match(html, /<main id="app"[^>]* aria-busy="true"><div class="loading" role="status">/, `${name} starts busy`);
+        page = openWebviewPage(render());
+        const app = page.find('#app');
+        assert.strictEqual(app.localName, 'main', `${name}: #app is the page's main`);
+        assert.strictEqual(app.getAttribute('aria-busy'), 'true', `${name} starts busy`);
+        const loading = app.firstChild as Element | null;
+        assert.strictEqual(loading?.nodeType, 1, `${name}: the loading line comes first, with nothing before it`);
+        assert.strictEqual(loading?.localName, 'div', `${name}: the loading line is a div`);
+        assert.strictEqual(loading?.getAttribute('class'), 'loading', `${name}: the loading line's class`);
+        assert.strictEqual(loading?.getAttribute('role'), 'status', `${name}: the loading line is a status`);
+        page.dispose();
+        page = undefined;
+      }
+    });
+
+    test('a page whose shell carries its snapshot draws it at once, with no loading line and nothing busy', async () => {
+      // Every page that reads inert JSON, drawn from its shell alone: no
+      // state is posted.
+      const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '# A #project/atlas\n- [ ] Call\n')]]));
+      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      const snapshots: Partial<Record<string, unknown>> = {
+        stats: createDeckardStatsSnapshot(index, store.reader.value, [], Date.now()),
+        calendar: createCalendar(index, '2026-09', createQueryContext(Date.now())),
+        calendarPage: createCalendar(index, '2026-09', createQueryContext(Date.now()), { dayPanel: true, layout: 'page' }),
+        sidebarNotes: {
+          ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+          parkedTags: [],
+        },
+      };
+      // A calendar and Related Notes still say they are ready when they load,
+      // as they always have, so the host sends a snapshot newer than the one
+      // the HTML carried.
+      const asks: Partial<Record<string, unknown[]>> = { calendar: [{ type: 'ready' }], calendarPage: [{ type: 'ready' }], sidebarNotes: [{ type: 'ready' }] };
+      const embedding = PAGES.filter((entry) => entry.readsInertState);
+      assert.ok(embedding.length >= 1, 'at least Stats reads its first snapshot from its shell');
+      for (const entry of embedding) {
+        assert.ok(snapshots[entry.id], `${entry.title}: a snapshot to embed`);
+        page = openWebviewPage(renderPage(entry.id, { state: snapshots[entry.id] }));
+        await Promise.resolve();
+        const app = page.find('#app');
+        assert.strictEqual(app.localName, 'main', `${entry.title}: #app is the page's main`);
+        assert.strictEqual(app.getAttribute('aria-busy'), null, `${entry.title} is not busy`);
+        assert.strictEqual(page.findAll('#app .loading').length, 0, `${entry.title}: no loading line`);
+        assert.ok(app.firstElementChild, `${entry.title} drew its snapshot`);
+        assert.deepStrictEqual(page.posted, asks[entry.id] ?? [], `${entry.title} asked for nothing`);
+        page.dispose();
+        page = undefined;
       }
     });
 
     test('the sidebar\'s indexing count shows at once and keeps the page busy', async () => {
-      page = openWebviewPage(getSidebarNotesHtml(webview, '1.0.0'), {
+      page = openWebviewPage(renderPage('sidebarNotes'), {
         state: 'loading', progress: { completed: 412, total: 3760 }, notes: [], activeTags: [], tagTitleDisplayMode: 'inline',
       });
       await Promise.resolve();
@@ -203,7 +242,7 @@ suite('Component primitives', () => {
     });
 
     test('a page waiting on the first scan says how far it has got', () => {
-      page = openWebviewPage(getSearchPageHtml(webview));
+      page = openWebviewPage(renderPage('searchPage'));
       page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'indexing', progress: { completed: 412, total: 3760 } } }));
       assert.strictEqual(page.text('#app .loading.is-immediate'), 'Indexing this workspace: 412 of 3,760 notes read…');
       page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'indexing', progress: null } }));
@@ -227,7 +266,7 @@ suite('Component primitives', () => {
       assert.ok(search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), 'true');
       const index = buildWorkspaceIndex(new Map([['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas\nThe lift is stuck.\n')]]));
-      search.send(createSearchPageSnapshot(index, store!.value, '#project/atlas AND lift', {}));
+      search.send(createSearchPageSnapshot(index, store!.reader.value, '#project/atlas AND lift', { queryContext: createQueryContext(Date.now()) }));
       await Promise.resolve();
       assert.ok(!search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), null);
@@ -293,7 +332,7 @@ suite('Component primitives', () => {
     });
 
     test('the Notes Graph, which takes only the tip script, shows its tips too', () => {
-      page = openWebviewPage(getNotesGraphHtml(webview));
+      page = openWebviewPage(renderPage('notesGraph'));
       keyFocus(page, '#link-distance');
       assert.match(String(tip(page)?.textContent), /length of visible links/);
     });
@@ -301,6 +340,10 @@ suite('Component primitives', () => {
     test('no control on any page carries a native title', () => {
       // A title never shows on keyboard focus; a control says it with
       // data-tip. Non-focusable spans and a select's options may keep one.
+      // The page text is read while a page's markup is template text, and
+      // every surface's drawn DOM always (the test:dom goldens), which is
+      // all a compiled page leaves to read; the lint rule on .tsx covers the
+      // states no surface draws.
       const control = /<(button|summary|input|select|textarea|a)\b[^<>]*\btitle=/;
       const focusable = /<[a-z]+\b(?=[^<>]*\btabindex=)[^<>]*\btitle=/;
       for (const [name, render] of pages) {
@@ -308,6 +351,119 @@ suite('Component primitives', () => {
         const found = html.match(control) ?? html.match(focusable);
         assert.strictEqual(found, null, `${name}: ${found?.[0].slice(0, 120)}`);
       }
+      // As the regular expressions read it: any attribute named title, or
+      // ending in -title, on a control or on anything with a tabindex.
+      const titled = (element: Element): boolean =>
+        [...element.attributes].some((attribute) => /(^|[^\w])title$/.test(attribute.name));
+      const tabbable = (element: Element): boolean =>
+        [...element.attributes].some((attribute) => /(^|[^\w])tabindex$/.test(attribute.name));
+      const read = readGoldens((surface, body) => {
+        const found = [...body.querySelectorAll('*')].find((element) =>
+          titled(element)
+          && (/^(button|summary|input|select|textarea|a)$/.test(element.localName) || tabbable(element)));
+        assert.strictEqual(found, undefined, `${surface} (as drawn): ${found?.outerHTML.slice(0, 120)}`);
+      });
+      assert.ok(read >= 22, `every surface's drawn DOM is read (${read})`);
+    });
+
+    /** A box in the window, and whether two share any of it. */
+    type Box = { left: number; top: number; width: number; height: number };
+    const overlaps = (a: Box, b: Box): boolean =>
+      a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height;
+    /**
+     * Draws the elements given where the boxes say, the tip 200 by 40, in a
+     * window 400 by 600, as a narrow sidebar is; jsdom lays nothing out.
+     */
+    const layOut = (target: WebviewPage, boxes: ReadonlyMap<Element, Box>): void => {
+      Object.defineProperty(target.window, 'innerWidth', { configurable: true, value: 400 });
+      Object.defineProperty(target.window, 'innerHeight', { configurable: true, value: 600 });
+      Object.defineProperty(target.window.Element.prototype, 'getBoundingClientRect', {
+        configurable: true,
+        value(this: Element) {
+          const box = this.id === 'deckard-tip' ? { left: 0, top: 0, width: 200, height: 40 } : boxes.get(this) ?? { left: 0, top: 0, width: 0, height: 0 };
+          return { x: box.left, y: box.top, ...box, right: box.left + box.width, bottom: box.top + box.height };
+        },
+      });
+    };
+    const tipBox = (target: WebviewPage): Box => {
+      const shown = tip(target) as HTMLElement;
+      assert.strictEqual(shown.hidden, false, 'the tip shows');
+      return { left: parseFloat(shown.style.left), top: parseFloat(shown.style.top), width: 200, height: 40 };
+    };
+
+    test('a Related Notes card\'s tip leaves its relevance breakdown to be read', () => {
+      // As David saw it: the breakdown hangs from the score past the card's
+      // foot, and the card's tip was drawn over it.
+      const index = buildWorkspaceIndex(new Map([
+        ['notes/a.md', parseMarkdown('notes/a.md', '# Requirements #project/ghostline-relay\nClassify only authorized relay traffic.\n')],
+        ['notes/b.md', parseMarkdown('notes/b.md', '# Relay drills #project/ghostline-relay\nThe pilot stays on relay traffic.\n')],
+      ]));
+      page = openWebviewPage(renderPage('sidebarNotes'), {
+        ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+        parkedTags: [],
+      });
+      const card = page.find('article.note') as HTMLElement;
+      const breakdown = card.querySelector('.relevance-tooltip') as Element;
+      assert.ok(breakdown, 'the card holds its breakdown');
+      const cardBox = { left: 10, top: 40, width: 380, height: 90 };
+      const breakdownBox = { left: 160, top: 70, width: 220, height: 130 };
+      layOut(page, new Map([[card, cardBox], [breakdown, breakdownBox]]));
+      keyFocus(page, 'article.note');
+      const placed = tipBox(page);
+      assert.match(String(tip(page)?.textContent), /^Open this entry/);
+      assert.ok(!overlaps(placed, breakdownBox), `the tip ${JSON.stringify(placed)} covers the breakdown`);
+      assert.ok(!overlaps(placed, cardBox), `the tip ${JSON.stringify(placed)} covers the card`);
+    });
+
+    test('a tag pair\'s tip leaves the count it folds under its row to be read', () => {
+      // As David saw it: the row's count opens under it on hover, in the
+      // row's frame carried down, and the row's tip was drawn over it.
+      const index = buildWorkspaceIndex(new Map(Array.from({ length: 3 }, (_, n) => [
+        `notes/n${n}.md`,
+        parseMarkdown(`notes/n${n}.md`, `# Shift ${n} #person/sable-ortiz #team/harbor\nOn the harbor shift.\n`),
+      ])));
+      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      const preferences = {
+        ...store.reader.value,
+        dashboardViewState: { ...store.reader.value.dashboardViewState, mode: 'home' as const },
+        dashboardWidgets: [{ id: 'p', kind: 'tagPairs' as const, width: 'full' as const, count: 10 }],
+      };
+      const queryContext = createQueryContext(Date.now());
+      page = openWebviewPage(renderPage('dashboard'), {
+        ...createDashboardSnapshot({ index, preferences, queryContext }),
+        widgets: createDashboardWidgets(index, preferences, { queryContext, upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+      });
+      const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
+      const detail = row.querySelector('.home-row-detail') as Element;
+      const rowBox = { left: 10, top: 100, width: 380, height: 28 };
+      // Folded under the row, a line of 16 px, 2 px past its foot.
+      const detailBox = { left: 20, top: 130, width: 360, height: 16 };
+      layOut(page, new Map([[row, rowBox], [detail, detailBox]]));
+      keyFocus(page, '.home-row[data-query="#person/sable-ortiz AND #team/harbor"]');
+      const placed = tipBox(page);
+      assert.match(String(tip(page)?.textContent), /carry both.*Search for both\.$/);
+      assert.ok(!overlaps(placed, detailBox), `the tip ${JSON.stringify(placed)} covers the count`);
+      assert.ok(!overlaps(placed, rowBox), `the tip ${JSON.stringify(placed)} covers the row`);
+    });
+
+    test('every card or row that shows more of itself on hover says so to the tip', () => {
+      // provenance.css folds a line under each of these, and a saved
+      // search's criteria open under its row; the tip keeps off them only
+      // where the card says it shows them (data-tip-around).
+      const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
+      let seen = 0;
+      const read = readGoldens((surface, body) => {
+        // Help's cards and notes are callouts in prose: they fold nothing
+        // under them and hold no tip.
+        if (surface.startsWith('help')) {
+          return;
+        }
+        for (const card of body.querySelectorAll(opening)) {
+          seen += 1;
+          assert.ok(card.hasAttribute('data-tip-around'), `${surface}: ${card.outerHTML.slice(0, 120)}`);
+        }
+      });
+      assert.ok(read >= 22 && seen > 20, `every surface's drawn DOM is read (${read} surfaces, ${seen} cards)`);
     });
 
     test('the pointer waits 400 ms, and touch shows nothing', async () => {

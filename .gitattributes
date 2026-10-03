@@ -1,0 +1,25 @@
+# Text is checked out with LF on every system. On Windows, git would
+# otherwise turn each line ending into CRLF (core.autocrlf), and the tests
+# that read the repository's Markdown, goldens, and fixtures would see other
+# bytes than they do on Linux and macOS, and than the VSIX ships.
+* text=auto eol=lf
+
+# Screenshots and the packaged extension are bytes, never text.
+*.png binary
+*.vsix binary
+
+# Files the test suites record rather than anyone writes. GitHub collapses
+# them in a pull request's diff and leaves them out of the language counts;
+# git itself diffs them as before.
+
+# The DOM each page draws, recorded by `npm run test:dom -- --update`.
+test/ui/dom-baseline/** linguist-generated=true
+
+# The screenshots `npm run test:visual -- --update` records, and CI's for Linux.
+test/ui/visual-baseline/** linguist-generated=true
+
+# What the retired page templates drew, recorded for the parity tests.
+src/test/fixtures/template/** linguist-generated=true
+
+# A frozen copy of the changelog that Help's test pages draw from.
+test/ui/fixtures/changelog.md linguist-generated=true

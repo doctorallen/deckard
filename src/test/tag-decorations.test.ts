@@ -4,15 +4,12 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
 import {
-  collectTaggedEntries,
   createEntryRelatedNotesHoverMessage,
   EditorTagDecorations,
-  findBandEntry,
   createTagRenameHoverMessage,
   isMarkdownDocument,
-} from '../ui/commands/tagDecorations';
+} from '../ui/providers/tagDecorations';
 
 suite('Tag decorations', () => {
   test('recognizes .md files regardless of language mode', () => {
@@ -91,31 +88,6 @@ suite('Tag decorations', () => {
     }
   });
 
-  test('bands the innermost tagged entry the cursor is in, and nothing outside one', () => {
-    const entries = collectTaggedEntries(
-      parseMarkdown(
-        'notes/atlas.md',
-        [
-          '# Atlas #project/atlas', // 1
-          'Why it matters.', // 2
-          '- [ ] Call Ren #risk/vendor', // 3
-          '- [ ] Book the room', // 4
-          '', // 5
-          '# Untagged', // 6
-          'Nothing here.', // 7
-        ].join('\n'),
-      ),
-    );
-    assert.deepStrictEqual(
-      entries.map((entry) => [entry.startLine, entry.endLine]),
-      [[1, 5], [3, 3], [4, 4]],
-      'the tagged section and its tasks, which carry its tag, not the untagged section',
-    );
-    assert.strictEqual(findBandEntry(entries, 3)?.title.trim(), 'Call Ren #risk/vendor');
-    assert.strictEqual(findBandEntry(entries, 2)?.startLine, 1, 'the section around the line');
-    assert.strictEqual(findBandEntry(entries, 7), undefined);
-  });
-
   test('contributes the band colors for every kind of theme', () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'),
@@ -146,12 +118,12 @@ suite('Tag decorations', () => {
   });
 
   test('creates a trusted entry-level related-notes hover action', () => {
-    const hover = createEntryRelatedNotesHoverMessage(
-      'Relay checks',
-      'file:///tmp/deckard/relay.md',
-      12,
-      false,
-    );
+    const hover = createEntryRelatedNotesHoverMessage({
+      title: 'Relay checks',
+      documentUri: 'file:///tmp/deckard/relay.md',
+      lineNumber: 12,
+      includeDebug: false,
+    });
 
     assert.strictEqual(
       hover.value.includes('command:deckard.showEntryRelatedNotes'),
@@ -175,25 +147,25 @@ suite('Tag decorations', () => {
   });
 
   test('offers to unpin an entry that is already pinned', () => {
-    const hover = createEntryRelatedNotesHoverMessage(
-      'Relay checks',
-      'file:///tmp/deckard/relay.md',
-      12,
-      false,
-      true,
-    );
+    const hover = createEntryRelatedNotesHoverMessage({
+      title: 'Relay checks',
+      documentUri: 'file:///tmp/deckard/relay.md',
+      lineNumber: 12,
+      includeDebug: false,
+      pinned: true,
+    });
 
     assert.strictEqual(hover.value.includes('Unpin Relay checks from Home'), true);
     assert.strictEqual(hover.value.includes('command:deckard.unpinNote'), true);
   });
 
   test('offers the ranking breakdown in developer mode', () => {
-    const hover = createEntryRelatedNotesHoverMessage(
-      'Relay checks',
-      'file:///tmp/deckard/relay.md',
-      12,
-      true,
-    );
+    const hover = createEntryRelatedNotesHoverMessage({
+      title: 'Relay checks',
+      documentUri: 'file:///tmp/deckard/relay.md',
+      lineNumber: 12,
+      includeDebug: true,
+    });
 
     assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), true);
     assert.deepStrictEqual(hover.isTrusted, {

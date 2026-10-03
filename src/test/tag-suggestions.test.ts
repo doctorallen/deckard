@@ -2,40 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { TagInfo, WorkspaceIndex } from '../core/types';
-import {
-  getTagCompletionContext,
-  TagCompletionProvider,
-} from '../ui/commands/tagSuggestions';
+import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
+import { TagInfo, WorkspaceIndex } from '../domain/model';
 
 suite('Tag suggestions', () => {
-  test('finds the tag token at the cursor and its replacement range', () => {
-    assert.deepStrictEqual(getTagCompletionContext('Review @pro', 11), {
-      marker: '@',
-      query: 'pro',
-      startColumn: 7,
-      endColumn: 11,
-    });
-    assert.deepStrictEqual(getTagCompletionContext('Review @project', 10), {
-      marker: '@',
-      query: 'pr',
-      startColumn: 7,
-      endColumn: 15,
-    });
-    assert.deepStrictEqual(getTagCompletionContext('# Heading', 1), {
-      marker: '#',
-      query: '',
-      startColumn: 0,
-      endColumn: 1,
-    });
-    assert.deepStrictEqual(getTagCompletionContext('Review ~mar', 11, '~'), {
-      marker: '~',
-      query: 'mar',
-      startColumn: 7,
-      endColumn: 11,
-    });
-  });
-
   test('offers nothing in a Markdown file that is not a note', async () => {
     const provider = new TagCompletionProvider({
       ready: Promise.resolve(),

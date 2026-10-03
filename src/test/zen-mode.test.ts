@@ -2,19 +2,18 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import {
-  createDashboardSnapshot,
-  createSearchPageSnapshot,
-} from '../ui/state/dashboardState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences, TestPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { getProvenanceCss, getZenCss } from '../ui/webview/components';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { readPageChrome } from '../ui/webview/host/pageChrome';
+import { pageSheets, readSheet } from './sheets';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
 class MemoryMemento implements vscode.Memento {
@@ -53,7 +52,7 @@ suite('Zen mode', () => {
   });
 
   const pages: WebviewPage[] = [];
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   const configuration = () => vscode.workspace.getConfiguration('deckard');
 
@@ -67,7 +66,7 @@ suite('Zen mode', () => {
 
   teardown(async () => {
     pages.splice(0).forEach((page) => page.dispose());
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
     await configuration().update(
       'zenMode',
@@ -85,11 +84,6 @@ suite('Zen mode', () => {
     'notes/two.md': '# Two #project/atlas\nMore prose.',
   };
 
-  const webview = {
-    cspSource: 'vscode-webview://deckard',
-    asWebviewUri: (resource: vscode.Uri) => resource,
-  };
-
   const index = () =>
     buildWorkspaceIndex(
       new Map(
@@ -102,19 +96,19 @@ suite('Zen mode', () => {
 
   /** The Dashboard's HTML and the snapshot its script is driven with. */
   const dashboard = () => {
-    store = new PreferencesStore(new MemoryMemento());
-    const preferences = store.value;
+    store = createPreferences(new MemoryMemento());
+    const preferences = store.reader.value;
     const built = index();
     const snapshot = {
-      ...createDashboardSnapshot(built, preferences),
+      ...createDashboardSnapshot({ index: built, preferences, queryContext: createQueryContext(Date.now()) }),
       widgets: createDashboardWidgets(built, preferences, {
-        now: Date.parse('2026-09-21T00:00:00Z'),
+        queryContext: createQueryContext(Date.parse('2026-09-21T00:00:00Z')),
         upcomingDays: 7,
         tagTitleDisplayMode: 'inline' as const,
       }),
     };
     const page = openWebviewPage(
-      getDashboardHtml(webview, vscode.Uri.file('/deckard')),
+      renderPage('dashboard', { chrome: readPageChrome() }),
       snapshot,
     );
     pages.push(page);
@@ -122,10 +116,10 @@ suite('Zen mode', () => {
   };
 
   const searchPage = () => {
-    store = new PreferencesStore(new MemoryMemento());
+    store = createPreferences(new MemoryMemento());
     const page = openWebviewPage(
-      getSearchPageHtml(webview),
-      createSearchPageSnapshot(index(), store.value, '#project/atlas'),
+      renderPage('searchPage', { chrome: readPageChrome() }),
+      createSearchPageSnapshot(index(), store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) }),
     );
     pages.push(page);
     return page;
@@ -155,14 +149,22 @@ suite('Zen mode', () => {
   });
 
   test('marks the body only when it is on, and always ships its sheet', async () => {
-    const off = getDashboardHtml(webview, vscode.Uri.file('/deckard'));
+    const off = renderPage('dashboard', { chrome: readPageChrome() });
     await setZen(true);
-    const on = getDashboardHtml(webview, vscode.Uri.file('/deckard'));
+    const on = renderPage('dashboard', { chrome: readPageChrome() });
 
-    assert.ok(!off.includes('<body class="zen">'), 'off marks the body');
-    assert.ok(on.includes('<body class="zen">'), 'on does not mark the body');
-    assert.ok(off.includes('body.zen {'), 'the sheet ships when zen is off');
-    assert.ok(on.includes('body.zen {'), 'the sheet ships when zen is on');
+    const zenOf = (html: string): boolean => {
+      const page = openWebviewPage(html);
+      try {
+        return page.document.body.classList.contains('zen');
+      } finally {
+        page.dispose();
+      }
+    };
+    assert.strictEqual(zenOf(off), false, 'off marks the body');
+    assert.strictEqual(zenOf(on), true, 'on does not mark the body');
+    assert.ok(pageSheets(off).includes('body.zen {'), 'the sheet ships when zen is off');
+    assert.ok(pageSheets(on).includes('body.zen {'), 'the sheet ships when zen is on');
   });
 
   test('takes no control away from the Dashboard', async () => {
@@ -214,7 +216,7 @@ suite('Zen mode', () => {
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {
-    const sheet = getZenCss();
+    const sheet = readSheet('shared/zen.css');
 
     // Ornament goes.
     assert.match(sheet, /body\.zen \.eyebrow,/);
@@ -236,7 +238,7 @@ suite('Zen mode', () => {
   });
 
   test('folds where an entry is written, in and out of zen, without leaving the tree', () => {
-    const sheet = getProvenanceCss();
+    const sheet = readSheet('shared/provenance.css');
 
     // Folded off-screen rather than out of the tree, so it is still
     // announced, still found by find-in-page, and comes back on focus.
@@ -255,7 +257,7 @@ suite('Zen mode', () => {
   });
 
   test('declares no color, so the contrast matrix cannot move', () => {
-    const sheet = getZenCss();
+    const sheet = readSheet('shared/zen.css');
     const declarations = sheet.match(/[a-z-]+\s*:[^;}]+/g) ?? [];
     const colored = declarations.filter((declaration) =>
       /^\s*(color|background|background-color|border-color)\s*:/.test(

@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { collectNoteLinks, createLinksSearchQuery } from '../ui/state/noteLinks';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
+import { WorkspaceIndex } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 8, 25, 12).getTime();
@@ -13,7 +13,7 @@ function createIndex(notes: Record<string, string>, updated: Record<string, numb
   const files = new Map(
     Object.entries(notes).map(([path, content]) => [
       path,
-      parseMarkdown(path, content, updated[path] !== undefined ? { updatedAt: updated[path] } : undefined),
+      parseMarkdown(path, content, updated[path] === undefined ? undefined : { updatedAt: updated[path] }),
     ]),
   );
   return buildWorkspaceIndex(files);
@@ -73,7 +73,7 @@ suite('What links to a note', () => {
       'notes/Atlas.md': '# Atlas\n',
       'notes/Long.md': `# Long\nSee [[Atlas]].\n${body}\n## Next\nNot this.\n`,
     });
-    const entry = collectNoteLinks(index, index.files.get('notes/Atlas.md')!).linkedFromNotes[0].entries[0];
+    const entry = collectNoteLinks(index, index.files.get('notes/Atlas.md')!, { now: NOW }).linkedFromNotes[0].entries[0];
     const lines = entry.sectionText?.split('\n') ?? [];
     assert.strictEqual(lines.length, 15);
     assert.strictEqual(lines[0], 'See [[Atlas]].');
@@ -97,16 +97,23 @@ suite('What links to a note', () => {
       'notes/Budget.md': '# Budget #project/atlas\nSee [[Atlas]].\n',
     });
     const atlas = index.files.get('notes/Atlas.md')!;
-    const all = collectNoteLinks(index, atlas);
+    const all = collectNoteLinks(index, atlas, { now: NOW });
     assert.strictEqual(all.linkedFromNoteCount, 3);
     assert.strictEqual(all.hiddenDailyNoteCount, undefined);
-    const hidden = collectNoteLinks(index, atlas, { hideDailyNotes: true });
+    const hidden = collectNoteLinks(index, atlas, { now: NOW, hideDailyNotes: true });
     assert.deepStrictEqual(hidden.linkedFromNotes.map((group) => group.title), ['Budget']);
     assert.strictEqual(hidden.hiddenDailyNoteCount, 2);
     assert.strictEqual(hidden.linkedFromCount, 1);
 
     const ranked = (hidePeriodicNotes: boolean) =>
-      createSidebarSnapshot(index, atlas.filePath, atlas, true, 'tags', {}, 'inline', undefined, undefined, { hidePeriodicNotes })
+      createSidebarSnapshot(index, atlas.filePath, atlas, {
+        now: Date.now(),
+        enableKeywordLinks: true,
+        relatedNotesSortMode: 'tags',
+        sectionAccessCounts: {},
+        tagTitleDisplayMode: 'inline',
+        rankingOptions: { hidePeriodicNotes,
+      } })
         .notes.map((note) => note.filePath)
         .sort();
     assert.deepStrictEqual(ranked(false), ['notes/2026-09-24.md', 'notes/Budget.md', 'notes/week-2026-09-20-2026-09-26.md']);

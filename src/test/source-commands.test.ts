@@ -4,30 +4,35 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { formatIsoDate } from '../core/markdown/taskMetadata';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { createDailyNote } from '../ui/commands/dailyNote';
 import {
   describeExtractFailure,
   extractHeadingNote,
-  findHeadingAtLine,
-  getExtractedNoteFileName,
+  getSuggestedNoteName,
+  validateExtractedNoteName,
 } from '../ui/commands/extractHeading';
-import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { openSourceAt, resolveSourceUri, sourceScopeUri } from '../ui/commands/navigation';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   applyHubTemplate,
   createHubNoteContent,
   getHubNoteName,
 } from '../ui/commands/hubNote';
-import {
-  parseRenameTag,
-  replaceIndexedTag,
-  summarizeTagMerge,
-} from '../ui/commands/renameTag';
+import { summarizeTagMerge } from '../domain/index/tagMerge';
+import { replaceIndexedTag } from '../domain/markdown/tagRename';
+import { parseRenameTag, renameIndexedTag } from '../ui/commands/renameTag';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { toggleTask } from '../ui/commands/taskActions';
+import { createTaskWrites } from './taskWrites';
+import { getExtractedNoteFileName } from '../domain/markdown/noteNames';
+import { findHeadingAtLine } from '../domain/notes/headingLookup';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 suite('Source commands', () => {
+  // The history these edits write to, which no other suite shares.
+  const writes = createTaskWrites();
+
   test('toggles a checklist character and adds only its completion date', async () => {
     const temporaryRoot = await createTemporaryRoot();
     const fileUri = vscode.Uri.joinPath(temporaryRoot, 'notes.md');
@@ -38,7 +43,7 @@ suite('Source commands', () => {
     );
 
     const parsed = parseMarkdown(fileUri.fsPath, originalContent);
-    const updated = await toggleTask(parsed.tasks[0], true);
+    const updated = await toggleTask(writes, parsed.tasks[0], true);
     const content = Buffer.from(
       await vscode.workspace.fs.readFile(fileUri),
     ).toString('utf8');
@@ -64,6 +69,7 @@ suite('Source commands', () => {
     const today = formatIsoDate(Date.now());
 
     const completed = await toggleTask(
+      writes,
       parseMarkdown(fileUri.fsPath, originalContent).tasks[0],
       true,
     );
@@ -76,6 +82,7 @@ suite('Source commands', () => {
 
     // Reopening removes the done date but leaves the next occurrence alone.
     const reopened = await toggleTask(
+      writes,
       parseMarkdown(fileUri.fsPath, afterCompleting).tasks[1],
       false,
     );
@@ -106,7 +113,7 @@ suite('Source commands', () => {
       '- [ ] Changed title',
     );
     assert.strictEqual(await vscode.workspace.applyEdit(edit), true);
-    assert.strictEqual(await toggleTask(parsed.tasks[0], true), false);
+    assert.strictEqual(await toggleTask(writes, parsed.tasks[0], true), false);
     assert.strictEqual(document.lineAt(0).text, '- [ ] Changed title');
     await deleteTemporaryRoot(temporaryRoot);
   });
@@ -305,7 +312,7 @@ suite('Source commands', () => {
     const template =
       '---\ntags: [meeting]\nowner: {ask:Owner}\n---\n# {title}\nNotes on {tag} from {date}.\n';
 
-    const content = applyHubTemplate(template, project, 'Atlas', now, new Map([['Owner', 'Mara']]));
+    const content = applyHubTemplate({ template, tag: project, title: 'Atlas', now, answers: new Map([['Owner', 'Mara']]) });
     assert.strictEqual(
       content,
       '---\ndescribes: project/atlas\ntags: [meeting]\nowner: Mara\n---\n# Atlas\nNotes on #project/atlas from 2026-09-03.\n',
@@ -313,26 +320,70 @@ suite('Source commands', () => {
     assert.deepStrictEqual(parseMarkdown('notes/atlas.md', content).hub?.describes, [project]);
 
     assert.strictEqual(
-      applyHubTemplate('# {title}\n', project, 'Atlas', now),
+      applyHubTemplate({ template: '# {title}\n', tag: project, title: 'Atlas', now }),
       '---\ndescribes: project/atlas\n---\n# Atlas\n',
       'front matter is added when the template has none',
     );
     assert.strictEqual(
-      applyHubTemplate('---\n---\n# {title}\n', project, 'Atlas', now),
+      applyHubTemplate({ template: '---\n---\n# {title}\n', tag: project, title: 'Atlas', now }),
       '---\ndescribes: project/atlas\n---\n# Atlas\n',
       'empty front matter gains describes',
     );
     const ownDescribes = '---\ndescribes: project/atlas-program\n---\n# {title}\n';
     assert.strictEqual(
-      applyHubTemplate(ownDescribes, project, 'Atlas', now),
+      applyHubTemplate({ template: ownDescribes, tag: project, title: 'Atlas', now }),
       '---\ndescribes: project/atlas-program\n---\n# Atlas\n',
       "the template's own describes is kept",
     );
+    assert.strictEqual(
+      applyHubTemplate({ template: '---\ntags: [meeting]\n...\n# {title}\n', tag: project, title: 'Atlas', now }),
+      '---\ndescribes: project/atlas\ntags: [meeting]\n...\n# Atlas\n',
+      'front matter closed by ... gains describes, not a second block',
+    );
+    assert.strictEqual(
+      applyHubTemplate({ template: '---\r\ntags: [meeting]\r\n---\r\n# {title}\r\n', tag: project, title: 'Atlas', now }),
+      '---\r\ndescribes: project/atlas\r\ntags: [meeting]\r\n---\r\n# Atlas\r\n',
+      'describes is written in the line ending the template uses',
+    );
 
     const person = { key: '@dana', label: '@dana' };
-    const personNote = applyHubTemplate('# {title}\nRole: \n', person, 'Dana', now);
+    const personNote = applyHubTemplate({ template: '# {title}\nRole: \n', tag: person, title: 'Dana', now });
     assert.ok(personNote.startsWith('---\ndescribes: "@dana"\n---\n'));
     assert.deepStrictEqual(parseMarkdown('notes/dana.md', personNote).hub?.describes, [person]);
+  });
+
+  test('renames a tag in the notes it changes when a note it does not change has no file', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const tagged = vscode.Uri.joinPath(temporaryRoot, 'tagged.md');
+    await vscode.workspace.fs.writeFile(tagged, Buffer.from('# Alpha #apollo\n', 'utf8'));
+    // A relative path, which no workspace folder of the test host holds.
+    const untouched = 'notes/untouched.md';
+    assert.strictEqual(await resolveSourceUri(untouched), undefined, 'the test host has no workspace folder');
+    const index = buildWorkspaceIndex(new Map([
+      [tagged.fsPath, parseMarkdown(tagged.fsPath, '# Alpha #apollo\n')],
+      [untouched, parseMarkdown(untouched, '# Gamma\n')],
+    ]));
+    const indexer = {
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+      refresh: async () => undefined,
+    } as unknown as Parameters<typeof renameIndexedTag>[0];
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const originals = [window.showInputBox, window.showInformationMessage, window.showErrorMessage];
+    const errors: unknown[] = [];
+    window.showInputBox = async () => '#hermes';
+    window.showInformationMessage = async () => undefined;
+    window.showErrorMessage = async (message: unknown) => void errors.push(message);
+    try {
+      const renamed = await renameIndexedTag(indexer, '#apollo', { history: new WorkspaceWriteHistory() });
+
+      assert.deepStrictEqual(errors, []);
+      assert.strictEqual(renamed?.key, '#hermes');
+      assert.strictEqual((await vscode.workspace.openTextDocument(tagged)).getText(), '# Alpha #hermes\n');
+    } finally {
+      [window.showInputBox, window.showInformationMessage, window.showErrorMessage] = originals;
+      await deleteTemporaryRoot(temporaryRoot);
+    }
   });
 
   test('opens a source document at the requested one-based line', async () => {
@@ -343,12 +394,22 @@ suite('Source commands', () => {
       Buffer.from('first\nsecond\nthird\n', 'utf8'),
     );
 
-    const editor = await openSourceAt(fileUri.fsPath, 2);
+    const editor = await openSourceAt({ filePath: fileUri.fsPath, line: 2 });
 
     assert.ok(editor);
     assert.strictEqual(editor.document.uri.toString(), fileUri.toString());
     assert.strictEqual(editor.selection.active.line, 1);
     await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('finds the second of two workspace folders with the same name by its numbered key', async () => {
+    const work = { uri: vscode.Uri.file('/home/me/work/notes'), name: 'notes', index: 0 } as vscode.WorkspaceFolder;
+    const personal = { uri: vscode.Uri.file('/home/me/personal/notes'), name: 'notes', index: 1 } as vscode.WorkspaceFolder;
+    const folders = [work, personal];
+    assert.strictEqual(sourceScopeUri('notes/plan.md', folders)?.path, '/home/me/work/notes/plan.md');
+    assert.strictEqual(sourceScopeUri('notes (2)/plan.md', folders)?.path, '/home/me/personal/notes/plan.md');
+    const resolved = await resolveSourceUri('notes (2)/plan.md', folders);
+    assert.strictEqual(resolved?.path, '/home/me/personal/notes/plan.md');
   });
 
   test('treats Windows drive paths as file paths', async () => {
@@ -419,12 +480,12 @@ suite('Source commands', () => {
     // Any heading, tagged or not, is found under the cursor.
     assert.strictEqual(findHeadingAtLine(parsed.sections, 11)?.heading, 'Next');
 
-    const extractedUri = await extractHeadingNote(
-      parsed.sections[1],
+    const extractedUri = await extractHeadingNote({
+      section: parsed.sections[1],
       sourceUri,
-      notesUri,
-      'lead-note.md',
-    );
+      notesFolderUri: notesUri,
+      name: 'lead-note.md',
+    });
     assert.ok(extractedUri);
     const extractedContent = Buffer.from(
       await vscode.workspace.fs.readFile(extractedUri!),
@@ -477,7 +538,7 @@ suite('Source commands', () => {
 
     const parsed = parseMarkdown('notes/source.md', sourceContent);
     assert.ok(
-      await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'lead'),
+      await extractHeadingNote({ section: parsed.sections[1], sourceUri, notesFolderUri: notesUri, name: 'lead' }),
     );
     assert.strictEqual(
       Buffer.from(await vscode.workspace.fs.readFile(sourceUri)).toString(
@@ -501,7 +562,7 @@ suite('Source commands', () => {
       vscode.workspace.fs.stat(uri).then(() => true, () => false);
 
     assert.strictEqual(
-      await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'half', async () => 'half'),
+      await extractHeadingNote({ section: parsed.sections[1], sourceUri, notesFolderUri: notesUri, name: 'half', replace: async () => 'half' }),
       undefined,
     );
     assert.ok(
@@ -509,7 +570,7 @@ suite('Source commands', () => {
       'the heading stays in the new note while the old note is unsaved',
     );
 
-    await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'undone', async () => 'unchanged');
+    await extractHeadingNote({ section: parsed.sections[1], sourceUri, notesFolderUri: notesUri, name: 'undone', replace: async () => 'unchanged' });
     assert.ok(
       !(await exists(vscode.Uri.joinPath(notesUri, 'undone.md'))),
       'nothing changed, so the new note goes',
@@ -526,6 +587,17 @@ suite('Source commands', () => {
       describeExtractFailure('half', 'remove', 'source.md', 'lead.md'),
       'Deckard wrote lead.md but could not remove the heading from source.md, so the heading is in both notes. source.md is open with the link in its place: save it to finish, or undo the change in it and delete lead.md.',
     );
+  });
+
+  test('suggests and accepts only a name its link can open', () => {
+    assert.ok(validateExtractedNoteName('Issue #42'), 'a # is refused');
+    assert.ok(validateExtractedNoteName('Plan [draft]'), 'brackets are refused');
+    assert.strictEqual(validateExtractedNoteName('Plan draft'), undefined);
+    for (const heading of ['Issue #42 follow-up', 'Plan [draft] ^p1', 'Q3: budget | costs']) {
+      const suggestion = getSuggestedNoteName(heading);
+      assert.strictEqual(validateExtractedNoteName(suggestion), undefined, `${heading} -> ${suggestion}`);
+    }
+    assert.strictEqual(getSuggestedNoteName('Plan [draft]'), 'Plan draft');
   });
 
   test('rejects unsafe extraction names and preserves conflicts', async () => {
@@ -552,12 +624,12 @@ suite('Source commands', () => {
     );
 
     assert.strictEqual(
-      await extractHeadingNote(
-        parsed.sections[0],
+      await extractHeadingNote({
+        section: parsed.sections[0],
         sourceUri,
-        notesUri,
-        'existing',
-      ),
+        notesFolderUri: notesUri,
+        name: 'existing',
+      }),
       undefined,
     );
     assert.strictEqual(

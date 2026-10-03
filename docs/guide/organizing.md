@@ -17,13 +17,13 @@ Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard mov
 
 - The list starts with **New note…** and **Today's note**, then the five headings Capture and Move to… used last, then every heading. Lines go under the heading's own lines, above any nested heading.
 - A task left behind becomes `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`; anything else becomes a `[[link]]` to where it went. Set `deckard.moveTo.leaveBehind` to `nothing` to leave no trace. A `[>]` line is not a task.
-- If the lines or heading changed before you chose, nothing is written. The move is previewed only when `deckard.previewWorkspaceWrites` is `always`. **Undo**, or `Deckard: Undo Last Change`, puts both notes back.
+- If the lines or heading changed before you chose, nothing is written. The move is previewed only when `deckard.previewWorkspaceWrites` is `always`. **Undo**, or `Deckard: Undo Last Change`, puts both notes back, or neither: if either changed since, nothing is put back.
 
 ## Parking notes
 
 A note, heading, or task is **parked** when it is in a parked folder or a search for a parked tag finds it. Parked items stay indexed and searchable but leave the lists of things to do.
 
-- **Park Note** writes `tags: [parked]` into front matter; **Unpark Note** removes it. Both are in the palette, the editor tab's menu, and the **Deckard** menus in the editor, Explorer, and search cards, with Undo.
+- **Park Note** writes `tags: [parked]` into front matter; **Unpark Note** removes it. Both are in the palette, the editor tab's menu, and the **Deckard** menus in the editor, Explorer, and search cards, with Undo. A value YAML would misread, such as `#atlas`, is written in quotes. A tags line that ends in a comment (`tags: [a] # mine`) is left alone, since writing it again would lose the comment; Deckard says so.
 - **Park Folder…** adds a folder to `deckard.parked.folders`, from the palette or a folder's **Deckard** menu in the Explorer.
 - **Park Tag…** adds a tag to `deckard.parked.tags`, from the palette, a tag's menu, or the Outline. It parks everything a search for the tag finds, and its sub-tags: `project/old` parks `#project/old/phase-1`. A parked tag's page says **Parked** with **Unpark**.
 

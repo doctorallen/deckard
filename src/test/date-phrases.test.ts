@@ -7,9 +7,9 @@ import {
   parseDatePhrase,
   resolveDatePeriod,
   startOfWeek,
-} from '../core/markdown/dates';
-import { formatIsoDate } from '../core/markdown/taskMetadata';
+} from '../domain/markdown/dates';
 import { localeWeekStart, numericOrderFor } from '../ui/commands/datePrompt';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 suite('Dates in plain words', () => {
   // Friday 2026-09-25, noon.

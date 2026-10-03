@@ -31,9 +31,18 @@ const clicks = (process.env.DECKARD_SCREENSHOT_CLICK ?? '')
   .map((selector) => selector.trim())
   .filter(Boolean);
 
-// A side bar pane, such as a tree view, that is expanded and lists rows.
+/**
+ * A string as a JavaScript literal that is safe to put in code run in the
+ * workbench: `<`, `>`, and the line and paragraph separators are escaped,
+ * so no value can end the code or a script around it.
+ */
+function jsString(value) {
+  return JSON.stringify(value).replace(/[<>\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+/** A check, run in the workbench, that a side bar pane such as a tree view is expanded and lists rows. */
 function expandedPaneWithRows(title) {
-  return `[...document.querySelectorAll('.pane')].some((pane) => { const header = pane.querySelector('.pane-header'); return header?.getAttribute('aria-expanded') === 'true' && header.querySelector('.title')?.textContent?.trim() === ${JSON.stringify(title)} && pane.querySelectorAll('.pane-body .monaco-list-row').length > 2; })`;
+  return `[...document.querySelectorAll('.pane')].some((pane) => { const header = pane.querySelector('.pane-header'); return header?.getAttribute('aria-expanded') === 'true' && header.querySelector('.title')?.textContent?.trim() === ${jsString(title)} && pane.querySelectorAll('.pane-body .monaco-list-row').length > 2; })`;
 }
 
 /**
@@ -187,14 +196,17 @@ const candidate = join(tmpdir(), `deckard-${view}-${Date.now()}.png`);
 let portOwner;
 let succeeded = false;
 
+/** Runs a command and returns its output, trimmed, throwing when it fails. */
 function run(command, args, options = {}) {
   return execFileSync(command, args, { encoding: 'utf8', ...options }).trim();
 }
 
+/** Settles after a number of milliseconds. */
 function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
 }
 
+/** The port for the host's debugger: DECKARD_CDP_PORT, or one the system finds free. */
 function choosePort() {
   return new Promise((resolvePort, rejectPort) => {
     const server = createServer();
@@ -214,6 +226,7 @@ function choosePort() {
   });
 }
 
+/** A JSON answer from the host's debugger endpoint, which fails on any status but OK. */
 async function requestJson(path) {
   const response = await fetch(`http://127.0.0.1:${port}${path}`);
   if (!response.ok) {
@@ -222,6 +235,10 @@ async function requestJson(path) {
   return response.json();
 }
 
+/**
+ * Waits up to 30 seconds for the host's debugger to answer with a socket to
+ * talk to, and fails with whatever holds the port when it does not.
+ */
 async function waitForCdp() {
   let failure;
   for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -248,6 +265,10 @@ async function waitForCdp() {
   );
 }
 
+/**
+ * A client of the debugger socket: `call` sends a method, in a target's
+ * session when one is given, and settles with its result or its error.
+ */
 async function createCdpClient(webSocketDebuggerUrl) {
   const socket = new WebSocket(webSocketDebuggerUrl);
   const pending = new Map();
@@ -288,6 +309,7 @@ async function createCdpClient(webSocketDebuggerUrl) {
   };
 }
 
+/** Writes the workspace's settings for the theme, zen, and color theme asked for, and copies in the development notes. */
 function writeFixture() {
   mkdirSync(join(workspace, '.vscode'));
   writeFileSync(
@@ -305,7 +327,12 @@ function writeFixture() {
   });
 }
 
-// Runs inside the isolated host so no OS-level keystrokes touch other windows.
+/**
+ * Writes the companion extension, which runs inside the isolated host so no
+ * OS-level keystrokes touch other windows: it waits for Deckard and for the
+ * window to be sized, sets the view's scene, and writes `ready`, or `error`
+ * with what failed.
+ */
 function writeCompanionExtension() {
   writeFileSync(
     join(companion, 'package.json'),
@@ -322,7 +349,17 @@ function writeCompanionExtension() {
     selectedView.scene ?? `await run(${JSON.stringify(selectedView.command)});`;
   writeFileSync(
     join(companion, 'extension.js'),
-    `const vscode = require('vscode');
+    companionHelpers() + companionActivate(scene),
+  );
+}
+
+/**
+ * The companion's helpers, which a scene has in scope: `delay`, `run` for a
+ * command, and `openNote`, which opens a sample note with the cursor in the
+ * first line containing some text.
+ */
+function companionHelpers() {
+  return `const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 function delay(milliseconds) {
@@ -350,7 +387,17 @@ async function openNote(fileName, text, offset = 0, reveal = 'InCenterIfOutsideV
   );
   return editor;
 }
-async function activate() {
+`;
+}
+
+/**
+ * The companion's `activate`: it waits for Deckard's commands and for the
+ * capture to size the window, sets the scene up in a window cleared of other
+ * editors and side bars, and then clears them again unless the view keeps
+ * its layout.
+ */
+function companionActivate(scene) {
+  return `async function activate() {
   try {
     for (let attempt = 0; attempt < 120; attempt += 1) {
       const commands = await vscode.commands.getCommands(true);
@@ -388,10 +435,14 @@ async function activate() {
   }
 }
 module.exports = { activate };
-`,
-  );
+`;
 }
 
+/**
+ * Builds the extension unless DECKARD_SCREENSHOT_SKIP_BUILD is set, and
+ * starts an isolated VS Code with Deckard and the companion, its debugger on
+ * the chosen port.
+ */
 function launchWorkbench() {
   if (process.env.DECKARD_SCREENSHOT_SKIP_BUILD !== '1') {
     const build = spawnSync(process.execPath, ['esbuild.js'], {
@@ -425,6 +476,7 @@ function launchWorkbench() {
   ).unref();
 }
 
+/** Fails unless the process on the debugger port is the host this capture started. */
 function verifyPortOwner() {
   const listener = run('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN']).split(
     '\n',
@@ -445,6 +497,7 @@ function verifyPortOwner() {
   }
 }
 
+/** Stops the host this capture started, and waits for it to let go of its port. */
 async function stopWorkbench() {
   if (!portOwner) {
     return;
@@ -474,6 +527,7 @@ async function stopWorkbench() {
   throw new Error(`Capture host did not release CDP port ${port}`);
 }
 
+/** The value of an expression evaluated in a target's page. */
 async function evaluate(client, expression, sessionId) {
   const result = await client.call(
     'Runtime.evaluate',
@@ -546,6 +600,7 @@ async function pointAtWebview(client, targets, selector, action) {
   throw new Error(`Nothing to ${action} matches ${selector}`);
 }
 
+/** Whether the view has drawn, by its rendered assertion, in the workbench or in any of its webviews. */
 async function isRendered(client, targets, workbenchSessionId) {
   if (selectedView.target === 'workbench') {
     return Boolean(
@@ -575,89 +630,117 @@ async function isRendered(client, targets, workbenchSessionId) {
   return false;
 }
 
+/**
+ * Attaches to the workbench page once it is listed, and sizes it to
+ * 1920×1080 before the companion lays its scene out, which it waits for.
+ * Does nothing once attached, or while the page is not there yet.
+ */
+async function attachWorkbench(client, targets, session) {
+  const workbench = targets.find(
+    (target) =>
+      target.type === 'page' &&
+      (target.url ?? '').endsWith('/workbench/workbench.html'),
+  );
+  if (!workbench || session.id) {
+    return;
+  }
+  ({ sessionId: session.id } = await client.call(
+    'Target.attachToTarget',
+    { targetId: workbench.targetId, flatten: true },
+  ));
+  await client.call(
+    'Emulation.setDeviceMetricsOverride',
+    {
+      width: 1920,
+      height: 1080,
+      deviceScaleFactor: 1,
+      mobile: false,
+    },
+    session.id,
+  );
+  writeFileSync(join(companion, 'sized'), 'ok');
+}
+
+/** Closes the side bar panes the view names, so the view has the room. */
+async function collapsePanes(client, session) {
+  await evaluate(
+    client,
+    `for (const header of document.querySelectorAll('.pane-header[aria-expanded="true"]')) { if (${JSON.stringify(selectedView.collapsePanes)}.includes(header.querySelector('.title')?.textContent?.trim())) header.click(); }`,
+    session.id,
+  );
+  session.panesCollapsed = true;
+  await delay(1000);
+}
+
+/**
+ * Clicks and hovers what the view asks for, captures the workbench as a
+ * candidate, refuses one that is not a 1920×1080 PNG, and promotes it over
+ * the repository's image when DECKARD_SCREENSHOT_PROMOTE is set.
+ */
+async function takeScreenshot(client, targets, workbenchSessionId) {
+  for (const selector of clicks) {
+    await pointAtWebview(client, targets, selector, 'click');
+  }
+  if (hover) {
+    await pointAtWebview(client, targets, hover, 'hover');
+  }
+  const screenshot = await client.call(
+    'Page.captureScreenshot',
+    { format: 'png', fromSurface: true },
+    workbenchSessionId,
+  );
+  writeFileSync(candidate, Buffer.from(screenshot.data, 'base64'));
+  const png = readFileSync(candidate);
+  if (
+    !png
+      .subarray(0, 8)
+      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
+    png.readUInt32BE(16) !== 1920 ||
+    png.readUInt32BE(20) !== 1080
+  ) {
+    throw new Error('Candidate is not a 1920x1080 PNG');
+  }
+  console.log(
+    `Captured candidate ${candidate} from verified Deckard ${selectedView.title} view.`,
+  );
+  if (promote) {
+    mkdirSync(resolve(output, '..'), { recursive: true });
+    writeFileSync(output, png);
+    console.log(`Promoted candidate to ${basename(output)}.`);
+  } else {
+    console.log(
+      'Inspect the candidate, then rerun with DECKARD_SCREENSHOT_PROMOTE=1 to update the repository image.',
+    );
+  }
+}
+
+/**
+ * Waits up to 90 seconds for the companion's scene and the view to render,
+ * then takes the screenshot. A scene the companion could not set up fails
+ * with its error.
+ */
 async function capture(client) {
-  let workbenchSessionId;
-  let panesCollapsed = !selectedView.collapsePanes;
+  const session = { id: undefined, panesCollapsed: !selectedView.collapsePanes };
   try {
     for (let attempt = 0; attempt < 90; attempt += 1) {
       const targets =
         (await client.call('Target.getTargets')).targetInfos ?? [];
-      const workbench = targets.find(
-        (target) =>
-          target.type === 'page' &&
-          (target.url ?? '').endsWith('/workbench/workbench.html'),
-      );
-      if (workbench && !workbenchSessionId) {
-        ({ sessionId: workbenchSessionId } = await client.call(
-          'Target.attachToTarget',
-          { targetId: workbench.targetId, flatten: true },
-        ));
-        await client.call(
-          'Emulation.setDeviceMetricsOverride',
-          {
-            width: 1920,
-            height: 1080,
-            deviceScaleFactor: 1,
-            mobile: false,
-          },
-          workbenchSessionId,
-        );
-        writeFileSync(join(companion, 'sized'), 'ok');
-      }
+      await attachWorkbench(client, targets, session);
       const ready = existsSync(join(companion, 'ready'));
       const errorPath = join(companion, 'error');
       if (existsSync(errorPath)) {
         throw new Error(readFileSync(errorPath, 'utf8'));
       }
-      if (workbenchSessionId && ready && !panesCollapsed) {
-        await evaluate(
-          client,
-          `for (const header of document.querySelectorAll('.pane-header[aria-expanded="true"]')) { if (${JSON.stringify(selectedView.collapsePanes)}.includes(header.querySelector('.title')?.textContent?.trim())) header.click(); }`,
-          workbenchSessionId,
-        );
-        panesCollapsed = true;
-        await delay(1000);
+      if (session.id && ready && !session.panesCollapsed) {
+        await collapsePanes(client, session);
         continue;
       }
       if (
-        workbenchSessionId &&
+        session.id &&
         ready &&
-        (await isRendered(client, targets, workbenchSessionId))
+        (await isRendered(client, targets, session.id))
       ) {
-        for (const selector of clicks) {
-          await pointAtWebview(client, targets, selector, 'click');
-        }
-        if (hover) {
-          await pointAtWebview(client, targets, hover, 'hover');
-        }
-        const screenshot = await client.call(
-          'Page.captureScreenshot',
-          { format: 'png', fromSurface: true },
-          workbenchSessionId,
-        );
-        writeFileSync(candidate, Buffer.from(screenshot.data, 'base64'));
-        const png = readFileSync(candidate);
-        if (
-          !png
-            .subarray(0, 8)
-            .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-          png.readUInt32BE(16) !== 1920 ||
-          png.readUInt32BE(20) !== 1080
-        ) {
-          throw new Error('Candidate is not a 1920x1080 PNG');
-        }
-        console.log(
-          `Captured candidate ${candidate} from verified Deckard ${selectedView.title} view.`,
-        );
-        if (promote) {
-          mkdirSync(resolve(output, '..'), { recursive: true });
-          writeFileSync(output, png);
-          console.log(`Promoted candidate to ${basename(output)}.`);
-        } else {
-          console.log(
-            'Inspect the candidate, then rerun with DECKARD_SCREENSHOT_PROMOTE=1 to update the repository image.',
-          );
-        }
+        await takeScreenshot(client, targets, session.id);
         return;
       }
       await delay(1000);

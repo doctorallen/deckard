@@ -1,83 +1,34 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
-import { parseMarkdown } from '../core/markdown/parser';
-import { parseQuery } from '../core/query/queryParser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
-import { parseStatsMessage } from '../ui/webview/messages';
-import { getStatsHtml } from '../ui/webview/statsHtml';
-import { listStatsTags } from '../ui/webview/stats';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { parseQuery } from '../domain/query/queryParser';
+import { createPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { listStatsTags } from '../ui/webview/pages/stats/statsController';
 import { openWebviewPage } from './webviewPage';
-
-suite('Stats messages', () => {
-  test('accepts the messages its rows post', () => {
-    assert.deepStrictEqual(
-      parseStatsMessage({ type: 'openTag', tagKey: '#project/relay' }),
-      { type: 'openTag', tagKey: '#project/relay' },
-    );
-    assert.deepStrictEqual(
-      parseStatsMessage({
-        type: 'openSource',
-        filePath: 'notes/first.md',
-        line: 3,
-      }),
-      { type: 'openSource', filePath: 'notes/first.md', line: 3 },
-    );
-  });
-
-  test('keeps only the fields the host reads', () => {
-    assert.deepStrictEqual(
-      parseStatsMessage({
-        type: 'openTag',
-        tagKey: '#project/relay',
-        filterTagKeys: ['#risk/vendor'],
-      }),
-      { type: 'openTag', tagKey: '#project/relay' },
-    );
-  });
-
-  test('rejects anything its rows could not have posted', () => {
-    for (const message of [
-      undefined,
-      'openTag',
-      { type: 'openTag', tagKey: '' },
-      { type: 'openSource', filePath: 'notes/first.md', line: 0 },
-      { type: 'openSource', filePath: 'notes/first.md', line: 1.5 },
-      { type: 'toggleTask', taskId: 'a', completed: true },
-    ]) {
-      assert.strictEqual(
-        parseStatsMessage(message),
-        undefined,
-        JSON.stringify(message),
-      );
-    }
-  });
-});
+import { renderPage } from './pages';
+import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/statsState';
 
 suite('Stats: notes that could not be read', () => {
   const index = () =>
     buildWorkspaceIndex(new Map([['notes/good.md', parseMarkdown('notes/good.md', '# Good #project/atlas')]]));
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
 
   test('the snapshot lists each one with what opens it', () => {
     const snapshot = createDeckardStatsSnapshot(index(), preferences(), [
       { filePath: 'notes/bad.md', reason: 'EACCES: permission denied' },
-    ]);
+    ], Date.now());
     assert.deepStrictEqual(snapshot.unreadable, [
       { filePath: 'notes/bad.md', reason: 'EACCES: permission denied', open: { type: 'openSource', filePath: 'notes/bad.md', line: 1 } },
     ]);
-    assert.deepStrictEqual(createDeckardStatsSnapshot(index(), preferences()).unreadable, []);
+    assert.deepStrictEqual(createDeckardStatsSnapshot(index(), preferences(), [], Date.now()).unreadable, []);
   });
 
   test('the page says so where a reader looks, and a row opens the note', () => {
     const page = openWebviewPage(
-      getStatsHtml(webview),
-      createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/bad.md', reason: 'EACCES: permission denied' }]),
+      renderPage('stats'),
+      createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/bad.md', reason: 'EACCES: permission denied' }], Date.now()),
     );
     try {
       const text = page.document.body.textContent ?? '';
@@ -93,7 +44,7 @@ suite('Stats: notes that could not be read', () => {
   });
 
   test('the page says when the index was refreshed in words, with the time on hover', () => {
-    const page = openWebviewPage(getStatsHtml(webview), { ...createDeckardStatsSnapshot(index(), preferences()), updatedAt: Date.now() - 5 * 60 * 1000 });
+    const page = openWebviewPage(renderPage('stats'), { ...createDeckardStatsSnapshot(index(), preferences(), [], Date.now()), updatedAt: Date.now() - 5 * 60 * 1000 });
     try {
       assert.match(page.text('.updated') ?? '', /^Index last refreshed: 5 minutes ago/);
       assert.ok(page.find('.updated span[title]').getAttribute('title')?.includes('2'), 'the exact time is on hover');
@@ -103,7 +54,7 @@ suite('Stats: notes that could not be read', () => {
   });
 
   test('every tile opens a search Deckard can read', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {
       const queries = page.findAll('[data-query]').map((tile) => tile.getAttribute('data-query') ?? '');
       assert.ok(queries.includes('is:task'), JSON.stringify(queries));
@@ -116,8 +67,37 @@ suite('Stats: notes that could not be read', () => {
     }
   });
 
+  test('its shell loads the bundle last with the page\'s nonce, names its theme, and carries a snapshot only when given one', () => {
+    const html = renderPage('stats');
+    const nonce = /'nonce-([^']+)'/.exec(html)?.[1];
+    assert.ok(nonce, 'the policy names a nonce');
+    assert.match(html, new RegExp(`<script nonce="${nonce}" src="vscode-webview://deckard/dist/webview/stats\\.js"></script>\\s*</body>`));
+    assert.match(html, /<meta name="deckard-theme" content="[A-Za-z]+">/);
+    assert.ok(!html.includes('id="state"'), 'no snapshot, no block');
+    assert.match(html, /<main id="app" aria-busy="true"><div class="loading" role="status"><span>Loading statistics…<\/span><\/div><\/main>/);
+    const withState = renderPage('stats', { state: { note: 'a < b </script>' } });
+    assert.ok(withState.includes('<main id="app"></main>'), 'a page with its snapshot has no loading line');
+    assert.ok(withState.includes('<script type="application/json" id="state">{"note":"a \\u003c b \\u003c/script>"}</script><script nonce='), 'the block comes before the bundle, every < escaped');
+  });
+
+  test('the page draws the snapshot its shell carries as it draws a posted one, and no note can close the block', () => {
+    const reason = '</script><script>window.escaped = true;</script><!-- EACCES';
+    const snapshot = { ...createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/<b>bad</b>.md', reason }], Date.now()), updatedAt: 0 };
+    const embedded = openWebviewPage(renderPage('stats', { state: snapshot }));
+    const posted = openWebviewPage(renderPage('stats'), snapshot);
+    try {
+      assert.strictEqual(embedded.find('#app').innerHTML, posted.find('#app').innerHTML);
+      assert.strictEqual(embedded.text('.unreadable .detail:not(p)'), reason, 'the reason is text');
+      assert.strictEqual((embedded.window as unknown as { escaped?: boolean }).escaped, undefined, 'nothing in the snapshot ran');
+      assert.strictEqual(embedded.findAll('script[type="application/json"]').length, 1);
+    } finally {
+      embedded.dispose();
+      posted.dispose();
+    }
+  });
+
   test('the page says nothing when every note was read', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {
       // The page's own script mentions the panel by name, so read the DOM,
       // not the text of everything under body.
@@ -133,12 +113,11 @@ suite('Stats: what needs attention, first', () => {
   const build = (notes: Record<string, string>) =>
     buildWorkspaceIndex(new Map(Object.entries(notes).map(([filePath, text]) => [filePath, parseMarkdown(filePath, text)])));
   const preferences = (value: Record<string, unknown> = {}) => ({
-    ...new PreferencesStore({ get: (_k: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never).value,
+    ...createPreferences({ get: (_k: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never).reader.value,
     ...value,
   });
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
   const open = (index: ReturnType<typeof build>, prefs = preferences()) =>
-    openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index, prefs));
+    openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index, prefs, [], Date.now()));
 
   test('leads with Needs attention, each panel counting its rows', () => {
     const page = open(build({
@@ -154,6 +133,29 @@ suite('Stats: what needs attention, first', () => {
         'Tags that look alike (1)',
         'Notes nothing links to (2)',
       ]);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('Enter on a button in a row is the button\'s, and on the row itself opens the row', () => {
+    const page = open(build({
+      'notes/a.md': '# A #project/atlas\n\nSee [[Nowhere]].',
+      'notes/b.md': '# B #project/atlass',
+    }));
+    try {
+      const enter = (element: Element) => {
+        const event = new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        element.dispatchEvent(event);
+        return event;
+      };
+      for (const action of ['create-missing-note', 'merge-lookalike']) {
+        const before = page.posted.length;
+        assert.strictEqual(enter(page.find(`[data-action="${action}"]`)).defaultPrevented, false, `Enter on ${action} is left to the button, which clicks it`);
+        assert.deepStrictEqual(page.posted.slice(before), [], 'and the row does not open');
+      }
+      assert.strictEqual(enter(page.find('[data-missing-index="0"]')).defaultPrevented, true);
+      assert.deepStrictEqual(page.lastPosted('openSearch'), { type: 'openSearch', query: 'link = [[Nowhere]]' }, 'the row itself opens');
     } finally {
       page.dispose();
     }
@@ -237,19 +239,6 @@ suite('Stats: what needs attention, first', () => {
     }
   });
 
-  test('accepts the messages the totals post, and nothing like them', () => {
-    assert.deepStrictEqual(parseStatsMessage({ type: 'openTagList', namespaced: true }), { type: 'openTagList', namespaced: true });
-    assert.deepStrictEqual(parseStatsMessage({ type: 'openNotesGraph', onlyWrittenLinks: true, extra: 1 }), { type: 'openNotesGraph', onlyWrittenLinks: true });
-    for (const message of [
-      { type: 'openTagList' },
-      { type: 'openTagList', namespaced: 'yes' },
-      { type: 'openNotesGraph' },
-      { type: 'openNotesGraph', onlyWrittenLinks: false },
-    ]) {
-      assert.strictEqual(parseStatsMessage(message), undefined, JSON.stringify(message));
-    }
-  });
-
   test('a Tags total offers its tags, most used first', () => {
     const index = build({ 'notes/a.md': '# A #project/atlas #topic\n\n## B #project/atlas' });
     assert.deepStrictEqual(listStatsTags(index, false).map((row) => [row.label, row.description]), [
@@ -257,6 +246,57 @@ suite('Stats: what needs attention, first', () => {
       ['#topic', '1 entry'],
     ]);
     assert.deepStrictEqual(listStatsTags(index, true).map((row) => row.tagKey), ['#project/atlas']);
+  });
+});
+
+suite('Stats: what the reader chose, kept across a hide', () => {
+  const build = (notes: Record<string, string>) =>
+    buildWorkspaceIndex(new Map(Object.entries(notes).map(([filePath, text]) => [filePath, parseMarkdown(filePath, text)])));
+  const preferences = () =>
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
+  const notes: Record<string, string> = { 'notes/tags.md': '# A #once #design #vendor\n# B #design #vendor\n# C #design' };
+  for (let i = 0; i < 14; i += 1) {
+    notes[`notes/n${String(i).padStart(2, '0')}.md`] = `# Note ${i}`;
+  }
+  const snapshot = () => createDeckardStatsSnapshot(build(notes), preferences(), [], Date.now());
+
+  test('keeps whether the rest of the unlinked notes, the tags used once, and the table are shown, and where it was scrolled', async () => {
+    const page = openWebviewPage(renderPage('stats'), snapshot());
+    try {
+      assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
+      page.click('[data-action="toggle-used-once"]');
+      assert.deepStrictEqual(page.savedState(), { showAllOrphans: false, showUsedOnce: true, pairsAsTable: false });
+      page.click('[data-action="toggle-pairs-table"]');
+      page.click('[data-action="show-more-orphans"]');
+      assert.deepStrictEqual(page.savedState(), { showAllOrphans: true, showUsedOnce: true, pairsAsTable: true });
+      page.window.dispatchEvent(new page.window.Event('scroll'));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepStrictEqual(page.savedState(), { showAllOrphans: true, showUsedOnce: true, pairsAsTable: true, scrollY: 0 });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('draws what was kept when VS Code loads it again, and reads anything else as nothing chosen', () => {
+    const kept = openWebviewPage(renderPage('stats'), snapshot(), {
+      savedState: { showAllOrphans: true, showUsedOnce: true, pairsAsTable: true, scrollY: 120 },
+    });
+    const stranger = openWebviewPage(renderPage('stats'), snapshot(), {
+      savedState: { showAllOrphans: 'yes', showUsedOnce: 1, pairsAsTable: null },
+    });
+    try {
+      assert.ok(kept.find('.orphan-list').classList.contains('show-all'));
+      assert.strictEqual(kept.findAll('[data-action="show-more-orphans"]').length, 0);
+      assert.strictEqual(kept.findAll('#used-once-list').length, 1);
+      assert.strictEqual(kept.find('[data-action="toggle-used-once"]').getAttribute('aria-expanded'), 'true');
+      assert.ok(kept.find('.tag-pairs').classList.contains('as-table'));
+      assert.ok(!stranger.find('.orphan-list').classList.contains('show-all'));
+      assert.strictEqual(stranger.findAll('#used-once-list').length, 0);
+      assert.ok(!stranger.find('.tag-pairs').classList.contains('as-table'));
+    } finally {
+      kept.dispose();
+      stranger.dispose();
+    }
   });
 });
 
@@ -274,8 +314,7 @@ suite('Stats: twelve weeks under each total', () => {
     ['notes/d.md', parseMarkdown('notes/d.md', '# D')],
   ]));
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
 
   test('rebuilds each total week by week from the dates notes were written', () => {
     const trends = createStatsTrends(index(), now);
@@ -294,7 +333,7 @@ suite('Stats: twelve weeks under each total', () => {
   test('says how each total moved in the last seven days, and draws its line', () => {
     const snapshot = createDeckardStatsSnapshot(index(), preferences(), [], now);
     snapshot.trends.tasks = { points: [...snapshot.trends.tasks.points.slice(0, 11), 4, 3], change: -1 };
-    const page = openWebviewPage(getStatsHtml(webview), snapshot);
+    const page = openWebviewPage(renderPage('stats'), snapshot);
     try {
       const tile = (label: string) => page.findAll('.metric').find((element) => element.querySelector('.metric-label')?.textContent === label) as HTMLElement;
       assert.strictEqual(tile('Notes').querySelector('.metric-change')?.textContent, '+2 in the last 7 days');
@@ -333,8 +372,7 @@ suite('Stats: how often tags are used', () => {
     return buildWorkspaceIndex(new Map([['notes/tags.md', parseMarkdown('notes/tags.md', lines.join('\n'))]]));
   };
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
 
   test('counts tags in six bands, and lists those used once with their lookalikes', () => {
     const usage = createTagUsage(notes());
@@ -354,7 +392,7 @@ suite('Stats: how often tags are used', () => {
   });
 
   test('each bar says its count and opens its tags; Used once unfolds them to merge', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(notes(), preferences()));
+    const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(notes(), preferences(), [], Date.now()));
     try {
       const bands = page.findAll('.tag-use-band');
       assert.deepStrictEqual(bands.map((band) => band.textContent), [
@@ -388,17 +426,7 @@ suite('Stats: how often tags are used', () => {
     }
   });
 
-  test('accepts a band and a merge into, and nothing malformed', () => {
-    assert.deepStrictEqual(parseStatsMessage({ type: 'openTagList', namespaced: false, min: 3, max: 5 }), { type: 'openTagList', namespaced: false, min: 3, max: 5 });
-    assert.deepStrictEqual(parseStatsMessage({ type: 'mergeTagInto', sourceKey: '#once' }), { type: 'mergeTagInto', sourceKey: '#once' });
-    for (const message of [
-      { type: 'openTagList', namespaced: false, min: 0 },
-      { type: 'openTagList', namespaced: false, min: 5, max: 3 },
-      { type: 'openTagList', namespaced: false, max: 3 },
-      { type: 'mergeTagInto', sourceKey: '' },
-    ]) {
-      assert.strictEqual(parseStatsMessage(message), undefined, JSON.stringify(message));
-    }
+  test('a band offers the tags used that often', () => {
     const index = notes();
     assert.deepStrictEqual(listStatsTags(index, false, { min: 3, max: 5 }).map((row) => row.label), ['#four', '#project/atlas']);
   });
@@ -416,8 +444,7 @@ suite('Stats: tags written together', () => {
     ].join('\n'))],
   ]));
   const preferences = () =>
-    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+    createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).reader.value;
 
   test('counts the entries carrying each two of the most-used tags', () => {
     const { tags, pairs } = createTagPairs(index(), 12);
@@ -435,7 +462,7 @@ suite('Stats: tags written together', () => {
   });
 
   test('a cell opens the search for both, and the pairs can be read as a list', () => {
-    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {
       const cells = page.findAll('.pair-grid .pair-cell');
       assert.ok(cells.length > 0);

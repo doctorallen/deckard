@@ -1,18 +1,21 @@
 import * as vscode from 'vscode';
 
-import { parseTaskDraft, formatTaskDraft } from '../../core/markdown/taskDraft';
-import { TaskMetadataFormat } from '../../core/markdown/taskMetadata';
-import { WorkspaceIndex } from '../../core/types';
-import { createPinForLine, findPinnedSection } from '../state/pinnedNotes';
+import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { parseTaskDraft, formatTaskDraft } from '../../domain/markdown/taskDraft';
 import { createWikiLink } from './insertLink';
+import { createPinForLine, findPinnedSection } from '../../domain/notes/pins';
+import { WorkspaceIndex } from '../../domain/model';
+import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
+
+/** The longest selection, in characters, that Find and Capture start from. */
+export const SHORT_SELECTION_LIMIT = 120;
 
 /**
  * Find and Capture start from the words selected in the editor, when they
  * are a few words on one line: something to search for or write down, not
- * a passage, which Move to… is for.
+ * a passage, which Move to… is for. Undefined for no selection, one over
+ * more than a line or SHORT_SELECTION_LIMIT, or only whitespace.
  */
-export const SHORT_SELECTION_LIMIT = 120;
-
 export function shortSelection(
   editor: Pick<vscode.TextEditor, 'document' | 'selection'> | undefined,
 ): string | undefined {
@@ -31,6 +34,11 @@ export interface CaptureSeed {
   link?: string;
 }
 
+/**
+ * What Capture starts from in this editor: the short selection, with a link
+ * to the heading it was selected under when the editor holds an indexed
+ * note. Undefined when there is no short selection.
+ */
 export function captureSeed(
   editor: Pick<vscode.TextEditor, 'document' | 'selection'> | undefined,
   index: WorkspaceIndex,
@@ -50,6 +58,9 @@ export function captureSeed(
   return { text, link: createWikiLink(index, filePath, section?.id).text };
 }
 
+/** A line the link goes into as part of a task's words rather than after them. */
+const SEEDED_TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+
 /**
  * A captured line with a link back to where it came from: after the words
  * and before any task metadata, so the date and priority stay last, as
@@ -63,7 +74,7 @@ export function withSourceLink(
   if (!link) {
     return line;
   }
-  if (!/^\s*[-*+][ \t]+\[[ xX]\]/.test(line)) {
+  if (!isTaskLineOf(line, SEEDED_TASK)) {
     return `${line.replace(/[ \t]+$/, '')} ${link}`;
   }
   const draft = parseTaskDraft(line, format);

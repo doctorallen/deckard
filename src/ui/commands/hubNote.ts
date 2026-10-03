@@ -1,16 +1,15 @@
 import * as vscode from 'vscode';
+import { fileExists } from './fs';
 import { describeMissingTag, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 
-import { getTagKind } from '../../core/query/queryEvaluator';
-import { TagInfo, TagReference, WorkspaceIndex } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { getExtractedNoteFileName } from './extractHeading';
+import { getTagKind } from '../../domain/query/queryEvaluator';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { resolveSourceUri } from './navigation';
-import {
-  askTemplateQuestions,
-  fillTemplate,
-  getTemplateVariables,
-} from './templates';
+import { askTemplateQuestions } from './templates';
+import { fillTemplate, getTemplateVariables } from '../../domain/notes/templates';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
+import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
+import { TagInfo, TagReference, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Names a hub note after what it describes: `#project/skybridge-signal`
@@ -32,33 +31,39 @@ export function createHubNoteContent(tag: TagReference, title: string): string {
   return `---\ndescribes: ${getDescribesValue(tag)}\n---\n# ${title}\n\n`;
 }
 
+/** A namespace's hub template, and what fills it. */
+export interface HubTemplateOptions {
+  template: string;
+  tag: TagReference;
+  title: string;
+  now: Date;
+  /** The reader's answers to the template's questions, by question. */
+  answers?: ReadonlyMap<string, string>;
+}
+
 /**
  * Makes a hub note from a namespace's template: fills its placeholders, with
  * `{tag}` as well, and adds `describes:` to its front matter unless the
  * template writes its own.
  */
-export function applyHubTemplate(
-  template: string,
-  tag: TagReference,
-  title: string,
-  now: Date,
-  answers?: ReadonlyMap<string, string>,
-): string {
+export function applyHubTemplate({ template, tag, title, now, answers }: HubTemplateOptions): string {
   const content = fillTemplate(
     template,
     { ...getTemplateVariables(title, now), tag: tag.label },
     answers,
   );
   const describes = `describes: ${getDescribesValue(tag)}`;
-  const frontmatter = /^---\r?\n(?:([\s\S]*?)\r?\n)?---(?:\r?\n|$)/.exec(content);
-  if (!frontmatter) {
+  const lines = content.split(/\r?\n/);
+  const end = findFrontmatterEnd(lines);
+  if (end === undefined) {
     return `---\n${describes}\n---\n${content}`;
   }
-  if (/^describes\s*:/m.test(frontmatter[1] ?? '')) {
+  if (lines.slice(1, end).some((line) => /^describes\s*:/.test(line))) {
     return content;
   }
-  const eol = frontmatter[0].startsWith('---\r\n') ? '\r\n' : '\n';
-  const bodyStart = 3 + eol.length;
+  // The field goes first, under the opening line, in that line's ending.
+  const bodyStart = content.indexOf('\n') + 1;
+  const eol = content[bodyStart - 2] === '\r' ? '\r\n' : '\n';
   return `${content.slice(0, bodyStart)}${describes}${eol}${content.slice(bodyStart)}`;
 }
 
@@ -67,7 +72,7 @@ export function applyHubTemplate(
  * already has the name is never overwritten.
  */
 export async function createHubNote(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader<vscode.Uri>,
   tagKey: string,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
@@ -87,7 +92,7 @@ export async function createHubNote(
   const fileName = getExtractedNoteFileName(title) ?? 'Hub.md';
   const notesFolderUri = indexer.getNotesFolderUri(workspaceFolder);
   const noteUri = vscode.Uri.joinPath(notesFolderUri, fileName);
-  if (await exists(noteUri)) {
+  if (await fileExists(noteUri)) {
     void reportFailure({
       outcome: `${fileName} already exists, so Deckard did not create a hub note.`,
       fix: `Add "describes: ${getDescribesValue(tag)}" to its front matter to make it the hub note for ${tag.label}.`,
@@ -103,7 +108,7 @@ export async function createHubNote(
     if (!answers) {
       return undefined;
     }
-    content = applyHubTemplate(template, tag, title, new Date(), answers);
+    content = applyHubTemplate({ template, tag, title, now: new Date(), answers });
   }
   await vscode.workspace.fs.createDirectory(notesFolderUri);
   await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
@@ -125,7 +130,7 @@ function getDescribesValue(tag: TagReference): string {
  * `project.md` for `#project/atlas`, when the templates folder has one.
  */
 async function readHubTemplate(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader<vscode.Uri>,
   workspaceFolder: vscode.WorkspaceFolder,
   tag: TagReference,
 ): Promise<string | undefined> {
@@ -158,13 +163,4 @@ async function findWorkspaceFolder(
     (uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined) ??
     vscode.workspace.workspaceFolders?.[0]
   );
-}
-
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }

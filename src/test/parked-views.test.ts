@@ -2,27 +2,27 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../core/storage/preferences';
-import { PersistedPreferences } from '../core/types';
+import { createPreferences } from './preferenceServices';
 import { buildSetupReport, SetupFacts } from '../ui/commands/checkSetup';
-import { TagCompletionProvider } from '../ui/commands/tagSuggestions';
-import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
+import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
 import { collectNoteLinks } from '../ui/state/noteLinks';
-import { createNotesGraphSnapshot, graphInputsChanged } from '../ui/state/notesGraphState';
 import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { getStatsHtml } from '../ui/webview/statsHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { graphInputsChanged } from '../domain/graph/graphChanges';
+import { createNotesGraphSnapshot } from '../domain/graph/notesGraph';
+import { createDeckardStatsSnapshot } from '../ui/state/statsState';
+import { PersistedPreferences } from '../domain/model';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 
@@ -40,7 +40,9 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
   test('Related Notes leaves a parked note out, and keeps it, last, beside a parked note', () => {
     const index = workspace();
     const related = (filePath: string) =>
-      createSidebarSnapshot(index, filePath, index.files.get(filePath)).notes.map((note) => [
+      createSidebarSnapshot(index, filePath, index.files.get(filePath), {
+        now: Date.now(),
+      }).notes.map((note) => [
         note.filePath,
         note.parked === true,
       ]);
@@ -77,7 +79,7 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
   });
 
   test('the graph has a Show parked switch, off until chosen', () => {
-    const page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }));
+    const page = openWebviewPage(renderPage('notesGraph'));
     try {
       const toggle = page.find('#show-parked') as HTMLInputElement;
       assert.strictEqual(toggle.type, 'checkbox');
@@ -114,10 +116,10 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
 
   test('Stats leaves parked notes out of the unlinked ones, and says how much is parked', () => {
     const index = workspace();
-    const stats = createDeckardStatsSnapshot(index, defaults());
+    const stats = createDeckardStatsSnapshot(index, defaults(), [], Date.now());
     assert.ok(!stats.orphanNotes.some((note) => note.detail === 'archive/Old plan.md'));
     assert.deepStrictEqual(stats.parked, { notes: 1, openTasks: 1 });
-    const page = openWebviewPage(getStatsHtml({ cspSource: 'vscode-webview://deckard' } as never), stats);
+    const page = openWebviewPage(renderPage('stats'), stats);
     try {
       assert.strictEqual(page.text('.parked-line'), 'Parked: 1 note, 1 open task');
       page.click('.parked-line button');
@@ -125,7 +127,7 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
     } finally {
       page.dispose();
     }
-    assert.strictEqual(createDeckardStatsSnapshot(indexWithParking({ 'a.md': '# A\n' }), defaults()).parked, undefined);
+    assert.strictEqual(createDeckardStatsSnapshot(indexWithParking({ 'a.md': '# A\n' }), defaults(), [], Date.now()).parked, undefined);
   });
 
   test('Check My Setup says how many notes are parked, and warns when all are', () => {

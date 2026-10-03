@@ -51,7 +51,7 @@ for lenses on screen.
 
 ## Shape
 
-`src/ui/commands/editorLenses.ts` holds one provider, `EditorLenses`, beside
+`src/ui/providers/editorLenses.ts` holds one provider, `EditorLenses`, beside
 `EditorReferences`. Each group is a function from the note being edited and
 the index to the lenses it wants, gated by its own setting. What each group
 decides — which tasks are waited on, which links are broken, which mentions

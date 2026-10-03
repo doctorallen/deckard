@@ -2,11 +2,11 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { NoteVisits, NoteVisitWindow, sectionForVisit } from '../ui/commands/noteVisits';
-import { carrySectionIds } from '../ui/state/frecency';
+import { carrySectionIds } from '../domain/ranking/frecency';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -55,37 +55,37 @@ suite('A note counts as opened when it stays open', () => {
   });
   const indexer = {
     getSnapshot: () => index,
-    getFilePath: (uri: vscode.Uri) => uri.fsPath.replace('/ws/', ''),
+    getFilePath: (uri: vscode.Uri) => uri.path.replace('/ws/', ''),
     isNotesFile: () => true,
   };
   const next = [...index.sections.values()].find((section) => section.heading === 'Next')!;
   const atlas = [...index.sections.values()].find((section) => section.heading === 'Atlas')!;
 
   test('records the cursor\'s heading once the note has stayed a moment, quietly', async () => {
-    const preferences = new PreferencesStore(new MemoryMemento());
+    const preferences = createPreferences(new MemoryMemento());
     let loud = 0;
     let quiet = 0;
-    preferences.onDidChange(() => (loud += 1));
-    preferences.onDidRecordVisit(() => (quiet += 1));
+    preferences.reader.onDidChange(() => (loud += 1));
+    preferences.reader.onDidRecordVisit(() => (quiet += 1));
     const { window, open } = createWindow();
     const visits = new NoteVisits(indexer, preferences, { dwellMs: 30, window });
     try {
       open('notes/atlas.md', 7);
       await settle(80);
-      assert.strictEqual(preferences.value.sectionAccessCounts[next.id], 1);
+      assert.strictEqual(preferences.reader.value.sectionAccessCounts[next.id], 1);
       assert.deepStrictEqual([loud, quiet], [0, 1]);
       // The same heading again within ten minutes is not a second visit.
       open('notes/plain.md', 1);
       open('notes/atlas.md', 7);
       await settle(80);
-      assert.strictEqual(preferences.value.sectionAccessCounts[next.id], 1);
+      assert.strictEqual(preferences.reader.value.sectionAccessCounts[next.id], 1);
     } finally {
       visits.dispose();
     }
   });
 
   test('switching away before the moment is up records nothing', async () => {
-    const preferences = new PreferencesStore(new MemoryMemento());
+    const preferences = createPreferences(new MemoryMemento());
     const { window, open, states } = createWindow();
     const visits = new NoteVisits(indexer, preferences, { dwellMs: 40, window });
     try {
@@ -93,11 +93,11 @@ suite('A note counts as opened when it stays open', () => {
       await settle(10);
       open('notes/plain.md', 1);
       await settle(80);
-      assert.deepStrictEqual(preferences.value.sectionAccessCounts, {});
+      assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, {});
       open('notes/atlas.md', 7);
       states.fire({ focused: false } as vscode.WindowState);
       await settle(80);
-      assert.deepStrictEqual(preferences.value.sectionAccessCounts, {}, 'a window that lost focus');
+      assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, {}, 'a window that lost focus');
     } finally {
       visits.dispose();
     }
@@ -121,12 +121,12 @@ suite('A note counts as opened when it stays open', () => {
     assert.strictEqual(moved.get(ids(before, 'Same')[1]), ids(after, 'Same')[1]);
     assert.strictEqual(moved.get(ids(before, 'Gone')[0]), undefined);
 
-    const preferences = new PreferencesStore(new MemoryMemento());
-    await preferences.recordSectionAccess(ids(before, 'Same')[0], 100);
-    await preferences.recordSectionAccess(ids(after, 'Same')[0], 50);
-    await preferences.carrySectionAccess(moved);
-    assert.strictEqual(preferences.value.sectionAccessCounts[ids(after, 'Same')[0]], 2);
-    assert.strictEqual(preferences.value.sectionAccessTimes?.[ids(after, 'Same')[0]], 100);
-    assert.strictEqual(preferences.value.sectionAccessCounts[ids(before, 'Same')[0]], undefined);
+    const preferences = createPreferences(new MemoryMemento());
+    await preferences.usage.recordSectionAccess(ids(before, 'Same')[0], 100);
+    await preferences.usage.recordSectionAccess(ids(after, 'Same')[0], 50);
+    await preferences.usage.carrySectionAccess(moved);
+    assert.strictEqual(preferences.reader.value.sectionAccessCounts[ids(after, 'Same')[0]], 2);
+    assert.strictEqual(preferences.reader.value.sectionAccessTimes?.[ids(after, 'Same')[0]], 100);
+    assert.strictEqual(preferences.reader.value.sectionAccessCounts[ids(before, 'Same')[0]], undefined);
   });
 });

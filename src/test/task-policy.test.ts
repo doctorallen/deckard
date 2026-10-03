@@ -1,28 +1,30 @@
 import * as assert from 'assert';
 
 import {
-  getTaskPolicy,
+  DEFAULT_TASK_POLICY,
   needsNewDate,
   readLineStatus,
-  setTaskPolicy,
-} from '../core/taskPolicy';
-import { Task, WorkspaceIndex } from '../core/types';
+  readStatusNamespace,
+} from '../domain/tasks/taskPolicy';
 import { createAgenda } from '../ui/state/agendaState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { Task, WorkspaceIndex } from '../domain/model';
 
 const at = (month: number, day: number): number => new Date(2026, month - 1, day).getTime();
 /** Mid-morning on Friday 2026-09-25. */
 const now = at(9, 25) + 10 * 60 * 60 * 1000;
 
 suite('Task policy', () => {
-  teardown(() => setTaskPolicy());
-
   test('a task 30 days overdue is Overdue, and at 31 it needs a new date', () => {
-    assert.strictEqual(getTaskPolicy().needsNewDateAfterDays, 30, 'the setting default');
-    assert.strictEqual(needsNewDate(at(8, 26), now), false, '30 days');
-    assert.strictEqual(needsNewDate(at(8, 25), now), true, '31 days');
-    assert.strictEqual(needsNewDate(undefined, now), false);
-    setTaskPolicy({ needsNewDateAfterDays: 0 });
-    assert.strictEqual(needsNewDate(at(1, 1), now), false, '0 keeps every overdue task in Overdue');
+    assert.strictEqual(DEFAULT_TASK_POLICY.needsNewDateAfterDays, 30, 'the setting default');
+    assert.strictEqual(needsNewDate(at(8, 26), now, DEFAULT_TASK_POLICY), false, '30 days');
+    assert.strictEqual(needsNewDate(at(8, 25), now, DEFAULT_TASK_POLICY), true, '31 days');
+    assert.strictEqual(needsNewDate(undefined, now, DEFAULT_TASK_POLICY), false);
+    assert.strictEqual(
+      needsNewDate(at(1, 1), now, { needsNewDateAfterDays: 0 }),
+      false,
+      '0 keeps every overdue task in Overdue',
+    );
   });
 
   test('the Tasks view folds what needs a new date last, and 0 draws it as before', () => {
@@ -32,7 +34,7 @@ suite('Task policy', () => {
       createTask({ id: 'old', dueAt: at(7, 1) }),
       createTask({ id: 'undated' }),
     ]);
-    const groups = createAgenda(index, now, { upcomingDays: 7 });
+    const groups = createAgenda(index, createQueryContext(now), { upcomingDays: 7 });
     assert.deepStrictEqual(
       groups.map((group) => [group.id, group.entries.map((entry) => entry.task.id)]),
       [
@@ -44,9 +46,12 @@ suite('Task policy', () => {
     assert.strictEqual(groups[2].label, 'Needs a new date');
     assert.deepStrictEqual(groups[2].entries[0].details, ['was due Wed 2026-07-01', 'tasks.md']);
 
-    setTaskPolicy({ needsNewDateAfterDays: 0 });
     assert.deepStrictEqual(
-      createAgenda(index, now, { upcomingDays: 7 }).map((group) => group.id),
+      createAgenda(
+        index,
+        createQueryContext(now, { taskPolicy: { needsNewDateAfterDays: 0 } }),
+        { upcomingDays: 7 },
+      ).map((group) => group.id),
       ['overdue', 'nodate'],
     );
   });
@@ -56,9 +61,19 @@ suite('Task policy', () => {
       id: 'a',
       associationTagGroups: [[{ key: '#status/waiting', label: '#status/waiting' } as never]],
     });
-    assert.strictEqual(readLineStatus(task), 'waiting');
-    setTaskPolicy({ statusNamespace: 'state' });
-    assert.strictEqual(readLineStatus(task), '');
+    assert.strictEqual(readLineStatus(task, DEFAULT_TASK_POLICY.statusNamespace), 'waiting');
+    assert.strictEqual(readLineStatus(task, 'state'), '');
+  });
+
+  test('reads the status namespace once, for every view: trimmed, checked, and lowercased', () => {
+    const read = (value: unknown) =>
+      readStatusNamespace({ get: <T>(_key: string, fallback: T) => (value === undefined ? fallback : value) as T });
+    assert.strictEqual(read(undefined), 'status');
+    assert.strictEqual(read('Stage'), 'stage', 'tags are matched lowercased, so it is written lowercased');
+    assert.strictEqual(read('  phase_2 '), 'phase_2');
+    for (const value of ['', '  ', '#status', 'two words', '9lives', null, ['stage'], 7]) {
+      assert.strictEqual(read(value), 'status', JSON.stringify(value));
+    }
   });
 });
 

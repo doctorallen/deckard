@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../../core/storage/preferences';
 import { formatQueryBlock } from '../state/queryBlockState';
 import { getSavedFilterQuery } from '../state/dashboardState';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /** One row of the picker: a saved or recent search, or what is typed. */
 interface QueryBlockItem extends vscode.QuickPickItem {
@@ -32,7 +32,7 @@ export function listQueryBlockItems(preferences: PersistedQueries): QueryBlockIt
   ];
 }
 
-type PersistedQueries = Pick<PreferencesStore['value'], 'savedFilters' | 'recentQueries'>;
+type PersistedQueries = Pick<PreferencesReader['value'], 'savedFilters' | 'recentQueries'>;
 
 /**
  * Where a block goes at the cursor, and the text written there: on its own
@@ -51,7 +51,8 @@ export function placeQueryBlock(
   const body = block.endsWith('\n') ? block : `${block}\n`;
   const after = blank(line) || blank(at) ? '' : '\n';
   const blockLines = body.split('\n').length - 1;
-  // The cursor lands on the line after the closing fence.
+  // The cursor goes below the closing fence, not inside the block, so the
+  // reader keeps writing the note without first leaving the block.
   return { line: at, text: `${before}${body}${after}`, endsAt: at + (before ? 1 : 0) + blockLines };
 }
 
@@ -60,7 +61,7 @@ export function placeQueryBlock(
  * recent search, or of one typed, at the cursor, in one edit, so one Undo
  * takes it back.
  */
-export async function insertQueryBlock(preferences: PreferencesStore): Promise<void> {
+export async function insertQueryBlock(preferences: Pick<PreferencesReader, 'value'>): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     void vscode.window.showInformationMessage('Open a note to insert a query block into it.');

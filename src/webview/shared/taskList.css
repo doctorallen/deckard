@@ -1,0 +1,58 @@
+/*
+ * A list of task rows, with their due dates and details, and the drag that
+ * ranks them. The Dashboard's search results and the Task Board's list both
+ * draw it.
+ */
+
+.task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: var(--space-2); }
+.task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-2); align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: var(--space-3); cursor: pointer; }
+.task-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
+.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
+.task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
+/* The details sit on one center line: the priority badge is taller than
+   the text by its edge, and stretched items put its word a step above the
+   date beside it. */
+.task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
+.due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
+.due-date.overdue { color: var(--danger); }
+/* A task past needsNewDateAfterDays reads "was due …" in muted text: red is
+   for what can still be saved today. */
+.due-date.stale { color: var(--muted); font-weight: 400; }
+.task-detail { letter-spacing: .03em; }
+/* Priority is a shape, not a color: an outlined badge with an arrow, told
+   from the due date beside it by its edge. It used to be the same bold
+   danger red as an overdue date, on the same line, in the same font, and
+   the two read as one phrase. Red is overdue's alone now. */
+.priority-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--control-radius); color: var(--text); font-weight: 600; letter-spacing: normal; text-transform: none; line-height: 1.3; white-space: nowrap; }
+.priority-badge.priority-low, .priority-badge.priority-lowest { color: var(--muted); }
+.priority-mark { font-weight: 700; }
+.is-draggable { cursor: grab; touch-action: none; }
+.is-draggable:active { cursor: grabbing; }
+.is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.drag-ghost { position: fixed; z-index: var(--z-drag); top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
+.drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
+.rank-context-menu { position: fixed; min-width: 170px; }
+.result-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.result-table th, .result-table td { padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.result-table th { padding: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
+/* A header is the button that sorts by it, filling the cell so the whole label is the target. */
+.result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
+.result-table th button:hover:where(:not(:disabled):not([aria-disabled="true"])), .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
+/* The sorted column is told by weight and its arrow, not a color: amber on a panel is too faint for a small label in some themes.
+   Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
+.result-table th.is-sorted button { color: var(--text); font-weight: 700; }
+.result-table th.is-sorted button:hover:where(:not(:disabled):not([aria-disabled="true"])), .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
+.result-table .result-check { width: 24px; padding-right: 0; }
+.result-table .result-row { cursor: pointer; }
+/* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
+.result-table .result-row:hover td { border-bottom-color: var(--amber); }
+.result-table .result-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -1px; }
+.result-table .result-row.completed .result-title { color: var(--muted); text-decoration: line-through; }
+.result-table .result-title { color: var(--cyan); }
+.result-table td.is-overdue { color: var(--danger); font-weight: 700; }
+.result-table td.is-muted { color: var(--muted); }
+.result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--positive); }
+/* The gear's column picker: one line per column, the title fixed. */
+.table-columns { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; text-transform: none; }
+.table-columns label { display: flex; gap: var(--space-2); align-items: center; font: var(--text-sm) var(--font-mono); }
+@media (max-width: 720px) { .task-list { grid-template-columns: 1fr; } }

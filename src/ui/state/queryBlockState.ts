@@ -1,24 +1,22 @@
-import { stripTags } from '../../core/markdown/parser';
-import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
-import { parseQuery } from '../../core/query/queryParser';
+import { getFileName } from '../../shared/paths';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { QueryContext } from '../../domain/query/queryContext';
+import { parseQuery } from '../../domain/query/queryParser';
+import { pluralize } from '../../shared/text';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+
+import { compareTasksByColumn, parseTaskColumns, TableTask } from './resultTable';
+import { isTaskColumnId, TASK_COLUMNS } from '../../domain/tasks/taskColumns';
 import {
   ParsedFile,
   Section,
   Task,
   TaskPriority,
   WorkspaceIndex,
-} from '../../core/types';
-import { getHeadingPath } from './dashboardState';
-import {
-  compareTasksByColumn,
-  isTaskColumnId,
-  parseTaskColumns,
   TableSortDirection,
-  TableTask,
-  TASK_COLUMNS,
   TaskColumnId,
-} from './resultTable';
+} from '../../domain/model';
+import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -80,6 +78,10 @@ export interface QueryBlockSource {
   options: QueryBlockOptions;
 }
 
+/**
+ * One result row, a note section, front-matter-only note, or task, as every
+ * surface that draws a block's results reads it.
+ */
 export interface QueryBlockItem {
   id: string;
   title: string;
@@ -110,11 +112,13 @@ export interface QueryBlockItem {
   updatedAt?: number;
 }
 
+/** A diagnostic or option warning shown beside a block's results. */
 export interface QueryBlockMessage {
   severity: 'error' | 'warning';
   text: string;
 }
 
+/** What a block's query found, ordered and cut to its limit, with what to say about it. */
 export interface QueryBlockSnapshot {
   query: string;
   /** Query diagnostics, then option warnings. */
@@ -173,50 +177,63 @@ export function parseQueryBlockInfo(
     const match = /^([A-Za-z]+)=["']?([^"']*)["']?$/.exec(attribute);
     const name = match?.[1].toLowerCase();
     const value = match?.[2].toLowerCase() ?? '';
-    if (name === 'sort') {
-      if (isTaskColumnId(value)) {
-        options.sort = value;
-      } else {
-        options.warnings.push(
-          `sort must be a column, such as title, due, priority, created, or updated, not "${value}".`,
-        );
-      }
-    } else if (name === 'dir') {
-      if (value === 'asc' || value === 'desc') {
-        options.direction = value;
-      } else {
-        options.warnings.push(`dir must be asc or desc, not "${value}".`);
-      }
-    } else if (name === 'view') {
-      if (value === 'table' || value === 'list') {
-        options.view = value;
-      } else {
-        options.warnings.push(`view must be list or table, not "${value}".`);
-      }
-    } else if (name === 'columns') {
-      const parsed = parseTaskColumns(value);
-      options.columns = parsed.columns;
-      if (parsed.unknown.length > 0) {
-        options.warnings.push(
-          `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`,
-        );
-      }
-    } else if (name === 'limit') {
-      if (/^\d+$/.test(value) && Number(value) > 0) {
-        options.limit = Number(value);
-      } else {
-        options.warnings.push(
-          `limit must be a positive whole number, not "${value}".`,
-        );
-      }
-    } else {
-      options.warnings.push(
-        `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, or columns=.`,
-      );
+    const read = name === undefined ? undefined : OPTION_READERS.get(name);
+    const warning = read
+      ? read(value, options)
+      : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, or columns=.`;
+    if (warning) {
+      options.warnings.push(warning);
     }
   }
   return options;
 }
+
+/**
+ * Reads one `name=value` option into the block's options, and answers the
+ * warning to show when the value is not one the option takes.
+ */
+type OptionReader = (value: string, options: QueryBlockOptions) => string | undefined;
+
+/** The options a query block's info string may set, by lowercased name. */
+const OPTION_READERS = new Map<string, OptionReader>([
+  ['sort', (value, options) => {
+    if (!isTaskColumnId(value)) {
+      return `sort must be a column, such as title, due, priority, created, or updated, not "${value}".`;
+    }
+    options.sort = value;
+    return undefined;
+  }],
+  ['dir', (value, options) => {
+    if (value !== 'asc' && value !== 'desc') {
+      return `dir must be asc or desc, not "${value}".`;
+    }
+    options.direction = value;
+    return undefined;
+  }],
+  ['view', (value, options) => {
+    if (value !== 'table' && value !== 'list') {
+      return `view must be list or table, not "${value}".`;
+    }
+    options.view = value;
+    return undefined;
+  }],
+  ['columns', (value, options) => {
+    // Unknown names are reported, and the known ones are still shown.
+    const parsed = parseTaskColumns(value);
+    options.columns = parsed.columns;
+    if (parsed.unknown.length === 0) {
+      return undefined;
+    }
+    return `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`;
+  }],
+  ['limit', (value, options) => {
+    if (!/^\d+$/.test(value) || Number(value) <= 0) {
+      return `limit must be a positive whole number, not "${value}".`;
+    }
+    options.limit = Number(value);
+    return undefined;
+  }],
+]);
 
 /**
  * Finds query blocks using CommonMark's fence rules, which are the rules the
@@ -294,13 +311,22 @@ export function isQueryBlockLine(
 }
 
 /**
- * Runs a block's query against the index and orders what it matched.
+ * What a block is read in besides its own options: the settings and moment
+ * its query is evaluated in, and the namespace its task rows read a status in.
  */
+export interface QueryBlockReading {
+  queryContext: QueryContext;
+  /** The namespace of the status tags, from `deckard.board.statusNamespace`; `status` unless given. */
+  statusNamespace?: string;
+}
+
 /**
  * Results by index, then by day and block. The lenses above a block are asked
  * for after every edit, and the preview renders as the note is typed, so a
- * block's query runs once per index instead. The day is part of the key
- * because `today` and `7d` move at midnight.
+ * block's query runs once per index instead. The day, the one the context's
+ * `now` falls on, is part of the key because `today` and `7d` move at
+ * midnight; the rest of the context is not, so a block keeps the answer it
+ * gave first for as long as the index and the day last.
  */
 const snapshotCache = new WeakMap<
   WorkspaceIndex,
@@ -312,7 +338,7 @@ export function getQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,
   options: QueryBlockOptions,
-  statusNamespace = 'status',
+  reading: QueryBlockReading,
 ): QueryBlockSnapshot {
   let snapshots = snapshotCache.get(index);
   if (!snapshots) {
@@ -320,26 +346,30 @@ export function getQueryBlockSnapshot(
     snapshotCache.set(index, snapshots);
   }
   const key = JSON.stringify([
-    new Date().toDateString(),
+    new Date(reading.queryContext.now).toDateString(),
     queryText,
     options,
-    statusNamespace,
+    reading.statusNamespace ?? 'status',
   ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
-    snapshot = createQueryBlockSnapshot(index, queryText, options, statusNamespace);
+    snapshot = createQueryBlockSnapshot(index, queryText, options, reading);
     snapshots.set(key, snapshot);
   }
   return snapshot;
 }
 
+/**
+ * Runs a block's query against the index, in the reading's context, and
+ * orders what it matched.
+ */
 export function createQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,
   options: QueryBlockOptions,
-  /** The namespace of the status tags, from `deckard.board.statusNamespace`. */
-  statusNamespace = 'status',
+  reading: QueryBlockReading,
 ): QueryBlockSnapshot {
+  const statusNamespace = reading.statusNamespace ?? 'status';
   const query = queryText.trim();
   const optionMessages = options.warnings.map(
     (text): QueryBlockMessage => ({ severity: 'warning', text }),
@@ -381,7 +411,7 @@ export function createQueryBlockSnapshot(
     return { ...empty, messages, hasError: true };
   }
 
-  const results = evaluateQuery(index, parsed.node);
+  const results = evaluateQuery(index, parsed.node, reading.queryContext);
   const notes = [
     ...results.sections.map((section) => createSectionItem(section, index)),
     ...results.files.map(createFileItem),
@@ -420,6 +450,7 @@ export function describeQueryBlockCounts(snapshot: QueryBlockSnapshot): string {
   return parts.join(' · ');
 }
 
+/** A matched section as a row, titled by its heading under the headings above it. */
 function createSectionItem(
   section: Section,
   index: WorkspaceIndex,
@@ -459,6 +490,7 @@ function createFileItem(file: ParsedFile): QueryBlockItem {
   };
 }
 
+/** A matched task as a row, with the status its `#<statusNamespace>/` tag names. */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
@@ -497,22 +529,6 @@ function createTaskItem(
   };
 }
 
-/**
- * Removes the tags written after a title, which only label it, and keeps the
- * tags inside the sentence, which are part of what it says. Removing every
- * tag would turn "Pair @ren with @dax." into "Pair with .".
- */
-export function stripTrailingTags(text: string): string {
-  const words = text.trim().split(/\s+/);
-  while (words.length > 0 && stripTags(words[words.length - 1]) === '') {
-    words.pop();
-  }
-  return words.join(' ');
-}
-
-/**
- * Orders notes alphabetically unless a date sort puts the newest first.
- */
 /** Which way a sort runs when the block does not say: dates newest first. */
 function directionOf(
   sort: QueryBlockSort | undefined,
@@ -521,6 +537,9 @@ function directionOf(
   return direction ?? (sort === 'created' || sort === 'updated' ? 'desc' : 'asc');
 }
 
+/**
+ * Orders notes alphabetically unless a date sort puts the newest first.
+ */
 function createNoteComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
@@ -576,6 +595,7 @@ function compareBySort(
   return 0;
 }
 
+/** Titles alphabetically, ignoring case and accents, then source order. */
 function compareTitles(left: QueryBlockItem, right: QueryBlockItem): number {
   return (
     left.title.localeCompare(right.title, undefined, { sensitivity: 'base' }) ||
@@ -583,6 +603,7 @@ function compareTitles(left: QueryBlockItem, right: QueryBlockItem): number {
   );
 }
 
+/** Source order: by file path, then line. */
 function compareSource(left: QueryBlockItem, right: QueryBlockItem): number {
   return left.filePath.localeCompare(right.filePath) || left.line - right.line;
 }
@@ -603,18 +624,10 @@ function compareAscending(left?: number, right?: number): number {
   return left - right;
 }
 
+/** Newest first, with undated items still last. */
 function compareDescending(left?: number, right?: number): number {
   if (left === undefined || right === undefined) {
     return (left === undefined ? 1 : 0) - (right === undefined ? 1 : 0);
   }
   return right - left;
-}
-
-
-function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
-
-function getFileName(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
 }

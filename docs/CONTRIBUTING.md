@@ -27,19 +27,81 @@ Help and the guide must describe the same current behavior before a change is
 merged. A new guide page also needs a line in `docs/guide/README.md`, and, if
 Help has a section for it, the page named in that section's **Read more**.
 
+## How the code is built
+
+[How Deckard is built](architecture/README.md) explains the design for
+contributors: the layers and the one rule for which may import which, the
+index, the services, the webview pages, preferences, the test suites, and
+the decisions behind them. It is published beside the guide at
+<https://deckard.esperinnovations.com/architecture/>. Keep a page there
+current in the same change as the code it describes, as Help and the guide
+are kept current with what users see. `npm run lint` checks the import
+rules, and each rule says why it exists in `.dependency-cruiser.cjs`.
+
+## Comments and doc blocks
+
+Comments are written for the next person to change the code, who can read
+what it does but not why it is shaped that way.
+
+- **Every exported function, class, method, and type gets a doc block**, and
+  so does every private function that is not trivial. The block states the
+  contract: what the function is for, what it returns when there is nothing,
+  what it refuses, and why it exists when that is not obvious. Write
+  `@param` and `@returns` only when the name and type do not already say
+  it. A block that restates the signature is worse than none.
+- **Inline comments say why, never what.** Write one for a constraint, a
+  trade-off, a workaround, a bug it prevents, or a choice that looks wrong
+  but is not: "The page may hold a snapshot from before a tag was renamed,
+  so the key is resolved again." Delete a comment that narrates the next
+  line. The task, daily-note, and capture commands in `src/ui/commands` are
+  the ones to imitate.
+- **A doc block sits directly above what it documents.** Nothing goes
+  between a block and its declaration. A constant that must sit above a
+  function gets its own one-line block, above the function's.
+- **A comment moves with its code.** When a function is split or moved, its
+  doc block and comments go with it, rewritten if the reason changed.
+
+`npm run lint` enforces what a machine can see, with eslint-plugin-jsdoc:
+exports, class methods, and exported types need a block; parameter names
+must match; a block that documents some parameters documents them all; and
+a block that only repeats its name fails. Code written before these rules
+was listed in `eslint.known-violations.mjs` until it was brought up to
+them; the list is empty now, and a new violation is fixed rather than
+recorded there. Whether a comment explains why is for a reviewer to judge, so a
+review asks it of every block and comment the change adds.
+
 ## Webview components
 
-Shared styling and page-script helpers live in `src/ui/webview/components.ts`,
-documented in [components.md](components.md). Reuse a component rather than
-restyling one locally, and add a new one there once a second page needs it.
-Run `npm run test:ui` after changing it: the webviews are built from template
-literals, so the compiler cannot see a broken style sheet or inline script.
-Run `npm run test:layout` too when the change touches layout — a scroll
-container, a column, a hover — since only that suite lays the pages out, and
-`npm run test:visual` when it touches how anything looks, since only that one
-sees a backdrop, a glow, or a control that moved. When the change in looks is
-meant, record it with `npm run test:visual -- --update` and commit the
-baselines it rewrites.
+Each page is a bundle built from `src/webview/<page>/`: `main.tsx` and the
+page's own components and modules, and `page.css` for its rules. What two or
+more pages draw lives in `src/webview/shared/`, Preact components beside the
+sheets they are drawn with, documented in [components.md](components.md).
+The host only writes the page's shell (`src/ui/webview/<page>Html.ts`,
+through `buildPageShell`) and sends its snapshot; what the page and its host
+say to each other is typed once, in `src/ui/protocol/<page>.ts`.
+
+To change a page:
+
+- **Change what it draws** in its view, and what it does in its
+  `listenForActions` table or its listeners. A page draws from one store:
+  change the state with `store.update`, and never edit the DOM a draw made
+  unless you put it back before the next draw.
+- **Reuse a component** from `shared/` rather than drawing a look of your
+  own, and move one there once a second page needs it. A component in
+  `shared/` changes every page that draws it.
+- **Keep the markup.** `npm run test:dom` compares every surface's DOM with
+  its golden, and a change in what a reader sees is named in its commit and
+  re-recorded there with `npm run test:dom -- --update`.
+
+`npm run check-types` checks the page code against the DOM, and
+`npm run lint` keeps a page from importing host code, another page, or any
+package but Preact. Neither can see a sheet, so run `npm run test:ui` after
+changing one, `npm run test:layout` when the change touches layout — a
+scroll container, a column, a hover — since only that suite lays the pages
+out, and `npm run test:visual` when it touches how anything looks, since only
+that one sees a backdrop, a glow, or a control that moved. When the change in
+looks is meant, record it with `npm run test:visual -- --update` and commit
+the baselines it rewrites.
 
 ## Running the development host
 

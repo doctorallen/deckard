@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 
-import { stripTags } from '../../core/markdown/parser';
-import { PreferencesStore } from '../../core/storage/preferences';
-import { PersistedPreferences, Section, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from '../state/dashboardState';
-import { frecencyScore } from '../state/frecency';
-import { findPinnedSection } from '../state/pinnedNotes';
+import { stripTags } from '../../domain/markdown/parser';
+import { showQuickPickUntilHidden } from './prompts';
+import { findPinnedSection } from '../../domain/notes/pins';
+import { frecencyScore } from '../../domain/ranking/frecency';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { PersistedPreferences, Section, WorkspaceIndex } from '../../domain/model';
+import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
  * Where Capture Under a Heading and Move to… put something: a heading, and
@@ -17,10 +18,12 @@ export type Destination =
   | { kind: 'today' }
   | { kind: 'newNote' };
 
+/** A picker row, and the place it stands for; separators carry none. */
 export interface DestinationItem extends vscode.QuickPickItem {
   destination?: Destination;
 }
 
+/** Which destinations to offer besides headings, and which headings to leave out. */
 export interface DestinationOptions {
   /** Offer today's note, named by its file. */
   today?: { fileName: string };
@@ -116,7 +119,7 @@ export function buildDestinationItems(
  */
 export function pickDestination(
   index: WorkspaceIndex,
-  preferences: Pick<PreferencesStore, 'value'> | undefined,
+  preferences: Pick<PreferencesReader, 'value'> | undefined,
   options: DestinationOptions & { title: string; placeholder: string },
 ): Promise<Destination | undefined> {
   const items = buildDestinationItems(index, preferences?.value ?? {}, options);
@@ -124,27 +127,18 @@ export function pickDestination(
     void vscode.window.showInformationMessage('There are no headings in your notes yet.');
     return Promise.resolve(undefined);
   }
-  const picker = vscode.window.createQuickPick<DestinationItem>();
-  picker.title = options.title;
-  picker.placeholder = options.placeholder;
-  picker.matchOnDescription = true;
-  picker.items = items;
-  const firstRecent = items.findIndex((item) => item.label === 'Recent');
-  if (firstRecent >= 0 && items[firstRecent + 1]) {
-    picker.activeItems = [items[firstRecent + 1]];
-  }
-  return new Promise((resolve) => {
-    let chosen: Destination | undefined;
-    picker.onDidAccept(() => {
-      chosen = picker.activeItems[0]?.destination;
-      if (chosen) {
-        picker.hide();
+  return showQuickPickUntilHidden<DestinationItem, Destination>({
+    configure: (picker) => {
+      picker.title = options.title;
+      picker.placeholder = options.placeholder;
+      picker.matchOnDescription = true;
+      picker.items = items;
+      const firstRecent = items.findIndex((item) => item.label === 'Recent');
+      if (firstRecent >= 0 && items[firstRecent + 1]) {
+        picker.activeItems = [items[firstRecent + 1]];
       }
-    });
-    picker.onDidHide(() => {
-      resolve(chosen);
-      picker.dispose();
-    });
-    picker.show();
+    },
+    accept: (picker) => picker.activeItems[0]?.destination,
+    stayOpenWithoutAnswer: true,
   });
 }

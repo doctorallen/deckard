@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   createServer,
+  request as httpRequest,
   IncomingMessage,
   Server,
   ServerResponse,
@@ -15,32 +16,28 @@ import {
   McpTool,
   PARSE_ERROR,
 } from '../../core/mcp/mcpProtocol';
-import { measure, measureAsync } from '../../core/timing';
-import { writeSetting } from './settings';
+import { measure, measureAsync } from '../../shared/timing';
+import { settingTarget, writeSetting } from './settings';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
-import { WorkspaceIndex } from '../../core/types';
-import {
-  answerQuery,
-  answerTags,
-  QUERY_TOOL_NAME,
-  readQueryToolInput,
-  readTagsToolInput,
-  TAGS_TOOL_NAME,
-} from '../state/assistantTools';
-import {
-  ADD_TASK_TOOL_NAME,
-  addTask,
-  CHANGE_TASK_TOOL_NAME,
-  changeTask,
-  readAddTaskInput,
-  readChangeTaskInput,
-} from './assistantWrites';
+import { ASSISTANT_TOOLS, ToolRunners } from '../state/assistantTools';
+import { addTask, changeTask } from './assistantWrites';
+import { readQueryContext } from './queryContext';
+import { WorkspaceWriteHistory } from './workspaceWrites';
+import { WorkspaceIndex } from '../../domain/model';
 
 /** Where the server answers, on 127.0.0.1. */
 export const MCP_PATH = '/mcp';
 export const DEFAULT_MCP_PORT = 39217;
 const TOKEN_KEY = 'deckard.mcpServer.token';
 const MAX_BODY_BYTES = 1024 * 1024;
+/**
+ * What the server answers a request without its token. Deckard in another
+ * VS Code window answers the same, back to the first version with a server,
+ * which is how a window tells that its port is held by one of its own.
+ */
+const UNAUTHORIZED_TEXT = 'Send the Deckard MCP server token as a bearer token.';
+/** How long a window waits to try the port again while another window's Deckard holds it. */
+const DEFAULT_RETRY_DELAY = 30_000;
 
 interface IndexSource {
   readonly ready: Promise<void>;
@@ -50,6 +47,49 @@ interface IndexSource {
 interface SecretStore {
   get(key: string): Thenable<string | undefined>;
   store(key: string, value: string): Thenable<void>;
+  /**
+   * Fires when a secret changes in any window, as VS Code's secret storage,
+   * which every window shares, does.
+   */
+  onDidChange?: vscode.Event<{ key: string }>;
+}
+
+/** What the server is built from. */
+export interface McpServerOptions {
+  indexer: IndexSource;
+  /**
+   * The history the add-task and change-task tools write to, so Undo Last
+   * Change takes back what a client wrote, as it does for VS Code's tools.
+   */
+  history: WorkspaceWriteHistory;
+  /** Where its token is kept. */
+  secrets: SecretStore;
+  /** The tools it lists, from the manifest. */
+  tools: readonly McpTool[];
+  /** Deckard's version, which the server reports. */
+  version: string;
+  /** Where its settings are read from; `deckard.mcpServer.*` unless a test gives its own. */
+  readSettings?: () => McpServerSettings;
+  /**
+   * How long to wait, in milliseconds, before trying the port again while
+   * Deckard in another window holds it; 30 seconds unless a test gives its own.
+   */
+  retryDelay?: number;
+}
+
+/** What `deckard.mcpServer.*` says: whether the server runs, and on which port. */
+export interface McpServerSettings {
+  enabled: boolean;
+  port: number;
+}
+
+/** The server's settings as VS Code holds them. */
+function readMcpSettings(): McpServerSettings {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  return {
+    enabled: configuration.get<boolean>('mcpServer.enabled', false),
+    port: configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT),
+  };
 }
 
 /** The command that adds the server to Claude Code, token included. */
@@ -69,14 +109,37 @@ export function getClaudeCodeSetup(port: number, token: string): string {
 export class DeckardMcpServer implements vscode.Disposable {
   private server: Server | undefined;
   private token: string | undefined;
+  /** The token being read or made, so callers at the same moment share one. */
+  private tokenRequest: Promise<string> | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  /** The restart under way, which the next one waits for. */
+  private restarting: Promise<void> = Promise.resolve();
+  /** Counts stops, so a server that finishes starting after one closes itself. */
+  private generation = 0;
+  private disposed = false;
+  /** The next try for a port another window's Deckard holds. */
+  private retry: ReturnType<typeof setTimeout> | undefined;
 
-  public constructor(
-    private readonly indexer: IndexSource,
-    private readonly secrets: SecretStore,
-    private readonly tools: readonly McpTool[],
-    private readonly version: string,
-  ) {
+  private readonly indexer: IndexSource;
+  private readonly history: WorkspaceWriteHistory;
+  private readonly secrets: SecretStore;
+  private readonly tools: readonly McpTool[];
+  private readonly version: string;
+  private readonly readSettings: () => McpServerSettings;
+  private readonly retryDelay: number;
+
+  /**
+   * Keeps the server in step with `deckard.mcpServer.*`. It does not start
+   * listening here; `restart` does, once the settings say to.
+   */
+  public constructor(options: McpServerOptions) {
+    this.indexer = options.indexer;
+    this.history = options.history;
+    this.secrets = options.secrets;
+    this.tools = options.tools;
+    this.version = options.version;
+    this.readSettings = options.readSettings ?? readMcpSettings;
+    this.retryDelay = options.retryDelay ?? DEFAULT_RETRY_DELAY;
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.mcpServer')) {
@@ -84,20 +147,49 @@ export class DeckardMcpServer implements vscode.Disposable {
         }
       }),
     );
+    // Reset MCP Server Token in another window replaces the token every
+    // window shares, so a server running here takes the new one too.
+    const secretChanges = options.secrets.onDidChange?.((event) => {
+      if (event.key === TOKEN_KEY) {
+        void this.reloadToken();
+      }
+    });
+    if (secretChanges) {
+      this.disposables.push(secretChanges);
+    }
   }
 
-  /** Starts or stops the server to match its settings. */
-  public async restart(): Promise<void> {
+  /**
+   * Starts or stops the server to match its settings, once any restart
+   * already under way is done. Two at once would each start a server while
+   * the other's was still starting, and the first would go on listening
+   * with nothing left to close it.
+   */
+  public restart(): Promise<void> {
+    const next = this.restarting.then(() => this.restartNow());
+    this.restarting = next.catch(() => undefined);
+    return next;
+  }
+
+  /** Stops the server and starts it again if its settings say to; reports a port it cannot have. */
+  private async restartNow(): Promise<void> {
     await this.stop();
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    if (!configuration.get<boolean>('mcpServer.enabled', false)) {
+    const { enabled, port } = this.readSettings();
+    if (!enabled || this.disposed) {
       return;
     }
-    const port = configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT);
     try {
       await this.start(port);
     } catch (error) {
       const inUse = (error as NodeJS.ErrnoException | undefined)?.code === 'EADDRINUSE';
+      // Each VS Code window runs Deckard, and every window after the first
+      // finds the port taken by the first. That window already serves the
+      // same tools with the same token, so there is nothing to report; this
+      // one takes over the port once that window closes.
+      if (inUse && (await isDeckardListening(port))) {
+        this.scheduleRetry();
+        return;
+      }
       void reportFailure({
         outcome: inUse
           ? `Deckard could not start its MCP server on port ${port}, because another program is using it.`
@@ -109,8 +201,12 @@ export class DeckardMcpServer implements vscode.Disposable {
     }
   }
 
-  /** Listens on a port, or on any free one for 0, and returns the port. */
+  /**
+   * Listens on a port, or on any free one for 0, and returns the port. A
+   * server stopped before it was listening closes again at once.
+   */
   public async start(port: number): Promise<number> {
+    const generation = this.generation;
     this.token = await this.getToken();
     const server = createServer((request, response) => {
       void this.handle(request, response);
@@ -122,27 +218,78 @@ export class DeckardMcpServer implements vscode.Disposable {
         resolve();
       });
     });
+    if (generation !== this.generation) {
+      server.close();
+      return port;
+    }
     this.server = server;
     const address = server.address();
     return typeof address === 'object' && address ? address.port : port;
   }
 
+  /** Closes the server and every open connection; nothing when it is not running. */
   public async stop(): Promise<void> {
+    this.generation += 1;
+    clearTimeout(this.retry);
+    this.retry = undefined;
     const server = this.server;
     this.server = undefined;
-    if (server) {
-      server.closeAllConnections();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (!server) {
+      return;
     }
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 
+  /** Stops following the settings and closes the server, without waiting for it. */
   public dispose(): void {
+    this.disposed = true;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     void this.stop();
   }
 
-  /** The token, made and stored the first time it is needed. */
-  public async getToken(): Promise<string> {
+  /**
+   * The token, made and stored the first time it is needed. Calls that
+   * overlap share one read: turning the server on from Copy MCP Server Setup
+   * starts it and copies the token at once, and two calls that each found no
+   * token would each make one, so the server would refuse the copied token.
+   */
+  public getToken(): Promise<string> {
+    return this.tokenRequest ?? this.shareTokenRequest(this.readOrMakeToken());
+  }
+
+  /** Replaces the token, so every copied setup stops working. */
+  public async resetToken(): Promise<void> {
+    const token = randomBytes(32).toString('hex');
+    // Shared like a read, so a copy made meanwhile waits for the new token.
+    await this.shareTokenRequest(Promise.resolve(this.secrets.store(TOKEN_KEY, token)).then(() => token));
+    this.token = token;
+  }
+
+  /** Tries the port again after a while, unless the window is closing. */
+  private scheduleRetry(): void {
+    if (this.disposed) {
+      return;
+    }
+    // stop() clears it, so a restart meanwhile replaces it.
+    this.retry = setTimeout(() => {
+      this.retry = undefined;
+      void this.restart();
+    }, this.retryDelay);
+    // A retry alone must not keep the process alive, as in a test run.
+    this.retry.unref?.();
+  }
+
+  /** Takes up the stored token after it changed, in this window or another; nothing when there is none. */
+  private async reloadToken(): Promise<void> {
+    const stored = await this.secrets.get(TOKEN_KEY);
+    if (stored) {
+      this.token = stored;
+    }
+  }
+
+  /** The stored token, or a new one, stored, when there is none. */
+  private async readOrMakeToken(): Promise<string> {
     const stored = await this.secrets.get(TOKEN_KEY);
     if (stored) {
       return stored;
@@ -152,11 +299,16 @@ export class DeckardMcpServer implements vscode.Disposable {
     return token;
   }
 
-  /** Replaces the token, so every copied setup stops working. */
-  public async resetToken(): Promise<void> {
-    const token = randomBytes(32).toString('hex');
-    await this.secrets.store(TOKEN_KEY, token);
-    this.token = token;
+  /** Makes a token read or write the one every caller waits on until it settles. */
+  private shareTokenRequest(request: Promise<string>): Promise<string> {
+    this.tokenRequest = request;
+    const settle = () => {
+      if (this.tokenRequest === request) {
+        this.tokenRequest = undefined;
+      }
+    };
+    request.then(settle, settle);
+    return request;
   }
 
   /**
@@ -164,8 +316,7 @@ export class DeckardMcpServer implements vscode.Disposable {
    * turn the server on.
    */
   public async copySetup(): Promise<void> {
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    if (!configuration.get<boolean>('mcpServer.enabled', false)) {
+    if (!this.readSettings().enabled) {
       const choice = await vscode.window.showInformationMessage(
         "Deckard's MCP server is off. Turn it on for Claude Code and other MCP clients?",
         'Turn On',
@@ -173,24 +324,23 @@ export class DeckardMcpServer implements vscode.Disposable {
       if (choice !== 'Turn On') {
         return;
       }
-      const written = await writeSetting(
-        'mcpServer.enabled',
-        true,
-        vscode.ConfigurationTarget.Global,
-      );
+      // Where the value in force is set: written to the user's settings,
+      // a workspace that turned the server off kept it off, and the setup
+      // copied next named a server that was not running.
+      const written = await writeSetting('mcpServer.enabled', true, settingTarget('mcpServer.enabled'));
       if (!written) {
         return;
       }
     }
-    const port = configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT);
     await vscode.env.clipboard.writeText(
-      getClaudeCodeSetup(port, await this.getToken()),
+      getClaudeCodeSetup(this.readSettings().port, await this.getToken()),
     );
     void vscode.window.showInformationMessage(
       'Copied the command that adds Deckard to Claude Code. Run it in a terminal. It holds the server’s token, so keep it private.',
     );
   }
 
+  /** Reset MCP Server Token: replaces the token and says each client must be set up again. */
   public async resetTokenCommand(): Promise<void> {
     await this.resetToken();
     void vscode.window.showInformationMessage(
@@ -198,6 +348,11 @@ export class DeckardMcpServer implements vscode.Disposable {
     );
   }
 
+  /**
+   * Answers one HTTP request: refuses another site's page, a missing or wrong
+   * token, any other path, and any method but POST, then answers the MCP
+   * message in the body.
+   */
   private async handle(
     request: IncomingMessage,
     response: ServerResponse,
@@ -211,7 +366,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     }
     if (!this.isAuthorized(request.headers.authorization)) {
       response.setHeader('WWW-Authenticate', 'Bearer');
-      sendText(response, 401, 'Send the Deckard MCP server token as a bearer token.');
+      sendText(response, 401, UNAUTHORIZED_TEXT);
       return;
     }
     if (new URL(request.url ?? '/', 'http://127.0.0.1').pathname !== MCP_PATH) {
@@ -257,6 +412,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     sendJson(response, 200, answer);
   }
 
+  /** Whether the request carries the token, compared in constant time so its bytes cannot be guessed by timing. */
   private isAuthorized(header: string | undefined): boolean {
     const presented = /^Bearer\s+(\S+)$/i.exec(header ?? '')?.[1];
     if (!presented || !this.token) {
@@ -267,6 +423,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     return given.length === expected.length && timingSafeEqual(given, expected);
   }
 
+  /** What the MCP protocol layer answers with: the server's name, its instructions, and the tools run on the index. */
   private createHandlers(): McpHandlers {
     return {
       serverInfo: { name: 'deckard', version: this.version },
@@ -277,38 +434,38 @@ export class DeckardMcpServer implements vscode.Disposable {
         // An early call waits for the first scan rather than answer from part of it.
         await this.indexer.ready;
         const index = this.indexer.getSnapshot();
-        if (name === QUERY_TOOL_NAME) {
-          const input = readQueryToolInput(args);
-          return input
-            ? { text: measure('MCP query', () => answerQuery(index, input)) }
-            : {
-                text: 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.',
-                isError: true,
-              };
+        const tool = ASSISTANT_TOOLS.find((entry) => entry.name === name);
+        if (!tool) {
+          return { text: `Unknown tool: ${name}`, isError: true };
         }
-        if (name === TAGS_TOOL_NAME) {
-          return {
-            text: measure('MCP tag list', () =>
-              answerTags(index, readTagsToolInput(args)),
-            ),
-          };
+        const runners = this.createRunners(index);
+        if (tool.kind === 'read') {
+          const call = tool.read(args, runners);
+          return call.kind === 'run'
+            ? { text: measure(tool.measure.mcp, call.run) }
+            : { text: call.text.mcp, isError: true };
         }
         // A write over MCP has no dialog of its own; the refactor preview is
         // where the reader sees the line and can decline it.
-        if (name === ADD_TASK_TOOL_NAME) {
-          const input = readAddTaskInput(args);
-          return input
-            ? measureAsync('MCP add task', () => addTask(this.indexer, input))
-            : { text: 'Send the task\'s words as "text", and optionally a workspace-relative "note".', isError: true };
-        }
-        if (name === CHANGE_TASK_TOOL_NAME) {
-          const input = readChangeTaskInput(args);
-          return input
-            ? measureAsync('MCP change task', () => changeTask(this.indexer, input))
-            : { text: 'Send "note" and "line" as deckard_query reports them, and at least one change.', isError: true };
-        }
-        return { text: `Unknown tool: ${name}`, isError: true };
+        const call = tool.read(args, runners);
+        return call.kind === 'run'
+          ? measureAsync(tool.measure.mcp, call.run)
+          : { text: call.text.mcp, isError: true };
       },
+    };
+  }
+
+  /**
+   * What the tools answer with over MCP: the index read once the first scan
+   * was done, for every tool in the call, and the same writes VS Code's
+   * tools make, into the same history.
+   */
+  private createRunners(index: WorkspaceIndex): ToolRunners {
+    return {
+      getSnapshot: () => index,
+      readQueryContext: () => readQueryContext(),
+      addTask: (input) => addTask(this.indexer, this.history, input),
+      changeTask: (input) => changeTask(this.indexer, this.history, input),
     };
   }
 }
@@ -326,6 +483,29 @@ function isLocalOrigin(origin: string): boolean {
   }
 }
 
+/**
+ * Whether the program on this port on 127.0.0.1 answers as Deckard's server
+ * does, as Deckard in another VS Code window would. It asks without the
+ * token, so nothing secret goes to a program that is not Deckard.
+ */
+function isDeckardListening(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const request = httpRequest(
+      { host: '127.0.0.1', port, path: MCP_PATH, method: 'GET', timeout: 2000 },
+      (response) => {
+        readBody(response, 4096).then(
+          (body) => resolve(response.statusCode === 401 && body === UNAUTHORIZED_TEXT),
+          () => resolve(false),
+        );
+      },
+    );
+    request.on('timeout', () => request.destroy());
+    request.on('error', () => resolve(false));
+    request.end();
+  });
+}
+
+/** The request body as text; rejects a body over `limit` bytes, which is read but not kept. */
 function readBody(request: IncomingMessage, limit: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -348,10 +528,12 @@ function readBody(request: IncomingMessage, limit: number): Promise<string> {
   });
 }
 
+/** Ends the response with a plain-text body. */
 function sendText(response: ServerResponse, status: number, text: string): void {
   response.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' }).end(text);
 }
 
+/** Ends the response with a JSON body. */
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
 }

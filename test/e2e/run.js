@@ -2,14 +2,16 @@
 //
 // These tests exercise the real panel host, the real webview script, and real
 // messages between them. They cannot run inside vscode-test, because the point
-// is to substitute a controllable VS Code API and to evaluate the webview
-// script directly, so they have their own entry point.
+// is to substitute a controllable VS Code API and to run the page in a DOM of
+// its own, so they have their own entry point: mocha, with support.js loaded
+// first to put the `vscode` stand-in in place.
 //
-// Each suite runs in its own process, since a suite ends by exiting with its
-// own result.
+// Each suite runs in its own process, since a suite changes the stand-in to
+// suit itself (what opening a document does, what a message box answers), and
+// one suite's changes must not reach the next.
 //
 //   npm run test:e2e
-const Module = require('node:module');
+//   node test/e2e/run.js stats.e2e.js      one suite
 const path = require('node:path');
 const { existsSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
@@ -23,6 +25,7 @@ const suites = [
   'editorDecorations.e2e.js',
   'calendar.e2e.js',
   'calendarPage.e2e.js',
+  'navigation.e2e.js',
 ];
 
 const compiled = path.join(__dirname, '..', '..', 'out');
@@ -31,26 +34,21 @@ if (!existsSync(compiled)) {
   process.exit(1);
 }
 
-const suite = process.argv[2];
-if (!suite) {
-  let failed = false;
-  for (const name of suites) {
-    console.log(`\n${name}`);
-    const result = spawnSync(process.execPath, [__filename, name], {
-      stdio: 'inherit',
-    });
-    failed = failed || result.status !== 0;
-  }
-  process.exit(failed ? 1 : 0);
+const mocha = require.resolve('mocha/bin/mocha.js');
+const chosen = process.argv[2] ? [process.argv[2]] : suites;
+let failed = false;
+for (const name of chosen) {
+  console.log(`\n${name}`);
+  const result = spawnSync(process.execPath, [
+    mocha,
+    '--ui', 'tdd',
+    '--require', path.join(__dirname, 'support.js'),
+    // A suite leaves the stand-in's watchers and timers behind, as the host
+    // would; the run ends when its tests do.
+    '--exit',
+    '--timeout', '20000',
+    path.join(__dirname, name),
+  ], { stdio: 'inherit' });
+  failed = failed || result.status !== 0;
 }
-
-// The extension imports "vscode", which only exists inside the editor.
-const resolveFilename = Module._resolveFilename;
-Module._resolveFilename = function patched(request, ...rest) {
-  if (request === 'vscode') {
-    return path.join(__dirname, 'vscodeStub.js');
-  }
-  return resolveFilename.call(this, request, ...rest);
-};
-
-require(`./${suite}`);
+process.exit(failed ? 1 : 0);

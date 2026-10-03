@@ -1,4 +1,3 @@
-import { BLOCK_ID_PATTERN } from '../../core/markdown/parser';
 import {
   BacklinkIndex,
   createNoteTitleMap,
@@ -8,10 +7,11 @@ import {
   noteTitle,
   WikiLinkOccurrence,
   WikiLinkTarget,
-} from '../../core/workspace/backlinks';
-import { ParsedFile, Section, Task, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from './dashboardState';
-import { stripTrailingTags } from './queryBlockState';
+} from '../../domain/index/backlinks';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { ParsedFile, Section, Task, WorkspaceIndex } from '../../domain/model';
+import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 
 /**
  * What the editor shows about a note's connections: how often it and its
@@ -19,10 +19,14 @@ import { stripTrailingTags } from './queryBlockState';
  * what a link or tag points at.
  */
 
+/** The most lines a link preview shows before it says it was cut. */
 const PREVIEW_LINES = 12;
+/** The most characters a link preview shows before it says it was cut. */
 const PREVIEW_CHARACTERS = 900;
+/** How many entries a tag's hover lists when the caller does not say. */
 const TAG_ENTRY_LIMIT = 5;
 
+/** A heading's lens: the links to it and the open tasks under it. */
 export interface HeadingReferences {
   /** Zero-based line of the heading. */
   line: number;
@@ -31,6 +35,7 @@ export interface HeadingReferences {
   openTasks: Task[];
 }
 
+/** What points at a note and its headings, for the editor's lenses. */
 export interface ReferenceSummary {
   /** Links into the note from other notes. */
   backlinks: WikiLinkOccurrence[];
@@ -38,6 +43,10 @@ export interface ReferenceSummary {
   headings: HeadingReferences[];
 }
 
+/**
+ * What a link's hover shows: that its note does not exist, that its name
+ * fits more than one note, or the part of the note it lands on.
+ */
 export type LinkPreview =
   | { kind: 'missing'; note: string }
   | { kind: 'ambiguous'; note: string; matches: number }
@@ -58,6 +67,7 @@ export type LinkPreview =
       backlinkCount: number;
     };
 
+/** One entry a tag's hover lists: a section, note, or task that carries the tag. */
 export interface TagSummaryEntry {
   title: string;
   fileName: string;
@@ -68,6 +78,7 @@ export interface TagSummaryEntry {
   completed: boolean;
 }
 
+/** What a tag's hover says: how much uses it, the note that describes it, and its latest entries. */
 export interface TagSummary {
   label: string;
   /** Sections and front-matter-only notes that carry the tag. */
@@ -127,15 +138,7 @@ export function createLinkPreview(
 
   const title = noteTitle(file.filePath);
   const blockLine = target.block ? findLinkedBlock(file, target.block) : undefined;
-  // A link to a line is previewed as that line, under the headings it sits
-  // beneath, because the line is what the reader asked to see.
-  const section = target.block
-    ? blockLine === undefined
-      ? undefined
-      : findSectionAt(file, blockLine)
-    : target.heading
-      ? findLinkedSection(file, target.heading)
-      : undefined;
+  const section = findPreviewSection(file, target, blockLine);
   const sections = new Map(file.sections.map((entry) => [entry.id, entry]));
   const path = section ? getHeadingPath(section, sections) : [];
   // A note usually opens with a heading of its own name; do not say it twice.
@@ -143,13 +146,7 @@ export function createLinkPreview(
     path[0]?.toLocaleLowerCase() === title.toLocaleLowerCase()
       ? path
       : [title, ...path];
-  const excerpt = limitExcerpt(
-    blockLine !== undefined
-      ? readBlockLine(file, blockLine)
-      : section
-        ? removeFirstLine(section.bodyContent ?? section.rawContent)
-        : removeFrontmatter(file.content),
-  );
+  const excerpt = limitExcerpt(readPreviewText(file, section, blockLine));
 
   return {
     kind: 'found',
@@ -165,6 +162,38 @@ export function createLinkPreview(
       backlinks.toNote(file.filePath).map((occurrence) => occurrence.sourcePath),
     ).size,
   };
+}
+
+/**
+ * The section a link's preview shows. A link to a line is previewed under
+ * the headings that line sits beneath, because the line is what the reader
+ * asked to see; a link to a heading shows that heading's section; anything
+ * else, or a line or heading the note lacks, shows none.
+ */
+function findPreviewSection(
+  file: ParsedFile,
+  target: WikiLinkTarget,
+  blockLine: number | undefined,
+): Section | undefined {
+  if (target.block) {
+    return blockLine === undefined ? undefined : findSectionAt(file, blockLine);
+  }
+  return target.heading ? findLinkedSection(file, target.heading) : undefined;
+}
+
+/** The text a preview cuts down: the linked line, the section without its heading, or the note without its front matter. */
+function readPreviewText(
+  file: ParsedFile,
+  section: Section | undefined,
+  blockLine: number | undefined,
+): string {
+  if (blockLine !== undefined) {
+    return readBlockLine(file, blockLine);
+  }
+  if (section) {
+    return removeFirstLine(section.bodyContent ?? section.rawContent);
+  }
+  return removeFrontmatter(file.content);
 }
 
 /** The heading section a line sits under, for a link that names a line. */
@@ -316,11 +345,8 @@ function removeFirstLine(text: string): string {
 
 function removeFrontmatter(content: string): string {
   const lines = content.split(/\r?\n/);
-  if (lines[0]?.trim() !== '---') {
-    return content;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end < 0 ? content : lines.slice(end + 1).join('\n');
+  const end = findFrontmatterEnd(lines);
+  return end === undefined ? content : lines.slice(end + 1).join('\n');
 }
 
 function limitExcerpt(text: string): { text: string; truncated: boolean } {

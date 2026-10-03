@@ -4,20 +4,23 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { formatIsoDate } from '../core/markdown/taskMetadata';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { toggleTask } from '../ui/commands/taskActions';
-import { toggleTaskLines } from '../ui/commands/toggleTaskDone';
 import {
   addTaskSteps,
+  breakIntoStepsCommand,
   buildSuggestPrompt,
   createLanguageModelSuggester,
   describeSuggestFailure,
   readWrittenSteps,
   StepList,
 } from '../ui/commands/taskSteps';
-import { workspaceWrites } from '../ui/commands/workspaceWrites';
-import { parseTaskBoardMessage } from '../ui/webview/messages';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { createFakeTaskWrites, createTaskWrites } from './taskWrites';
+import { FakeNotes } from './fakeNotes';
+import type { IndexReader } from '../core/workspace/indexReader';
+import { toggleTaskLines } from '../domain/tasks/toggleLines';
+import { formatIsoDate } from '../domain/markdown/calendar';
 
 type Shown = unknown[][];
 
@@ -60,7 +63,30 @@ async function readNote(uri: vscode.Uri): Promise<string> {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
+/**
+ * The note's text once it reads as `expected`, or as it last read after five
+ * seconds. A write or an Undo started by answering a message runs after the
+ * answer, in the history's turn, and VS Code saves the note after that, so a
+ * fixed wait can read the note too early on a busy machine.
+ */
+async function noteReads(uri: vscode.Uri, expected: string): Promise<string> {
+  const until = Date.now() + 5000;
+  let text = await readNote(uri);
+  while (text !== expected && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    text = await readNote(uri);
+  }
+  return text;
+}
+
 suite('Break into Steps', () => {
+  // Each test writes to a history of its own, so one test's Undo never
+  // reaches another's write.
+  let history: WorkspaceWriteHistory;
+  setup(() => {
+    history = new WorkspaceWriteHistory();
+  });
+
   test('the list adds what is typed, changes a step, moves and removes them, and defaults to Write', () => {
     const list = new StepList([{ title: 'Book the venue', done: true }], undefined, 'Plan the offsite');
     let items = list.items('Draft the email');
@@ -140,17 +166,15 @@ suite('Break into Steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        assert.strictEqual(await addTaskSteps(task, ['Draft the email', 'Send the invite']), true);
+        assert.strictEqual(await addTaskSteps(createTaskWrites(history), task, ['Draft the email', 'Send the invite']), true);
         return messages;
       });
-      assert.strictEqual(
-        await readNote(uri),
-        '# Offsite\n\n- [ ] Plan the offsite 📅 2026-10-09\n  - [x] Book the venue\n    call first\n  - [ ] Draft the email\n  - [ ] Send the invite\n\nAfter.\n',
-      );
+      const written = '# Offsite\n\n- [ ] Plan the offsite 📅 2026-10-09\n  - [x] Book the venue\n    call first\n  - [ ] Draft the email\n  - [ ] Send the invite\n\nAfter.\n';
+      assert.strictEqual(await noteReads(uri, written), written);
       assert.deepStrictEqual(shown[0], ['Wrote 2 steps under "Plan the offsite".', 'Undo']);
-      assert.strictEqual(workspaceWrites.lastWrite?.label, 'writing 2 steps under "Plan the offsite"');
-      await workspaceWrites.undo();
-      assert.strictEqual(await readNote(uri), content);
+      assert.strictEqual(history.lastWrite?.label, 'writing 2 steps under "Plan the offsite"');
+      await history.undo();
+      assert.strictEqual(await noteReads(uri, content), content);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -162,11 +186,11 @@ suite('Break into Steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       await withMessages(async () => {
-        assert.strictEqual(await addTaskSteps(task, ['One']), true);
+        assert.strictEqual(await addTaskSteps(createTaskWrites(history), task, ['One']), true);
         await settle();
       }, 'Undo');
       await settle();
-      assert.strictEqual(await readNote(uri), content, 'the note ends as it did, without a newline');
+      assert.strictEqual(await noteReads(uri, content), content, 'the note ends as it did, without a newline');
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -176,9 +200,9 @@ suite('Break into Steps', () => {
     const { uri, root } = await createNote('changed.md', '- [ ] Plan the offsite\n');
     try {
       const [task] = parseMarkdown(uri.fsPath, '- [ ] Plan the party\n').tasks;
-      const written = await withMessages(() => addTaskSteps(task, ['One']));
+      const written = await withMessages(() => addTaskSteps(createTaskWrites(history), task, ['One']));
       assert.strictEqual(written, false);
-      assert.strictEqual(await readNote(uri), '- [ ] Plan the offsite\n');
+      assert.strictEqual(await noteReads(uri, '- [ ] Plan the offsite\n'), '- [ ] Plan the offsite\n');
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -186,6 +210,13 @@ suite('Break into Steps', () => {
 });
 
 suite('Completing steps', () => {
+  // Each test writes to a history of its own, so one test's Undo never
+  // reaches another's write.
+  let history: WorkspaceWriteHistory;
+  setup(() => {
+    history = new WorkspaceWriteHistory();
+  });
+
   const today = formatIsoDate(Date.now());
 
   test('the last open step offers to complete its task, and does only when asked', async () => {
@@ -194,7 +225,7 @@ suite('Completing steps', () => {
     try {
       const step = parseMarkdown(uri.fsPath, content).tasks[2];
       const shown = await withMessages(async (messages) => {
-        assert.strictEqual(await toggleTask(step, true), true);
+        assert.strictEqual(await toggleTask(createTaskWrites(history), step, true), true);
         await settle();
         return messages;
       });
@@ -204,22 +235,22 @@ suite('Completing steps', () => {
         'Undo',
       ]);
       assert.strictEqual(
-        await readNote(uri),
+        await noteReads(uri, `- [ ] Plan the offsite\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`),
         `- [ ] Plan the offsite\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`,
         'nothing is completed for the reader',
       );
 
       const again = await readNote(uri);
       const reopened = parseMarkdown(uri.fsPath, again).tasks[2];
-      await withMessages(() => toggleTask(reopened, false));
+      await withMessages(() => toggleTask(createTaskWrites(history), reopened, false));
       const fresh = parseMarkdown(uri.fsPath, await readNote(uri)).tasks[2];
       await withMessages(async () => {
-        await toggleTask(fresh, true);
+        await toggleTask(createTaskWrites(history), fresh, true);
         await settle();
         await settle();
       }, 'Complete Task');
       assert.strictEqual(
-        await readNote(uri),
+        await noteReads(uri, `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`),
         `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`,
       );
     } finally {
@@ -233,7 +264,7 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        await toggleTask(task, true);
+        await toggleTask(createTaskWrites(history), task, true);
         // The steps are written after the choice, and said once written.
         for (let tries = 0; tries < 40 && !messages.some((message) => String(message[0]).startsWith('Completed 2 steps')); tries += 1) {
           await settle();
@@ -246,10 +277,10 @@ suite('Completing steps', () => {
         'Undo',
       ]);
       assert.strictEqual(
-        await readNote(uri),
+        await noteReads(uri, `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue ✅ ${today}\n  - [x] Pay\n  - [x] Draft the email ✅ ${today}\n- [ ] Next\n`),
         `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue ✅ ${today}\n  - [x] Pay\n  - [x] Draft the email ✅ ${today}\n- [ ] Next\n`,
       );
-      assert.strictEqual(workspaceWrites.lastWrite?.label, 'completing 2 steps of "Plan the offsite"');
+      assert.strictEqual(history.lastWrite?.label, 'completing 2 steps of "Plan the offsite"');
       assert.ok(shown.some((message) => message[0] === 'Completed 2 steps of "Plan the offsite".'));
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
@@ -262,24 +293,22 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       await withMessages(async () => {
-        await toggleTask(task, true);
+        await toggleTask(createTaskWrites(history), task, true);
       }, 'Undo');
       await settle();
       await settle();
-      assert.strictEqual(await readNote(uri), content, 'Undo takes back the next occurrence and its steps too');
-      await withMessages(() => toggleTask(task, true));
-      assert.strictEqual(
-        await readNote(uri),
-        [
-          '- [ ] Weekly review 📅 2026-09-17 🔁 every week',
-          '  - [ ] Inbox to zero',
-          '  - [ ] Plan the week',
-          `- [x] Weekly review 📅 2026-09-10 🔁 every week ✅ ${today}`,
-          '  - [x] Inbox to zero ✅ 2026-09-09',
-          '  - [ ] Plan the week',
-          '',
-        ].join('\n'),
-      );
+      assert.strictEqual(await noteReads(uri, content), content, 'Undo takes back the next occurrence and its steps too');
+      await withMessages(() => toggleTask(createTaskWrites(history), task, true));
+      const nextOccurrence = [
+        '- [ ] Weekly review 📅 2026-09-17 🔁 every week',
+        '  - [ ] Inbox to zero',
+        '  - [ ] Plan the week',
+        `- [x] Weekly review 📅 2026-09-10 🔁 every week ✅ ${today}`,
+        '  - [x] Inbox to zero ✅ 2026-09-09',
+        '  - [ ] Plan the week',
+        '',
+      ].join('\n');
+      assert.strictEqual(await noteReads(uri, nextOccurrence), nextOccurrence);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -305,7 +334,7 @@ suite('Completing steps', () => {
     try {
       const [task] = parseMarkdown(uri.fsPath, content).tasks;
       const shown = await withMessages(async (messages) => {
-        await toggleTask(task, true);
+        await toggleTask(createTaskWrites(history), task, true);
         return messages;
       });
       assert.deepStrictEqual(shown[0], ['Completed "Alone".', 'Undo']);
@@ -315,13 +344,93 @@ suite('Completing steps', () => {
   });
 });
 
-suite('Break into Steps from the board', () => {
-  test('the board asks for steps with the task id alone', () => {
-    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'breakIntoSteps', taskId: 'task-1' }), {
-      type: 'breakIntoSteps',
-      taskId: 'task-1',
+suite('A task whose note cannot be opened', () => {
+  /** Every message said, by kind, each answered by `answer`. */
+  function listen(answer: (text: string) => string | undefined = () => undefined) {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const names = ['showInformationMessage', 'showWarningMessage', 'showErrorMessage'] as const;
+    const originals = names.map((name) => window[name]);
+    const said: { kind: string; args: unknown[] }[] = [];
+    names.forEach((name) => {
+      window[name] = async (...args: unknown[]) => {
+        said.push({ kind: name, args });
+        return answer(String(args[0]));
+      };
     });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'breakIntoSteps' }), undefined);
-    assert.strictEqual(parseTaskBoardMessage({ type: 'breakIntoSteps', taskId: 'x', extra: 1 }), undefined);
+    return {
+      said,
+      errors: () => said.filter((message) => message.kind === 'showErrorMessage').map((message) => message.args),
+      restore: () => names.forEach((name, at) => (window[name] = originals[at])),
+    };
+  }
+
+  /** Waits for an error message, as long as a chain of messages can take. */
+  async function untilError(messages: ReturnType<typeof listen>): Promise<void> {
+    for (let tries = 0; tries < 40 && messages.errors().length === 0; tries += 1) {
+      await settle();
+    }
+  }
+
+  test('Break into Steps from the board says so, and asks for no steps', async () => {
+    const content = '- [ ] Plan the offsite\n';
+    const notes = new FakeNotes({ 'plan.md': content });
+    notes.failOpen = new Error('EACCES: permission denied');
+    const [task] = parseMarkdown('plan.md', content).tasks;
+    const messages = listen();
+    try {
+      const written = await breakIntoStepsCommand({} as IndexReader, createFakeTaskWrites(notes), task);
+      assert.strictEqual(written, false);
+      assert.deepStrictEqual(messages.errors(), [
+        ['Deckard could not write the steps in plan.md, so nothing was written.', 'Open Log'],
+      ]);
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test('Complete Steps says so, rather than failing unheard', async () => {
+    const content = '- [ ] Plan the offsite\n  - [ ] Book the venue\n';
+    const notes = new FakeNotes({ 'plan.md': content });
+    const [task] = parseMarkdown('plan.md', content).tasks;
+    // The note is readable for the completion, and not by the time
+    // Complete Steps is chosen.
+    const messages = listen((text) => {
+      if (!text.startsWith('Completed "Plan the offsite".')) {
+        return undefined;
+      }
+      notes.failOpen = new Error('EACCES: permission denied');
+      return 'Complete Steps';
+    });
+    try {
+      assert.strictEqual(await toggleTask(createFakeTaskWrites(notes), task, true), true);
+      await untilError(messages);
+      assert.deepStrictEqual(messages.errors(), [
+        ['Deckard could not complete the steps in plan.md, so nothing was written.', 'Open Log'],
+      ]);
+    } finally {
+      messages.restore();
+    }
+  });
+
+  test('Complete Task says so, as completing the task would', async () => {
+    const content = '- [ ] Plan the offsite\n  - [ ] Book the venue\n';
+    const notes = new FakeNotes({ 'plan.md': content });
+    const step = parseMarkdown('plan.md', content).tasks[1];
+    const messages = listen((text) => {
+      if (!text.includes('the last open step of')) {
+        return undefined;
+      }
+      notes.failOpen = new Error('EACCES: permission denied');
+      return 'Complete Task';
+    });
+    try {
+      assert.strictEqual(await toggleTask(createFakeTaskWrites(notes), step, true), true);
+      await untilError(messages);
+      assert.deepStrictEqual(messages.errors(), [
+        ['Deckard could not update the task in plan.md, so nothing was written.', 'Open Log'],
+      ]);
+    } finally {
+      messages.restore();
+    }
   });
 });

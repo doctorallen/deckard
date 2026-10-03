@@ -4,20 +4,17 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createLinkRewriteEdit, LinkMaintenance, renameHeadingCommand } from '../ui/commands/linkMaintenance';
 import {
-  createLinkRewriteEdit,
-  findHeadingAtLine,
-  LinkMaintenance,
-  planHeadingRenameRewrites,
-  planNoteRenameRewrites,
-} from '../ui/commands/linkMaintenance';
-import {
-  applyWorkspaceWrite,
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
+import { planNoteRenameRewrites } from '../domain/links/linkRewrites';
+import type { LinkService } from '../services/linkService';
+import { WorkspaceIndex } from '../domain/model';
+import { useDiskWorkspace } from './diskWorkspace';
+import { indexKeyOf } from './indexKeys';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -30,148 +27,13 @@ function indexOf(notes: Record<string, string>): WorkspaceIndex {
   );
 }
 
-/** What each rewrite does, as the note reads before and after it. */
-function rewritten(
-  rewrites: readonly { filePath: string; from: string; text: string }[],
-): string[] {
-  return rewrites.map(
-    (rewrite) => `${rewrite.filePath}: ${rewrite.from} -> ${rewrite.text}`,
-  );
-}
-
 suite('Link maintenance', () => {
-  const index = indexOf({
-    'notes/Atlas.md': [
-      '---',
-      'aliases: [Atlas Program]',
-      '---',
-      '# Atlas',
-      '',
-      '## Decision',
-      '',
-      'Back to [[#Decision]] and the [[Vendor review]].',
-    ].join('\n'),
-    'notes/Log.md': [
-      'Read [[Atlas]] and [[Atlas#Decision]] and [[Atlas#^k1|the line]].',
-      'Also [[atlas]] lowercase, [[Atlas Program]] by alias.',
-      '```',
-      '[[Atlas]] inside a fence',
-      '```',
-    ].join('\n'),
-    'archive/Atlas.md': '# Atlas\n\nThe old one.',
-    'notes/Vendor review.md': '# Vendor review',
-  });
-
-  test('carries every link to a renamed note, keeping what was written around it', () => {
-    assert.deepStrictEqual(
-      rewritten(planNoteRenameRewrites(index, 'notes/Log.md', 'Journal')),
-      [],
-      'no link names the Log',
-    );
-
-    // Atlas is ambiguous with archive/Atlas.md, so no link resolves to it and
-    // none is rewritten. A unique note is the case that matters.
-    const unique = indexOf({
-      'notes/Vendor review.md': '# Vendor review',
-      'notes/Log.md': [
-        'Read [[Vendor review]], [[Vendor review#Terms]], and',
-        '[[vendor review|the review]] plus [[Vendor review#^k1]].',
-        '```',
-        '[[Vendor review]] inside a fence',
-        '```',
-      ].join('\n'),
-    });
-    assert.deepStrictEqual(
-      rewritten(
-        planNoteRenameRewrites(unique, 'notes/Vendor review.md', 'Supplier review'),
-      ),
-      [
-        'notes/Log.md: [[Vendor review]] -> [[Supplier review]]',
-        'notes/Log.md: [[Vendor review#Terms]] -> [[Supplier review#Terms]]',
-        'notes/Log.md: [[vendor review|the review]] -> [[Supplier review|the review]]',
-        'notes/Log.md: [[Vendor review#^k1]] -> [[Supplier review#^k1]]',
-      ],
-    );
-  });
-
-  test('leaves alias links, and links to the note that keeps the name, alone', () => {
-    const rewrites = planNoteRenameRewrites(
-      index,
-      'archive/Atlas.md',
-      'Atlas 2024',
-    );
-    assert.deepStrictEqual(
-      rewritten(rewrites),
-      [],
-      'two notes are named Atlas, so no link resolves to either',
-    );
-
-    const aliased = indexOf({
-      'notes/Atlas.md': '---\naliases: [Atlas Program]\n---\n# Atlas',
-      'notes/Log.md': 'Read [[Atlas]] and [[Atlas Program]].',
-    });
-    assert.deepStrictEqual(
-      rewritten(planNoteRenameRewrites(aliased, 'notes/Atlas.md', 'Atlas 2026')),
-      ['notes/Log.md: [[Atlas]] -> [[Atlas 2026]]'],
-      'the alias still resolves, so its link is left as written',
-    );
-  });
-
-  test('says nothing to do when a note only moves folders', () => {
-    assert.deepStrictEqual(
-      planNoteRenameRewrites(index, 'notes/Vendor review.md', 'Vendor review'),
-      [],
-    );
-  });
-
-  test('carries the links that name a renamed heading', () => {
-    const headings = indexOf({
-      'notes/Atlas.md': [
-        '# Atlas',
-        '',
-        '## Decision #project/atlas',
-        '',
-        'See [[#Decision]].',
-      ].join('\n'),
-      'notes/Log.md': [
-        'Read [[Atlas#Decision]], [[Atlas#decision|the call]], and [[Atlas]].',
-        'The line [[Atlas#^k1]] is not a heading.',
-      ].join('\n'),
-    });
-
-    assert.deepStrictEqual(
-      rewritten(
-        planHeadingRenameRewrites(
-          headings,
-          'notes/Atlas.md',
-          'Decision #project/atlas',
-          'Decision to sign',
-        ),
-      ),
-      [
-        'notes/Atlas.md: [[#Decision]] -> [[#Decision to sign]]',
-        'notes/Log.md: [[Atlas#Decision]] -> [[Atlas#Decision to sign]]',
-        'notes/Log.md: [[Atlas#decision|the call]] -> [[Atlas#Decision to sign|the call]]',
-      ],
-    );
-  });
-
-  test('finds the heading a line sits in', () => {
-    const file = parseMarkdown(
-      'notes/Atlas.md',
-      '# Atlas\n\nIntro.\n\n## Decision\n\nBody.\n',
-    );
-    assert.strictEqual(findHeadingAtLine(file.sections, 3)?.heading, 'Atlas');
-    assert.strictEqual(findHeadingAtLine(file.sections, 7)?.heading, 'Decision');
-    assert.strictEqual(findHeadingAtLine([], 1), undefined);
-  });
-
   test('rewrites the notes on disk, and skips a link that has since changed', async () => {
     const root = await createTemporaryRoot();
     const write = async (name: string, content: string): Promise<string> => {
       const uri = vscode.Uri.joinPath(root, name);
       await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
-      return uri.fsPath;
+      return indexKeyOf(uri);
     };
     const logPath = await write('Log.md', 'Read [[Vendor review]] today.\n');
     const movedPath = await write('Moved.md', 'Read [[Vendor review]] too.\n');
@@ -194,11 +56,10 @@ suite('Link maintenance', () => {
     );
 
     const { edit } = await createLinkRewriteEdit(rewrites);
-    const written = await applyWorkspaceWrite(
-      edit,
-      { label: 'the rename', preview: 'never' },
-      new WorkspaceWriteHistory(),
-    );
+    const written = await new WorkspaceWriteHistory().write(edit, {
+      label: 'the rename',
+      preview: 'never',
+    });
     const updated = written.notes.length;
     const read = async (file: string): Promise<string> =>
       Buffer.from(
@@ -228,13 +89,13 @@ suite('Link maintenance', () => {
       Buffer.from('# Vendor review\n', 'utf8'),
     );
     const snapshot = indexOf({
-      [logUri.fsPath]: 'Read [[Vendor review]] today.\n',
-      [reviewUri.fsPath]: '# Vendor review\n',
+      [indexKeyOf(logUri)]: 'Read [[Vendor review]] today.\n',
+      [indexKeyOf(reviewUri)]: '# Vendor review\n',
     });
     const maintenance = new LinkMaintenance({
       ready: Promise.resolve(),
       getSnapshot: () => snapshot,
-      getFilePath: (uri) => uri.fsPath,
+      getFilePath: indexKeyOf,
       isNotesFile: () => true,
     });
 
@@ -261,6 +122,123 @@ suite('Link maintenance', () => {
       maintenance.dispose();
       await deleteTemporaryRoot(root);
     }
+  });
+
+  test('says how many links it updated only once the rename is made, and nothing for one cancelled', async () => {
+    const willRename = new vscode.EventEmitter<vscode.FileWillRenameEvent>();
+    const didRename = new vscode.EventEmitter<vscode.FileRenameEvent>();
+    const links = {
+      planNoteRenames: async () => ({ edits: [], rewritten: 2, notes: 1 }),
+    } as unknown as LinkService<vscode.Uri>;
+    const snapshot = indexOf({});
+    const maintenance = new LinkMaintenance(
+      { ready: Promise.resolve(), getSnapshot: () => snapshot, getFilePath: (uri) => uri.fsPath, isNotesFile: () => true },
+      links,
+      { onWillRenameFiles: willRename.event, onDidRenameFiles: didRename.event },
+    );
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showInformationMessage = window.showInformationMessage;
+    const shown: unknown[] = [];
+    window.showInformationMessage = async (message: unknown) => void shown.push(message);
+    const files = [{ oldUri: vscode.Uri.file('/notes/Vendor review.md'), newUri: vscode.Uri.file('/notes/Supplier review.md') }];
+    /** Asks for the rename as VS Code does, and waits on the edit it is handed. */
+    const plan = async (): Promise<void> => {
+      const waited: Thenable<unknown>[] = [];
+      willRename.fire({
+        files,
+        token: new vscode.CancellationTokenSource().token,
+        waitUntil: (thenable: Thenable<unknown>) => void waited.push(thenable),
+      } as vscode.FileWillRenameEvent);
+      await Promise.all(waited);
+    };
+    try {
+      await plan();
+      assert.deepStrictEqual(shown, [], 'nothing is said while VS Code waits on the edit');
+      // The reader cancels the rename, so VS Code never says it was made.
+      await plan();
+      didRename.fire({ files: [{ oldUri: files[0].oldUri, newUri: vscode.Uri.file('/notes/Other.md') }] });
+      assert.deepStrictEqual(shown, [], 'nor for another rename made meanwhile');
+      didRename.fire({ files });
+      assert.deepStrictEqual(shown, ['Deckard updated 2 links in 1 note.']);
+      didRename.fire({ files });
+      assert.strictEqual(shown.length, 1, 'it is said once');
+    } finally {
+      window.showInformationMessage = showInformationMessage;
+      maintenance.dispose();
+      willRename.dispose();
+      didRename.dispose();
+    }
+  });
+});
+
+suite('Rename Heading', () => {
+  // In the extension host this runs against VS Code; under the e2e
+  // stand-in, against a workspace on disk modeled on it.
+  let putBackWorkspace: () => void = () => undefined;
+  suiteSetup(() => {
+    putBackWorkspace = useDiskWorkspace();
+  });
+  suiteTeardown(() => putBackWorkspace());
+
+  test('renames a heading in a note saved with a byte order mark, which the editor leaves out', async () => {
+    const root = await createTemporaryRoot();
+    const mark = Buffer.from([0xef, 0xbb, 0xbf]);
+    const reviewUri = vscode.Uri.file(path.join(root.fsPath, 'Vendor review.md'));
+    const logUri = vscode.Uri.file(path.join(root.fsPath, 'Log.md'));
+    await vscode.workspace.fs.writeFile(reviewUri, Buffer.concat([mark, Buffer.from('Notes\n# Vendor review\n', 'utf8')]));
+    await vscode.workspace.fs.writeFile(logUri, Buffer.from('Read [[Vendor review#Vendor review]] today.\n', 'utf8'));
+    // The index can hold the text as read from disk, mark and all.
+    const index = indexOf({
+      [indexKeyOf(reviewUri)]: '\uFEFFNotes\n# Vendor review\n',
+      [indexKeyOf(logUri)]: 'Read [[Vendor review#Vendor review]] today.\n',
+    });
+    const document = await vscode.workspace.openTextDocument(reviewUri);
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const replaced: [string, unknown][] = [
+      ['activeTextEditor', { document, selection: { active: new vscode.Position(1, 3) } }],
+      ['showInputBox', async () => 'Supplier review'],
+      ['showInformationMessage', async (message: string) => void shown.push(message)],
+    ];
+    const shown: string[] = [];
+    const kept = replaced.map(([key]) => Object.getOwnPropertyDescriptor(window, key));
+    replaced.forEach(([key, value]) => Object.defineProperty(window, key, { configurable: true, get: () => value }));
+    // Two notes would open the refactor preview, which no one is here to accept.
+    const settings = vscode.workspace.getConfiguration('deckard');
+    const preview = settings.inspect('previewWorkspaceWrites')?.globalValue;
+    await settings.update('previewWorkspaceWrites', 'never', vscode.ConfigurationTarget.Global);
+    try {
+      const renamed = await renameHeadingCommand(
+        {
+          ready: Promise.resolve(),
+          getSnapshot: () => index,
+          getFilePath: indexKeyOf,
+          isNotesFile: () => true,
+          refresh: async () => undefined,
+        },
+        new WorkspaceWriteHistory(),
+      );
+      assert.strictEqual(renamed, 'Supplier review', shown.join('\n'));
+    } finally {
+      await settings.update('previewWorkspaceWrites', preview, vscode.ConfigurationTarget.Global);
+      replaced.forEach(([key], at) => {
+        const descriptor = kept[at];
+        if (descriptor) {
+          Object.defineProperty(window, key, descriptor);
+        } else {
+          delete window[key];
+        }
+      });
+    }
+    assert.deepStrictEqual(shown, ['Renamed the heading to "Supplier review" and the links to it in 1 other note.']);
+    assert.deepStrictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(reviewUri)),
+      Buffer.concat([mark, Buffer.from('Notes\n# Supplier review\n', 'utf8')]),
+    );
+    assert.strictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(logUri)).toString('utf8'),
+      'Read [[Vendor review#Supplier review]] today.\n',
+    );
+    await deleteTemporaryRoot(root);
   });
 });
 

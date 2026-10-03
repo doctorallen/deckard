@@ -4,15 +4,10 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { formatLocalDate } from '../ui/commands/dailyNote';
-import {
-  findOpenPeriod,
-  getIsoWeekStart,
-  getReviewRange,
-} from '../ui/commands/review';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { getIsoWeekStart, getReviewRange } from '../domain/notes/reviewPeriods';
+import { findOpenPeriod, openPeriodicNoteWithReview, ReviewWrites, writeReviewCommand } from '../ui/commands/review';
 import {
   formatReview,
   REVIEW_END,
@@ -20,6 +15,9 @@ import {
   summarizeReview,
   writeReviewInto,
 } from '../ui/state/reviewState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { formatLocalDate } from '../domain/notes/periodicNotes';
+import { WorkspaceIndex } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Monday 2026-09-14 to Sunday 2026-09-20. */
@@ -81,6 +79,7 @@ const index = indexOf({
 suite('Periodic review', () => {
   test('reads the week out of the index', () => {
     const summary = summarizeReview(index, range, {
+      queryContext: createQueryContext(Date.now()),
       tagFirstSeen: {
         '#risk/vendor': new Date(2026, 8, 16).getTime(),
         '#project/atlas': new Date(2026, 0, 4).getTime(),
@@ -116,6 +115,7 @@ suite('Periodic review', () => {
   test('writes it as Markdown that carries no tags of its own', () => {
     const review = formatReview(
       summarizeReview(index, range, {
+        queryContext: createQueryContext(Date.now()),
         tagFirstSeen: { '#risk/vendor': new Date(2026, 8, 16).getTime() },
       }),
     );
@@ -162,7 +162,7 @@ suite('Periodic review', () => {
         '- [ ] Starts then 🛫 2026-09-26',
       ].join('\n'),
     });
-    const summary = summarizeReview(ahead, range, { next, nextLabel: 'next week' });
+    const summary = summarizeReview(ahead, range, { queryContext: createQueryContext(Date.now()), next, nextLabel: 'next week' });
     assert.deepStrictEqual(
       summary.comingUp.map((item) => [item.title, item.detail]),
       [
@@ -175,7 +175,7 @@ suite('Periodic review', () => {
     assert.ok(review.includes('### Coming up'), review);
     assert.ok(review.includes('- Mon 2026-09-21 · Book the room — [[2026-09-19]] (due)'), review);
     assert.ok(
-      formatReview(summarizeReview(indexOf({}), range, { next, nextLabel: 'next week' })).includes(
+      formatReview(summarizeReview(indexOf({}), range, { queryContext: createQueryContext(Date.now()), next, nextLabel: 'next week' })).includes(
         'Nothing is due, scheduled, or starting next week.',
       ),
     );
@@ -183,7 +183,7 @@ suite('Periodic review', () => {
 
   test('writes sections of your own, and says when a search does not parse', () => {
     const review = formatReview(
-      summarizeReview(index, range, {
+      summarizeReview(index, range, { queryContext: createQueryContext(Date.now()),
         sections: [
           { title: 'Open for Atlas', query: '#project/atlas is:open' },
           { title: 'Broken', query: '(is:open' },
@@ -197,7 +197,7 @@ suite('Periodic review', () => {
 
   test('says so when a period held nothing', () => {
     const review = formatReview(
-      summarizeReview(indexOf({}), range, {}),
+      summarizeReview(indexOf({}), range, { queryContext: createQueryContext(Date.now()) }),
     );
     assert.ok(review.includes('Nothing was completed in this period.'));
     assert.ok(review.includes('No tags were first seen in this period.'));
@@ -266,6 +266,113 @@ suite('Periodic review', () => {
     assert.strictEqual(findOpenPeriod('Atlas'), undefined);
   });
 
+  test('a new weekly note asks for its folder once, and its review goes into the note that opens', async () => {
+    const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-review-folders-${Date.now()}`));
+    const folders: vscode.WorkspaceFolder[] = ['first', 'second'].map((name, at) => ({
+      uri: vscode.Uri.joinPath(root, name),
+      name,
+      index: at,
+    }));
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const kept = Object.getOwnPropertyDescriptor(workspace, 'workspaceFolders');
+    const showQuickPick = window.showQuickPick;
+    const asked: unknown[] = [];
+    // Each ask for a folder gets the next one, as a reader might pick.
+    window.showQuickPick = async (items: readonly { folder: vscode.WorkspaceFolder }[]) => {
+      asked.push(items);
+      return items[(asked.length - 1) % items.length];
+    };
+    Object.defineProperty(workspace, 'workspaceFolders', { configurable: true, get: () => folders });
+    const reviewed: string[] = [];
+    const writes = {
+      reviews: {
+        write: async (request: { note: () => Promise<vscode.Uri> }) => {
+          reviewed.push((await request.note()).toString());
+          return { kind: 'not-applied' };
+        },
+      },
+    } as unknown as ReviewWrites;
+    try {
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      const opened = await openPeriodicNoteWithReview(
+        { ready: Promise.resolve(), getSnapshot: () => indexOf({}), refresh: async () => undefined },
+        writes,
+        'week',
+      );
+
+      assert.strictEqual(asked.length, 1, 'the folder is asked for once');
+      assert.ok(opened?.toString().startsWith(folders[0].uri.toString()));
+      assert.deepStrictEqual(reviewed, [opened?.toString()], 'the review goes into the note that opens');
+    } finally {
+      if (kept) {
+        Object.defineProperty(workspace, 'workspaceFolders', kept);
+      }
+      window.showQuickPick = showQuickPick;
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('says so when the review in the note is already up to date', async () => {
+    const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-review-current-${Date.now()}`));
+    const noteUri = vscode.Uri.joinPath(root, `${range.name}.md`);
+    await vscode.workspace.fs.writeFile(noteUri, Buffer.from('# Week\n', 'utf8'));
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const showInformationMessage = window.showInformationMessage;
+    const shown: unknown[] = [];
+    window.showInformationMessage = async (message: unknown) => void shown.push(message);
+    const writes = {
+      reviews: { write: async () => ({ kind: 'unchanged', title: range.title, noteUri }) },
+    } as unknown as ReviewWrites;
+    try {
+      await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(noteUri));
+      const title = await writeReviewCommand(
+        { ready: Promise.resolve(), getSnapshot: () => index, refresh: async () => undefined },
+        writes,
+      );
+
+      assert.strictEqual(title, range.title);
+      assert.deepStrictEqual(shown, ['The review of 2026-09-14 to 2026-09-20 is already up to date.']);
+    } finally {
+      window.showInformationMessage = showInformationMessage;
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('a month note in the editor is the note its review is written into, under either name', async () => {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const kept = Object.getOwnPropertyDescriptor(window, 'activeTextEditor');
+    const reviewed: string[] = [];
+    const writes = {
+      reviews: {
+        write: async (request: { note: () => Promise<vscode.Uri> }) => {
+          reviewed.push((await request.note()).path);
+          return { kind: 'not-applied' };
+        },
+      },
+    } as unknown as ReviewWrites;
+    const notes = ['/notes/journal/month-september-2026.md', '/notes/journal/2026-09.md'];
+    try {
+      for (const note of notes) {
+        const editor = { document: { uri: vscode.Uri.file(note) } };
+        Object.defineProperty(window, 'activeTextEditor', { configurable: true, get: () => editor });
+        await writeReviewCommand(
+          { ready: Promise.resolve(), getSnapshot: () => index, refresh: async () => undefined },
+          writes,
+        );
+      }
+    } finally {
+      if (kept) {
+        Object.defineProperty(window, 'activeTextEditor', kept);
+      } else {
+        delete window.activeTextEditor;
+      }
+    }
+    assert.deepStrictEqual(reviewed, notes);
+  });
+
   test('writes the review into the note on disk', async () => {
     const directoryName = `deckard-review-${Date.now()}`;
     const root = vscode.Uri.file(path.join(os.tmpdir(), directoryName));
@@ -275,7 +382,7 @@ suite('Periodic review', () => {
       uri,
       Buffer.from('# 2026-W38\n\nWhat I meant to do.\n', 'utf8'),
     );
-    const review = formatReview(summarizeReview(index, range, {}));
+    const review = formatReview(summarizeReview(index, range, { queryContext: createQueryContext(Date.now()) }));
     await vscode.workspace.fs.writeFile(
       uri,
       Buffer.from(

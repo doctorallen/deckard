@@ -2,9 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { findTaskMetadataSpans, parseTaskMetadata } from '../core/markdown/taskMetadata';
-import { TaskLineDecorations } from '../ui/commands/taskLineDecorations';
+import { TaskLineDecorations } from '../ui/providers/taskLineDecorations';
 import { findTaskLineMarks } from '../ui/state/taskLineMarks';
+import { createQueryContext } from '../domain/query/queryContext';
+import { findTaskMetadataSpans, parseTaskMetadata } from '../domain/markdown/taskFields';
 
 /** Friday 2026-09-25, mid-morning. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();
@@ -56,7 +57,7 @@ suite('Task metadata spans', () => {
 suite('Task line marks', () => {
   test('an overdue task says so, in its own color, and the rest steps back', () => {
     const lines = ['- [ ] Send proposal 📅 2026-09-20 ⏫ 🔁 every week'];
-    const marks = findTaskLineMarks(lines, now, both);
+    const marks = findTaskLineMarks(lines, createQueryContext(now), both);
     assert.deepStrictEqual(texts(lines, marks.overdue), ['📅 2026-09-20']);
     assert.deepStrictEqual(texts(lines, marks.dim), ['⏫', '🔁 every week']);
     assert.deepStrictEqual(marks.hints, [{ line: 0, text: 'overdue 5 days', tone: 'overdue' }]);
@@ -64,22 +65,22 @@ suite('Task line marks', () => {
 
   test('a task long overdue needs a new date, and is not red', () => {
     const lines = ['- [ ] Old 📅 2026-08-01'];
-    const marks = findTaskLineMarks(lines, now, both);
+    const marks = findTaskLineMarks(lines, createQueryContext(now), both);
     assert.deepStrictEqual(marks.overdue, []);
     assert.deepStrictEqual(texts(lines, marks.dim), ['📅 2026-08-01']);
     assert.deepStrictEqual(marks.hints, [{ line: 0, text: 'needs a new date', tone: 'hint' }]);
   });
 
   test('says due today, and nothing for a later day', () => {
-    assert.deepStrictEqual(findTaskLineMarks(['- [ ] Now 📅 2026-09-25'], now, both).hints, [
+    assert.deepStrictEqual(findTaskLineMarks(['- [ ] Now 📅 2026-09-25'], createQueryContext(now), both).hints, [
       { line: 0, text: 'due today', tone: 'hint' },
     ]);
-    assert.deepStrictEqual(findTaskLineMarks(['- [ ] Later 📅 2026-09-28'], now, both).hints, []);
+    assert.deepStrictEqual(findTaskLineMarks(['- [ ] Later 📅 2026-09-28'], createQueryContext(now), both).hints, []);
   });
 
   test('a done task is dimmed and says nothing', () => {
     const lines = ['- [x] Done 📅 2026-09-20 ✅ 2026-09-21'];
-    const marks = findTaskLineMarks(lines, now, both);
+    const marks = findTaskLineMarks(lines, createQueryContext(now), both);
     assert.deepStrictEqual(texts(lines, marks.dim), ['📅 2026-09-20', '✅ 2026-09-21']);
     assert.deepStrictEqual(marks.overdue, []);
     assert.deepStrictEqual(marks.hints, []);
@@ -87,15 +88,15 @@ suite('Task line marks', () => {
 
   test('a block id on prose steps back; code and front matter are left alone', () => {
     const lines = ['---', 'x: - [ ] y 📅 2026-09-20', '---', 'A line ^abc', '```', '- [ ] In code 📅 2026-09-20', '```'];
-    const marks = findTaskLineMarks(lines, now, both);
+    const marks = findTaskLineMarks(lines, createQueryContext(now), both);
     assert.deepStrictEqual(texts(lines, marks.dim), ['^abc']);
     assert.deepStrictEqual(marks.hints, []);
   });
 
   test('each half can be turned off', () => {
     const lines = ['- [ ] Send 📅 2026-09-20 ⏫'];
-    assert.deepStrictEqual(findTaskLineMarks(lines, now, { dim: true, hints: false }).hints, []);
-    const undimmed = findTaskLineMarks(lines, now, { dim: false, hints: true });
+    assert.deepStrictEqual(findTaskLineMarks(lines, createQueryContext(now), { dim: true, hints: false }).hints, []);
+    const undimmed = findTaskLineMarks(lines, createQueryContext(now), { dim: false, hints: true });
     assert.deepStrictEqual(undimmed.dim, []);
     assert.deepStrictEqual(texts(lines, undimmed.overdue), ['📅 2026-09-20']);
   });

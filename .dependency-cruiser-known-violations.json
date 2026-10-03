@@ -1,0 +1,30 @@
+[
+  {
+    "type": "dependency",
+    "from": "src/ui/commands/chooseTheme.ts",
+    "to": "src/ui/webview/themeNames.ts",
+    "unresolvedTo": "../webview/themeNames",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "commands-not-to-webview"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/ui/commands/chooseTheme.ts",
+    "to": "src/ui/webview/themes.ts",
+    "unresolvedTo": "../webview/themes",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "commands-not-to-webview"
+    }
+  }
+]

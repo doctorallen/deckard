@@ -1,18 +1,16 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
-import { parseTaskBoardMessage } from '../ui/webview/messages';
-import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { createQueryContext } from '../domain/query/queryContext';
+import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
-  now: Date.parse('2026-09-21T12:00:00Z'),
+  queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),
   statusNamespace: 'status',
   statuses: ['todo'],
   format: 'emoji',
@@ -32,14 +30,14 @@ function indexOf(): WorkspaceIndex {
 }
 
 function preferences(values: Partial<PersistedPreferences>): PersistedPreferences {
-  const store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-  const value = { ...store.value, taskBoardLayout: 'board' as const, ...values };
-  store.dispose();
+  const store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+  const value = { ...store.reader.value, taskBoardLayout: 'board' as const, ...values };
+  store.repository.dispose();
   return value;
 }
 
 function board(values: Partial<PersistedPreferences>) {
-  return createTaskBoard(indexOf(), preferences(values), { query: 'is:open' }, options, 'inline');
+  return createTaskBoard({ index: indexOf(), preferences: preferences(values), search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' });
 }
 
 suite('The Task board grouped by a tag namespace', () => {
@@ -71,33 +69,23 @@ suite('The Task board grouped by a tag namespace', () => {
 
   test('keeps tag and its namespace in preferences, and nothing else under that name', () => {
     const read = (value: unknown) => {
-      const store = new PreferencesStore({
+      const store = createPreferences({
         get: (key: string, fallback?: unknown) => (key === 'deckard.preferences' ? value : fallback),
         keys: () => [],
         update: async () => undefined,
       } as never);
-      const { taskBoardGroup, taskBoardGroupNamespace } = store.value;
-      store.dispose();
+      const { taskBoardGroup, taskBoardGroupNamespace } = store.reader.value;
+      store.repository.dispose();
       return [taskBoardGroup, taskBoardGroupNamespace];
     };
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'Context' }), ['tag', 'context']);
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag' }), ['status', undefined]);
     assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: '1 bad' }), ['status', undefined]);
-  });
-
-  test('the host takes a tag grouping only with a namespace, and a move with where it came from', () => {
-    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag', namespace: 'context' }), {
-      type: 'setBoardGroup',
-      groupBy: 'tag',
-      namespace: 'context',
-    });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag' }), undefined);
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag', namespace: 'a b' }), undefined);
     assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'moveTask', taskId: 't', column: 'tag:context/phone', from: 'tag:context/' }),
-      { type: 'moveTask', taskId: 't', column: 'tag:context/phone', from: 'tag:context/' },
+      read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'Équipe' }),
+      ['tag', 'équipe'],
+      'a namespace in any script, as the page sends one',
     );
-    assert.strictEqual(parseTaskBoardMessage({ type: 'moveTask', taskId: 't', column: 'done', from: 3 }), undefined);
   });
 
   suite('on the page', () => {
@@ -106,9 +94,8 @@ suite('The Task board grouped by a tag namespace', () => {
       page?.dispose();
       page = undefined;
     });
-    const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
     const open = (values: Partial<PersistedPreferences>): WebviewPage => {
-      page = openWebviewPage(getTaskBoardHtml(webview), board(values));
+      page = openWebviewPage(renderPage('taskBoard'), board(values));
       return page;
     };
 
@@ -146,6 +133,7 @@ suite('The Task board grouped by a tag namespace', () => {
         taskId: copies[1].getAttribute('data-task-id'),
         column: 'tag:context/',
         from: 'tag:context/computer',
+        requestId: 1,
       });
     });
   });

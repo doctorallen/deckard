@@ -1,24 +1,20 @@
-import {
-  findDailyNoteDate,
-  findFencedLines,
-} from '../../core/markdown/parser';
-import { findCodeAndLinkRanges } from '../../core/markdown/inlineRanges';
-import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
+import { findDailyNoteDate } from '../../domain/markdown/parser';
 import {
   createNoteTitleMap,
-  noteTitle,
   parseWikiTarget,
   resolveWikiTarget,
-} from '../../core/workspace/backlinks';
-import { findAdjacentDailyNote, listDailyNotes } from '../commands/dailyNote';
-import { planRollover } from '../commands/rollover';
-import { findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
+} from '../../domain/index/backlinks';
+import { findAdjacentDailyNote, listDailyNotes } from '../../domain/notes/periodicNotes';
+import { planRollover } from '../../domain/notes/rolloverPlan';
+import { createSourceParser, findEmbedLines, resolveEmbed } from '../../domain/notes/embeds';
+import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
 
 /**
  * What the editor's action lenses decide, apart from VS Code. Each function
  * returns only what is worth a lens, so an empty result means no lens at all.
  */
 
+/** One task's dependency lens: what it waits on, what it names that nothing carries, and what waits on it. */
 export interface TaskDependencies {
   /** Zero-based line of the task. */
   line: number;
@@ -92,6 +88,7 @@ export function findTaskDependencies(
   });
 }
 
+/** A daily note's lenses: the notes either side of it, and what a rollover would carry in. */
 export interface DailyNoteActions {
   /** The nearest daily notes before and after this one, by date. */
   previous?: string;
@@ -103,6 +100,18 @@ export interface DailyNoteActions {
   carryIn: Task[];
 }
 
+/** A note that may be a daily note, and how far back its tasks are looked for. */
+export interface DailyNoteActionsOptions {
+  file: ParsedFile;
+  index: WorkspaceIndex;
+  /** Today, as `YYYY-MM-DD`. */
+  today: string;
+  /** How many days back open tasks are carried in from; 0, the default, is every day. */
+  lookbackDays?: number;
+  /** The rollover mode, which decides whether older copies of a task count. */
+  mode?: 'move' | 'migrate';
+}
+
 /**
  * What a daily note offers: its neighbors, and on today's note, the tasks
  * still open in earlier ones. Undefined for a note that is not a daily note,
@@ -112,14 +121,13 @@ export interface DailyNoteActions {
  * those are not counted; in copy mode they stay in the note they came from,
  * and would otherwise keep offering to carry in what is already there.
  */
-export function findDailyNoteActions(
-  file: ParsedFile,
-  index: WorkspaceIndex,
-  today: string,
+export function findDailyNoteActions({
+  file,
+  index,
+  today,
   lookbackDays = 0,
-  /** The rollover mode, which decides whether older copies of a task count. */
-  mode: 'move' | 'migrate' = 'move',
-): DailyNoteActions | undefined {
+  mode = 'move',
+}: DailyNoteActionsOptions): DailyNoteActions | undefined {
   const date = findDailyNoteDate(
     file.filePath,
     file.sections
@@ -155,6 +163,7 @@ export function findDailyNoteActions(
   };
 }
 
+/** An embed the preview cannot draw, with why. */
 export interface EmbedProblem {
   /** Zero-based line of the embed. */
   line: number;
@@ -180,6 +189,8 @@ export function findEmbedProblems(
     return [];
   }
   const titles = createNoteTitleMap(index);
+  // The note itself is read once, for every embed of itself it holds.
+  const parseSource = createSourceParser();
   return embeds.flatMap(({ line, target }) => {
     const { note } = parseWikiTarget(target);
     const filePath = note
@@ -188,7 +199,7 @@ export function findEmbedProblems(
     if (note && !filePath) {
       return [];
     }
-    const embed = resolveEmbed(target, file.content, index);
+    const embed = resolveEmbed(target, file.content, index, parseSource);
     if (embed.kind !== 'missing') {
       return [];
     }
@@ -200,140 +211,6 @@ export function findEmbedProblems(
       },
     ];
   });
-}
-
-export interface UnlinkedMention {
-  filePath: string;
-  /** Zero-based line, and the columns of the name as written. */
-  line: number;
-  startColumn: number;
-  endColumn: number;
-  /** The name as written, which the link keeps. */
-  text: string;
-}
-
-/** A name shorter than this is too likely to be an ordinary word. */
-const MIN_MENTION_LENGTH = 3;
-/**
- * What a mention is never found inside, besides the code and link ranges
- * every tag reader skips: a Markdown link's words, a bare URL, and a `#tag`
- * or `@person`.
- */
-const NOT_PROSE =
-  /!?\[[^\]]*\]\([^)]*\)|<?https?:\/\/[^\s>]+>?|[#@][\p{L}\p{N}_/-]+/gu;
-
-const mentionCache = new WeakMap<WorkspaceIndex, Map<string, UnlinkedMention[]>>();
-
-/**
- * The places other notes write a note's title or one of its aliases as plain
- * prose, not linked: the names a `[[link]]` could be made of.
- *
- * A mention is whole words, matched without regard to case, outside front
- * matter, headings, code fences, and anything `NOT_PROSE` names. Headings are
- * left alone because a heading's text is what links into it name. A name
- * shorter than three characters is not looked for, nor a name another note
- * also goes by, since a link made of it would not open this note. Where two
- * names overlap, such as a title and a longer alias that contains it, the
- * longer is the mention.
- *
- * The workspace is read once per index for each note, so asking again after
- * every keystroke costs a lookup.
- */
-export function findUnlinkedMentions(
-  file: ParsedFile,
-  index: WorkspaceIndex,
-): UnlinkedMention[] {
-  const titles = createNoteTitleMap(index);
-  const names = [noteTitle(file.filePath), ...(file.aliases ?? [])]
-    .map((name) => name.trim())
-    .filter((name, position, all) => {
-      const key = name.toLocaleLowerCase();
-      const owners = titles.get(key) ?? [];
-      return (
-        name.length >= MIN_MENTION_LENGTH &&
-        owners.every((owner) => owner === file.filePath) &&
-        all.findIndex((other) => other.toLocaleLowerCase() === key) === position
-      );
-    })
-    .sort((left, right) => right.length - left.length);
-  if (names.length === 0) {
-    return [];
-  }
-
-  const key = [file.filePath, ...names].join('\u0000');
-  let cached = mentionCache.get(index);
-  if (!cached) {
-    cached = new Map();
-    mentionCache.set(index, cached);
-  }
-  const known = cached.get(key);
-  if (known) {
-    return known;
-  }
-
-  const pattern = new RegExp(
-    `(?<![\\p{L}\\p{N}_])(?:${names.map(escapeRegExp).join('|')})(?![\\p{L}\\p{N}_])`,
-    'giu',
-  );
-  const mentions: UnlinkedMention[] = [];
-  index.files.forEach((other, filePath) => {
-    if (filePath === file.filePath) {
-      return;
-    }
-    const lines = other.content.split(/\r?\n/);
-    const fenced = findFencedLines(lines);
-    const frontmatterEnd = findFrontmatterEnd(lines);
-    lines.forEach((text, line) => {
-      if (line <= frontmatterEnd || fenced.has(line) || /^ {0,3}#{1,6}\s/.test(text)) {
-        return;
-      }
-      // Blank out what is not prose, keeping every column where it was.
-      const prose = blankRanges(
-        text.replace(NOT_PROSE, (match) => ' '.repeat(match.length)),
-        text,
-      );
-      for (const match of prose.matchAll(pattern)) {
-        const startColumn = match.index ?? 0;
-        mentions.push({
-          filePath,
-          line,
-          startColumn,
-          endColumn: startColumn + match[0].length,
-          text: text.slice(startColumn, startColumn + match[0].length),
-        });
-      }
-    });
-  });
-  mentions.sort(
-    (left, right) =>
-      left.filePath.localeCompare(right.filePath) ||
-      left.line - right.line ||
-      left.startColumn - right.startColumn,
-  );
-  cached.set(key, mentions);
-  return mentions;
-}
-
-/** `text` with the inline code and links of `line` blanked, columns kept. */
-function blankRanges(text: string, line: string): string {
-  let blanked = text;
-  findCodeAndLinkRanges(line).forEach(({ start, end }) => {
-    blanked = blanked.slice(0, start) + ' '.repeat(end - start) + blanked.slice(end);
-  });
-  return blanked;
-}
-
-/** The last line of a note's front matter, or -1 when it has none. */
-function findFrontmatterEnd(lines: readonly string[]): number {
-  if (lines[0]?.trim() !== '---') {
-    return -1;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end < 0 ? -1 : end;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function append<T>(map: Map<string, T[]>, key: string, value: T): void {

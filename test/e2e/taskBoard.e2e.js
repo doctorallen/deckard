@@ -5,24 +5,26 @@
 // status columns, so these check each of those through real messages.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
-const { TaskBoardPanel } = require('../../out/ui/webview/taskBoard.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { DashboardPanel } = require('../../out/ui/webview/dashboard.js');
+const { createGlobalState, mountWebview } = require('./support.js');
+const modules = require('../harness/modules.js');
+const { TaskBoardPanel } = modules.taskBoard;
+const { createPreferences } = modules.preferenceServices;
+const { ActiveSearch } = modules.activeSearch;
+const { DashboardPanel } = modules.dashboard;
+const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
-  const task = (id, title, lineNumber, tags, completed = false) => ({
+  const task = (id, title, lineNumber, { tags = [], completed = false } = {}) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags,
     tagLabels: Object.fromEntries(tags.map((tag) => [tag, tag])),
     lineNumber, checkboxColumn: 3, checkboxValue: completed ? 'x' : ' ',
     sourceLineText: `- [${completed ? 'x' : ' '}] ${title} ${tags.join(' ')}`.trim(),
   });
   const tasks = [
-    task('audit', 'Send the audit summary', 1, ['#project/atlas', '#status/doing']),
-    task('room', 'Book the review room', 2, ['#project/beta']),
-    task('call', 'Call Ren', 3, ['#project/atlas']),
-    task('ship', 'Ship the release', 4, [], true),
+    task('audit', 'Send the audit summary', 1, { tags: ['#project/atlas', '#status/doing'] }),
+    task('room', 'Book the review room', 2, { tags: ['#project/beta'] }),
+    task('call', 'Call Ren', 3, { tags: ['#project/atlas'] }),
+    task('ship', 'Ship the release', 4, { completed: true }),
   ];
   const tag = (key, taskIds) => [key, {
     key, label: key, sectionIds: [], taskIds, filePaths: [],
@@ -43,37 +45,27 @@ function createIndex() {
   };
 }
 
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    keys: () => [...store.keys()],
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
-  };
-}
-
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function openBoard(prepare = async () => undefined, makeIndex = createIndex) {
+async function openBoard(prepare = async () => undefined, makeIndex = createIndex, open = (board) => board.show()) {
   vscode._test.createdPanels.length = 0;
   vscode._test.settings.clear();
   vscode._test.configurationUpdates.length = 0;
   const updates = new vscode.EventEmitter();
   const index = makeIndex();
-  const preferences = new PreferencesStore(createGlobalState());
+  const preferences = createPreferences(createGlobalState());
   await prepare(preferences);
   const activeSearch = new ActiveSearch();
-  const board = new TaskBoardPanel(
-    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
+  const board = new TaskBoardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     preferences,
-    { fsPath: '/ext' },
-    async () => undefined,
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: async () => undefined,
     activeSearch,
-  );
-  await board.show();
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  await open(board);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
   panel._toWebview.forEach((message) => panel._deliver(message));
@@ -85,10 +77,57 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
   return { view, panel, board, preferences, updates, lastState, cards, shownCards, activeSearch, index };
 }
 
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
+test('Save keeps the search the box shows, before it is run', async () => {
+  const { view, preferences } = await openBoard();
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, '#project/atlas');
+  vscode._test.setInputBoxResponse('Atlas');
+  view.click(view.find('[data-action="save-board-search"]'));
+  await delay(10);
+  vscode._test.setInputBoxResponse(undefined);
+  // The words typed after the board's own is:open, as Enter would run them.
+  assert.deepStrictEqual(preferences.reader.value.savedFilters.map((saved) => saved.query), ['is:open AND #project/atlas']);
+  view.keydown(bar, 'Enter');
+  assert.strictEqual(view.posted.filter((message) => message.type === 'setBoardQuery').at(-1).query, 'is:open AND #project/atlas');
+});
+
+/**
+ * Restores the board from what VS Code kept for it across a reload, as the
+ * serializer does, and says what its search box holds.
+ */
+async function reopenBoard(state) {
+  vscode._test.createdPanels.length = 0;
+  vscode._test.settings.clear();
+  const index = createIndex();
+  const preferences = createPreferences(createGlobalState());
+  const board = new TaskBoardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+    preferences,
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: async () => undefined,
+    activeSearch: new ActiveSearch(),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  const panel = vscode.window.createWebviewPanel('deckard.taskBoard', 'Saved', -1, {});
+  await board.restore(panel, state);
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  const shown = view.find('.query-bar-shell').getAttribute('data-query-text');
+  board.dispose();
+  return shown;
+}
 
 // ---------------------------------------------------------------------------
+
+// Persisted formats, row 21: the board reopens on the search it was saved
+// with, pinned before Phase 6 rewrites the page.
+test('a board saved with a search reopens on it, and on its default without one', async () => {
+  assert.strictEqual(await reopenBoard({ query: 'is:open #project/atlas' }), 'is:open #project/atlas');
+  for (const state of [{}, undefined, null, { query: 7 }, 'is:open #project/atlas']) {
+    assert.strictEqual(await reopenBoard(state), 'is:open', `${JSON.stringify(state)} opens on the default search`);
+  }
+});
 
 test('the gear\'s Theme row runs Choose Theme', async () => {
   const { view } = await openBoard();
@@ -121,7 +160,7 @@ test('searches tasks with the search box every search page uses', async () => {
   assert.strictEqual(view.find('[data-action="query-input"]').value, '', 'the search is a chip now');
   // The count names tasks alone, since the board finds nothing else.
   assert.strictEqual(view.find('.query-facets-count').textContent, '2 tasks');
-  assert.deepStrictEqual(preferences.value.recentQueries, ['is:open AND tag = #project/atlas']);
+  assert.deepStrictEqual(preferences.reader.value.recentQueries, ['is:open AND tag = #project/atlas']);
   assert.strictEqual(
     view.state.query,
     'is:open AND tag = #project/atlas',
@@ -149,7 +188,7 @@ test('Can start now narrows the board to is:available, and back to is:open', asy
 });
 
 test('the board is one Tab stop, and a focused card answers single keys', async () => {
-  const { view } = await openBoard();
+  const { view, updates } = await openBoard();
   const stops = () => view.findAll('.board-card').filter((card) => card.getAttribute('tabindex') === '0');
   assert.strictEqual(stops().length, 1, 'one card is the Tab stop');
   assert.ok(
@@ -166,24 +205,36 @@ test('the board is one Tab stop, and a focused card answers single keys', async 
   assert.strictEqual(stops().length, 1);
   assert.strictEqual(stops()[0], inColumn[1], 'and becomes the Tab stop');
 
-  const card = inColumn[1];
+  const taskId = inColumn[1].dataset.taskId;
+  const columnId = column.dataset.columnId;
+  // The card as the last state drew it.
+  const card = () => view.find(`.board-card[data-task-id="${taskId}"]`);
   const sent = () => view.posted[view.posted.length - 1];
-  view.keydown(card, 'e');
-  assert.deepStrictEqual(sent(), { type: 'editTask', taskId: card.dataset.taskId });
-  view.keydown(card, 'd');
-  assert.deepStrictEqual(sent(), { type: 'pickTaskDate', taskId: card.dataset.taskId });
-  view.keydown(card, 't');
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'due:today', from: column.dataset.columnId });
-  view.keydown(card, '2');
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'priority:high', from: column.dataset.columnId });
-  view.keydown(card, ']');
+  // A card's next edit waits for the host to answer the last with a state,
+  // since the edit gives the task a new id; this index keeps its ids.
+  const answered = async () => {
+    updates.fire();
+    await delay(10);
+  };
+  view.keydown(card(), 'e');
+  assert.deepStrictEqual(sent(), { type: 'editTask', taskId });
+  view.keydown(card(), 'd');
+  assert.deepStrictEqual(sent(), { type: 'pickTaskDate', taskId });
+  view.keydown(card(), 't');
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId, column: 'due:today', from: columnId, requestId: 1 });
+  await answered();
+  view.keydown(card(), '2');
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId, column: 'priority:high', from: columnId, requestId: 2 });
+  await answered();
+  view.keydown(card(), ']');
   const droppable = view.findAll('.board-column').filter((candidate) => candidate.dataset.droppable === 'true');
-  const next = droppable[droppable.indexOf(column) + 1];
-  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: next.dataset.columnId, from: column.dataset.columnId });
-  view.keydown(card, 'x');
-  assert.deepStrictEqual(sent(), { type: 'toggleTask', taskId: card.dataset.taskId, completed: true });
+  const next = droppable[droppable.findIndex((candidate) => candidate.dataset.columnId === columnId) + 1];
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId, column: next.dataset.columnId, from: columnId, requestId: 3 });
+  await answered();
+  view.keydown(card(), 'x');
+  assert.deepStrictEqual(sent(), { type: 'toggleTask', taskId, completed: true });
 
-  view.keydown(card, '?');
+  view.keydown(card(), '?');
   const sheet = view.find('.key-sheet');
   assert.ok(sheet, 'the keys are listed on ?');
   assert.strictEqual(sheet.getAttribute('role'), 'dialog');
@@ -200,7 +251,7 @@ test('a card\'s menu checks where the task is, and its keys work inside it', asy
   assert.strictEqual(own.getAttribute('aria-checked'), 'true', 'the column the card is in is checked');
   assert.strictEqual(view.document.activeElement, own, 'and focus starts there');
   view.keydown(view.document.activeElement, 't');
-  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', from: columnId });
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', from: columnId, requestId: 1 });
   assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
 });
 
@@ -223,7 +274,7 @@ test('a card\'s menu has a Note group with Move to…, which asks the host', asy
 
 test('a list row and a table row have the card\'s menu, which checks where the task is', async () => {
   const { view, panel } = await openBoard(async (store) => {
-    await store.setTaskBoardLayout('list');
+    await store.taskLayout.setTaskBoardLayout('list');
   });
   const row = view.find('.task-list .task-row[data-task-id="audit"]');
   assert.ok(row, 'the board opened as a list');
@@ -235,7 +286,7 @@ test('a list row and a table row have the card\'s menu, which checks where the t
   );
   assert.ok(view.find('#action-menu [data-menu-value="move-to"]'), 'with the Note group');
   view.keydown(view.document.activeElement, 't');
-  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today' });
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', requestId: 1 });
   assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
 
   view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
@@ -279,7 +330,7 @@ test('a card breaks into steps from its menu and from s, which ask the host', as
 /** A task with three steps: one done, one plain, and one with a date of its own. */
 function createIndexWithSteps() {
   const index = createIndex();
-  const step = (id, title, lineNumber, completed, extra = {}) => ({
+  const step = (id, title, lineNumber, { completed, ...extra }) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags: [], tagLabels: {},
     associationTagGroups: [[]], lineNumber, checkboxColumn: 5, checkboxValue: completed ? 'x' : ' ',
     sourceLineText: `  - [${completed ? 'x' : ' '}] ${title}`, parentTaskId: 'plan', ...extra,
@@ -290,9 +341,9 @@ function createIndexWithSteps() {
     sourceLineText: '- [ ] Plan the offsite',
     steps: { ids: ['venue', 'email', 'caterer'], total: 3, done: 1, next: 'Draft the email' },
   });
-  index.tasks.set('venue', step('venue', 'Book the venue', 11, true));
-  index.tasks.set('email', step('email', 'Draft the email', 12, false));
-  index.tasks.set('caterer', step('caterer', 'Call the caterer', 13, false, { dueAt: Date.now(), dueText: 'today' }));
+  index.tasks.set('venue', step('venue', 'Book the venue', 11, { completed: true }));
+  index.tasks.set('email', step('email', 'Draft the email', 12, { completed: false }));
+  index.tasks.set('caterer', step('caterer', 'Call the caterer', 13, { completed: false, dueAt: Date.now(), dueText: 'today' }));
   return index;
 }
 
@@ -338,29 +389,31 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   view.click(save());
   await delay(10);
   vscode._test.setInputBoxResponse(undefined);
-  const [saved] = preferences.value.savedFilters;
+  const [saved] = preferences.reader.value.savedFilters;
   assert.deepStrictEqual(
     { name: saved.name, query: saved.query, page: saved.page },
     { name: 'Atlas board', query: '#project/atlas is:open', page: 'taskBoard' },
   );
   assert.ok(vscode._test.shown.info.includes('Saved the search "Atlas board".'));
   // Show Results on Home adds its widget and opens Home on Home.
-  assert.ok(preferences.value.dashboardWidgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === saved.id));
-  assert.strictEqual(preferences.value.dashboardViewState.mode, 'home');
+  assert.ok(preferences.reader.value.dashboardWidgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === saved.id));
+  assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'home');
   assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.showDashboard'));
 
   // The Dashboard reopens it on the board, not on a search page.
   const opened = [];
-  const dashboard = new DashboardPanel(
-    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+  const dashboard = new DashboardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
     preferences,
-    { fsPath: '/ext' },
-    {
+    extensionUri: vscode.Uri.file('/ext'),
+    navigation: {
       openTag: () => undefined,
       openSearch: (query) => opened.push(`search ${query}`),
       openTaskBoard: (query) => opened.push(`board ${query}`),
     },
-  );
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
   await dashboard.openSavedFilter(saved.id);
   dashboard.dispose();
   assert.deepStrictEqual(opened, ['board #project/atlas is:open']);
@@ -404,6 +457,86 @@ test('hands its search to the Tasks view, and says when the view has it', async 
   );
   assert.ok(vscode._test.shown.info.includes('The Tasks view lists every open task again.'));
   assert.strictEqual(button().getAttribute('aria-pressed'), 'false');
+});
+
+test('opened from the Tasks view\'s search icon, it edits what the view lists and saves what the box shows to it', async () => {
+  // The workspace's search is the one in force, so the save goes there.
+  vscode._test.workspaceSettings.set('deckard.agenda.query', '#project/beta');
+  try {
+    const { view, board } = await openBoard(undefined, undefined, (opened) => opened.editTasksViewSearch('#project/beta'));
+    const strip = () => view.find('.tasks-view-strip');
+    const save = () => view.find('[data-action="save-to-tasks-view"]');
+    assert.ok(strip(), 'the board says what it is editing');
+    assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), '#project/beta', "on the view's search");
+    assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'which the view lists already');
+    assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save as search');
+
+    view.press(view.find('[data-action="clear-query"]'));
+    await delay(10);
+    const bar = view.find('[data-action="query-input"]');
+    view.type(bar, '#project/atlas');
+    assert.strictEqual(save().getAttribute('aria-disabled'), null, 'a changed box can be saved');
+    view.press(save());
+    await delay(10);
+    assert.deepStrictEqual(
+      vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]),
+      [['deckard.agenda.query', '#project/atlas', vscode.ConfigurationTarget.Workspace]],
+      'typed and never run, it is written where the search in force is set',
+    );
+    assert.ok(vscode._test.shown.info.includes('The Tasks view lists "#project/atlas" now.'));
+    assert.strictEqual(view.find('#live-status').textContent, 'The Tasks view lists "#project/atlas" now.', 'and said on the page');
+    assert.ok(strip(), 'the board goes on editing the view');
+    assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), '#project/atlas', 'on the search it saved');
+    assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'which the view lists now');
+
+    // A search that does not parse is shown with its error, and not saved.
+    view.type(view.find('[data-action="query-input"]'), '(');
+    view.press(save());
+    await delay(10);
+    assert.strictEqual(vscode._test.configurationUpdates.length, 1);
+    assert.ok(view.find('.query-error'), 'its error is shown');
+
+    // Cancel: a plain board, and the view keeps its search.
+    view.press(view.find('[data-action="leave-tasks-view-mode"]'));
+    await delay(10);
+    assert.strictEqual(view.find('.tasks-view-strip'), null);
+    assert.strictEqual(view.find('[data-action="save-to-tasks-view"]'), null);
+    assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save');
+    assert.strictEqual(vscode._test.configurationUpdates.length, 1, 'Cancel writes nothing');
+    assert.strictEqual(vscode._test.workspaceSettings.get('deckard.agenda.query'), '#project/atlas');
+
+    // Opened any other way, the board is a plain one.
+    await board.editTasksViewSearch('#project/atlas');
+    await delay(10);
+    assert.ok(strip(), 'the search icon again');
+    await board.show();
+    await delay(10);
+    assert.strictEqual(view.find('.tasks-view-strip'), null, 'Open Task Board, a tag, or Home');
+    board.dispose();
+  } finally {
+    vscode._test.workspaceSettings.clear();
+  }
+});
+
+test('a board kept across a reload while it edited the Tasks view reopens doing so', async () => {
+  vscode._test.createdPanels.length = 0;
+  const index = createIndex();
+  const board = new TaskBoardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+    preferences: createPreferences(createGlobalState()),
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: async () => undefined,
+    activeSearch: new ActiveSearch(),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  const panel = vscode.window.createWebviewPanel('deckard.taskBoard', 'Saved', -1, {});
+  await board.restore(panel, { query: '#project/atlas', tasksViewMode: true });
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  assert.ok(view.find('.tasks-view-strip'));
+  assert.deepStrictEqual(view.state, { query: '#project/atlas', tasksViewMode: true }, 'and keeps that for the next reload');
+  board.dispose();
 });
 
 test('shows a line for Refine while the sidebar holds it', async () => {
@@ -468,7 +601,7 @@ test('the gear switches between columns and a list, and stays open', async () =>
 
   view.click(view.find('[data-action="set-task-layout"][data-value="list"]'));
   await delay(10);
-  assert.strictEqual(preferences.value.taskBoardLayout, 'list');
+  assert.strictEqual(preferences.reader.value.taskBoardLayout, 'list');
   assert.strictEqual(view.find('.view-options').open, true, 'the menu stays open for another choice');
   view.find('.view-options').setAttribute('open', '');
   assert.strictEqual(view.find('.task-board'), null);
@@ -494,7 +627,7 @@ test('the gear switches between columns and a list, and stays open', async () =>
 
   view.change(view.find('[data-action="set-task-sort"]'), 'created');
   await delay(10);
-  assert.strictEqual(preferences.value.taskSortMode, 'created');
+  assert.strictEqual(preferences.reader.value.taskSortMode, 'created');
   assert.strictEqual(view.find('.task-list .task-row.is-draggable'), null, 'a date sort is not dragged');
 
   // A click outside the menu closes it.
@@ -512,7 +645,7 @@ test('the gear turns the board into a table, whose headers sort and whose column
   view.find('.view-options').setAttribute('open', '');
   view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
   await delay(10);
-  assert.strictEqual(preferences.value.taskBoardLayout, 'table');
+  assert.strictEqual(preferences.reader.value.taskBoardLayout, 'table');
   assert.ok(view.find('.result-table'), 'the tasks are a table now');
   assert.deepStrictEqual(
     view.findAll('.result-table .result-row').map((row) => row.dataset.taskId).sort(),
@@ -526,14 +659,14 @@ test('the gear turns the board into a table, whose headers sort and whose column
 
   view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
   await delay(10);
-  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'asc' });
+  assert.deepStrictEqual(preferences.reader.value.taskTableSort, { column: 'due', direction: 'asc' });
   view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
   await delay(10);
-  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'desc' }, 'the same header again turns it round');
+  assert.deepStrictEqual(preferences.reader.value.taskTableSort, { column: 'due', direction: 'desc' }, 'the same header again turns it round');
   assert.ok(view.find('th.is-sorted'), 'the sorted column is marked');
   view.click(view.findAll('[data-action="set-table-sort"]').find((button) => !button.dataset.value));
   await delay(10);
-  assert.strictEqual(preferences.value.taskTableSort, undefined, 'Rank order clears it');
+  assert.strictEqual(preferences.reader.value.taskTableSort, undefined, 'Rank order clears it');
 
   view.find('.view-options').setAttribute('open', '');
   const title = view.find('[data-action="toggle-table-column"][data-value="title"]');
@@ -543,7 +676,7 @@ test('the gear turns the board into a table, whose headers sort and whose column
   view.change(status);
   await delay(10);
   assert.deepStrictEqual(
-    preferences.value.taskTableColumns,
+    preferences.reader.value.taskTableColumns,
     ['title', 'due', 'priority', 'assignee', 'status', 'note'],
     'a column joins in the order the picker lists it',
   );
@@ -642,22 +775,3 @@ test('a hidden board skips updates and catches up when shown', async () => {
   assert.strictEqual(panel._toWebview.length, before + 1, 'showing it draws once');
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.stack || error.message).split('\n').slice(0, 3).join('\n       '));
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

@@ -1,17 +1,17 @@
 import * as assert from 'assert';
 
-import { findCodeAndLinkRanges } from '../core/markdown/inlineRanges';
+import { findCodeAndLinkRanges } from '../domain/markdown/inlineRanges';
 import {
   extractTagSpans,
   extractTags,
   parseMarkdown,
   stripTags,
-} from '../core/markdown/parser';
+} from '../domain/markdown/parser';
 import { appendTagToLine } from '../ui/commands/bulkEdit';
 import { moveInlineTagsToFrontmatterContent } from '../ui/commands/moveTagsToFrontmatter';
-import { replaceIndexedTag } from '../ui/commands/renameTag';
-import { getTagCompletionContext } from '../ui/commands/tagSuggestions';
-import { setTaskNamespaceTags, setTaskStatusTag } from '../ui/state/taskBoardState';
+import { replaceIndexedTag } from '../domain/markdown/tagRename';
+import { getTagCompletionContext } from '../domain/markdown/completionContext';
+import { setTaskNamespaceTags, setTaskStatusTag } from '../domain/tasks/boardMoves';
 
 const keys = (text: string): string[] => extractTags(text).map((tag) => tag.key);
 

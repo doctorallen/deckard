@@ -2,8 +2,8 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
 import {
   canAppendTerm,
   correctQueryText,
@@ -12,17 +12,15 @@ import {
   getTopLevelJoin,
   getTopLevelTerms,
   refineQueryText,
-} from '../core/query/queryEdit';
-import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { PreferencesStore } from '../core/storage/preferences';
-import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
-import {
-  createQuerySuggestions,
-  createSearchPageSnapshot,
-  tagMentionWord,
-} from '../ui/state/dashboardState';
-import { buildSearchFacets } from '../ui/state/searchFacets';
+} from '../domain/query/queryEdit';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createPreferences } from './preferenceServices';
+import { resolveIndexedTagKey } from '../domain/index/tagNavigation';
+import { createQueryContext } from '../domain/query/queryContext';
+import { buildSearchFacets } from '../domain/search/facets';
+import { createSearchPageSnapshot, tagMentionWord } from '../ui/state/searchPageState';
+import { createQuerySuggestions } from '../ui/state/querySuggestions';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -174,7 +172,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const facets = buildSearchFacets(index, results, query, { now });
     const values = (id: string) =>
       facets.find((facet) => facet.id === id)?.values.map((value) => [value.label, value.count]);
@@ -205,7 +203,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const updated = buildSearchFacets(index, results, query, { now })
       .find((facet) => facet.id === 'updated')
       ?.values.map((value) => [value.label, value.count]);
@@ -230,7 +228,7 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const query = '#project/atlas';
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     const created = buildSearchFacets(index, results, query, { now })
       .find((facet) => facet.id === 'created')
       ?.values.map((value) => [value.label, value.clause, value.count]);
@@ -263,7 +261,7 @@ suite('Refining a search', () => {
     );
     const index = buildWorkspaceIndex(files);
     const query = 'tag = #project/x OR text ~ zzz';
-    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node), query);
+    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now())), query, { now: Date.now() });
     const links = facets.find((facet) => facet.id === 'links');
     assert.deepStrictEqual(
       links?.values.map((value) => [value.label, value.count, value.clause]),
@@ -273,7 +271,7 @@ suite('Refining a search', () => {
       ],
     );
     const named = '#project/x [[Atlas]]';
-    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node), named)
+    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node, createQueryContext(Date.now())), named, { now: Date.now() })
       .find((facet) => facet.id === 'links');
     assert.deepStrictEqual(narrowed?.applied, ['[[Atlas]]']);
     assert.ok(!narrowed?.values.some((value) => value.label === 'Atlas'));
@@ -288,7 +286,7 @@ suite('Refining a search', () => {
         'notes/Two.md': '# Two\nSee [[Atlas]] and [[Budget]].\n',
       }).map(([path, content]) => [path, parseMarkdown(path, content)]),
     );
-    const links = createQuerySuggestions(buildWorkspaceIndex(files)).values.link ?? [];
+    const links = createQuerySuggestions(buildWorkspaceIndex(files), [], createQueryContext(Date.now())).values.link ?? [];
     assert.deepStrictEqual(links.slice(0, 3), [
       { value: 'Atlas', label: '[[Atlas]]', detail: 'alias of Atlas plan' },
       { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 2 notes' },
@@ -315,6 +313,7 @@ suite('Refining a search', () => {
       index,
       { sections: [...index.sections.values()], tasks: [...index.tasks.values()], files: [] },
       query,
+      { now: Date.now() },
     );
     const status = facets.find((facet) => facet.id === 'status');
     assert.deepStrictEqual(status?.values.map((value) => value.clause), ['is:done']);
@@ -327,14 +326,14 @@ suite('Refining a search', () => {
       parseMarkdown('notes/unrelated.md', '# Third\nUnrelated.'),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
 
     // Written with its field, a text condition is still a search of words.
-    const snapshot = createSearchPageSnapshot(index, store.value, 'text ~ "vault"');
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, 'text ~ "vault"', { queryContext: createQueryContext(Date.now()) });
 
     assert.deepStrictEqual(snapshot.sections.map((note) => note.heading).sort(), ['Other', 'Plan']);
     assert.strictEqual(snapshot.query.matchCounts.notes, 2);
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('refines a tag\'s page by its related tags, keeping those every result carries', async () => {
@@ -349,9 +348,9 @@ suite('Refining a search', () => {
       ),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
 
-    const page = createSearchPageSnapshot(index, store.value, '#person/sable');
+    const page = createSearchPageSnapshot(index, store.reader.value, '#person/sable', { queryContext: createQueryContext(Date.now()) });
     const related = page.query.facets.find((facet) => facet.id === 'related');
     assert.ok(related, 'the page offers the tags related to its own');
     assert.deepStrictEqual(
@@ -368,8 +367,9 @@ suite('Refining a search', () => {
 
     const narrowed = createSearchPageSnapshot(
       index,
-      store.value,
+      store.reader.value,
       '#person/sable #team/harbor',
+      { queryContext: createQueryContext(Date.now()) },
     );
     const shared = narrowed.query.facets.find((facet) => facet.id === 'related');
     assert.deepStrictEqual(
@@ -378,9 +378,9 @@ suite('Refining a search', () => {
     );
 
     // A search that is more than tags is refined by the tags its results carry.
-    const worded = createSearchPageSnapshot(index, store.value, '#person/sable clinic');
+    const worded = createSearchPageSnapshot(index, store.reader.value, '#person/sable clinic', { queryContext: createQueryContext(Date.now()) });
     assert.strictEqual(worded.query.facets.some((facet) => facet.id === 'related'), false);
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('offers a closer spelling for a search that found nothing', () => {
@@ -389,7 +389,7 @@ suite('Refining a search', () => {
       parseMarkdown('notes/other.md', '# Other\nNothing here.'),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
     // Stands in for the full-text cache, which holds the words of the notes.
     const suggestWords = (words: readonly string[]): ReadonlyMap<string, string> =>
       new Map(
@@ -398,7 +398,7 @@ suite('Refining a search', () => {
           .map((word) => [word, 'elevator']),
       );
 
-    const missed = createSearchPageSnapshot(index, store.value, 'elevatr', {
+    const missed = createSearchPageSnapshot(index, store.reader.value, 'elevatr', { queryContext: createQueryContext(Date.now()),
       suggestWords,
     });
     assert.strictEqual(missed.sections.length, 0);
@@ -407,13 +407,13 @@ suite('Refining a search', () => {
     // The correction keeps the rest of the search exactly as it was written.
     const narrowed = createSearchPageSnapshot(
       index,
-      store.value,
+      store.reader.value,
       '#project/atlas text ~ elevatr',
-      { suggestWords },
+      { queryContext: createQueryContext(Date.now()), suggestWords },
     );
     assert.strictEqual(narrowed.suggestion, '#project/atlas text ~ elevator');
 
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('keeps a correction to itself when it would find nothing either', () => {
@@ -421,7 +421,7 @@ suite('Refining a search', () => {
       parseMarkdown('notes/vault.md', '# Plan #project/atlas\nThe elevator is stuck.'),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
     const suggestWords = (words: readonly string[]): ReadonlyMap<string, string> =>
       new Map(
         words
@@ -432,21 +432,21 @@ suite('Refining a search', () => {
     // The word is in the notes, but in no note that also carries the tag.
     const snapshot = createSearchPageSnapshot(
       index,
-      store.value,
+      store.reader.value,
       '#risk/vendor text ~ elevatr',
-      { suggestWords },
+      { queryContext: createQueryContext(Date.now()), suggestWords },
     );
     assert.strictEqual(snapshot.sections.length, 0);
     assert.strictEqual(snapshot.suggestion, undefined);
 
     // A search that found something is never argued with.
-    const found = createSearchPageSnapshot(index, store.value, 'elevator', {
+    const found = createSearchPageSnapshot(index, store.reader.value, 'elevator', { queryContext: createQueryContext(Date.now()),
       suggestWords,
     });
     assert.ok(found.sections.length > 0);
     assert.strictEqual(found.suggestion, undefined);
 
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('corrects only the words a search reads as prose', () => {
@@ -479,11 +479,11 @@ suite('Refining a search', () => {
       ),
     );
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
 
     // A caller that asks not to be paged carries everything, as Home's
     // widgets need, and says so: one page holding the lot.
-    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+    const whole = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       paged: false,
     });
     assert.strictEqual(whole.sections.length, 25);
@@ -495,8 +495,8 @@ suite('Refining a search', () => {
       total: 25,
     });
 
-    const paged = { ...store.value, searchPageSize: 10 as const };
-    const first = createSearchPageSnapshot(index, paged, '#project/atlas');
+    const paged = { ...store.reader.value, searchPageSize: 10 as const };
+    const first = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(first.notePaging, {
       page: 1,
       size: 10,
@@ -510,7 +510,7 @@ suite('Refining a search', () => {
     assert.strictEqual(first.query.matchCounts.tasks, 25);
     assert.deepStrictEqual(first.taskCounts, whole.taskCounts);
 
-    const second = createSearchPageSnapshot(index, paged, '#project/atlas', {
+    const second = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       notePage: 2,
       taskPage: 2,
     });
@@ -518,7 +518,7 @@ suite('Refining a search', () => {
     assert.deepStrictEqual(second.tasks, whole.tasks.slice(10, 20));
     assert.strictEqual(second.notePaging.page, 2);
 
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('a draft searches everything the search found, and agrees with Enter', () => {
@@ -528,9 +528,9 @@ suite('Refining a search', () => {
       parseMarkdown('notes/three.md', '# Three #risk/vendor\nThe elevator again.'),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
 
-    const drafted = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+    const drafted = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       previewWords: ['elevator'],
     });
     // The draft narrows the search it is typed into, not the whole workspace.
@@ -544,8 +544,9 @@ suite('Refining a search', () => {
     // what the draft was already showing.
     const committed = createSearchPageSnapshot(
       index,
-      store.value,
+      store.reader.value,
       '#project/atlas elevator',
+      { queryContext: createQueryContext(Date.now()) },
     );
     assert.deepStrictEqual(
       committed.sections.map((card) => card.heading),
@@ -560,7 +561,7 @@ suite('Refining a search', () => {
       '#project/atlas',
     );
 
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('puts a page number back inside the pages a search has', () => {
@@ -568,25 +569,25 @@ suite('Refining a search', () => {
       parseMarkdown(`notes/note-${index}.md`, `# Note ${index} #project/atlas\nProse.`),
     );
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const store = new PreferencesStore(new MemoryMemento());
+    const store = createPreferences(new MemoryMemento());
 
     // A note saved elsewhere can shorten a search while its last page is
     // open. The reader should land on the last page there is, not past it.
-    const paged = { ...store.value, searchPageSize: 10 as const };
-    const past = createSearchPageSnapshot(index, paged, '#project/atlas', {
+    const paged = { ...store.reader.value, searchPageSize: 10 as const };
+    const past = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       notePage: 9,
     });
     assert.strictEqual(past.notePaging.page, 2);
     assert.strictEqual(past.sections.length, 5);
 
-    const before = createSearchPageSnapshot(index, paged, '#project/atlas', {
+    const before = createSearchPageSnapshot(index, paged, '#project/atlas', { queryContext: createQueryContext(Date.now()),
       notePage: 0,
     });
     assert.strictEqual(before.notePaging.page, 1);
 
     // A search that found nothing still has a page, so the page has a list
     // to be empty in.
-    const none = createSearchPageSnapshot(index, paged, '#project/nothing');
+    const none = createSearchPageSnapshot(index, paged, '#project/nothing', { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(none.notePaging, {
       page: 1,
       size: 10,
@@ -594,7 +595,7 @@ suite('Refining a search', () => {
       total: 0,
     });
 
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('labels words as the text condition they run', () => {
@@ -622,10 +623,10 @@ suite('Refining a search', () => {
       parseMarkdown('notes/other.md', '# Other\n- [ ] Ship it #project/atlas'),
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-    const atlas = createQuerySuggestions(index).values.tag?.find(
+    const atlas = createQuerySuggestions(index, [], createQueryContext(Date.now())).values.tag?.find(
       (suggestion) => suggestion.value === '#project/atlas',
     );
-    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node);
+    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node, createQueryContext(Date.now()));
 
     // The nested Details section and its tasks inherit the heading's tag.
     assert.strictEqual(results.sections.length + results.files.length, 2);
@@ -636,7 +637,7 @@ suite('Refining a search', () => {
   test('a week, a month, or a weekday completes with the days it means', () => {
     const index = buildWorkspaceIndex(new Map());
     // Friday 2026-09-25, noon.
-    const values = createQuerySuggestions(index, [], new Date(2026, 8, 25, 12).getTime()).values;
+    const values = createQuerySuggestions(index, [], createQueryContext(new Date(2026, 8, 25, 12).getTime())).values;
     const detail = (field: 'due' | 'created', value: string) =>
       values[field]?.find((suggestion) => suggestion.value === value)?.detail;
     assert.strictEqual(detail('due', 'next-week'), 'Sep 27 to Oct 3');

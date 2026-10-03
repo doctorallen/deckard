@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { describeRenameTarget, nameSelection } from '../ui/commands/renameTag';
 
 function createIndex() {

@@ -1,9 +1,10 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { AssistantTools } from '../ui/commands/assistantTools';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 
 /** Tools over a one-note index, registered with a stand-in for VS Code. */
 function createTools() {
@@ -15,6 +16,7 @@ function createTools() {
   const registered: string[] = [];
   const tools = new AssistantTools(
     { ready: Promise.resolve(), getSnapshot: () => index },
+    new WorkspaceWriteHistory(),
     (name) => {
       registered.push(name);
       return { dispose: () => undefined };

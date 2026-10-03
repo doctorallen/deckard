@@ -1,11 +1,12 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery, setQueryIdentity } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { layoutTaskBoard, resolveTaskMove } from '../ui/state/taskBoardState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 const notes = {
   'notes/atlas.md': [
@@ -34,16 +35,17 @@ function indexOf(source: Record<string, string> = notes): WorkspaceIndex {
 
 const index = indexOf();
 
-/** The titles a query finds, so a result reads as the note wrote it. */
-function found(query: string): string[] {
-  return evaluateQuery(index, parseQuery(query).node).tasks.map(
+/**
+ * The titles a query finds, so a result reads as the note wrote it, with
+ * `identity` as the person `deckard.me` names.
+ */
+function found(query: string, identity?: string): string[] {
+  return evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now(), { identity })).tasks.map(
     (task) => task.title,
   );
 }
 
 suite('Task assignees', () => {
-  teardown(() => setQueryIdentity(undefined));
-
   test('the 👤 field owns the task, and a name in the words does not', () => {
     const tasks = [...index.tasks.values()].sort(
       (left, right) => left.lineNumber - right.lineNumber,
@@ -120,16 +122,14 @@ suite('Task assignees', () => {
       ['Book the room', 'Write up what @dana said'],
       'with no name yet, only what nobody was asked to do',
     );
-    setQueryIdentity('@dana');
     assert.deepStrictEqual(
-      found('is:mine AND is:open'),
+      found('is:mine AND is:open', '@dana'),
       ['Chase the contractor @ren-kade', 'Book the room', 'Write up what @dana said'],
       'mine by name, and mine by default; a mention alone is neither',
     );
-    setQueryIdentity('#person/ren-kade');
-    assert.deepStrictEqual(found('is:mine AND is:assigned'), ['Send the proposal']);
+    assert.deepStrictEqual(found('is:mine AND is:assigned', '#person/ren-kade'), ['Send the proposal']);
     assert.deepStrictEqual(
-      found('is:mine AND assignee = none'),
+      found('is:mine AND assignee = none', '#person/ren-kade'),
       ['Book the room', 'Write up what @dana said'],
       'assignee = none is the default kind alone',
     );
@@ -149,23 +149,23 @@ suite('Task assignees', () => {
   });
 
   test('only tasks answer an assignee condition', () => {
-    const results = evaluateQuery(index, parseQuery('assignee = @dana').node);
+    const results = evaluateQuery(index, parseQuery('assignee = @dana').node, createQueryContext(Date.now()));
     assert.deepStrictEqual(results.sections, []);
     assert.deepStrictEqual(results.files, []);
   });
 
   test('the board can column tasks by the person named on them', () => {
-    const layout = layoutTaskBoard(
+    const layout = layoutTaskBoard({
       index,
-      [...index.tasks.values()],
-      'assignee',
-      {
-        now: Date.now(),
+      tasks: [...index.tasks.values()],
+      requestedGroupBy: 'assignee',
+      options: {
+        queryContext: createQueryContext(Date.now()),
         statuses: [],
         statusNamespace: 'status',
         format: 'emoji',
       },
-    );
+    });
     assert.deepStrictEqual(
       layout.columns.map((column) => [column.label, column.cards.length]),
       [
@@ -187,7 +187,7 @@ suite('Task assignees', () => {
 
   test('hands a task over when its card is dropped on a person', () => {
     const options = {
-      now: Date.now(),
+      queryContext: createQueryContext(Date.now()),
       statuses: [],
       statusNamespace: 'status',
       format: 'emoji' as const,
@@ -216,5 +216,12 @@ suite('Task assignees', () => {
       'refused',
       'a tag that is not a person names nobody to hand it to',
     );
+  });
+
+  test('a deckard.me setting that is not text names nobody, rather than stopping every view', () => {
+    for (const identity of [42, null, true, ['@dana'], { name: 'dana' }]) {
+      const context = createQueryContext(Date.now(), { identity: identity as unknown as string });
+      assert.strictEqual(context.identity, undefined, JSON.stringify(identity));
+    }
   });
 });

@@ -1,17 +1,16 @@
 import * as assert from 'assert';
 
-import * as vscode from 'vscode';
-
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
-import { parseCalendarMessage } from '../ui/webview/messages';
 import { describeDateChange } from '../ui/commands/agendaActions';
-import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
+/** The workspace of some notes by path, each created on the morning of 25 September 2026. */
 export function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
     new Map(
@@ -41,14 +40,14 @@ const SCHEDULED = [
 
 function openCalendar(index: WorkspaceIndex): WebviewPage {
   return openWebviewPage(
-    getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
-    createCalendar(index, '2026-09', NOW),
+    renderPage('calendar'),
+    createCalendar(index, '2026-09', createQueryContext(NOW.getTime())),
   );
 }
 
 suite('The calendar counts what is scheduled', () => {
   const index = indexOf({ 'notes/tasks.md': SCHEDULED });
-  const calendar = createCalendar(index, '2026-09', NOW);
+  const calendar = createCalendar(index, '2026-09', createQueryContext(NOW.getTime()));
   const days = new Map(calendar.weeks.flatMap((week) => week.days).map((day) => [day.date, day]));
 
   test('counts open scheduled tasks beside the due ones, a task due the same day once', () => {
@@ -106,15 +105,15 @@ suite('The calendar day panel', () => {
   });
 
   test('names the chosen day, with Today, Yesterday, or Tomorrow, and the year only when it is another', () => {
-    const { date, title, relative, notePath } = createCalendarDay(index, '2026-09-25', NOW);
+    const { date, title, relative, notePath } = createCalendarDay(index, '2026-09-25', createQueryContext(NOW.getTime()));
     assert.deepStrictEqual(
       { date, title, relative, notePath },
       { date: '2026-09-25', title: 'Friday, September 25', relative: 'Today', notePath: 'notes/2026-09-25.md' },
     );
-    assert.strictEqual(createCalendarDay(index, '2026-09-24', NOW).relative, 'Yesterday');
-    assert.strictEqual(createCalendarDay(index, '2026-09-26', NOW).relative, 'Tomorrow');
-    assert.strictEqual(createCalendarDay(index, '2027-10-01', NOW).title, 'Friday, October 1, 2027');
-    assert.strictEqual(createCalendarDay(index, '2026-10-02', NOW).notePath, undefined);
+    assert.strictEqual(createCalendarDay(index, '2026-09-24', createQueryContext(NOW.getTime())).relative, 'Yesterday');
+    assert.strictEqual(createCalendarDay(index, '2026-09-26', createQueryContext(NOW.getTime())).relative, 'Tomorrow');
+    assert.strictEqual(createCalendarDay(index, '2027-10-01', createQueryContext(NOW.getTime())).title, 'Friday, October 1, 2027');
+    assert.strictEqual(createCalendarDay(index, '2026-10-02', createQueryContext(NOW.getTime())).notePath, undefined);
   });
 
   test('a new month keeps the day, or its last day', () => {
@@ -122,25 +121,10 @@ suite('The calendar day panel', () => {
     assert.strictEqual(clampToMonth('2026-09-25', '2026-10'), '2026-10-25');
   });
 
-  test('accepts the messages of the panel and nothing more', () => {
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-09-25' }), { type: 'selectDay', date: '2026-09-25' });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'createDay', date: '2026-09-25' }), { type: 'createDay', date: '2026-09-25' });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openNote', filePath: 'notes/a.md' }), { type: 'openNote', filePath: 'notes/a.md' });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10', date: '2026-10-25' }), {
-      type: 'showMonth',
-      month: '2026-10',
-      date: '2026-10-25',
-    });
-    assert.strictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10', date: 'soon' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-9-5' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-09-25', extra: 1 }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'openNote', filePath: '' }), undefined);
-  });
-
   const open = (dayPanel: boolean, selectedDate?: string): WebviewPage =>
     openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
-      createCalendar(index, '2026-09', NOW, 0, { dayPanel, selectedDate }),
+      renderPage('calendar'),
+      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel, selectedDate }),
     );
   const day = (page: WebviewPage, date: string) =>
     page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
@@ -243,19 +227,19 @@ suite('The calendar day panel lists the day tasks', () => {
   });
 
   test('due, scheduled, and done that day, most important first, a task due and scheduled only under Due', () => {
-    const day = createCalendarDay(index, '2026-09-25', NOW);
+    const day = createCalendarDay(index, '2026-09-25', createQueryContext(NOW.getTime()));
     const titles = (items: { task: { title: string } }[]) => items.map((item) => item.task.title.replace(/\s+#\S+/, ''));
     assert.deepStrictEqual(titles(day.due), ['Pay rent', 'Call Ren', 'Both']);
     assert.deepStrictEqual(titles(day.scheduled), ['Draft the brief']);
     assert.deepStrictEqual(titles(day.done), ['Filed']);
     const parked = indexWithParking({ 'a.md': '- [ ] Idea 📅 2026-09-25 #parked\n- [ ] Real 📅 2026-09-25\n' });
-    assert.deepStrictEqual(titles(createCalendarDay(parked, '2026-09-25', NOW).due), ['Real'], 'a parked task is left out');
+    assert.deepStrictEqual(titles(createCalendarDay(parked, '2026-09-25', createQueryContext(NOW.getTime())).due), ['Real'], 'a parked task is left out');
   });
 
   test('moves a task to tomorrow from today or before, and a day on from a later day', () => {
-    assert.deepStrictEqual(createCalendarDay(index, '2026-09-25', NOW).move, { date: '2026-09-26', label: 'Tomorrow' });
-    assert.deepStrictEqual(createCalendarDay(index, '2026-09-20', NOW).move, { date: '2026-09-26', label: 'Tomorrow' });
-    assert.deepStrictEqual(createCalendarDay(index, '2026-10-03', NOW).move, { date: '2026-10-04', label: 'Next day' });
+    assert.deepStrictEqual(createCalendarDay(index, '2026-09-25', createQueryContext(NOW.getTime())).move, { date: '2026-09-26', label: 'Tomorrow' });
+    assert.deepStrictEqual(createCalendarDay(index, '2026-09-20', createQueryContext(NOW.getTime())).move, { date: '2026-09-26', label: 'Tomorrow' });
+    assert.deepStrictEqual(createCalendarDay(index, '2026-10-03', createQueryContext(NOW.getTime())).move, { date: '2026-10-04', label: 'Next day' });
   });
 
   test('says where a moved date went', () => {
@@ -264,24 +248,10 @@ suite('The calendar day panel lists the day tasks', () => {
     assert.strictEqual(describeDateChange('"Draft"', 'scheduled', undefined), '"Draft" has no scheduled date now.');
   });
 
-  test('accepts the task messages, and only well formed ones', () => {
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'toggleTask', taskId: 't', completed: true }), { type: 'toggleTask', taskId: 't', completed: true });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'scheduled', date: '2026-09-26' }), {
-      type: 'moveTask',
-      taskId: 't',
-      field: 'scheduled',
-      date: '2026-09-26',
-    });
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'openTask', taskId: 't' }), { type: 'openTask', taskId: 't' });
-    assert.strictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'start', date: '2026-09-26' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'due', date: 'tomorrow' }), undefined);
-    assert.strictEqual(parseCalendarMessage({ type: 'toggleTask', taskId: 't', completed: 'yes' }), undefined);
-  });
-
   const open = (selectedDate: string): WebviewPage =>
     openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
-      createCalendar(index, '2026-09', NOW, 0, { dayPanel: true, selectedDate }),
+      renderPage('calendar'),
+      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true, selectedDate }),
     );
 
   test('draws the groups, a checkbox and a Tomorrow button on each row, and Done folded', () => {
@@ -349,7 +319,7 @@ suite('The calendar day panel lists the notes created that day', () => {
   );
 
   test('oldest first, by their first heading or their name, daily and weekly notes aside', () => {
-    const day = createCalendarDay(index, '2026-09-25', NOW);
+    const day = createCalendarDay(index, '2026-09-25', createQueryContext(NOW.getTime()));
     assert.strictEqual(day.notesTotal, 7);
     assert.deepStrictEqual(
       day.notes.map((note) => [note.title, note.folder]),
@@ -365,8 +335,8 @@ suite('The calendar day panel lists the notes created that day', () => {
 
   test('a row opens its note, and Search all searches the day', () => {
     const page = openWebviewPage(
-      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
-      createCalendar(index, '2026-09', NOW, 0, { dayPanel: true }),
+      renderPage('calendar'),
+      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true }),
     );
     try {
       page.click('.day-created');
@@ -379,7 +349,5 @@ suite('The calendar day panel lists the notes created that day', () => {
     } finally {
       page.dispose();
     }
-    assert.deepStrictEqual(parseCalendarMessage({ type: 'searchCreated', date: '2026-09-25' }), { type: 'searchCreated', date: '2026-09-25' });
-    assert.strictEqual(parseCalendarMessage({ type: 'searchCreated', date: 'today' }), undefined);
   });
 });

@@ -1,0 +1,214 @@
+/*
+ * The Dashboard, Home and Tags, with the query editor of Home's search.
+ * The favorite heart is drawn from resources/, named from dist/webview/,
+ * where this sheet is served from.
+ * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
+ */
+@import "../shared/base.css";
+@import "../shared/queryEditor.css";
+
+.tag-name, .telemetry-line, .section-readout { font-family: var(--font-mono); }
+/* The first step, on a Home with no notes to show yet. */
+.home-start { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); padding: var(--space-4); border: var(--edge) solid var(--amber); background: var(--panel); }
+.home-start h2 { margin: 0; }
+.home-start p { margin: 0; color: var(--muted); }
+.home-start-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.metric::before { content: attr(data-code); content: attr(data-code) / ""; display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
+.dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
+.dashboard-header-actions .view-options { order: 2; }
+.saved-filters { padding-top: 16px; }
+.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
+.dashboard-tabs { display: inline-flex; margin-top: 18px; }
+.dashboard-tabs button + button { margin-left: -1px; }
+.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }
+.dashboard-panel { min-width: 0; padding-top: 16px; }
+.dashboard-panel[hidden] { display: none; }
+section { min-width: 0; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.control-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
+button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .home-widget:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.tag-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
+.entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
+.saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
+.saved-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; transition: background-color 120ms ease, transform 120ms ease; }
+.saved-filter-row:hover { background: var(--panel-raised); transform: translateX(3px); }
+.saved-filter-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.saved-filter-name { color: var(--cyan-bright); font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
+/* A saved search reads by its name alone; a query three lines long under
+   every name made the list a wall. The criteria stay in the row for a
+   screen reader and open under the pointer or the keyboard in the row's own
+   frame carried down, as a note's provenance does, with room to wrap since
+   a query is longer than a file name. */
+.saved-filter-row { position: relative; }
+.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
+.saved-filter-row:hover, .saved-filter-row:focus-within { z-index: 2; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {
+  z-index: 2;
+  top: calc(100% - 1px);
+  left: -1px;
+  right: -1px;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  border: inherit;
+  border-top: 0;
+  border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
+  background: inherit;
+  box-shadow: inherit;
+  /* The pointer passes through, as it does a note's provenance: a panel
+     that took the pointer kept its row hovered while the pointer crossed
+     it, and the rows it covered were skipped on the way down. */
+  pointer-events: none;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  color: var(--muted);
+  font: var(--text-xs)/16px var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.saved-filter-remove, .saved-filter-show { min-height: 26px; text-transform: none; }
+.saved-filter-actions { display: inline-flex; gap: var(--space-1); }
+.entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
+.entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.entity-kind { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }
+.tag-group h3 { margin: 0 0 7px; color: var(--amber); font-size: var(--text-xs); font-weight: 500; }
+.section-readout { color: var(--muted); font-size: var(--text-xs); }
+.tag-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); cursor: pointer; }
+.tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
+.tag-main { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.tag-name { overflow-wrap: anywhere; color: var(--cyan-bright); }
+/* A tag row is a row, not a token: its name wraps rather than shortening. */
+.tag-name .tag-label, .tag-name .tag-label > .tag-namespace { display: inline; white-space: normal; }
+.tag-name .tag-namespace-text, .tag-name .tag-label > .tag-value { overflow: visible; white-space: normal; }
+.tag-count { color: var(--muted); font-family: var(--font-mono); }
+.tag-actions { display: flex; align-items: center; gap: 5px; }
+.tag-actions button { min-height: 26px; padding-inline: 7px; }
+.favorite-toggle { display: grid; min-width: 24px; min-height: 24px; place-items: center; color: var(--favorite); }
+/* The toggle carries a filled ground in some themes, and a hovered control's
+   ground in every one, so hovering it takes the shared hover pair rather than
+   keeping a red that was chosen for the ground it has at rest. */
+.favorite-toggle:hover, .favorite-toggle:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
+.favorite-heart { display: block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url("../../resources/favorite-heart-outline.svg") center / contain no-repeat; mask: url("../../resources/favorite-heart-outline.svg") center / contain no-repeat; }
+.favorite-toggle.favorite .favorite-heart { -webkit-mask-image: url("../../resources/favorite-heart-filled.svg"); mask-image: url("../../resources/favorite-heart-filled.svg"); }
+.browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
+.browse-toolbar > * { flex: 0 0 auto; }
+.browse-toolbar-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.browse-toolbar-controls > * { flex: 0 0 auto; }
+.catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
+/* A kept search stands out from an empty box, whatever the theme. */
+input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--text); }
+.tab-search-mark { display: inline-block; width: 11px; height: 11px; margin-left: 6px; vertical-align: -2px; }
+.tab-search-mark svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Home: the reader's widgets, in two columns. A widget is a half or the
+   full width, and half is half at any width the panel has: a third column
+   on a wide editor once made a half-width widget a third, which is not what
+   its ½ button said. On a narrow panel every widget takes the width. */
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); align-items: stretch; }
+@media (max-width: 720px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
+.home-widget { position: relative; min-width: 0; border: 2px solid var(--slate-border); background: var(--panel-bg); padding: 12px; }
+/* A widget just added: outlined in the accent for a moment, fading out. */
+.home-widget.is-new { outline: 2px solid var(--accent); outline-offset: 2px; animation: home-widget-new 2.4s ease-out forwards; }
+@keyframes home-widget-new { 0%, 60% { outline-color: var(--accent); } 100% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .home-widget.is-new { animation: none; } }
+.home-widget.is-full { grid-column: 1 / -1; }
+.home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
+.home-widget.is-editing:hover { border-color: var(--amber-bright); }
+.home-widget-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.home-widget-title { margin: 0; color: var(--amber); font-size: var(--text-xs); }
+.home-widget-grip { margin-right: 6px; color: var(--muted); }
+.home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }
+.home-remove { min-height: 26px; padding: 3px 8px; text-transform: none; }
+.home-list { display: grid; gap: 6px; }
+/* A row on Home is a button, but it is painted by the row rules, so it reads
+   as a row: the text that belongs on a panel rather than the color a theme
+   wrote for a hovered control over the hover ground. Its label and its detail
+   follow it from there, as they do inside any hovered control. */
+.home-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--text); text-align: left; text-transform: none; }
+.home-row:hover, .home-row:focus-visible { color: var(--text); }
+.home-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--cyan-bright); }
+.home-row-label code { background: none; padding: 0; color: inherit; font-size: var(--text-xs); }
+.home-row-detail { flex: 0 0 auto; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+/* A row with its own action beside it, such as Create hub or Unpin. */
+.home-row-with-action { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
+.home-row-with-action > .home-row { flex: 1 1 auto; min-width: 0; }
+.home-row-action { flex: 0 0 auto; min-height: 26px; padding: 2px 8px; text-transform: none; white-space: nowrap; }
+.home-widget-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-widget-source strong { color: var(--text); font-weight: normal; overflow-wrap: anywhere; }
+.home-tag-pair { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.home-tag-pair-join { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-today-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.home-today-date { color: var(--text); font: var(--text-md) var(--font-mono); }
+.home-quick-add { display: flex; gap: 6px; }
+.home-quick-add input { flex: 1 1 auto; min-width: 0; min-height: 30px; }
+.home-quick-add button { min-height: 30px; padding: 3px 10px; }
+.home-quick-add-status { margin: 6px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-widget-group:first-child { margin-top: 0; }
+.home-widget-empty { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.home-widget-footer { margin: 10px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-widget-footer .text-button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; }
+.home-widget-footer .text-button:hover, .home-widget-footer .text-button:focus-visible { color: var(--text); }
+.home-widget-paging { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 0; border-top: 1px solid var(--line); padding-top: 8px; font-size: var(--text-xs); }
+.home-widget-paging .page-range { color: var(--muted); font-family: var(--font-mono); }
+.home-widget-paging .control-label { gap: 4px; font-size: var(--text-xs); }
+.home-widget-paging select { min-width: 46px; }
+.home-widget-steps { display: flex; align-items: center; gap: 6px; }
+.home-widget-steps .page-range { margin-right: 2px; }
+.home-widget-steps button { display: grid; width: 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
+.home-widget-steps button:hover:where(:not(:disabled):not([aria-disabled="true"])):not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.home-widget-steps button[disabled] { color: var(--muted); cursor: default; opacity: 0.45; }
+.home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.home-widget .query-workspace { margin-top: 0; }
+.home-widget .task-list { --task-columns: 1; }
+.home-widget .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
+.home-widget .metric::before { display: none; }
+/* The resting hint is a quiet line, not the dashed frame of edit mode. */
+.home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: var(--text-xs); }
+.try-next-text { margin: 0 0 var(--space-2, 8px); color: var(--text); }
+.try-next-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); }
+.home-hint-actions { display: inline-flex; gap: 6px; }
+.home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: var(--text-xs); line-height: 1.35; white-space: normal; }
+.home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
+.home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: var(--text-sm) var(--font-mono); }
+.home-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.home-widget-options { position: relative; }
+.home-widget-options summary { display: grid; width: 28px; min-height: 28px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px; cursor: pointer; list-style: none; }
+.home-widget-options summary::-webkit-details-marker { display: none; }
+.home-widget-options summary:hover { border-color: var(--amber-bright); }
+.home-widget-options summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.home-widget-options .settings-icon { width: 14px; height: 14px; }
+.home-widget-options-menu { position: absolute; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; }
+.home-widget-form { display: flex; gap: 4px; }
+.home-widget-form input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
+.home-widget-form button { min-height: 26px; padding: 2px 8px; }
+.home-widget-options-menu select { width: 100%; }
+.error { color: var(--warning-orange); }
+@media (max-width: 720px) {
+  main { padding: 16px; }
+  header { align-items: start; flex-direction: column; }
+  .dashboard-header-actions { width: 100%; flex-direction: column; align-items: stretch; }
+  .dashboard-header-actions .view-options { align-self: flex-end; order: -1; }
+  .metrics { width: 100%; min-width: 0; }
+  .tag-list, .home-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+/* Page layout. The base sheet supplies the look; these keep the Dashboard's
+   own proportions and its chamfered HUD shapes. */
+main { width: 100%; max-width: 1400px; }
+header { gap: 20px; border-bottom: 1px dashed var(--slate-border); }
+h2 { margin: 0 0 4px; }
+.eyebrow { margin: 0 0 6px; }
+.metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: min(380px, 48%); margin-top: 0; }
+.metric { position: relative; clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 10px 12px; }
+.metric-label { margin-top: 3px; }
+.metric-value { font-size: 20px; margin-top: 0; }
+.settings-icon { width: 16px; height: 16px; }
+.empty { clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 18px; }
+@media (max-width: 700px) {
+  .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
+}

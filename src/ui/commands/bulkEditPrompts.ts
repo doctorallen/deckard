@@ -5,8 +5,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   stripTags,
-} from '../../core/markdown/parser';
-import { Section, Task } from '../../core/types';
+} from '../../domain/markdown/parser';
 import {
   applyBulkEdit,
   BulkEdit,
@@ -14,6 +13,8 @@ import {
   reportBulkEditResult,
 } from './bulkEdit';
 import { askForDate } from './datePrompt';
+import { WorkspaceWriteHistory } from './workspaceWrites';
+import { Section, Task } from '../../domain/model';
 
 /**
  * Asking what to do to a search's results, and to which of them.
@@ -75,6 +76,7 @@ export function describeEntry(entry: BulkEntry): {
   };
 }
 
+/** The last segment of a workspace-relative path. */
 function fileName(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;
 }
@@ -87,6 +89,7 @@ function fileName(filePath: string): string {
  * undoable write.
  */
 export async function editResults(
+  history: WorkspaceWriteHistory,
   kind: 'notes' | 'tasks',
   results: { tasks: readonly Task[]; sections: readonly Section[] },
   uri?: vscode.Uri,
@@ -130,6 +133,7 @@ export async function editResults(
   }
 
   const result = await applyBulkEdit(
+    history,
     chosen.map((item) => item.entry),
     edit,
   );

@@ -1,7 +1,7 @@
-import { stripTags } from '../../core/markdown/parser';
-import { readTaskTagKeys } from '../../core/query/queryEvaluator';
-import { Task, WorkspaceIndex } from '../../core/types';
-import { withoutParked } from '../../core/workspace/parked';
+import { stripTags } from '../../domain/markdown/parser';
+import { readTaskTagKeys } from '../../domain/query/queryEvaluator';
+import { withoutParked } from '../../domain/index/parked';
+import { Task, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Grouping tasks by the tags of one namespace: `#project/…`, `#context/…`,
@@ -98,7 +98,7 @@ export function findTagSource(
   key: string,
 ): { kind: 'heading'; heading: string } | { kind: 'frontmatter' } {
   const heading = findHeadingWithTag(index, task, key);
-  return heading !== undefined ? { kind: 'heading', heading } : { kind: 'frontmatter' };
+  return heading === undefined ? { kind: 'frontmatter' } : { kind: 'heading', heading };
 }
 
 /** A namespace open tasks use, with how many and its busiest values. */

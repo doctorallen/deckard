@@ -1,16 +1,14 @@
+// Notes for the index equivalence tests: the sample workspace, the repo's own
+// development notes, a hand-written corpus of the index's edge cases, and a
+// seeded generator of random notes and random edits to them.
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { ParsedFile, WorkspaceIndex } from '../core/types';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { resolveSampleTokens, sampleFileName } from '../ui/commands/sampleWorkspace';
+import { ParsedFile } from '../domain/model';
 
-/**
- * Notes for the index equivalence tests: the sample workspace, the repo's own
- * development notes, a hand-written corpus of the index's edge cases, and a
- * seeded generator of random notes and random edits to them.
- */
-
+/** The repository's root, which the sample workspace and the development notes are read from. */
 const repositoryRoot = path.join(__dirname, '..', '..');
 
 /** A seeded random source, so a failing run can be repeated exactly. */
@@ -25,6 +23,7 @@ export function createRandom(seed: number): () => number {
   };
 }
 
+/** One of the values, chosen by the random source. */
 export function pick<T>(random: () => number, values: readonly T[]): T {
   return values[Math.floor(random() * values.length)];
 }
@@ -155,6 +154,7 @@ export function randomNote(random: () => number, index: number, noteCount: numbe
   return lines.join('\n');
 }
 
+/** A seeded set of random notes, named `notes/n<index>.md`, that link among themselves. */
 export function randomNotes(seed: number, count: number): Array<[string, string]> {
   const random = createRandom(seed);
   return Array.from({ length: count }, (_, index) => [
@@ -163,33 +163,7 @@ export function randomNotes(seed: number, count: number): Array<[string, string]
   ]);
 }
 
-/**
- * An index as plain data: every map as its entries in order, associations
- * read in full, and the build time left out. Order is compared, not sorted
- * away.
- */
-export function normalizeIndex(index: WorkspaceIndex): unknown {
-  const associations = index.tagAssociations
-    ? [...index.tagAssociations.entries()].map(([key, list]) => [
-        key,
-        list.map((association) => {
-          // The direct pass left its working set of units on each one.
-          const copy: Record<string, unknown> = { ...association };
-          delete copy.sourceUnitIds;
-          return copy;
-        }),
-      ])
-    : [];
-  return {
-    files: [...index.files.entries()],
-    sections: [...index.sections.entries()],
-    tasks: [...index.tasks.entries()],
-    tags: [...index.tags.entries()],
-    entities: [...index.entities.entries()],
-    tagAssociations: associations,
-  };
-}
-
+/** Parsed notes by their paths, as the index takes them. */
 export function toFileMap(files: readonly ParsedFile[]): Map<string, ParsedFile> {
   return new Map(files.map((file) => [file.filePath, file]));
 }
@@ -201,10 +175,24 @@ export function editNote(random: () => number, text: string, noteCount: number):
   const at = () => bodyStart + Math.floor(random() * (lines.length - bodyStart + 1));
   const existing = () =>
     lines.length > bodyStart ? bodyStart + Math.floor(random() * (lines.length - bodyStart)) : -1;
+  // Each kind of edit stresses one part of what an update must keep equal to
+  // a full build:
+  //
+  //   0  a tag added to a line      a tag's sections, tasks, and counts grow
+  //   1  a tag removed from a line  they shrink, and a tag left on nothing goes
+  //   2  a tag spelled another way  the label follows the spelling; the key does not
+  //   3  a heading added            sections nest under a new parent, and heading
+  //                                 associations move with them
+  //   4  a task added               a section gains a task and the task's tags
+  //   5  a link added               links and the backlinks they make
+  //   6  a line removed             a heading or task goes, with what it carried
+  //   7  words added only           no tag, task, or link changes; lines below move
+  //   8  a task ticked or unticked  a task's completion
+  //   9  front matter rewritten     aliases, a hub's described tags, and front-matter tags
+  //   10 the note emptied           everything the note contributed goes
   const edit = Math.floor(random() * 11);
   switch (edit) {
     case 0: {
-      // Add a tag to a line.
       const line = existing();
       if (line >= 0) {
         lines[line] = `${lines[line]} ${pick(random, TAGS)}`;
@@ -214,7 +202,6 @@ export function editNote(random: () => number, text: string, noteCount: number):
       break;
     }
     case 1: {
-      // Remove a tag from a line.
       const line = existing();
       if (line >= 0) {
         lines[line] = lines[line].replace(/\s[#@][\w/]+/, '');
@@ -222,7 +209,6 @@ export function editNote(random: () => number, text: string, noteCount: number):
       break;
     }
     case 2: {
-      // Spell a tag another way.
       const line = existing();
       if (line >= 0) {
         lines[line] = lines[line].replace(/([#@])(\w)/, (_, mark: string, letter: string) =>
@@ -241,7 +227,6 @@ export function editNote(random: () => number, text: string, noteCount: number):
       lines.splice(at(), 0, `See [[n${Math.floor(random() * noteCount)}]] and ${pick(random, TAGS)}`);
       break;
     case 6: {
-      // Remove a line: a heading, task, or anything else.
       const line = existing();
       if (line >= 0) {
         lines.splice(line, 1);
@@ -249,16 +234,13 @@ export function editNote(random: () => number, text: string, noteCount: number):
       break;
     }
     case 7:
-      // Change words only.
       lines.splice(at(), 0, 'Some new words.');
       break;
     case 8:
-      // Tick or untick a task.
       return lines
         .join('\n')
         .replace(/- \[( |x)\]/, (_, mark: string) => (mark === ' ' ? '- [x]' : '- [ ]'));
     case 9: {
-      // Front matter: aliases, hub `describes`, tags.
       const front = [
         '---',
         `tags: [${pick(random, TAGS).replace(/^#/, '')}]`,
@@ -269,7 +251,7 @@ export function editNote(random: () => number, text: string, noteCount: number):
       return [...front, ...lines.slice(bodyStart)].join('\n');
     }
     default:
-      // Empty the note down to its front matter, or to nothing.
+      // Down to its front matter, or to nothing.
       return lines.slice(0, bodyStart).join('\n');
   }
   return lines.join('\n');

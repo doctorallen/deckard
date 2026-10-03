@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { readPerson } from '../core/markdown/parser';
+import { readPerson } from '../domain/markdown/parser';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import {
   formatTaskDraft,
   parseTaskDraft,
-} from '../core/markdown/taskDraft';
+} from '../domain/markdown/taskDraft';
 import {
   appendTag,
   completeDraft,
@@ -88,7 +88,7 @@ suite('Task editor', () => {
   test('marking a repeating task done writes its next occurrence above it', () => {
     const before = parseTaskDraft('- [ ] Water the plants 🔁 every week 📅 2026-09-21');
     const done = completeDraft(before, now);
-    const written = writeEditedTask(before, done, now, '\n');
+    const written = writeEditedTask({ before, edited: done, now, eol: '\n' });
     assert.strictEqual(
       written.text,
       '- [ ] Water the plants 🔁 every week 📅 2026-09-28\n- [x] Water the plants 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
@@ -96,10 +96,10 @@ suite('Task editor', () => {
     assert.strictEqual(written.next, '- [ ] Water the plants 🔁 every week 📅 2026-09-28');
 
     // Reopening writes the one line, and so does editing a task already done.
-    const reopened = writeEditedTask(done, completeDraft(done, now), now, '\n');
+    const reopened = writeEditedTask({ before: done, edited: completeDraft(done, now), now, eol: '\n' });
     assert.strictEqual(reopened.text, '- [ ] Water the plants 🔁 every week 📅 2026-09-21');
     assert.strictEqual(
-      writeEditedTask(done, { ...done, description: 'Water the ferns' }, now, '\n').next,
+      writeEditedTask({ before: done, edited: { ...done, description: 'Water the ferns' }, now, eol: '\n' }).next,
       undefined,
     );
   });
@@ -125,7 +125,7 @@ suite('Task editor', () => {
   test('completing writes no done date when the setting is off', () => {
     const before = parseTaskDraft('- [ ] Ship it');
     assert.strictEqual(
-      writeEditedTask(before, completeDraft(before, now, false), now, '\n').text,
+      writeEditedTask({ before, edited: completeDraft(before, now, false), now, eol: '\n' }).text,
       '- [x] Ship it',
     );
   });
@@ -133,21 +133,21 @@ suite('Task editor', () => {
   test('takes a date in words, and refuses what is not one', () => {
     const draft = parseTaskDraft('- [ ] Chase the contractor');
     assert.strictEqual(
-      formatTaskDraft(setDraftDate(draft, 'due', 'friday', now) ?? draft),
+      formatTaskDraft(setDraftDate({ draft, field: 'due', written: 'friday', now }) ?? draft),
       '- [ ] Chase the contractor 📅 2026-09-25',
     );
     assert.strictEqual(
-      formatTaskDraft(setDraftDate(draft, 'scheduled', 'in 2 days', now) ?? draft),
+      formatTaskDraft(setDraftDate({ draft, field: 'scheduled', written: 'in 2 days', now }) ?? draft),
       '- [ ] Chase the contractor ⏳ 2026-09-23',
     );
     assert.strictEqual(
-      setDraftDate(draft, 'due', 'whenever', now),
+      setDraftDate({ draft, field: 'due', written: 'whenever', now }),
       undefined,
       'nothing is guessed, so the field keeps what it had',
     );
     assert.strictEqual(
       formatTaskDraft(
-        setDraftDate(parseTaskDraft('- [ ] Chase 📅 2026-09-25'), 'due', '', now) ??
+        setDraftDate({ draft: parseTaskDraft('- [ ] Chase 📅 2026-09-25'), field: 'due', written: '', now }) ??
           draft,
       ),
       '- [ ] Chase',
@@ -232,6 +232,94 @@ suite('Task editor', () => {
     } finally {
       actions.dispose();
     }
+  });
+
+  test('writes nothing when the line changed while the editor was open', async () => {
+    const lines = ['# Plan', '- [ ] Keep me', '- [ ] Call Ren', ''];
+    const document = {
+      uri: vscode.Uri.file('/notes/plan.md'),
+      eol: vscode.EndOfLine.LF,
+      get lineCount() {
+        return lines.length;
+      },
+      getText: () => lines.join('\n'),
+      lineAt: (line: number) => ({
+        lineNumber: line,
+        text: lines[line],
+        range: new vscode.Range(line, 0, line, lines[line].length),
+      }),
+    };
+    const written: string[] = [];
+    const editor = {
+      document,
+      selection: new vscode.Selection(2, 3, 2, 3),
+      edit: async (write: (builder: { replace: (range: vscode.Range, text: string) => void }) => void) => {
+        write({
+          replace: (range, text) => {
+            written.push(text);
+            lines[range.start.line] = text;
+          },
+        });
+        return true;
+      },
+    };
+    const errors: string[] = [];
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const activeEditor = Object.getOwnPropertyDescriptor(vscode.window, 'activeTextEditor');
+    const { createQuickPick, showErrorMessage } = window;
+    Object.defineProperty(vscode.window, 'activeTextEditor', {
+      configurable: true,
+      get: () => editor,
+    });
+    window.showErrorMessage = async (text: string) => void errors.push(text);
+    // The first turn marks the task done; while it is open, a line lands
+    // above the task, as one typed in the note would. The second turn writes.
+    let turn = 0;
+    window.createQuickPick = () => {
+      const accepted: (() => void)[] = [];
+      const hidden: (() => void)[] = [];
+      const pick = {
+        items: [] as { field?: string; done?: boolean }[],
+        selectedItems: [] as unknown[],
+        onDidAccept: (handler: () => void) => accepted.push(handler),
+        onDidHide: (handler: () => void) => hidden.push(handler),
+        hide: () => hidden.forEach((handler) => handler()),
+        dispose: () => undefined,
+        show: () =>
+          setTimeout(() => {
+            turn += 1;
+            if (turn === 1) {
+              lines.splice(1, 0, '- [ ] Typed while the editor was open');
+              pick.selectedItems = [pick.items.find((item) => item.field === 'status')];
+            } else {
+              pick.selectedItems = [pick.items.find((item) => item.done)];
+            }
+            accepted.forEach((handler) => handler());
+          }, 0),
+      };
+      return pick;
+    };
+    try {
+      assert.strictEqual(await editTaskCommand(undefined, now), undefined);
+    } finally {
+      if (activeEditor) {
+        Object.defineProperty(vscode.window, 'activeTextEditor', activeEditor);
+      }
+      window.createQuickPick = createQuickPick;
+      window.showErrorMessage = showErrorMessage;
+    }
+
+    assert.deepStrictEqual(written, []);
+    assert.deepStrictEqual(lines, [
+      '# Plan',
+      '- [ ] Typed while the editor was open',
+      '- [ ] Keep me',
+      '- [ ] Call Ren',
+      '',
+    ]);
+    assert.deepStrictEqual(errors, [
+      'plan.md changed after Deckard last read it, so nothing was written. Run Edit Task on the line again.',
+    ]);
   });
 
   test('writes the line it was given back when nothing changed', async () => {

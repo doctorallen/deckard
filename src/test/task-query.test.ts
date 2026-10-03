@@ -1,9 +1,9 @@
 import * as assert from 'assert';
 
-import { evaluateQuery, setQueryIdentity } from '../core/query/queryEvaluator';
-import { setTaskPolicy } from '../core/taskPolicy';
-import { parseQuery } from '../core/query/queryParser';
-import { Section, Task, WorkspaceIndex } from '../core/types';
+import { createQueryContext, QueryContextSettings } from '../domain/query/queryContext';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { Section, Task, WorkspaceIndex } from '../domain/model';
 
 /** Local midnight `days` from today, so relative windows stay meaningful. */
 function inDays(days: number): number {
@@ -22,7 +22,7 @@ suite('Task metadata queries', () => {
       [],
       query,
     );
-    const results = evaluateQuery(index, parsed.node);
+    const results = evaluateQuery(index, parsed.node, createQueryContext(Date.now()));
     return [
       ...results.tasks.map((task) => task.id),
       ...results.sections.map((section) => section.id),
@@ -79,31 +79,31 @@ suite('Task metadata queries', () => {
       ...index,
       tasks: new Map([...index.tasks, ...extra.map((task): [string, Task] => [task.id, task])]),
     };
-    const matches = (query: string): string[] => {
+    const matches = (query: string, settings: QueryContextSettings = {}): string[] => {
       const parsed = parseQuery(query);
       assert.deepStrictEqual(parsed.diagnostics, [], query);
-      const results = evaluateQuery(local, parsed.node);
+      const results = evaluateQuery(local, parsed.node, createQueryContext(Date.now(), settings));
       return [
         ...results.tasks.map((task) => task.id),
         ...results.sections.map((section) => section.id),
       ].sort();
     };
-    try {
-      assert.deepStrictEqual(matches('is:waiting'), ['for-dana', 'marked-waiting']);
-      assert.notDeepStrictEqual(matches('is:waiting'), matches('is:blocked'), 'no longer a second is:blocked');
-      assert.deepStrictEqual(matches('is:blocked'), ['blocked']);
-      assert.deepStrictEqual(matches('is:available'), [
-        'blocker', 'for-dana', 'late', 'later', 'soon', 'started', 'today', 'undated',
-      ]);
-      assert.deepStrictEqual(matches('is:actionable'), matches('is:available'));
-      setQueryIdentity('@dana');
-      assert.deepStrictEqual(matches('is:waiting'), ['marked-waiting'], 'what is for me is not waiting on anyone');
-      setTaskPolicy({ onHoldStatuses: ['waiting'] });
-      assert.ok(matches('is:available').includes('someday'), 'the statuses on hold come from the setting');
-    } finally {
-      setQueryIdentity(undefined);
-      setTaskPolicy();
-    }
+    assert.deepStrictEqual(matches('is:waiting'), ['for-dana', 'marked-waiting']);
+    assert.notDeepStrictEqual(matches('is:waiting'), matches('is:blocked'), 'no longer a second is:blocked');
+    assert.deepStrictEqual(matches('is:blocked'), ['blocked']);
+    assert.deepStrictEqual(matches('is:available'), [
+      'blocker', 'for-dana', 'late', 'later', 'soon', 'started', 'today', 'undated',
+    ]);
+    assert.deepStrictEqual(matches('is:actionable'), matches('is:available'));
+    assert.deepStrictEqual(
+      matches('is:waiting', { identity: '@dana' }),
+      ['marked-waiting'],
+      'what is for me is not waiting on anyone',
+    );
+    assert.ok(
+      matches('is:available', { identity: '@dana', taskPolicy: { onHoldStatuses: ['waiting'] } }).includes('someday'),
+      'the statuses on hold come from the setting',
+    );
   });
 
   test('finds tasks by scheduled date and priority', () => {
@@ -140,7 +140,7 @@ suite('Task dependency queries', () => {
       [],
       query,
     );
-    return evaluateQuery(index, parsed.node)
+    return evaluateQuery(index, parsed.node, createQueryContext(Date.now()))
       .tasks.map((task) => task.id)
       .sort();
   };

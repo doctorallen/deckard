@@ -7,7 +7,7 @@ import {
   countWords,
   describeWordCount,
   maskNoteForWords,
-} from '../core/markdown/wordCount';
+} from '../domain/markdown/wordCount';
 import { WordCountStatusBar } from '../ui/views/wordCountStatusBar';
 
 function count(...lines: string[]): number {

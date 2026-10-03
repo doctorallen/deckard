@@ -2,14 +2,16 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { DashboardSnapshot, PersistedPreferences } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences, TestPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { createQueryContext } from '../domain/query/queryContext';
+import { PersistedPreferences } from '../domain/model';
+import { DashboardSnapshot } from '../ui/protocol/dashboard';
 
 /**
  * What the Dashboard does with the workspace it is given, driven as VS Code
@@ -18,12 +20,12 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  */
 suite('Dashboard behavior', () => {
   let page: WebviewPage | undefined;
-  let store: PreferencesStore | undefined;
+  let store: TestPreferences | undefined;
 
   teardown(() => {
     page?.dispose();
     page = undefined;
-    store?.dispose();
+    store?.repository.dispose();
     store = undefined;
   });
 
@@ -72,14 +74,14 @@ suite('Dashboard behavior', () => {
         ]),
       ),
     );
-    store = new PreferencesStore(new MemoryMemento());
-    const preferences = { ...store.value, ...changes };
+    store = createPreferences(new MemoryMemento());
+    const preferences = { ...store.reader.value, ...changes };
     const snapshot: DashboardSnapshot = {
-      ...createDashboardSnapshot(index, preferences),
+      ...createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) }),
       ...(preferences.dashboardViewState.mode === 'home'
         ? {
             widgets: createDashboardWidgets(index, preferences, {
-              now: Date.now(),
+              queryContext: createQueryContext(Date.now()),
               upcomingDays: 7,
               tagTitleDisplayMode: 'inline',
             }),
@@ -87,13 +89,7 @@ suite('Dashboard behavior', () => {
         : {}),
     };
     page = openWebviewPage(
-      getDashboardHtml(
-        {
-          cspSource: 'vscode-webview://deckard',
-          asWebviewUri: (resource) => resource,
-        },
-        vscode.Uri.file('/deckard'),
-      ),
+      renderPage('dashboard'),
       snapshot,
     );
     return { page, snapshot };
@@ -120,6 +116,25 @@ suite('Dashboard behavior', () => {
       dashboardViewState: { mode: 'browse', tagSearchQuery: '' },
       ...changes,
     });
+
+  test('groups and names a tag by the namespace the parser reads, not its key as written', () => {
+    const index = buildWorkspaceIndex(new Map([['notes/acme.md', parseMarkdown('notes/acme.md', '# Acme #org/acme')]]));
+    // The index keys its tags canonically, so a key written another way can
+    // only be made by hand. Aliases are applied once, where text comes in,
+    // so a key is read as keyed; its case is still read as the parser reads it.
+    const acme = index.tags.get('#org/acme')!;
+    index.tags.set('#Org/Beta', { ...acme, key: '#Org/Beta', label: '#Org/Beta' });
+    store = createPreferences(new MemoryMemento());
+    const preferences = { ...store.reader.value, dashboardViewState: { mode: 'browse' as const, tagSearchQuery: '' } };
+    page = openWebviewPage(renderPage('dashboard'), {
+      ...createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) }),
+    });
+
+    const kinds = page.findAll('.entity-kind').map((kind) => kind.textContent);
+    assert.deepStrictEqual(kinds, ['org', 'org']);
+    const options = page.findAll('[data-action="set-tag-namespace"] option').map((option) => option.getAttribute('value'));
+    assert.deepStrictEqual(options.filter((value) => value && value !== '/'), ['org'], 'one namespace to filter by');
+  });
 
   test('leads with what is overdue, due today, and open, each a search', () => {
     const { page, snapshot } = open();
@@ -297,7 +312,7 @@ suite('Dashboard behavior', () => {
 
   test('sends each tag\'s name and count, and draws the Tags tab only when it is open', () => {
     const { page, snapshot } = open();
-    assert.deepStrictEqual(Object.keys(snapshot.tags[0]).sort(), ['count', 'isFavorite', 'key', 'label']);
+    assert.deepStrictEqual(Object.keys(snapshot.tags[0]).sort(), ['count', 'isFavorite', 'key', 'label', 'namespace']);
     assert.deepStrictEqual(Object.keys(snapshot.entities[0] ?? { count: 0, isFavorite: false, key: '', kind: '', label: '' }).sort(), ['count', 'isFavorite', 'key', 'kind', 'label']);
     assert.strictEqual(page.findAll('.tag-row').length, 0, 'Home builds no tag rows');
     page.click('[data-action="set-dashboard-mode"][data-dashboard-mode="browse"]');
@@ -310,8 +325,8 @@ suite('Dashboard behavior', () => {
       notes[`notes/n${file}.md`] = Array.from({ length: 50 }, (_, tag) => `## E${tag} #t${file}-${tag} #shared`).join('\n');
     }
     const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
-    store = new PreferencesStore(new MemoryMemento());
-    const size = JSON.stringify(createDashboardSnapshot(index, store.value)).length;
+    store = createPreferences(new MemoryMemento());
+    const size = JSON.stringify(createDashboardSnapshot({ index, preferences: store.reader.value, queryContext: createQueryContext(Date.now()) })).length;
     assert.ok(index.tags.size >= 2000, `${index.tags.size} tags`);
     assert.ok(size < 300 * 1024, `${Math.round(size / 1024)} KB`);
   });

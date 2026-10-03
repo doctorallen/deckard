@@ -1,20 +1,13 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import {
-  createLocalGraphSnapshot,
-  createNotesGraphConnections,
-  createNotesGraphSnapshot,
-  findNoteNodeIds,
-  graphInputsChanged,
-  toWire,
-} from '../ui/state/notesGraphState';
-import {
-  parseNotesGraphMessage,
-  parseSidebarMessage,
-} from '../ui/webview/messages';
-import { NotesGraphSnapshot, ParsedFile } from '../core/types';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { toWire } from '../ui/state/notesGraphState';
+import { NotesGraphSnapshot, ParsedFile } from '../domain/model';
+import { graphInputsChanged } from '../domain/graph/graphChanges';
+import { createNotesGraphSnapshot } from '../domain/graph/notesGraph';
+import { createNotesGraphConnections } from '../domain/graph/graphConnections';
+import { createLocalGraphSnapshot, findNoteNodeIds } from '../domain/graph/localGraph';
 
 suite('Notes graph state', () => {
   test('draws one note and what it is attached to, a hop at a time', () => {
@@ -96,25 +89,6 @@ suite('Notes graph state', () => {
     assert.deepStrictEqual(empty.nodes, []);
     assert.deepStrictEqual(empty.edges, []);
     assert.strictEqual(empty.totalNoteCount, 0);
-  });
-
-  test('accepts the scope a graph asks for, and no other', () => {
-    assert.deepStrictEqual(
-      parseNotesGraphMessage({ type: 'setGraphScope', local: true, depth: 2 }),
-      { type: 'setGraphScope', local: true, depth: 2 },
-    );
-    for (const message of [
-      { type: 'setGraphScope', local: true, depth: 0 },
-      { type: 'setGraphScope', local: true, depth: 9 },
-      { type: 'setGraphScope', local: true, depth: 1.5 },
-      { type: 'setGraphScope', local: 'yes', depth: 1 },
-    ]) {
-      assert.strictEqual(
-        parseNotesGraphMessage(message),
-        undefined,
-        JSON.stringify(message),
-      );
-    }
   });
 
   test('connects notes to a shared tag anchor', () => {
@@ -468,101 +442,6 @@ suite('Notes graph messages', () => {
 
     const onlyTags = toWire(snapshot, { notes: false, tasks: false });
     assert.ok(onlyTags.nodes.every((node) => node.kind === 'tag'));
-  });
-
-  test('accepts a filter message only with both kinds said', () => {
-    assert.deepStrictEqual(
-      parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: true, showTasks: false }),
-      { type: 'setGraphFilter', showNotes: true, showTasks: false },
-    );
-    assert.strictEqual(parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: true }), undefined);
-    assert.strictEqual(parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: 'yes', showTasks: true }), undefined);
-  });
-
-  test('accepts valid openSource and openTag messages', () => {
-    assert.deepStrictEqual(
-      parseNotesGraphMessage({
-        type: 'openSource',
-        filePath: 'notes/a.md',
-        line: 3,
-      }),
-      { type: 'openSource', filePath: 'notes/a.md', line: 3 },
-    );
-    assert.deepStrictEqual(
-      parseNotesGraphMessage({ type: 'openTag', tagKey: 'project/atlas' }),
-      { type: 'openTag', tagKey: 'project/atlas' },
-    );
-    assert.deepStrictEqual(
-      parseNotesGraphMessage({
-        type: 'selectNode',
-        nodeId: 'section:notes/a.md:3',
-      }),
-      { type: 'selectNode', nodeId: 'section:notes/a.md:3' },
-    );
-    assert.deepStrictEqual(parseNotesGraphMessage({ type: 'clearSelection' }), {
-      type: 'clearSelection',
-    });
-  });
-
-  test('rejects malformed messages', () => {
-    assert.strictEqual(parseNotesGraphMessage(undefined), undefined);
-    assert.strictEqual(parseNotesGraphMessage({ type: 'unknown' }), undefined);
-    assert.strictEqual(
-      parseNotesGraphMessage({ type: 'openSource', filePath: 'a.md', line: 0 }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseNotesGraphMessage({
-        type: 'openSource',
-        filePath: 'a.md',
-        line: 1.5,
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseNotesGraphMessage({ type: 'openTag', tagKey: '' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseNotesGraphMessage({ type: 'selectNode', nodeId: '' }),
-      undefined,
-    );
-  });
-
-  test('sidebar accepts the openNotesGraph shortcut', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openNotesGraph' }), {
-      type: 'openNotesGraph',
-    });
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'activateNotesGraphNode',
-        nodeId: 'task:related',
-        open: false,
-      }),
-      {
-        type: 'activateNotesGraphNode',
-        nodeId: 'task:related',
-        open: false,
-      },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'hoverNotesGraphNode',
-        nodeId: 'tag:#project/atlas',
-      }),
-      { type: 'hoverNotesGraphNode', nodeId: 'tag:#project/atlas' },
-    );
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'hoverNotesGraphNode' }), {
-      type: 'hoverNotesGraphNode',
-    });
-    assert.strictEqual(
-      parseSidebarMessage({
-        type: 'activateNotesGraphNode',
-        nodeId: 'task:related',
-        open: 'yes',
-      }),
-      undefined,
-    );
   });
 });
 

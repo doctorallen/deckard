@@ -1,22 +1,20 @@
 import * as vscode from 'vscode';
 
-import { parseTaskMetadata } from '../../core/markdown/taskMetadata';
+import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
 import {
   findCheckboxColumn,
   findStepFamily,
-  formatStepLines,
   isCheckedTaskLine,
   parseSuggestedSteps,
-  planStepInsertion,
   splitTypedSteps,
-} from '../../core/markdown/taskSteps';
-import { measureAsync, reportError } from '../../core/timing';
-import { Task } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { resolveSourceUri } from './navigation';
+} from '../../domain/markdown/taskSteps';
+import { measureAsync, reportError } from '../../shared/timing';
+import type { IndexReader } from '../../core/workspace/indexReader';
+import { countSteps, quoteTitle } from '../../domain/tasks/taskLines';
 import { describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
-import { quoteTitle, readIndexedTaskLine } from './taskActions';
-import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
+import { TaskWrites } from './taskActions';
+import { Task } from '../../domain/model';
+import { parseTaskMetadata } from '../../domain/markdown/taskFields';
 
 /**
  * Break into Steps…: a list that grows one step per Enter, shown with the
@@ -60,6 +58,7 @@ export type StepRow =
   | { kind: 'suggest' }
   | { kind: 'separator' };
 
+/** A row of the list, and what choosing it does. */
 export interface StepItem extends vscode.QuickPickItem {
   row: StepRow;
 }
@@ -72,7 +71,9 @@ function button(icon: string, tooltip: string): vscode.QuickInputButton {
   return { iconPath: new vscode.ThemeIcon(icon), tooltip };
 }
 
+/** The box's hint while steps are typed. */
 export const STEP_PLACEHOLDER = 'Type a step and press Enter. Add as many as you need.';
+/** The box's hint once a model's steps are in the list. */
 export const SUGGESTED_PLACEHOLDER = 'Remove any you do not want, then choose Write.';
 
 /**
@@ -84,6 +85,7 @@ export class StepList {
   /** The new step being changed, while its words are in the box. */
   public editing: number | undefined;
 
+  /** A list with no new steps yet, showing the steps already written under the task. */
   public constructor(
     public readonly written: readonly WrittenStep[],
     /** The model's name, when Suggest steps is offered. */
@@ -97,13 +99,13 @@ export class StepList {
     const items: StepItem[] = [];
     if (typed) {
       items.push(
-        this.editing !== undefined
-          ? {
+        this.editing === undefined
+          ? { label: `$(add) Add "${typed}"`, row: { kind: 'add' }, alwaysShow: true }
+          : {
               label: `$(edit) Change step ${this.editing + 1} to "${typed}"`,
               row: { kind: 'change', index: this.editing },
               alwaysShow: true,
-            }
-          : { label: `$(add) Add "${typed}"`, row: { kind: 'add' }, alwaysShow: true },
+            },
       );
     }
     if (this.written.length > 0) {
@@ -171,12 +173,14 @@ export class StepList {
 
   /** Swaps a new step with the one above it. */
   public moveUp(index: number): void {
-    if (index > 0 && index < this.steps.length) {
-      [this.steps[index - 1], this.steps[index]] = [this.steps[index], this.steps[index - 1]];
-      this.editing = undefined;
+    if (!(index > 0 && index < this.steps.length)) {
+      return;
     }
+    [this.steps[index - 1], this.steps[index]] = [this.steps[index], this.steps[index - 1]];
+    this.editing = undefined;
   }
 
+  /** Takes a new step out of the list, and stops any change to a step under way. */
   public remove(index: number): void {
     this.steps.splice(index, 1);
     this.editing = undefined;
@@ -191,12 +195,9 @@ export class StepList {
   }
 }
 
+/** A heading between the list's parts; choosing it does nothing. */
 function separator(label: string): StepItem {
   return { label, kind: vscode.QuickPickItemKind.Separator, row: { kind: 'separator' } };
-}
-
-function countSteps(count: number): string {
-  return `${count} ${count === 1 ? 'step' : 'steps'}`;
 }
 
 /** The steps already written under a task line, read from the note. */
@@ -232,105 +233,158 @@ export async function pickSteps(
   pick.ignoreFocusOut = true;
   pick.matchOnDescription = false;
   pick.matchOnDetail = false;
-  let request: vscode.CancellationTokenSource | undefined;
 
-  const redraw = (): void => {
+  return new Promise<string[] | undefined>((resolve) => {
+    new StepPickSession({ pick, list, title: target.title, suggester, model, resolve }).start();
+  });
+}
+
+/** What one showing of the list runs on, and where its answer goes. */
+interface StepPickOptions {
+  pick: vscode.QuickPick<StepItem>;
+  list: StepList;
+  /** The task's words, which are all Suggest steps sends. */
+  title: string;
+  suggester: StepSuggester | undefined;
+  model: { label: string; vendor?: string } | undefined;
+  /** Called once: with the steps on Write, or undefined when the list closes. */
+  resolve: (steps: string[] | undefined) => void;
+}
+
+/**
+ * The list on screen, from show to hide: draws it, takes each Enter and row
+ * button, runs Suggest steps, and answers once. A suggestion still running
+ * when the list closes is cancelled, and its answer dropped.
+ */
+class StepPickSession {
+  private settled = false;
+  private request: vscode.CancellationTokenSource | undefined;
+
+  /** Nothing is shown until start. */
+  public constructor(private readonly options: StepPickOptions) {}
+
+  /** Listens to the pick, draws the list, and shows it. */
+  public start(): void {
+    const { pick } = this.options;
+    pick.onDidChangeValue(() => this.redraw());
+    pick.onDidAccept(() => this.accept());
+    pick.onDidTriggerItemButton((event) => this.triggerButton(event));
+    pick.onDidHide(() => {
+      this.finish(undefined);
+      pick.dispose();
+    });
+    this.redraw();
+    pick.show();
+  }
+
+  /** Draws the rows for what is typed, with the one Enter would pick highlighted. */
+  private redraw(): void {
+    const { pick, list } = this.options;
     const items = list.items(pick.value);
     pick.items = items;
     const chosen = list.defaultRow(items, pick.value);
     pick.activeItems = chosen ? [chosen] : [];
-  };
+  }
 
-  return new Promise<string[] | undefined>((resolve) => {
-    let settled = false;
-    const finish = (steps: string[] | undefined): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      request?.cancel();
-      resolve(steps);
-      pick.hide();
-    };
-    const suggest = async (): Promise<void> => {
-      if (!suggester || !model) {
-        return;
-      }
-      request = new vscode.CancellationTokenSource();
-      pick.busy = true;
-      pick.enabled = false;
-      pick.placeholder = `Asking ${model.label} for steps…`;
-      try {
-        const steps = await suggester.suggest(target.title, request.token);
-        if (settled) {
-          return;
-        }
-        if (steps.length === 0) {
-          void vscode.window.showWarningMessage(`${model.label} suggested no steps. Type them instead.`);
-          pick.placeholder = STEP_PLACEHOLDER;
-        } else {
-          list.suggestSteps(steps);
-          pick.placeholder = SUGGESTED_PLACEHOLDER;
-        }
-      } catch (error) {
-        if (!settled) {
-          void vscode.window.showWarningMessage(describeSuggestFailure(model.label, error));
-          pick.placeholder = STEP_PLACEHOLDER;
-        }
-      } finally {
-        request = undefined;
-        pick.busy = false;
-        pick.enabled = true;
-        if (!settled) {
-          redraw();
-        }
-      }
-    };
+  /** Answers, the first time only, cancels a suggestion under way, and closes the list. */
+  private finish(steps: string[] | undefined): void {
+    if (this.settled) {
+      return;
+    }
+    this.settled = true;
+    this.request?.cancel();
+    this.options.resolve(steps);
+    this.options.pick.hide();
+  }
 
-    pick.onDidChangeValue(redraw);
-    pick.onDidAccept(() => {
-      const [item] = pick.selectedItems.length > 0 ? pick.selectedItems : pick.activeItems;
-      const row = item?.row ?? (pick.value.trim() ? { kind: 'add' as const } : undefined);
-      switch (row?.kind) {
-        case 'add':
-        case 'change':
-          list.take(pick.value);
-          pick.value = '';
-          redraw();
-          return;
-        case 'new':
-          list.editing = row.index;
-          pick.value = list.steps[row.index].text;
-          redraw();
-          return;
-        case 'write':
-          finish(list.steps.map((step) => step.text));
-          return;
-        case 'suggest':
-          void suggest();
-          return;
-        default:
-          return;
-      }
-    });
-    pick.onDidTriggerItemButton(({ item, button }) => {
-      if (item.row.kind !== 'new') {
+  /**
+   * Enter: adds or changes a step, puts a new step back in the box to
+   * change it, writes, or asks for suggestions. Typing with no row
+   * highlighted adds what was typed.
+   */
+  private accept(): void {
+    const { pick, list } = this.options;
+    const [item] = pick.selectedItems.length > 0 ? pick.selectedItems : pick.activeItems;
+    const row = item?.row ?? (pick.value.trim() ? { kind: 'add' as const } : undefined);
+    switch (row?.kind) {
+      case 'add':
+      case 'change':
+        list.take(pick.value);
+        pick.value = '';
+        this.redraw();
+        return;
+      case 'new':
+        list.editing = row.index;
+        pick.value = list.steps[row.index].text;
+        this.redraw();
+        return;
+      case 'write':
+        this.finish(list.steps.map((step) => step.text));
+        return;
+      case 'suggest':
+        void this.suggest();
+        return;
+      case 'written':
+      case 'separator':
+      case undefined:
+        return;
+    }
+  }
+
+  /** A new step's Move up or Remove button. */
+  private triggerButton({ item, button }: vscode.QuickPickItemButtonEvent<StepItem>): void {
+    const { list } = this.options;
+    if (item.row.kind !== 'new') {
+      return;
+    }
+    if (button.tooltip === MOVE_UP) {
+      list.moveUp(item.row.index);
+    } else if (button.tooltip === REMOVE) {
+      list.remove(item.row.index);
+    }
+    this.redraw();
+  }
+
+  /**
+   * Suggest steps: the list is busy and disabled while the model answers,
+   * then shows its steps, or a warning when it gave none or failed. An
+   * answer that comes after the list closed is dropped.
+   */
+  private async suggest(): Promise<void> {
+    const { pick, list, suggester, model, title } = this.options;
+    if (!suggester || !model) {
+      return;
+    }
+    this.request = new vscode.CancellationTokenSource();
+    pick.busy = true;
+    pick.enabled = false;
+    pick.placeholder = `Asking ${model.label} for steps…`;
+    try {
+      const steps = await suggester.suggest(title, this.request.token);
+      if (this.settled) {
         return;
       }
-      if (button.tooltip === MOVE_UP) {
-        list.moveUp(item.row.index);
-      } else if (button.tooltip === REMOVE) {
-        list.remove(item.row.index);
+      if (steps.length === 0) {
+        void vscode.window.showWarningMessage(`${model.label} suggested no steps. Type them instead.`);
+        pick.placeholder = STEP_PLACEHOLDER;
+      } else {
+        list.suggestSteps(steps);
+        pick.placeholder = SUGGESTED_PLACEHOLDER;
       }
-      redraw();
-    });
-    pick.onDidHide(() => {
-      finish(undefined);
-      pick.dispose();
-    });
-    redraw();
-    pick.show();
-  });
+    } catch (error) {
+      if (!this.settled) {
+        void vscode.window.showWarningMessage(describeSuggestFailure(model.label, error));
+        pick.placeholder = STEP_PLACEHOLDER;
+      }
+    } finally {
+      this.request = undefined;
+      pick.busy = false;
+      pick.enabled = true;
+      if (!this.settled) {
+        this.redraw();
+      }
+    }
+  }
 }
 
 /** The one message Suggest steps sends: the task's words, and nothing else. */
@@ -422,74 +476,65 @@ export function describeSuggestFailure(model: string, error: unknown): string {
 
 /**
  * Writes steps under a task, after whatever is under it already, in one
- * change: said with an Undo, and taken back by Undo Last Change too.
+ * change: said with an Undo, and taken back by Undo Last Change too. The
+ * task service decides whether the task is still where the index read it,
+ * and writes; this says what became of it.
  */
 export async function addTaskSteps(
+  writes: TaskWrites,
   target: StepTarget,
   steps: readonly string[],
 ): Promise<boolean> {
-  if (steps.length === 0) {
-    return false;
-  }
-  const uri = await resolveSourceUri(target.filePath);
-  if (!uri) {
-    void reportFailure({
-      outcome: `Deckard could not find ${target.filePath}, so nothing was written.`,
-      fix: 'It may have been moved or deleted since Deckard last read it.',
-      action: reindexAction(),
-    });
-    return false;
-  }
-  try {
-    const document = await vscode.workspace.openTextDocument(uri);
-    if (!readIndexedTaskLine(document, target)) {
-      void reportStale([uri]);
+  const result = await writes.tasks.addSteps(target, steps);
+  switch (result.kind) {
+    case 'nothing':
       return false;
-    }
-    const lines = document.getText().split(/\r?\n/);
-    const plan = planStepInsertion(lines, target.lineNumber - 1);
-    const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-    const written = formatStepLines(steps, plan.indent, plan.marker);
-    const edit = new vscode.WorkspaceEdit();
-    edit.insert(uri, document.lineAt(plan.afterLine).range.end, eol + written.join(eol));
-    const quoted = quoteTitle(target.title);
-    const result = await applyWorkspaceWrite(edit, {
-      label: `writing ${countSteps(steps.length)} under ${quoted}`,
-    });
-    if (!result.applied) {
-      void reportFailure(describeRejectedEdit(noteName(uri)));
+    case 'missing':
+      reportMissing(target.filePath);
       return false;
-    }
-    const mine = workspaceWrites.lastWrite;
-    void vscode.window
-      .showInformationMessage(`Wrote ${countSteps(steps.length)} under ${quoted}.`, 'Undo')
-      .then(async (choice) => {
-        if (choice !== 'Undo') {
-          return;
-        }
-        if (workspaceWrites.lastWrite !== mine) {
-          void vscode.window.showInformationMessage(
-            'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
-          );
-          return;
-        }
-        reportUndo(await workspaceWrites.undo(), `Took the ${countSteps(steps.length)} back out.`);
+    case 'stale':
+      void reportStale([result.uri]);
+      return false;
+    case 'rejected':
+      void reportFailure(describeRejectedEdit(noteName(result.uri)));
+      return false;
+    case 'failed':
+      reportStepsFailure(result.uri, result.error);
+      return false;
+    case 'written':
+      result.handle.offerUndo(`Wrote ${countSteps(result.count)} under ${quoteTitle(target.title)}.`, {
+        guard: 'latest',
+        done: `Took the ${countSteps(result.count)} back out.`,
       });
-    return true;
-  } catch (error) {
-    void reportFailure({
-      outcome: `Deckard could not write the steps in ${noteName(uri)}, so nothing was written.`,
-      error,
-    });
-    return false;
+      return true;
   }
 }
+
+/** Says that the steps could not be written in a note, with the error in Deckard's log. */
+function reportStepsFailure(uri: vscode.Uri, error: unknown): void {
+  void reportFailure({
+    outcome: `Deckard could not write the steps in ${noteName(uri)}, so nothing was written.`,
+    error,
+  });
+}
+
+/** Says that no folder holds a task's note, so nothing was written. */
+function reportMissing(filePath: string): void {
+  void reportFailure({
+    outcome: `Deckard could not find ${filePath}, so nothing was written.`,
+    fix: 'It may have been moved or deleted since Deckard last read it.',
+    action: reindexAction(),
+  });
+}
+
+/** A task with words after its box, which is what can be broken into steps. */
+const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap-then-words' };
 
 /**
  * The task on the cursor's line, read from the editor itself, so a task
  * typed a moment ago can be broken into steps before the index has it.
  */
-function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines: string[] } | undefined {
+function readCursorTask(indexer: IndexReader): { target: StepTarget; lines: string[] } | undefined {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     return undefined;
@@ -498,7 +543,7 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
   const lines = editor.document.getText().split(/\r?\n/);
   const text = lines[lineIndex] ?? '';
   const column = findCheckboxColumn(text);
-  if (column < 0 || !/^[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+\S/.test(text)) {
+  if (column < 0 || !isTaskLineOf(text, CURSOR_TASK)) {
     return undefined;
   }
   const words = text.slice(column + 2).trim();
@@ -520,40 +565,61 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
  * or the task on the cursor's line.
  */
 export async function breakIntoStepsCommand(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
+  writes: TaskWrites,
   task?: Task,
   suggester: StepSuggester | undefined = createLanguageModelSuggester(),
 ): Promise<boolean> {
-  let target: StepTarget;
-  let lines: string[];
-  if (task) {
-    const uri = await resolveSourceUri(task.filePath);
-    if (!uri) {
-      void reportFailure({
-        outcome: `Deckard could not find ${task.filePath}, so nothing was written.`,
-        fix: 'It may have been moved or deleted since Deckard last read it.',
-        action: reindexAction(),
-      });
-      return false;
-    }
-    const document = await vscode.workspace.openTextDocument(uri);
-    if (!readIndexedTaskLine(document, task)) {
-      void reportStale([uri]);
-      return false;
-    }
-    target = task;
-    lines = document.getText().split(/\r?\n/);
-  } else {
-    const read = readCursorTask(indexer);
-    if (!read) {
+  const read = task ? await readIndexedTask(writes, task) : readCursorTask(indexer);
+  if (!read) {
+    if (!task) {
       void vscode.window.showInformationMessage('Put the cursor on a task to break it into steps.');
-      return false;
     }
-    ({ target, lines } = read);
+    return false;
   }
+  const { target, lines } = read;
   const steps = await pickSteps(target, readWrittenSteps(lines, target.lineNumber - 1), suggester);
   if (!steps || steps.length === 0) {
     return false;
   }
-  return addTaskSteps(target, steps);
+  return addTaskSteps(writes, target, steps);
+}
+
+/**
+ * A task the index knows, with its note's lines, once its line is proved to
+ * read as the index read it; undefined, having said why, when it cannot be.
+ * A note that cannot be read at all is said as Write would say it, since
+ * the steps could not be written there either.
+ */
+async function readIndexedTask(
+  writes: TaskWrites,
+  task: Task,
+): Promise<{ target: StepTarget; lines: string[] } | undefined> {
+  const opened = await writes.tasks.openIndexedTask(task);
+  if (opened.kind === 'missing') {
+    reportMissing(task.filePath);
+    return undefined;
+  }
+  if (opened.kind === 'unreadable') {
+    reportStepsFailure(opened.uri, opened.error);
+    return undefined;
+  }
+  if (opened.kind === 'stale') {
+    void reportStale([opened.uri]);
+    return undefined;
+  }
+  return { target: task, lines: opened.note.getText().split(/\r?\n/) };
+}
+
+/**
+ * The argument the registered command may be given: a task from the Task
+ * Board, as its call passes one, and not the note an editor menu passes.
+ */
+export function readTaskArgument(value: unknown): Task | undefined {
+  return value !== null &&
+    typeof value === 'object' &&
+    typeof (value as Partial<Task>).sourceLineText === 'string' &&
+    typeof (value as Partial<Task>).checkboxColumn === 'number'
+    ? (value as Task)
+    : undefined;
 }

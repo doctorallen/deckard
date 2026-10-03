@@ -12,9 +12,21 @@
         "sourceMap": true,
         "rootDir": "src",
         "strict": true, /* enable all strict type-checking options */
-        /* Additional Checks */
-        // "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
-        // "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
-        // "noUnusedParameters": true,  /* Report errors on unused parameters. */
-    }
+        /* Checks that strict does not imply. Each catches the dead branch, the
+           orphaned parameter, or the unmarked override a return-early rewrite
+           or a move can leave behind, and none changes what is emitted. */
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitOverride": true
+    },
+    // The page code runs in the browser and is checked against the DOM by
+    // its own config, src/webview/tsconfig.json.
+    "exclude": [
+        "node_modules",
+        "out",
+        "dist",
+        "src/webview"
+    ]
 }

@@ -1,0 +1,9 @@
+/*
+ * Replicant, whose palette is the base sheet's own, so this sheet adds only
+ * the hover. Rows lift onto the raised panel on hover. Tags only slide: they
+ * are buttons, so each theme's button hover colors them, and a shared dark
+ * ground under a theme's inverted button text would hide it.
+ *
+ * A theme sheet: linked after the page's own sheet and before the tail.
+ */
+.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .tag-open:hover, .note .tag-list button:hover:where(:not(:disabled):not([aria-disabled="true"])) { transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; } .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }

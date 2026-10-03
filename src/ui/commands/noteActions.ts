@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 
-import { isTaskLine } from '../../core/markdown/taskDraft';
-import { pinKey } from '../../core/storage/preferences';
-import { WorkspaceIndex } from '../../core/types';
-import { createPinForLine } from '../state/pinnedNotes';
+import { isTaskLine } from '../../domain/markdown/taskDraft';
+import { createPinForLine } from '../../domain/notes/pins';
+import { WorkspaceIndex } from '../../domain/model';
+import { pinKey } from '../../core/storage/preferencesSchema';
+import { findHeadingLineAbove } from './focusSection';
+import { readIndexAsEdited } from './pinNote';
 
 /** Where the cursor is, which decides what a note's actions are. */
 export interface NoteActionState {
@@ -81,7 +83,8 @@ export function readNoteActionState(
 ): NoteActionState {
   const line = editor.selection.active.line;
   const filePath = deps.index.getFilePath(editor.document.uri);
-  const index = deps.index.getSnapshot();
+  // The cursor's line is the editor's, so an unsaved note is read as shown.
+  const index = readIndexAsEdited(deps.index.getSnapshot(), filePath, editor.document);
   const file = index.files.get(filePath);
   const oneBased = line + 1;
   const containing = (file?.sections ?? []).filter(
@@ -98,14 +101,16 @@ export function readNoteActionState(
   };
 }
 
-/** Whether a heading is written at or above a line, for a note not yet read. */
-function hasHeadingAbove(document: vscode.TextDocument, line: number): boolean {
-  for (let at = line; at >= 0; at -= 1) {
-    if (/^#{1,6}[ \t]/.test(document.lineAt(at).text)) {
-      return true;
-    }
-  }
-  return false;
+/**
+ * Whether a heading is written at or above a line, for a note not yet read,
+ * by Focus Section's own rule, so it is offered only where it will act: a
+ * heading as the parser reads one, `#` alone and a heading indented by up
+ * to three spaces included, and never a line in fenced code or front matter.
+ */
+export function hasHeadingAbove(document: Pick<vscode.TextDocument, 'lineAt' | 'lineCount'>, line: number): boolean {
+  // The whole note, so front matter the cursor is inside is still found closed.
+  const lines = Array.from({ length: document.lineCount }, (_, at) => document.lineAt(at).text);
+  return findHeadingLineAbove(lines, line) !== undefined;
 }
 
 /**

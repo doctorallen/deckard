@@ -4,13 +4,18 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { PreferencesStore } from '../core/storage/preferences';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { workspaceWrites } from '../ui/commands/workspaceWrites';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { NavigationService } from '../services/navigationService';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { ActiveSearch } from '../ui/webview/activeSearch';
-import { SidebarNotesView } from '../ui/webview/sidebarNotes';
+import { WebviewHost } from '../ui/webview/host/webviewHost';
+import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
+import { ThemePreview } from '../ui/webview/themePreview';
+import { FakeSurface } from './fakeWebview';
+import { REPOSITORY_ROOT } from './pageWebview';
+import { WorkspaceIndex } from '../domain/model';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -57,15 +62,26 @@ suite('Adding a suggested tag', () => {
         index = await build();
       },
     };
-    const view = new SidebarNotesView(
-      indexer as never,
-      new PreferencesStore(new MemoryMemento() as never),
-      new ActiveSearch(),
-      () => undefined,
-      'test',
-    );
-    const send = (message: unknown) =>
-      (view as unknown as { handleMessage(value: unknown): Promise<void> }).handleMessage(message);
+    const history = new WorkspaceWriteHistory();
+    const themePreview = new ThemePreview();
+    const controller = new SidebarNotesController({
+      indexer: indexer as never,
+      preferences: createPreferences(new MemoryMemento() as never),
+      activeSearch: new ActiveSearch(),
+      onOpenTag: () => undefined,
+      extensionVersion: 'test',
+      history,
+      themePreview,
+      navigation: new NavigationService(),
+      extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
+    });
+    const view = new WebviewHost(controller, { indexer: indexer as never, themePreview });
+    // A hidden sidebar ranks nothing until it is shown, so only the
+    // messages sent here do anything.
+    const surface = new FakeSurface();
+    surface.visible = false;
+    view.attach(surface);
+    const send = (message: unknown) => surface.webview.send(message);
     const window = vscode.window as unknown as Record<string, unknown>;
     const info = window.showInformationMessage;
     const warning = window.showWarningMessage;
@@ -85,7 +101,7 @@ suite('Adding a suggested tag', () => {
       await send({ type: 'addSuggestedTag', tagKey: '#risk/vendor' });
       const read = async () => Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
       assert.strictEqual(await read(), '# Vendor audit #risk/vendor\nNorthwind deliveries on the northern route are late again.\n');
-      assert.strictEqual(workspaceWrites.lastWrite?.label, '#risk/vendor on "Vendor audit"');
+      assert.strictEqual(history.lastWrite?.label, '#risk/vendor on "Vendor audit"');
       assert.deepStrictEqual(shown[0], ['Added #risk/vendor to "Vendor audit".', 'Undo']);
 
       // A tag no longer offered, now that the note has one, writes nothing.
@@ -93,7 +109,7 @@ suite('Adding a suggested tag', () => {
       assert.strictEqual(shown.length, 1);
 
       // Undo from the message puts the line back.
-      await workspaceWrites.undo();
+      await history.undo();
       index = await build();
       answer = 'Undo';
       await send({ type: 'addSuggestedTag', tagKey: '#risk/vendor' });

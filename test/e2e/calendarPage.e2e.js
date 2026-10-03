@@ -6,15 +6,18 @@
 // it could not.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
-const { CalendarPanel } = require('../../out/ui/webview/calendarPage.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
-const { formatLocalDate } = require('../../out/ui/commands/dailyNote.js');
-const { ActiveCalendar } = require('../../out/ui/webview/activeCalendar.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const { createGlobalState, mountWebview } = require('./support.js');
+const modules = require('../harness/modules.js');
+const { CalendarPanel } = modules.calendarPage;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexState;
+const { formatLocalDate } = modules.periodicNotes;
+const { ActiveCalendar } = modules.activeCalendar;
+const { ActiveSearch } = modules.activeSearch;
+const { SidebarNotesView } = modules.sidebarNotes;
+const { createPreferences } = modules.preferenceServices;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 vscode.workspace.openTextDocument = () => Promise.reject(new Error('The e2e stub has no editor.'));
 vscode.window.showErrorMessage = () => Promise.resolve(undefined);
@@ -43,26 +46,26 @@ function createIndex() {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-async function openPage() {
+async function openPage(...shown) {
   vscode._test.createdPanels.length = 0;
   const index = createIndex();
   const updates = new vscode.EventEmitter();
-  const page = new CalendarPanel(
-    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
-    { fsPath: '/ext' },
-  );
-  await page.show();
+  const page = new CalendarPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
+    extensionUri: vscode.Uri.file('/ext'),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+    openTag: () => undefined,
+  });
+  await page.show(...shown);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
   panel._toWebview.forEach((message) => panel._deliver(message));
   await settle();
   const cell = (date) => view.find(`.day-cell[data-drop-date="${date}"]`);
-  const chips = (date) => cell(date).querySelectorAll('.cal-chip').map((chip) => [chip.dataset.kind, chip.textContent.replace(/^[↻⏳ ]+/, '')]);
+  const chips = (date) => [...cell(date).querySelectorAll('.cal-chip')].map((chip) => [chip.dataset.kind, chip.textContent.replace(/^[↻⏳ ]+/, '')]);
   return { page, panel, view, cell, chips };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -104,6 +107,23 @@ test('the Week layout draws one row, and ] steps a week through the host', async
   assert.ok(view.findAll('.calendar-grid .day-cell').length >= 28, 'm goes back to the month');
 });
 
+test('opened on the sidebar\'s next month with no day chosen there, the page chooses a day of that month, and steps a week from it', async () => {
+  const at = new Date();
+  const nextMonth = formatLocalDate(new Date(at.getFullYear(), at.getMonth() + 1, 1)).slice(0, 7);
+  const { panel, view } = await openPage(nextMonth);
+  const chosen = panel._toWebview.filter((message) => message.type === 'state').pop().data.selectedDate;
+  assert.strictEqual(chosen.slice(0, 7), nextMonth, 'the chosen day is one of the month shown');
+  view.click(view.find('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]'));
+  assert.ok(view.find(`.calendar-grid .day[data-date="${chosen}"]`), 'and its week is drawn');
+  view.click(view.find('[data-action="step-calendar"][data-by="1"]'));
+  const [year, month, day] = chosen.split('-').map(Number);
+  assert.deepStrictEqual(
+    view.posted.filter((message) => message.type === 'selectDay').pop(),
+    { type: 'selectDay', date: formatLocalDate(new Date(year, month - 1, day + 7)) },
+    'Next week is the week after it, not a week after today',
+  );
+});
+
 test('a task dragged to another day asks the host to move it, and a refusal is said', async () => {
   const { panel, view, cell } = await openPage();
   const chip = cell(today).querySelector('.cal-chip[data-kind="due"]');
@@ -119,15 +139,17 @@ test('a task dragged to another day asks the host to move it, and a refusal is s
     // The harness's classList draws nothing, so what is checked is what is posted.
     view.fire('dragover', cell(tomorrow), { dataTransfer });
     view.fire('drop', cell(tomorrow), { dataTransfer });
-    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: chip.dataset.taskId, field: 'due', date: tomorrow });
+    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: chip.dataset.taskId, field: 'due', date: tomorrow, requestId: 1 });
   } finally {
     panel._onWebviewMessage = deliver;
   }
   // The stub cannot write the note, so the host refuses and says so.
-  panel._onWebviewMessage({ type: 'moveTask', taskId: chip.dataset.taskId, field: 'due', date: tomorrow });
+  panel._onWebviewMessage(view.posted[view.posted.length - 1]);
   await settle();
   await settle();
-  assert.ok(panel._toWebview.some((message) => message.type === 'moveRefused'), 'the host says it was not moved');
+  const refused = panel._toWebview.find((message) => message.type === 'moveRefused');
+  assert.deepStrictEqual(refused, { type: 'moveRefused', taskId: chip.dataset.taskId, requestId: 1 }, 'the host says that move was not made');
+  assert.strictEqual(view.find('#live-status').textContent, `"Call Ren" was not moved to ${tomorrow}.`);
 });
 
 test('the gear turns repeats off where the setting is written', async () => {
@@ -148,17 +170,33 @@ test('with Related Notes open, the chosen day is there and the month takes the w
     getFilePath: (uri) => uri.fsPath,
     onDidUpdate: new vscode.EventEmitter().event,
   };
-  const store = new Map();
-  const globalState = { get: (key, fallback) => (store.has(key) ? store.get(key) : fallback), keys: () => [...store.keys()], update: (key, value) => { store.set(key, value); return Promise.resolve(); } };
+  const globalState = createGlobalState();
   const activeCalendar = new ActiveCalendar();
-  const sidebar = new SidebarNotesView(indexer, new PreferencesStore(globalState), new ActiveSearch(), () => undefined, '0.0.0-test', activeCalendar);
+  const sidebar = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences: createPreferences(globalState),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    activeCalendar,
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const sidebarHost = vscode._test.createWebviewView();
   sidebarHost._onWebviewMessage = sidebarHost._fromWebview;
   sidebar.resolveWebviewView(sidebarHost);
   const sidebarView = mountWebview(sidebarHost.webview.html, sidebarHost);
   sidebarHost.posted.forEach((message) => sidebarHost._deliver(message));
 
-  const page = new CalendarPanel(indexer, { fsPath: '/ext' }, activeCalendar);
+  const page = new CalendarPanel({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+    openTag: () => undefined,
+    activeCalendar,
+  });
   await page.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
@@ -196,19 +234,3 @@ test('with Related Notes open, the chosen day is there and the month takes the w
   }
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let failed = 0;
-  for (const { name, fn } of tests) {
-    try {
-      await fn();
-      console.log(`  ok   ${name}`);
-    } catch (error) {
-      failed += 1;
-      console.log(`  FAIL ${name}\n       ${error && error.stack ? error.stack.split('\n').slice(0, 3).join('\n       ') : error}`);
-    }
-  }
-  console.log(`\n${tests.length - failed} passed, ${failed} failed`);
-  process.exit(failed ? 1 : 0);
-})();

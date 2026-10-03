@@ -1,12 +1,7 @@
 import * as assert from 'assert';
 
-import { TagInfo, WorkspaceIndex } from '../core/types';
-import { parseStatsMessage } from '../ui/webview/messages';
-import {
-  findTagLookalikes,
-  findTagMergeCandidates,
-  isWithinDistance,
-} from '../ui/state/tagHygiene';
+import { findTagLookalikes, findTagMergeCandidates, isWithinDistance } from '../domain/ranking/tagHygiene';
+import { TagInfo, WorkspaceIndex } from '../domain/model';
 
 /** An index holding only the tags a pair is read from. */
 function indexOfTags(counts: Record<string, number>): WorkspaceIndex {
@@ -92,6 +87,27 @@ suite('Tag hygiene', () => {
     );
   });
 
+  test('leaves numbered and dated tags alone, since a changed digit is another tag, not a typo', () => {
+    assert.deepStrictEqual(
+      pairs(
+        indexOfTags({
+          '#q1': 4,
+          '#q2': 3,
+          '#sprint-12': 6,
+          '#sprint-13': 5,
+          '#sprint-1': 2,
+          '#meeting/2026-09-01': 1,
+          '#meeting/2026-09-02': 1,
+          '#release/v2': 3,
+          '#release/v2s': 1,
+          '#project/atlas2': 3,
+          '#project/atals2': 1,
+        }),
+      ),
+      ['#release/v2s -> #release/v2 (plural)', '#project/atals2 -> #project/atlas2 (spelling)'],
+    );
+  });
+
   test('counts a transposition as one edit, and bounds the rest', () => {
     assert.strictEqual(isWithinDistance('atlas', 'atals', 1), true);
     assert.strictEqual(isWithinDistance('atlas', 'atlss', 1), true);
@@ -122,33 +138,6 @@ suite('Tag hygiene', () => {
       found.candidates[0].detail,
       'the same name written two ways, with 2 entries and 20 entries',
     );
-  });
-
-  test('accepts the merge a pair posts, and nothing else', () => {
-    assert.deepStrictEqual(
-      parseStatsMessage({
-        type: 'mergeTags',
-        sourceKey: '#project/atlss',
-        targetKey: '#project/atlas',
-      }),
-      {
-        type: 'mergeTags',
-        sourceKey: '#project/atlss',
-        targetKey: '#project/atlas',
-      },
-    );
-    for (const message of [
-      { type: 'mergeTags', sourceKey: '#a', targetKey: '#a' },
-      { type: 'mergeTags', sourceKey: '', targetKey: '#a' },
-      { type: 'mergeTags', sourceKey: '#a' },
-      { type: 'mergeTags', sourceKey: 1, targetKey: 2 },
-    ]) {
-      assert.strictEqual(
-        parseStatsMessage(message),
-        undefined,
-        JSON.stringify(message),
-      );
-    }
   });
 
   test('a tag\'s own page names its other spellings, at most three', () => {

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
-import { formatLocalDate } from './dailyNote';
+import { fileExists } from './fs';
 import { reportFailure } from './notify';
+import { formatLocalDate } from '../../domain/notes/periodicNotes';
 
 /**
  * Somewhere to start.
@@ -14,12 +15,14 @@ import { reportFailure } from './notify';
  * notes say, and opened, with the README shown once the window has reloaded.
  */
 
+/** The sample's folder, inside Deckard's global storage. */
 export const SAMPLE_FOLDER_NAME = 'deckard-sample';
 /** The sample to show the README of, once it opens after the reload. */
 export const SAMPLE_README_KEY = 'deckard.openSampleReadme';
 
 /** The sample's folder is already there, and was not to be replaced. */
 export class SampleFolderExistsError extends Error {
+  /** Names the folder that is there, so the message says where. */
   constructor(target: vscode.Uri) {
     super(`There is already a sample in ${target.fsPath}.`);
     this.name = 'SampleFolderExistsError';
@@ -88,22 +91,33 @@ export function sampleFileName(name: string, today: Date): string {
   return name === 'dot-vscode' ? '.vscode' : name;
 }
 
+/** Where the sample comes from and goes, the day it is dated from, and whether it may replace one. */
+export interface InstallSampleOptions {
+  extensionUri: vscode.Uri;
+  storageUri: vscode.Uri;
+  today: Date;
+  /** The file system it is copied through; VS Code's by default. */
+  fs?: SampleFileAccess;
+  /** Replace a sample already there rather than refuse. */
+  replace?: boolean;
+}
+
 /**
  * Writes the sample into `storageUri/deckard-sample`, dated from `today`.
  * Refuses, rather than merging, when it is already there, unless told to
  * replace it. Returns where it went and how many notes it holds: every
  * Markdown file but the README and the templates.
  */
-export async function installSample(
-  extensionUri: vscode.Uri,
-  storageUri: vscode.Uri,
-  today: Date,
-  fs: SampleFileAccess = vscode.workspace.fs,
-  options: { replace?: boolean } = {},
-): Promise<{ target: vscode.Uri; notes: number }> {
+export async function installSample({
+  extensionUri,
+  storageUri,
+  today,
+  fs = vscode.workspace.fs,
+  replace,
+}: InstallSampleOptions): Promise<{ target: vscode.Uri; notes: number }> {
   const target = vscode.Uri.joinPath(storageUri, SAMPLE_FOLDER_NAME);
-  if (await exists(fs, target)) {
-    if (!options.replace) {
+  if (await fileExists(target, fs)) {
+    if (!replace) {
       throw new SampleFolderExistsError(target);
     }
     await fs.delete(target, { recursive: true, useTrash: false });
@@ -164,63 +178,112 @@ export async function showSampleReadmeOnce(context: vscode.ExtensionContext): Pr
   await vscode.commands.executeCommand('markdown.showPreview', readme);
 }
 
+/**
+ * Deckard: Open Sample Workspace. Writes the sample into Deckard's storage,
+ * asking first when one is there already, then opens it, asking where when
+ * this window has a folder open. Cancelling any question stops there; a
+ * sample that cannot be written is reported, and nothing opens.
+ */
 export async function createSampleWorkspace(context: vscode.ExtensionContext): Promise<void> {
   const storage = getSampleStorageUri(context.globalStorageUri);
   const target = vscode.Uri.joinPath(storage, SAMPLE_FOLDER_NAME);
-  let replace = false;
-  if (await exists(vscode.workspace.fs, target)) {
-    const choice = await vscode.window.showWarningMessage(
-      'Replace the sample with a fresh copy? Anything changed in it is lost.',
-      { modal: true, detail: 'A sample that is open in a window shows its notes as deleted until it reloads.' },
-      'Replace',
-      'Open As It Is',
-    );
-    if (choice === undefined) {
-      return;
-    }
-    replace = choice === 'Replace';
+  const replace = await askToReplace(target);
+  if (replace === undefined) {
+    return;
   }
-  let notes: number | undefined;
-  if (replace || !(await exists(vscode.workspace.fs, target))) {
-    try {
-      notes = (
-        await installSample(context.extensionUri, storage, new Date(), vscode.workspace.fs, {
-          replace,
-        })
-      ).notes;
-    } catch (error) {
-      void reportFailure({
-        outcome: `Deckard could not create the sample notes in ${target.fsPath}.`,
-        fix: 'Try again; a sample left half written is replaced.',
-        error,
-      });
-      return;
-    }
+  const installed = await installIfNeeded({ context, storage, target, replace });
+  if (!installed) {
+    return;
   }
-  // An empty window opens it at once; a window with work in it asks where.
-  let forceNewWindow = false;
-  if ((vscode.workspace.workspaceFolders ?? []).length > 0) {
-    const choice = await vscode.window.showInformationMessage(
-      notes === undefined
-        ? 'Open the sample workspace in a new window, or in this one?'
-        : `Created a sample workspace of ${notes} notes. Open it in a new window, or in this one?`,
-      'Open in New Window',
-      'Open Here',
-    );
-    if (!choice) {
-      return;
-    }
-    forceNewWindow = choice === 'Open in New Window';
+  const forceNewWindow = await askWhereToOpen(installed.notes);
+  if (forceNewWindow === undefined) {
+    return;
   }
   await context.globalState.update(SAMPLE_README_KEY, target.toString());
   await vscode.commands.executeCommand('vscode.openFolder', target, { forceNewWindow });
 }
 
-async function exists(fs: Pick<SampleFileAccess, 'stat'>, uri: vscode.Uri): Promise<boolean> {
-  try {
-    await fs.stat(uri);
-    return true;
-  } catch {
+/**
+ * Whether to write a fresh copy over the sample: false when there is none
+ * yet or the reader would open it as it is, undefined when they cancel.
+ */
+async function askToReplace(target: vscode.Uri): Promise<boolean | undefined> {
+  if (!(await fileExists(target))) {
     return false;
   }
+  const choice = await vscode.window.showWarningMessage(
+    'Replace the sample with a fresh copy? Anything changed in it is lost.',
+    { modal: true, detail: 'A sample that is open in a window shows its notes as deleted until it reloads.' },
+    'Replace',
+    'Open As It Is',
+  );
+  if (choice === undefined) {
+    return undefined;
+  }
+  return choice === 'Replace';
+}
+
+/** Where the sample goes, and whether to write over the copy there. */
+interface InstallRequest {
+  context: vscode.ExtensionContext;
+  storage: vscode.Uri;
+  target: vscode.Uri;
+  replace: boolean;
+}
+
+/**
+ * Writes the sample when it is to be replaced or is not there, and says how
+ * many notes it wrote; `notes` is undefined when the copy there is kept.
+ * Undefined when writing failed, which it reports.
+ */
+async function installIfNeeded({
+  context,
+  storage,
+  target,
+  replace,
+}: InstallRequest): Promise<{ notes: number | undefined } | undefined> {
+  // Looked at again rather than reusing askToReplace's answer: when the
+  // folder was not there, nothing was asked, and it is checked as it is now.
+  if (!replace && (await fileExists(target))) {
+    return { notes: undefined };
+  }
+  try {
+    const { notes } = await installSample({
+      extensionUri: context.extensionUri,
+      storageUri: storage,
+      today: new Date(),
+      fs: vscode.workspace.fs,
+      replace,
+    });
+    return { notes };
+  } catch (error) {
+    void reportFailure({
+      outcome: `Deckard could not create the sample notes in ${target.fsPath}.`,
+      fix: 'Try again; a sample left half written is replaced.',
+      error,
+    });
+    return undefined;
+  }
+}
+
+/**
+ * Whether to open the sample in a new window. An empty window opens it at
+ * once, here; a window with work in it asks where, and undefined means the
+ * reader dismissed the question.
+ */
+async function askWhereToOpen(notes: number | undefined): Promise<boolean | undefined> {
+  if ((vscode.workspace.workspaceFolders ?? []).length === 0) {
+    return false;
+  }
+  const choice = await vscode.window.showInformationMessage(
+    notes === undefined
+      ? 'Open the sample workspace in a new window, or in this one?'
+      : `Created a sample workspace of ${notes} notes. Open it in a new window, or in this one?`,
+    'Open in New Window',
+    'Open Here',
+  );
+  if (!choice) {
+    return undefined;
+  }
+  return choice === 'Open in New Window';
 }

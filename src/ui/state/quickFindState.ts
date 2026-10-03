@@ -3,30 +3,34 @@ import {
   isParkedOnlyTag,
   isParkedSection,
   isParkedTask,
-} from '../../core/workspace/parked';
-import { stripTags } from '../../core/markdown/parser';
-import { getPlainTextTerms } from '../../core/query/queryEdit';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
+} from '../../domain/index/parked';
+import { stripTags } from '../../domain/markdown/parser';
+import { getFileName } from '../../shared/paths';
+import { getPlainTextTerms } from '../../domain/query/queryEdit';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { QueryContext } from '../../domain/query/queryContext';
 import {
   collectQueryTagKeys,
   visitConditions,
-} from '../../core/query/queryFormat';
-import { parseQuery } from '../../core/query/queryParser';
-import { QueryNode, QuerySuggestion } from '../../core/query/queryTypes';
+} from '../../domain/query/queryFormat';
+import { parseQuery } from '../../domain/query/queryParser';
+import { QueryNode } from '../../domain/query/queryTypes';
 import { EntrySearchResult } from '../../core/storage/searchStore';
+import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { describeTagMatches } from './querySuggestions';
+import { normalizeFindInput, pinKey } from '../../core/storage/preferencesSchema';
+import { createPinForLine, findPinnedSection, resolvePin } from '../../domain/notes/pins';
+import { frecencyScore } from '../../domain/ranking/frecency';
 import {
+  QuerySuggestion,
   ParsedFile,
   PersistedPreferences,
   Section,
   TagInfo,
   Task,
   WorkspaceIndex,
-} from '../../core/types';
-import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
-import { describeTagMatches, getHeadingPath } from './dashboardState';
-import { frecencyScore } from './frecency';
-import { createPinForLine, findPinnedSection, resolvePin } from './pinnedNotes';
-import { normalizeFindInput, pinKey } from '../../core/storage/preferences';
+} from '../../domain/model';
 
 /**
  * Ranks what Quick Find shows for what has been typed so far.
@@ -47,6 +51,7 @@ export type QuickFindItemKind =
   | 'task'
   | 'message';
 
+/** One row Find offers: a tag, condition, search, saved view, note, task, or message. */
 export interface QuickFindItem {
   kind: QuickFindItemKind;
   label: string;
@@ -71,6 +76,7 @@ export interface QuickFindItem {
   completion?: string;
 }
 
+/** Find's rows by kind, each cut to its limit, with what to say above them. */
 export interface QuickFindResults {
   /** Pinned notes, offered first before anything is typed. */
   pinned?: QuickFindItem[];
@@ -93,10 +99,16 @@ export interface QuickFindResults {
   capture?: { text: string; line: string };
 }
 
+/** Asks the full-text index for entries holding the words, best first. */
 export type QuickFindTextSearch = (text: string) => EntrySearchResult;
 
+/** How Find answers: in what context, how many of each kind, and what it may offer besides results. */
 export interface QuickFindOptions {
-  now?: number;
+  /**
+   * The settings and moment Find answers in: what its searches find, and how
+   * recently a remembered choice was made.
+   */
+  queryContext: QueryContext;
   noteLimit?: number;
   taskLimit?: number;
   /** Whole conditions to offer for the word being typed, such as `is:open`. */
@@ -105,67 +117,59 @@ export interface QuickFindOptions {
   formatCapture?: (text: string) => string;
 }
 
+/** How many tags Find completes the typed word to. */
 const TAG_LIMIT = 5;
+/** How many whole conditions Find offers for the typed word. */
 const CONDITION_LIMIT = 4;
+/** How many saved views whose names match what is typed Find lists. */
 const SAVED_VIEW_LIMIT = 3;
+/** How many favorite and frequent tags an empty Find lists. */
 const EMPTY_LIST_LIMIT = 8;
-/** How many pinned notes, and how many notes opened last, empty Find lists. */
+/** How many pinned notes an empty Find lists. */
 const EMPTY_PINNED_LIMIT = 10;
+/** How many notes opened last, and recent searches, an empty Find lists. */
 const EMPTY_RECENT_LIMIT = 5;
 
-/** Tier floors. A higher tier always outranks a lower one. */
+/** Tier floor for a title that is exactly what was typed. A higher tier always outranks a lower one. */
 const EXACT_TITLE = 3000;
+/** Tier floor for a title holding every word typed. */
 const TITLE_HAS_EVERY_WORD = 2000;
+/** Tier floor for a title matching one typed word loosely, as a fuzzy finder does. */
 const LOOSE_TITLE = 1000;
+/** Tier floor for an entry a search with conditions matched, whatever its title. */
 const QUERY_MATCH = 500;
 
-export function buildQuickFindResults(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  input: string,
-  searchText: QuickFindTextSearch,
-  options: QuickFindOptions = {},
-): QuickFindResults {
-  const now = options.now ?? Date.now();
+/** What Find lists from: the index, the words typed, and how it answers. */
+export interface QuickFindRequest extends QuickFindOptions {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  /** What is typed in Find's box. */
+  input: string;
+  searchText: QuickFindTextSearch;
+}
+
+/**
+ * Find's rows for what is typed, best first, each kind cut to its limit.
+ * With nothing typed, the rows an empty Find offers instead.
+ */
+export function buildQuickFindResults(request: QuickFindRequest): QuickFindResults {
+  const { index, preferences, input } = request;
+  const { now } = request.queryContext;
   if (!input.trim()) {
     return buildEmptyResults(index, preferences, now);
   }
-
-  const token = getTrailingToken(input);
-  const beforeToken = input.slice(0, input.length - token.length);
-  // A `#` or `@` word that is not yet a whole tag is still being typed, so it
-  // completes to tags rather than narrowing the results to nothing.
-  const tagToken =
-    /^-?[#@]/.test(token) &&
-    !resolveIndexedTagKey(index.tags, token.replace(/^-/, ''))
-      ? token.replace(/^-/, '')
-      : undefined;
-
-  let parsed = parseQuery(tagToken ? beforeToken : input);
-  let message: string | undefined;
-  if (!parsed.node && parsed.diagnostics.length > 0) {
-    // The last word is usually the unfinished part, so the rest of the
-    // search keeps its results while it is typed.
-    const withoutToken = parseQuery(beforeToken);
-    if (withoutToken.node || !beforeToken.trim()) {
-      parsed = withoutToken;
-    } else {
-      message = parsed.diagnostics[0].message;
-    }
-  }
-
-  const conditions = matchConditions(token, options.conditions ?? [], beforeToken);
-  const tags = matchTags(
+  const { token, beforeToken, tagToken, parsed, message } = readTypedSearch(index, input, request.queryContext);
+  const conditions = matchConditions(token, request.conditions ?? [], beforeToken);
+  const tags = matchTags({
     index,
     preferences,
-    tagToken ?? (isBareWord(token) ? token : ''),
-    new Set(collectQueryTagKeys(parsed.node)),
-    tagToken || isBareWord(token) ? beforeToken : input,
+    word: tagToken ?? (isBareWord(token) ? token : ''),
+    excluded: new Set(collectQueryTagKeys(parsed.node)),
+    prefix: tagToken || isBareWord(token) ? beforeToken : input,
     now,
-    learnedWeights(preferences, input, now),
-  );
+    learned: learnedWeights(preferences, input, now),
+  });
   const savedViews = matchSavedViews(index, preferences, input.trim());
-
   const results: QuickFindResults = {
     tags,
     conditions,
@@ -179,9 +183,69 @@ export function buildQuickFindResults(
   if (!parsed.node) {
     return results;
   }
+  addRankedEntries(results, request, parsed.node);
+  return results;
+}
 
-  const learned = learnedBonuses(index, preferences, input, now);
-  const ranked = rankEntries(index, preferences, parsed.node, searchText, now, learned);
+/** What is typed, read: its last word, the rest, and the search to run. */
+interface TypedSearch {
+  token: string;
+  beforeToken: string;
+  /** The last word, when it is a `#` or `@` tag still being typed. */
+  tagToken: string | undefined;
+  parsed: ReturnType<typeof parseQuery>;
+  /** Why the search could not run, when even without its last word it does not parse. */
+  message: string | undefined;
+}
+
+/**
+ * Reads what is typed. A `#` or `@` word that is not yet a whole tag (read
+ * through the context's namespace aliases, as the index read the notes) is
+ * still being typed, so it completes to tags rather than narrowing the
+ * results to nothing; and a search that does not parse is tried without its
+ * last word, which is usually the unfinished part, so the rest keeps its
+ * results while it is typed.
+ */
+function readTypedSearch(index: WorkspaceIndex, input: string, context: QueryContext): TypedSearch {
+  const token = getTrailingToken(input);
+  const beforeToken = input.slice(0, input.length - token.length);
+  const tagToken =
+    /^-?[#@]/.test(token) &&
+    !resolveIndexedTagKey(index.tags, token.replace(/^-/, ''), context.entityNamespaceAliases)
+      ? token.replace(/^-/, '')
+      : undefined;
+  let parsed = parseQuery(tagToken ? beforeToken : input);
+  let message: string | undefined;
+  if (!parsed.node && parsed.diagnostics.length > 0) {
+    const withoutToken = parseQuery(beforeToken);
+    if (withoutToken.node || !beforeToken.trim()) {
+      parsed = withoutToken;
+    } else {
+      message = parsed.diagnostics[0].message;
+    }
+  }
+  return { token, beforeToken, tagToken, parsed, message };
+}
+
+/**
+ * Fills the note and task rows of a search that parsed, with the totals,
+ * the partial-match message, the spelling suggestion, and the Capture row.
+ */
+function addRankedEntries(
+  results: QuickFindResults,
+  request: QuickFindRequest,
+  node: QueryNode,
+): void {
+  const { index, preferences, input } = request;
+  const learned = learnedBonuses(index, preferences, input, request.queryContext.now);
+  const ranked = rankEntries({
+    index,
+    preferences,
+    node,
+    searchText: request.searchText,
+    context: request.queryContext,
+    learned,
+  });
   results.message ??= ranked.partial
     ? 'No entry has every word, so these have some of them.'
     : undefined;
@@ -195,22 +259,22 @@ export function buildQuickFindResults(
   // Nothing had every word: what was typed may be something to do rather
   // than something to find.
   if (
-    options.formatCapture &&
-    isCaptureable(parsed.node) &&
+    request.formatCapture &&
+    isCaptureable(node) &&
     (ranked.notes.length + ranked.tasks.length === 0 || ranked.partial)
   ) {
     const text = input.trim();
-    results.capture = { text, line: options.formatCapture(text) };
+    results.capture = { text, line: request.formatCapture(text) };
   }
   results.notes = ranked.notes
-    .slice(0, options.noteLimit ?? 30)
+    .slice(0, request.noteLimit ?? 30)
     .map((entry) => entry.item);
   results.tasks = ranked.tasks
-    .slice(0, options.taskLimit ?? 15)
+    .slice(0, request.taskLimit ?? 15)
     .map((entry) => entry.item);
-  return results;
 }
 
+/** A note or task row with what orders it. */
 interface RankedEntry {
   score: number;
   updatedAt: number;
@@ -224,150 +288,206 @@ function parkedItem(item: QuickFindItem, parked: boolean): QuickFindItem {
   return parked ? { ...item, description: `${item.description ?? ''} · Parked` } : item;
 }
 
-/**
- * Finds and orders the note entries and tasks a parsed search matches.
- *
- * A search of plain words asks the full-text index, which is fast and ranks
- * by relevance; a search with any other condition is answered by the query
- * evaluator, so it means exactly what it means everywhere else, and its words
- * only order the results.
- */
-function rankEntries(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  node: QueryNode,
-  searchText: QuickFindTextSearch,
-  now: number,
-  learned: ReadonlyMap<string, number> = new Map(),
-): {
+/** What rankEntries ranks with: the index, what Find remembers, the search, and how to run it. */
+interface RankRequest {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  node: QueryNode;
+  searchText: QuickFindTextSearch;
+  context: QueryContext;
+  /** What Find learned, by entry id. */
+  learned?: ReadonlyMap<string, number>;
+}
+
+/** The ranked rows of a search, and what the text index said about it. */
+interface RankedEntries {
   notes: RankedEntry[];
   tasks: RankedEntry[];
   partial: boolean;
   suggestion?: string;
   /** The words sent to the text index. */
   searched: string;
-} {
+}
+
+/** A text match's relevance, scaled within its search, and its excerpt, by entry id. */
+type TextScores = Map<string, { score: number; excerpt: string }>;
+
+/** What scoring one entry reads, the same for every entry of a search. */
+interface EntryScoring {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  words: readonly string[];
+  textScores: TextScores;
+  learned: ReadonlyMap<string, number>;
+  /** The floor every entry starts from: QUERY_MATCH for a search with conditions. */
+  base: number;
+  now: number;
+}
+
+/**
+ * Finds and orders the note entries and tasks a parsed search matches.
+ *
+ * A search of plain words asks the full-text index, which is fast and ranks
+ * by relevance; a search with any other condition is answered by the query
+ * evaluator, so it means exactly what it means everywhere else, and its words
+ * only order the results. The evaluation, and the frecency of each entry,
+ * are the context's.
+ */
+function rankEntries({
+  index,
+  preferences,
+  node,
+  searchText,
+  context,
+  learned = new Map(),
+}: RankRequest): RankedEntries {
   const plainTerms = getPlainTextTerms(node);
   const words = plainTerms ?? getTextValues(node);
   const text = words.length > 0 ? searchText(words.join(' ')) : undefined;
-  const bestScore = Math.max(
-    0,
-    ...(text?.matches.map((match) => match.score) ?? []),
-  );
-  const textScores = new Map<string, { score: number; excerpt: string }>();
-  text?.matches.forEach((match) =>
-    textScores.set(match.id, {
-      // Relevance is scaled within the search, so it orders entries inside a
-      // tier without ever lifting one into the tier above.
-      score: bestScore > 0 ? (match.score / bestScore) * 100 : 0,
-      excerpt: match.excerpt,
-    }),
-  );
-
-  let sections: Section[];
-  let tasks: Task[];
-  let files: ParsedFile[];
-  if (plainTerms) {
-    // Titles are searched here as well as in the index, so a title matched
-    // loosely, as with a typo or an abbreviation, is still found.
-    const matchedIds = new Set(textScores.keys());
-    sections = [...index.sections.values()].filter(
-      (section) =>
-        matchedIds.has(section.id) ||
-        scoreTitle(plainTerms, stripTags(section.heading)) > 0,
-    );
-    tasks = [...index.tasks.values()].filter(
-      (task) =>
-        matchedIds.has(task.id) || scoreTitle(plainTerms, stripTags(task.title)) > 0,
-    );
-    files = [...index.files.values()].filter(
-      (file) =>
-        file.sections.length === 0 &&
-        (matchedIds.has(file.filePath) ||
-          scoreTitle(plainTerms, getFileName(file.filePath)) > 0),
-    );
-  } else {
-    const results = evaluateQuery(index, node);
-    sections = results.sections;
-    tasks = results.tasks;
-    files = results.files;
-  }
-
-  const base = plainTerms ? 0 : QUERY_MATCH;
+  const textScores = scaleTextScores(text);
+  const { sections, tasks, files } = plainTerms
+    ? findByTitleOrText(index, plainTerms, textScores)
+    : evaluateQuery(index, node, context);
+  const scoring: EntryScoring = {
+    index,
+    preferences,
+    words,
+    textScores,
+    learned,
+    base: plainTerms ? 0 : QUERY_MATCH,
+    now: context.now,
+  };
   const noteEntries: RankedEntry[] = [
-    ...sections.map((section) => {
-      const title = stripTags(section.heading) || getFileName(section.filePath);
-      const found = textScores.get(section.id);
-      const titleScore = scoreTitle(words, title);
-      return {
-        score: withLearned(
-          base +
-            titleScore +
-            (found?.score ?? 0) +
-            frecencyBonus(preferences, section.id, now),
-          learned.get(section.id),
-          titleScore,
-        ),
-        updatedAt: section.updatedAt ?? 0,
-        parked: isParkedSection(index, section.id),
-        item: parkedItem(
-          createSectionItem(index, section, title, found?.excerpt),
-          isParkedSection(index, section.id),
-        ),
-      };
-    }),
-    ...files.map((file) => {
-      const title = getFileName(file.filePath);
-      const found = textScores.get(file.filePath);
-      const titleScore = scoreTitle(words, title);
-      return {
-        score: withLearned(
-          base + titleScore + (found?.score ?? 0),
-          learned.get(file.filePath),
-          titleScore,
-        ),
-        updatedAt: file.updatedAt ?? 0,
-        parked: isParkedFile(index, file.filePath),
-        item: parkedItem(
-          {
-            kind: 'note' as const,
-            label: title,
-            description: file.filePath,
-            detail: cleanExcerpt(found?.excerpt) ?? firstLine(file.content),
-            filePath: file.filePath,
-            line: 1,
-          },
-          isParkedFile(index, file.filePath),
-        ),
-      };
-    }),
+    ...sections.map((section) => rankSection(scoring, section)),
+    ...files.map((file) => rankFile(scoring, file)),
   ].sort(compareRanked);
-
   const taskEntries: RankedEntry[] = tasks
-    .map((task) => {
-      const title = stripTags(task.title) || task.title;
-      const found = textScores.get(task.id);
-      const titleScore = scoreTitle(words, title);
-      return {
-        // An open task is usually the one being looked for.
-        score: withLearned(
-          base + titleScore + (found?.score ?? 0) + (task.completed ? 0 : 20),
-          learned.get(task.id),
-          titleScore,
-        ),
-        updatedAt: task.updatedAt ?? 0,
-        parked: isParkedTask(index, task.id),
-        item: parkedItem(createTaskItem(index, task, title), isParkedTask(index, task.id)),
-      };
-    })
+    .map((task) => rankTask(scoring, task))
     .sort(compareRanked);
-
   return {
     notes: noteEntries,
     tasks: taskEntries,
     partial: text?.partial ?? false,
     suggestion: text?.suggestion,
     searched: words.join(' '),
+  };
+}
+
+/**
+ * Each text match's relevance, scaled within the search, so it orders
+ * entries inside a tier without ever lifting one into the tier above.
+ */
+function scaleTextScores(text: EntrySearchResult | undefined): TextScores {
+  const bestScore = Math.max(
+    0,
+    ...(text?.matches.map((match) => match.score) ?? []),
+  );
+  const textScores: TextScores = new Map();
+  text?.matches.forEach((match) =>
+    textScores.set(match.id, {
+      score: bestScore > 0 ? (match.score / bestScore) * 100 : 0,
+      excerpt: match.excerpt,
+    }),
+  );
+  return textScores;
+}
+
+/**
+ * The entries a search of plain words finds: those the text index matched,
+ * and those whose titles match here, so a title matched loosely, as with a
+ * typo or an abbreviation, is still found.
+ */
+function findByTitleOrText(
+  index: WorkspaceIndex,
+  plainTerms: string[],
+  textScores: TextScores,
+): { sections: Section[]; tasks: Task[]; files: ParsedFile[] } {
+  const matchedIds = new Set(textScores.keys());
+  const sections = [...index.sections.values()].filter(
+    (section) =>
+      matchedIds.has(section.id) ||
+      scoreTitle(plainTerms, stripTags(section.heading)) > 0,
+  );
+  const tasks = [...index.tasks.values()].filter(
+    (task) =>
+      matchedIds.has(task.id) || scoreTitle(plainTerms, stripTags(task.title)) > 0,
+  );
+  const files = [...index.files.values()].filter(
+    (file) =>
+      file.sections.length === 0 &&
+      (matchedIds.has(file.filePath) ||
+        scoreTitle(plainTerms, getFileName(file.filePath)) > 0),
+  );
+  return { sections, tasks, files };
+}
+
+/** A section as a ranked row: its title tier, text relevance, how often it was opened, and what Find learned. */
+function rankSection(scoring: EntryScoring, section: Section): RankedEntry {
+  const { index, preferences, words, textScores, learned, base, now } = scoring;
+  const title = stripTags(section.heading) || getFileName(section.filePath);
+  const found = textScores.get(section.id);
+  const titleScore = scoreTitle(words, title);
+  return {
+    score: withLearned(
+      base +
+        titleScore +
+        (found?.score ?? 0) +
+        frecencyBonus(preferences, section.id, now),
+      learned.get(section.id),
+      titleScore,
+    ),
+    updatedAt: section.updatedAt ?? 0,
+    parked: isParkedSection(index, section.id),
+    item: parkedItem(
+      createSectionItem(index, section, title, found?.excerpt),
+      isParkedSection(index, section.id),
+    ),
+  };
+}
+
+/** A front-matter-only note as a ranked row, by its file name. */
+function rankFile(scoring: EntryScoring, file: ParsedFile): RankedEntry {
+  const { index, words, textScores, learned, base } = scoring;
+  const title = getFileName(file.filePath);
+  const found = textScores.get(file.filePath);
+  const titleScore = scoreTitle(words, title);
+  return {
+    score: withLearned(
+      base + titleScore + (found?.score ?? 0),
+      learned.get(file.filePath),
+      titleScore,
+    ),
+    updatedAt: file.updatedAt ?? 0,
+    parked: isParkedFile(index, file.filePath),
+    item: parkedItem(
+      {
+        kind: 'note' as const,
+        label: title,
+        description: file.filePath,
+        detail: cleanExcerpt(found?.excerpt) ?? firstLine(file.content),
+        filePath: file.filePath,
+        line: 1,
+      },
+      isParkedFile(index, file.filePath),
+    ),
+  };
+}
+
+/** A task as a ranked row; an open task is usually the one being looked for, so it gains a little. */
+function rankTask(scoring: EntryScoring, task: Task): RankedEntry {
+  const { index, words, textScores, learned, base } = scoring;
+  const title = stripTags(task.title) || task.title;
+  const found = textScores.get(task.id);
+  const titleScore = scoreTitle(words, title);
+  return {
+    score: withLearned(
+      base + titleScore + (found?.score ?? 0) + (task.completed ? 0 : 20),
+      learned.get(task.id),
+      titleScore,
+    ),
+    updatedAt: task.updatedAt ?? 0,
+    parked: isParkedTask(index, task.id),
+    item: parkedItem(createTaskItem(index, task, title), isParkedTask(index, task.id)),
   };
 }
 
@@ -436,6 +556,11 @@ function learnedBonuses(
   return resolved;
 }
 
+/**
+ * The entry a remembered choice names now: a note by its path, a heading by
+ * its text and occurrence, a task by its words; undefined when the key is
+ * not a note or task, does not read, or names nothing left.
+ */
 function resolveFindChoiceKey(index: WorkspaceIndex, key: string): string | undefined {
   const kind = key.slice(0, key.indexOf(':'));
   if (kind !== 'note' && kind !== 'task') {
@@ -486,7 +611,9 @@ export function findChoiceKey(index: WorkspaceIndex, item: QuickFindItem): strin
       return item.tagKey ? `tag:${item.tagKey}` : undefined;
     case 'savedView':
       return item.savedFilterId ? `view:${item.savedFilterId}` : undefined;
-    default:
+    case 'condition':
+    case 'recent':
+    case 'message':
       return undefined;
   }
 }
@@ -511,6 +638,7 @@ function correctInput(input: string, searched: string, corrected: string): strin
   }, input);
 }
 
+/** Unparked before parked, then score, then the most recently updated, then label. */
 function compareRanked(left: RankedEntry, right: RankedEntry): number {
   return (
     Number(left.parked === true) - Number(right.parked === true) ||
@@ -586,6 +714,7 @@ export function fuzzyScore(query: string, target: string): number | undefined {
   return score;
 }
 
+/** A section's frecency as a bonus of at most 60, enough to order a tier but never to leave it. */
 function frecencyBonus(
   preferences: PersistedPreferences,
   sectionId: string,
@@ -601,6 +730,7 @@ function frecencyBonus(
   );
 }
 
+/** How often and how recently a tag was opened, as frecencyScore weighs it. */
 function tagFrecency(
   preferences: PersistedPreferences,
   tagKey: string,
@@ -617,15 +747,27 @@ function tagFrecency(
  * Tags that match the word being typed, best first. A tag's last segment
  * counts most, so `atlas` finds `#project/atlas`.
  */
-function matchTags(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  word: string,
-  excluded: ReadonlySet<string>,
-  prefix: string,
-  now: number,
-  learned: ReadonlyMap<string, number> = new Map(),
-): QuickFindItem[] {
+function matchTags({
+  index,
+  preferences,
+  word,
+  excluded,
+  prefix,
+  now,
+  learned = new Map(),
+}: {
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  /** The word being typed, with or without its `#` or `@`. */
+  word: string;
+  /** Tags the search already has, which are not offered again. */
+  excluded: ReadonlySet<string>;
+  /** What the completion keeps before the tag. */
+  prefix: string;
+  now: number;
+  /** What Find learned, by choice key. */
+  learned?: ReadonlyMap<string, number>;
+}): QuickFindItem[] {
   const wanted = word.replace(/^[#@]/, '').toLowerCase();
   if (wanted.length === 0) {
     return [];
@@ -691,6 +833,7 @@ function matchConditions(
     }));
 }
 
+/** Saved views whose names match what is typed closely enough, best first. */
 function matchSavedViews(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
@@ -718,6 +861,40 @@ function buildEmptyResults(
   preferences: PersistedPreferences,
   now: number,
 ): QuickFindResults {
+  const { pinned, pinnedSectionIds, pinnedFiles } = listPinned(index, preferences);
+  const recent = (preferences.recentQueries ?? [])
+    .slice(0, EMPTY_RECENT_LIMIT)
+    .map((query) => ({
+      kind: 'recent' as const,
+      label: query,
+      query,
+      completion: `${query} `,
+    }));
+  const tags = listLikelyTags(index, preferences, now);
+  const savedViews = preferences.savedFilters.map((filter) =>
+    createSavedViewItem(index, filter),
+  );
+  const notes = listOpenedLast(index, preferences, { pinnedSectionIds, pinnedFiles });
+  return {
+    pinned,
+    tags,
+    conditions: [],
+    recent,
+    savedViews,
+    notes,
+    tasks: [],
+    totals: { notes: 0, tasks: 0 },
+  };
+}
+
+/**
+ * The pinned notes that still resolve, as rows, with the sections and whole
+ * notes they pin, so the notes opened last can leave them out.
+ */
+function listPinned(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+): { pinned: QuickFindItem[]; pinnedSectionIds: Set<string>; pinnedFiles: Set<string> } {
   const pinnedSectionIds = new Set<string>();
   const pinnedFiles = new Set<string>();
   const pinned = (preferences.pinnedNotes ?? [])
@@ -748,15 +925,16 @@ function buildEmptyResults(
       ];
     })
     .slice(0, EMPTY_PINNED_LIMIT);
-  const recent = (preferences.recentQueries ?? [])
-    .slice(0, EMPTY_RECENT_LIMIT)
-    .map((query) => ({
-      kind: 'recent' as const,
-      label: query,
-      query,
-      completion: `${query} `,
-    }));
-  const tags = [...index.tags.values()]
+  return { pinned, pinnedSectionIds, pinnedFiles };
+}
+
+/** The tags most likely to be wanted: favorites, then the most opened, alphabetical on a tie. */
+function listLikelyTags(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  now: number,
+): QuickFindItem[] {
+  return [...index.tags.values()]
     .map((tag) => ({
       tag,
       score:
@@ -770,10 +948,15 @@ function buildEmptyResults(
     )
     .slice(0, EMPTY_LIST_LIMIT)
     .map(({ tag }) => createTagItem(index, tag, `${tag.key} `));
-  const savedViews = preferences.savedFilters.map((filter) =>
-    createSavedViewItem(index, filter),
-  );
-  const notes = Object.entries(preferences.sectionAccessTimes ?? {})
+}
+
+/** The sections opened last, latest first, leaving out what is already pinned. */
+function listOpenedLast(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  { pinnedSectionIds, pinnedFiles }: { pinnedSectionIds: ReadonlySet<string>; pinnedFiles: ReadonlySet<string> },
+): QuickFindItem[] {
+  return Object.entries(preferences.sectionAccessTimes ?? {})
     .sort((left, right) => right[1] - left[1])
     .flatMap(([sectionId]) => {
       const section = index.sections.get(sectionId);
@@ -788,18 +971,9 @@ function buildEmptyResults(
         : [];
     })
     .slice(0, EMPTY_RECENT_LIMIT);
-  return {
-    pinned,
-    tags,
-    conditions: [],
-    recent,
-    savedViews,
-    notes,
-    tasks: [],
-    totals: { notes: 0, tasks: 0 },
-  };
 }
 
+/** A tag as a row that completes the search to it. */
 function createTagItem(
   index: WorkspaceIndex,
   tag: TagInfo,
@@ -814,6 +988,7 @@ function createTagItem(
   };
 }
 
+/** A saved view as a row, by its query, or its tags' labels for a view saved before queries. */
 function createSavedViewItem(
   index: WorkspaceIndex,
   filter: PersistedPreferences['savedFilters'][number],
@@ -833,6 +1008,7 @@ function createSavedViewItem(
   };
 }
 
+/** A section as a row: its title, its note, and the headings above it with a line of its text. */
 function createSectionItem(
   index: WorkspaceIndex,
   section: Section,
@@ -859,6 +1035,7 @@ function createSectionItem(
   };
 }
 
+/** A task as a row: its title, its note, and its due date, priority, and headings. */
 function createTaskItem(
   index: WorkspaceIndex,
   task: Task,
@@ -935,14 +1112,12 @@ export function getTrailingToken(input: string): string {
   return input.match(/[^\s()]*$/)?.[0] ?? '';
 }
 
+/** Whether a word could be the start of a tag name, so it may complete to one. */
 function isBareWord(token: string): boolean {
   return /^[\p{L}\p{N}][\p{L}\p{N}_/-]*$/u.test(token);
 }
 
-function getFileName(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
-}
-
+/** The first line of text with words in it, without heading marks or `skip`, cut to 120 characters. */
 function firstLine(content: string, skip?: string): string | undefined {
   const line = content
     .split(/\r?\n/)

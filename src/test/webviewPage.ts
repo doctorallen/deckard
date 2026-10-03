@@ -1,19 +1,17 @@
+// Runs a Deckard webview the way VS Code runs it, so a page can be tested by
+// what it does rather than by what its source says.
+//
+// Here the page is loaded, its bundle from dist/webview included, given the
+// state the host would send it, and asked what it drew and what it posted
+// back. A check of a page's source text would pass for a line that never
+// runs and fail for a line a bundler only rewrote; a driven page does
+// neither.
 import { JSDOM } from 'jsdom';
 
-/**
- * Runs a Deckard webview the way VS Code runs it, so a page can be tested by
- * what it does rather than by what its source says.
- *
- * The pages are JavaScript assembled in template literals, which the compiler
- * never sees, so they have been held to their source text: about 400 checks
- * asserting that a rendered page contains a particular line of script. Those
- * checks pass for a line that never runs, fail for a line that was only
- * reformatted, and stand in the way of moving the scripts into modules,
- * because a bundler rewrites the text they match.
- *
- * Here the page is loaded, given the state the host would send it, and asked
- * what it drew and what it posted back. That survives the move.
- */
+import { createDomRecorder } from '../../test/harness/domRecorder';
+import { loadPage } from '../../test/harness/loadPage';
+
+/** A page running in jsdom, driven as a reader would drive it and read back as its host would. */
 export interface WebviewPage {
   window: Window & typeof globalThis;
   document: Document;
@@ -34,8 +32,8 @@ export interface WebviewPage {
   /** What the page kept for a window reload. */
   savedState(): unknown;
   /**
-   * With `canvas: true`, every call the page made on a canvas's 2D context,
-   * oldest first, with the drawing state it was made under.
+   * Every call the page made on a canvas's 2D context, oldest first, with
+   * the drawing state it was made under.
    */
   readonly canvasCalls: CanvasCall[];
   /**
@@ -44,6 +42,7 @@ export interface WebviewPage {
    * round. Returns how many frames ran.
    */
   flushFrames(count?: number): number;
+  /** Closes the page's window. */
   dispose(): void;
 }
 
@@ -58,15 +57,29 @@ export interface CanvasCall {
   lineWidth: number;
 }
 
+/** How openWebviewPage runs a page beyond its HTML and state. */
 export interface WebviewPageOptions {
   /**
-   * Gives every canvas a 2D context that draws nothing and records each
-   * call, holds animation frames until `flushFrames`, and gives canvases an
-   * 800 by 600 size, so a page that paints can be tested by what it paints.
+   * Holds animation frames until `flushFrames`, so a page that paints can be
+   * tested by what it paints, frame by frame. Every page's canvases have a
+   * 2D context that draws nothing and records each call, and an 800 by 600
+   * size, with or without it; without it, frames run on the window's clock.
    */
   canvas?: boolean;
+  /**
+   * What VS Code kept for the page across a reload, which its `getState`
+   * returns from the start, as it does in a restored webview.
+   */
+  savedState?: unknown;
+  /**
+   * Makes `performance.now()` advance by this many milliseconds each time it
+   * is called, starting from 0, so a page that animates by the clock draws
+   * the same frames on every run.
+   */
+  clockStep?: number;
 }
 
+/** A message a page posted to its host, as JSON carried it. */
 export interface PostedMessage {
   type?: string;
   [key: string]: unknown;
@@ -78,53 +91,91 @@ function clone<T>(value: T): T {
 }
 
 /**
+ * What a page shares with its stand-in host: the messages it posted, what it
+ * kept for a reload, its canvas calls, and, with `canvas: true`, the
+ * animation frames it is waiting on.
+ */
+interface PageHost {
+  posted: PostedMessage[];
+  canvasCalls: CanvasCall[];
+  frames: FrameRequestCallback[];
+  kept: unknown;
+}
+
+/**
  * Loads a page's HTML with a stand-in for the API VS Code gives a webview.
  *
+ * The page goes through the shared page loader first, so a page that loads
+ * its script or style sheet by URI runs here as it would in VS Code.
  * `state` is sent as soon as the page is loaded, which is what the host does
- * once the page says it is ready.
+ * once the page says it is ready. `options.savedState` is what the page's
+ * `getState` returns until it saves something of its own.
  */
 export function openWebviewPage(
   html: string,
   state?: unknown,
   options: WebviewPageOptions = {},
 ): WebviewPage {
-  const posted: PostedMessage[] = [];
-  const canvasCalls: CanvasCall[] = [];
-  let frames: FrameRequestCallback[] = [];
-  let kept: unknown;
-  const dom = new JSDOM(html, {
+  const host: PageHost = { posted: [], canvasCalls: [], frames: [], kept: clone(options.savedState) };
+  const dom = new JSDOM(loadPage(html), {
     runScripts: 'dangerously',
     pretendToBeVisual: true,
     beforeParse(window) {
-      // A page restores its scroll after each render. jsdom has no viewport
-      // to scroll, and says so loudly for every render of every test.
-      Object.defineProperty(window, 'scrollTo', { value: () => undefined });
-      Object.defineProperty(window, 'acquireVsCodeApi', {
-        value: () => ({
-          // VS Code serializes what a page posts or keeps, and so does this,
-          // which is also what makes the values comparable: an object built
-          // inside the page is not of the same kind as one built out here,
-          // however alike the two read.
-          postMessage: (message: PostedMessage) => posted.push(clone(message)),
-          setState: (next: unknown) => {
-            kept = clone(next);
-          },
-          getState: () => kept,
-        }),
-      });
-      if (options.canvas) {
-        installRecordingCanvas(window as unknown as Window & typeof globalThis, canvasCalls);
-        Object.defineProperty(window, 'requestAnimationFrame', {
-          value: (callback: FrameRequestCallback) => {
-            frames.push(callback);
-            return frames.length;
-          },
-        });
-      }
+      installHost(window as unknown as Window & typeof globalThis, host, options);
     },
   });
+  const page = createPage(dom, host, html);
+  if (state !== undefined) {
+    page.send(state);
+  }
+  return page;
+}
+
+/**
+ * Gives a window, before its page runs, the API VS Code gives a webview, a
+ * `scrollTo` that does nothing, the recording canvas, and, as the options
+ * ask, the stepped clock and held animation frames.
+ */
+function installHost(window: Window & typeof globalThis, host: PageHost, options: WebviewPageOptions): void {
+  // A page restores its scroll after each render. jsdom has no viewport
+  // to scroll, and says so loudly for every render of every test.
+  Object.defineProperty(window, 'scrollTo', { value: () => undefined });
+  Object.defineProperty(window, 'acquireVsCodeApi', {
+    value: () => ({
+      // VS Code serializes what a page posts or keeps, and so does this,
+      // which is also what makes the values comparable: an object built
+      // inside the page is not of the same kind as one built out here,
+      // however alike the two read.
+      postMessage: (message: PostedMessage) => host.posted.push(clone(message)),
+      setState: (next: unknown) => {
+        host.kept = clone(next);
+      },
+      getState: () => host.kept,
+    }),
+  });
+  if (options.clockStep !== undefined) {
+    installSteppedClock(window, options.clockStep);
+  }
+  // A webview always has a 2D context, and jsdom has none, so a page that
+  // paints in a frame of its own would throw there; every page gets one.
+  installRecordingCanvas(window, host.canvasCalls);
+  if (!options.canvas) {
+    return;
+  }
+  Object.defineProperty(window, 'requestAnimationFrame', {
+    value: (callback: FrameRequestCallback) => {
+      host.frames.push(callback);
+      return host.frames.length;
+    },
+  });
+}
+
+/** The driven page over a loaded window, recording its body after each step when asked. */
+function createPage(dom: JSDOM, host: PageHost, html: string): WebviewPage {
   const window = dom.window as unknown as Window & typeof globalThis;
   const document = window.document;
+  // With DECKARD_DOM_RECORD set, the body is written after each step.
+  const recorder = createDomRecorder(document, html);
 
   const find = (selector: string): Element => {
     const element = document.querySelector(selector);
@@ -134,24 +185,26 @@ export function openWebviewPage(
     return element;
   };
 
-  const page: WebviewPage = {
+  return {
     window,
     document,
-    posted,
+    posted: host.posted,
     send(next: unknown): void {
       window.dispatchEvent(
         new window.MessageEvent('message', {
           data: { type: 'state', data: next },
         }),
       );
+      recorder.record('send state');
     },
     lastPosted(type: string): PostedMessage | undefined {
-      return [...posted].reverse().find((message) => message.type === type);
+      return [...host.posted].reverse().find((message) => message.type === type);
     },
     click(selector: string): void {
       find(selector).dispatchEvent(
         new window.MouseEvent('click', { bubbles: true, cancelable: true }),
       );
+      recorder.record(`click ${selector}`);
     },
     find,
     findAll(selector: string): Element[] {
@@ -161,14 +214,14 @@ export function openWebviewPage(
       return document.querySelector(selector)?.textContent?.trim();
     },
     savedState(): unknown {
-      return kept;
+      return host.kept;
     },
-    canvasCalls,
+    canvasCalls: host.canvasCalls,
     flushFrames(count = 1): number {
       let ran = 0;
-      for (let round = 0; round < count && frames.length > 0; round += 1) {
-        const due = frames;
-        frames = [];
+      for (let round = 0; round < count && host.frames.length > 0; round += 1) {
+        const due = host.frames;
+        host.frames = [];
         due.forEach((callback) => {
           callback(window.performance.now());
           ran += 1;
@@ -180,10 +233,22 @@ export function openWebviewPage(
       dom.window.close();
     },
   };
-  if (state !== undefined) {
-    page.send(state);
-  }
-  return page;
+}
+
+/**
+ * Replaces `performance.now()` with a clock that starts at 0 and moves on
+ * by `step` milliseconds each time it is read, so a page's timing, and what
+ * it draws by it, is the same on every run.
+ */
+function installSteppedClock(window: Window & typeof globalThis, step: number): void {
+  let now = 0;
+  Object.defineProperty(window.performance, 'now', {
+    configurable: true,
+    value: () => {
+      now += step;
+      return now;
+    },
+  });
 }
 
 /** Drawing state a 2D context keeps between calls. */

@@ -2,10 +2,11 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { PreferencesStore } from '../core/storage/preferences';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { parseMarkdown } from '../core/markdown/parser';
+import { createPreferences } from './preferenceServices';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
 import { QuickFind } from '../ui/commands/quickFind';
+import { createTaskWrites } from './taskWrites';
 
 /** Find opens at once while the first scan runs, and says how far it has got. */
 suite('Find while indexing', () => {
@@ -23,14 +24,19 @@ suite('Find while indexing', () => {
       getSnapshot: () => buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas plan\nBody.')]])),
       searchEntries: () => ({ matches: [], partial: false }),
     };
-    const store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const opened: string[] = [];
-    const find = new QuickFind(indexer as never, store, {
-      openTag: async () => undefined,
-      openSavedFilter: async () => undefined,
-      showSearch: async (query) => {
-        opened.push(query);
+    const find = new QuickFind({
+      indexer: indexer as never,
+      preferences: store,
+      actions: {
+        openTag: async () => undefined,
+        openSavedFilter: async () => undefined,
+        showSearch: async (query) => {
+          opened.push(query);
+        },
       },
+      writes: createTaskWrites(),
     });
     try {
       await find.show('atlas');
@@ -52,7 +58,7 @@ suite('Find while indexing', () => {
       assert.ok(picker.items.every((item) => !item.indexing), 'the results take the line\'s place');
     } finally {
       find.dispose();
-      store.dispose();
+      store.repository.dispose();
       progress.dispose();
     }
   });

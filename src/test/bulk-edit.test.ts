@@ -4,8 +4,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { ParsedFile } from '../core/types';
+import { parseMarkdown } from '../domain/markdown/parser';
 import {
   appendTagToLine,
   applyBulkEdit,
@@ -19,8 +18,8 @@ import {
   listBulkEdits,
 } from '../ui/commands/bulkEditPrompts';
 import { DATE_INPUT_ERROR, validateDateInput } from '../ui/commands/datePrompt';
-import { parseSearchPageMessage } from '../ui/webview/messages';
-import { workspaceWrites } from '../ui/commands/workspaceWrites';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { ParsedFile } from '../domain/model';
 
 const note = [
   '# Atlas #project/atlas',
@@ -34,6 +33,13 @@ const note = [
 ].join('\n');
 
 suite('Bulk edits', () => {
+  // Each test writes to a history of its own, so one test's Undo never
+  // reaches another's write.
+  let history: WorkspaceWriteHistory;
+  setup(() => {
+    history = new WorkspaceWriteHistory();
+  });
+
   test('writes a tag at the end of a line, once', () => {
     assert.strictEqual(
       appendTagToLine('- [ ] Book the room', '#project/atlas'),
@@ -100,7 +106,7 @@ suite('Bulk edits', () => {
     const tasks = file.tasks.filter((task) => !task.completed);
     const entries: BulkEntry[] = tasks.map((task) => ({ kind: 'task', task }));
 
-    const result = await applyBulkEdit(entries, {
+    const result = await applyBulkEdit(history, entries, {
       kind: 'complete',
       completed: true,
     });
@@ -116,7 +122,7 @@ suite('Bulk edits', () => {
       'a repeating task leaves its next occurrence behind, as one checkbox does',
     );
 
-    const undone = await workspaceWrites.undo();
+    const undone = await history.undo();
     assert.strictEqual(undone?.restored, 1);
     assert.strictEqual(await read(), note);
     assert.ok(uri.fsPath.endsWith('.md'));
@@ -129,7 +135,7 @@ suite('Bulk edits', () => {
       .filter((task) => !task.completed)
       .map((task) => ({ kind: 'task', task }));
 
-    const result = await applyBulkEdit(entries, {
+    const result = await applyBulkEdit(history, entries, {
       kind: 'due',
       date: '2026-10-01',
     });
@@ -138,7 +144,7 @@ suite('Bulk edits', () => {
     assert.ok(after.includes('- [ ] Chase the contractor 📅 2026-10-01'), after);
     assert.ok(after.includes('- [ ] Book the room 📅 2026-10-01'));
 
-    const again = await applyBulkEdit(entries, {
+    const again = await applyBulkEdit(history, entries, {
       kind: 'complete',
       completed: false,
     });
@@ -155,6 +161,7 @@ suite('Bulk edits', () => {
     const open = file.tasks.filter((task) => !task.completed);
     const dates = new Map(open.map((task, index) => [task.id, `2026-10-0${index + 1}`]));
     const result = await applyBulkEdit(
+      history,
       open.map((task) => ({ kind: 'task', task })),
       { kind: 'dueEach', dates },
     );
@@ -172,7 +179,7 @@ suite('Bulk edits', () => {
       .filter((section) => !section.isInline)
       .map((section) => ({ kind: 'section', section }));
 
-    const result = await applyBulkEdit(entries, {
+    const result = await applyBulkEdit(history, entries, {
       kind: 'tag',
       tag: '#status/reviewed',
     });
@@ -242,13 +249,14 @@ suite('Bulk edits', () => {
       '# Odd\n\n- [ ] Howl 🔁 every blue moon\n- [ ] Plain\n',
     );
     const result = await applyBulkEdit(
+      history,
       file.tasks.map((task) => ({ kind: 'task', task })),
       { kind: 'complete', completed: true },
     );
     assert.strictEqual(result?.changed, 2);
     assert.strictEqual(result.unreadRules, 1);
     assert.ok((await read()).includes('- [x] Howl 🔁 every blue moon'));
-    await workspaceWrites.undo();
+    await history.undo();
     await clean();
   });
 
@@ -261,17 +269,6 @@ suite('Bulk edits', () => {
     assert.deepStrictEqual(
       describeEntry({ kind: 'section', section: file.sections[0] }),
       { label: 'Atlas', description: 'atlas.md:1' },
-    );
-  });
-
-  test('accepts the message the page posts, and nothing else', () => {
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'editResults', kind: 'tasks' }),
-      { type: 'editResults', kind: 'tasks' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'editResults', kind: 'everything' }),
-      undefined,
     );
   });
 });

@@ -1,0 +1,1984 @@
+<body
+> <main
+    id="app"
+  ><header
+    ><div
+      ><p
+          class="eyebrow"
+        >DECKARD / WORKSPACE INDEX</p
+        ><h1
+        >Dashboard: Home</h1
+        ></div
+      ><div
+        class="dashboard-header-actions"
+      ><div
+          aria-label="Tasks at a glance"
+          class="metrics"
+          role="group"
+        ><button
+            aria-label="Overdue, 40. Search the overdue tasks"
+            class="metric metric-open"
+            data-action="open-search"
+            data-code="TSK.OVR // 01"
+            data-query="is:overdue -is:needs-date"
+            data-tip="Search the overdue tasks"
+            type="button"
+          ><span
+              class="metric-label"
+            >Overdue</span
+            ><strong
+              class="metric-value"
+            >40</strong
+            ></button
+          ><button
+            aria-label="Due today, 0. Search what is due today"
+            class="metric metric-open"
+            data-action="open-search"
+            data-code="TSK.DUE // 02"
+            data-query="is:today"
+            data-tip="Search what is due today"
+            type="button"
+          ><span
+              class="metric-label"
+            >Due today</span
+            ><strong
+              class="metric-value"
+            >0</strong
+            ></button
+          ><button
+            aria-label="Open, 53. Search every open task"
+            class="metric metric-open"
+            data-action="open-search"
+            data-code="TSK.OPN // 03"
+            data-query="is:open"
+            data-tip="Search every open task"
+            type="button"
+          ><span
+              class="metric-label"
+            >Open</span
+            ><strong
+              class="metric-value"
+            >53</strong
+            ></button
+          ></div
+        ><details
+          class="view-options"
+        ><summary
+            aria-label="View options"
+            data-tip="View options"
+          ><svg
+              aria-hidden="true"
+              class="settings-icon toolbar-icon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            ><path
+                clip-rule="evenodd"
+                d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                fill-rule="evenodd"
+              ></path
+              ><path
+                clip-rule="evenodd"
+                d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                fill-rule="evenodd"
+              ></path
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              class="view-options-group"
+            ><span
+              >Home</span
+              ><button
+                aria-pressed="true"
+                class="active"
+                data-action="finish-customizing"
+                type="button"
+              >Done customizing</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Tag columns</span
+              ><div
+                aria-label="Tag columns"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="1 columns"
+                  aria-pressed="false"
+                  data-action="set-columns"
+                  data-section="tags"
+                  data-value="1"
+                  type="button"
+                >1</button
+                ><button
+                  aria-label="2 columns"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-columns"
+                  data-section="tags"
+                  data-value="2"
+                  type="button"
+                >2</button
+                ><button
+                  aria-label="3 columns"
+                  aria-pressed="false"
+                  data-action="set-columns"
+                  data-section="tags"
+                  data-value="3"
+                  type="button"
+                >3</button
+                ><button
+                  aria-label="4 columns"
+                  aria-pressed="false"
+                  data-action="set-columns"
+                  data-section="tags"
+                  data-value="4"
+                  type="button"
+                >4</button
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Get started</span
+              ><button
+                data-action="open-view"
+                data-view="walkthrough"
+                type="button"
+              >Walkthrough</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Theme</span
+              ><button
+                aria-label="Theme: Replicant. Choose another"
+                class="theme-choice"
+                data-action="choose-theme"
+                type="button"
+              >Replicant…</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Zen</span
+              ><div
+                aria-label="Zen mode"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-zen-mode"
+                  data-value="off"
+                  type="button"
+                >Off</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-zen-mode"
+                  data-value="on"
+                  type="button"
+                >On</button
+                ></div
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><div
+      class="dashboard-tabs-row"
+    ><div
+        aria-label="Dashboard mode"
+        class="dashboard-tabs segmented"
+        role="tablist"
+      ><button
+          aria-controls="home-panel"
+          aria-selected="true"
+          data-action="set-dashboard-mode"
+          data-dashboard-mode="home"
+          id="home-tab"
+          role="tab"
+          tabindex="0"
+        >Home</button
+        ><button
+          aria-controls="browse-panel"
+          aria-selected="false"
+          data-action="set-dashboard-mode"
+          data-dashboard-mode="browse"
+          id="browse-tab"
+          role="tab"
+          tabindex="-1"
+        >Tags</button
+        ></div
+      ></div
+    ><section
+      aria-labelledby="home-tab"
+      class="dashboard-panel"
+      id="home-panel"
+      role="tabpanel"
+    ><div
+        class="home-edit-bar"
+        role="status"
+      ><span
+        >Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span
+        ><div
+          class="home-edit-actions"
+        ><select
+            aria-label="Add a widget"
+            data-action="add-widget"
+            data-dom-value=""
+          ><option
+              data-dom-selected="true"
+              data-dom-value=""
+            >+ Add widget…</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="tasks"
+              title="The tasks a search finds, ranked as on the Task Board"
+            >Tasks</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="topTags"
+              title="The tags you open most, lately"
+            >Frequent tags</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="recentSearches"
+              title="The searches you ran lately"
+            >Recent searches</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="recentNotes"
+              title="The notes you opened lately"
+            >Recently opened</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="stats"
+              title="How many notes, tasks, and tags there are"
+            >Workspace</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="todayNote"
+              title="Today's daily note and its open tasks"
+            >Today</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="quickAdd"
+              title="Add a task to today's daily note"
+            >Quick add</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="staleTasks"
+              title="Open tasks in notes left unchanged for a while"
+            >Stale tasks</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="relatedNotes"
+              title="Notes related to the note you had open last"
+            >Related notes</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="tagPairs"
+              title="Tags most often carried together, which may want a hub note or one name"
+            >Tags written together</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="unhubbedTags"
+              title="Frequently used tags with no hub note"
+            >Tags without a hub</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="newTags"
+              title="Tags first seen lately, to catch typos early"
+            >New tags</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="quietPeople"
+              title="People, projects, or any namespace you have not written about lately"
+            >Gone quiet</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="pinnedNotes"
+              title="Notes you pin to Home"
+            >Pinned notes</option
+            ></select
+          ><button
+            data-action="reset-widgets"
+            data-tip="Put back the widgets Home started with"
+            type="button"
+          >Reset widgets…</button
+          ><button
+            class="active"
+            data-action="finish-customizing"
+            type="button"
+          >Finish</button
+          ></div
+        ></div
+      ><div
+        class="home-grid"
+      ><article
+          aria-label="Try next"
+          class="home-widget is-draggable is-editing is-full view-panel"
+          data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"
+          data-widget-id="tryNext"
+          tabindex="0"
+        ><div
+            class="home-widget-header"
+          ><h2
+              class="home-widget-title"
+            ><span
+                aria-hidden="true"
+                class="home-widget-grip"
+              >⠿</span
+              >Try next</h2
+            ><div
+              class="home-widget-actions"
+            ><div
+                aria-label="Width"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="Half width"
+                  aria-pressed="false"
+                  data-action="set-widget-width"
+                  data-value="half"
+                  data-widget-id="tryNext"
+                  type="button"
+                >½</button
+                ><button
+                  aria-label="Full width"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-widget-width"
+                  data-value="full"
+                  data-widget-id="tryNext"
+                  type="button"
+                >Full</button
+                ></div
+              ><details
+                class="home-widget-options"
+                data-widget-id="tryNext"
+              ><summary
+                  aria-label="Widget options"
+                  data-tip="Widget options"
+                ><svg
+                    aria-hidden="true"
+                    class="settings-icon toolbar-icon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  ><path
+                      clip-rule="evenodd"
+                      d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ><path
+                      clip-rule="evenodd"
+                      d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ></svg
+                  ></summary
+                ><div
+                  class="home-widget-options-menu is-dropdown popover"
+                ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >About</span
+                    ><p
+                      class="home-widget-about"
+                    >One suggestion, when your notes are ready for it</p
+                    ></div
+                  ></div
+                ></details
+              ><button
+                aria-label="Remove Try next"
+                class="home-remove"
+                data-action="remove-widget"
+                data-tip="Remove widget"
+                data-widget-id="tryNext"
+                type="button"
+              >×</button
+              ></div
+            ></div
+          ><p
+            class="empty"
+          >Nothing to suggest yet. A suggestion appears here when your notes are ready for one.</p
+          ></article
+        ><article
+          aria-label="Search"
+          class="home-widget is-draggable is-editing is-full view-panel"
+          data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"
+          data-widget-id="search"
+          tabindex="0"
+        ><div
+            class="home-widget-header"
+          ><h2
+              class="home-widget-title"
+            ><span
+                aria-hidden="true"
+                class="home-widget-grip"
+              >⠿</span
+              >Search</h2
+            ><div
+              class="home-widget-actions"
+            ><div
+                aria-label="Width"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="Half width"
+                  aria-pressed="false"
+                  data-action="set-widget-width"
+                  data-value="half"
+                  data-widget-id="search"
+                  type="button"
+                >½</button
+                ><button
+                  aria-label="Full width"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-widget-width"
+                  data-value="full"
+                  data-widget-id="search"
+                  type="button"
+                >Full</button
+                ></div
+              ><details
+                class="home-widget-options"
+                data-widget-id="search"
+              ><summary
+                  aria-label="Widget options"
+                  data-tip="Widget options"
+                ><svg
+                    aria-hidden="true"
+                    class="settings-icon toolbar-icon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  ><path
+                      clip-rule="evenodd"
+                      d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ><path
+                      clip-rule="evenodd"
+                      d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ></svg
+                  ></summary
+                ><div
+                  class="home-widget-options-menu is-dropdown popover"
+                ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >About</span
+                    ><p
+                      class="home-widget-about"
+                    >A search box that opens a search page</p
+                    ></div
+                  ></div
+                ></details
+              ><button
+                aria-label="Remove Search"
+                class="home-remove"
+                data-action="remove-widget"
+                data-tip="Remove widget"
+                data-widget-id="search"
+                type="button"
+              >×</button
+              ></div
+            ></div
+          ><section
+            aria-label="Search notes and tasks"
+            class="query-workspace"
+          ><div
+              class="query-bar-row"
+            ><span
+                class="query-bar-shell query-input-shell"
+                data-query-text=""
+              ><input
+                  aria-autocomplete="list"
+                  aria-controls="suggestions-query"
+                  aria-expanded="false"
+                  aria-label="Search notes and tasks"
+                  autocomplete="off"
+                  class="query-input"
+                  data-action="query-input"
+                  data-dom-value=""
+                  data-suggest-key="query"
+                  placeholder="Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…"
+                  role="combobox"
+                  spellcheck="false"
+                  type="text"
+                ><div
+                  aria-label="Suggestions"
+                  class="is-dropdown popover query-suggestions"
+                  data-suggestions="query"
+                  hidden=""
+                  id="suggestions-query"
+                  role="listbox"
+                ></div
+                ></span
+              ><button
+                class="query-apply"
+                data-action="apply-query"
+                data-tip="Run this search"
+              >Search</button
+              ><button
+                aria-disabled="true"
+                data-action="clear-query"
+                data-query-clears=""
+                data-tip="Clear the search"
+                data-tip-disabled="The search is already empty"
+              >Clear</button
+              ></div
+            ><div
+              class="query-status"
+            ><button
+                aria-expanded="false"
+                class="query-builder-toggle"
+                data-action="toggle-builder"
+                data-tip="Build the search one condition at a time"
+              >Builder</button
+              ><span
+                class="query-hint"
+              >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span
+              ></div
+            ></section
+          ></article
+        ><article
+          aria-label="Tasks view"
+          class="home-widget is-draggable is-editing view-panel"
+          data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"
+          data-widget-id="agenda"
+          tabindex="0"
+        ><div
+            class="home-widget-header"
+          ><h2
+              class="home-widget-title"
+            ><span
+                aria-hidden="true"
+                class="home-widget-grip"
+              >⠿</span
+              >Tasks view <span
+                class="tag-count"
+              >53</span
+              ></h2
+            ><div
+              class="home-widget-actions"
+            ><div
+                aria-label="Width"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="Half width"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-widget-width"
+                  data-value="half"
+                  data-widget-id="agenda"
+                  type="button"
+                >½</button
+                ><button
+                  aria-label="Full width"
+                  aria-pressed="false"
+                  data-action="set-widget-width"
+                  data-value="full"
+                  data-widget-id="agenda"
+                  type="button"
+                >Full</button
+                ></div
+              ><details
+                class="home-widget-options"
+                data-widget-id="agenda"
+              ><summary
+                  aria-label="Widget options"
+                  data-tip="Widget options"
+                ><svg
+                    aria-hidden="true"
+                    class="settings-icon toolbar-icon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  ><path
+                      clip-rule="evenodd"
+                      d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ><path
+                      clip-rule="evenodd"
+                      d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ></svg
+                  ></summary
+                ><div
+                  class="home-widget-options-menu is-dropdown popover"
+                ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >About</span
+                    ><p
+                      class="home-widget-about"
+                    >Overdue, today, and upcoming tasks</p
+                    ></div
+                  ><div
+                    class="view-options-group"
+                  ><span
+                    >Show</span
+                    ><div
+                      aria-label="Entries shown"
+                      class="segmented view-options-choices"
+                      role="group"
+                    ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="3"
+                        data-widget-id="agenda"
+                        type="button"
+                      >3</button
+                      ><button
+                        aria-pressed="true"
+                        class="active"
+                        data-action="set-widget-count"
+                        data-value="5"
+                        data-widget-id="agenda"
+                        type="button"
+                      >5</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="10"
+                        data-widget-id="agenda"
+                        type="button"
+                      >10</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="20"
+                        data-widget-id="agenda"
+                        type="button"
+                      >20</button
+                      ></div
+                    ></div
+                  ></div
+                ></details
+              ><button
+                aria-label="Remove Tasks view"
+                class="home-remove"
+                data-action="remove-widget"
+                data-tip="Remove widget"
+                data-widget-id="agenda"
+                type="button"
+              >×</button
+              ></div
+            ></div
+          ><h3
+            class="home-widget-group"
+          >Overdue <span
+              class="tag-count"
+            >40</span
+            ></h3
+          ><div
+            class="task-list"
+          ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="3"
+              data-task-id="task-sdpvw2-16k9oi3"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Chase the replicant through the neon market and file the report before the rain #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-sdpvw2-16k9oi3"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report before the rain <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 3</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="4"
+              data-task-id="task-2kf75r-d865ae"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 2 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-2kf75r-d865ae"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 2 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 4</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="5"
+              data-task-id="task-81udcv-gcb2d4"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 3 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-81udcv-gcb2d4"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 3 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 5</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="6"
+              data-task-id="task-dj9jjz-51speu"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 4 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-dj9jjz-51speu"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 4 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 6</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="7"
+              data-task-id="task-j0opr3-1mt0rp0"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 5 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-j0opr3-1mt0rp0"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 5 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 7</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ></div
+          ><h3
+            class="home-widget-group"
+          >Later <span
+              class="tag-count"
+            >12</span
+            ></h3
+          ><div
+            class="task-list"
+          ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="43"
+              data-task-id="task-xvcxey-1ixc4vp"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Later task 1"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-xvcxey-1ixc4vp"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Later task 1</div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  >Due 2026-12-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 43</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="44"
+              data-task-id="task-gfuy46-f3pwfr"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Later task 2"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-gfuy46-f3pwfr"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Later task 2</div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  >Due 2026-12-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 44</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="45"
+              data-task-id="task-4a18bu-sunpjx"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Later task 3"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-4a18bu-sunpjx"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Later task 3</div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  >Due 2026-12-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 45</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="46"
+              data-task-id="task-ozxeru-l84eaj"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Later task 4"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-ozxeru-l84eaj"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Later task 4</div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  >Due 2026-12-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 46</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="47"
+              data-task-id="task-pbagra-zx0q19"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Later task 5"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-pbagra-zx0q19"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Later task 5</div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  >Due 2026-12-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 47</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ></div
+          ><h3
+            class="home-widget-group"
+          >No date <span
+              class="tag-count"
+            >1</span
+            ></h3
+          ><div
+            class="task-list"
+          ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="55"
+              data-task-id="task-xgoe5f-16k0p6g"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Undated task @dana"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-xgoe5f-16k0p6g"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Undated task <button
+                    aria-label="Open @dana overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="@dana"
+                    data-tip-overflow="@dana"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-value"
+                      >@dana</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="task-source"
+                  >tasks / line 55</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ></div
+          ></article
+        ><article
+          aria-label="Tasks"
+          class="home-widget is-draggable is-editing view-panel"
+          data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"
+          data-widget-id="tasks"
+          tabindex="0"
+        ><div
+            class="home-widget-header"
+          ><h2
+              class="home-widget-title"
+            ><span
+                aria-hidden="true"
+                class="home-widget-grip"
+              >⠿</span
+              >Tasks <span
+                class="tag-count"
+              >5 of 53</span
+              ></h2
+            ><div
+              class="home-widget-actions"
+            ><div
+                aria-label="Width"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="Half width"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-widget-width"
+                  data-value="half"
+                  data-widget-id="tasks"
+                  type="button"
+                >½</button
+                ><button
+                  aria-label="Full width"
+                  aria-pressed="false"
+                  data-action="set-widget-width"
+                  data-value="full"
+                  data-widget-id="tasks"
+                  type="button"
+                >Full</button
+                ></div
+              ><details
+                class="home-widget-options"
+                data-widget-id="tasks"
+              ><summary
+                  aria-label="Widget options"
+                  data-tip="Widget options"
+                ><svg
+                    aria-hidden="true"
+                    class="settings-icon toolbar-icon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  ><path
+                      clip-rule="evenodd"
+                      d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ><path
+                      clip-rule="evenodd"
+                      d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ></svg
+                  ></summary
+                ><div
+                  class="home-widget-options-menu is-dropdown popover"
+                ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >About</span
+                    ><p
+                      class="home-widget-about"
+                    >The tasks a search finds, ranked as on the Task Board</p
+                    ></div
+                  ><div
+                    class="view-options-group"
+                  ><span
+                    >Show</span
+                    ><div
+                      aria-label="Entries shown"
+                      class="segmented view-options-choices"
+                      role="group"
+                    ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="3"
+                        data-widget-id="tasks"
+                        type="button"
+                      >3</button
+                      ><button
+                        aria-pressed="true"
+                        class="active"
+                        data-action="set-widget-count"
+                        data-value="5"
+                        data-widget-id="tasks"
+                        type="button"
+                      >5</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="10"
+                        data-widget-id="tasks"
+                        type="button"
+                      >10</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="20"
+                        data-widget-id="tasks"
+                        type="button"
+                      >20</button
+                      ></div
+                    ></div
+                  ><div
+                    class="view-options-group"
+                  ><span
+                    >Paging</span
+                    ><div
+                      aria-label="Paging"
+                      class="segmented view-options-choices"
+                      role="group"
+                    ><button
+                        aria-label="Show the first few"
+                        aria-pressed="true"
+                        class="active"
+                        data-action="set-widget-paged"
+                        data-value="off"
+                        data-widget-id="tasks"
+                        type="button"
+                      >Off</button
+                      ><button
+                        aria-label="Page through all of them"
+                        aria-pressed="false"
+                        data-action="set-widget-paged"
+                        data-value="on"
+                        data-widget-id="tasks"
+                        type="button"
+                      >On</button
+                      ></div
+                    ></div
+                  ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >Search</span
+                    ><form
+                      class="home-widget-form"
+                      data-form="widget-query"
+                      data-widget-id="tasks"
+                    ><input
+                        aria-label="Tasks to list"
+                        autocomplete="off"
+                        data-action="widget-query-draft"
+                        data-dom-value="is:open"
+                        data-widget-id="tasks"
+                        placeholder="is:open #project/atlas"
+                        spellcheck="false"
+                        type="text"
+                      ><button
+                        type="submit"
+                      >Save</button
+                      ></form
+                    ></div
+                  ></div
+                ></details
+              ><button
+                aria-label="Remove Tasks"
+                class="home-remove"
+                data-action="remove-widget"
+                data-tip="Remove widget"
+                data-widget-id="tasks"
+                type="button"
+              >×</button
+              ></div
+            ></div
+          ><div
+            class="task-list"
+          ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="3"
+              data-task-id="task-sdpvw2-16k9oi3"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Chase the replicant through the neon market and file the report before the rain #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-sdpvw2-16k9oi3"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report before the rain <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 3</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="4"
+              data-task-id="task-2kf75r-d865ae"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 2 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-2kf75r-d865ae"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 2 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 4</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="5"
+              data-task-id="task-81udcv-gcb2d4"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 3 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-81udcv-gcb2d4"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 3 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 5</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="6"
+              data-task-id="task-dj9jjz-51speu"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 4 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-dj9jjz-51speu"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 4 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 6</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="7"
+              data-task-id="task-j0opr3-1mt0rp0"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Overdue task 5 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-j0opr3-1mt0rp0"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Overdue task 5 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                    class="task-source"
+                  >tasks / line 7</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ></div
+          ></article
+        ><article
+          aria-label="Favorite tags"
+          class="home-widget is-draggable is-editing view-panel"
+          data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"
+          data-widget-id="favoriteTags"
+          tabindex="0"
+        ><div
+            class="home-widget-header"
+          ><h2
+              class="home-widget-title"
+            ><span
+                aria-hidden="true"
+                class="home-widget-grip"
+              >⠿</span
+              >Favorite tags <span
+                class="tag-count"
+              >0</span
+              ></h2
+            ><div
+              class="home-widget-actions"
+            ><div
+                aria-label="Width"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="Half width"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-widget-width"
+                  data-value="half"
+                  data-widget-id="favoriteTags"
+                  type="button"
+                >½</button
+                ><button
+                  aria-label="Full width"
+                  aria-pressed="false"
+                  data-action="set-widget-width"
+                  data-value="full"
+                  data-widget-id="favoriteTags"
+                  type="button"
+                >Full</button
+                ></div
+              ><details
+                class="home-widget-options"
+                data-widget-id="favoriteTags"
+              ><summary
+                  aria-label="Widget options"
+                  data-tip="Widget options"
+                ><svg
+                    aria-hidden="true"
+                    class="settings-icon toolbar-icon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  ><path
+                      clip-rule="evenodd"
+                      d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ><path
+                      clip-rule="evenodd"
+                      d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ></svg
+                  ></summary
+                ><div
+                  class="home-widget-options-menu is-dropdown popover"
+                ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >About</span
+                    ><p
+                      class="home-widget-about"
+                    >The tags you favorited</p
+                    ></div
+                  ><div
+                    class="view-options-group"
+                  ><span
+                    >Show</span
+                    ><div
+                      aria-label="Entries shown"
+                      class="segmented view-options-choices"
+                      role="group"
+                    ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="3"
+                        data-widget-id="favoriteTags"
+                        type="button"
+                      >3</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="5"
+                        data-widget-id="favoriteTags"
+                        type="button"
+                      >5</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="10"
+                        data-widget-id="favoriteTags"
+                        type="button"
+                      >10</button
+                      ><button
+                        aria-pressed="false"
+                        data-action="set-widget-count"
+                        data-value="20"
+                        data-widget-id="favoriteTags"
+                        type="button"
+                      >20</button
+                      ></div
+                    ></div
+                  ><div
+                    class="view-options-group"
+                  ><span
+                    >Paging</span
+                    ><div
+                      aria-label="Paging"
+                      class="segmented view-options-choices"
+                      role="group"
+                    ><button
+                        aria-label="Show the first few"
+                        aria-pressed="true"
+                        class="active"
+                        data-action="set-widget-paged"
+                        data-value="off"
+                        data-widget-id="favoriteTags"
+                        type="button"
+                      >Off</button
+                      ><button
+                        aria-label="Page through all of them"
+                        aria-pressed="false"
+                        data-action="set-widget-paged"
+                        data-value="on"
+                        data-widget-id="favoriteTags"
+                        type="button"
+                      >On</button
+                      ></div
+                    ></div
+                  ></div
+                ></details
+              ><button
+                aria-label="Remove Favorite tags"
+                class="home-remove"
+                data-action="remove-widget"
+                data-tip="Remove widget"
+                data-widget-id="favoriteTags"
+                type="button"
+              >×</button
+              ></div
+            ></div
+          ><p
+            class="home-widget-empty"
+          >Favorite a tag on the Tags tab to keep it here.</p
+          ></article
+        ><article
+          aria-label="Saved searches"
+          class="home-widget is-draggable is-editing view-panel"
+          data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"
+          data-widget-id="savedSearches"
+          tabindex="0"
+        ><div
+            class="home-widget-header"
+          ><h2
+              class="home-widget-title"
+            ><span
+                aria-hidden="true"
+                class="home-widget-grip"
+              >⠿</span
+              >Saved searches</h2
+            ><div
+              class="home-widget-actions"
+            ><div
+                aria-label="Width"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="Half width"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-widget-width"
+                  data-value="half"
+                  data-widget-id="savedSearches"
+                  type="button"
+                >½</button
+                ><button
+                  aria-label="Full width"
+                  aria-pressed="false"
+                  data-action="set-widget-width"
+                  data-value="full"
+                  data-widget-id="savedSearches"
+                  type="button"
+                >Full</button
+                ></div
+              ><details
+                class="home-widget-options"
+                data-widget-id="savedSearches"
+              ><summary
+                  aria-label="Widget options"
+                  data-tip="Widget options"
+                ><svg
+                    aria-hidden="true"
+                    class="settings-icon toolbar-icon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  ><path
+                      clip-rule="evenodd"
+                      d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ><path
+                      clip-rule="evenodd"
+                      d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                      fill-rule="evenodd"
+                    ></path
+                    ></svg
+                  ></summary
+                ><div
+                  class="home-widget-options-menu is-dropdown popover"
+                ><div
+                    class="is-stacked view-options-group"
+                  ><span
+                    >About</span
+                    ><p
+                      class="home-widget-about"
+                    >Your saved searches</p
+                    ></div
+                  ></div
+                ></details
+              ><button
+                aria-label="Remove Saved searches"
+                class="home-remove"
+                data-action="remove-widget"
+                data-tip="Remove widget"
+                data-widget-id="savedSearches"
+                type="button"
+              >×</button
+              ></div
+            ></div
+          ><p
+            class="home-widget-empty"
+          >Save a search from a search page to keep it here. <button
+              data-action="open-search-page"
+              type="button"
+            >Open a search page</button
+            ></p
+          ></article
+        ></div
+      ></section
+    ><section
+      aria-labelledby="browse-tab"
+      class="dashboard-panel"
+      hidden=""
+      id="browse-panel"
+      role="tabpanel"
+    ><div
+        class="browse-toolbar"
+      ><div
+          class="browse-toolbar-controls"
+        ><input
+            aria-label="Search tags"
+            autocomplete="off"
+            class="catalog-search"
+            data-action="search-browse"
+            data-dom-value=""
+            placeholder="Search tags"
+            type="search"
+          ><div
+            class="control-row"
+          ><label
+              class="control-label"
+            >Namespace:<span
+                class="control-icon"
+              ><select
+                  aria-label="Filter tags by namespace"
+                  data-action="set-tag-namespace"
+                  data-dom-value=""
+                ><option
+                    data-dom-selected="true"
+                    data-dom-value=""
+                  >All</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="meeting"
+                  >Meeting</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="person"
+                  >Person</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="project"
+                  >Project</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="status"
+                  >Status</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="topic"
+                  >Topic</option
+                  ></select
+                ><svg
+                  aria-hidden="true"
+                  class="control-icon-svg"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><path
+                    d="M2 3h12L9 8v4l-2 1V8L2 3Z"
+                  ></path
+                  ></svg
+                ></span
+              ></label
+            ><label
+              class="control-label"
+            >Sort:<span
+                class="control-icon"
+              ><select
+                  aria-label="Sort tags"
+                  data-action="set-sort"
+                  data-dom-value="alphabetical"
+                ><option
+                    data-dom-selected="true"
+                    data-dom-value="alphabetical"
+                  >A-Z</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="count"
+                  >Entry Count</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="access"
+                  >Most accessed</option
+                  ><option
+                    data-dom-selected="false"
+                    data-dom-value="custom"
+                  >Rank</option
+                  ></select
+                ><svg
+                  aria-hidden="true"
+                  class="control-icon-svg"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><path
+                    d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
+                  ></path
+                  ></svg
+                ></span
+              ></label
+            ></div
+          ></div
+        ></div
+      ></section
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>

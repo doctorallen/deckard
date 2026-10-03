@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { findMatchingEntryLine } from '../ui/webview/sidebarNotes';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { findMatchingEntryLine } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
 
 const savedLines = [
   '# Plan #project/atlas',

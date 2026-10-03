@@ -1,19 +1,17 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { parseTaskMetadata } from '../domain/markdown/taskFields';
+import { parseRecurrence, PROJECTED_REPEATS, projectRepeats } from '../domain/markdown/recurrence';
+import { formatIsoDate } from '../domain/markdown/calendar';
 import {
   createNextOccurrence,
-  formatIsoDate,
-  parseRecurrence,
-  parseTaskMetadata,
-  PROJECTED_REPEATS,
-  projectRepeats,
   setTaskAssignee,
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
   writeCompletion,
-} from '../core/markdown/taskMetadata';
+} from '../domain/markdown/taskLineEdits';
 
 const at = (year: number, month: number, day: number): number =>
   new Date(year, month - 1, day).getTime();
@@ -75,23 +73,23 @@ suite('Obsidian Tasks metadata', () => {
 
   test('adds a done date on completion and removes it on reopening', () => {
     assert.strictEqual(
-      setTaskLineCompletion('- [ ] Ship 📅 2026-09-20', 3, true, '2026-09-13'),
+      setTaskLineCompletion('- [ ] Ship 📅 2026-09-20', 3, { completed: true, doneDate: '2026-09-13' }),
       '- [x] Ship 📅 2026-09-20 ✅ 2026-09-13',
     );
     assert.strictEqual(
-      setTaskLineCompletion('  * [ ] Ship ^ab12', 5, true, '2026-09-13'),
+      setTaskLineCompletion('  * [ ] Ship ^ab12', 5, { completed: true, doneDate: '2026-09-13' }),
       '  * [x] Ship ✅ 2026-09-13 ^ab12',
     );
     assert.strictEqual(
-      setTaskLineCompletion('- [x] Ship ✅ 2026-09-10', 3, true, '2026-09-13'),
+      setTaskLineCompletion('- [x] Ship ✅ 2026-09-10', 3, { completed: true, doneDate: '2026-09-13' }),
       '- [x] Ship ✅ 2026-09-10',
     );
     assert.strictEqual(
-      setTaskLineCompletion('- [x] Ship ✅ 2026-09-10 #a', 3, false, '2026-09-13'),
+      setTaskLineCompletion('- [x] Ship ✅ 2026-09-10 #a', 3, { completed: false, doneDate: '2026-09-13' }),
       '- [ ] Ship #a',
     );
     assert.strictEqual(
-      setTaskLineCompletion('- [ ] Ship', 3, true, undefined),
+      setTaskLineCompletion('- [ ] Ship', 3, { completed: true, doneDate: undefined }),
       '- [x] Ship',
     );
   });
@@ -186,20 +184,20 @@ suite('Obsidian Tasks metadata', () => {
   test('a completion writes the next occurrence above the completed line', () => {
     const today = at(2026, 9, 13);
     const weekly = '- [x] Review 📅 2026-09-10 🔁 every week ✅ 2026-09-13';
-    assert.deepStrictEqual(writeCompletion(weekly, 3, today, '\n'), {
+    assert.deepStrictEqual(writeCompletion(weekly, 3, { now: today, eol: '\n' }), {
       text: `- [ ] Review 📅 2026-09-17 🔁 every week\n${weekly}`,
       next: '- [ ] Review 📅 2026-09-17 🔁 every week',
     });
     assert.strictEqual(
-      writeCompletion(weekly, 3, today, '\r\n').text,
+      writeCompletion(weekly, 3, { now: today, eol: '\r\n' }).text,
       `- [ ] Review 📅 2026-09-17 🔁 every week\r\n${weekly}`,
       'in the line ending the note uses',
     );
-    assert.deepStrictEqual(writeCompletion('- [x] Plain task', 3, today, '\n'), {
+    assert.deepStrictEqual(writeCompletion('- [x] Plain task', 3, { now: today, eol: '\n' }), {
       text: '- [x] Plain task',
     });
     assert.deepStrictEqual(
-      writeCompletion('- [x] Odd 🔁 every blue moon', 3, today, '\n'),
+      writeCompletion('- [x] Odd 🔁 every blue moon', 3, { now: today, eol: '\n' }),
       { text: '- [x] Odd 🔁 every blue moon', unreadRule: 'every blue moon' },
     );
   });
@@ -228,19 +226,19 @@ suite('Obsidian Tasks metadata', () => {
 
   test('writes the done date in the format the task already uses', () => {
     assert.strictEqual(
-      setTaskLineCompletion('- [ ] Ship [due:: 2026-09-20]', 3, true, '2026-09-13'),
+      setTaskLineCompletion('- [ ] Ship [due:: 2026-09-20]', 3, { completed: true, doneDate: '2026-09-13' }),
       '- [x] Ship [due:: 2026-09-20] [completion:: 2026-09-13]',
     );
     assert.strictEqual(
-      setTaskLineCompletion('- [ ] Ship', 3, true, '2026-09-13', 'dataview'),
+      setTaskLineCompletion('- [ ] Ship', 3, { completed: true, doneDate: '2026-09-13', preferredFormat: 'dataview' }),
       '- [x] Ship [completion:: 2026-09-13]',
     );
     assert.strictEqual(
-      setTaskLineCompletion('- [ ] Ship 📅 2026-09-20', 3, true, '2026-09-13', 'dataview'),
+      setTaskLineCompletion('- [ ] Ship 📅 2026-09-20', 3, { completed: true, doneDate: '2026-09-13', preferredFormat: 'dataview' }),
       '- [x] Ship 📅 2026-09-20 ✅ 2026-09-13',
     );
     assert.strictEqual(
-      setTaskLineCompletion('- [x] Ship (completion:: 2026-09-10)', 3, false),
+      setTaskLineCompletion('- [x] Ship (completion:: 2026-09-10)', 3, { completed: false }),
       '- [ ] Ship',
     );
   });
@@ -295,15 +293,15 @@ suite('Obsidian Tasks metadata', () => {
       '- [ ] Plan [due:: 2026-09-20] [priority:: highest]',
     );
     assert.strictEqual(
-      setTaskDate('- [ ] Plan 📅 2026-09-20 ⏫', 3, 'due', '2026-09-14'),
+      setTaskDate('- [ ] Plan 📅 2026-09-20 ⏫', 3, { field: 'due', date: '2026-09-14' }),
       '- [ ] Plan 📅 2026-09-14 ⏫',
     );
     assert.strictEqual(
-      setTaskDate('- [ ] Plan', 3, 'due', '2026-09-14', 'dataview'),
+      setTaskDate('- [ ] Plan', 3, { field: 'due', date: '2026-09-14', preferredFormat: 'dataview' }),
       '- [ ] Plan [due:: 2026-09-14]',
     );
     assert.strictEqual(
-      setTaskDate('- [ ] Plan (due:: 2026-09-20)', 3, 'due', undefined),
+      setTaskDate('- [ ] Plan (due:: 2026-09-20)', 3, { field: 'due', date: undefined }),
       '- [ ] Plan',
     );
   });

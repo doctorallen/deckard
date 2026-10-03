@@ -1,0 +1,41 @@
+/*
+ * Everything that floats over a page: menus, the gear's menu, completions,
+ * and tips. One look, one stacking order, and one menu row, so the tag menu,
+ * the card menu, the rank menu, and the gear read as one family. Each keeps
+ * its own class for where it is placed.
+ */
+
+.popover {
+  z-index: var(--z-menu);
+  min-width: 150px;
+  padding: var(--space-1);
+  border: var(--edge) solid var(--amber);
+  border-radius: var(--control-radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.popover[hidden] { display: none; }
+.popover.is-dropdown { z-index: var(--z-dropdown); }
+.popover.is-tip { z-index: var(--z-tooltip); max-width: 280px; padding: var(--space-1) var(--space-2); border-width: 1px; border-color: var(--line-strong); font-size: var(--text-xs); line-height: 1.4; }
+/* One row for every menu. 28px tall, over WCAG 2.5.8's 24px. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  border: 0;
+  padding: 0 var(--space-2);
+  text-align: left;
+  text-transform: none;
+}
+.menu-check { flex: 0 0 16px; display: inline-grid; place-items: center; }
+.menu-check svg { width: 14px; height: 14px; }
+.menu-key { margin-left: auto; padding-left: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+button.menu-item:hover:where(:not(:disabled):not([aria-disabled="true"])) .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }
+/* The one tip every page shares (data-tip), placed by the page script. A
+   facet value's tip runs to several lines, so its line breaks are kept. */
+#deckard-tip { position: fixed; white-space: pre-line; }
+#deckard-tip kbd { margin-left: var(--space-1); font-family: var(--font-mono); }

@@ -1,0 +1,5320 @@
+<body
+> <main
+    id="app"
+  ><header
+    ><div
+      ><p
+          class="eyebrow"
+        >DECKARD / TASK BOARD</p
+        ><h1
+        >Task Board</h1
+        ></div
+      ><div
+        class="board-header-actions"
+      ><span
+          class="board-total"
+        >54 tasks</span
+        ><button
+          aria-label="Open Help"
+          class="help-button icon-button"
+          data-action="open-help"
+          data-help-anchor="task-views"
+          data-tip="Open Help"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="help-icon toolbar-icon"
+            fill="currentColor"
+            focusable="false"
+            viewBox="-5.5 0 19 19"
+          ><path
+              d="M7.987 5.653a4.536 4.536 0 0 1-.149 1.213 4.276 4.276 0 0 1-.389.958 5.186 5.186 0 0 1-.533.773c-.195.233-.386.454-.568.658l-.024.026c-.17.18-.328.353-.468.516a3.596 3.596 0 0 0-.4.567 2.832 2.832 0 0 0-.274.677 3.374 3.374 0 0 0-.099.858v.05a1.03 1.03 0 0 1-2.058 0v-.05a5.427 5.427 0 0 1 .167-1.385 4.92 4.92 0 0 1 .474-1.17 5.714 5.714 0 0 1 .63-.89c.158-.184.335-.38.525-.579.166-.187.34-.39.52-.603a3.108 3.108 0 0 0 .319-.464 2.236 2.236 0 0 0 .196-.495 2.466 2.466 0 0 0 .073-.66 1.891 1.891 0 0 0-.147-.762 1.944 1.944 0 0 0-.416-.633 1.917 1.917 0 0 0-.62-.418 1.758 1.758 0 0 0-.723-.144 1.823 1.823 0 0 0-.746.146 1.961 1.961 0 0 0-1.06 1.062 1.833 1.833 0 0 0-.146.747v.028a1.03 1.03 0 1 1-2.058 0v-.028a3.882 3.882 0 0 1 .314-1.56 4.017 4.017 0 0 1 2.135-2.139 3.866 3.866 0 0 1 1.561-.314 3.792 3.792 0 0 1 1.543.314A3.975 3.975 0 0 1 7.678 4.09a3.933 3.933 0 0 1 .31 1.563zm-2.738 9.81a1.337 1.337 0 0 1 0 1.033 1.338 1.338 0 0 1-.71.71l-.005.003a1.278 1.278 0 0 1-.505.103 1.338 1.338 0 0 1-1.244-.816 1.313 1.313 0 0 1 .284-1.451 1.396 1.396 0 0 1 .434-.283 1.346 1.346 0 0 1 .526-.105 1.284 1.284 0 0 1 .505.103l.005.003a1.404 1.404 0 0 1 .425.281 1.28 1.28 0 0 1 .285.418z"
+            ></path
+            ></svg
+          ></button
+        ><details
+          class="view-options"
+        ><summary
+            aria-label="View options"
+            data-tip="View options"
+          ><svg
+              aria-hidden="true"
+              class="settings-icon toolbar-icon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            ><path
+                clip-rule="evenodd"
+                d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                fill-rule="evenodd"
+              ></path
+              ><path
+                clip-rule="evenodd"
+                d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                fill-rule="evenodd"
+              ></path
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              class="view-options-group"
+            ><span
+              >Layout</span
+              ><div
+                aria-label="Task layout"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-pressed="false"
+                  data-action="set-task-layout"
+                  data-value="list"
+                  type="button"
+                >List</button
+                ><button
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-task-layout"
+                  data-value="board"
+                  type="button"
+                >Board</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-task-layout"
+                  data-value="table"
+                  type="button"
+                >Table</button
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Tasks view</span
+              ><button
+                aria-pressed="false"
+                data-action="use-for-agenda"
+                data-tip="Make the Tasks view list this search"
+                type="button"
+              >List in Tasks view</button
+              ></div
+            ><div
+              class="is-stacked view-options-group"
+            ><span
+              >Status columns</span
+              ><div
+                class="board-settings"
+              ><p
+                  class="board-settings-note"
+                >Columns when grouped by Status. Every status your open tasks carry is a column, listed here or not; drag to set their order. No status comes first and Done last. Saved in your settings, so the order applies to every workspace unless this one sets its own.</p
+                ><ul
+                  aria-label="Status columns"
+                  class="board-status-list"
+                ><li
+                    class="board-status is-draggable"
+                    data-status="todo"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><span
+                      class="board-status-name"
+                    >todo</span
+                    ><button
+                      aria-label="Remove todo"
+                      data-action="remove-status"
+                      data-status="todo"
+                      data-tip="Remove column"
+                      type="button"
+                    >×</button
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="doing"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><span
+                      class="board-status-name"
+                    >doing</span
+                    ><span
+                      class="board-status-count"
+                      data-tip="Open tasks with this status; a column while any have it"
+                    >40</span
+                    ></li
+                  ></ul
+                ><p
+                  class="board-settings-note"
+                >Add a status for an empty column to drop cards into. One no open task has can be removed.</p
+                ><form
+                  class="board-settings-row"
+                  data-form="add-status"
+                ><input
+                    aria-label="New status column"
+                    autocomplete="off"
+                    data-action="status-draft"
+                    data-dom-value=""
+                    placeholder="Add a status, such as review"
+                    spellcheck="false"
+                    type="text"
+                  ><button
+                    type="submit"
+                  >Add</button
+                  ></form
+                ><span
+                >Status tag</span
+                ><form
+                  class="board-settings-row"
+                  data-form="status-namespace"
+                ><span
+                    class="board-settings-prefix"
+                  >#</span
+                  ><input
+                    aria-label="Status tag namespace"
+                    autocomplete="off"
+                    data-action="namespace-draft"
+                    data-dom-value="status"
+                    spellcheck="false"
+                    type="text"
+                  ><span
+                    class="board-settings-prefix"
+                  >/doing</span
+                  ><button
+                    type="submit"
+                  >Save</button
+                  ></form
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Theme</span
+              ><button
+                aria-label="Theme: Replicant. Choose another"
+                class="theme-choice"
+                data-action="choose-theme"
+                type="button"
+              >Replicant…</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Zen</span
+              ><div
+                aria-label="Zen mode"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-zen-mode"
+                  data-value="off"
+                  type="button"
+                >Off</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-zen-mode"
+                  data-value="on"
+                  type="button"
+                >On</button
+                ></div
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><section
+      aria-label="Search tasks"
+      class="query-workspace"
+    ><div
+        class="query-bar-row"
+      ><span
+          class="query-bar-shell query-input-shell"
+          data-query-text=""
+        ><input
+            aria-autocomplete="list"
+            aria-controls="suggestions-query"
+            aria-expanded="false"
+            aria-label="Search tasks"
+            autocomplete="off"
+            class="query-input"
+            data-action="query-input"
+            data-dom-value=""
+            data-suggest-key="query"
+            placeholder="Search tasks: words, #tags, is:open, has:due, due < 7d, priority >= high…"
+            role="combobox"
+            spellcheck="false"
+            type="text"
+          ><div
+            aria-label="Suggestions"
+            class="is-dropdown popover query-suggestions"
+            data-suggestions="query"
+            hidden=""
+            id="suggestions-query"
+            role="listbox"
+          ></div
+          ></span
+        ><button
+          class="query-apply"
+          data-action="apply-query"
+          data-tip="Run this search"
+        >Search</button
+        ><button
+          aria-disabled="true"
+          data-action="clear-query"
+          data-query-clears=""
+          data-tip="Clear the search"
+          data-tip-disabled="The search is already empty"
+        >Clear</button
+        ><button
+          aria-disabled="true"
+          data-action="save-board-search"
+          data-query-needs-text=""
+          data-tip="Keep this search, named, on Home; it reopens on the Task Board"
+          data-tip-disabled="Type a search to save it"
+        >Save</button
+        ><button
+          data-action="export-tasks"
+          data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file"
+        >Export tasks</button
+        ></div
+      ><div
+        class="query-status"
+      ><button
+          aria-expanded="false"
+          class="query-builder-toggle"
+          data-action="toggle-builder"
+          data-tip="Build the search one condition at a time"
+        >Builder</button
+        ><span
+          class="query-hint"
+        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span
+        ><div
+          aria-label="Group tasks by"
+          class="segmented task-board-group"
+          role="group"
+        ><button
+            aria-pressed="true"
+            class="active"
+            data-action="set-board-group"
+            data-group="status"
+            type="button"
+          >Status</button
+          ><button
+            aria-pressed="false"
+            data-action="set-board-group"
+            data-group="priority"
+            type="button"
+          >Priority</button
+          ><button
+            aria-pressed="false"
+            data-action="set-board-group"
+            data-group="due"
+            type="button"
+          >Due date</button
+          ><button
+            aria-pressed="false"
+            data-action="set-board-group"
+            data-group="assignee"
+            type="button"
+          >Person</button
+          ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-pressed="false"
+            data-action="pick-board-namespace"
+            data-tip="Group by the tags in one namespace, such as #project/… or #context/…"
+            type="button"
+          >Tag…</button
+          ></div
+        ><button
+          aria-pressed="false"
+          class="board-available"
+          data-action="toggle-available"
+          data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)"
+          type="button"
+        >Can start now</button
+        ></div
+      ></section
+    ><section
+      aria-label="Tasks"
+      class="board-area"
+    ><div
+        aria-label="Task board"
+        class="board task-board"
+      ><section
+          aria-label="No status, 13 tasks"
+          class="board-column"
+          data-column-id="status:"
+          data-droppable="true"
+          data-hidden-count="0"
+        ><h2
+            class="board-column-title"
+          ><span
+            >No status</span
+            ><span
+              class="board-count"
+            >13</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:"
+            data-tip="Capture a task straight into No status"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 1, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="45"
+              data-task-id="task-pg15go-pwocl3"
+              data-tip-around=""
+              draggable="true"
+              tabindex="0"
+            ><input
+                aria-label="Complete Later task 1"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 1</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 45</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="true"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 1: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 2, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="46"
+              data-task-id="task-ov6q2g-1ppollx"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 2"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 2</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 46</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 2: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 3, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="47"
+              data-task-id="task-45ajmg-16kc8qr"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 3"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 3</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 47</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 3: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 4, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="48"
+              data-task-id="task-gklmtk-169cnat"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 4"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 4</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 48</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 4: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 5, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="49"
+              data-task-id="task-xqm8pk-1gmxvj"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 5"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 5</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 49</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 5: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 6, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="50"
+              data-task-id="task-ugjnsd-1jpuxok"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 6"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 6</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 50</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 6: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 7, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="51"
+              data-task-id="task-9qnhcd-9ofrza"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 7"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 7</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 51</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 7: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 8, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="52"
+              data-task-id="task-az8p3n-yohk9w"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 8"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 8</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 52</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 8: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 9, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="53"
+              data-task-id="task-vp4vjn-1gjd4gi"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 9"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 9</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 53</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 9: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 10, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="54"
+              data-task-id="task-e8hp96-1d2bnjv"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 10"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 10</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 54</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 10: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 11, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="55"
+              data-task-id="task-keeplw-vw1zcn"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 11"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 11</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 55</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 11: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Later task 12, No status, due 2026-12-01"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="56"
+              data-task-id="task-fzsxi6-m08wy7"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Later task 12"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Later task 12</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >due <span
+                      class="board-date"
+                    >2026-12-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 56</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Later task 12: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Undated task, No status"
+              class="board-card task"
+              data-card-column="status:"
+              data-file-path="notes/tasks.md"
+              data-line="57"
+              data-task-id="task-o1mm8r-nx6pgq"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Undated task"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Undated task</div
+                ><p
+                  class="board-details source"
+                ></p
+                ><span
+                  class="task-source"
+                >tasks / line 57</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Undated task: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="Todo, 0 tasks"
+          class="board-column"
+          data-column-id="status:todo"
+          data-droppable="true"
+          data-hidden-count="0"
+        ><h2
+            class="board-column-title"
+          ><span
+            >Todo</span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:todo"
+            data-tip="Capture a task straight into Todo"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >Drop a task here</p
+            ></div
+          ></section
+        ><section
+          aria-label="Doing, 40 tasks, 40 overdue"
+          class="board-column"
+          data-column-id="status:doing"
+          data-droppable="true"
+          data-hidden-count="0"
+        ><h2
+            class="board-column-title"
+          ><span
+            >Doing</span
+            ><span
+              class="board-count"
+            >40 · 40 overdue</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:doing"
+            data-tip="Capture a task straight into Doing"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report before the rain, Doing, overdue 20 days · 2026-09-01, 1 of 2 steps"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="3"
+              data-task-id="task-sdpvw2-16k9oi3"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report before the rain"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report before the rain</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><p
+                  class="board-steps source"
+                ><span
+                    class="board-steps-label"
+                  >1 of 2 steps</span
+                  ><span
+                    class="board-steps-next"
+                  > · next: Draft the report for the precinct before the rain comes back</span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 3</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report before the rain: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 2, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="6"
+              data-task-id="task-ykjd1b-176qwlw"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 2"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 2</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 6</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 2: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 3, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="7"
+              data-task-id="task-t346u7-1yrilhi"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 3"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 3</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 7</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 3: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 4, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="8"
+              data-task-id="task-nlp0n3-8oxzs0"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 4"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 4</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 8</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 4: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 5, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="9"
+              data-task-id="task-i49ufz-53ao0e"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 5"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 5</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 9</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 5: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 6, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="10"
+              data-task-id="task-u517ao-1eg8d81"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 6"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 6</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 10</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 6: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 7, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="11"
+              data-task-id="task-onm13k-948l3r"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 7"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 7</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 11</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 7: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 8, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="12"
+              data-task-id="task-j66uwg-1rm60xx"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 8"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 8</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 12</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 8: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 9, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="13"
+              data-task-id="task-doropc-1d9sr1j"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 9"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 9</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 13</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 9: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 10, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="14"
+              data-task-id="task-f19947-jzjceu"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 10"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 10</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 14</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 10: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 11, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="15"
+              data-task-id="task-1mnxxz-1cqc652"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 11"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 11</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 15</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 11: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 12, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="16"
+              data-task-id="task-ial505-fyz33a"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 12"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 12</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 16</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 12: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 13, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="17"
+              data-task-id="task-yyic2b-gzzbgm"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 13"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 13</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 17</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 13: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 14, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="18"
+              data-task-id="task-jeoiun-1uxxcxq"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 14"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 14</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 18</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 14: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 15, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="19"
+              data-task-id="task-2qrbsh-zhuj7y"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 15"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 15</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 19</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 15: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 16, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="20"
+              data-task-id="task-yoqfpk-eduelz"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 16"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 16</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 20</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 16: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 17, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="21"
+              data-task-id="task-i0t8ne-5f560n"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 17"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 17</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 21</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 17: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 18, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="22"
+              data-task-id="task-1cw1l8-1lh4icb"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 18"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 18</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 22</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 18: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 19, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="23"
+              data-task-id="task-fb15gy-g30mnv"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 19"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 19</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 23</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 19: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 20, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="24"
+              data-task-id="task-4cjfx7-mj3nd2"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 20"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 20</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 24</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 20: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 21, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="25"
+              data-task-id="task-l0gmzd-1y3sdou"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 21"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 21</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 25</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 21: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 22, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="26"
+              data-task-id="task-xcq7xl-1bdadde"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 22"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 22</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 26</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 22: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 23, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="27"
+              data-task-id="task-got0vf-1ish5si"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 23"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 23</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 27</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 23: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 24, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="28"
+              data-task-id="task-vtt9-1u49nwm"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 24"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 24</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 28</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 24: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 25, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="29"
+              data-task-id="task-gn1d8x-5tpl9a"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 25"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 25</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 29</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 25: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 26, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="30"
+              data-task-id="task-faxqo6-1s35gmh"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 26"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 26</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 30</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 26: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 27, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="31"
+              data-task-id="task-1czge0-5ccdwp"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 27"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 27</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 31</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 27: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 28, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="32"
+              data-task-id="task-i0wng6-o5ldsx"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 28"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 28</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 32</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 28: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 29, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="33"
+              data-task-id="task-yotuic-1fg4wdl"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 29"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 29</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 33</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 29: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 30, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="34"
+              data-task-id="task-nqc4yl-11cayja"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 30"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 30</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 34</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 30: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 31, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="35"
+              data-task-id="task-umupyd-iug8ea"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 31"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 31</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 35</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 31: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 32, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="36"
+              data-task-id="task-dyxiw7-v7fa8m"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 32"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 32</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 36</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 32: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 33, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="37"
+              data-task-id="task-2ozo5z-1ij95h6"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 33"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 33</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 37</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 33: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 34, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="38"
+              data-task-id="task-jcwv85-1ygmhcu"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 34"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 34</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 38</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 34: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 35, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="39"
+              data-task-id="task-z09zot-13h052q"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 35"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 35</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 39</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 35: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 36, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="40"
+              data-task-id="task-42uyd8-1c8b1wb"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 36"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 36</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 40</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 36: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 37, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="41"
+              data-task-id="task-kqs5fe-scx1kn"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 37"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 37</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 41</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 37: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 38, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="42"
+              data-task-id="task-xmephk-rpkstr"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 38"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 38</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 42</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 38: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 39, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="43"
+              data-task-id="task-gyhife-9svht7"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 39"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 39</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 43</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 39: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Overdue task 40, Doing, overdue 20 days · 2026-09-01"
+              class="board-card task"
+              data-card-column="status:doing"
+              data-file-path="notes/tasks.md"
+              data-line="44"
+              data-task-id="task-rwz7z5-1ichuxi"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Overdue task 40"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Overdue task 40</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="overdue quiet"
+                  >overdue 20 days · <span
+                      class="board-date"
+                    >2026-09-01</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 44</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Overdue task 40: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="Done, 1 task"
+          class="board-column"
+          data-column-id="done"
+          data-droppable="true"
+          data-hidden-count="0"
+        ><h2
+            class="board-column-title"
+          ><span
+            >Done</span
+            ><span
+              class="board-count"
+            >1</span
+            ></h2
+          ><div
+            class="board-cards"
+          ><article
+              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-label="Finished task, Done"
+              class="board-card completed task"
+              data-card-column="done"
+              data-file-path="notes/tasks.md"
+              data-line="58"
+              data-task-id="task-pmzt6q-tfv9dl"
+              data-tip-around=""
+              draggable="true"
+              tabindex="-1"
+            ><input
+                aria-label="Reopen Finished task"
+                data-action="board-toggle-task"
+                data-dom-checked="true"
+                data-dom-value="on"
+                data-tip="Reopen this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Finished task</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >done <span
+                      class="board-date"
+                    >2026-09-10</span
+                    ></span
+                  ></p
+                ><span
+                  class="task-source"
+                >tasks / line 58</span
+                ><span
+                  class="heading-path task-source"
+                >Tasks</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Finished task: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ></div
+      ></section
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > <div
+    class="action-menu popover tag-context-menu"
+    id="action-menu"
+    role="menu"
+    style="left: 127.406px; top: 258px"
+  ><div
+      aria-labelledby="action-menu-group-0"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-0"
+        role="presentation"
+      >Status</div
+      ><button
+        aria-checked="true"
+        class="menu-item"
+        data-menu-value="status:"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ><svg
+            aria-hidden="true"
+            class="toolbar-icon"
+            fill="none"
+            focusable="false"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            viewBox="0 0 16 16"
+          ><path
+              d="m3.5 8.5 3 3 6-7"
+            ></path
+            ></svg
+          ></span
+        ><span
+          class="menu-label"
+        >No status</span
+        ></button
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="status:todo"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Todo</span
+        ></button
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="status:doing"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Doing</span
+        ></button
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="status:done"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Done</span
+        ></button
+      ></div
+    ><div
+      aria-labelledby="action-menu-group-1"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-1"
+        role="presentation"
+      >Priority</div
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="1"
+        class="menu-item"
+        data-menu-key="1"
+        data-menu-value="priority:highest"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Highest</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >1</kbd
+        ></button
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="2"
+        class="menu-item"
+        data-menu-key="2"
+        data-menu-value="priority:high"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >High</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >2</kbd
+        ></button
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="3"
+        class="menu-item"
+        data-menu-key="3"
+        data-menu-value="priority:medium"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Medium</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >3</kbd
+        ></button
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="4"
+        class="menu-item"
+        data-menu-key="4"
+        data-menu-value="priority:low"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Low</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >4</kbd
+        ></button
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="5"
+        class="menu-item"
+        data-menu-key="5"
+        data-menu-value="priority:lowest"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Lowest</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >5</kbd
+        ></button
+      ><button
+        aria-checked="true"
+        aria-keyshortcuts="0"
+        class="menu-item"
+        data-menu-key="0"
+        data-menu-value="priority:"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ><svg
+            aria-hidden="true"
+            class="toolbar-icon"
+            fill="none"
+            focusable="false"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            viewBox="0 0 16 16"
+          ><path
+              d="m3.5 8.5 3 3 6-7"
+            ></path
+            ></svg
+          ></span
+        ><span
+          class="menu-label"
+        >No priority</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >0</kbd
+        ></button
+      ></div
+    ><div
+      aria-labelledby="action-menu-group-2"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-2"
+        role="presentation"
+      >Due</div
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="t"
+        class="menu-item"
+        data-menu-key="t"
+        data-menu-value="due:today"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Due today</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >t</kbd
+        ></button
+      ><button
+        aria-checked="false"
+        aria-keyshortcuts="m"
+        class="menu-item"
+        data-menu-key="m"
+        data-menu-value="due:tomorrow"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Due tomorrow</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >m</kbd
+        ></button
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="due:"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >No due date</span
+        ></button
+      ><button
+        aria-keyshortcuts="d"
+        class="menu-item"
+        data-menu-key="d"
+        data-menu-value="pick-date"
+        role="menuitem"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Due on a date…</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >d</kbd
+        ></button
+      ></div
+    ><div
+      aria-labelledby="action-menu-group-3"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-3"
+        role="presentation"
+      >Steps</div
+      ><button
+        aria-keyshortcuts="s"
+        class="menu-item"
+        data-menu-key="s"
+        data-menu-value="break-steps"
+        role="menuitem"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Break into steps…</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >s</kbd
+        ></button
+      ></div
+    ><div
+      aria-labelledby="action-menu-group-4"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-4"
+        role="presentation"
+      >Done</div
+      ><button
+        aria-keyshortcuts="x"
+        class="menu-item"
+        data-menu-key="x"
+        data-menu-value="done"
+        role="menuitem"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Complete it</span
+        ><kbd
+          aria-hidden="true"
+          class="menu-key"
+        >x</kbd
+        ></button
+      ></div
+    ><div
+      aria-labelledby="action-menu-group-5"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-5"
+        role="presentation"
+      >Note</div
+      ><button
+        class="menu-item"
+        data-menu-value="move-to"
+        role="menuitem"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Move to…</span
+        ></button
+      ></div
+    ></div
+  ></body
+>

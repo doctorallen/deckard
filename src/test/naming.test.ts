@@ -30,15 +30,26 @@ const RETIRED: Array<[RegExp, string]> = [
 function hostSources(): Array<readonly [string, string]> {
   const src = path.join(root, 'src');
   const files = [path.join(src, 'extension.ts')];
-  for (const folder of ['ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state']) {
-    const dir = path.join(src, folder);
-    if (!fs.existsSync(dir)) {
-      continue;
-    }
-    for (const name of fs.readdirSync(dir)) {
-      if (name.endsWith('.ts') && !/Html\.ts$/.test(name)) {
-        files.push(path.join(dir, name));
+  // The folders whose strings reach the reader: the composition root, which
+  // words the first index's hint and the unreadable-notes warning, the UI,
+  // the services whose results it words, and the domain, which writes the
+  // Related Notes reasons, facet labels, and tag-hygiene details the pages
+  // show.
+  const folders = ['composition', 'ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state', 'ui/providers', 'services', 'domain'];
+  const visit = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(file);
+      } else if (entry.name.endsWith('.ts') && !/Html\.ts$/.test(entry.name)) {
+        files.push(file);
       }
+    }
+  };
+  for (const folder of folders) {
+    const dir = path.join(src, folder);
+    if (fs.existsSync(dir)) {
+      visit(dir);
     }
   }
   return files.map((file) => [path.relative(root, file), fs.readFileSync(file, 'utf8')] as const);
@@ -53,7 +64,11 @@ function callBodies(source: string, name: RegExp): string[] {
     const start = at;
     while (at < source.length && depth > 0) {
       const char = source[at];
-      depth += char === '(' ? 1 : char === ')' ? -1 : 0;
+      if (char === '(') {
+        depth += 1;
+      } else if (char === ')') {
+        depth -= 1;
+      }
       at++;
     }
     bodies.push(source.slice(start, at - 1));
@@ -219,17 +234,13 @@ suite('Naming', () => {
     test('a message that wrote nothing is an error, and a changed note is said one way', () => {
       const offenders: string[] = [];
       for (const [name, source] of hosts) {
-        for (const body of callBodies(source, /show(?:Information|Warning)Message/)) {
-          if (/could not/.test(body) && /nothing was written/.test(body)) {
-            offenders.push(`${name}: ${body.trim().slice(0, 80)}`);
-          }
-        }
+        offenders.push(...callBodies(source, /show(?:Information|Warning)Message/)
+          .filter((body) => /could not/.test(body) && /nothing was written/.test(body))
+          .map((body) => `${name}: ${body.trim().slice(0, 80)}`));
         if (!name.endsWith('notify.ts')) {
-          for (const literal of literals(source)) {
-            if (/changed after Deckard last read (it|them), so nothing was written/.test(literal)) {
-              offenders.push(`${name}: ${literal.slice(0, 80)} (use describeStale)`);
-            }
-          }
+          offenders.push(...literals(source)
+            .filter((literal) => /changed after Deckard last read (it|them), so nothing was written/.test(literal))
+            .map((literal) => `${name}: ${literal.slice(0, 80)} (use describeStale)`));
         }
       }
       assert.deepStrictEqual(offenders, []);

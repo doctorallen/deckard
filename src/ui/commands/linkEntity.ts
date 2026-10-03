@@ -4,27 +4,34 @@ import {
   extractTags,
   getPersonMarker,
   stripTags,
-} from '../../core/markdown/parser';
-import { Entity, EntityKind } from '../../core/types';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+} from '../../domain/markdown/parser';
+import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { Entity, EntityKind } from '../../domain/model';
 
+/** A picker row: an entity the index knows, or the row that makes a new one. */
 interface EntityChoice extends vscode.QuickPickItem {
   entity?: Entity;
   create?: boolean;
 }
 
+/** A picker row for the kind of entity being made. */
 interface EntityKindChoice extends vscode.QuickPickItem {
   value: EntityKind;
 }
 
-/**
- * Lets the user explicitly attach the current heading to a canonical entity.
- */
+/** What is said when the cursor is not on a heading in a note. */
 const HEADING_FIRST = 'Put the cursor on a heading in a note to tag it with a person or project.';
 
+/**
+ * Lets the user explicitly attach the current heading to a canonical entity:
+ * one the index knows, or a new one, written as a tag after the heading's
+ * words.
+ * Does nothing when the heading already carries that tag, and says so.
+ */
 export async function linkCurrentHeading(
-  indexer: WorkspaceIndexer,
+  indexer: IndexReader,
 ): Promise<void> {
   await indexer.ready;
   const editor = vscode.window.activeTextEditor;
@@ -45,7 +52,8 @@ export async function linkCurrentHeading(
       .getConfiguration('deckard', editor.document.uri)
       .get<unknown>('personMarker', '@'),
   );
-  const headingName = stripTags(heading[1], personMarker);
+  const tagColumn = findHeadingTagColumn(line.text);
+  const headingName = stripTags(line.text.slice(0, tagColumn).replace(/^ {0,3}#{1,6}[ \t]+/, ''), personMarker);
   const entities = [...indexer.getSnapshot().entities.values()];
   const choice = await vscode.window.showQuickPick(
     [
@@ -89,12 +97,35 @@ export async function linkCurrentHeading(
 
   await editor.edit((editBuilder) => {
     editBuilder.insert(
-      new vscode.Position(line.lineNumber, line.text.length),
+      new vscode.Position(line.lineNumber, tagColumn),
       ` ${entity.label}`,
     );
   });
 }
 
+/**
+ * The column a tag goes at on a heading line: after its words, before a
+ * `^block-id` and any closing hashes. The block id must stay last for
+ * `[[Note#^id]]` to find the line, and a tag after closing hashes would
+ * make them words.
+ */
+export function findHeadingTagColumn(text: string): number {
+  let end = text.trimEnd().length;
+  const block = BLOCK_ID_PATTERN.exec(text.slice(0, end));
+  if (block) {
+    end = block.index;
+  }
+  const closing = /[ \t]+#+[ \t]*$/.exec(text.slice(0, end));
+  if (closing) {
+    end = closing.index;
+  }
+  return end;
+}
+
+/**
+ * Asks for a new entity's kind and name, and returns the tag it is written
+ * as; undefined when either prompt is dismissed or the name has no slug.
+ */
 async function createEntity(
   defaultName: string,
   personMarker: string,
@@ -138,6 +169,7 @@ async function createEntity(
   };
 }
 
+/** The name as a tag's slug: lowercase, with runs of other characters as hyphens; undefined when nothing is left. */
 function toSlug(value: string): string | undefined {
   const slug = value
     .trim()

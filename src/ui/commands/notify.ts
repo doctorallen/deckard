@@ -2,22 +2,26 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { reportError } from '../../core/timing';
+import { reportError } from '../../shared/timing';
 
 /**
  * How Deckard says that something did not happen.
  *
  * A failure says what did not happen and what to do about it, in the
  * reader's words; the raw error goes to Deckard's log, with **Open Log**
- * beside the message. Piece 8 routes every failure message through here.
+ * beside the message. Every failure the reader sees goes through
+ * reportFailure, so the log entry and the Open Log button never drift apart.
  */
 
+/** A button on a message, and what choosing it does. */
 export interface MessageAction {
   /** The button, in Title Case: "Open Note". */
   title: string;
+  /** Runs once the button is chosen; reportFailure awaits what it returns. */
   run: () => unknown;
 }
 
+/** Something that did not happen, as reportFailure shows and logs it. */
 export interface Failure {
   /** What did not happen, and why, in the reader's words. Ends with a period. */
   outcome: string;
@@ -39,7 +43,7 @@ export function describeFailure(failure: Failure): { text: string; buttons: stri
     text: failure.fix ? `${failure.outcome} ${failure.fix}` : failure.outcome,
     buttons: [
       ...(failure.action ? [failure.action.title] : []),
-      ...(failure.error !== undefined ? [OPEN_LOG] : []),
+      ...(failure.error === undefined ? [] : [OPEN_LOG]),
     ],
   };
 }

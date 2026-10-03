@@ -8,15 +8,18 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   isBuiltInEntityKind,
-} from '../../core/markdown/parser';
+} from '../../domain/markdown/parser';
 import {
+  endsInComment,
+  formatYamlValue,
   getFrontmatterBounds,
   splitValues,
-  unquote,
-} from '../../core/markdown/frontmatterTags';
-import { TagReference } from '../../core/types';
+} from '../../domain/markdown/frontmatterTags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { TagReference } from '../../domain/model';
+import { unquote } from '../../domain/markdown/frontmatter';
 
+/** A front-matter field tags are moved into, by the entity kind they name. */
 type FrontmatterTagGroup =
   | 'people'
   | 'projects'
@@ -25,6 +28,7 @@ type FrontmatterTagGroup =
   | 'meetings'
   | 'tags';
 
+/** The fields in the order they are written into the front matter. */
 const frontmatterGroups: FrontmatterTagGroup[] = [
   'people',
   'projects',
@@ -43,6 +47,15 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
     void vscode.window.showInformationMessage(
       'Open a note to move its tags into front matter.',
     );
+    return;
+  }
+
+  const commented = findCommentedTagField(editor.document.getText());
+  if (commented) {
+    void reportFailure({
+      outcome: `Deckard did not move the tags: the ${commented} field in the front matter ends in a comment, which rewriting the field would lose.`,
+      fix: 'Move the comment onto a line of its own, then try again.',
+    });
     return;
   }
 
@@ -82,13 +95,18 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
 
 /**
  * Builds the complete transformed note so it can be applied atomically and
- * exercised without a live editor.
+ * exercised without a live editor. Undefined when there is no inline tag to
+ * move, or when a field it would write again ends in a YAML comment, which
+ * `findCommentedTagField` names.
  */
 export function moveInlineTagsToFrontmatterContent(
   content: string,
   entityNamespaceAliases: EntityNamespaceAliases = {},
   personMarker = '@',
 ): string | undefined {
+  if (findCommentedTagField(content)) {
+    return undefined;
+  }
   const lines = content.split(/\r?\n/);
   const frontmatter = getFrontmatterBounds(lines);
   const spans = extractTagSpans(
@@ -138,7 +156,9 @@ export function moveInlineTagsToFrontmatterContent(
     : [];
   const generatedFrontmatter = frontmatterGroups.flatMap((group) => {
     const values = groupedValues.get(group) ?? [];
-    return values.length > 0 ? [`${group}: [${values.join(', ')}]`] : [];
+    return values.length > 0
+      ? [`${group}: [${values.map((value) => formatYamlValue(value, 'list')).join(', ')}]`]
+      : [];
   });
   const normalizedFrontmatter = [
     '---',
@@ -147,10 +167,48 @@ export function moveInlineTagsToFrontmatterContent(
     '---',
   ];
 
-  return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join('\n');
+  // The note keeps its own line endings: a CRLF note stays CRLF.
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join(eol);
 }
 
+/**
+ * A front-matter field's line: its name, and its value after the colon.
+ * YAML allows spaces before the colon, as `tags : [a]`, and so does the
+ * parser.
+ */
+const FIELD_LINE = /^([A-Za-z][A-Za-z0-9_-]*)[ \t]*:\s*(.*)$/;
 
+/**
+ * The first tag field, as written, whose line or list item ends in a YAML
+ * comment, or undefined when none does. Moving tags writes every tag field
+ * again, which would lose the comment or read it as a tag.
+ */
+export function findCommentedTagField(content: string): string | undefined {
+  const lines = content.split(/\r?\n/);
+  const frontmatter = getFrontmatterBounds(lines);
+  if (!frontmatter) {
+    return undefined;
+  }
+  let current: string | undefined;
+  for (const line of lines.slice(1, frontmatter.end)) {
+    const property = line.match(FIELD_LINE);
+    if (property) {
+      current = getFrontmatterGroupForField(property[1]) ? property[1] : undefined;
+      if (current && endsInComment(property[2])) {
+        return current;
+      }
+      continue;
+    }
+    const listItem = line.match(/^\s*-\s+(.+?)\s*$/);
+    if (listItem && current && endsInComment(listItem[1])) {
+      return current;
+    }
+  }
+  return undefined;
+}
+
+/** The values the note's front matter already holds, by the field they are under. */
 function collectFrontmatterValues(
   lines: string[],
   frontmatter: { end: number } | undefined,
@@ -162,10 +220,11 @@ function collectFrontmatterValues(
 
   let currentGroup: FrontmatterTagGroup | undefined;
   lines.slice(1, frontmatter.end).forEach((line) => {
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    const property = line.match(FIELD_LINE);
     if (property) {
       currentGroup = getFrontmatterGroupForField(property[1]);
       if (currentGroup) {
+        // As YAML reads them, so a quoted value holding a comma is written back whole.
         splitValues(property[2]).forEach((value) =>
           addFrontmatterValue(values, currentGroup!, value),
         );
@@ -182,12 +241,17 @@ function collectFrontmatterValues(
   return values;
 }
 
+/**
+ * The front-matter lines that are kept as they are: every field except the
+ * tag fields, which are written again with the moved tags merged in, and
+ * every comment and blank line, wherever it is, since neither is a value.
+ */
 function getRetainedFrontmatterLines(lines: string[]): string[] {
   const retained: string[] = [];
   let skippingSupportedField = false;
 
   lines.forEach((line) => {
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+    const property = line.match(FIELD_LINE);
     if (property) {
       skippingSupportedField = getFrontmatterGroupForField(property[1]) !== undefined;
       if (!skippingSupportedField) {
@@ -196,7 +260,7 @@ function getRetainedFrontmatterLines(lines: string[]): string[] {
       return;
     }
 
-    if (!skippingSupportedField) {
+    if (!skippingSupportedField || /^\s*(?:#|$)/.test(line)) {
       retained.push(line);
     }
   });
@@ -204,6 +268,7 @@ function getRetainedFrontmatterLines(lines: string[]): string[] {
   return retained;
 }
 
+/** The field a tag is moved into: its entity kind's, or `tags` for any other. */
 function getFrontmatterGroup(tag: TagReference): FrontmatterTagGroup {
   switch (getEntityKind(tag)) {
     case 'person':
@@ -216,11 +281,13 @@ function getFrontmatterGroup(tag: TagReference): FrontmatterTagGroup {
       return 'organizations';
     case 'meeting':
       return 'meetings';
+    case undefined:
     default:
       return 'tags';
   }
 }
 
+/** How a tag is written in front matter: without its marker or its kind's namespace. */
 function getFrontmatterValue(tag: TagReference): string {
   if (tag.key.startsWith('@')) {
     return tag.key.slice(1);
@@ -234,6 +301,7 @@ function getFrontmatterValue(tag: TagReference): string {
   return tag.label.startsWith('#') ? tag.label.slice(1) : tag.label;
 }
 
+/** The tag field a front-matter key is, singular or plural; undefined for any other key. */
 function getFrontmatterGroupForField(
   field: string,
 ): FrontmatterTagGroup | undefined {
@@ -261,6 +329,7 @@ function getFrontmatterGroupForField(
   }
 }
 
+/** Adds a value to its field, unless it is blank or the field holds it already, in any case. */
 function addFrontmatterValue(
   values: Map<FrontmatterTagGroup, string[]>,
   group: FrontmatterTagGroup,
@@ -271,8 +340,9 @@ function addFrontmatterValue(
     return;
   }
   const groupValues = values.get(group) ?? [];
-  if (!groupValues.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
-    groupValues.push(normalized);
-    values.set(group, groupValues);
+  if (groupValues.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
+    return;
   }
+  groupValues.push(normalized);
+  values.set(group, groupValues);
 }

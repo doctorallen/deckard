@@ -4,20 +4,15 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { ParsedFile, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import {
-  findLinkProblems,
-  findMissingNoteNames,
-} from '../ui/commands/linkHealth';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { linkMentions } from '../ui/commands/unlinkedMentions';
-import {
-  findDailyNoteActions,
-  findEmbedProblems,
-  findTaskDependencies,
-  findUnlinkedMentions,
-} from '../ui/state/editorLensState';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { findDailyNoteActions, findEmbedProblems, findTaskDependencies } from '../ui/state/editorLensState';
+import { findUnlinkedMentions } from '../domain/search/mentions';
+import { findLinkProblems, findMissingNoteNames } from '../domain/links/linkProblems';
+import { ParsedFile, WorkspaceIndex } from '../domain/model';
+import { indexKeyOf } from './indexKeys';
 
 suite('Editor lenses', () => {
   suite('task dependencies', () => {
@@ -98,11 +93,11 @@ suite('Editor lenses', () => {
     const note = (filePath: string) => index.files.get(filePath) as ParsedFile;
 
     test("offers today's note the unfinished tasks it does not already hold", () => {
-      const actions = findDailyNoteActions(
-        note('notes/2026-09-22.md'),
+      const actions = findDailyNoteActions({
+        file: note('notes/2026-09-22.md'),
         index,
-        '2026-09-22',
-      );
+        today: '2026-09-22',
+      });
       assert.deepStrictEqual(
         actions?.carryIn.map((task) => task.title.trim()),
         // "Book travel" was carried already; the done task stays behind.
@@ -113,23 +108,23 @@ suite('Editor lenses', () => {
     });
 
     test('offers an earlier daily note only its neighbors', () => {
-      const actions = findDailyNoteActions(
-        note('notes/2026-09-21.md'),
+      const actions = findDailyNoteActions({
+        file: note('notes/2026-09-21.md'),
         index,
-        '2026-09-22',
-      );
+        today: '2026-09-22',
+      });
       assert.deepStrictEqual(actions?.carryIn, []);
       assert.strictEqual(actions?.previous, '2026-09-18');
       assert.strictEqual(actions?.next, '2026-09-22');
     });
 
     test('reaches only as far back as the lookback allows', () => {
-      const actions = findDailyNoteActions(
-        note('notes/2026-09-22.md'),
+      const actions = findDailyNoteActions({
+        file: note('notes/2026-09-22.md'),
         index,
-        '2026-09-22',
-        2,
-      );
+        today: '2026-09-22',
+        lookbackDays: 2,
+      });
       assert.deepStrictEqual(
         actions?.carryIn.map((task) => task.title.trim()),
         ['Write the brief'],
@@ -142,19 +137,19 @@ suite('Editor lenses', () => {
         'notes/2026-09-23.md': '# 2026-09-23\n- [ ] Chase the vendor\n',
         'notes/2026-09-24.md': '# 2026-09-24\n',
       });
-      const actions = findDailyNoteActions(
-        copies.files.get('notes/2026-09-24.md') as ParsedFile,
-        copies,
-        '2026-09-24',
-        0,
-        'migrate',
-      );
+      const actions = findDailyNoteActions({
+        file: copies.files.get('notes/2026-09-24.md') as ParsedFile,
+        index: copies,
+        today: '2026-09-24',
+        lookbackDays: 0,
+        mode: 'migrate',
+      });
       assert.strictEqual(actions?.carryIn.length, 1);
     });
 
     test('shows nothing for a note that is not a daily note', () => {
       assert.strictEqual(
-        findDailyNoteActions(note('notes/Plan.md'), index, '2026-09-22'),
+        findDailyNoteActions({ file: note('notes/Plan.md'), index, today: '2026-09-22' }),
         undefined,
       );
     });
@@ -162,11 +157,11 @@ suite('Editor lenses', () => {
     test('shows nothing for a lone daily note with nothing to carry', () => {
       const alone = createIndex({ 'notes/2026-09-22.md': '# 2026-09-22\n' });
       assert.strictEqual(
-        findDailyNoteActions(
-          alone.files.get('notes/2026-09-22.md') as ParsedFile,
-          alone,
-          '2026-09-22',
-        ),
+        findDailyNoteActions({
+          file: alone.files.get('notes/2026-09-22.md') as ParsedFile,
+          index: alone,
+          today: '2026-09-22',
+        }),
         undefined,
       );
     });
@@ -287,6 +282,47 @@ suite('Editor lenses', () => {
       ]);
     });
 
+    test('reads a heading as the parser does, so a hash and a no-break space is prose', () => {
+      const odd = createIndex({
+        'notes/Atlas.md': '# Atlas',
+        'notes/Odd.md': '#\u00a0Atlas is prose.\n   # Atlas heading\n#',
+      });
+      assert.deepStrictEqual(
+        findUnlinkedMentions(odd.files.get('notes/Atlas.md') as ParsedFile, odd).map((mention) => [mention.line, mention.text]),
+        [[0, 'Atlas']],
+      );
+    });
+
+    test('finds none where a link would break or never show, and finds the prose around it', () => {
+      const lines = [
+        'A footnote[^atlas] here.',
+        '[^atlas]: Atlas is the source.',
+        'Ref style [Atlas][1] and [Atlas][] links.',
+        '[atlas]: https://x.test/atlas',
+        'Mail atlas@example.com or <mailto:atlas@example.com> now.',
+        '<span title="Atlas">kept</span>',
+        'Hidden %%Atlas%% here, and <!-- Atlas --> there.',
+        '%%',
+        'Atlas in a comment block.',
+        '%%',
+        'Math $Atlas^2$ inline.',
+        '$$',
+        'Atlas = 1',
+        '$$',
+        'Open notes/Atlas.md, ./Atlas, ~/Atlas, or C:\\Notes\\Atlas.txt.',
+        'It costs $5 for Atlas, $6 for more.',
+      ];
+      const refs = createIndex({ 'notes/Atlas.md': '# Atlas\n', 'notes/Refs.md': lines.join('\n') });
+      assert.deepStrictEqual(
+        findUnlinkedMentions(refs.files.get('notes/Atlas.md') as ParsedFile, refs).map((mention) => [mention.line, mention.startColumn]),
+        [
+          [1, lines[1].indexOf('Atlas')],
+          [15, lines[15].indexOf('Atlas')],
+        ],
+        'the footnote text and the prose between two prices are mentions',
+      );
+    });
+
     test('does not look for a name another note shares, or a short one', () => {
       assert.deepStrictEqual(mentionsOf('notes/a/Plan.md'), []);
       assert.deepStrictEqual(mentionsOf('notes/AI.md'), []);
@@ -310,22 +346,62 @@ suite('Editor lenses', () => {
         Buffer.from('The atlas plan.\nThe atlas moved.\n', 'utf8'),
       );
       const snapshot = createIndex({
-        [atlas.fsPath]: '# Atlas\n',
-        [log.fsPath]: indexed,
+        [indexKeyOf(atlas)]: '# Atlas\n',
+        [indexKeyOf(log)]: indexed,
       });
       try {
         await linkMentions(
           {
             ready: Promise.resolve(),
             getSnapshot: () => snapshot,
-            parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+            parse: (uri, content) => parseMarkdown(indexKeyOf(uri), content),
             refresh: async () => undefined,
           },
+          new WorkspaceWriteHistory(),
           atlas,
         );
         const written = (await vscode.workspace.openTextDocument(log)).getText();
         assert.strictEqual(written, 'The [[atlas]] plan.\nThe atlas moved.\n');
       } finally {
+        await vscode.workspace.fs.delete(root, { recursive: true });
+      }
+    });
+
+    test('links the mentions in the notes it can open, and says how many it could not', async () => {
+      const root = vscode.Uri.file(
+        path.join(os.tmpdir(), `deckard-mentions-${Date.now()}`),
+      );
+      const atlas = vscode.Uri.joinPath(root, 'Atlas.md');
+      const log = vscode.Uri.joinPath(root, 'Log.md');
+      // Indexed, but gone from disk, so it cannot be opened.
+      const gone = vscode.Uri.joinPath(root, 'Gone.md');
+      await vscode.workspace.fs.writeFile(atlas, Buffer.from('# Atlas\n', 'utf8'));
+      await vscode.workspace.fs.writeFile(log, Buffer.from('The atlas plan.\n', 'utf8'));
+      const snapshot = createIndex({
+        [indexKeyOf(atlas)]: '# Atlas\n',
+        [indexKeyOf(gone)]: 'An atlas, once.\n',
+        [indexKeyOf(log)]: 'The atlas plan.\n',
+      });
+      const window = vscode.window as unknown as Record<string, unknown>;
+      const original = window.showInformationMessage;
+      const shown: unknown[] = [];
+      window.showInformationMessage = async (message: unknown) => void shown.push(message);
+      try {
+        await linkMentions(
+          {
+            ready: Promise.resolve(),
+            getSnapshot: () => snapshot,
+            parse: (uri, content) => parseMarkdown(indexKeyOf(uri), content),
+            refresh: async () => undefined,
+          },
+          new WorkspaceWriteHistory(),
+          atlas,
+        );
+        const written = (await vscode.workspace.openTextDocument(log)).getText();
+        assert.strictEqual(written, 'The [[atlas]] plan.\n');
+        assert.deepStrictEqual(shown, ['Linked the mentions of Atlas in 1 note. 1 note could not be opened.']);
+      } finally {
+        window.showInformationMessage = original;
         await vscode.workspace.fs.delete(root, { recursive: true });
       }
     });

@@ -2,16 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { Task } from '../core/types';
-import {
-  countLoad,
-  describeLoad,
-  describeLoadAfter,
-  dueDateFor,
-  planSpread,
-  planThreeToday,
-} from '../ui/commands/agendaActions';
+import { describeLoad, describeLoadAfter, planSpread, planThreeToday } from '../ui/commands/agendaActions';
 import { validateDateInput } from '../ui/commands/datePrompt';
+import { countLoad, dueDateFor } from '../domain/tasks/reschedule';
+import { Task } from '../domain/model';
 
 suite('Dating tasks from the Tasks view', () => {
   test('names a date the way the menu does', () => {

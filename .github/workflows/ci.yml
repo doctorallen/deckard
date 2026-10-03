@@ -1,40 +1,50 @@
 name: CI
 
+# Each commit is checked once. A pull request runs this workflow, and its
+# validate job is the check master's ruleset requires before a merge. A
+# push to master runs no CI of its own: the Release workflow runs this
+# whole workflow on it, through workflow_call, before it publishes
+# anything. A branch that wants CI opens a pull request, a draft if it is
+# not ready; workflow_dispatch runs it on any branch by hand.
 on:
   pull_request:
-    branches:
-      - main
-      - master
-  push:
-    branches:
-      - dev
-      - main
-      - master
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer push to the same pull request makes an older run moot, so it is
+# cancelled; a release's run is never cancelled, since a release waits on it.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.workflow == 'CI' }}
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Phase 6 step 1 added ten surfaces, about 160 more screenshots and as
+    # many more layouts, to the 15 minutes the job used to need.
+    timeout-minutes: 25
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.x
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      # What the extension ships (the dependencies, not the devDependencies)
+      # must have no high or critical advisory. Dependabot opens the updates
+      # for the rest.
+      - name: Check the shipped packages for advisories
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run automated tests
         run: xvfb-run --auto-servernum npm test
@@ -45,19 +55,85 @@ jobs:
       - name: Run end-to-end webview tests
         run: npm run test:e2e
 
+      # The layout and visual checks draw several pages at once, one Chrome
+      # each: half the runner's four cores' worth, so two (UI_CONCURRENCY,
+      # test/ui/chromePool.js). Each Chrome takes more than a core, so two
+      # keep all four busy without pushing a page's draw toward the end of
+      # its virtual time.
       - name: Lay the webviews out in Chrome
         run: npm run test:layout
 
+      # --ci fails when a surface has no baseline to compare with, rather
+      # than recording one and passing, so the pixel guard cannot go quiet.
       - name: Compare the webviews to how they looked
-        run: npm run test:visual
+        env:
+          VISUAL_KEEP: ${{ runner.temp }}/visual
+        run: npm run test:visual -- --ci
+
+      # What was drawn, the diffs, and any baseline recorded because none was
+      # there, for a failed comparison to be looked at or a new Linux
+      # baseline to be committed.
+      - name: Keep the screenshots of a failed comparison
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/visual
+            test/ui/visual-baseline/linux
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # The layers at a glance, from the rules lint enforces.
+      - name: Summarize the import graph
+        if: always()
+        run: |
+          {
+            echo '### Imports between folders'
+            echo '```mermaid'
+            npx depcruise src --config .dependency-cruiser.cjs --output-type mermaid --collapse '^src/(ui|core)/[^/]+|^src/[^/]+'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build VSIX
         run: npm run package:vsix
 
+      # The production build the VSIX was packaged from wrote what each
+      # bundle took in; only the packages listed for a bundle may ship in it.
+      - name: Check what the bundles take in
+        run: node scripts/check-bundle-inputs.js
+
       - name: Upload VSIX build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: deckard-vsix-${{ github.sha }}
           path: '*.vsix'
           if-no-files-found: error
           retention-days: 7
+
+  # The extension's own tests on the other two systems VS Code runs on, for
+  # what Linux cannot show: paths with drive letters and backslashes, and
+  # line endings. The pages are drawn and compared on Linux alone.
+  extension-host:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run automated tests
+        run: npm test

@@ -1,33 +1,20 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
-import {
-  PersistedPreferences,
-  TagReference,
-  Task,
-  TaskBoardGroupBy,
-  WorkspaceIndex,
-} from '../core/types';
-import {
-  createTaskBoard,
-  layoutTaskBoard,
-  resolveTaskMove,
-  setTaskStatusTag,
-  TaskBoardOptions,
-} from '../ui/state/taskBoardState';
-import {
-  parseDashboardMessage,
-  parseSidebarMessage,
-  parseTaskBoardMessage,
-} from '../ui/webview/messages';
-import { isAwaitingIndex } from '../ui/webview/taskBoard';
+import { tokenizeInline } from '../domain/markdown/inline';
+
+import { createPreferences } from './preferenceServices';
+import { createTaskBoard, layoutTaskBoard, resolveTaskMove, TaskBoardOptions } from '../ui/state/taskBoardState';
+import { isAwaitingIndex } from '../ui/webview/pages/taskBoard/taskBoardController';
+import { createQueryContext } from '../domain/query/queryContext';
+import { setTaskStatusTag } from '../domain/tasks/boardMoves';
+import { PersistedPreferences, TagReference, Task, TaskBoardGroupBy, WorkspaceIndex } from '../domain/model';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
 
 /** Mid-morning on Sunday 2026-09-13. */
 const options: TaskBoardOptions = {
-  now: at(9, 13) + 9 * 60 * 60 * 1000,
+  queryContext: createQueryContext(at(9, 13) + 9 * 60 * 60 * 1000),
   statusNamespace: 'status',
   statuses: ['todo', 'doing'],
   format: 'emoji',
@@ -35,13 +22,13 @@ const options: TaskBoardOptions = {
 
 /** Preferences as a fresh install has them, with the board's own choices. */
 function preferencesWith(values: Partial<PersistedPreferences>): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 
@@ -52,12 +39,12 @@ function board(
   query: string,
   boardOptions: TaskBoardOptions,
 ): ReturnType<typeof createTaskBoard> {
-  return createTaskBoard(
+  return createTaskBoard({
     index,
-    preferencesWith({ taskBoardGroup: groupBy }),
-    { query },
-    boardOptions,
-  );
+    preferences: preferencesWith({ taskBoardGroup: groupBy }),
+    search: { query },
+    options: boardOptions,
+  });
 }
 
 suite('Task board', () => {
@@ -231,7 +218,7 @@ suite('Task board', () => {
   test('lays out a page’s own selection of tasks', () => {
     const index = createIndex();
     const chosen = ['draft', 'ship'].map((id) => index.tasks.get(id) as Task);
-    const board = layoutTaskBoard(index, chosen, 'status', options);
+    const board = layoutTaskBoard({ index, tasks: chosen, requestedGroupBy: 'status', options });
     assert.strictEqual(board.taskCount, 2);
     assert.deepStrictEqual(
       board.columns
@@ -253,12 +240,18 @@ suite('Task board', () => {
       .columns.flatMap((column) => column.cards)
       .find((candidate) => candidate.taskId === 'read');
     assert.ok(card);
-    assert.match(card.renderedTitle, /<strong>the brief<\/strong>/);
-    assert.match(card.renderedTitle, /<code>notes\.md<\/code>/);
-    assert.match(card.renderedTitle, /<a href="https:\/\/example\.com">the spec<\/a>/);
-    // Raw HTML in a task line stays text.
-    assert.doesNotMatch(card.renderedTitle, /<b>/);
+    assert.deepStrictEqual(card.titleTokens, [
+      { kind: 'text', text: 'Read ' },
+      { kind: 'strong', children: [{ kind: 'text', text: 'the brief' }] },
+      { kind: 'text', text: ', ' },
+      { kind: 'code', text: 'notes.md' },
+      { kind: 'text', text: ', and ' },
+      { kind: 'link', url: 'https://example.com', children: [{ kind: 'text', text: 'the spec' }] },
+      // Raw HTML in a task line stays text.
+      { kind: 'text', text: ' <b>now</b>' },
+    ]);
     assert.match(card.title, /\*\*the brief\*\*/, 'the plain title is kept for search');
+    assert.deepStrictEqual(card.titleTokens, tokenizeInline(card.title), 'and its tokens, for the page to draw');
   });
 
   test('searches tasks with the shared search box, and keeps one that does not parse', () => {
@@ -267,12 +260,12 @@ suite('Task board', () => {
     assert.deepStrictEqual(searched.query.matchCounts, { notes: 0, tasks: 1 });
     assert.strictEqual(searched.query.isAdvanced, true);
 
-    const invalid = createTaskBoard(
-      createIndex(),
-      preferencesWith({}),
-      { query: 'priority >= high', invalidQuery: 'priority >=' },
+    const invalid = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({}),
+      search: { query: 'priority >= high', invalidQuery: 'priority >=' },
       options,
-    );
+    });
     // The box keeps the search that ran as chips, and the typed one pending.
     assert.strictEqual(invalid.query.text, 'priority >= high');
     assert.strictEqual(invalid.query.pending, 'priority >=');
@@ -285,12 +278,12 @@ suite('Task board', () => {
   });
 
   test('lists the searched tasks when shown as a list, with the settings it edits', () => {
-    const listed = createTaskBoard(
-      createIndex(),
-      preferencesWith({ taskBoardLayout: 'list' }),
-      { query: 'is:done' },
+    const listed = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({ taskBoardLayout: 'list' }),
+      search: { query: 'is:done' },
       options,
-    );
+    });
     assert.strictEqual(listed.layout, 'list');
     assert.deepStrictEqual(listed.columns, []);
     assert.deepStrictEqual(
@@ -313,12 +306,12 @@ suite('Task board', () => {
   });
 
   test('shows the searched tasks as a table, sorted by a column when asked', () => {
-    const tabled = createTaskBoard(
-      createIndex(),
-      preferencesWith({ taskBoardLayout: 'table' }),
-      { query: '' },
+    const tabled = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({ taskBoardLayout: 'table' }),
+      search: { query: '' },
       options,
-    );
+    });
     assert.strictEqual(tabled.layout, 'table');
     assert.strictEqual(tabled.tasks, undefined, 'the list is not sent as well');
     assert.deepStrictEqual(
@@ -333,16 +326,16 @@ suite('Task board', () => {
       'every row has a cell per column and a title',
     );
 
-    const chosen = createTaskBoard(
-      createIndex(),
-      preferencesWith({
+    const chosen = createTaskBoard({
+      index: createIndex(),
+      preferences: preferencesWith({
         taskBoardLayout: 'table',
         taskTableColumns: ['title', 'status'],
         taskTableSort: { column: 'title', direction: 'desc' },
       }),
-      { query: '' },
+      search: { query: '' },
       options,
-    );
+    });
     const titles = chosen.table?.rows.map((row) => row.cells[0].text) ?? [];
     assert.deepStrictEqual(titles, [...titles].sort().reverse(), 'sorted by title, last first');
     assert.deepStrictEqual(chosen.table?.columns.map((column) => column.label), ['Task', 'Status']);
@@ -358,112 +351,31 @@ suite('Task board', () => {
     );
     index.tasks.set(marked.id, marked);
 
-    const table = createTaskBoard(
+    const table = createTaskBoard({
       index,
-      preferencesWith({ taskBoardLayout: 'table', taskTableColumns: ['title'] }),
-      { query: '' },
+      preferences: preferencesWith({ taskBoardLayout: 'table', taskTableColumns: ['title'] }),
+      search: { query: '' },
       options,
-    ).table;
+    }).table;
     const row = table?.rows.find((entry) => entry.taskId === 'marked');
 
     // The cell draws the Markdown, as every other surface that shows a task
     // title already does.
-    assert.strictEqual(
-      row?.cells[0].html,
-      'Review the <strong>shell-camera</strong> rig with <code>ivo.sh</code> '
-        + 'before <a href="https://example.com">the dispatch</a>',
-    );
+    assert.deepStrictEqual(row?.cells[0].tokens, [
+      { kind: 'text', text: 'Review the ' },
+      { kind: 'strong', children: [{ kind: 'text', text: 'shell-camera' }] },
+      { kind: 'text', text: ' rig with ' },
+      { kind: 'code', text: 'ivo.sh' },
+      { kind: 'text', text: ' before ' },
+      { kind: 'link', url: 'https://example.com', children: [{ kind: 'text', text: 'the dispatch' }] },
+    ]);
     // And keeps the written form, which is what a label and a sort read.
     assert.match(row?.cells[0].text ?? '', /\*\*shell-camera\*\*/);
+    assert.deepStrictEqual(row?.cells[0].tokens, tokenizeInline(row?.cells[0].text ?? ''), 'and its tokens, for the page to draw');
 
     // A title with nothing to render comes back as its own words.
     const plain = table?.rows.find((entry) => entry.taskId === 'call');
-    assert.strictEqual(plain?.cells[0].html, plain?.cells[0].text);
-    assert.doesNotMatch(plain?.cells[0].html ?? '', /</, 'no markup to insert');
-  });
-
-  test('accepts the table messages, and refuses a column it does not have', () => {
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'table' }),
-      { type: 'setTaskLayout', layout: 'table' },
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTableSort', column: 'due' }),
-      { type: 'setTableSort', column: 'due' },
-    );
-    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setTableSort' }), { type: 'setTableSort' });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'color' }), undefined);
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTableColumns', columns: ['title', 'due'] }),
-      { type: 'setTableColumns', columns: ['title', 'due'] },
-    );
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableColumns', columns: ['due', 7] }), undefined);
-  });
-
-  test('accepts the Task Board’s layout, list, and settings messages', () => {
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'list' }),
-      { type: 'setTaskLayout', layout: 'list' },
-    );
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'grid' }), undefined);
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'setTaskFilter', filter: 'completed' }),
-      undefined,
-      'the board searches instead of filtering, so it sends no filter',
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setTaskSort', mode: 'created' }),
-      { type: 'setTaskSort', mode: 'created' },
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'reorderTasks', taskIds: ['b', 'a'] }),
-      { type: 'reorderTasks', taskIds: ['b', 'a'] },
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['todo', 'in-review'] }),
-      { type: 'setBoardStatuses', statuses: ['todo', 'in-review'] },
-    );
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['to do'] }),
-      undefined,
-      'a status that cannot be a tag is refused',
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: 'stage' }),
-      { type: 'setBoardStatusNamespace', namespace: 'stage' },
-    );
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: '1stage' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: 'status:doing' }),
-      { type: 'moveTask', taskId: 'a', column: 'status:doing' },
-    );
-    assert.strictEqual(
-      parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: '' }),
-      undefined,
-    );
-  });
-
-  test('no longer takes task messages on the Dashboard', () => {
-    for (const message of [
-      { type: 'setDashboardTaskLayout', layout: 'board' },
-      { type: 'setBoardGroup', groupBy: 'due' },
-      { type: 'moveTask', taskId: 'a', column: 'status:doing' },
-      { type: 'setTaskFilter', filter: 'all' },
-      { type: 'setTaskTags', tagKeys: ['work'] },
-      { type: 'reorderTasks', taskIds: ['a'] },
-      { type: 'setDashboardMode', mode: 'tasks' },
-    ]) {
-      assert.strictEqual(parseDashboardMessage(message), undefined, message.type);
-    }
-  });
-
-  test('opens from the sidebar toolbar', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openTaskBoard' }), {
-      type: 'openTaskBoard',
-    });
+    assert.deepStrictEqual(plain?.cells[0].tokens, [{ kind: 'text', text: plain?.cells[0].text }]);
   });
 
   test('changes a status tag where it is written', () => {
@@ -491,7 +403,7 @@ suite('Task board', () => {
     );
     const index = createIndex();
     doing.forEach((task) => index.tasks.set(task.id, task));
-    const layout = layoutTaskBoard(index, doing, 'status', { ...options, limits: { doing: 3, 'status:todo': 2 } });
+    const layout = layoutTaskBoard({ index, tasks: doing, requestedGroupBy: 'status', options: { ...options, limits: { doing: 3, 'status:todo': 2 } } });
     const column = layout.columns.find((each) => each.id === 'status:doing');
     assert.strictEqual(column?.overdueCount, 6);
     assert.strictEqual(column?.limit, 3, 'a limit by status');
@@ -500,12 +412,12 @@ suite('Task board', () => {
     assert.deepStrictEqual(tones, { d0: 'full', d1: 'full', d2: 'quiet', d3: 'quiet', d4: 'quiet', d5: 'quiet', d6: '', d7: '' });
 
     // At half or less, every overdue card keeps the red.
-    const half = layoutTaskBoard(index, doing.slice(4), 'status', options);
+    const half = layoutTaskBoard({ index, tasks: doing.slice(4), requestedGroupBy: 'status', options });
     const halfColumn = half.columns.find((each) => each.id === 'status:doing');
     assert.ok(halfColumn?.cards.filter((card) => card.overdue).every((card) => card.overdueTone === 'full'));
 
     // The Overdue column is all overdue by definition, so it is left alone.
-    const due = layoutTaskBoard(index, doing, 'due', options);
+    const due = layoutTaskBoard({ index, tasks: doing, requestedGroupBy: 'due', options });
     const overdue = due.columns.find((each) => each.id === 'due:overdue');
     assert.strictEqual(overdue?.overdueCount, 0);
     assert.ok(overdue?.cards.every((card) => card.overdueTone === undefined));

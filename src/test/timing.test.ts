@@ -7,7 +7,7 @@ import {
   setTimingLog,
   SLOW_OPERATION_MS,
   TimingLog,
-} from '../core/timing';
+} from '../shared/timing';
 
 /** VS Code's numbering: Trace 1, Debug 2, Info 3. */
 function createLog(logLevel: number) {

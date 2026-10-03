@@ -1,0 +1,190 @@
+import * as assert from 'assert';
+
+import {
+  findFencedLines,
+  isHeading,
+  isHeadingLine,
+  isTaskLineOf,
+  matchHeading,
+  matchTaskLine,
+  TaskLineShape,
+} from '../domain/markdown/lineShapes';
+
+/** Which of `lines` a shape accepts. */
+function accepted(shape: TaskLineShape, lines: readonly string[]): string[] {
+  return lines.filter((line) => isTaskLineOf(line, shape));
+}
+
+suite('Line shapes: task lines', () => {
+  const lines = [
+    '- [ ] open',
+    '- [x] done',
+    '- [X] done',
+    '- [>] migrated',
+    '- [ ]',
+    '- [ ]word',
+    '  * [ ] indented',
+    '\t+ [ ] tabbed',
+    '\u00a0- [ ] no-break space',
+    '-  [ ] two spaces',
+    '-\t[ ] tab gap',
+    '- [-] cancelled',
+    '-[ ] no gap',
+    '1. [ ] numbered',
+    '- [ ] \r',
+  ];
+
+  test('any mark but [>], any whitespace indent, nothing required after', () => {
+    // Word count, Toggle Done, the selection seed.
+    const shape: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+    assert.deepStrictEqual(accepted(shape, lines), [
+      '- [ ] open',
+      '- [x] done',
+      '- [X] done',
+      '- [ ]',
+      '- [ ]word',
+      '  * [ ] indented',
+      '\t+ [ ] tabbed',
+      '\u00a0- [ ] no-break space',
+      '-  [ ] two spaces',
+      '-\t[ ] tab gap',
+      '- [ ] \r',
+    ]);
+  });
+
+  test('[>] counts only for the shapes that list it', () => {
+    const any: TaskLineShape = { indent: 'whitespace', marks: ' xX>' };
+    const migrated: TaskLineShape = { indent: 'whitespace', marks: '>' };
+    const open: TaskLineShape = { indent: 'whitespace', marks: ' ' };
+    assert.strictEqual(isTaskLineOf('- [>] moved', any), true);
+    assert.strictEqual(isTaskLineOf('- [>] moved', migrated), true);
+    assert.strictEqual(isTaskLineOf('- [ ] open', migrated), false);
+    assert.strictEqual(isTaskLineOf('- [>] moved', open), false);
+    assert.strictEqual(isTaskLineOf('- [x] done', open), false);
+  });
+
+  test('a spaces-and-tabs indent refuses a no-break space', () => {
+    const shape: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
+    assert.strictEqual(isTaskLineOf('\u00a0- [ ] step', shape), false);
+    assert.strictEqual(isTaskLineOf(' \t- [ ] step', shape), true);
+    assert.strictEqual(isTaskLineOf('- [ ]', shape), false);
+    assert.strictEqual(isTaskLineOf('- [ ]step', shape), false);
+  });
+
+  test('gap-then-words needs something after the gap', () => {
+    const shape: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap-then-words' };
+    assert.strictEqual(isTaskLineOf('- [ ] Call Ren', shape), true);
+    assert.strictEqual(isTaskLineOf('- [ ]   ', shape), false);
+    assert.strictEqual(isTaskLineOf('- [ ]', shape), false);
+  });
+
+  test('the parser shape keeps the rest of the line on one line', () => {
+    const shape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
+    assert.deepStrictEqual(matchTaskLine('  * [x]  Ship it', shape), {
+      indent: '  ',
+      bullet: '*',
+      opening: '  * [',
+      mark: 'x',
+      head: '  * [x]',
+      gap: '  ',
+      body: 'Ship it',
+    });
+    assert.strictEqual(isTaskLineOf('- [ ] Ship\r', shape), false);
+    assert.strictEqual(isTaskLineOf('- [ ] Ship\u2028it', shape), false);
+    assert.strictEqual(isTaskLineOf('- [ ] Ship\r', { indent: 'whitespace', marks: ' xX', after: 'gap' }), true);
+  });
+
+  test('optional-blank reads at most one blank as part of the box', () => {
+    const shape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
+    assert.deepStrictEqual(
+      [matchTaskLine('- [ ]  two', shape)?.body, matchTaskLine('- [ ]\tone', shape)?.body, matchTaskLine('- [ ]none', shape)?.body],
+      [' two', 'one', 'none'],
+    );
+  });
+
+  test('one-space accepts only the line Deckard writes', () => {
+    const shape: TaskLineShape = { indent: 'none', bulletGap: 'one-space', marks: ' xX', after: 'one-space' };
+    assert.deepStrictEqual(accepted(shape, ['- [ ] a', '- [x] a', ' - [ ] a', '-  [ ] a', '- [ ]a', '- [ ]\ta', '-\t[ ] a']), [
+      '- [ ] a',
+      '- [x] a',
+    ]);
+  });
+
+  test('an unread box needs only its opening bracket', () => {
+    const shape: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'unread' };
+    assert.strictEqual(matchTaskLine('  - [', shape)?.opening.length, 5);
+    assert.strictEqual(matchTaskLine('- [?] odd', shape)?.opening.length, 3);
+    assert.strictEqual(matchTaskLine('- [x]', shape)?.mark, '');
+    assert.strictEqual(matchTaskLine('- no box', shape), undefined);
+  });
+});
+
+suite('Line shapes: headings', () => {
+  test('hashes alone, or followed by a space or a tab, open a heading', () => {
+    for (const line of ['#', '##', '   ###', '# ', '#\tPlan', '###### Six']) {
+      assert.strictEqual(isHeadingLine(line), true, line);
+      assert.strictEqual(isHeading(line), true, line);
+    }
+  });
+
+  test('a tag, seven hashes, or a four-space indent opens no heading', () => {
+    for (const line of ['#tag', '####### seven', '    # code', '\t# tabbed']) {
+      assert.strictEqual(isHeadingLine(line), false, line);
+      assert.strictEqual(isHeading(line), false, line);
+    }
+  });
+
+  test('reads the words with their closing hashes, and hashes alone as a heading with none', () => {
+    assert.deepStrictEqual(matchHeading('## Plan ##  '), { level: 2, text: 'Plan ##' });
+    assert.deepStrictEqual(matchHeading('# Title\r'), { level: 1, text: 'Title' });
+    for (const line of ['#', '# ', '#  ', '#\t', '#\r', '   #']) {
+      assert.deepStrictEqual(matchHeading(line), { level: 1, text: '' }, JSON.stringify(line));
+    }
+    assert.deepStrictEqual(matchHeading('###'), { level: 3, text: '' });
+    for (const line of ['#tag', '#\u00a0', '#######', '    #']) {
+      assert.strictEqual(matchHeading(line), undefined, JSON.stringify(line));
+    }
+  });
+});
+
+suite('Line shapes: fences', () => {
+  test('marks the fences and what they hold', () => {
+    const lines = ['text', '```ts', 'code', '```', 'after', '   ~~~', 'more', '~~~~'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [1, 2, 3, 5, 6, 7]);
+  });
+
+  test('a fence closes only on the character that opened it', () => {
+    const lines = ['```', '~~~', 'still code', '```', 'prose'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [0, 1, 2, 3]);
+  });
+
+  test('a four-space indent is not a fence, and an unclosed one runs to the end', () => {
+    assert.deepStrictEqual([...findFencedLines(['    ```', 'prose'])], []);
+    assert.deepStrictEqual([...findFencedLines(['prose', '``` open', 'a', 'b'])], [1, 2, 3]);
+  });
+
+  test('a fence closes only on a fence at least as long, with nothing after it', () => {
+    const lines = ['````markdown', '```js', '# Example', '```', '````', 'prose'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [0, 1, 2, 3, 4]);
+    assert.deepStrictEqual([...findFencedLines(['```', '``` js', 'still code', '```', 'prose'])], [0, 1, 2, 3]);
+  });
+
+  test('a backtick fence with a backtick in its info string is not a fence', () => {
+    assert.deepStrictEqual([...findFencedLines(['``` `code` here', '# Heading'])], []);
+    assert.deepStrictEqual([...findFencedLines(['~~~ `tilde` info', 'code', '~~~'])], [0, 1, 2]);
+  });
+
+  test('a fence inside a list item is indented to the item, and closes when the item ends', () => {
+    const lines = ['- Steps', '    ```', '    - [ ] not a task', '    ```', '- [ ] a task'];
+    assert.deepStrictEqual([...findFencedLines(lines)], [1, 2, 3]);
+    const nested = ['1. One', '   - Two', '       ```', '       code', '       ```', 'prose'];
+    assert.deepStrictEqual([...findFencedLines(nested)], [2, 3, 4]);
+    const unclosed = ['- Item', '  ```', '  code', '', 'Prose after the list'];
+    assert.deepStrictEqual([...findFencedLines(unclosed)], [1, 2, 3], 'the list ends, and the fence with it');
+    assert.deepStrictEqual(
+      [...findFencedLines(['- Item', '', '        ```', 'prose'])],
+      [],
+      'four spaces past the item is indented code, not a fence',
+    );
+  });
+});

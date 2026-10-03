@@ -1,190 +1,27 @@
 import * as vscode from 'vscode';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
-import { findFencedLines, stripTags } from '../../core/markdown/parser';
-import { measure } from '../../core/timing';
-import { Section, WorkspaceIndex } from '../../core/types';
-import {
-  createNoteTitleMap,
-  normalizeHeading,
-  noteTitle,
-  resolveWikiTarget,
-} from '../../core/workspace/backlinks';
+import { pluralize, withoutByteOrderMark } from '../../shared/text';
+import { LinkRewrite } from '../../domain/links/linkRewrites';
+import { noteTitle } from '../../domain/index/backlinks';
+import { findHeadingAtLine } from '../../domain/notes/headingLookup';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { checkRewrites, LinkService } from '../../services/linkService';
+import { createLinkService, toWorkspaceEdit, vscodeLiveNotes } from './linkMaintenancePorts';
+import { WorkspaceWriteHistory } from './workspaceWrites';
+import { WorkspaceIndex } from '../../domain/model';
 
 /**
- * Keeps `[[links]]` pointing where they pointed before a note or a heading was
- * renamed.
- *
- * A link names its target by text, so renaming a note breaks every link to it
- * and renaming a heading breaks every link into that heading. Link diagnostics
- * report the breakage afterwards; these rewrites prevent it, in the same undo
- * step as the rename that would have caused it.
+ * The commands and the rename listener that keep `[[links]]` pointing where
+ * they pointed before a note or a heading was renamed. Which links follow
+ * is LinkService's decision; these ask, write, and report.
  */
-
-/** One `[[link]]` to rewrite, in the note that writes it. */
-export interface LinkRewrite {
-  /** The note holding the link. */
-  filePath: string;
-  /** Zero-based line, and the columns of the whole `[[…]]`. */
-  line: number;
-  startColumn: number;
-  endColumn: number;
-  /** The whole `[[…]]` as it is written now. */
-  from: string;
-  /** The whole `[[…]]` as it should read. */
-  text: string;
-}
 
 interface IndexSource {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
   isNotesFile(uri: vscode.Uri): boolean;
-}
-
-const WIKI_LINK = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-
-/**
- * What a link is made of, so a rewrite can change the note it names and leave
- * everything the author wrote around it alone.
- */
-interface LinkParts {
-  /** The note name, as written. */
-  note: string;
-  /** The `#Heading` or `#^id` after the name, as written, caret included. */
-  fragment?: string;
-  /** The text after `|`, as written. */
-  display?: string;
-}
-
-/**
- * Rewrites every link that names a note by the title it is losing, so the
- * links follow it to its new name.
- *
- * Only links that resolve to the renamed note are touched, so a link to
- * another note that happens to share the name, or one written through an
- * alias the note keeps, is left as it is.
- */
-export function planNoteRenameRewrites(
-  index: WorkspaceIndex,
-  fromPath: string,
-  toTitle: string,
-  contentOf: (filePath: string) => string | undefined = (filePath) =>
-    index.files.get(filePath)?.content,
-): LinkRewrite[] {
-  const fromTitle = noteTitle(fromPath).toLocaleLowerCase();
-  if (!fromTitle || noteTitle(fromPath) === toTitle) {
-    return [];
-  }
-  const titles = createNoteTitleMap(index);
-  return findRewrites(index, contentOf, (parts, sourcePath) => {
-    if (parts.note.trim().toLocaleLowerCase() !== fromTitle) {
-      return undefined;
-    }
-    return resolveWikiTarget(titles, parts.note, sourcePath) === fromPath
-      ? { ...parts, note: toTitle }
-      : undefined;
-  });
-}
-
-/**
- * Rewrites every link that names one heading of one note, so the links follow
- * the heading's new text. A link to the note itself, without a `#`, already
- * points where it should and is left alone.
- */
-export function planHeadingRenameRewrites(
-  index: WorkspaceIndex,
-  filePath: string,
-  fromHeading: string,
-  toHeading: string,
-  contentOf: (path: string) => string | undefined = (path) =>
-    index.files.get(path)?.content,
-): LinkRewrite[] {
-  const wanted = normalizeHeading(fromHeading);
-  const next = stripTags(toHeading).replace(/\s+/g, ' ').trim();
-  if (!wanted || !next || wanted === normalizeHeading(toHeading)) {
-    return [];
-  }
-  const titles = createNoteTitleMap(index);
-  return findRewrites(index, contentOf, (parts, sourcePath) => {
-    const fragment = parts.fragment;
-    if (
-      !fragment ||
-      fragment.startsWith('^') ||
-      normalizeHeading(fragment) !== wanted
-    ) {
-      return undefined;
-    }
-    const target = parts.note
-      ? resolveWikiTarget(titles, parts.note, sourcePath)
-      : sourcePath;
-    return target === filePath ? { ...parts, fragment: next } : undefined;
-  });
-}
-
-/**
- * Walks every note's links once and keeps the ones a caller rewrites. Links
- * inside code fences are left alone, the way every other pass over note
- * source leaves them.
- */
-function findRewrites(
-  index: WorkspaceIndex,
-  contentOf: (filePath: string) => string | undefined,
-  rewrite: (parts: LinkParts, sourcePath: string) => LinkParts | undefined,
-): LinkRewrite[] {
-  const rewrites: LinkRewrite[] = [];
-  index.files.forEach((_file, sourcePath) => {
-    const content = contentOf(sourcePath);
-    if (content === undefined) {
-      return;
-    }
-    const lines = content.split(/\r?\n/);
-    const fenced = findFencedLines(lines);
-    lines.forEach((text, line) => {
-      if (fenced.has(line)) {
-        return;
-      }
-      for (const match of text.matchAll(WIKI_LINK)) {
-        const parts = readLinkParts(match[1], match[2]);
-        const next = rewrite(parts, sourcePath);
-        if (!next || match.index === undefined) {
-          continue;
-        }
-        rewrites.push({
-          filePath: sourcePath,
-          line,
-          startColumn: match.index,
-          endColumn: match.index + match[0].length,
-          from: match[0],
-          text: writeLink(next),
-        });
-      }
-    });
-  });
-  return rewrites;
-}
-
-function readLinkParts(target: string, display?: string): LinkParts {
-  const hash = target.indexOf('#');
-  return {
-    note: hash < 0 ? target.trim() : target.slice(0, hash).trim(),
-    ...(hash < 0 ? {} : { fragment: target.slice(hash + 1).trim() }),
-    ...(display === undefined ? {} : { display }),
-  };
-}
-
-function writeLink(parts: LinkParts): string {
-  const fragment = parts.fragment ? `#${parts.fragment}` : '';
-  const display = parts.display === undefined ? '' : `|${parts.display}`;
-  return `[[${parts.note}${fragment}${display}]]`;
-}
-
-/** The notes a set of rewrites touches, and how many links each one holds. */
-export function countRewrittenNotes(rewrites: readonly LinkRewrite[]): number {
-  return new Set(rewrites.map((rewrite) => rewrite.filePath)).size;
 }
 
 /**
@@ -197,149 +34,111 @@ export function countRewrittenNotes(rewrites: readonly LinkRewrite[]): number {
 export async function createLinkRewriteEdit(
   rewrites: readonly LinkRewrite[],
 ): Promise<{ edit: vscode.WorkspaceEdit; applied: LinkRewrite[] }> {
-  const edit = new vscode.WorkspaceEdit();
-  const applied: LinkRewrite[] = [];
-  const byFile = new Map<string, LinkRewrite[]>();
-  rewrites.forEach((rewrite) => {
-    byFile.set(rewrite.filePath, [
-      ...(byFile.get(rewrite.filePath) ?? []),
-      rewrite,
-    ]);
-  });
-
-  for (const [filePath, fileRewrites] of byFile) {
-    const uri = await resolveSourceUri(filePath);
-    if (!uri) {
-      continue;
-    }
-    let document: vscode.TextDocument;
-    try {
-      document = await vscode.workspace.openTextDocument(uri);
-    } catch {
-      continue;
-    }
-    fileRewrites.forEach((rewrite) => {
-      if (rewrite.line >= document.lineCount) {
-        return;
-      }
-      const range = new vscode.Range(
-        rewrite.line,
-        rewrite.startColumn,
-        rewrite.line,
-        rewrite.endColumn,
-      );
-      // The planned link has to still be there, character for character.
-      // Anything else means the note moved on, and rewriting it would undo
-      // whoever moved it.
-      if (document.getText(range) !== rewrite.from) {
-        return;
-      }
-      edit.replace(uri, range, rewrite.text);
-      applied.push(rewrite);
-    });
-  }
-
-  return { edit, applied };
+  const { edits, applied } = await checkRewrites(vscodeLiveNotes, rewrites);
+  return { edit: toWorkspaceEdit(edits), applied };
 }
+
+/** The two rename events LinkMaintenance follows: VS Code's, or a test's. */
+export type RenameEvents = Pick<typeof vscode.workspace, 'onWillRenameFiles' | 'onDidRenameFiles'>;
+
+/** One rename's files, the same whether VS Code is about to make it or has made it. */
+type RenamedFiles = readonly { readonly oldUri: vscode.Uri; readonly newUri: vscode.Uri }[];
 
 /**
  * Follows note renames, rewriting the links that named the note by its old
  * title.
  *
  * The edit is handed back to VS Code as part of the rename, so the links and
- * the rename land together and one Undo takes back both.
+ * the rename land together and one Undo takes back both. How many links it
+ * rewrote is said once the rename is made, so a rename that is cancelled or
+ * fails says nothing.
  */
 export class LinkMaintenance implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
+  /**
+   * What each planned rename's message will say, by its files, until VS Code
+   * says the rename is made. A rename that is never made leaves its entry,
+   * which the same rename planned again replaces.
+   */
+  private readonly unreported = new Map<string, string>();
 
-  public constructor(private readonly indexer: IndexSource) {
+  /**
+   * Listens for renames on `events`, VS Code's by default; `links` plans the
+   * rewrites, over `indexer`'s notes by default.
+   */
+  public constructor(
+    private readonly indexer: IndexSource,
+    private readonly links: LinkService<vscode.Uri> = createLinkService(indexer),
+    events: RenameEvents = vscode.workspace,
+  ) {
     this.disposables.push(
-      vscode.workspace.onWillRenameFiles((event) => {
+      events.onWillRenameFiles((event) => {
         if (!isEnabled()) {
           return;
         }
         event.waitUntil(this.planRenames(event.files));
       }),
+      events.onDidRenameFiles((event) => {
+        const key = renameKey(event.files);
+        const message = this.unreported.get(key);
+        this.unreported.delete(key);
+        if (message) {
+          void vscode.window.showInformationMessage(message);
+        }
+      }),
     );
   }
 
+  /** Stops following renames. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
   /**
    * The edit that keeps links pointing at the notes being renamed, for the
-   * renames that change a note's title.
+   * renames that change a note's title. How many it rewrote is kept, to be
+   * said once VS Code has made the rename.
    */
-  public async planRenames(
-    files: readonly { readonly oldUri: vscode.Uri; readonly newUri: vscode.Uri }[],
-  ): Promise<vscode.WorkspaceEdit> {
-    const edit = new vscode.WorkspaceEdit();
+  public async planRenames(files: RenamedFiles): Promise<vscode.WorkspaceEdit> {
     await this.indexer.ready;
-    const index = this.indexer.getSnapshot();
-    let rewritten = 0;
-    let notes = 0;
-
-    for (const { oldUri, newUri } of files) {
-      if (
-        !isMarkdownFile(oldUri) ||
-        !isMarkdownFile(newUri) ||
-        !this.indexer.isNotesFile(oldUri)
-      ) {
-        continue;
-      }
-      const fromPath = this.indexer.getFilePath(oldUri);
-      const toTitle = noteTitle(this.indexer.getFilePath(newUri));
-      if (!index.files.has(fromPath)) {
-        continue;
-      }
-      const rewrites = measure(
-        'Plan rename link rewrites',
-        () =>
-          planNoteRenameRewrites(index, fromPath, toTitle, (filePath) =>
-            this.readNote(index, filePath),
-          ),
-        (planned) => `${planned.length} links, ${index.files.size} notes`,
-      );
-      // The edit is applied before the file moves, so every rewrite names
-      // the note where it is now, the renamed note included.
-      const { edit: fileEdit, applied } = await createLinkRewriteEdit(rewrites);
-      fileEdit.entries().forEach(([uri, edits]) => {
-        edits.forEach((textEdit) =>
-          edit.replace(uri, textEdit.range, textEdit.newText),
-        );
-      });
-      rewritten += applied.length;
-      notes += countRewrittenNotes(applied);
-    }
-
-    if (rewritten > 0) {
-      void vscode.window.showInformationMessage(
-        `Deckard updated ${count(rewritten, 'link', 'links')} in ${count(
-          notes,
+    const renames = files
+      .filter(
+        ({ oldUri, newUri }) =>
+          isMarkdownFile(oldUri) &&
+          isMarkdownFile(newUri) &&
+          this.indexer.isNotesFile(oldUri),
+      )
+      .map(({ oldUri, newUri }) => ({
+        fromPath: this.indexer.getFilePath(oldUri),
+        toTitle: noteTitle(this.indexer.getFilePath(newUri)),
+      }));
+    const plan = await this.links.planNoteRenames(renames, (filePath) =>
+      this.readOpenNote(filePath),
+    );
+    const key = renameKey(files);
+    if (plan.rewritten > 0) {
+      this.unreported.set(
+        key,
+        `Deckard updated ${pluralize(plan.rewritten, 'link', 'links')} in ${pluralize(
+          plan.notes,
           'note',
           'notes',
         )}.`,
       );
+    } else {
+      this.unreported.delete(key);
     }
-    return edit;
+    return toWorkspaceEdit(plan.edits);
   }
 
-  /** A note as the editor has it, when it is open, and as indexed otherwise. */
-  private readNote(
-    index: WorkspaceIndex,
-    filePath: string,
-  ): string | undefined {
-    const file = index.files.get(filePath);
-    if (!file) {
-      return undefined;
-    }
+  /** A note as the editor has it, when it is open. */
+  private readOpenNote(filePath: string): string | undefined {
     const open = vscode.workspace.textDocuments.find(
       (document) =>
         isMarkdownFile(document.uri) &&
         this.indexer.getFilePath(document.uri) === filePath,
     );
-    return open ? open.getText() : file.content;
+    return open?.getText();
   }
 }
 
@@ -349,6 +148,8 @@ export class LinkMaintenance implements vscode.Disposable {
  */
 export async function renameHeadingCommand(
   indexer: IndexSource & { refresh(): Promise<void> },
+  history: WorkspaceWriteHistory,
+  links: LinkService<vscode.Uri> = createLinkService(indexer),
 ): Promise<string | undefined> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
@@ -371,93 +172,38 @@ export async function renameHeadingCommand(
     );
     return undefined;
   }
-  if (editor.document.getText() !== file?.content) {
-    const document = editor.document;
-    void vscode.window
-      .showInformationMessage(
-        'Save this note before renaming its heading, so Deckard rewrites the links from what is on disk.',
-        'Save and Rename',
-      )
-      .then(async (choice) => {
-        if (choice === 'Save and Rename' && (await document.save())) {
-          await indexer.refresh();
-          await vscode.commands.executeCommand('deckard.renameHeading');
-        }
-      });
+  // The index can hold the text with a byte order mark the editor leaves
+  // out, which is no difference the reader made.
+  if (!file || editor.document.getText() !== withoutByteOrderMark(file.content)) {
+    offerSaveFirst(editor.document, indexer);
     return undefined;
   }
 
   const heading = section.heading.trim();
-  const next = await vscode.window.showInputBox({
-    title: 'Rename heading',
-    prompt: 'Links written as [[Note#Heading]] follow the new text.',
-    value: heading,
-    validateInput: (value) =>
-      value.trim() && !value.includes('\n')
-        ? undefined
-        : 'Write the heading on one line.',
-  });
+  const next = await askForHeading(heading);
   if (next === undefined || next.trim() === heading) {
     return undefined;
   }
 
-  const rewrites = planHeadingRenameRewrites(
+  const plan = await links.planHeadingRename({
     index,
     filePath,
-    heading,
-    next.trim(),
-    (path) =>
-      path === filePath ? editor.document.getText() : index.files.get(path)?.content,
-  );
-  const line = editor.document.lineAt(section.startLine - 1);
-  const marks = /^\s*(#+)\s*/.exec(line.text);
-  if (!marks) {
+    uri: editor.document.uri,
+    text: editor.document.getText(),
+    section,
+    from: heading,
+    to: next.trim(),
+  });
+  if (plan.kind === 'no-heading-line') {
     return undefined;
   }
-  // The heading and the links that name it are one write, so the preview
-  // shows all of it and one Undo takes all of it back.
-  const edit = new vscode.WorkspaceEdit();
-  edit.replace(
-    editor.document.uri,
-    new vscode.Range(
-      section.startLine - 1,
-      marks[0].length,
-      section.startLine - 1,
-      line.text.length,
-    ),
-    next.trim(),
-  );
-  const { edit: linkEdit, applied } = await createLinkRewriteEdit(rewrites);
-  linkEdit.entries().forEach(([uri, edits]) => {
-    edits.forEach((textEdit) => {
-      if (uri.toString() !== editor.document.uri.toString()) {
-        edit.replace(uri, textEdit.range, textEdit.newText);
-      }
-    });
-  });
-  // A link inside the note being renamed sits in the same document as the
-  // heading edit, so it goes in only where it cannot overlap it.
-  applied
-    .filter(
-      (rewrite) =>
-        rewrite.filePath === filePath && rewrite.line !== section.startLine - 1,
-    )
-    .forEach((rewrite) =>
-      edit.replace(
-        editor.document.uri,
-        new vscode.Range(
-          rewrite.line,
-          rewrite.startColumn,
-          rewrite.line,
-          rewrite.endColumn,
-        ),
-        rewrite.text,
-      ),
-    );
 
-  const written = await applyWorkspaceWrite(edit, {
+  const written = await history.write(toWorkspaceEdit(plan.edits), {
     label: `the rename of the heading "${heading}"`,
     description: `Rename the heading to "${next.trim()}"`,
+    // Putting back the heading without its links, or the links without
+    // it, would break every link it renamed.
+    together: true,
   });
   if (!written.applied) {
     void reportFailure(describeRejectedEdit(noteName(editor.document.uri)));
@@ -468,42 +214,66 @@ export async function renameHeadingCommand(
   } catch {
     // The watcher picks the notes up; the rename itself is already saved.
   }
-  const others = written.notes.length - 1;
+  reportHeadingRenamed(next.trim(), written.notes.length - 1);
+  return next.trim();
+}
+
+/**
+ * Asks for the note to be saved first, since the links are rewritten from
+ * what is on disk, and renames once it is.
+ */
+function offerSaveFirst(
+  document: vscode.TextDocument,
+  indexer: { refresh(): Promise<void> },
+): void {
+  void vscode.window
+    .showInformationMessage(
+      'Save this note before renaming its heading, so Deckard rewrites the links from what is on disk.',
+      'Save and Rename',
+    )
+    .then(async (choice) => {
+      if (choice !== 'Save and Rename' || !(await document.save())) {
+        return;
+      }
+      await indexer.refresh();
+      await vscode.commands.executeCommand('deckard.renameHeading');
+    });
+}
+
+/** The heading's new text, on one line, or undefined when the box is closed. */
+function askForHeading(heading: string): Thenable<string | undefined> {
+  return vscode.window.showInputBox({
+    title: 'Rename heading',
+    prompt: 'Links written as [[Note#Heading]] follow the new text.',
+    value: heading,
+    validateInput: (value) =>
+      value.trim() && !value.includes('\n')
+        ? undefined
+        : 'Write the heading on one line.',
+  });
+}
+
+/** Says the heading is renamed, and in how many other notes its links are. */
+function reportHeadingRenamed(heading: string, others: number): void {
   void vscode.window.showInformationMessage(
     others <= 0
-      ? `Renamed the heading to "${next.trim()}".`
-      : `Renamed the heading to "${next.trim()}" and the links to it in ${count(
+      ? `Renamed the heading to "${heading}".`
+      : `Renamed the heading to "${heading}" and the links to it in ${pluralize(
           others,
           'other note',
           'other notes',
         )}.`,
   );
-  return next.trim();
 }
 
-/** The innermost heading a one-based line sits in. */
-export function findHeadingAtLine(
-  sections: readonly Section[],
-  line: number,
-): Section | undefined {
-  return sections
-    .filter(
-      (section) =>
-        !section.isInline && section.startLine <= line && section.endLine >= line,
-    )
-    .sort(
-      (left, right) =>
-        right.startLine - left.startLine ||
-        right.headingLevel - left.headingLevel,
-    )[0];
+/** One rename's files as text, so the rename VS Code made is matched to the one planned. */
+function renameKey(files: RenamedFiles): string {
+  return files.map(({ oldUri, newUri }) => `${oldUri.toString()} ${newUri.toString()}`).join('\n');
 }
 
+/** Whether renaming a note carries its links along, as the setting says. */
 function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('updateLinksOnRename', true);
-}
-
-function count(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`;
 }

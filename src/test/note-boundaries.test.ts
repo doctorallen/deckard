@@ -1,11 +1,12 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { NoteBoundaries } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { NoteBoundaries } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { WorkspaceIndex } from '../domain/model';
 
 /**
  * Where one note ends and the next begins.
@@ -37,7 +38,7 @@ suite('Note boundaries', () => {
   };
 
   const found = (index: WorkspaceIndex, query: string): string[] => {
-    const results = evaluateQuery(index, parseQuery(query).node);
+    const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
     return results.sections.map((section) => section.heading).sort();
   };
 

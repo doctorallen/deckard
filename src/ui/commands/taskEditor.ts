@@ -1,32 +1,28 @@
 import * as vscode from 'vscode';
-import { describeRejectedEdit, noteName, reportFailure } from './notify';
+import { describeRejectedEdit, describeStale, noteName, reportFailure } from './notify';
 
 import {
   extractTags,
   isPersonTag,
   readPerson,
-} from '../../core/markdown/parser';
-import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../core/markdown/dates';
+} from '../../domain/markdown/parser';
+import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../domain/markdown/dates';
 import {
   formatTaskDraft,
   isTaskLine,
   parseTaskDraft,
   TaskDraft,
-} from '../../core/markdown/taskDraft';
-import {
-  CompletionWrite,
-  formatIsoDate,
-  parseRecurrence,
-  suggestRecurrence,
-  TaskDateField,
-  TaskMetadataFormat,
-  writeCompletion,
-} from '../../core/markdown/taskMetadata';
-import { TaskPriority, WorkspaceIndex } from '../../core/types';
-import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
+} from '../../domain/markdown/taskDraft';
+import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { askForDate } from './datePrompt';
+import { showQuickPickUntilHidden } from './prompts';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
+import { TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { TaskDateField } from '../../domain/markdown/taskFields';
+import { parseRecurrence, suggestRecurrence } from '../../domain/markdown/recurrence';
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { CompletionWrite, writeCompletion } from '../../domain/markdown/taskLineEdits';
 
 /**
  * Editing a whole task at once: its words, its dates, its priority, its
@@ -187,22 +183,14 @@ function pickField(
   draft: TaskDraft,
   title: string,
 ): Promise<FieldRow | undefined> {
-  return new Promise((resolve) => {
-    const pick = vscode.window.createQuickPick<FieldRow>();
-    pick.title = title;
-    pick.placeholder = formatTaskDraft(draft).trim();
-    pick.items = createEditorRows(draft);
-    pick.ignoreFocusOut = true;
-    let picked: FieldRow | undefined;
-    pick.onDidAccept(() => {
-      picked = pick.selectedItems[0];
-      pick.hide();
-    });
-    pick.onDidHide(() => {
-      pick.dispose();
-      resolve(picked);
-    });
-    pick.show();
+  return showQuickPickUntilHidden<FieldRow, FieldRow>({
+    configure: (pick) => {
+      pick.title = title;
+      pick.placeholder = formatTaskDraft(draft).trim();
+      pick.items = createEditorRows(draft);
+      pick.ignoreFocusOut = true;
+    },
+    accept: (pick) => pick.selectedItems[0],
   });
 }
 
@@ -228,34 +216,43 @@ export function completeDraft(
   };
 }
 
+/** A task as it was and as edited, and how its lines are written. */
+export interface EditedTaskWrite {
+  before: TaskDraft;
+  edited: TaskDraft;
+  now: number;
+  /** The note's line ending, which joins a repeat's next line. */
+  eol: string;
+  /** The steps the next occurrence of a repeating task takes, unchecked. */
+  steps?: readonly string[];
+}
+
 /**
  * The lines an edited task is written as. Completing a repeating task starts
  * its next occurrence on the line above, as a checkbox does; reopening one,
  * or editing one already done, writes the one line.
  */
-export function writeEditedTask(
-  before: TaskDraft,
-  edited: TaskDraft,
-  now: number,
-  eol: string,
-  /** The steps the next occurrence of a repeating task takes, unchecked. */
-  steps: readonly string[] = [],
-): CompletionWrite {
+export function writeEditedTask({ before, edited, now, eol, steps = [] }: EditedTaskWrite): CompletionWrite {
   const line = formatTaskDraft(edited);
   if (before.completed || !edited.completed) {
     return { text: line };
   }
-  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol, steps);
+  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, { now, eol, steps });
+}
+
+/** A draft, the date field to set on it, and the words written for it. */
+export interface DraftDateChange {
+  draft: TaskDraft;
+  field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>;
+  /** The words, such as `friday` or `in 2 days`, read against `now`. */
+  written: string;
+  now: number;
+  /** How the words are read, such as the week's first day. */
+  options?: DatePhraseOptions;
 }
 
 /** A date field's new value, or nothing when the words are not a day. */
-export function setDraftDate(
-  draft: TaskDraft,
-  field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>,
-  written: string,
-  now: number,
-  options: DatePhraseOptions = {},
-): TaskDraft | undefined {
+export function setDraftDate({ draft, field, written, now, options = {} }: DraftDateChange): TaskDraft | undefined {
   const read = parseDatePhrase(written, now, options);
   return read ? { ...draft, [field]: read.date } : undefined;
 }
@@ -274,6 +271,17 @@ export function setDraftDependencies(
   };
 }
 
+/** What a field's reader may need beyond the draft: the moment, the index, and a setting. */
+interface FieldContext {
+  index?: TaskEditorIndex;
+  now: number;
+  /** `deckard.tasks.addDoneDate`; completing writes a ✅ date unless it is false. */
+  addDoneDate?: boolean;
+}
+
+/** Asks for one field's value and returns the draft it makes; undefined when the reader cancels. */
+type FieldReader = (draft: TaskDraft, context: FieldContext) => Promise<TaskDraft | undefined>;
+
 /** Asks for one field's value and returns the draft it makes. */
 async function readField(
   draft: TaskDraft,
@@ -281,102 +289,130 @@ async function readField(
   options: { index?: TaskEditorIndex; now?: number; addDoneDate?: boolean },
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
-  switch (field) {
-    case 'description': {
-      const written = await vscode.window.showInputBox({
-        title: 'Description',
-        prompt: 'What the task says. Tags written here stay in the line.',
-        value: draft.description,
-        ignoreFocusOut: true,
-      });
-      return written === undefined ? undefined : { ...draft, description: written.trim() };
-    }
-    case 'status':
-      return completeDraft(draft, now, options.addDoneDate ?? true);
-    case 'due':
-    case 'scheduled':
-    case 'start':
-      return readDate(draft, field, now);
-    case 'priority': {
-      const chosen = await vscode.window.showQuickPick(
-        PRIORITIES.map((priority) => ({
-          label: priority.label,
-          picked: draft.priority === priority.value,
-          value: priority.value,
-        })),
-        { title: 'Priority', placeHolder: 'How urgent is it?' },
-      );
-      return chosen === undefined
-        ? undefined
-        : { ...draft, priority: chosen.value };
-    }
-    case 'recurrence': {
-      // The common rules to pick from, and room to write any other one.
-      const written = await pickOrWrite({
-        title: 'Repeats',
-        placeholder:
-          'Choose a rule, or write one such as "every month on the 15th"',
-        items: [
-          { label: 'Never', description: 'Happens once' },
-          ...REPEAT_RULES.map((rule) => ({ label: rule })),
-        ],
-      });
-      if (written === undefined) {
-        return undefined;
-      }
-      const rule = written === 'Never' ? '' : written.trim();
-      if (rule && !parseRecurrence(rule)) {
-        const [nearest] = suggestRecurrence(rule);
-        void vscode.window.showWarningMessage(
-          `Deckard cannot read "${rule}" as a repeat rule, so it would not write the next occurrence. The task keeps the rule it had.${
-            nearest ? ` Try "${nearest}".` : ''
-          }`,
-        );
-        return undefined;
-      }
-      return { ...draft, recurrence: rule || undefined };
-    }
-    case 'dependsOn': {
-      const written = await vscode.window.showInputBox({
-        title: 'Blocked by',
-        prompt: 'The ids of the tasks that must be done first, separated by commas.',
-        value: draft.dependsOn.join(', '),
-        ignoreFocusOut: true,
-      });
-      return written === undefined
-        ? undefined
-        : setDraftDependencies(draft, written);
-    }
-    case 'assignee': {
-      const chosen = await pickOrWrite({
-        title: 'Who is it for?',
-        placeholder: 'Choose a person, write one, or choose Nobody',
-        items: [
-          { label: 'Nobody', description: 'Take the name off the task' },
-          ...people(options.index),
-        ],
-      });
-      if (chosen === undefined) {
-        return undefined;
-      }
-      if (chosen === 'Nobody') {
-        return { ...draft, assignee: undefined };
-      }
-      const person = readPerson(chosen);
-      if (!person) {
-        void vscode.window.showWarningMessage(
-          `Deckard cannot read "${chosen.trim()}" as a person. The task keeps the person it had.`,
-        );
-        return draft;
-      }
-      return { ...draft, assignee: person };
-    }
-    case 'tag':
-      return addTag(draft, options.index);
-    default:
-      return undefined;
+  if (field === undefined) {
+    return undefined;
   }
+  return FIELD_READERS[field](draft, { ...options, now });
 }
+
+/** The words of the task, as typed; tags written in them stay. */
+async function readDescription(draft: TaskDraft): Promise<TaskDraft | undefined> {
+  const written = await vscode.window.showInputBox({
+    title: 'Description',
+    prompt: 'What the task says. Tags written here stay in the line.',
+    value: draft.description,
+    ignoreFocusOut: true,
+  });
+  return written === undefined ? undefined : { ...draft, description: written.trim() };
+}
+
+/** One of the six priorities, the current one marked; None takes it off. */
+async function readPriority(draft: TaskDraft): Promise<TaskDraft | undefined> {
+  const chosen = await vscode.window.showQuickPick(
+    PRIORITIES.map((priority) => ({
+      label: priority.label,
+      picked: draft.priority === priority.value,
+      value: priority.value,
+    })),
+    { title: 'Priority', placeHolder: 'How urgent is it?' },
+  );
+  return chosen === undefined
+    ? undefined
+    : { ...draft, priority: chosen.value };
+}
+
+/**
+ * A repeat rule, picked or written; Never takes it off. A rule Deckard
+ * cannot read is refused with a warning, since it would never write the
+ * next occurrence, and the task keeps the rule it had.
+ */
+async function readRecurrence(draft: TaskDraft): Promise<TaskDraft | undefined> {
+  const written = await pickOrWrite({
+    title: 'Repeats',
+    placeholder:
+      'Choose a rule, or write one such as "every month on the 15th"',
+    items: [
+      { label: 'Never', description: 'Happens once' },
+      ...REPEAT_RULES.map((rule) => ({ label: rule })),
+    ],
+  });
+  if (written === undefined) {
+    return undefined;
+  }
+  const rule = written === 'Never' ? '' : written.trim();
+  if (rule && !parseRecurrence(rule)) {
+    const [nearest] = suggestRecurrence(rule);
+    void vscode.window.showWarningMessage(
+      `Deckard cannot read "${rule}" as a repeat rule, so it would not write the next occurrence. The task keeps the rule it had.${
+        nearest ? ` Try "${nearest}".` : ''
+      }`,
+    );
+    return undefined;
+  }
+  return { ...draft, recurrence: rule || undefined };
+}
+
+/** The ids of the tasks this one waits for, written as a comma-separated list. */
+async function readDependencies(draft: TaskDraft): Promise<TaskDraft | undefined> {
+  const written = await vscode.window.showInputBox({
+    title: 'Blocked by',
+    prompt: 'The ids of the tasks that must be done first, separated by commas.',
+    value: draft.dependsOn.join(', '),
+    ignoreFocusOut: true,
+  });
+  return written === undefined
+    ? undefined
+    : setDraftDependencies(draft, written);
+}
+
+/**
+ * Who the task is for, picked from the people the workspace names or
+ * written; Nobody takes the name off. A name that is not a person keeps the
+ * person the task had, and says so.
+ */
+async function readAssignee(
+  draft: TaskDraft,
+  index: TaskEditorIndex | undefined,
+): Promise<TaskDraft | undefined> {
+  const chosen = await pickOrWrite({
+    title: 'Who is it for?',
+    placeholder: 'Choose a person, write one, or choose Nobody',
+    items: [
+      { label: 'Nobody', description: 'Take the name off the task' },
+      ...people(index),
+    ],
+  });
+  if (chosen === undefined) {
+    return undefined;
+  }
+  if (chosen === 'Nobody') {
+    return { ...draft, assignee: undefined };
+  }
+  const person = readPerson(chosen);
+  if (!person) {
+    void vscode.window.showWarningMessage(
+      `Deckard cannot read "${chosen.trim()}" as a person. The task keeps the person it had.`,
+    );
+    return draft;
+  }
+  return { ...draft, assignee: person };
+}
+
+/** The reader for each field the pick lists. */
+const FIELD_READERS: Readonly<Record<DraftField, FieldReader>> = {
+  description: (draft) => readDescription(draft),
+  // Status asks nothing: choosing it flips the task between open and done.
+  status: (draft, { now, addDoneDate }) =>
+    Promise.resolve(completeDraft(draft, now, addDoneDate ?? true)),
+  due: (draft, { now }) => readDate(draft, 'due', now),
+  scheduled: (draft, { now }) => readDate(draft, 'scheduled', now),
+  start: (draft, { now }) => readDate(draft, 'start', now),
+  priority: (draft) => readPriority(draft),
+  recurrence: (draft) => readRecurrence(draft),
+  assignee: (draft, { index }) => readAssignee(draft, index),
+  dependsOn: (draft) => readDependencies(draft),
+  tag: (draft, { index }) => addTag(draft, index),
+};
 
 /** Asks for a date, saying which day the words mean as they are typed. */
 async function readDate(
@@ -441,22 +477,14 @@ function pickOrWrite(options: {
   placeholder: string;
   items: vscode.QuickPickItem[];
 }): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    const pick = vscode.window.createQuickPick();
-    pick.title = options.title;
-    pick.placeholder = options.placeholder;
-    pick.items = options.items;
-    pick.ignoreFocusOut = true;
-    let value: string | undefined;
-    pick.onDidAccept(() => {
-      value = pick.selectedItems[0]?.label ?? pick.value.trim();
-      pick.hide();
-    });
-    pick.onDidHide(() => {
-      pick.dispose();
-      resolve(value);
-    });
-    pick.show();
+  return showQuickPickUntilHidden<vscode.QuickPickItem, string>({
+    configure: (pick) => {
+      pick.title = options.title;
+      pick.placeholder = options.placeholder;
+      pick.items = options.items;
+      pick.ignoreFocusOut = true;
+    },
+    accept: (pick) => pick.selectedItems[0]?.label ?? pick.value.trim(),
   });
 }
 
@@ -507,17 +535,20 @@ export async function editTaskCommand(
   if (!edited) {
     return undefined;
   }
+  if (!lineStillReads(editor.document, line, existing ? 'Edit Task' : 'Add Task')) {
+    return undefined;
+  }
 
   const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-  const completion = writeEditedTask(
-    draft,
+  const completion = writeEditedTask({
+    before: draft,
     edited,
     now,
     eol,
-    existing
+    steps: existing
       ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
       : [],
-  );
+  });
   const written = completion.text;
   if (written === line.text) {
     return written;
@@ -541,22 +572,52 @@ export async function editTaskCommand(
     ),
   );
   editor.selection = new vscode.Selection(caret, caret);
-  if (completion.next !== undefined || completion.unreadRule !== undefined) {
-    const said = describeCompletion(
-      edited.description,
-      completion.next,
-      completion.unreadRule,
-    );
-    // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
-    // a next one started is said in passing; a rule that could not be read
-    // is worth stopping for.
-    if (said.severity === 'warning') {
-      void vscode.window.showWarningMessage(said.text);
-    } else {
-      vscode.window.setStatusBarMessage(said.text, 5000);
-    }
-  }
+  sayCompletion(edited, completion);
   return written;
+}
+
+/**
+ * Whether the line still reads as it did when the editor opened, and says
+ * so when it does not. The box stays open while the reader works elsewhere,
+ * so the note may have changed under it, and writing to the line number
+ * alone would overwrite whatever line now sits there.
+ */
+function lineStillReads(
+  document: vscode.TextDocument,
+  line: vscode.TextLine,
+  command: string,
+): boolean {
+  if (
+    line.lineNumber < document.lineCount &&
+    document.lineAt(line.lineNumber).text === line.text
+  ) {
+    return true;
+  }
+  void reportFailure({
+    outcome: describeStale([noteName(document.uri)]),
+    fix: `Run ${command} on the line again.`,
+  });
+  return false;
+}
+
+/** Says what completing a repeating task started, or what it could not read. */
+function sayCompletion(edited: TaskDraft, completion: CompletionWrite): void {
+  if (completion.next === undefined && completion.unreadRule === undefined) {
+    return;
+  }
+  const said = describeCompletion(
+    edited.description,
+    completion.next,
+    completion.unreadRule,
+  );
+  // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
+  // a next one started is said in passing; a rule that could not be read
+  // is worth stopping for.
+  if (said.severity === 'warning') {
+    void vscode.window.showWarningMessage(said.text);
+  } else {
+    vscode.window.setStatusBarMessage(said.text, 5000);
+  }
 }
 
 /** Whether the cursor is on a task line, which names the command. */
@@ -574,6 +635,7 @@ export class TaskLineContext implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private onTaskLine: boolean | undefined;
 
+  /** Follows the active editor, its cursor, and its edits, and sets the key for the editor already active. */
   public constructor() {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) =>
@@ -592,6 +654,7 @@ export class TaskLineContext implements vscode.Disposable {
     this.sync(vscode.window.activeTextEditor);
   }
 
+  /** Stops following; the context key keeps the value it last had. */
   public dispose(): void {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
@@ -617,6 +680,7 @@ export class TaskLineContext implements vscode.Disposable {
 export class TaskEditorActions implements vscode.Disposable {
   private readonly registration: vscode.Disposable;
 
+  /** Registers for every Markdown file at once; dispose takes the offer away. */
   public constructor() {
     this.registration = vscode.languages.registerCodeActionsProvider(
       { pattern: '**/*.md' },
@@ -628,10 +692,15 @@ export class TaskEditorActions implements vscode.Disposable {
     );
   }
 
+  /** Stops offering the editor from the lightbulb. */
   public dispose(): void {
     this.registration.dispose();
   }
 
+  /**
+   * Edit task… and Break into steps… on a task line of a Markdown note;
+   * nothing on any other line.
+   */
   public provideCodeActions(
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,

@@ -20,7 +20,7 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 | 🆔 ⛔ | A task's id, and the ids of the tasks it waits for. |
 
 - Markers and a trailing block id such as `^a1b2` are left out of titles and shown as details. A marker can be anywhere on the line.
-- Without a 📅 date, Deckard reads `2026-09-12`, `Sep 12`, or `next Friday` from the text, counting from the note's date (a daily note's name or top heading, else a `date:`, `created:`, or `updated:` front-matter date, else the last save).
+- Without a 📅 date, Deckard reads `2026-09-12`, `Sep 12`, or `next Friday` from the text, counting from the note's date (a daily note's name or top heading, else a `date:`, `created:`, or `updated:` front-matter date, else the last save). `Sep 12` is in that date's year, unless the same day in the year before or after is nearer and within two months: `Jan 5` in the note for December 28 is the coming January.
 - Completing a task adds ✅ with today's date; reopening removes it. `deckard.tasks.addDoneDate` set to `false` changes only the checkbox.
 - Completing a 🔁 task anywhere writes its next occurrence on the line above. The due date (else scheduled or start) moves by the rule and the other dates keep their distance; `when done` counts from today. The new task drops ✅, 🆔, and any block id, and its [steps](#breaking-a-task-into-steps) return unchecked. A bulk edit writes the next occurrence alone.
 - Repeat rules:
@@ -139,7 +139,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 - **Done today**: finished today, by ✅ date. Uncheck to reopen; drop a task here to complete it.
 - **Needs a new date**: more than 30 days past due, left out of Overdue, the badge, and the status bar. Date them with the calendar button or **Reschedule All…**. `deckard.tasks.needsNewDateAfterDays` sets the days; `0` turns this off. `is:overdue` still finds them.
 
-**What it lists.** Set `deckard.agenda.query` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. The search icon in the title opens the search on the [Task board](task-board.md#task-board), where **List in Tasks view**, in the gear, keeps it. **Show every open task** or **Clear the Tasks View's Search** (in the `…` menu and palette) clears it.
+**What it lists.** Set `deckard.agenda.query` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. The search icon in the title opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the `…` menu and palette) clears it.
 
 **Group by**, in the title, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; `deckard.agenda.groupBy` keeps it.
 

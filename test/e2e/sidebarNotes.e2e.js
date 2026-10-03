@@ -4,12 +4,15 @@
 // until the reader asks for more.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
-const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
-const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
+const { mountWebview, createGlobalState } = require('./support.js');
+const modules = require('../harness/modules.js');
+const { SidebarNotesView } = modules.sidebarNotes;
+const { ActiveSearch } = modules.activeSearch;
+const { createPreferences } = modules.preferenceServices;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexState;
+const { WorkspaceWriteHistory } = modules.workspaceWrites;
+const { ThemePreview } = modules.themePreview;
 
 /** `count` notes, each a heading tagged #project/atlas. */
 function createIndex(count, { dated = false } = {}) {
@@ -24,17 +27,6 @@ function createIndex(count, { dated = false } = {}) {
     );
   });
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
-}
-
-function createGlobalState() {
-  const store = new Map();
-  return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    update: (key, value) => {
-      store.set(key, value);
-      return Promise.resolve();
-    },
-  };
 }
 
 /**
@@ -53,14 +45,17 @@ async function openSidebar(noteCount, options) {
     document: { uri: vscode.Uri.file('notes/note-000.md'), languageId: 'markdown' },
     selection: { active: { line: 0 } },
   };
-  const preferences = new PreferencesStore(createGlobalState());
-  const sidebarView = new SidebarNotesView(
+  const preferences = createPreferences(createGlobalState());
+  const sidebarView = new SidebarNotesView({
     indexer,
+    extensionUri: vscode.Uri.file('/ext'),
     preferences,
-    new ActiveSearch(),
-    () => undefined,
-    '0.0.0-test',
-  );
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;
@@ -109,13 +104,16 @@ async function openForEditor() {
     selection: { active: { line: 0 } },
   };
   vscode.window.activeTextEditor = editor;
-  const sidebarView = new SidebarNotesView(
+  const sidebarView = new SidebarNotesView({
     indexer,
-    new PreferencesStore(createGlobalState()),
-    new ActiveSearch(),
-    () => undefined,
-    '0.0.0-test',
-  );
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences: createPreferences(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const host = vscode._test.createWebviewView();
   sidebarView.resolveWebviewView(host);
   await settle();
@@ -133,9 +131,6 @@ async function openForEditor() {
 }
 
 const relatedPaths = (state) => state.notes.map((note) => note.filePath);
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -165,8 +160,9 @@ test('changing Sort re-orders the list at once', async () => {
     view.change(view.find('[data-action="set-related-notes-sort"]'), 'newest');
     await settle();
     assert.strictEqual(first(), 'notes/note-005.md', 'the newest note leads');
-    assert.ok(
-      'selected' in view.find('.related-notes-sort option[value="newest"]').attributes,
+    assert.strictEqual(
+      view.find('.related-notes-sort option[value="newest"]').selected,
+      true,
       'and the select says so',
     );
     view.change(view.find('[data-action="set-related-notes-sort"]'), 'oldest');
@@ -262,7 +258,16 @@ async function openLinked() {
     document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' },
     selection: { active: { line: 0 } },
   };
-  const sidebarView = new SidebarNotesView(indexer, new PreferencesStore(createGlobalState()), new ActiveSearch(), () => undefined, '0.0.0-test');
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences: createPreferences(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
   sidebarView.resolveWebviewView(host);
@@ -338,7 +343,16 @@ test('a note with no tags lists entries worded like it, through the real host', 
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/today.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
-  const sidebarView = new SidebarNotesView(indexer, new PreferencesStore(createGlobalState()), new ActiveSearch(), () => undefined, '0.0.0-test');
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences: createPreferences(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
   sidebarView.resolveWebviewView(host);
@@ -355,6 +369,73 @@ test('a note with no tags lists entries worded like it, through the real host', 
   }
 });
 
+test('an entry worded like a note with no tags opens on a click, and Insert link writes a link to it', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('/notes/today.md', '# Thursday\nThe northern route audit found Northwind late on deliveries again.'),
+    note('/notes/audit.md', '# Northwind audit #risk/vendor\nNorthwind deliveries on the northern route are late.'),
+    note('/notes/garden.md', '# Garden #hobby/garden\nTomatoes and beans.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
+  // The note's editor takes what Insert link writes, at its one cursor.
+  const written = [];
+  vscode.window.activeTextEditor = {
+    document: { uri: vscode.Uri.file('/notes/today.md'), languageId: 'markdown' },
+    selection: { active: { line: 0 } },
+    selections: [{ active: { line: 1 } }],
+    edit: async (change) => {
+      change({ replace: (_selection, text) => written.push(text) });
+      return true;
+    },
+  };
+  // Opening a line is recorded rather than done, since the stand-in has no
+  // editors. The paths are absolute, as there is no workspace folder.
+  const opened = [];
+  const { openTextDocument } = vscode.workspace;
+  const { showTextDocument } = vscode.window;
+  vscode.workspace.openTextDocument = (uri) => Promise.resolve({ uri, lineCount: 40 });
+  vscode.window.showTextDocument = (document) => {
+    const editor = { document, selection: undefined, revealRange: () => opened.push([document.uri.fsPath, editor.selection.active.line + 1]) };
+    return Promise.resolve(editor);
+  };
+  const preferences = createPreferences(createGlobalState());
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences,
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  try {
+    await settle();
+    const card = view.find('.similar-wording .note');
+    assert.strictEqual(card.getAttribute('data-file-path'), '/notes/audit.md');
+    assert.strictEqual(view.findAll('.note-list').length, 1, 'the entry is listed only as similar wording');
+    view.click(card);
+    await settle();
+    assert.deepStrictEqual(opened, [['/notes/audit.md', 1]]);
+    const audit = [...index.sections.values()].find((section) => section.filePath === '/notes/audit.md');
+    assert.deepStrictEqual(preferences.reader.value.sectionAccessCounts, { [audit.id]: 1 }, 'opening it counts a visit, as a related note does');
+    view.click(card.querySelector('[data-action="insert-link"]'));
+    await settle();
+    assert.deepStrictEqual(written, ['[[audit#Northwind audit]]']);
+  } finally {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+    vscode.workspace.openTextDocument = openTextDocument;
+    vscode.window.showTextDocument = showTextDocument;
+  }
+});
+
 test('Hide daily notes leaves a daily note out of Linked from, and says so', async () => {
   const note = (filePath, content, updatedAt) =>
     parseMarkdown(filePath, content, { createdAt: 1, updatedAt }, {});
@@ -366,8 +447,17 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
   vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
-  const preferences = new PreferencesStore(createGlobalState());
-  const sidebarView = new SidebarNotesView(indexer, preferences, new ActiveSearch(), () => undefined, '0.0.0-test');
+  const preferences = createPreferences(createGlobalState());
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences,
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history: new WorkspaceWriteHistory(),
+    themePreview: new ThemePreview(),
+  });
   const host = vscode._test.createWebviewView();
   host._onWebviewMessage = host._fromWebview;
   sidebarView.resolveWebviewView(host);
@@ -381,14 +471,14 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
     assert.strictEqual(view.findAll('.link-group').length, 2);
     view.click(choice('hide'));
     await settle();
-    assert.strictEqual(preferences.value.hideDailyNotes, true);
+    assert.strictEqual(preferences.reader.value.hideDailyNotes, true);
     assert.strictEqual(choice('hide').getAttribute('aria-pressed'), 'true');
     assert.deepStrictEqual(view.findAll('.link-group-open').map((button) => button.textContent), ['budget']);
     assert.deepStrictEqual(view.findAll('.note-list [data-file-path]').map((card) => card.getAttribute('data-file-path')), ['notes/budget.md']);
     assert.ok(view.find('.links-hiding').textContent.startsWith('Hiding 1 daily note.'));
     view.click(view.find('[data-action="show-daily-notes"]'));
     await settle();
-    assert.strictEqual(preferences.value.hideDailyNotes, undefined);
+    assert.strictEqual(preferences.reader.value.hideDailyNotes, undefined);
     assert.strictEqual(view.findAll('.link-group').length, 2);
   } finally {
     sidebarView.dispose();
@@ -396,22 +486,74 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   }
 });
 
-// ---------------------------------------------------------------------------
 
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
+test("Add's Undo says so when VS Code does not accept it", async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/today.md', '# Thursday\nThe northern route audit found Northwind late on deliveries again.'),
+    note('notes/audit.md', '# Northwind audit #risk/vendor\nNorthwind deliveries on the northern route are late.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = {
+    ready: Promise.resolve(),
+    getSnapshot: () => index,
+    getFilePath: (uri) => uri.fsPath,
+    onDidUpdate: new vscode.EventEmitter().event,
+    refresh: async () => undefined,
+  };
+  /** A note's editor document over lines a test can change. */
+  const createDocument = (lines) => ({
+    uri: vscode.Uri.file('notes/today.md'),
+    languageId: 'markdown',
+    lineCount: lines.length,
+    getText: () => lines.join('\n'),
+    lineAt: (line) => ({ text: lines[line], range: new vscode.Range(line, 0, line, lines[line].length) }),
+  });
+  const lines = ['# Thursday', 'The northern route audit found Northwind late on deliveries again.'];
+  vscode.window.activeTextEditor = { document: createDocument(lines), selection: { active: { line: 0 } } };
+  // The note as Undo finds it: with the tag Add wrote.
+  const { openTextDocument } = vscode.workspace;
+  vscode.workspace.openTextDocument = () => Promise.resolve(createDocument(['# Thursday #risk/vendor', lines[1]]));
+  // VS Code accepts the tag, then refuses the edit that takes it back.
+  const history = new WorkspaceWriteHistory();
+  const labels = [];
+  history.write = async (_edit, options) => {
+    labels.push(options.label);
+    return labels.length === 1 ? { applied: true, notes: [], handle: {} } : { applied: false, notes: [] };
+  };
+  const { showInformationMessage } = vscode.window;
+  vscode.window.showInformationMessage = (message, ...buttons) => {
+    vscode._test.shown.info.push(message);
+    return Promise.resolve(buttons.includes('Undo') ? 'Undo' : undefined);
+  };
+  vscode._test.shown.error.length = 0;
+  const sidebarView = new SidebarNotesView({
+    indexer,
+    extensionUri: vscode.Uri.file('/ext'),
+    preferences: createPreferences(createGlobalState()),
+    activeSearch: new ActiveSearch(),
+    onOpenTag: () => undefined,
+    extensionVersion: '0.0.0-test',
+    history,
+    themePreview: new ThemePreview(),
+  });
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  try {
+    await settle();
+    view.click(view.find('.suggested-tag-add[data-suggested-tag="#risk/vendor"]'));
+    await settle();
+    assert.deepStrictEqual(labels, ['#risk/vendor on "Thursday"', 'taking #risk/vendor off "Thursday"']);
+    assert.deepStrictEqual(vscode._test.shown.error, [
+      'VS Code did not accept the undo in today.md, so the line keeps #risk/vendor. Check that the note is not read-only, then try again.',
+    ]);
+  } finally {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+    vscode.workspace.openTextDocument = openTextDocument;
+    vscode.window.showInformationMessage = showInformationMessage;
   }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();
+});

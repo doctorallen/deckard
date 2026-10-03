@@ -6,8 +6,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { HelpPanel } from '../ui/webview/help';
-import { getHelpHtml, HelpManifest } from '../ui/webview/helpHtml';
+import { HelpManifest } from '../ui/webview/pages/help/helpManifest';
 import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { ThemePreview } from '../ui/webview/themePreview';
 
 suite('Help page', () => {
   const extensionUri = vscode.Uri.file('/tmp/deckard-extension');
@@ -16,13 +18,12 @@ suite('Help page', () => {
       fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8'),
     ) as { contributes: HelpManifest }
   ).contributes;
-  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (uri: vscode.Uri) => uri };
   const helpHtml = (platform: NodeJS.Platform = 'darwin') =>
-    getHelpHtml(webview, extensionUri, manifest, { platform });
+    renderPage('help', { help: { manifest, options: { platform } } });
 
   test('names only commands Deckard contributes', () => {
     const titles = new Set(manifest.commands?.map((command) => command.title));
-    const named = [...getHelpHtml(webview, extensionUri).matchAll(/<code>Deckard: ([^<]+)<\/code>/g)].map(
+    const named = [...renderPage('help').matchAll(/<code>Deckard: ([^<]+)<\/code>/g)].map(
       (match) => match[1],
     );
     assert.ok(named.length > 20, 'Help names the commands it describes');
@@ -67,7 +68,7 @@ suite('Help page', () => {
       ),
     ];
     const page = openWebviewPage(
-      getHelpHtml(webview, extensionUri, manifest, { releases, newSince: '1.25.0', anchor: 'whats-new' }),
+      renderPage('help', { help: { manifest, options: { releases, newSince: '1.25.0', anchor: 'whats-new' } } }),
     );
     try {
       assert.deepStrictEqual(
@@ -85,7 +86,7 @@ suite('Help page', () => {
       page.dispose();
     }
     assert.match(
-      getHelpHtml(webview, extensionUri, manifest, { releases: [] }),
+      renderPage('help', { help: { manifest, options: { releases: [] } } }),
       /This version's changes are listed in the changelog\./,
     );
   });
@@ -95,7 +96,7 @@ suite('Help page', () => {
     const original = commands.executeCommand;
     const ran: string[] = [];
     commands.executeCommand = async (id: string) => void ran.push(id);
-    const help = new HelpPanel(extensionUri, manifest);
+    const help = new HelpPanel({ extensionUri, themePreview: new ThemePreview(), manifest });
     try {
       await help.handle({ type: 'runCommand', command: 'deckard.editTask' });
       await help.handle({ type: 'runCommand', command: 'workbench.action.quit' });
@@ -109,10 +110,7 @@ suite('Help page', () => {
 
   test('its rail marks the section being read', () => {
     const page = openWebviewPage(
-      getHelpHtml(
-        { cspSource: 'vscode-webview://deckard', asWebviewUri: (uri: vscode.Uri) => uri },
-        extensionUri,
-      ),
+      renderPage('help'),
     );
     try {
       assert.strictEqual(page.findAll('nav a[aria-current="location"]').length, 1);
@@ -135,6 +133,7 @@ suite('Help page', () => {
         postMessage: async () => true,
       },
       onDidDispose: () => ({ dispose: () => undefined }),
+      onDidChangeViewState: () => ({ dispose: () => undefined }),
       reveal: () => undefined,
       dispose: () => undefined,
     });
@@ -143,8 +142,8 @@ suite('Help page', () => {
       return fakePanel();
     };
     assert.strictEqual(window.createWebviewPanel === original, false, 'the panel can be stood in for');
-    const help = new HelpPanel(extensionUri);
-    const restoredHelp = new HelpPanel(extensionUri);
+    const help = new HelpPanel({ extensionUri, themePreview: new ThemePreview() });
+    const restoredHelp = new HelpPanel({ extensionUri, themePreview: new ThemePreview() });
     try {
       await help.show();
       assert.strictEqual((made[0] as vscode.WebviewPanelOptions & vscode.WebviewOptions).enableScripts, true);
@@ -156,6 +155,117 @@ suite('Help page', () => {
       window.createWebviewPanel = original;
       help.dispose();
       restoredHelp.dispose();
+    }
+  });
+
+  test('shown again, it comes back to the guide page it showed and where it was scrolled', () => {
+    const html = renderPage('help', { help: { manifest, options: { anchor: 'whats-new' } } });
+    const guide = { type: 'guide', page: 'search', title: 'Search', anchor: 'query-language', html: '<h1 id="search">Search</h1><h2 id="query-language">Query language</h2>' };
+    let saved: unknown;
+    const first = openWebviewPage(html);
+    try {
+      first.window.dispatchEvent(new first.window.MessageEvent('message', { data: guide }));
+      saved = first.savedState();
+      const { drawn, ...place } = saved as { drawn: unknown };
+      assert.strictEqual(typeof drawn, 'string');
+      assert.deepStrictEqual(place, { guide: { page: 'search', anchor: 'query-language' }, scrollY: 0 });
+      first.click('#guide-view [data-action="guide-back"]');
+      const { drawn: _drawn, ...back } = first.savedState() as { drawn: unknown };
+      assert.deepStrictEqual(back, { scrollY: 0 }, 'back on Help, no guide page is kept');
+    } finally {
+      first.dispose();
+    }
+
+    // VS Code loads the same HTML again when a hidden Help is shown.
+    const again = openWebviewPage(html, undefined, { savedState: { ...(saved as object), scrollY: 640 } });
+    try {
+      assert.deepStrictEqual(again.posted, [{ type: 'openGuide', page: 'search', anchor: 'query-language' }], 'it asks for its guide page again');
+      assert.notStrictEqual(again.document.activeElement?.textContent, "What's new", 'rather than opening at the section it was drawn at');
+      const revealed: string[] = [];
+      again.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+        revealed.push(this.id);
+      };
+      again.window.dispatchEvent(new again.window.MessageEvent('message', { data: guide }));
+      assert.strictEqual(again.text('#guide-view h2'), 'Query language');
+      assert.deepStrictEqual(revealed, [], 'and goes where it was scrolled, not to the heading');
+      const { drawn: _drawn, ...place } = again.savedState() as { drawn: unknown; guide?: unknown };
+      assert.deepStrictEqual(place.guide, { page: 'search', anchor: 'query-language' });
+    } finally {
+      again.dispose();
+    }
+  });
+
+  test('Back from a guide page opened from the introduction puts the focus on Help\'s title', () => {
+    const page = openWebviewPage(renderPage('help'));
+    try {
+      const link = page.find('p.read-more a[data-guide-page="README"]') as HTMLElement;
+      assert.strictEqual(link.closest('section'), null, 'the full guide link is in no section');
+      link.focus();
+      link.click();
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'guide', page: 'README', title: 'Guide', html: '<h1>Guide</h1>' } }));
+      const back = page.find('#guide-view [data-action="guide-back"]') as HTMLElement;
+      back.focus();
+      back.click();
+      assert.strictEqual(page.document.activeElement, page.find('main > article h1'), 'not dropped to the page itself');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('shown again on a guide page, Back still returns to the section it was opened from', () => {
+    const html = renderPage('help');
+    const guide = (page: string) => ({ type: 'guide', page, title: 'Tags', html: '<h1>Tags</h1>' });
+    const first = openWebviewPage(html);
+    let saved: unknown;
+    try {
+      first.click('#tags .read-more a[data-guide-page]');
+      const asked = first.lastPosted('openGuide') as { page: string };
+      first.window.dispatchEvent(new first.window.MessageEvent('message', { data: guide(asked.page) }));
+      saved = first.savedState();
+      assert.strictEqual((saved as { returnTo?: string }).returnTo, 'tags');
+    } finally {
+      first.dispose();
+    }
+    // VS Code loads the same HTML again when a hidden Help is shown.
+    const again = openWebviewPage(html, undefined, { savedState: saved });
+    try {
+      const asked = again.lastPosted('openGuide') as { page: string };
+      again.window.dispatchEvent(new again.window.MessageEvent('message', { data: guide(asked.page) }));
+      const revealed: string[] = [];
+      again.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+        revealed.push(this.id);
+      };
+      again.click('#guide-view [data-action="guide-back"]');
+      assert.deepStrictEqual(revealed, ['tags'], 'Back goes to Tags, not the top');
+      assert.strictEqual(again.document.activeElement, again.find('#tags h2'));
+    } finally {
+      again.dispose();
+    }
+  });
+
+  test('drawn anew, such as for a theme, it opens where it is drawn, not where it was', () => {
+    const saved = (() => {
+      const page = openWebviewPage(renderPage('help'));
+      try {
+        page.window.dispatchEvent(new page.window.MessageEvent('message', {
+          data: { type: 'guide', page: 'search', title: 'Search', html: '<h1 id="search">Search</h1>' },
+        }));
+        return page.savedState();
+      } finally {
+        page.dispose();
+      }
+    })();
+    const redrawn = openWebviewPage(
+      renderPage('help', { help: { manifest, options: { anchor: 'whats-new' } } }),
+      undefined,
+      { savedState: saved },
+    );
+    try {
+      assert.deepStrictEqual(redrawn.posted, [], 'no guide page is asked for');
+      assert.strictEqual(redrawn.document.activeElement?.textContent, "What's new");
+      assert.strictEqual((redrawn.find('#guide-view') as HTMLElement).hidden, true);
+    } finally {
+      redrawn.dispose();
     }
   });
 });

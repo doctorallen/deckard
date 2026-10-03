@@ -4,18 +4,14 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { markMigrated } from '../core/markdown/taskMetadata';
-import {
-  applyRollover,
-  describeRollover,
-  getRolloverLookbackDays,
-  placeCarriedOver,
-  planRollover,
-} from '../ui/commands/rollover';
-import { workspaceWrites } from '../ui/commands/workspaceWrites';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { applyRollover, describeRollover, getRolloverLookbackDays, placeCarriedOver } from '../ui/commands/rollover';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { planRollover } from '../domain/notes/rolloverPlan';
+import { markMigrated } from '../domain/markdown/taskLineEdits';
+import { WorkspaceIndex } from '../domain/model';
+import { useDiskWorkspace } from './diskWorkspace';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -42,6 +38,21 @@ const yesterday = [
 ].join('\n');
 
 suite('Task rollover', () => {
+  // In the extension host the suite runs against VS Code; under the e2e
+  // stand-in, against a workspace on disk modeled on it.
+  let putBack: () => void = () => undefined;
+  suiteSetup(() => {
+    putBack = useDiskWorkspace();
+  });
+  suiteTeardown(() => putBack());
+
+  // Each test writes to a history of its own, so one test's Undo never
+  // reaches another's write.
+  let history: WorkspaceWriteHistory;
+  setup(() => {
+    history = new WorkspaceWriteHistory();
+  });
+
   test('carries what is open in every earlier daily note, oldest first', () => {
     const plan = planRollover(
       indexOf({
@@ -138,8 +149,10 @@ suite('Task rollover', () => {
     );
     assert.deepStrictEqual(plan?.fromDates, ['2026-09-23']);
 
-    const result = await applyRollover(plan!, todayUri, 'copy');
-    assert.deepStrictEqual(result, {
+    const result = await applyRollover(plan!, todayUri, 'copy', { history });
+    assert.ok(result?.handle, 'a rollover that carried tasks has a way back');
+    const { handle: _copied, ...copied } = result;
+    assert.deepStrictEqual(copied, {
       carried: 2,
       skipped: 0,
       fromDates: ['2026-09-23'],
@@ -177,7 +190,7 @@ suite('Task rollover', () => {
     await write(todayUri, '# 2026-09-19\n\n- [ ] Something else\n');
     const plan = planRollover(indexOf({ [fromUri.fsPath]: text }), '2026-09-19');
     assert.ok(plan);
-    const result = await applyRollover(plan, todayUri, 'move');
+    const result = await applyRollover(plan, todayUri, 'move', { history });
     assert.strictEqual(result?.carried, 4);
     assert.strictEqual(
       await read(todayUri),
@@ -199,7 +212,7 @@ suite('Task rollover', () => {
       'a step whose task stays is carried at the top level, never under another task',
     );
     assert.strictEqual(await read(fromUri), '# 2026-09-18\n\n- [x] Old task\n');
-    await workspaceWrites.undo();
+    await history.undo();
     await deleteTemporaryRoot(root);
   });
 
@@ -220,7 +233,7 @@ suite('Task rollover', () => {
     await write(todayUri, '# 2026-09-19\n');
     const plan = planRollover(indexOf({ [fromUri.fsPath]: text }), '2026-09-19', 0, 'migrate');
     assert.strictEqual(plan?.tasks.length, 4, 'two tasks\' "Call Dana" steps are two steps');
-    const result = await applyRollover(plan!, todayUri, 'migrate');
+    const result = await applyRollover(plan!, todayUri, 'migrate', { history });
     assert.strictEqual(result?.carried, 4);
     assert.ok(
       (await read(todayUri)).includes(
@@ -230,7 +243,7 @@ suite('Task rollover', () => {
     const left = await read(fromUri);
     assert.strictEqual(left.split('[>]').length - 1, 4, 'each carried line is marked');
     assert.ok(left.includes('  - [x] Book the venue'), 'a done step stays where it was');
-    await workspaceWrites.undo();
+    await history.undo();
     await deleteTemporaryRoot(root);
   });
 
@@ -259,8 +272,10 @@ suite('Task rollover', () => {
     );
     assert.ok(plan);
 
-    const result = await applyRollover(plan, todayUri, 'move');
-    assert.deepStrictEqual(result, {
+    const result = await applyRollover(plan, todayUri, 'move', { history });
+    assert.ok(result?.handle, 'a rollover that carried tasks has a way back');
+    const { handle: _moved, ...moved } = result;
+    assert.deepStrictEqual(moved, {
       carried: 2,
       skipped: 0,
       fromDates: ['2026-09-18'],
@@ -295,10 +310,29 @@ suite('Task rollover', () => {
     );
 
     // The rollover is one write, so it can be taken back as one.
-    const undone = await workspaceWrites.undo();
+    const undone = await history.undo();
     assert.strictEqual(undone?.restored, 2);
     assert.strictEqual(await read(fromUri), yesterday);
     assert.strictEqual(await read(todayUri), '# 2026-09-19\n\n');
+    await deleteTemporaryRoot(root);
+  });
+
+  test('an Undo puts a moved task back in both notes or neither', async () => {
+    const root = await createTemporaryRoot();
+    const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-09-19.md');
+    await write(fromUri, yesterday);
+    await write(todayUri, '# 2026-09-19\n\n');
+    const plan = planRollover(indexOf({ [fromUri.fsPath]: yesterday }), '2026-09-19');
+    assert.ok(plan);
+    assert.strictEqual((await applyRollover(plan, todayUri, 'move', { history }))?.carried, 2);
+    const carried = await read(todayUri);
+    await editByHand(fromUri, '# 2026-09-18\n\nWritten since.\n');
+
+    const undone = await history.undo();
+    assert.strictEqual(undone?.restored, 0, 'putting back only today would lose the task from both');
+    assert.strictEqual(await read(todayUri), carried, 'the task is still where it went');
+    assert.strictEqual(await read(fromUri), '# 2026-09-18\n\nWritten since.\n');
     await deleteTemporaryRoot(root);
   });
 
@@ -314,7 +348,7 @@ suite('Task rollover', () => {
     );
     assert.ok(plan);
 
-    assert.strictEqual((await applyRollover(plan, todayUri, 'migrate'))?.carried, 2);
+    assert.strictEqual((await applyRollover(plan, todayUri, 'migrate', { history }))?.carried, 2);
     const left = await read(fromUri);
     assert.ok(
       left.includes('- [>] Chase the contractor 📅 2026-09-19 @dana → [[2026-09-19]]'),
@@ -334,7 +368,7 @@ suite('Task rollover', () => {
       'nor a note on a tag\'s page',
     );
 
-    const again = await applyRollover(plan, todayUri, 'migrate');
+    const again = await applyRollover(plan, todayUri, 'migrate', { history });
     assert.deepStrictEqual(again, {
       carried: 0,
       skipped: 2,
@@ -365,7 +399,7 @@ suite('Task rollover', () => {
       yesterday.replace('Chase the contractor', 'Chase them harder'),
     );
 
-    const result = await applyRollover(plan, todayUri, 'move');
+    const result = await applyRollover(plan, todayUri, 'move', { history });
     assert.strictEqual(result?.carried, 1);
     assert.strictEqual(result.skipped, 1);
     assert.ok(
@@ -390,6 +424,29 @@ suite('Task rollover', () => {
       markMigrated('- [ ] Ship it 📅 2026-09-20 ^ship', 3, '2026-09-25'),
       '- [>] Ship it 📅 2026-09-20 → [[2026-09-25]] ^ship',
       'a block id stays last',
+    );
+  });
+
+  test('reads Carried over\'s section as the parser does: a bare # ends it, and code does not', () => {
+    assert.deepStrictEqual(
+      placeCarriedOver('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n#\n\nAfter.\n', ['- [ ] Two']),
+      { start: { line: 5, character: 0 }, end: { line: 5, character: 0 }, text: '- [ ] Two\n' },
+      'before the bare # that ends the section',
+    );
+    assert.deepStrictEqual(
+      placeCarriedOver('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n```\n# not a heading\n```\n', ['- [ ] Two']),
+      { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, text: '\n- [ ] Two\n' },
+      'after the code block, which is part of the section',
+    );
+    assert.strictEqual(
+      placeCarriedOver('# 2026-09-25\n\n```\n## Carried over\n```\n', ['- [ ] Two']).text,
+      '\n\n## Carried over\n\n- [ ] Two\n',
+      'a Carried over heading in code is not one',
+    );
+    assert.strictEqual(
+      placeCarriedOver('```\n# Example\n```\n## 2026-09-25\n', ['- [ ] Two']).text,
+      '\n\n### Carried over\n\n- [ ] Two\n',
+      'the first heading outside code sets the level',
     );
   });
 
@@ -445,7 +502,7 @@ suite('Task rollover', () => {
     );
     assert.ok(plan);
 
-    const result = await applyRollover(plan, todayUri, 'move');
+    const result = await applyRollover(plan, todayUri, 'move', { history });
     assert.strictEqual(result?.carried, 2);
     assert.strictEqual(result.notes, 2, 'two notes gave a task up');
     const today = await read(todayUri);
@@ -456,6 +513,15 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 });
+
+/** Changes a note as a reader would, in its editor, and saves it. */
+async function editByHand(uri: vscode.Uri, content: string): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(uri, new vscode.Range(new vscode.Position(0, 0), document.lineAt(document.lineCount - 1).range.end), content);
+  assert.ok(await vscode.workspace.applyEdit(edit));
+  assert.ok(await document.save());
+}
 
 async function write(uri: vscode.Uri, content: string): Promise<void> {
   await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));

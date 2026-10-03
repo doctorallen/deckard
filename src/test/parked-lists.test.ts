@@ -1,8 +1,6 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
-import { DashboardWidgetConfig, PersistedPreferences } from '../core/types';
-import { planRollover } from '../ui/commands/rollover';
+import { createPreferences } from './preferenceServices';
 import { selectAgendaTasks } from '../ui/state/agendaState';
 import { createCalendar } from '../ui/state/calendarState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
@@ -11,6 +9,9 @@ import { summarizeReview } from '../ui/state/reviewState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { countDueTasks } from '../ui/views/taskStatusBar';
 import { indexWithParking } from './parkedFixture';
+import { createQueryContext } from '../domain/query/queryContext';
+import { planRollover } from '../domain/notes/rolloverPlan';
+import { DashboardWidgetConfig, PersistedPreferences } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Noon on Wednesday 2026-09-16. */
@@ -18,13 +19,13 @@ const now = new Date(2026, 8, 16, 12).getTime();
 const old = new Date(2026, 5, 1).getTime();
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 
@@ -46,17 +47,17 @@ function workspace() {
 suite('Parked tasks leave the lists of things to do', () => {
   test('the Tasks view leaves them out unless its search says is:parked', () => {
     const index = workspace();
-    assert.deepStrictEqual(titles(selectAgendaTasks(index, '').tasks), [
+    assert.deepStrictEqual(titles(selectAgendaTasks(index, '', createQueryContext(Date.now())).tasks), [
       'Call',
       'Carry me',
       'Pay rent',
     ]);
-    assert.deepStrictEqual(titles(selectAgendaTasks(index, 'is:open').tasks), [
+    assert.deepStrictEqual(titles(selectAgendaTasks(index, 'is:open', createQueryContext(Date.now())).tasks), [
       'Call',
       'Carry me',
       'Pay rent',
     ]);
-    assert.deepStrictEqual(titles(selectAgendaTasks(index, 'is:parked').tasks), [
+    assert.deepStrictEqual(titles(selectAgendaTasks(index, 'is:parked', createQueryContext(Date.now())).tasks), [
       'Ask',
       'Leave me',
       'Old overdue',
@@ -64,24 +65,24 @@ suite('Parked tasks leave the lists of things to do', () => {
   });
 
   test('the status bar does not count a parked overdue task', () => {
-    const counts = countDueTasks(workspace(), now);
+    const counts = countDueTasks(workspace(), createQueryContext(now));
     assert.strictEqual(counts.overdue, 1);
     assert.strictEqual(counts.today, 1);
   });
 
   test('the board leaves them out, and offers Parked with how many it left out', () => {
     const index = workspace();
-    const options = { now, statusNamespace: 'status', statuses: [], format: 'emoji' as const };
-    const board = createTaskBoard(index, defaults({ taskBoardLayout: 'list' }), { query: 'is:open' }, options);
+    const options = { queryContext: createQueryContext(now), statusNamespace: 'status', statuses: [], format: 'emoji' as const };
+    const board = createTaskBoard({ index, preferences: defaults({ taskBoardLayout: 'list' }), search: { query: 'is:open' }, options });
     assert.deepStrictEqual(titles((board.tasks ?? []).map((item) => item.task)), ['Call', 'Carry me', 'Pay rent']);
     const parked = board.query.facets.find((facet) => facet.id === 'parked');
     assert.deepStrictEqual(parked?.values, [{ label: 'Parked', clause: 'is:parked', count: 3 }]);
-    const asked = createTaskBoard(
+    const asked = createTaskBoard({
       index,
-      defaults({ taskBoardLayout: 'list' }),
-      { query: 'is:open is:parked' },
+      preferences: defaults({ taskBoardLayout: 'list' }),
+      search: { query: 'is:open is:parked' },
       options,
-    );
+    });
     assert.deepStrictEqual(titles((asked.tasks ?? []).map((item) => item.task)), ['Ask', 'Leave me', 'Old overdue']);
     assert.ok(!asked.query.facets.some((facet) => facet.id === 'parked'));
   });
@@ -94,7 +95,7 @@ suite('Parked tasks leave the lists of things to do', () => {
       { id: 'p', kind: 'tasks', width: 'half', query: 'is:parked' },
     ];
     const [tasks, stale, parked] = createDashboardWidgets(index, defaults({ dashboardWidgets: configs }), {
-      now,
+      queryContext: createQueryContext(now),
       upcomingDays: 7,
       tagTitleDisplayMode: 'inline',
     });
@@ -104,7 +105,7 @@ suite('Parked tasks leave the lists of things to do', () => {
   });
 
   test('the calendar does not count them', () => {
-    const calendar = createCalendar(workspace(), '2026-09', new Date(now));
+    const calendar = createCalendar(workspace(), '2026-09', createQueryContext(now));
     const day = (date: string) => calendar.weeks.flatMap((week) => week.days).find((entry) => entry.date === date);
     assert.strictEqual(day('2026-09-14')?.dueCount, 1);
     assert.strictEqual(day('2026-09-16')?.dueCount, 1);
@@ -116,7 +117,7 @@ suite('Parked tasks leave the lists of things to do', () => {
   });
 
   test('a review does not say a parked task slipped', () => {
-    const summary = summarizeReview(workspace(), { start: now - 7 * DAY, end: now + DAY, label: 'week' } as never);
+    const summary = summarizeReview(workspace(), { start: now - 7 * DAY, end: now + DAY, label: 'week' } as never, { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(summary.slipped.map((item) => item.title.replace(/\s+@\S+/, '')).sort(), ['Call', 'Pay rent']);
   });
 

@@ -1,4 +1,4 @@
-import { Weekday } from '../../core/markdown/dates';
+import { Weekday } from '../../domain/markdown/dates';
 
 /**
  * Home's Try next: one suggestion at a time, the first that applies, for
@@ -7,8 +7,10 @@ import { Weekday } from '../../core/markdown/dates';
  * or put off.
  */
 
+/** The suggestions Home can make, one per rule in candidates(). */
 export type TryNextId = 'weeklyReview' | 'mergeLookalike' | 'taskBoard' | 'pinNote';
 
+/** A suggestion as Home draws it: the words and the one button that acts on it. */
 export interface TryNextSuggestion {
   id: TryNextId;
   /** What retiring or putting it off is kept under: the id, or for a merge, the pair. */
@@ -17,6 +19,7 @@ export interface TryNextSuggestion {
   action: { label: string };
 }
 
+/** What the host gathers from the index and preferences for the rules to judge. */
 export interface TryNextInput {
   weekStart: Weekday;
   /** Every daily note's day, YYYY-MM-DD. */
@@ -40,6 +43,7 @@ const BOARD_OPEN_TASKS = 10;
 /** The fewest opens in a fortnight that make a note worth pinning. */
 export const PIN_OPENS = 5;
 
+/** A local day as YYYY-MM-DD, the form daily-note dates are compared in. */
 function isoDay(at: Date): string {
   return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
 }

@@ -18,24 +18,38 @@
 //   LAYOUT_ONLY=oblivion:taskBoard npm run test:layout   one surface, or a theme, or a page
 //   LAYOUT_DEBUG=1                                       the measurements themselves
 //   LAYOUT_KEEP=/tmp/pages LAYOUT_DRY=1                  write the pages to open by hand
+//   LAYOUT_TIMING=1 LAYOUT_ONLY=stats                    time each surface's first render instead
+//   UI_CONCURRENCY=<n>                                   how many Chromes lay pages out at once
+//
+// The pages are laid out by several Chromes at once, half the logical cores'
+// worth and at most four unless UI_CONCURRENCY says otherwise
+// (test/ui/chromePool.js), each with a profile of its own: one at a time,
+// this check and the rendered contrast check that follows it took 24
+// minutes. Each surface is still reported in the same order, with the same
+// lines, as when they were laid out in turn, which UI_CONCURRENCY=1 still
+// does.
+//
+// LAYOUT_TIMING=1 measures nothing about layout: it opens each surface ten
+// times (LAYOUT_TIMING_RUNS) in real time, without --virtual-time-budget,
+// since virtual time does not advance while a script runs and so cannot
+// time one, and prints the median time from the page's start to its first
+// render: its script run and its state drawn and laid out. Chrome is run
+// once at a time, so the runs do not compete.
 const path = require('node:path');
 const os = require('node:os');
-const { existsSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
+const { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
+const { runChromeAsync, runInOrder } = require('./chromePool.js');
 
 const compiled = path.join(__dirname, '..', '..', 'out');
 if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
-const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
-const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
-const { createSearchPageSnapshot, createDeckardStatsSnapshot } = require('../../out/ui/state/dashboardState.js');
-const { createCalendar } = require('../../out/ui/state/calendarState.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
-const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const { renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
+const { readPageNonce } = require('../harness/loadPage.js');
+const { captureScript } = require('../harness/domSnapshot.js');
+const { createSurfaces, surfaceHtml } = require('./surfaces.js');
 
 const chrome = findChrome();
 if (!chrome) {
@@ -43,289 +57,51 @@ if (!chrome) {
   process.exit(0);
 }
 
-/** Enough tasks that the busiest column must scroll, and titles that wrap. */
-function createIndex(withSteps = false) {
-  const long = 'Chase the replicant through the neon market and file the report before the rain';
-  const lines = ['# Tasks #project/atlas', ''];
-  for (let i = 1; i <= 40; i += 1) {
-    lines.push(`- [ ] ${i === 1 ? long : `Overdue task ${i}`} 📅 2026-09-01 #status/doing`);
-    // The board's cards: the long first task has steps, the next of them
-    // too long for a column, so its line must ellipsize, not widen the card.
-    if (i === 1 && withSteps) {
-      lines.push('  - [x] Find the market stall', '  - [ ] Draft the report for the precinct before the rain comes back');
-    }
-  }
-  for (let i = 1; i <= 12; i += 1) {
-    lines.push(`- [ ] Later task ${i} 📅 2026-12-01`);
-  }
-  lines.push('- [ ] Undated task @dana', '- [x] Finished task ✅ 2026-09-10');
-  const files = new Map([
-    ['notes/tasks.md', parseMarkdown('notes/tasks.md', lines.join('\n'))],
-    ['notes/atlas.md', parseMarkdown('notes/atlas.md', [
-      '# Atlas #project/atlas @dana',
-      'A note with a title long enough to wrap in a narrow sidebar, about #topic/replicants and @ren-kade.',
-      '## Meeting #meeting/standup',
-      'Notes from the standup with @dana.',
-    ].join('\n'))],
-    ...Array.from({ length: 12 }, (_, i) => [`notes/note-${i}.md`, parseMarkdown(`notes/note-${i}.md`,
-      `# Related note ${i} #project/atlas #topic/replicants\nMentions @dana and the Atlas project, entry ${i}.`)]),
-  ]);
-  return { index: buildWorkspaceIndex(files), files };
-}
-
 /**
- * The calendar's own small month, so no other surface's pixels move with it:
- * a crowded day, a day far past due, and a chosen day with more tasks and
- * new notes than the panel lists at once, their titles long.
+ * What test:dom adds to the probe: its body, captured before the probe
+ * touches anything, and the report written in ASCII, since Chrome's dump
+ * writes a no-break space in the captured text back as an entity the
+ * report's reader does not decode.
+ *
+ * @param {{ captureDom?: boolean }} options Whether to capture the body.
+ * @returns {{ start: string, store: string, json: string }} Script to put
+ *   where the probe starts, after its first report, and as its output.
  */
-function createCalendarIndex() {
-  const long = 'Chase the replicant through the neon market and file the report';
-  const created = new Date(2026, 8, 21, 9).getTime();
-  const tasks = [
-    ...Array.from({ length: 7 }, (_, i) => `- [ ] ${long} ${i + 1} 📅 2026-09-21`),
-    '- [ ] Draft the brief for the whole of the Atlas programme ⏳ 2026-09-21',
-    ...Array.from({ length: 12 }, (_, i) => `- [ ] Busy ${i} 📅 2026-09-24`),
-    ...Array.from({ length: 11 }, (_, i) => `- [ ] Planned ${i} ⏳ 2026-09-24`),
-    '- [ ] Renew the lease 📅 2026-08-03',
-    '- [x] Filed the report ✅ 2026-09-21',
-  ];
-  const files = new Map([
-    ['notes/2026-09-21.md', parseMarkdown('notes/2026-09-21.md', `# 2026-09-21\n${tasks.join('\n')}\n`, { createdAt: created, updatedAt: created })],
-    ...Array.from({ length: 6 }, (_, i) => {
-      const filePath = `projects/a-folder-with-a-long-name/note-${i}.md`;
-      return [filePath, parseMarkdown(filePath, `# A new note with a title too long for the sidebar ${i}\n`, { createdAt: created + i, updatedAt: created })];
-    }),
-  ]);
-  return buildWorkspaceIndex(files);
-}
-
-/**
- * The calendar page's month: the sidebar's, with a task due every week that
- * repeats, a task due every day, and a crowded day for +N more.
- */
-function createCalendarPageIndex() {
-  const base = createCalendarIndex();
-  const files = new Map(base.files);
-  const created = new Date(2026, 8, 1, 9).getTime();
-  files.set('notes/routines.md', parseMarkdown('notes/routines.md', [
-    '# Routines',
-    '- [ ] Water the plants on the balcony and the ones by the window 📅 2026-09-22 🔁 every week',
-    '- [ ] Stand-up 📅 2026-09-21 🔁 every weekday',
-    '- [ ] Pay rent 📅 2026-09-28 🔁 every month when done',
-  ].join('\n') + '\n', { createdAt: created, updatedAt: created }));
-  return buildWorkspaceIndex(files);
-}
-
-function createGlobalState() {
-  const store = new Map();
+function domProbeParts(options) {
+  if (!options.captureDom) {
+    return { start: '', store: '', json: 'JSON.stringify(runs)' };
+  }
   return {
-    get: (key, fallback) => (store.has(key) ? store.get(key) : fallback),
-    keys: () => [...store.keys()],
-    update: (key, value) => { store.set(key, value); return Promise.resolve(); },
+    start: `\n  ${captureScript()}\n  const capturedDom = captureDom();`,
+    store: ' runs[0].dom = capturedDom;',
+    json: "JSON.stringify(runs).replace(/[\\u007f-\\uffff]/g, function (c) { return '\\\\u' + ('000' + c.charCodeAt(0).toString(16)).slice(-4); })",
   };
-}
-
-const NOW = new Date(2026, 8, 21, 12).getTime();
-
-/**
- * The surfaces measured, each with the snapshot its page renders from and
- * the geometry it must keep. A probe runs in the page and reports; the
- * expectations here read the report.
- */
-function createSurfaces(zen) {
-  const { index, files } = createIndex();
-  // Only the board's surfaces carry steps, so no other page's pixels move.
-  const boardIndex = createIndex(true).index;
-  const preferences = new PreferencesStore(createGlobalState());
-  return [
-    {
-      page: 'taskBoard',
-      viewport: [1400, 900],
-      snapshot: () => createTaskBoard(
-        boardIndex,
-        preferences.value,
-        { query: '' },
-        { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
-        'inline',
-      ),
-      scrollers: ['.board-cards'],
-      clippers: ['.board-column'],
-      hovered: ['.board-card'],
-    },
-    {
-      // Grouped by a tag namespace, the switch has five segments: it must
-      // wrap rather than push the page sideways at a narrower width.
-      name: 'taskBoardByTag',
-      page: 'taskBoard',
-      viewport: [900, 700],
-      snapshot: () => createTaskBoard(
-        boardIndex,
-        { ...preferences.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
-        { query: '' },
-        { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
-        'inline',
-      ),
-      scrollers: ['html', '.board-cards'],
-      clippers: ['.board-column'],
-      hovered: ['.board-card'],
-    },
-    {
-      // The calendar in a narrow sidebar with its day panel on: counts that
-      // run to two digits, and rows whose words are longer than the panel.
-      page: 'calendar',
-      viewport: [240, 700],
-      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
-        dayPanel: true,
-      }),
-      scrollers: ['html'],
-      clippers: ['.day', '.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
-    },
-    {
-      // The sidebar calendar as its five working days.
-      name: 'calendarNoWeekends',
-      page: 'calendar',
-      viewport: [240, 700],
-      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
-        dayPanel: true,
-        showWeekends: false,
-        selectedDate: '2026-09-24',
-      }),
-      scrollers: ['html'],
-      clippers: ['.day', '.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
-    },
-    {
-      // Related Notes showing the calendar page's chosen day.
-      name: 'sidebarNotesCalendarDay',
-      page: 'sidebarNotes',
-      viewport: [240, 700],
-      snapshot: () => ({
-        activeTags: [],
-        notes: [],
-        tagTitleDisplayMode: 'inline',
-        calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
-          dayPanel: true,
-          showRepeats: true,
-          selectedDate: '2026-09-24',
-        }).selected,
-        state: 'calendarDay',
-      }),
-      scrollers: ['html'],
-      clippers: ['.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
-    },
-    {
-      // The calendar page, wide: the month beside the chosen day, with
-      // chips cut short, +N more, and repeats every weekday.
-      page: 'calendarPage',
-      viewport: [1400, 900],
-      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
-        dayPanel: true,
-        layout: 'page',
-        showRepeats: true,
-        selectedDate: '2026-09-24',
-      }),
-      scrollers: ['html'],
-      clippers: ['.cal-chip', '.day-panel .task-row'],
-      hovered: ['.cal-chip'],
-    },
-    {
-      // The page under 900px: the day panel moves under the month.
-      name: 'calendarPageNarrow',
-      page: 'calendarPage',
-      viewport: [800, 900],
-      snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', new Date(NOW), 0, {
-        dayPanel: true,
-        layout: 'page',
-        showRepeats: true,
-      }),
-      scrollers: ['html'],
-      clippers: ['.cal-chip', '.day-panel .task-row'],
-      hovered: ['.cal-chip'],
-    },
-    {
-      // As narrow as a reader is likely to drag the sidebar: the page's own
-      // floor is 220px.
-      page: 'sidebarNotes',
-      viewport: [240, 700],
-      snapshot: () => createSidebarSnapshot(
-        index,
-        'notes/atlas.md',
-        files.get('notes/atlas.md'),
-        true,
-        'tags',
-        {},
-        'inline',
-      ),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.note'],
-    },
-    {
-      // A note with no tags: the tags similar notes use, each a full-width
-      // row, then the entries worded like it, at the same narrow width.
-      name: 'sidebarNotesUntagged',
-      page: 'sidebarNotes',
-      viewport: [240, 700],
-      snapshot: () => {
-        const untaggedFiles = new Map(files);
-        const untagged = parseMarkdown('notes/untagged.md', [
-          '# Thursday',
-          'Walked the neon market with Dana about the Atlas project and the replicants report.',
-          'The related note on the Atlas project needs an entry before the rain.',
-        ].join('\n'));
-        untaggedFiles.set('notes/untagged.md', untagged);
-        return {
-          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, true, 'tags', {}, 'inline'),
-          previewLines: 1,
-        };
-      },
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.note'],
-    },
-    // Zen folds each card's file and line away and reveals it on hover, so a
-    // hovered result is the one row that grows. The search page is where that
-    // reveal sits inside a .card-header rather than at the end of the row.
-    // Without zen it is drawn too, so its cards' tags, their three lines, and
-    // the hub line are measured in every theme.
-    {
-      // Stats: what needs attention first, then the totals, then what is
-      // viewed most, with every panel's rows at full width.
-      page: 'stats',
-      viewport: [1100, 900],
-      snapshot: () => ({
-        ...createDeckardStatsSnapshot(index, {
-          ...preferences.value,
-          tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
-        }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
-        // "5 minutes ago" would change with the clock, and so the pixels.
-        updatedAt: 0,
-      }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.metric-open'],
-    },
-    {
-      page: 'searchPage',
-      viewport: [900, 900],
-      snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas'),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.card'],
-    },
-  ];
 }
 
 /**
  * What the page measures about itself once its script has drawn the
  * snapshot, written into #layout-probe for the DOM dump to carry out.
+ * With `captureDom`, the report carries the page's body too (test:dom).
  */
-function probeScript(surface) {
+function probeScript(surface, options = {}) {
+  const dom = domProbeParts(options);
   return `
-(function () {
-  function box(el) {
+(function () {${dom.start}
+${probeMeasures(surface)}  const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];${dom.store}
+${probeRestingChecks()}${probeHover(surface)}  const pre = document.createElement('pre');
+  pre.id = 'layout-probe';
+  pre.textContent = ${dom.json};
+  document.body.appendChild(pre);
+})();`;
+}
+
+/**
+ * The probe's measuring functions: `box` reads an element's client and
+ * scroll sizes and overflow, `report` reads every scroller and clipper the
+ * surface names, and `wide` names what reaches past a scroller's edge.
+ */
+function probeMeasures(surface) {
+  return `  function box(el) {
     return {
       clientW: el.clientWidth, scrollW: el.scrollWidth,
       clientH: el.clientHeight, scrollH: el.scrollHeight,
@@ -334,13 +110,13 @@ function probeScript(surface) {
   }
   function report(label) {
     const out = { label, scrollers: [], clippers: [] };
-    for (const sel of ${JSON.stringify(surface.scrollers)}) {
+    for (const sel of ${scriptJson(surface.scrollers)}) {
       document.querySelectorAll(sel).forEach((el, i) => {
         const b = box(el);
         out.scrollers.push({ sel: sel + '#' + i, ...b, wide: b.scrollW > b.clientW ? wide(el) : [] });
       });
     }
-    for (const sel of ${JSON.stringify(surface.clippers)}) {
+    for (const sel of ${scriptJson(surface.clippers)}) {
       document.querySelectorAll(sel).forEach((el, i) => out.clippers.push({ sel: sel + '#' + i, ...box(el) }));
     }
     return out;
@@ -371,8 +147,16 @@ function probeScript(surface) {
     }
     return found;
   }
-  const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];
-  // A control that cannot act must not light up under the pointer: its
+`;
+}
+
+/**
+ * The probe's checks of the page at rest: the disabled controls' colors, to
+ * compare once hovered, tags drawn as controls on a card, a clamped result
+ * taller than three lines, and a tag that breaks or leaves its entry.
+ */
+function probeRestingChecks() {
+  return `  // A control that cannot act must not light up under the pointer: its
   // colors at rest, to compare once every :hover rule is forced onto it.
   function look(el) {
     const style = getComputedStyle(el);
@@ -410,9 +194,18 @@ function probeScript(surface) {
     })
     .slice(0, 4)
     .map((label) => label.textContent + ' (' + label.getClientRects().length + ' lines)');
-  let target = null;
+`;
+}
+
+/**
+ * The probe's hovered run: the first of the surface's hover targets on the
+ * page is hovered, with every :hover rule rewritten to a class, and measured
+ * again, and the disabled controls are hovered to see whether they light up.
+ */
+function probeHover(surface) {
+  return `  let target = null;
   let hoverTarget = '';
-  for (const sel of ${JSON.stringify(surface.hovered)}) {
+  for (const sel of ${scriptJson(surface.hovered)}) {
     target = document.querySelector(sel);
     if (target) { hoverTarget = sel; break; }
   }
@@ -437,47 +230,137 @@ function probeScript(surface) {
       .map((el, i) => { const now = look(el); return now === disabledAtRest[i] ? '' : name(el) + ' ' + disabledAtRest[i] + ' -> ' + now; })
       .filter(Boolean);
   }
-  const pre = document.createElement('pre');
-  pre.id = 'layout-probe';
-  pre.textContent = JSON.stringify(runs);
-  document.body.appendChild(pre);
-})();`;
+`;
+}
+
+/**
+ * Every transition and animation at its end, and no caret. A page is
+ * measured and photographed once, at a moment Chrome picks, so anything
+ * still moving then is caught at a different point on each run: CI drew 17
+ * surfaces differently from one run to the next, the first card's focus
+ * ring half faded in or not yet there. What is checked is where a page
+ * settles, which is what a reader sees once it stops moving.
+ */
+const SETTLED = '*, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 0s !important; animation-delay: 0s !important; caret-color: transparent !important; }';
+
+/**
+ * JSON that can sit inside a <script>: a `<` in it is written as an escape,
+ * so no `</script>` in a message's text ends the script early, and so are
+ * the line and paragraph separators, which end a line inside a script.
+ */
+function scriptJson(value) {
+  return JSON.stringify(value).replace(/[<\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+/**
+ * What a surface does after its state arrives: the other messages its host
+ * would send, such as Help's guide page, then the reader's actions, each an
+ * event dispatched on the element its selector names. Empty for a surface
+ * that only draws its state, so those pages are built as they always were.
+ *
+ * @param {{ messages?: () => object[], drive?: Array<[string, string]> }} surface
+ *   `messages` makes the messages; `drive` is `[event, selector]` pairs.
+ * @returns {string} Script that runs them once the state has drawn.
+ */
+function interactionScript(surface) {
+  const messages = surface.messages ? surface.messages() : [];
+  const drive = surface.drive || [];
+  if (messages.length === 0 && drive.length === 0) {
+    return '';
+  }
+  const steps = [
+    ...messages.map((message) => `window.dispatchEvent(new MessageEvent('message', { data: ${scriptJson(message)} }));`),
+    ...drive.map(([event, selector]) => `document.querySelector(${scriptJson(selector)}).dispatchEvent(new MouseEvent(${scriptJson(event)}, { bubbles: true, cancelable: true, view: window }));`),
+  ];
+  return `setTimeout(function () {\n${steps.join('\n')}\n}, 20);\n`;
+}
+
+/**
+ * The page with a script-src for the harness's own scripts when its policy
+ * has none. The Related Notes debug page runs no script, so its policy
+ * names none and every script falls to `default-src 'none'`; the bridge and
+ * the probe carry the page's nonce, and nothing of the page's own runs under
+ * the source added. A page whose policy names a script-src is unchanged.
+ */
+function allowHarnessScripts(html, nonce) {
+  return html.replace(/(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(")/, (whole, open, policy, close) => (
+    !nonce || /(^|;)\s*script-src\b/.test(policy) ? whole : `${open}${policy.replace(/;?\s*$/, '')}; script-src 'nonce-${nonce}';${close}`
+  ));
+}
+
+/**
+ * What LAYOUT_TIMING=1 puts where the probe goes: once the state has been
+ * sent and drawn, it lays the page out and writes the milliseconds since the
+ * page's document started into the parent's #layout-probe, at once, since
+ * Chrome dumps the DOM as soon as the page has loaded when time is real.
+ *
+ * @returns {string} The script.
+ */
+function timingProbe() {
+  return `void document.documentElement.offsetHeight;
+parent.document.getElementById('layout-probe').textContent = JSON.stringify([{ firstRender: performance.now() }]);`;
 }
 
 /**
  * The page as the webview shows it, with the VS Code bridge replaced. probe
- * is the script that measures it, the layout probe unless another is given.
+ * is the script that measures it, the layout probe unless another is given,
+ * run a moment after the state has drawn, or, with `options.at` set to
+ * `once-drawn`, at once, as LAYOUT_TIMING=1 needs. `options.css` is laid
+ * down with the settling rules, before the surface's own.
  */
-function buildPage(html, surface, probe = probeScript(surface)) {
-  const snapshot = surface.snapshot();
-  const bridge = `<script>
+function buildPage(source, surface, probe = probeScript(surface), options = {}) {
+  const html = allowHarnessScripts(source, readPageNonce(source));
+  // Help draws without a state; every other page waits for one.
+  const state = surface.snapshot
+    ? `window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${scriptJson(surface.snapshot())} } }));\n`
+    : '';
+  // The page keeps its Content-Security-Policy, which Chrome enforces as VS
+  // Code does, so a page that needs something its policy blocks fails here
+  // too. What the harness adds carries the page's nonce to be let through,
+  // and the parent page carries the same policy, since a srcdoc frame
+  // inherits its parent's as well as reading its own.
+  const policy = (html.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/) || [''])[0];
+  const nonce = readPageNonce(html);
+  const nonced = nonce ? ` nonce="${nonce}"` : '';
+  const bridge = `<script${nonced}>
 window.acquireVsCodeApi = function () {
   return { postMessage: function () {}, getState: function () {}, setState: function () {} };
 };
 </script>`;
-  const drive = `<script>
-window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(snapshot)} } }));
-setTimeout(function () { ${probe} }, 50);
+  const drive = options.at === 'once-drawn'
+    ? `<script${nonced}>\n${state}${probe}\n</script>`
+    : `<script${nonced}>
+${state}${interactionScript(surface)}setTimeout(function () { ${probe} }, 50);
 </script>`;
+  // Replaced by functions, so a `$` in a page or a message is not read as a
+  // replacement pattern. A surface's own CSS, such as the Notes Graph's
+  // hidden canvas, comes after the settling rules.
   const inner = html
-    // The page's CSP names a nonce these scripts do not have.
-    .replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '')
     // VS Code sets its tokens on the document; here a style block does.
-    .replace('<head>', `<head><style>${vscodePaletteCss('dark')}</style>`)
-    .replace(/<script/, `${bridge}<script`)
-    .replace(/<\/body>/, `${drive}</body>`);
+    .replace('<head>', () => `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}${options.css || ''}${surface.css || ''}</style>`)
+    .replace(/<script/, () => `${bridge}<script`)
+    .replace(/<\/body>/, () => `${drive}</body>`);
   const [width, height] = surface.viewport;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  // The parent copies the page's report out for the dump once the page has
+  // written it: at 0.4 s, or every 0.05 s after that until it has. Time is
+  // virtual, and it runs on while Chrome loads the frame, so with several
+  // Chromes drawing at once the report has come as late as 2.3 s; one at a
+  // time it comes by 0.3 s and is copied at 0.4 s, as it always was.
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">${policy}<style${nonced}>
 html, body { margin: 0; padding: 0; background: #888; }
 iframe { display: block; border: 0; width: ${width}px; height: ${height}px; }
 </style></head><body>
 <iframe id="page" srcdoc="${inner.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></iframe>
 <pre id="layout-probe"></pre>
-<script>
-setTimeout(function () {
+<script${nonced}>
+setTimeout(function copy() {
   var doc = document.getElementById('page').contentDocument;
   var probe = doc && doc.getElementById('layout-probe');
-  document.getElementById('layout-probe').textContent = probe ? probe.textContent : '';
+  if (probe) {
+    document.getElementById('layout-probe').textContent = probe.textContent;
+  } else {
+    setTimeout(copy, 50);
+  }
 }, 400);
 </script></body></html>`;
 }
@@ -489,12 +372,24 @@ setTimeout(function () {
 // twice on the same surface is a fault and is reported as one.
 const MEASURE_TIMEOUT_MS = 60000;
 
-function runChrome(file, viewport) {
-  return spawnSync(chrome, [
+/**
+ * What Chrome is run with to open a page: time is virtual, with a budget of
+ * three seconds, unless `options.realTime` is set.
+ */
+function chromeArgs(file, viewport, options = {}) {
+  return [
     '--headless=new', '--disable-gpu', '--no-sandbox',
     `--window-size=${Math.max(viewport[0], 800)},${Math.max(viewport[1], 800)}`,
-    '--virtual-time-budget=3000', '--dump-dom', `file://${file}`,
-  ], {
+    ...(options.realTime ? [] : ['--virtual-time-budget=3000']), '--dump-dom', `file://${file}`,
+  ];
+}
+
+/**
+ * Opens a page in headless Chrome once and returns the finished process,
+ * killed if it runs past MEASURE_TIMEOUT_MS.
+ */
+function runChrome(file, viewport, options = {}) {
+  return spawnSync(chrome, chromeArgs(file, viewport, options), {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
     timeout: MEASURE_TIMEOUT_MS,
@@ -502,17 +397,8 @@ function runChrome(file, viewport) {
   });
 }
 
-function measure(file, viewport) {
-  let result = runChrome(file, viewport);
-  if (result.signal === 'SIGKILL') {
-    console.log(`       chrome wedged after ${MEASURE_TIMEOUT_MS / 1000}s, retrying once`);
-    result = runChrome(file, viewport);
-  }
-  if (result.signal === 'SIGKILL') {
-    throw new Error(
-      `chrome wedged twice, ${MEASURE_TIMEOUT_MS / 1000}s each, on ${path.basename(file)}`,
-    );
-  }
+/** What a page's probe reported, read from the DOM Chrome dumped. */
+function readProbe(result) {
   const match = /<pre id="layout-probe">([\s\S]*?)<\/pre>/.exec(result.stdout ?? '');
   if (!match) {
     throw new Error(`no probe output (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 400)}`);
@@ -520,6 +406,48 @@ function measure(file, viewport) {
   return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
 }
 
+/** The error for a page Chrome wedged on twice. */
+function wedgedTwice(file) {
+  return new Error(`chrome wedged twice, ${MEASURE_TIMEOUT_MS / 1000}s each, on ${path.basename(file)}`);
+}
+
+/**
+ * Opens a page in Chrome and returns what its probe reported. With
+ * `options.realTime`, time is not virtual, as LAYOUT_TIMING=1 needs. One at
+ * a time: test:dom and LAYOUT_TIMING=1 use it, the latter so its runs do not
+ * compete.
+ */
+function measure(file, viewport, options = {}) {
+  let result = runChrome(file, viewport, options);
+  if (result.signal === 'SIGKILL') {
+    console.log(`       chrome wedged after ${MEASURE_TIMEOUT_MS / 1000}s, retrying once`);
+    result = runChrome(file, viewport, options);
+  }
+  if (result.signal === 'SIGKILL') {
+    throw wedgedTwice(file);
+  }
+  return readProbe(result);
+}
+
+/**
+ * measure, for a pool of Chromes (chromePool.js): it resolves with what the
+ * probe reported, and the retry's line goes to `log`, which holds it until
+ * the page's turn to print.
+ */
+async function measureAsync(file, viewport, options = {}, log = console.log) {
+  const open = () => runChromeAsync(chrome, chromeArgs(file, viewport, options), { timeout: MEASURE_TIMEOUT_MS });
+  let result = await open();
+  if (result.signal === 'SIGKILL') {
+    log(`       chrome wedged after ${MEASURE_TIMEOUT_MS / 1000}s, retrying once`);
+    result = await open();
+  }
+  if (result.signal === 'SIGKILL') {
+    throw wedgedTwice(file);
+  }
+  return readProbe(result);
+}
+
+/** The Chrome to lay pages out in: CHROME_PATH, or the first of the usual names found, or undefined. */
 function findChrome() {
   const candidates = [
     process.env.CHROME_PATH,
@@ -528,100 +456,241 @@ function findChrome() {
   ].filter(Boolean);
   for (const candidate of candidates) {
     if (candidate.includes('/')) {
-      if (existsSync(candidate)) return candidate;
+      if (existsSync(candidate)) {
+        return candidate;
+      }
       continue;
     }
     const found = spawnSync('which', [candidate], { encoding: 'utf8' });
-    if (found.status === 0 && found.stdout.trim()) return found.stdout.trim();
+    if (found.status === 0 && found.stdout.trim()) {
+      return found.stdout.trim();
+    }
   }
   return undefined;
 }
 
 // The surfaces, the page builder and the browser are shared with the visual
 // check, which draws the same pages and compares the pixels instead.
-module.exports = { chrome, createSurfaces, buildPage, findChrome, measure };
+module.exports = { chrome, createSurfaces, buildPage, findChrome, isPicked, measure, measureAsync, medianFirstRender, passes, probeScript, timingProbe };
 
-if (require.main === module) {
-// LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
-const keep = process.env.LAYOUT_KEEP;
-const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
-if (keep && !existsSync(keep)) require('node:fs').mkdirSync(keep, { recursive: true });
-let failed = 0;
-try {
-  for (const theme of themes.map((entry) => entry.id ?? entry)) {
-   for (const zen of [false, true]) {
-    const label = zen ? `${theme}+zen` : theme;
-    const rendered = new Map(renderPagesForTheme(theme, { zen }));
-    for (const surface of createSurfaces(zen)) {
-      // LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking at it.
-      // LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it.
-      const only = process.env.LAYOUT_ONLY;
-      const surfaceName = surface.name || surface.page;
-      if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
-      const html = rendered.get(surface.page);
-      const file = path.join(dir, `${label}-${surfaceName}.html`);
-      writeFileSync(file, buildPage(html, surface));
-      const problems = [];
-      let runs;
-      try {
-        runs = process.env.LAYOUT_DRY ? [] : measure(file, surface.viewport);
-      } catch (error) {
-        problems.push(error.message);
-        runs = [];
-      }
-      if (process.env.LAYOUT_DEBUG) {
-        console.log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
-      }
-      if (runs[0] && (runs[0].viewport[0] !== surface.viewport[0] || runs[0].viewport[1] !== surface.viewport[1])) {
-        problems.push(`viewport is ${runs[0].viewport.join('x')}, not ${surface.viewport.join('x')}`);
-      }
-      if (runs[0] && !runs[0].hoverTarget) {
-        problems.push(`no row to hover: none of ${surface.hovered.join(', ')} is on the page (saw ${runs[0].classes.join(', ') || 'no row-like classes'})`);
-      }
-      for (const run of runs) {
-        for (const box of run.scrollers) {
-          if (box.scrollW > box.clientW) {
-            problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
-          }
-        }
-        for (const boxed of run.cardTagsBoxed || []) {
-          problems.push(`a tag on a card is drawn as a control: ${boxed}`);
-        }
-        for (const over of run.clampOver || []) {
-          problems.push(`a result cut to three lines is taller than three: ${over}`);
-        }
-        for (const broken of run.tagsBroken || []) {
-          problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
-        }
-        for (const lit of run.disabledLit || []) {
-          problems.push(`a control that cannot act lights up under the pointer: ${lit}`);
-        }
-        for (const box of run.clippers) {
-          if (box.scrollH > box.clientH && box.overflowY === 'hidden') {
-            problems.push(`${run.label}: ${box.sel} clips ${box.scrollH - box.clientH}px it cannot scroll to`);
-          }
-        }
-
-      }
-      if (process.env.LAYOUT_DRY) {
-        console.log(`  wrote ${file}`);
-      } else if (problems.length === 0) {
-        const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
-        console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
-      } else {
-        failed += 1;
-        console.log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
-        problems.forEach((problem) => console.log(`         ${problem}`));
-      }
-    }
-   }
+/**
+ * The median of `runs` first renders of a page in Chrome, in milliseconds,
+ * each from the page's start to its state drawn and laid out.
+ *
+ * @param {string} html The page, self-contained, as surfaceHtml gives it.
+ * @param {object} surface The surface it is drawn as.
+ * @param {{ file: string, runs?: number }} options Where to write the page, and how many times to open it.
+ * @returns {number} The middle time, in milliseconds.
+ */
+function medianFirstRender(html, surface, options) {
+  writeFileSync(options.file, buildPage(html, surface, timingProbe(), { at: 'once-drawn' }));
+  const times = [];
+  for (let run = 0; run < (options.runs ?? 10); run += 1) {
+    times.push(measure(options.file, surface.viewport, { realTime: true })[0].firstRender);
   }
-} finally {
-  if (!keep) rmSync(dir, { recursive: true, force: true });
+  times.sort((a, b) => a - b);
+  return times[Math.floor(times.length / 2)];
 }
-if (failed) {
-  console.log(`\n${failed} surface(s) mis-laid`);
-  process.exit(1);
+
+/**
+ * LAYOUT_TIMING=1: each surface's median first render, printed, and
+ * nothing checked.
+ *
+ * @param {string} dir Where to write the pages.
+ */
+function timeSurfaces(dir) {
+  const runs = Number(process.env.LAYOUT_TIMING_RUNS) || 10;
+  const rendered = new Map(renderPagesForTheme('replicant', { zen: false }));
+  for (const surface of createSurfaces()) {
+    const surfaceName = surface.name || surface.page;
+    const only = process.env.LAYOUT_ONLY;
+    if (only && only !== surfaceName && only !== surface.page) {
+      continue;
+    }
+    const median = medianFirstRender(surfaceHtml(surface, rendered, { theme: 'replicant', zen: false }), surface, { file: path.join(dir, `timing-${surfaceName}.html`), runs });
+    console.log(`  ${surfaceName.padEnd(24)} ${median.toFixed(1)} ms, median of ${runs} first renders`);
+  }
 }
-console.log('\nevery surface lays out as drawn');
+
+/** Every pass the check makes, as [theme, zen] pairs: each theme, without zen and then with it. */
+function passes() {
+  return themes.map((entry) => entry.id ?? entry).flatMap((theme) => [[theme, false], [theme, true]]);
+}
+
+/**
+ * Whether a check's `*_ONLY` variable picks a surface in a pass, or names
+ * nothing. LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking
+ * at it, LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it, and
+ * LAYOUT_ONLY=oblivion every surface in a pass.
+ *
+ * @param {string | undefined} only The variable's value.
+ * @param {string} label The pass, as `<theme>` or `<theme>+zen`.
+ * @param {string} name The surface's name, or its page's.
+ * @returns {boolean} Whether to draw the surface.
+ */
+function isPicked(only, label, name) {
+  return !only || only === `${label}:${name}` || only === name || only === label;
+}
+
+/** What one run of the probe found wrong, as sentences. */
+function describeRun(run) {
+  return [...describeOverflow(run), ...describeMarks(run), ...describeClipping(run)];
+}
+
+/** Each scroller a run found wider than it shows, with what reaches past its edge. */
+function describeOverflow(run) {
+  return run.scrollers
+    .filter((box) => box.scrollW > box.clientW)
+    .map((box) => `${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
+}
+
+/** The elements a run found drawn wrong: boxed tags, clamps, broken tags, and disabled controls lit. */
+function describeMarks(run) {
+  const problems = [];
+  for (const boxed of run.cardTagsBoxed || []) {
+    problems.push(`a tag on a card is drawn as a control: ${boxed}`);
+  }
+  for (const over of run.clampOver || []) {
+    problems.push(`a result cut to three lines is taller than three: ${over}`);
+  }
+  for (const broken of run.tagsBroken || []) {
+    problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
+  }
+  for (const lit of run.disabledLit || []) {
+    problems.push(`a control that cannot act lights up under the pointer: ${lit}`);
+  }
+  return problems;
+}
+
+/** Each clipper a run found hiding content it cannot scroll to. */
+function describeClipping(run) {
+  return run.clippers
+    .filter((box) => box.scrollH > box.clientH && box.overflowY === 'hidden')
+    .map((box) => `${run.label}: ${box.sel} clips ${box.scrollH - box.clientH}px it cannot scroll to`);
+}
+
+/**
+ * Measures one surface's page, unless LAYOUT_DRY is set, and returns the
+ * probe's runs with what they found wrong. A Chrome that fails is a problem
+ * of the surface's rather than of the whole check. `log` takes the lines
+ * printed on the way, LAYOUT_DEBUG's among them.
+ */
+async function checkSurface(file, surface, label, log) {
+  const problems = [];
+  let runs;
+  try {
+    runs = process.env.LAYOUT_DRY ? [] : await measureAsync(file, surface.viewport, {}, log);
+  } catch (error) {
+    problems.push(error.message);
+    runs = [];
+  }
+  if (process.env.LAYOUT_DEBUG) {
+    log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
+  }
+  if (runs[0] && (runs[0].viewport[0] !== surface.viewport[0] || runs[0].viewport[1] !== surface.viewport[1])) {
+    problems.push(`viewport is ${runs[0].viewport.join('x')}, not ${surface.viewport.join('x')}`);
+  }
+  if (runs[0] && !runs[0].hoverTarget) {
+    problems.push(`no row to hover: none of ${surface.hovered.join(', ')} is on the page (saw ${runs[0].classes.join(', ') || 'no row-like classes'})`);
+  }
+  for (const run of runs) {
+    problems.push(...describeRun(run));
+  }
+  return { runs, problems };
+}
+
+/**
+ * Prints how one surface laid out, or the page written under LAYOUT_DRY,
+ * to `log`.
+ *
+ * @returns {boolean} Whether the surface failed.
+ */
+function reportSurface({ file, label, surfaceName, runs, problems }, log) {
+  if (process.env.LAYOUT_DRY) {
+    log(`  wrote ${file}`);
+    return false;
+  }
+  if (problems.length === 0) {
+    const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
+    log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
+    return false;
+  }
+  log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
+  problems.forEach((problem) => log(`         ${problem}`));
+  return true;
+}
+
+/**
+ * Every surface LAYOUT_ONLY picks in every theme, with zen off and on, in
+ * the order they are reported. A pass's pages are rendered only when its
+ * first surface is taken, so the pool's Chromes start at once.
+ */
+function* layoutJobs() {
+  for (const [theme, zen] of passes()) {
+    const label = zen ? `${theme}+zen` : theme;
+    const picked = createSurfaces().filter((entry) => isPicked(process.env.LAYOUT_ONLY, label, entry.name || entry.page));
+    if (picked.length === 0) {
+      continue;
+    }
+    const rendered = new Map(renderPagesForTheme(theme, { zen }));
+    for (const surface of picked) {
+      yield { surface, label, theme, zen, rendered };
+    }
+  }
+}
+
+/**
+ * Lays out every surface LAYOUT_ONLY picks in every theme, with zen off and
+ * on, writing each page into `dir`, several at once (UI_CONCURRENCY), and
+ * reports each in turn.
+ *
+ * @returns {Promise<number>} How many surfaces failed.
+ */
+async function checkSurfaces(dir) {
+  const verdicts = await runInOrder(layoutJobs(), async ({ surface, label, theme, zen, rendered }, log) => {
+    const surfaceName = surface.name || surface.page;
+    const html = surfaceHtml(surface, rendered, { theme, zen });
+    const file = path.join(dir, `${label}-${surfaceName}.html`);
+    writeFileSync(file, buildPage(html, surface));
+    const { runs, problems } = await checkSurface(file, surface, label, log);
+    return reportSurface({ file, label, surfaceName, runs, problems }, log);
+  });
+  return verdicts.filter(Boolean).length;
+}
+
+/** The layout check: every surface laid out and measured, exiting 1 when any fails. */
+async function run() {
+  // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
+  const keep = process.env.LAYOUT_KEEP;
+  const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
+  if (keep && !existsSync(keep)) {
+    mkdirSync(keep, { recursive: true });
+  }
+  let failed = 0;
+  try {
+    failed = await checkSurfaces(dir);
+  } finally {
+    if (!keep) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  if (failed) {
+    console.log(`\n${failed} surface(s) mis-laid`);
+    process.exit(1);
+  }
+  console.log('\nevery surface lays out as drawn');
+}
+
+if (require.main === module && process.env.LAYOUT_TIMING === '1') {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
+  try {
+    timeSurfaces(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+} else if (require.main === module) {
+  run().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }

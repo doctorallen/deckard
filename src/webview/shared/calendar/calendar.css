@@ -1,0 +1,50 @@
+/*
+ * The rules the Calendar view and the Calendar page share, which come
+ * before the day panel on both.
+ */
+
+/* The calendar fits a narrow sidebar rather than a reading column. */
+main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber); }
+/* A sidebar is dragged narrower than a page's 280px floor, as Related Notes allows. */
+body { min-width: 220px; }
+.calendar-header { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
+.calendar-row, .calendar-cell { display: contents; }
+/* With the weekends hidden, a row is its five working days. */
+.calendar-grid.no-weekends { grid-template-columns: auto repeat(5, minmax(0, 1fr)); }
+/* The week opens its note and marks whether it has one; it is not a date,
+   so it is drawn as a rail beside the days rather than as another cell. */
+.week-label { display: grid; align-self: stretch; width: 18px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); place-items: center; }
+.week-label svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; }
+.week-label.has-note { color: var(--cyan); }
+.week-label:hover, .week-label:focus-visible { color: var(--amber); background: none; }
+.weekday { padding: 2px 0; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
+/* Every day is the same three rows, whether or not it has anything to mark,
+   so a note or a due count never moves the date it belongs to. */
+.day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: var(--text-sm) var(--font-mono); text-align: center; }
+/* A neighbor month's day, told apart in the muted ink rather than faded,
+   which took it below a readable contrast. */
+.day.outside { color: var(--muted); }
+.day.today { border-color: var(--amber); }
+.day-number { line-height: 15px; }
+.note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
+.counts { display: flex; align-items: center; gap: 2px; }
+.due { color: var(--green); font-size: var(--text-xs); line-height: 13px; }
+.due.overdue { color: var(--warning-orange); }
+.due.stale { color: var(--muted); }
+/* What is scheduled is drawn hollow and never in a warning color: it is a
+   plan for the day, not a deadline. */
+.scheduled-count { padding: 0 1px; border: 1px solid currentColor; border-radius: 3px; color: var(--muted); font-size: var(--text-xs); line-height: 11px; }
+.scheduled-count:empty { display: none; }
+.scheduled-ring { width: 5px; height: 5px; border: 1px solid var(--muted); border-radius: 50%; }
+/* A repeating task's later date: projected from its rule, not due, so it
+   is the quietest mark, and never colored. */
+.repeat-count { color: var(--muted); font-size: var(--text-xs); line-height: 11px; white-space: nowrap; }
+.repeat-count:empty { display: none; }
+/* The chosen day, with the panel on: outlined and underlined in the accent,
+   so it reads apart from today's border. Not filled: the hover ground is a
+   pale cream in some themes, and the due and scheduled counts on it went
+   unreadable. */
+.day.selected { box-shadow: inset 0 0 0 1px var(--accent), inset 0 -2px 0 var(--accent); }
+.day-created-folder { flex: none; max-width: 45%; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }

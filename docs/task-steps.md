@@ -597,8 +597,8 @@ stays `Completed "Weekly review", and started the next one, due
 - `dashboardHome.e2e.js` / `searchPage.e2e.js`: a task row with steps
   shows the steps span (search pages do not fold).
 
-`npm run test:ui`: runs as is (`verifyWebviews`, `checkWebviewScripts`,
-`checkContrast`); `.board-steps` reuses the muted pair, so the contrast
+`npm run test:ui`: runs as is (`verifyWebviews`, `checkContrast`);
+`.board-steps` reuses the muted pair, so the contrast
 baseline does not change. Confirm with the run.
 
 `npm run test:layout`: add steps to the board fixture in

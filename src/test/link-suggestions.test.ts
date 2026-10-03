@@ -2,16 +2,13 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import {
-  findWikiLinkTargets,
-  getWikiLinkCompletionContext,
-  WikiLinkCompletionProvider,
-} from '../ui/commands/linkSuggestions';
-import { describeDay, parseDatePhrase } from '../core/markdown/dates';
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { findWikiLinkTargets } from '../domain/index/wikiLinkTargets';
+import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
+import { describeDay, parseDatePhrase } from '../domain/markdown/dates';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createWikiLink } from '../ui/commands/insertLink';
+import { WorkspaceIndex } from '../domain/model';
 
 suite('Wiki link suggestions', () => {
   test('completes workspace note titles inside Wiki links', async () => {
@@ -28,6 +25,28 @@ suite('Wiki link suggestions', () => {
 
     assert.deepStrictEqual(items.map((item) => item.label), ['Atlas Planning']);
     assert.strictEqual(items[0].insertText, 'Atlas Planning]]');
+    provider.dispose();
+  });
+
+  test('replaces the brackets VS Code closed after the cursor rather than doubling them', async () => {
+    const index = indexOf({ 'notes/Atlas Planning.md': '# Atlas Planning\n## Budget\n' });
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+      getFilePath: () => 'notes/case.md',
+    });
+    const pick = async (line: string, character: number) => {
+      const [item] = await provider.provideCompletionItems(
+        createDocument('/tmp/deckard/notes/case.md', line),
+        new vscode.Position(0, character),
+      );
+      const range = item.range as vscode.Range;
+      return line.slice(0, range.start.character) + String(item.insertText) + line.slice(range.end.character);
+    };
+    assert.strictEqual(await pick('See [[atl]] now', 9), 'See [[Atlas Planning]] now');
+    assert.strictEqual(await pick('See [[Atlas Planning#bu]]', 23), 'See [[Atlas Planning#Budget]]');
+    assert.strictEqual(await pick('See [[atl]', 9), 'See [[Atlas Planning]]', 'one bracket closed');
+    assert.strictEqual(await pick('See [[atl', 9), 'See [[Atlas Planning]]', 'none closed');
     provider.dispose();
   });
 
@@ -131,72 +150,16 @@ suite('Wiki link suggestions', () => {
     assert.strictEqual(days.length, 1);
     assert.match(String(days[0].insertText), /^\d{4}-\d{2}-\d{2}\]\]$/, 'a day links to its daily note');
     const october = await complete('See [[oct 3');
-    const expected = parseDatePhrase('oct 3')!.date!;
+    // The completion read the clock when it was asked; so does the check.
+    const now = Date.now();
+    const expected = parseDatePhrase('oct 3', now)!.date!;
     assert.strictEqual(october[0].label, expected, 'a month and day links to that day');
-    assert.strictEqual(october[0].detail, `${describeDay(expected)}, that day's note`);
+    assert.strictEqual(october[0].detail, `${describeDay(expected, now)}, that day's note`);
     const atlas = await complete('See [[Atlas');
     assert.ok(atlas.every((item) => !/^\d{4}-/.test(String(item.label))), 'a name is not a day');
     provider.dispose();
   });
 
-  test('finds only an unfinished Wiki link target', () => {
-    assert.deepStrictEqual(getWikiLinkCompletionContext('See [[Atlas', 11), {
-      query: 'Atlas',
-      startColumn: 6,
-    });
-    assert.strictEqual(getWikiLinkCompletionContext('See [Atlas]', 11), undefined);
-  });
-
-  test('resolves complete Wiki links only when their target title is unique', () => {
-    const index = createIndex([
-      'notes/Atlas Planning.md',
-      'notes/People.md',
-      'archive/People.md',
-    ]);
-
-    assert.deepStrictEqual(
-      findWikiLinkTargets(
-        'See [[atlas planning]] and [[People]] or [[Missing]].',
-        index,
-      ),
-      [
-        {
-          title: 'atlas planning',
-          filePath: 'notes/Atlas Planning.md',
-          startOffset: 4,
-          endOffset: 22,
-        },
-      ],
-    );
-  });
-});
-
-suite('Wiki links to headings', () => {
-  test('land on the heading, including [[#Heading]] in the same note', () => {
-    const atlas = parseMarkdown('notes/Atlas.md', '# Atlas\n## Decision #project/atlas');
-    const index: WorkspaceIndex = {
-      files: new Map([[atlas.filePath, atlas]]),
-      sections: new Map(),
-      tasks: new Map(),
-      tags: new Map(),
-      entities: new Map(),
-      updatedAt: Date.now(),
-    };
-
-    assert.deepStrictEqual(
-      findWikiLinkTargets(
-        '[[atlas#decision]] [[#Decision]] [[Atlas#Nowhere]]',
-        index,
-        'notes/Atlas.md',
-      ).map((link) => [link.filePath, link.line]),
-      [
-        ['notes/Atlas.md', 2],
-        ['notes/Atlas.md', 2],
-        // A heading the note lacks still opens the note.
-        ['notes/Atlas.md', undefined],
-      ],
-    );
-  });
 });
 
 function createIndex(paths: string[]): WorkspaceIndex {

@@ -10,10 +10,13 @@ import {
   PreferenceSnapshots,
   SNAPSHOTS_KEPT,
 } from '../core/storage/preferenceSnapshots';
-import { PreferencesStore } from '../core/storage/preferences';
+import { createPreferences } from './preferenceServices';
+import { FakeFileSystem, fileUri } from './fakeWorkspace';
+import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import {
   createExport,
   describePreferences,
+  importPreferences,
   readExport,
 } from '../ui/commands/preferenceBackups';
 
@@ -49,14 +52,15 @@ suite('Preference backups', () => {
     assert.strictEqual(nameFromDate(at), '2026-09-22T19-43-14-277Z');
     assert.strictEqual(dateFromName('2026-09-22T19-43-14-277Z.json').getTime(), at.getTime());
     assert.ok(Number.isNaN(dateFromName('notes.json').getTime()), 'a stray file is not a copy');
+    assert.strictEqual(dateFromName('2026-09-22T19-43-14-277Z-2.json').getTime(), at.getTime(), 'a second copy of the millisecond');
   });
 
   test('writes a copy of the store into workspace storage, newest first', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    const snapshots = new PreferenceSnapshots(storage, store);
-    await store.toggleFavorite('#project/relay');
+    const store = createPreferences(new MemoryMemento());
+    const snapshots = new PreferenceSnapshots(storage, store.reader, createVscodeWorkspace());
+    await store.favorites.toggleFavorite('#project/relay');
     await snapshots.writeNow();
-    await store.pinNote({ filePath: 'notes/relay.md' });
+    await store.pins.pinNote({ filePath: 'notes/relay.md' });
     await snapshots.writeNow();
 
     const all = await snapshots.list();
@@ -66,71 +70,201 @@ suite('Preference backups', () => {
     assert.deepStrictEqual(newest.favoriteTags, ['#project/relay']);
     assert.strictEqual(newest.pinnedNotes?.length, 1);
     snapshots.dispose();
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('keeps only the last few, and lets the oldest go', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    const snapshots = new PreferenceSnapshots(storage, store);
+    const store = createPreferences(new MemoryMemento());
+    const snapshots = new PreferenceSnapshots(storage, store.reader, createVscodeWorkspace());
     for (let i = 0; i < SNAPSHOTS_KEPT + 5; i += 1) {
-      await store.recordTagAccess('#project/relay', 1_000_000 + i);
+      await store.usage.recordTagAccess('#project/relay', 1_000_000 + i);
       await snapshots.writeNow();
     }
     const all = await snapshots.list();
     assert.strictEqual(all.length, SNAPSHOTS_KEPT);
     snapshots.dispose();
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('writes nothing, and lists nothing, when there is no workspace storage', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    const snapshots = new PreferenceSnapshots(undefined, store);
-    await store.toggleFavorite('#project/relay');
+    const store = createPreferences(new MemoryMemento());
+    const snapshots = new PreferenceSnapshots(undefined, store.reader, createVscodeWorkspace());
+    await store.favorites.toggleFavorite('#project/relay');
     await snapshots.writeNow();
     assert.deepStrictEqual(await snapshots.list(), []);
     snapshots.dispose();
-    store.dispose();
+    store.repository.dispose();
   });
 
   test('an export wraps the store and reads back; a bare copy reads back too; junk is refused', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    await store.toggleFavorite('#project/relay');
-    await store.saveSavedQueryFilter('Open', 'is:open');
+    const store = createPreferences(new MemoryMemento());
+    await store.favorites.toggleFavorite('#project/relay');
+    await store.savedSearches.saveSavedQueryFilter('Open', 'is:open');
 
-    const exported = createExport(store.value, new Date('2026-09-22T10:00:00Z'));
+    const exported = createExport(store.reader.value, new Date('2026-09-22T10:00:00Z'));
     const back = readExport(JSON.parse(JSON.stringify(exported)));
     assert.deepStrictEqual(back.preferences.favoriteTags, ['#project/relay']);
     assert.strictEqual(back.exportedAt?.toISOString(), '2026-09-22T10:00:00.000Z');
 
-    const bare = readExport(JSON.parse(JSON.stringify(store.value)));
+    const bare = readExport(JSON.parse(JSON.stringify(store.reader.value)));
     assert.deepStrictEqual(bare.preferences.favoriteTags, ['#project/relay']);
     assert.strictEqual(bare.exportedAt, undefined);
 
     for (const junk of [null, 'text', 42, [], {}, { deckard: { kind: 'other' } }, { version: 2 }]) {
       assert.throws(() => readExport(junk), /not a Deckard preferences file|does not hold preferences/);
     }
-    assert.strictEqual(describePreferences(store.value), '1 favorite tag, 1 saved search');
-    store.dispose();
+    assert.strictEqual(describePreferences(store.reader.value), '1 favorite tag, 1 saved search');
+    store.repository.dispose();
   });
 
   test('importing replaces what the store holds, normalized, and tells the views', async () => {
-    const store = new PreferencesStore(new MemoryMemento());
-    await store.toggleFavorite('#project/old');
+    const store = createPreferences(new MemoryMemento());
+    await store.favorites.toggleFavorite('#project/old');
     let told = 0;
-    store.onDidChange(() => {
+    store.reader.onDidChange(() => {
       told += 1;
     });
 
-    await store.importPreferences({
-      ...store.value,
+    await store.maintenance.importPreferences({
+      ...store.reader.value,
       favoriteTags: ['#project/new'],
       // A hand-edited file: an unknown sort mode falls back rather than sticking.
       tagSortMode: 'sideways' as never,
     });
 
-    assert.deepStrictEqual(store.value.favoriteTags, ['#project/new']);
-    assert.strictEqual(store.value.tagSortMode, 'alphabetical');
+    assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/new']);
+    assert.strictEqual(store.reader.value.tagSortMode, 'alphabetical');
     assert.strictEqual(told, 1);
-    store.dispose();
+    store.repository.dispose();
+  });
+});
+
+suite('Importing preferences', () => {
+  /**
+   * Stands in for the reader importing `file`: the open dialog picks it, the
+   * modal is answered Replace, and every message is kept in `said`, with
+   * the modal's detail in `details`; until `restore` puts VS Code back.
+   */
+  function importing(file: unknown) {
+    const said: string[] = [];
+    const details: string[] = [];
+    const answer = async (text: string, options?: { detail?: string }) => {
+      said.push(text);
+      if (options?.detail) {
+        details.push(options.detail);
+      }
+      return text.startsWith('Replace ') ? 'Replace' : undefined;
+    };
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const replaced: [Record<string, unknown>, string, unknown][] = [
+      [window, 'showOpenDialog', async () => [vscode.Uri.file('/imports/deckard-preferences.json')]],
+      [window, 'showWarningMessage', answer],
+      [window, 'showInformationMessage', answer],
+      [window, 'showErrorMessage', answer],
+      [workspace, 'fs', { readFile: async () => Buffer.from(JSON.stringify(file), 'utf8') }],
+    ];
+    const kept = replaced.map(([owner, key]) => Object.getOwnPropertyDescriptor(owner, key));
+    replaced.forEach(([owner, key, value]) =>
+      Object.defineProperty(owner, key, { configurable: true, get: () => value }),
+    );
+    const restore = () =>
+      replaced.forEach(([owner, key], at) => {
+        const descriptor = kept[at];
+        if (descriptor) {
+          Object.defineProperty(owner, key, descriptor);
+        } else {
+          delete owner[key];
+        }
+      });
+    return { said, details, restore };
+  }
+
+  test('a file that leaves lists out is described, and imported, as the lists it has', async () => {
+    const store = createPreferences(new MemoryMemento());
+    await store.pins.pinNote({ filePath: 'notes/relay.md' });
+    for (const file of [
+      { version: 1, favoriteTags: ['#project/atlas'] },
+      { deckard: { kind: 'preferences', version: 1 }, preferences: { favoriteTags: ['#project/atlas'] } },
+    ]) {
+      assert.strictEqual(describePreferences(readExport(file).preferences), '1 favorite tag');
+      const reader = importing(file);
+      try {
+        await importPreferences(store, new PreferenceSnapshots(undefined, store.reader, new FakeFileSystem()));
+      } finally {
+        reader.restore();
+      }
+      assert.strictEqual(
+        reader.said[0],
+        `Replace what this workspace remembers with the file ${vscode.Uri.file('/imports/deckard-preferences.json').fsPath}?`,
+      );
+      assert.match(reader.details[0], /^It holds 1 favorite tag\. /);
+      assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/atlas']);
+      assert.deepStrictEqual(store.reader.value.pinnedNotes ?? [], [], 'a list the file leaves out is emptied');
+      await store.pins.pinNote({ filePath: 'notes/relay.md' });
+    }
+    store.repository.dispose();
+  });
+
+  test('keeps a copy of what it replaces, even when nothing changed in this session', async () => {
+    const state = new MemoryMemento();
+    const workspaceState = new MemoryMemento();
+    const earlier = createPreferences(state, workspaceState);
+    await earlier.favorites.toggleFavorite('#project/atlas');
+    earlier.repository.dispose();
+    // A later session: nothing has changed yet, so no copy has been written.
+    const store = createPreferences(state, workspaceState);
+    const files = new FakeFileSystem();
+    const snapshots = new PreferenceSnapshots(fileUri('/storage/workspace'), store.reader, files);
+    const reader = importing(createExport({ ...store.reader.value, favoriteTags: ['#project/relay'] }));
+    try {
+      await importPreferences(store, snapshots);
+    } finally {
+      reader.restore();
+      snapshots.dispose();
+    }
+    assert.match(reader.details[0], /and is copied first so it can be restored\.$/);
+    assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/relay']);
+    const copies = await snapshots.list();
+    assert.strictEqual(copies.length, 1);
+    assert.deepStrictEqual(readExport(await snapshots.read(copies[0])).preferences.favoriteTags, ['#project/atlas']);
+    store.repository.dispose();
+  });
+
+  test('says no copy is kept when no folder is open', async () => {
+    const store = createPreferences(new MemoryMemento());
+    const reader = importing(createExport(store.reader.value));
+    try {
+      await importPreferences(store, new PreferenceSnapshots(undefined, store.reader, new FakeFileSystem()));
+    } finally {
+      reader.restore();
+    }
+    assert.match(reader.details[0], /With no folder open, Deckard keeps no copy of it, so it cannot be restored\.$/);
+    store.repository.dispose();
+  });
+
+  test('replaces nothing when the copy cannot be written', async () => {
+    const store = createPreferences(new MemoryMemento());
+    await store.favorites.toggleFavorite('#project/atlas');
+    const files = new FakeFileSystem();
+    files.writeFile = async () => {
+      throw new Error('ENOSPC: no space left on device');
+    };
+    const snapshots = new PreferenceSnapshots(fileUri('/storage/workspace'), store.reader, files);
+    const reader = importing(createExport({ ...store.reader.value, favoriteTags: ['#project/relay'] }));
+    try {
+      await importPreferences(store, snapshots);
+    } finally {
+      reader.restore();
+      snapshots.dispose();
+    }
+    assert.ok(
+      reader.said.some((text) =>
+        text.startsWith('Deckard could not keep a copy of what this workspace remembers, so nothing was replaced.'),
+      ),
+      reader.said.join('\n'),
+    );
+    assert.deepStrictEqual(store.reader.value.favoriteTags, ['#project/atlas']);
+    store.repository.dispose();
   });
 });

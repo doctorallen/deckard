@@ -6,11 +6,13 @@
 // while a missing one is only offered, never created unasked.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./webviewRuntime.js');
-const { CalendarView } = require('../../out/ui/webview/calendar.js');
-const { parseMarkdown } = require('../../out/core/markdown/parser.js');
-const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
-const { formatLocalDate, getPeriodicNote } = require('../../out/ui/commands/dailyNote.js');
+const { mountWebview } = require('./support.js');
+const modules = require('../harness/modules.js');
+const { CalendarView } = modules.calendar;
+const { parseMarkdown } = modules.parser;
+const { buildWorkspaceIndex } = modules.indexState;
+const { formatLocalDate, getPeriodicNote } = modules.periodicNotes;
+const { ThemePreview } = modules.themePreview;
 
 // The stub has no editor, so record what the host tries to open instead.
 const opened = [];
@@ -35,6 +37,9 @@ function createIndex() {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
+// The tags the calendar asked to open, as Deckard opens them on a search page.
+const openedTags = [];
+
 /** Lets the host finish handling a message the page posted. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -48,7 +53,13 @@ async function openCalendar() {
     getSnapshot: () => index,
     onDidUpdate: updates.event,
   };
-  const calendar = new CalendarView(indexer);
+  const calendar = new CalendarView({
+    indexer,
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: (tagKey) => openedTags.push(tagKey),
+  });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
   host._onWebviewMessage = host._fromWebview;
@@ -62,11 +73,8 @@ async function openCalendar() {
     view.findAll('[data-action="show-month"]').find(
       (button) => button.getAttribute('aria-label') === text || button.textContent === text,
     );
-  return { host, view, updates, day, monthButton };
+  return { calendar, host, view, updates, day, monthButton };
 }
-
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
@@ -190,6 +198,9 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
     const other = view
       .findAll('[data-action="open-day"]')
       .find((button) => !button.querySelector('.note-dot') && button.getAttribute('data-date') !== today);
+    // Read before the click: a day in another month moves the calendar to
+    // it, and the page may draw another day into the same button.
+    const chosen = other.getAttribute('data-date');
     const asked = vscode._test.shown.info.length;
     view.click(other);
     await new Promise((resolve) => setTimeout(resolve, 160));
@@ -197,8 +208,8 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
     assert.deepStrictEqual(opened, [], 'a click opens nothing');
     assert.strictEqual(vscode._test.shown.info.length, asked, 'and asks nothing');
     const posted = view.posted.filter((message) => message.type === 'selectDay');
-    assert.strictEqual(posted[posted.length - 1].date, other.getAttribute('data-date'));
-    assert.strictEqual(day(other.getAttribute('data-date')).classList.contains('selected'), true, 'the host draws it chosen');
+    assert.strictEqual(posted[posted.length - 1].date, chosen);
+    assert.strictEqual(day(chosen).classList.contains('selected'), true, 'the host draws it chosen');
 
     const html = host.webview.html;
     await configuration.update('calendar.dayPanel', false);
@@ -210,22 +221,22 @@ test('with the day panel on, a click chooses a day and opens nothing, and the pa
   }
 });
 
-// ---------------------------------------------------------------------------
 
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
+test('with the weekends hidden, a month step keeps the chosen day\'s place on a weekday', async () => {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  await configuration.update('calendar.dayPanel', true);
+  await configuration.update('calendar.showWeekends', false);
+  try {
+    const { calendar, view, monthButton } = await openCalendar();
+    // October 10th, 2026 is a Saturday, which is not drawn.
+    await calendar.controller.handle({ type: 'selectDay', date: '2026-09-10' });
+    await settle();
+    view.click(monthButton('Next month'));
+    await settle();
+    assert.strictEqual(calendar.controller.selectedDate, '2026-10-12', 'on to Monday');
+    assert.strictEqual(view.find('.calendar-grid .day.selected').getAttribute('data-date'), '2026-10-12', 'which is drawn chosen');
+  } finally {
+    await configuration.update('calendar.dayPanel', undefined);
+    await configuration.update('calendar.showWeekends', undefined);
   }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();
+});

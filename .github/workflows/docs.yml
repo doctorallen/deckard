@@ -1,7 +1,8 @@
 name: Docs
 
 # Builds docs/guide into the GitHub Pages site at deckard.esperinnovations.com,
-# in the Replicant theme that docs/site lays out. The guide is plain Markdown
+# in the Replicant theme that docs/site lays out, with docs/architecture beside
+# it as the contributors' section, How Deckard is built. The guide is plain Markdown
 # that also reads on GitHub and ships in the VSIX for Help's Read more, so
 # the site is built from the same files: staged beside the screenshots, with
 # the links that leave the guide pointed at GitHub, then run through the
@@ -13,34 +14,54 @@ name: Docs
 # a workflow deployment takes its domain from there, not from a CNAME file.
 # The domain's DNS needs a CNAME record pointing at doctorallen.github.io.
 
+# A push to master builds and publishes. A pull request, or a push to a
+# refactor branch, builds the same site and stops there, so a page that
+# breaks the build is caught before anything goes public.
 on:
   push:
     branches:
       - master
+      - 'refactor/**'
     paths:
       - docs/guide/**
       - docs/images/**
       - docs/site/**
+      - docs/architecture/**
+      # The architecture section's layer graph is drawn from the source and
+      # the rules, so either changing redraws it.
+      - src/**
+      - .dependency-cruiser.cjs
+      - scripts/stage-architecture.js
+      - resources/lockup.png
+      - .github/workflows/docs.yml
+  pull_request:
+    paths:
+      - docs/guide/**
+      - docs/images/**
+      - docs/site/**
+      - docs/architecture/**
+      # The architecture section's layer graph is drawn from the source and
+      # the rules, so either changing redraws it.
+      - src/**
+      - .dependency-cruiser.cjs
+      - scripts/stage-architecture.js
       - resources/lockup.png
       - .github/workflows/docs.yml
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+# Each job asks for what it needs: the build reads the source, and only the
+# deployment may write to Pages.
+permissions: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Stage the guide, its screenshots, and the site's layout
         run: |
@@ -67,25 +88,55 @@ jobs:
             -e "s#](\.\./\([^)]*\))#](${repo}/docs/\1)#g" \
             site/*.md
 
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The architecture pages link the code and the plans by relative path;
+      # the stager points each link that leaves the section at GitHub.
+      - name: Stage the architecture section
+        run: node scripts/stage-architecture.js site "https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}"
+
+      # The layer graph comes from the same rules lint enforces, so the
+      # picture cannot drift from the code.
+      - name: Draw the layer graph
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q graphviz
+          npx depcruise src --config .dependency-cruiser.cjs --output-type archi | dot -T svg > site/architecture/layers.svg
+
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
+        uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
         with:
           source: ./site
           destination: ./_site
 
       - name: Upload the site
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
 
   deploy:
     needs: build
+    # Only master publishes; one deployment at a time, never cancelled.
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

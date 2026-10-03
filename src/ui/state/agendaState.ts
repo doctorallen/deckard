@@ -1,19 +1,16 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
-import { mentionsParked, withoutParked } from '../../core/workspace/parked';
-import { describeSteps, isPlainStep } from '../../core/markdown/taskSteps';
-import {
-  addDays,
-  formatIsoDate,
-  formatTaskMetadata,
-  startOfDay,
-  TASK_PRIORITY_RANKS,
-} from '../../core/markdown/taskMetadata';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
-import { parseQuery } from '../../core/query/queryParser';
-import { needsNewDate, readLineStatus } from '../../core/taskPolicy';
-import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
-import { getHeadingPath } from './dashboardState';
-import { stripTrailingTags } from './queryBlockState';
+import { mentionsParked, withoutParked } from '../../domain/index/parked';
+import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
+import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { parseQuery } from '../../domain/query/queryParser';
+import { QueryContext } from '../../domain/query/queryContext';
+import { readLineStatus } from '../../domain/tasks/taskPolicy';
+import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
+import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
+import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { Task, TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
  * The Agenda is a list of open tasks — the ones a query chose, or every one
@@ -36,10 +33,12 @@ import { stripTrailingTags } from './queryBlockState';
  * Tasks view, Home's agenda, and the count in the status bar.
  */
 
+/**
+ * A group's id: a placement such as `overdue`, `upcoming:2026-09-28` for a
+ * day of Upcoming, `donetoday`, or the value a grouping keys on, such as
+ * `priority:high` or `tag:context/phone`.
+ */
 export type AgendaGroupId = string;
-
-/** What the Agenda's groups are: when a task is wanted, or what it carries. */
-export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
 
 /** The ways the Agenda can be grouped, in the order the picker offers them. */
 export const AGENDA_GROUPINGS: readonly {
@@ -62,6 +61,7 @@ export const AGENDA_GROUPINGS: readonly {
   },
 ];
 
+/** One task as the Agenda lists it, with what placed it and what to say beside it. */
 export interface AgendaEntry {
   task: Task;
   title: string;
@@ -78,12 +78,14 @@ export interface AgendaEntry {
   stepsLabel?: string;
 }
 
+/** One group of the Agenda, its entries in the order they are shown. */
 export interface AgendaGroup {
   id: AgendaGroupId;
   label: string;
   entries: AgendaEntry[];
 }
 
+/** The groups by due status, in the order they are shown. */
 const GROUP_ORDER: readonly AgendaGroupId[] = [
   'overdue',
   'today',
@@ -93,6 +95,7 @@ const GROUP_ORDER: readonly AgendaGroupId[] = [
   'needsdate',
 ];
 
+/** What each due-status group is called. */
 const GROUP_LABELS: Readonly<Record<string, string>> = {
   overdue: 'Overdue',
   today: 'Today',
@@ -149,11 +152,12 @@ export function normalizeAgendaQuery(query: string): string {
 /**
  * The tasks `deckard.agenda.query` chooses: every task for an empty query,
  * and every task, with the reason, for one that does not parse — a broken
- * setting should not empty the view.
+ * setting should not empty the view. The query is evaluated in `context`.
  */
 export function selectAgendaTasks(
   index: WorkspaceIndex,
   query: string,
+  context: QueryContext,
 ): { tasks: Task[]; error?: string } {
   // A list of things to do leaves parked tasks out, unless its own search
   // asks about them.
@@ -168,8 +172,29 @@ export function selectAgendaTasks(
       error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
     };
   }
-  const tasks = evaluateQuery(index, parsed.node).tasks;
+  const tasks = evaluateQuery(index, parsed.node, context).tasks;
   return { tasks: mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index) };
+}
+
+/**
+ * The open tasks the Tasks view lists as overdue on the context's today, as
+ * `settings.query` selects them and with Upcoming reaching
+ * `settings.upcomingDays`.
+ */
+export function selectOverdueTasks(
+  index: WorkspaceIndex,
+  context: QueryContext,
+  settings: { query: string; upcomingDays: number },
+): Task[] {
+  const selected = selectAgendaTasks(index, settings.query, context);
+  return (
+    createAgenda(index, context, {
+      tasks: selected.tasks,
+      upcomingDays: settings.upcomingDays,
+    })
+      .find((group) => group.id === 'overdue')
+      ?.entries.map((entry) => entry.task) ?? []
+  );
 }
 
 /**
@@ -188,91 +213,77 @@ const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
   'none',
 ];
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/**
- * The date an undated task sorts by. Nothing placed it, so it sorts after
- * everything a date placed, in whichever grouping mixes the two.
- */
-const NO_DATE = Number.MAX_SAFE_INTEGER;
+/** An order of entries, as each group sorts its own. */
+type EntryOrder = (left: AgendaEntry, right: AgendaEntry) => number;
 
-interface Placement {
-  group: AgendaGroupId;
-  at: number;
-  reason: string;
+/** The days the Agenda is placed against: today's midnight, tomorrow's, and Upcoming's end. */
+interface AgendaWindow {
+  today: number;
+  tomorrow: number;
+  horizon: number;
 }
 
-/** Builds the Agenda for `now`. Empty groups are left out. */
+/**
+ * How the due-status groups order their entries. Today and No date are to-do
+ * lists, so importance leads; the other groups read as a timeline, by
+ * compareByDate. Overdue runs newest slip first: what slipped yesterday can
+ * still be saved, and a month-old task is not news.
+ */
+const ORDER_BY_GROUP = new Map<AgendaGroupId, EntryOrder>([
+  ['today', compareByPriority],
+  ['nodate', compareByPriority],
+  ['overdue', compareByDateDescending],
+]);
+
+/** Regroups the Agenda's entries along another axis than due status. */
+type Regrouper = (
+  entries: readonly AgendaEntry[],
+  index: WorkspaceIndex,
+  options: AgendaOptions,
+  order: EntryOrder,
+) => AgendaGroup[];
+
+/**
+ * The groupings other than by due status. Any other value groups by person,
+ * as the Agenda always has for a value it does not know.
+ */
+const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
+  ['priority', (entries, _index, _options, order) => groupByPriority(entries, order)],
+  ['status', (entries, _index, options, order) =>
+    groupByStatus(entries, options.statusNamespace ?? 'status', order)],
+  ['tag', (entries, index, options, order) =>
+    groupByTag(entries, index, options.groupNamespace ?? 'project', order)],
+]);
+
+/**
+ * Builds the Agenda for the context's `now`, with its task policy saying
+ * when an overdue task needs a new date. Empty groups are left out.
+ */
 export function createAgenda(
   index: WorkspaceIndex,
-  now: number,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: AgendaOptions,
 ): AgendaGroup[] {
-  const {
-    tasks = index.tasks.values(),
-    upcomingDays,
-    groupBy = 'due',
-    statusNamespace = 'status',
-    taskOrder = [],
-  } = options;
-  // A plain step rides on its open task's row, so five steps are not five
-  // rows, nor five in the count; one with a date, priority, person, or tag
-  // of its own is still listed on its own.
-  const all = [...tasks];
-  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
-  const listed = all.filter(
-    (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
-  );
-  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
-  const byRank =
-    (fallback: (left: AgendaEntry, right: AgendaEntry) => number) =>
-    (left: AgendaEntry, right: AgendaEntry): number => {
-      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftRank - rightRank || fallback(left, right);
-    };
-  const today = startOfDay(now);
+  const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [] } = options;
+  const listed = withoutPlainSteps([...tasks]);
+  const byRank = rankFirst(taskOrder);
+  const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
-  const horizon = addDays(today, Math.max(1, upcomingDays) + 1);
-  const openDependencyIds = new Set(
-    [...index.tasks.values()]
-      .filter((task) => !task.completed && task.dependencyId)
-      .map((task) => task.dependencyId as string),
-  );
-
-  const groups = new Map<AgendaGroupId, AgendaEntry[]>(
-    GROUP_ORDER.map((id) => [id, []]),
-  );
-  for (const task of listed) {
-    if (task.completed) {
-      continue;
-    }
-    const placement = placeTask(task, today, tomorrow, horizon);
-    if (placement) {
-      groups
-        .get(placement.group)
-        ?.push(createEntry(task, index, placement, openDependencyIds));
-    }
-  }
-
+  const window: AgendaWindow = {
+    today,
+    tomorrow,
+    horizon: addDays(today, Math.max(1, upcomingDays) + 1),
+  };
+  const openDependencyIds = collectOpenDependencyIds(index);
+  const groups = placeOpenTasks(listed, index, context, { window, openDependencyIds });
   const byDue = GROUP_ORDER.map((id) => ({
     id,
     label: GROUP_LABELS[id] ?? id,
-    // Today and No date are to-do lists, so importance leads; the other
-    // groups read as a timeline. Overdue runs newest slip first: what slipped
-    // yesterday can still be saved, and a month-old task is not news.
-    entries: (groups.get(id) ?? []).sort(
-      byRank(
-        id === 'today' || id === 'nodate'
-          ? compareByPriority
-          : id === 'overdue'
-            ? compareByDateDescending
-            : compareByDate,
-      ),
-    ),
+    entries: (groups.get(id) ?? []).sort(byRank(ORDER_BY_GROUP.get(id) ?? compareByDate)),
   })).filter((group) => group.entries.length > 0);
   const done = options.doneToday
-    ? createDoneToday(listed, index, today, tomorrow, openDependencyIds)
+    ? createDoneToday(listed, index, { today, tomorrow, openDependencyIds })
     : [];
   if (groupBy === 'due') {
     return [
@@ -288,16 +299,70 @@ export function createAgenda(
   // axis changes.
   const entries = byDue.flatMap((group) => group.entries);
   const order = byRank(compareByDate);
+  const regroup = REGROUPERS.get(groupBy);
   return [
-    ...(groupBy === 'priority'
-      ? groupByPriority(entries, order)
-      : groupBy === 'status'
-        ? groupByStatus(entries, statusNamespace, order)
-        : groupBy === 'tag'
-          ? groupByTag(entries, index, options.groupNamespace ?? 'project', order)
-          : groupByAssignee(entries, index, order)),
+    ...(regroup ? regroup(entries, index, options, order) : groupByAssignee(entries, index, order)),
     ...done,
   ];
+}
+
+/**
+ * Leaves out the plain steps of open tasks. A plain step rides on its open
+ * task's row, so five steps are not five rows, nor five in the count; one
+ * with a date, priority, person, or tag of its own is still listed on its own.
+ */
+function withoutPlainSteps(all: readonly Task[]): Task[] {
+  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
+  return all.filter(
+    (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
+  );
+}
+
+/**
+ * Puts the tasks a reader dragged into place first, in the order they left
+ * them, and orders the rest by `fallback`.
+ */
+function rankFirst(taskOrder: readonly string[]): (fallback: EntryOrder) => EntryOrder {
+  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
+  return (fallback) =>
+    (left, right) => {
+      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftRank - rightRank || fallback(left, right);
+    };
+}
+
+/** The 🆔 ids open tasks carry, so a ⛔ naming one is still blocked. */
+function collectOpenDependencyIds(index: WorkspaceIndex): Set<string> {
+  return new Set(
+    [...index.tasks.values()]
+      .filter((task) => !task.completed && task.dependencyId)
+      .map((task) => task.dependencyId as string),
+  );
+}
+
+/** Each open task as an entry in the due-status group placeTask puts it in, in listed order. */
+function placeOpenTasks(
+  listed: readonly Task[],
+  index: WorkspaceIndex,
+  context: Pick<QueryContext, 'taskPolicy'>,
+  { window, openDependencyIds }: { window: AgendaWindow; openDependencyIds: ReadonlySet<string> },
+): Map<AgendaGroupId, AgendaEntry[]> {
+  const groups = new Map<AgendaGroupId, AgendaEntry[]>(
+    GROUP_ORDER.map((id) => [id, []]),
+  );
+  for (const task of listed) {
+    if (task.completed) {
+      continue;
+    }
+    const placement = placeTask(task, window, context.taskPolicy);
+    if (placement) {
+      groups
+        .get(placement.group)
+        ?.push(createEntry(task, index, placement, openDependencyIds));
+    }
+  }
+  return groups;
 }
 
 /**
@@ -319,12 +384,13 @@ function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGr
   }));
 }
 
+/** Month names as a day label writes them, independent of locale. */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** A day as a group names it, `Mon Sep 28`, with no locale comma. */
 function formatDayLabel(at: number): string {
   const date = new Date(at);
-  return `${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+  return `${SHORT_WEEKDAY_NAMES[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
 /**
@@ -335,9 +401,11 @@ function formatDayLabel(at: number): string {
 function createDoneToday(
   tasks: readonly Task[],
   index: WorkspaceIndex,
-  today: number,
-  tomorrow: number,
-  openDependencyIds: ReadonlySet<string>,
+  { today, tomorrow, openDependencyIds }: {
+    today: number;
+    tomorrow: number;
+    openDependencyIds: ReadonlySet<string>;
+  },
 ): AgendaGroup[] {
   const entries = tasks
     .filter(
@@ -492,72 +560,16 @@ function collect(
     }));
 }
 
+/** A word with its first letter capitalized, as a group label begins. */
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function placeTask(
-  task: Task,
-  today: number,
-  tomorrow: number,
-  horizon: number,
-): Placement {
-  const { dueAt, scheduledAt, startAt } = task;
-  if (
-    dueAt === undefined &&
-    scheduledAt === undefined &&
-    startAt === undefined
-  ) {
-    // No date to read, so no date to show: the entry carries its priority and
-    // its note instead.
-    return { group: 'nodate', at: NO_DATE, reason: '' };
-  }
-  if (dueAt !== undefined && needsNewDate(dueAt, today)) {
-    return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt)}` };
-  }
-  if (dueAt !== undefined && dueAt < today) {
-    return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt)}` };
-  }
-  if (dueAt !== undefined && dueAt < tomorrow) {
-    return { group: 'today', at: dueAt, reason: 'due today' };
-  }
-
-  // A future start date means the task is not actionable yet, however early
-  // it was scheduled.
-  const started = startAt === undefined || startAt < tomorrow;
-  if (started && scheduledAt !== undefined && scheduledAt < tomorrow) {
-    return {
-      group: 'today',
-      at: scheduledAt,
-      reason:
-        scheduledAt < today
-          ? `scheduled ${formatDay(scheduledAt)}`
-          : 'scheduled today',
-    };
-  }
-
-  // The first date still to come places the task: within the horizon it is
-  // Upcoming, past it Later. A task nothing here placed — scheduled in the
-  // past, say, but not started until after the horizon — is Later by the
-  // date it waits for.
-  const ahead = [
-    { at: dueAt, verb: 'due' },
-    { at: scheduledAt, verb: 'scheduled' },
-    { at: startAt, verb: 'starts' },
-  ]
-    .filter(
-      (candidate): candidate is { at: number; verb: string } =>
-        candidate.at !== undefined && candidate.at >= tomorrow,
-    )
-    .sort((left, right) => left.at - right.at);
-  const soonest = ahead[0] ?? { at: startAt ?? NO_DATE, verb: 'starts' };
-  return {
-    group: soonest.at < horizon ? 'upcoming' : 'later',
-    at: soonest.at,
-    reason: `${soonest.verb} ${formatDay(soonest.at)}`,
-  };
-}
-
+/**
+ * A task as an entry: its title without trailing tags, the headings above
+ * it, and the details beside it, which are why it was placed, its priority,
+ * the open tasks it waits on, its steps, and its note.
+ */
 function createEntry(
   task: Task,
   index: WorkspaceIndex,
@@ -593,6 +605,7 @@ function createEntry(
   };
 }
 
+/** The timeline order: soonest date first, then higher priority, then source order. */
 function compareByDate(left: AgendaEntry, right: AgendaEntry): number {
   return (
     left.at - right.at ||
@@ -601,6 +614,7 @@ function compareByDate(left: AgendaEntry, right: AgendaEntry): number {
   );
 }
 
+/** Latest date first, then higher priority, then source order: Overdue's newest slip first. */
 function compareByDateDescending(left: AgendaEntry, right: AgendaEntry): number {
   return (
     right.at - left.at ||
@@ -609,6 +623,7 @@ function compareByDateDescending(left: AgendaEntry, right: AgendaEntry): number 
   );
 }
 
+/** The to-do order: higher priority first, then soonest date, then source order. */
 function compareByPriority(left: AgendaEntry, right: AgendaEntry): number {
   return (
     comparePriority(left, right) ||
@@ -617,6 +632,7 @@ function compareByPriority(left: AgendaEntry, right: AgendaEntry): number {
   );
 }
 
+/** Higher priority first; no priority ranks between medium and low, as a query ranks it. */
 function comparePriority(left: AgendaEntry, right: AgendaEntry): number {
   return (
     TASK_PRIORITY_RANKS[right.task.priority ?? 'none'] -
@@ -624,14 +640,10 @@ function comparePriority(left: AgendaEntry, right: AgendaEntry): number {
   );
 }
 
+/** Source order: by file path, then line. */
 function compareSource(left: AgendaEntry, right: AgendaEntry): number {
   return (
     left.task.filePath.localeCompare(right.task.filePath) ||
     left.task.lineNumber - right.task.lineNumber
   );
-}
-
-/** Writes a date as "Mon 2026-09-14", so a week reads at a glance. */
-function formatDay(at: number): string {
-  return `${WEEKDAYS[new Date(at).getDay()]} ${formatIsoDate(at)}`;
 }

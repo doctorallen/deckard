@@ -2,13 +2,9 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { setTaskRankKeeper } from '../ui/commands/taskActions';
-import {
-  describeToggle,
-  selectedLines,
-  toggleTaskDoneCommand,
-  toggleTaskLines,
-} from '../ui/commands/toggleTaskDone';
+import { describeToggle, toggleTaskDoneCommand } from '../ui/commands/toggleTaskDone';
+import { createTaskWrites } from './taskWrites';
+import { selectedLines, toggleTaskLines } from '../domain/tasks/toggleLines';
 
 /** Friday 2026-09-25, mid-morning. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();
@@ -100,10 +96,15 @@ suite('Toggle Task Done', () => {
       new vscode.Selection(1, 0, 3, 3),
     ];
     const carried: [string, string][] = [];
-    setTaskRankKeeper((from, to) => carried.push([from, to]));
     try {
       const version = document.version;
-      const result = await toggleTaskDoneCommand({ getFilePath: () => 'plan.md' }, now);
+      const result = await toggleTaskDoneCommand(
+        {
+          paths: { getFilePath: () => 'plan.md' },
+          tasks: createTaskWrites(undefined, (from, to) => carried.push([from, to])).tasks,
+        },
+        now,
+      );
       assert.strictEqual(result?.lines.length, 2);
       assert.strictEqual(
         document.getText(),
@@ -114,7 +115,6 @@ suite('Toggle Task Done', () => {
       // One edit, so one Undo takes every line back.
       assert.strictEqual(document.version, version + 1);
     } finally {
-      setTaskRankKeeper(undefined);
       await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     }
   });
@@ -133,7 +133,7 @@ suite('Toggle Task Done', () => {
       return Promise.resolve(undefined);
     };
     try {
-      assert.strictEqual(await toggleTaskDoneCommand(undefined, now), undefined);
+      assert.strictEqual(await toggleTaskDoneCommand({ paths: { getFilePath: () => 'plan.md' }, tasks: createTaskWrites().tasks }, now), undefined);
       assert.deepStrictEqual(said, ['Put the cursor on a task to mark it done.']);
       assert.strictEqual(document.getText(), 'Nothing to do\n');
     } finally {

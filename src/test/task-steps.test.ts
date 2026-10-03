@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
+import { parseMarkdown } from '../domain/markdown/parser';
 import {
   cleanStepText,
   describeStepParts,
@@ -13,11 +13,12 @@ import {
   planStepInsertion,
   resetStepLine,
   splitTypedSteps,
-} from '../core/markdown/taskSteps';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { Task } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+} from '../domain/markdown/taskSteps';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { Task } from '../domain/model';
 
 function tasksOf(markdown: string): Task[] {
   return parseMarkdown('notes/plan.md', markdown).tasks;
@@ -213,7 +214,7 @@ suite('Task steps', () => {
     const titles = (query: string): string[] => {
       const parsed = parseQuery(query);
       assert.deepStrictEqual(parsed.diagnostics.filter((item) => item.severity === 'error'), [], query);
-      return evaluateQuery(index, parsed.node).tasks.map((task) => task.title).sort();
+      return evaluateQuery(index, parsed.node, createQueryContext(Date.now())).tasks.map((task) => task.title).sort();
     };
 
     test('is:step, has:steps, and no:steps, with their other spellings', () => {

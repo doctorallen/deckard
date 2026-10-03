@@ -1,0 +1,149 @@
+import { performance } from 'perf_hooks';
+
+import type { Disposable } from '../ports/events';
+import type { Log } from '../ports/log';
+
+/**
+ * Measures Deckard's work and reports it to a log, so a slow machine can be
+ * diagnosed from an installed extension rather than only from a debugger.
+ *
+ * Every measurement is written at Debug level, and one that takes
+ * `SLOW_OPERATION_MS` or longer is also written at Info, the level VS Code
+ * keeps by default. A line is only formatted when the log will keep it, so
+ * measuring costs next to nothing while the log is at its default level.
+ */
+
+/** VS Code's log levels, numbered as `vscode.LogLevel` numbers them. */
+const LogLevel = { off: 0, trace: 1, debug: 2, info: 3 } as const;
+
+/** Where lines go: the Log port, which VS Code's `LogOutputChannel` satisfies. */
+export type TimingLog = Log;
+
+/** A measurement at least this long is reported even at the default level. */
+export const SLOW_OPERATION_MS = 100;
+
+/**
+ * Where measurements go. The one piece of module state here, on purpose: a
+ * log has no answer to give back, so measuring reads it rather than every
+ * measured function taking it, and activate() sets it and takes it away.
+ */
+let log: TimingLog | undefined;
+
+/**
+ * Sends measurements to `next`, or stops reporting them when undefined.
+ * Returns what stops them again, which activate() pushes onto the
+ * extension's subscriptions, so the log is Deckard's from activation to
+ * deactivation.
+ */
+export function setTimingLog(next: TimingLog | undefined): Disposable {
+  log = next;
+  return {
+    dispose: () => {
+      log = undefined;
+    },
+  };
+}
+
+/**
+ * Reports something that went wrong to Deckard's log.
+ *
+ * A note that cannot be read is dropped from the index, which shows up later
+ * as a note missing from search or Home. This is the account of it, in the
+ * log the troubleshooting docs send people to; it used to go to the
+ * extension host's console, where nobody was looking.
+ */
+export function reportError(message: string, error: unknown): void {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (log?.error) {
+    log.error(`${message}: ${detail}`);
+    return;
+  }
+  log?.info(`${message}: ${detail}`);
+}
+
+/**
+ * Runs `run` and reports how long it took. `describe` adds context, such as
+ * how many notes were involved, and is only called when the line is written.
+ */
+export function measure<T>(
+  operation: string,
+  run: () => T,
+  describe?: (result: T) => string,
+): T {
+  if (!log) {
+    return run();
+  }
+  const start = performance.now();
+  let result: T | undefined;
+  try {
+    result = run();
+    return result;
+  } finally {
+    report(
+      operation,
+      performance.now() - start,
+      describe && result !== undefined ? () => describe(result as T) : undefined,
+    );
+  }
+}
+
+/** `measure` for work that finishes later. */
+export async function measureAsync<T>(
+  operation: string,
+  run: () => Promise<T>,
+  describe?: (result: T) => string,
+): Promise<T> {
+  if (!log) {
+    return run();
+  }
+  const start = performance.now();
+  let result: T | undefined;
+  try {
+    result = await run();
+    return result;
+  } finally {
+    report(
+      operation,
+      performance.now() - start,
+      describe && result !== undefined ? () => describe(result as T) : undefined,
+    );
+  }
+}
+
+/** Writes a Trace line, building it only when the log keeps Trace lines. */
+export function logTrace(message: () => string): void {
+  if (log && keeps(log, LogLevel.trace)) {
+    log.trace(message());
+  }
+}
+
+/**
+ * Logs how long an operation took: a slow one at Info, as `Slow: …`, and
+ * any other only when the log keeps Debug lines. The description is built
+ * only when the line is written.
+ */
+function report(
+  operation: string,
+  milliseconds: number,
+  describe: (() => string) | undefined,
+): void {
+  if (!log) {
+    return;
+  }
+  const slow = milliseconds >= SLOW_OPERATION_MS;
+  if (!slow && !keeps(log, LogLevel.debug)) {
+    return;
+  }
+  const detail = describe ? ` (${describe()})` : '';
+  const line = `${operation}: ${milliseconds.toFixed(1)} ms${detail}`;
+  if (slow) {
+    log.info(`Slow: ${line}`);
+  } else {
+    log.debug(line);
+  }
+}
+
+/** Whether a log writes lines of a level: it is not off, and its level is at or below that one. */
+function keeps(target: TimingLog, level: number): boolean {
+  return target.logLevel !== LogLevel.off && target.logLevel <= level;
+}

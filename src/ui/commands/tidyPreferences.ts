@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
-import { StalePreferences } from '../../core/storage/preferences';
-import { WorkspaceIndex } from '../../core/types';
+import { pluralize } from '../../shared/text';
+import { WorkspaceIndex } from '../../domain/model';
+import { StalePreferences } from '../../core/storage/preferencesMaintenance';
 
 /**
  * Removing what points nowhere, on request.
@@ -30,7 +31,7 @@ interface TidyStore {
 /** One line per kind, as "3 favorite tags", for whatever is stale. */
 export function describeStale(stale: StalePreferences): string[] {
   const line = (count: number, one: string, many: string): string[] =>
-    count === 0 ? [] : [`${count} ${count === 1 ? one : many}`];
+    count === 0 ? [] : [pluralize(count, one, many)];
   return [
     ...line(stale.favoriteTags.length, 'favorite tag', 'favorite tags'),
     ...line(stale.favoriteEntities.length, 'favorite entity', 'favorite entities'),
@@ -51,6 +52,11 @@ export function listStale(stale: StalePreferences): string {
   ].join('\n');
 }
 
+/**
+ * Deckard: Tidy Preferences. Says what points at nothing and removes it once
+ * the reader agrees in a modal that lists each item; with nothing stale it
+ * says so and asks nothing.
+ */
 export async function tidyPreferences(
   indexer: TidyIndexSource,
   preferences: TidyStore,
@@ -74,8 +80,9 @@ export async function tidyPreferences(
     { modal: true, detail: listStale(stale) },
     'Remove',
   );
-  if (confirm === 'Remove') {
-    await preferences.removeStale(stale);
-    void vscode.window.showInformationMessage(`Removed ${lines.join(', ')}.`);
+  if (confirm !== 'Remove') {
+    return;
   }
+  await preferences.removeStale(stale);
+  void vscode.window.showInformationMessage(`Removed ${lines.join(', ')}.`);
 }

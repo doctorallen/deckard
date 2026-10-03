@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { buildNoteActionItems, NoteActionState } from '../ui/commands/noteActions';
+import { buildNoteActionItems, hasHeadingAbove, NoteActionState } from '../ui/commands/noteActions';
 import { isDailyNoteText, readTopHeadings } from '../ui/commands/activeNoteContext';
 
 const target = { uri: 'file:///notes/atlas.md', line: 4 };
@@ -41,6 +41,20 @@ suite('Note Actions', () => {
     ]);
   });
 
+  test('finds a heading above the cursor as the parser reads one', () => {
+    const above = (lines: string[], line = lines.length - 1) =>
+      hasHeadingAbove({ lineCount: lines.length, lineAt: (at: number) => ({ text: lines[at] }) } as never, line);
+    assert.strictEqual(above(['#', 'text']), true, 'hashes alone');
+    assert.strictEqual(above(['   ## Plan', 'text']), true, 'up to three spaces in');
+    assert.strictEqual(above(['    # Code', 'text']), false, 'four spaces in is code');
+    assert.strictEqual(above(['#tag', 'text']), false, 'a tag');
+    assert.strictEqual(above(['```', '# not a heading', '```', 'text']), false, 'a line in fenced code');
+    assert.strictEqual(above(['# Plan', '```', '# not a heading', 'text']), true, 'the heading above the code');
+    const frontMatter = ['---', '# a comment', 'tags: [plan]', '---', 'text'];
+    assert.strictEqual(above(frontMatter), false, 'a YAML comment in front matter');
+    assert.strictEqual(above(frontMatter, 2), false, 'inside the front matter');
+  });
+
   test('opens Related Notes for the heading only inside a tagged entry', () => {
     const [, related] = buildNoteActionItems(
       { onTaskLine: false, pinned: false, inTaggedEntry: true, underHeading: true },
@@ -78,6 +92,13 @@ suite('Active note context', () => {
         '## Sub',
       ]),
       ['Plan'],
+    );
+  });
+
+  test('reads a fence as the parser does: a ``` example inside a ```` fence is still code', () => {
+    assert.deepStrictEqual(
+      readTopHeadings(['# Guide', '````', '```', '# 2026-09-25', '```', '````', '# After']),
+      ['Guide', 'After'],
     );
   });
 });

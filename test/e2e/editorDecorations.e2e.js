@@ -5,7 +5,8 @@
 // keystroke.
 const assert = require('assert');
 const vscode = require('vscode');
-const { EditorTagDecorations } = require('../../out/ui/commands/tagDecorations.js');
+const modules = require('../harness/modules.js');
+const { EditorTagDecorations } = modules.tagDecorations;
 
 /** A visible editor that records how many decorations each draw sets. */
 function createEditor(path, text) {
@@ -33,9 +34,6 @@ const settle = (milliseconds = 250) =>
 const type = (document) =>
   vscode._test.emitters.textDocument.fire({ document, contentChanges: [{ text: 'x' }] });
 
-const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
-
 // ---------------------------------------------------------------------------
 
 test('a burst of edits redraws tags once, after typing pauses', async () => {
@@ -44,7 +42,7 @@ test('a burst of edits redraws tags once, after typing pauses', async () => {
     '# Plan #project/atlas\nText with #risk/vendor.',
   );
   vscode.window.visibleTextEditors = [editor];
-  const decorations = new EditorTagDecorations();
+  const decorations = new EditorTagDecorations().register();
   try {
     const firstDraw = draws.length;
     assert.ok(firstDraw > 0, 'a visible note is drawn when the provider starts');
@@ -66,7 +64,7 @@ test('a burst of edits redraws tags once, after typing pauses', async () => {
 test('edits to a file that is not Markdown redraw nothing', async () => {
   const { editor, draws } = createEditor('/notes/plan.txt', '#project/atlas');
   vscode.window.visibleTextEditors = [editor];
-  const decorations = new EditorTagDecorations();
+  const decorations = new EditorTagDecorations().register();
   try {
     const firstDraw = draws.length;
     type(editor.document);
@@ -78,22 +76,3 @@ test('edits to a file that is not Markdown redraw nothing', async () => {
   }
 });
 
-// ---------------------------------------------------------------------------
-
-(async () => {
-  let pass = 0;
-  const failures = [];
-  for (const entry of tests) {
-    try {
-      await entry.fn();
-      pass += 1;
-      console.log('  ok   ' + entry.name);
-    } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
-      console.log('  FAIL ' + entry.name);
-    }
-  }
-  console.log(`\n${pass} passed, ${failures.length} failed`);
-  failures.forEach((f) => console.log('  ' + f));
-  process.exit(failures.length ? 1 : 0);
-})();

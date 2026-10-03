@@ -50,6 +50,7 @@ function readVersion(heading) {
     : undefined;
 }
 
+/** A version's three numbers, refusing text that is not `major.minor.patch`. */
 function parseVersion(text) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(text).trim());
   if (!match) {
@@ -58,6 +59,7 @@ function parseVersion(text) {
   return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
+/** Below zero when `left` is the earlier version, above when it is the later, and zero when they are the same. */
 function compareVersions(left, right) {
   for (let at = 0; at < 3; at += 1) {
     if (left[at] !== right[at]) {
@@ -158,6 +160,7 @@ function cutChangelog(text, { version, date, baseVersion, commits = [] }) {
   return writeSections(preamble, kept);
 }
 
+/** The changelog's text from its preamble and its sections, a section with no body written as its heading alone. */
 function writeSections(preamble, sections) {
   const parts = [preamble.trimEnd()];
   sections.forEach((section) => {
@@ -212,6 +215,7 @@ function isFeatureRelease(version) {
   return parseVersion(version)[2] === 0;
 }
 
+/** Runs a command of the script, and returns its exit code. */
 function main(argv) {
   const file = path.join(process.cwd(), 'CHANGELOG.md');
   const [command, ...args] = argv;

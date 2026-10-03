@@ -1,8 +1,11 @@
 import * as path from 'path';
 import picomatch = require('picomatch');
 
-import * as vscode from 'vscode';
-
+import type { Configuration, ConfigurationSection } from '../../ports/configuration';
+import type { FileStat, FileSystem } from '../../ports/fileSystem';
+import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
+import type { FolderPattern, WorkspaceFiles } from '../../ports/workspace';
+import type { NoteFiles } from './indexReader';
 import {
   extractTags,
   getEntityNamespaceAliases,
@@ -11,22 +14,30 @@ import {
   NoteBoundaries,
   parseMarkdown,
   PARSE_FORMAT,
-} from '../markdown/parser';
-import { reportError } from '../timing';
-import { ParkedRules, toParkedTagKey } from './parked';
-import { ParsedFile,
-  UnreadableNote,
-} from '../types';
+} from '../../domain/markdown/parser';
+import { findWorkspaceFolderByKey, readFolderSetting, workspaceFolderKey } from '../../shared/paths';
+import { decodeUtf8Text } from '../../shared/text';
+import { reportError } from '../../shared/timing';
+import { ParkedRules, toParkedTagKey } from '../../domain/index/parked';
+import { ParsedFile, UnreadableNote } from '../../domain/model';
 
-export interface WorkspaceFileAccess {
-  readonly workspaceFolders?: readonly vscode.WorkspaceFolder[];
-  findFiles(
-    include: vscode.GlobPattern,
-    exclude?: vscode.GlobPattern,
-    maxResults?: number,
-  ): Thenable<vscode.Uri[]>;
-  readFile(uri: vscode.Uri): Thenable<Uint8Array>;
-  stat?(uri: vscode.Uri): Thenable<vscode.FileStat>;
+/**
+ * What the scanner reads the workspace through: its folders, finding and
+ * naming files in them, the settings, joining paths, and reading files.
+ *
+ * Every part is a port, so the extension passes the VS Code workspace
+ * (`platform/vscodeWorkspace.ts`) and a test passes plain objects. `U` is
+ * the URI type both work in; the scanner hands back URIs of that type.
+ */
+export interface WorkspaceFileAccess<U extends ResourceUri = ResourceUri>
+  extends WorkspaceFiles<U>,
+    Configuration<U>,
+    Pick<FileSystem<U>, 'joinPath' | 'readFile'> {
+  /**
+   * A note's stat. Optional: without it, notes carry no file times, and a
+   * scan cannot tell an unchanged note from a changed one.
+   */
+  stat?(uri: U): PromiseLike<FileStat>;
 }
 
 /**
@@ -57,29 +68,24 @@ export type ReuseParsedFile = (
  */
 const READS_IN_FLIGHT = 8;
 
-/**
- * Reads only the configured Markdown surface of a workspace.
- *
- * File access is injected so path and parsing behavior can be tested without
- * requiring a live VS Code workspace, while the default adapter uses VS Code
- * storage and file APIs in production.
- */
 /** The configured note boundary, falling back when the setting is stale. */
 function getNoteBoundaries(value: unknown): NoteBoundaries {
   return value === 'heading' || value === 'marked' ? value : 'line';
 }
 
-export class WorkspaceScanner {
+/**
+ * Reads only the configured Markdown surface of a workspace.
+ *
+ * File access is injected so path and parsing behavior can be tested without
+ * requiring a live VS Code workspace, while extension.ts passes the VS Code
+ * workspace from platform/vscodeWorkspace.ts in production.
+ */
+export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements NoteFiles<U> {
+  /** Reads, finds, and configures through `access` alone, so a test can pass plain objects. */
   public constructor(
-    private readonly access: WorkspaceFileAccess = createDefaultAccess(),
+    private readonly access: WorkspaceFileAccess<U>,
   ) {}
 
-  /**
-   * Scans each workspace folder and skips unreadable files individually.
-   *
-   * One bad note should not make the rest of the workspace disappear from the
-   * index, so read failures are reported and scanning continues.
-   */
   /**
    * The notes the last scan could not read, with why. A read that fails is
    * logged, but a log is not where a reader looks when a search comes back
@@ -95,18 +101,55 @@ export class WorkspaceScanner {
    */
   public lastScan = { found: 0, templates: 0, excluded: 0, read: 0 };
 
+  /**
+   * Scans each workspace folder and skips unreadable files individually.
+   *
+   * One bad note should not make the rest of the workspace disappear from the
+   * index, so read failures are reported and scanning continues.
+   */
   public async scan(
     onProgress?: ScanProgress,
     reuse?: ReuseParsedFile,
     /** Called with each note read and parsed, between reads. */
     onParsed?: (file: ParsedFile) => void,
   ): Promise<ParsedFile[]> {
-    const entries: ScanEntry[] = [];
-    const failures: UnreadableNote[] = [];
-    let found = 0;
-    let templates = 0;
-    let excluded = 0;
+    const listing = await this.listNoteEntries();
+    const entries = listing.entries;
+    onProgress?.(0, entries.length);
+    let completed = 0;
+    const results = await mapWithConcurrency(entries, READS_IN_FLIGHT, async (entry) => {
+      try {
+        return await this.readEntry(entry, reuse, onParsed);
+      } catch (error) {
+        reportError(`Could not read ${entry.uri.toString()}`, error);
+        const unreadable: UnreadableNote = {
+          filePath: this.getFilePath(entry.uri, entry.workspaceFolder),
+          reason: describeError(error),
+        };
+        return unreadable;
+      } finally {
+        completed += 1;
+        onProgress?.(completed, entries.length);
+      }
+    });
+    const { files, failures } = partitionReads(results);
+    this.failures = failures;
+    this.lastScan = {
+      found: listing.found,
+      templates: listing.templates,
+      excluded: listing.excluded,
+      read: files.length,
+    };
+    return files;
+  }
 
+  /**
+   * The notes a scan reads, in the order findFiles gave them, with how many
+   * Markdown files each folder held and how many the templates folder and the
+   * exclude patterns kept out.
+   */
+  private async listNoteEntries(): Promise<NoteListing<U>> {
+    const listing: NoteListing<U> = { entries: [], found: 0, templates: 0, excluded: 0 };
     for (const workspaceFolder of this.access.workspaceFolders ?? []) {
       const pattern = this.createPattern(workspaceFolder);
       const excludePatterns = this.getExcludePatterns(workspaceFolder);
@@ -117,7 +160,7 @@ export class WorkspaceScanner {
       const excludeGlob = toExcludeGlob(excludePatterns);
       const uris = await this.access.findFiles(
         pattern,
-        excludeGlob ? new vscode.RelativePattern(workspaceFolder, excludeGlob) : undefined,
+        excludeGlob ? { folder: workspaceFolder, pattern: excludeGlob } : undefined,
       );
       const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
       const isExcluded = createExcludeMatcherFromPatterns(excludePatterns);
@@ -127,53 +170,14 @@ export class WorkspaceScanner {
         (uri) => !templatesUri || !isWithinWorkspace(uri, templatesUri),
       );
       const kept = outsideTemplates.filter(
-        (uri) => !isExcluded(getRelativePath(uri, workspaceFolder)),
+        (uri) => !isExcluded(getRelativePath(uri, workspaceFolder, this.access)),
       );
-      found += markdown.length;
-      templates += markdown.length - outsideTemplates.length;
-      excluded += outsideTemplates.length - kept.length;
-      kept.forEach((uri) => entries.push({ uri, workspaceFolder }));
+      listing.found += markdown.length;
+      listing.templates += markdown.length - outsideTemplates.length;
+      listing.excluded += outsideTemplates.length - kept.length;
+      kept.forEach((uri) => listing.entries.push({ uri, workspaceFolder }));
     }
-
-    onProgress?.(0, entries.length);
-    let completed = 0;
-    // Results keep the order findFiles gave, whichever read finishes first.
-    const results: Array<ParsedFile | UnreadableNote | undefined> = new Array(entries.length);
-    let next = 0;
-    const readNext = async (): Promise<void> => {
-      while (next < entries.length) {
-        const position = next;
-        next += 1;
-        const entry = entries[position];
-        try {
-          results[position] = await this.readEntry(entry, reuse, onParsed);
-        } catch (error) {
-          reportError(`Could not read ${entry.uri.toString()}`, error);
-          results[position] = {
-            filePath: this.getFilePath(entry.uri, entry.workspaceFolder),
-            reason: describeError(error),
-          };
-        } finally {
-          completed += 1;
-          onProgress?.(completed, entries.length);
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(READS_IN_FLIGHT, entries.length) }, readNext),
-    );
-
-    const files: ParsedFile[] = [];
-    results.forEach((result) => {
-      if (result && 'reason' in result) {
-        failures.push(result);
-      } else if (result) {
-        files.push(result);
-      }
-    });
-    this.failures = failures;
-    this.lastScan = { found, templates, excluded, read: files.length };
-    return files;
+    return listing;
   }
 
   /**
@@ -181,7 +185,7 @@ export class WorkspaceScanner {
    * the note as the file stands, its text.
    */
   private async readEntry(
-    entry: ScanEntry,
+    entry: ScanEntry<U>,
     reuse: ReuseParsedFile | undefined,
     onParsed: ((file: ParsedFile) => void) | undefined,
   ): Promise<ParsedFile> {
@@ -202,7 +206,7 @@ export class WorkspaceScanner {
    * Reads a saved note together with filesystem timestamps used by date sorts.
    */
   public async read(
-    uri: vscode.Uri,
+    uri: U,
     workspaceFolder = this.findWorkspaceFolder(uri),
     /** A stat already read, or null when it could not be, to skip another. */
     stamp?: FileStamp | null,
@@ -210,13 +214,9 @@ export class WorkspaceScanner {
     assertMarkdownFile(uri);
     const [bytes, metadata] = await Promise.all([
       this.access.readFile(uri),
-      stamp === undefined
-        ? this.readMetadata(uri)
-        : stamp === null
-          ? undefined
-          : { createdAt: stamp.ctime, updatedAt: stamp.mtime },
+      this.metadataFor(uri, stamp),
     ]);
-    const content = Buffer.from(bytes).toString('utf8');
+    const content = decodeUtf8Text(bytes);
     return parseMarkdown(
       this.getFilePath(uri, workspaceFolder),
       content,
@@ -226,13 +226,30 @@ export class WorkspaceScanner {
   }
 
   /**
+   * The times read() parses a note with: from a stat already read, none when
+   * that stat failed (null), or a fresh stat when there was none (undefined).
+   */
+  private metadataFor(
+    uri: U,
+    stamp: FileStamp | null | undefined,
+  ): Promise<NoteTimes | undefined> | NoteTimes | undefined {
+    if (stamp === undefined) {
+      return this.readMetadata(uri);
+    }
+    if (stamp === null) {
+      return undefined;
+    }
+    return timesOf(stamp);
+  }
+
+  /**
    * Parses editor content directly so unsaved Markdown can drive the sidebar.
    *
    * Callers may pass prior metadata because an in-memory edit has no reliable
    * filesystem stat to replace the file's creation and update timestamps.
    */
   public parse(
-    uri: vscode.Uri,
+    uri: U,
     content: string,
     metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   ): ParsedFile {
@@ -265,6 +282,7 @@ export class WorkspaceScanner {
           options.parseInlineTags === false ? 'no-inline' : 'inline',
           options.personMarker ?? '',
           JSON.stringify(options.entityNamespaceAliases ?? {}),
+          options.assigneeFromPersonTag === true ? 'person-assigns' : 'field-assigns',
         ].join('\u0000');
       },
     );
@@ -280,37 +298,27 @@ export class WorkspaceScanner {
   public getParkedRules(): ParkedRules {
     const folders = this.access.workspaceFolders ?? [];
     const multiRoot = folders.length > 1;
-    const matchers = folders.map((folder) => ({
-      prefix: multiRoot ? `${folder.name}/` : '',
-      isParked: createExcludeMatcher(
-        this.getConfiguration(folder).get<unknown>('parked.folders', {}),
-      ),
+    const folderSettings = folders.map((folder) =>
+      this.getConfiguration(folder).get<unknown>('parked.folders', {}),
+    );
+    const matchers = folders.map((folder, index) => ({
+      prefix: multiRoot ? `${workspaceFolderKey(folders, folder) ?? folder.name}/` : '',
+      isParked: createExcludeMatcher(folderSettings[index]),
     }));
-    const hasFolders = folders.some((folder) => {
-      const value = this.getConfiguration(folder).get<unknown>('parked.folders', {});
-      return (
+    const hasFolders = folderSettings.some(
+      (value) =>
         value !== null &&
         typeof value === 'object' &&
-        Object.values(value).some((enabled) => enabled === true)
-      );
-    });
+        Object.values(value).some((enabled) => enabled === true),
+    );
     const cache = new Map<string, boolean>();
     const options = this.getParseOptions(folders[0]);
-    const written = vscode.workspace.getConfiguration('deckard').get<unknown>('parked.tags', ['parked']);
+    const written = this.access.getConfiguration('deckard').get<unknown>('parked.tags', ['parked']);
     const tags = [
       ...new Set(
         (Array.isArray(written) ? written : [])
           .filter((value): value is string => typeof value === 'string')
-          .map((value) => {
-            const key = toParkedTagKey(value);
-            if (!key || key.startsWith('@')) {
-              return key;
-            }
-            return (
-              extractTags(key, options.entityNamespaceAliases, options.personMarker)[0]?.key.toLowerCase() ??
-              key
-            );
-          })
+          .map((value) => parkedTagKey(value, options))
           .filter((key): key is string => key !== undefined),
       ),
     ];
@@ -336,69 +344,71 @@ export class WorkspaceScanner {
   /**
    * Returns the watcher patterns for all roots using their current settings.
    */
-  public getPatterns(): vscode.RelativePattern[] {
+  public getPatterns(): Array<FolderPattern<U>> {
     return (this.access.workspaceFolders ?? []).map((workspaceFolder) =>
       this.createPattern(workspaceFolder),
     );
   }
 
   /**
-   * Produces a stable index key and prefixes multi-root paths to avoid clashes.
+   * Produces a stable index key and prefixes multi-root paths to avoid
+   * clashes: with the folder's name, or, for a second folder of the same
+   * name, the name and a count, as `notes (2)`.
    */
   public getFilePath(
-    uri: vscode.Uri,
-    workspaceFolder?: vscode.WorkspaceFolder,
+    uri: U,
+    workspaceFolder?: WorkspaceFolder<U>,
   ): string {
     const folder = workspaceFolder ?? this.findWorkspaceFolder(uri);
     if (!folder) {
       return uri.fsPath.replaceAll('\\', '/');
     }
 
-    const relativePath = getRelativePath(uri, folder);
+    const relativePath = getRelativePath(uri, folder, this.access);
     if ((this.access.workspaceFolders?.length ?? 0) <= 1) {
       return relativePath.replaceAll('\\', '/');
     }
 
-    return `${folder.name}/${relativePath.replaceAll('\\', '/')}`;
+    const folders = this.access.workspaceFolders ?? [];
+    return `${workspaceFolderKey(folders, folder) ?? folder.name}/${relativePath.replaceAll('\\', '/')}`;
   }
 
   /**
    * The file an index path names: the inverse of `getFilePath`. Undefined
    * when no open workspace folder holds it.
    */
-  public getUri(filePath: string): vscode.Uri | undefined {
+  public getUri(filePath: string): U | undefined {
     const folders = this.access.workspaceFolders ?? [];
     if (folders.length === 1) {
-      return vscode.Uri.joinPath(folders[0].uri, ...filePath.split('/'));
+      return this.access.joinPath(folders[0].uri, ...filePath.split('/'));
     }
     const [name, ...rest] = filePath.split('/');
-    const folder = folders.find((candidate) => candidate.name === name);
-    return folder && rest.length > 0 ? vscode.Uri.joinPath(folder.uri, ...rest) : undefined;
+    const folder = findWorkspaceFolderByKey(folders, name);
+    return folder && rest.length > 0 ? this.access.joinPath(folder.uri, ...rest) : undefined;
   }
 
   /**
    * Resolves the optional configured notes folder without assuming it is non-empty.
    */
   public getNotesFolderUri(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.Uri {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): U {
     const notesFolder = this.getNotesFolder(workspaceFolder);
     if (!notesFolder) {
       return workspaceFolder.uri;
     }
 
-    return vscode.Uri.joinPath(workspaceFolder.uri, ...notesFolder.split('/'));
+    return this.access.joinPath(workspaceFolder.uri, ...notesFolder.split('/'));
   }
 
   /**
    * Normalizes user configuration before it is used in VS Code glob/path APIs.
    */
-  public getNotesFolder(workspaceFolder?: vscode.WorkspaceFolder): string {
-    const configuration = this.getConfiguration(workspaceFolder);
-    const configuredFolder = configuration
-      .get<string>('notesFolder', '')
-      .trim();
-    return configuredFolder.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
+  public getNotesFolder(workspaceFolder?: WorkspaceFolder<U>): string {
+    return readFolderSetting(
+      this.getConfiguration(workspaceFolder).get<unknown>('notesFolder', ''),
+      '',
+    );
   }
 
   /**
@@ -406,15 +416,14 @@ export class WorkspaceScanner {
    * and tasks stay out of the notes. Undefined when the setting is empty.
    */
   public getTemplatesFolderUri(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.Uri | undefined {
-    const folder = this.getConfiguration(workspaceFolder)
-      .get<string>('templatesFolder', 'templates')
-      .trim()
-      .replaceAll('\\', '/')
-      .replace(/^\/+|\/+$/g, '');
+    workspaceFolder: WorkspaceFolder<U>,
+  ): U | undefined {
+    const folder = readFolderSetting(
+      this.getConfiguration(workspaceFolder).get<unknown>('templatesFolder', 'templates'),
+      'templates',
+    );
     return folder && folder !== '.'
-      ? vscode.Uri.joinPath(workspaceFolder.uri, ...folder.split('/'))
+      ? this.access.joinPath(workspaceFolder.uri, ...folder.split('/'))
       : undefined;
   }
 
@@ -422,7 +431,7 @@ export class WorkspaceScanner {
    * Supplies parser options from the same workspace scope as the note.
    */
   public getParseOptions(
-    workspaceFolder?: vscode.WorkspaceFolder,
+    workspaceFolder?: WorkspaceFolder<U>,
   ): MarkdownParseOptions {
     return {
       parseInlineTags: this.getConfiguration(workspaceFolder).get<boolean>(
@@ -459,7 +468,7 @@ export class WorkspaceScanner {
    * Checks the Markdown extension, configured-folder containment, and the
    * exclude settings, so watchers and editors agree with the full scan.
    */
-  public isNotesFile(uri: vscode.Uri): boolean {
+  public isNotesFile(uri: U): boolean {
     if (!isMarkdownFile(uri)) {
       return false;
     }
@@ -473,7 +482,7 @@ export class WorkspaceScanner {
       isWithinWorkspace(uri, this.getNotesFolderUri(workspaceFolder)) &&
       !(templatesUri && isWithinWorkspace(uri, templatesUri)) &&
       !this.getExcludeMatcher(workspaceFolder)(
-        getRelativePath(uri, workspaceFolder),
+        getRelativePath(uri, workspaceFolder, this.access),
       )
     );
   }
@@ -482,19 +491,19 @@ export class WorkspaceScanner {
    * Builds the narrowest watcher glob so unrelated Markdown is not indexed.
    */
   private createPattern(
-    workspaceFolder: vscode.WorkspaceFolder,
-  ): vscode.RelativePattern {
+    workspaceFolder: WorkspaceFolder<U>,
+  ): FolderPattern<U> {
     const notesFolder = this.getNotesFolder(workspaceFolder);
     const pattern = notesFolder ? `${notesFolder}/**/*.md` : '**/*.md';
-    return new vscode.RelativePattern(workspaceFolder, pattern);
+    return { folder: workspaceFolder, pattern };
   }
 
   /**
    * Finds the owning root before resolving root-scoped settings and paths.
    */
   private findWorkspaceFolder(
-    uri: vscode.Uri,
-  ): vscode.WorkspaceFolder | undefined {
+    uri: U,
+  ): WorkspaceFolder<U> | undefined {
     return this.access.workspaceFolders?.find((folder) =>
       isWithinWorkspace(uri, folder.uri),
     );
@@ -507,14 +516,14 @@ export class WorkspaceScanner {
    * state layer already handles undefined dates deterministically.
    */
   private async readMetadata(
-    uri: vscode.Uri,
-  ): Promise<Pick<ParsedFile, 'createdAt' | 'updatedAt'> | undefined> {
+    uri: U,
+  ): Promise<NoteTimes | undefined> {
     const stamp = await this.readStamp(uri);
-    return stamp ? { createdAt: stamp.ctime, updatedAt: stamp.mtime } : undefined;
+    return stamp ? timesOf(stamp) : undefined;
   }
 
   /** The note's times and size, or nothing when they cannot be read. */
-  private async readStamp(uri: vscode.Uri): Promise<FileStamp | undefined> {
+  private async readStamp(uri: U): Promise<FileStamp | undefined> {
     if (!this.access.stat) {
       return undefined;
     }
@@ -531,7 +540,7 @@ export class WorkspaceScanner {
    * stays out just as it does in the full scan.
    */
   private getExcludeMatcher(
-    workspaceFolder: vscode.WorkspaceFolder,
+    workspaceFolder: WorkspaceFolder<U>,
   ): ExcludeMatcher {
     return createExcludeMatcherFromPatterns(
       this.getExcludePatterns(workspaceFolder),
@@ -544,9 +553,9 @@ export class WorkspaceScanner {
    * A pattern with a `when` clause is skipped, because checking for its
    * sibling file would need a filesystem read on every call.
    */
-  private getExcludePatterns(workspaceFolder: vscode.WorkspaceFolder): string[] {
+  private getExcludePatterns(workspaceFolder: WorkspaceFolder<U>): string[] {
     const read = (section: string): unknown =>
-      vscode.workspace
+      this.access
         .getConfiguration(section, workspaceFolder.uri)
         .get<unknown>('exclude', {});
     return collectExcludePatterns(read('deckard'), read('files'), read('search'));
@@ -556,31 +565,102 @@ export class WorkspaceScanner {
    * Reads configuration at the correct root for single- and multi-root workspaces.
    */
   private getConfiguration(
-    workspaceFolder?: vscode.WorkspaceFolder,
-  ): vscode.WorkspaceConfiguration {
+    workspaceFolder?: WorkspaceFolder<U>,
+  ): ConfigurationSection {
     return workspaceFolder
-      ? vscode.workspace.getConfiguration('deckard', workspaceFolder.uri)
-      : vscode.workspace.getConfiguration('deckard');
+      ? this.access.getConfiguration('deckard', workspaceFolder.uri)
+      : this.access.getConfiguration('deckard');
   }
 }
 
-interface ScanEntry {
-  uri: vscode.Uri;
-  workspaceFolder: vscode.WorkspaceFolder;
+/** One note a scan will read, with the workspace folder its path is relative to. */
+interface ScanEntry<U extends ResourceUri> {
+  uri: U;
+  workspaceFolder: WorkspaceFolder<U>;
+}
+
+/** The notes a scan will read, and the counts lastScan reports about how they were chosen. */
+interface NoteListing<U extends ResourceUri> {
+  entries: Array<ScanEntry<U>>;
+  found: number;
+  templates: number;
+  excluded: number;
+}
+
+/** The dates a note carries from its file: created from ctime, updated from mtime. */
+type NoteTimes = Pick<ParsedFile, 'createdAt' | 'updatedAt'>;
+
+/**
+ * A `deckard.parked.tags` entry keyed as the index keys tags, so an alias
+ * parks the tag it stands for; a person key is kept as written, and an entry
+ * that names no tag gives undefined.
+ */
+function parkedTagKey(value: string, options: MarkdownParseOptions): string | undefined {
+  const key = toParkedTagKey(value);
+  if (!key || key.startsWith('@')) {
+    return key;
+  }
+  return (
+    extractTags(key, options.entityNamespaceAliases, options.personMarker)[0]?.key.toLowerCase() ??
+    key
+  );
+}
+
+/** A stat's times as the dates a parsed note carries. */
+function timesOf(stamp: FileStamp): NoteTimes {
+  return { createdAt: stamp.ctime, updatedAt: stamp.mtime };
+}
+
+/**
+ * Runs `read` over every item, `limit` at a time. Results keep the items'
+ * order, whichever read finishes first.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  read: (item: T) => Promise<R>,
+): Promise<Array<R | undefined>> {
+  const results: Array<R | undefined> = new Array(items.length);
+  let next = 0;
+  const readNext = async (): Promise<void> => {
+    while (next < items.length) {
+      const position = next;
+      next += 1;
+      results[position] = await read(items[position]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, readNext));
+  return results;
+}
+
+/** Splits a scan's reads into the notes parsed and the notes that could not be read, keeping order. */
+function partitionReads(
+  results: ReadonlyArray<ParsedFile | UnreadableNote | undefined>,
+): { files: ParsedFile[]; failures: UnreadableNote[] } {
+  const files: ParsedFile[] = [];
+  const failures: UnreadableNote[] = [];
+  results.forEach((result) => {
+    if (result && 'reason' in result) {
+      failures.push(result);
+    } else if (result) {
+      files.push(result);
+    }
+  });
+  return { files, failures };
 }
 
 /**
  * Uses the URI path rather than language mode because extension behavior must
  * also cover unsaved or manually associated Markdown documents.
  */
-export function isMarkdownFile(uri: vscode.Uri): boolean {
+export function isMarkdownFile(uri: Pick<ResourceUri, 'path'>): boolean {
   return uri.path.toLowerCase().endsWith('.md');
 }
 
 /**
  * Fails fast at parser boundaries so non-Markdown files cannot enter the index.
  */
-function assertMarkdownFile(uri: vscode.Uri): void {
+function assertMarkdownFile(uri: ResourceUri): void {
   if (!isMarkdownFile(uri)) {
     throw new Error(`Deckard only parses Markdown files: ${uri.toString()}`);
   }
@@ -589,9 +669,10 @@ function assertMarkdownFile(uri: vscode.Uri): void {
 /**
  * Uses native filesystem paths for file URIs and VS Code's resolver otherwise.
  */
-function getRelativePath(
-  uri: vscode.Uri,
-  workspaceFolder: vscode.WorkspaceFolder,
+function getRelativePath<U extends ResourceUri>(
+  uri: U,
+  workspaceFolder: WorkspaceFolder<U>,
+  workspace: Pick<WorkspaceFiles<U>, 'asRelativePath'>,
 ): string {
   if (uri.scheme === 'file' && workspaceFolder.uri.scheme === 'file') {
     return path
@@ -599,14 +680,14 @@ function getRelativePath(
       .replaceAll(path.sep, '/');
   }
 
-  return vscode.workspace.asRelativePath(uri, false);
+  return workspace.asRelativePath(uri, false);
 }
 
 /**
  * Performs boundary-aware containment checks instead of trusting a string
  * prefix, which would incorrectly treat sibling paths as children.
  */
-function isWithinWorkspace(uri: vscode.Uri, workspaceUri: vscode.Uri): boolean {
+function isWithinWorkspace(uri: ResourceUri, workspaceUri: ResourceUri): boolean {
   if (uri.scheme !== workspaceUri.scheme) {
     return false;
   }
@@ -716,21 +797,6 @@ export function createExcludeMatcherFromPatterns(
   return createExcludeMatcher(
     Object.fromEntries(patterns.map((pattern) => [pattern, true])),
   );
-}
-
-/**
- * Adapts the real VS Code workspace APIs to the scanner's testable interface.
- */
-function createDefaultAccess(): WorkspaceFileAccess {
-  return {
-    get workspaceFolders() {
-      return vscode.workspace.workspaceFolders;
-    },
-    findFiles: (include, exclude, maxResults) =>
-      vscode.workspace.findFiles(include, exclude, maxResults),
-    readFile: (uri) => vscode.workspace.fs.readFile(uri),
-    stat: (uri) => vscode.workspace.fs.stat(uri),
-  };
 }
 
 /** An error as one line a reader can act on, not a stack. */

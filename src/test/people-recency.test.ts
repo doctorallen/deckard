@@ -1,16 +1,12 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { PersistedPreferences, WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { isPersonTag, parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import {
-  isPersonTag,
-  listPeopleRecency,
-  listQuietPeople,
-  listQuietTags,
-} from '../ui/state/peopleRecency';
-import { normalizeDashboardWidgets } from '../core/storage/preferences';
+import { listPeopleRecency, listQuietPeople, listQuietTags } from '../ui/state/peopleRecency';
+import { createQueryContext } from '../domain/query/queryContext';
+import { normalizeDashboardWidgets } from '../core/storage/preferencesSchema';
+import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 /** Only what a widget reads; the rest of Home is not in play here. */
 const preferences: PersistedPreferences = {
@@ -173,7 +169,7 @@ suite('People recency', () => {
           { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 90 },
         ],
       },
-      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
     );
     assert.strictEqual(widget.total, 2);
     assert.deepStrictEqual(

@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { Section, Task } from '../core/types';
-import { csv, formatNotes, formatTasks, markdownTable, noteRows, taskRows } from '../ui/commands/exportResults';
+import { Section, Task } from '../domain/model';
+import { csv, formatNotes, formatTasks, markdownTable, noteRows, taskRows } from '../domain/export/exportFormats';
 import { findQueryBlocks, formatQueryBlock } from '../ui/state/queryBlockState';
 
 suite('Exporting results', () => {
@@ -46,6 +46,14 @@ suite('Exporting results', () => {
       markdownTable(['x'], [['a | b'], ['two\nlines']]),
       '| x |\n| --- |\n| a \\| b |\n| two lines |\n',
     );
+  });
+
+  test('a backslash already in a cell or a link is escaped too, so it does not undo the escape after it', () => {
+    // a\|b once came out as a\\|b: an escaped backslash, then a pipe that
+    // ended the cell. The backslash is now escaped first.
+    assert.strictEqual(markdownTable(['x'], [['a\\|b']]), '| x |\n| --- |\n| a\\\\\\|b |\n');
+    const list = formatNotes(noteRows([section({ heading: 'Plan \\]' })]), 'markdown-list');
+    assert.ok(list.startsWith('- [Plan \\\\\\]]('), list);
   });
 
   test('notes go out with their title, tags, note, line and date', () => {

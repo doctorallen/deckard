@@ -1,9 +1,13 @@
 import * as assert from 'assert';
 
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
+import { openWebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { parseQuery } from '../domain/query/queryParser';
+import { MAX_QUERY_LENGTH } from '../ui/webview/host/narrowing';
+import { narrowSearchPageMessage } from '../ui/webview/pages/searchPage/messages';
 
 /**
- * Drives the overview webview's own script against a stub DOM.
+ * Drives the overview webview's own script in jsdom.
  *
  * The other webview tests assert that a script parses and that its source
  * contains the right markup, which cannot catch a control that renders
@@ -44,7 +48,7 @@ suite('Tag overview query builder', () => {
   test('builds an OR of tags with a NOT beside it from nothing, without typing the query', () => {
     // What Refine makes with three clicks and an Alt: built here by hand,
     // which the builder could not do while it had only one shape.
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     const state = createState('') as { query: Record<string, unknown> };
     state.query.text = '';
     state.query.builder = { join: 'and', items: [] };
@@ -55,7 +59,7 @@ suite('Tag overview query builder', () => {
     // A group beside the row, joined the other way, and told to match any.
     view.click({ action: 'builder-add-group', path: '' });
     assert.strictEqual(view.countGroups(), 2, 'the root, and one inside it');
-    assert.match(view.html(), /<span class="query-builder-and">and<\/span>/, 'the group joins the root with AND');
+    assert.ok(view.findAll('span.query-builder-and').some((join) => join.textContent === 'and'), 'the group joins the root with AND');
     view.change({ dataset: { action: 'builder-set-join', path: '1' } }, 'or');
 
     const row = (path: string) => ({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p' + path.replace(/\./g, '_'), path } });
@@ -65,8 +69,8 @@ suite('Tag overview query builder', () => {
     view.key(view.type(row('0'), '#d'), 'Enter');
     view.change({ dataset: { action: 'builder-set-operator', path: '0' } }, 'neq');
 
-    // A search is a round trip through the host, which the stub does not
-    // answer, so the query posted is what is checked, not a redraw.
+    // The mount answers each search with its text alone, not the host's
+    // rows for it, so the query posted is what is checked, not a redraw.
     const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
     assert.strictEqual(last?.query, 'tag != #d AND (tag = #a OR tag = #b OR tag = #c)');
   });
@@ -92,22 +96,22 @@ suite('Tag overview query builder', () => {
     // Every row's completion list is found by its key, so two rows sharing
     // one would send a completion to the wrong row: that is how a nested
     // group's first row once became "tag = undefined". A key is its path.
-    const keys = [...view.html().matchAll(/data-suggest-key="([^"]+)"[^>]*data-path="([^"]+)"/g)]
-      .map((match) => [match[1], match[2]]);
+    const keys = view.findAll('[data-suggest-key][data-path]')
+      .map((row) => [String(row.getAttribute('data-suggest-key')), String(row.getAttribute('data-path'))]);
     assert.strictEqual(keys.length, 4);
     assert.strictEqual(new Set(keys.map(([key]) => key)).size, 4, 'every row has its own key');
     for (const [key, path] of keys) {
       assert.strictEqual(key, 'p' + path.replace(/\./g, '_'), `the key for ${path}`);
     }
-    assert.doesNotMatch(view.html(), /query-builder-readonly/, 'nothing is text');
-    assert.match(view.html(), /data-action="builder-toggle-not" data-path="0" aria-pressed="true"/, 'the group is shown as negated');
+    assert.strictEqual(view.findAll('.query-builder-readonly').length, 0, 'nothing is text');
+    assert.strictEqual(view.find('[data-action="builder-toggle-not"][data-path="0"]').getAttribute('aria-pressed'), 'true', 'the group is shown as negated');
   });
 
   test('accepting a completion in a nested group\'s second row leaves its first row alone', () => {
     // Reported: with #person/mara-vale as the first row of a nested OR group,
     // typing "harb" in the group's next row and choosing #team/harbor turned
     // the first row into "tag = undefined".
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     const state = createState('tag = #person/sable-ortiz') as {
       query: { suggestions: { values: { tag: Array<{ value: string; label: string }> } }; builder: unknown; text: string };
     };
@@ -124,8 +128,7 @@ suite('Tag overview query builder', () => {
     view.key(view.type(pending('2.0'), '#person/mara-vale'), 'Enter');
     const second = view.type(pending('2.1'), 'harb');
     assert.match(view.suggestionsFor('p2_1'), /#team\/harbor/, 'the completion is offered');
-    // Chosen from the keyboard: the stub's click cannot reach a completion,
-    // since it closes the list for any click outside the input's shell.
+    // Chosen from the keyboard, as a reader who is typing would.
     view.key(second, 'ArrowDown');
     view.key(second, 'Enter');
 
@@ -145,6 +148,21 @@ suite('Tag overview query builder', () => {
     view.send(createState());
 
     assert.strictEqual(view.countRows(), 3);
+  });
+
+  test('keeps a value being typed in a row across an unrelated refresh', () => {
+    const view = mountTagOverview();
+    view.send(createState());
+    view.click({ action: 'toggle-builder' });
+    const row = { dataset: { action: 'builder-set-value', path: '0' } };
+    view.type(row, '#project/atlas-two');
+
+    // An index update re-sends the same query while the value is typed and
+    // not yet committed.
+    view.send(createState());
+
+    const value = view.find('[data-action="builder-set-value"][data-path="0"]') as HTMLInputElement;
+    assert.strictEqual(value.value, '#project/atlas-two');
   });
 
   test('rebuilds its rows when the query changes elsewhere', () => {
@@ -181,9 +199,10 @@ suite('Tag overview query builder', () => {
   });
 
   test('offers a builder row only the values its field accepts', () => {
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     view.send(createState());
     view.click({ action: 'toggle-builder' });
+    view.change({ dataset: { action: 'builder-set-field', path: '0' } }, 'task');
 
     view.type(
       {
@@ -200,6 +219,20 @@ suite('Tag overview query builder', () => {
     const rendered = view.suggestionsFor('p0');
     assert.match(rendered, /open/);
     assert.doesNotMatch(rendered, /#project\/atlas/);
+  });
+
+  test('writes a value that is a word joining terms in quotes, so the search still reads', () => {
+    for (const word of ['not', 'OR', 'And', '&&x', '||']) {
+      const view = mountTagOverview();
+      view.send(createState());
+      view.click({ action: 'toggle-builder' });
+      view.posted.length = 0;
+      view.change({ dataset: { action: 'builder-set-value', path: '0' } }, word);
+
+      const sent = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+      assert.strictEqual(sent?.query, `tag = "${word}"`, word);
+      assert.ok(parseQuery(String(sent?.query)).node, `${word}: the search parses`);
+    }
   });
 
   test('completes a value in the query bar once the field is known', () => {
@@ -232,7 +265,7 @@ suite('Tag overview query builder', () => {
   test('shows the search box without a toggle', () => {
     const view = mountTagOverview();
     view.send(createState());
-    assert.match(view.html(), /data-action="query-input"/);
+    assert.ok(view.find('[data-action="query-input"]'));
     assert.doesNotMatch(view.html(), /toggle-query/);
   });
 
@@ -263,7 +296,7 @@ suite('Tag overview query builder', () => {
   });
 
   test('builds a link row from [[Atlas plan]] typed in a new row, and writes its brackets once', () => {
-    const view = mountTagOverview();
+    const view = mountTagOverview({ answerQueries: true });
     const state = createState('') as { query: Record<string, unknown> };
     state.query.text = '';
     state.query.builder = { join: 'and', items: [] };
@@ -286,7 +319,7 @@ suite('Tag overview query builder', () => {
     };
     view.send(state);
     view.click({ action: 'toggle-builder' });
-    assert.match(view.html(), /placeholder="Atlas#Decision"/);
+    assert.strictEqual(view.findAll('[placeholder="Atlas#Decision"]').length, 1);
     const input = view.type({ dataset: { action: 'builder-set-value', suggestKey: 'p0', field: 'link', path: '0' } }, '[[Atlas plan]]');
     view.key(input, 'Enter');
     const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
@@ -302,9 +335,8 @@ suite('Tag overview query builder', () => {
       { text: '-[[Budget]]', without: '[[Atlas plan]]' },
     ];
     view.send(state);
-    const html = view.html();
-    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 2);
-    assert.match(html, /class="query-chip is-negated" data-action="remove-term" data-without="\[\[Atlas plan\]\]"/);
+    assert.strictEqual(view.findAll('[class="query-chip-remove"]').length, 2);
+    assert.strictEqual(view.find('[data-action="remove-term"][data-without="[[Atlas plan]]"]').getAttribute('class'), 'query-chip is-negated');
   });
 
   test('completes a note after [[ in the bar and in a new row', () => {
@@ -381,8 +413,8 @@ suite('Tag overview query builder', () => {
     view.click({ action: 'toggle-builder' });
     assert.strictEqual(view.countGroups(), 3);
     // The root draws no box of its own; every group inside it does.
-    assert.strictEqual((view.html().match(/class="query-builder-group is-root"/g) ?? []).length, 1);
-    assert.strictEqual((view.html().match(/query-builder-item has-group/g) ?? []).length, 2);
+    assert.strictEqual(view.findAll('[class="query-builder-group is-root"]').length, 1);
+    assert.strictEqual(view.findAll('.query-builder-item.has-group').length, 2);
 
     // The page keeps its own tree until the host answers with a different
     // search, so the host's echo of each search is sent back before the
@@ -424,16 +456,20 @@ suite('Tag overview query builder', () => {
       },
     ];
     view.send(state);
-    const html = view.html();
-    assert.strictEqual((html.match(/class="query-chip-group is-negated"/g) ?? []).length, 1);
-    assert.match(html, /<span class="query-chip-join" aria-hidden="true">OR<\/span>/);
-    assert.match(html, /<span class="query-chip-join" aria-hidden="true">NOT<\/span>/);
-    assert.match(html, /<span class="query-chip-join" aria-hidden="true">AND<\/span>/);
-    assert.match(html, /query-chip-group-remove" data-action="remove-term" data-without="#a"/);
-    assert.match(html, /class="query-chip is-tag is-negated" data-action="remove-term" data-without="#a OR NOT \(#b\)"/);
-    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 4, 'a, the group, b, and c');
+    const groups = view.findAll('[class="query-chip-group is-negated"]');
+    assert.strictEqual(groups.length, 1);
+    const joins = view.findAll('span[class="query-chip-join"][aria-hidden="true"]').map((join) => join.textContent);
+    for (const join of ['OR', 'NOT', 'AND']) {
+      assert.ok(joins.includes(join), `the ${join} between terms`);
+    }
+    assert.ok(view.find('.query-chip-group-remove[data-action="remove-term"][data-without="#a"]'));
+    assert.strictEqual(view.find('[data-action="remove-term"][data-without="#a OR NOT (#b)"]').getAttribute('class'), 'query-chip is-tag is-negated');
+    assert.strictEqual(view.findAll('[class="query-chip-remove"]').length, 4, 'a, the group, b, and c');
     // The frame itself removes the group, as a chip's face removes its term.
-    assert.match(html, /class="query-chip-group is-negated" role="group" aria-label="NOT \(#b AND -#c\)" data-action="remove-term" data-without="#a"/);
+    assert.deepStrictEqual(
+      ['role', 'aria-label', 'data-action', 'data-without'].map((name) => groups[0].getAttribute(name)),
+      ['group', 'NOT (#b AND -#c)', 'remove-term', '#a'],
+    );
 
     view.click({ action: 'remove-term', without: '#a OR NOT (-#c)' });
     const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
@@ -451,7 +487,7 @@ suite('Tag overview query builder', () => {
     ];
     const view = mountTagOverview();
     view.send(createState('tag = #project/atlas', { facets, canAppend: true }));
-    assert.match(view.html(), /data-action="facet"/);
+    assert.ok(view.findAll('[data-action="facet"]').length > 0);
 
     view.posted.length = 0;
     view.click({ action: 'facet', clause: 'is:open', facetId: 'status' });
@@ -511,8 +547,8 @@ suite('Tag overview query builder', () => {
     ];
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { facets }));
-    assert.match(view.html(), /data-clause="#team\/harbor"/);
-    assert.match(view.html(), /class="tag-weight-rail"/, 'a related tag shows its strength');
+    assert.ok(view.findAll('[data-clause="#team/harbor"]').length > 0);
+    assert.ok(view.findAll('[class="tag-weight-rail"]').length > 0, 'a related tag shows its strength');
     assert.match(view.html(), /related 2 of 3/);
 
     // Given the results it is a share of, the chip says so.
@@ -521,7 +557,7 @@ suite('Tag overview query builder', () => {
     assert.match(view.html(), /in 6 of 13 results/);
 
     view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
-    assert.doesNotMatch(view.html(), /data-clause="#team\/harbor"/);
+    assert.strictEqual(view.findAll('[data-clause="#team/harbor"]').length, 0);
     assert.match(view.html(), /In the Context sidebar\./);
   });
 
@@ -538,23 +574,79 @@ suite('Tag overview query builder', () => {
     assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
   });
 
+  test('Tab out of an empty search box moves on, and runs none of its recent searches', () => {
+    const view = mountTagOverview();
+    view.send(
+      createState('', {
+        recent: [{ value: '#project/atlas is:open', label: '#project/atlas is:open', detail: 'Recent search' }],
+      }),
+    );
+    // Tabbing into the box focuses it, which offers the recent searches.
+    view.focus({ dataset: { action: 'query-input', suggestKey: 'query' } }, '');
+    assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
+
+    view.posted.length = 0;
+    const taken = view.key(view.find('[data-suggest-key="query"]'), 'Tab');
+
+    assert.deepStrictEqual(view.posted, [], 'no search runs');
+    assert.strictEqual(taken, false, 'Tab is left to move focus on');
+    assert.strictEqual(view.suggestionsFor('query'), '', 'the list closes');
+  });
+
+  test('holds back a search longer than the host takes, says why, and keeps what was typed', async () => {
+    const view = mountTagOverview();
+    view.send(createState(''));
+    const bar = { dataset: { action: 'query-input', suggestKey: 'query' } };
+
+    view.posted.length = 0;
+    const tooLong = 'x'.repeat(MAX_QUERY_LENGTH + 1);
+    view.key(view.type(bar, tooLong), 'Enter');
+
+    assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setOverviewQuery'), [], 'nothing the host would drop is sent');
+    assert.strictEqual(
+      view.find('.query-error').textContent,
+      'This search is 2,001 characters long, and a search can be at most 2,000. Shorten it to run it.',
+    );
+    assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong, 'what was typed stays');
+    // A search that was never sent never comes back, so nothing says it is
+    // still searching.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    assert.ok(!view.find('.query-workspace').classList.contains('is-searching'));
+    // An index update while the text is still there leaves it there.
+    view.send(createState(''));
+    assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong);
+
+    // As long as the host takes, it runs, and the reason goes with its answer.
+    const longest = 'x'.repeat(MAX_QUERY_LENGTH);
+    view.key(view.type(bar, longest), 'Enter');
+    const sent = view.posted.filter((message) => message.type === 'setOverviewQuery');
+    assert.strictEqual(sent.length, 1);
+    assert.ok(narrowSearchPageMessage(sent[0]), 'the host takes the longest search the page sends');
+    view.send(createState(longest));
+    assert.strictEqual(view.findAll('.query-error').length, 0);
+  });
+
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
-    const html = view.html();
-
     // Clear is always drawn, disabled while the box holds only the page's
     // own tag, so nothing appears beside the box when typing starts.
-    assert.match(html, /data-action="clear-query" data-query-clears[^>]*aria-disabled="true"/);
+    const held = view.find('[data-action="clear-query"]');
+    assert.ok(held.hasAttribute('data-query-clears'));
+    assert.strictEqual(held.getAttribute('aria-disabled'), 'true');
     // Builder sits under the box, not beside it.
     assert.ok(
-      html.indexOf('data-action="toggle-builder"') > html.indexOf('class="query-status"'),
+      view.find('.query-status').contains(view.find('[data-action="toggle-builder"]')),
       'the builder toggle is on the line under the box',
     );
 
     view.posted.length = 0;
+    const box = view.find('[data-suggest-key="query"]');
+    const clear = view.find('[data-action="clear-query"]');
     view.type({ dataset: { action: 'query-input', suggestKey: 'query' } }, 'vendor');
-    assert.strictEqual(view.html(), html, 'typing does not redraw the bar');
+    // The shell notes what is typed in an attribute; the elements stay.
+    assert.strictEqual(view.find('[data-suggest-key="query"]'), box, 'typing does not redraw the box');
+    assert.strictEqual(view.find('[data-action="clear-query"]'), clear, 'or anything beside it');
   });
 
   test('sends the query when a condition is removed', () => {
@@ -572,181 +664,128 @@ suite('Tag overview query builder', () => {
   });
 });
 
+/** What names an element: its `data-*` attributes, as a dataset. */
+interface ElementDescriptor {
+  dataset: Record<string, string>;
+}
+
 interface MountedView {
   posted: Array<Record<string, unknown>>;
+  find: (selector: string) => Element;
+  findAll: (selector: string) => Element[];
   send: (state: unknown) => void;
   click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
-  key: (input: Record<string, unknown>, key: string) => void;
-  focus: (input: Record<string, unknown>, value: string) => void;
-  change: (input: Record<string, unknown>, value: string) => void;
+  /** Presses a key on an element; true when the page took it, so the browser does nothing more with it. */
+  key: (input: Element, key: string) => boolean;
+  focus: (input: ElementDescriptor, value: string) => void;
+  change: (input: ElementDescriptor, value: string) => void;
   html: () => string;
   countRows: () => number;
   countGroups: () => number;
-  type: (
-    input: Record<string, unknown>,
-    value: string,
-  ) => Record<string, unknown>;
+  type: (input: ElementDescriptor, value: string) => Element;
   suggestionsFor: (key: string) => string;
 }
 
 /**
- * Evaluates the overview script with the smallest DOM it will accept.
+ * The selector for the element whose `data-*` attributes are a dataset's,
+ * such as `[data-action="builder-set-value"][data-path="1.0"]`.
  */
-function mountTagOverview(): MountedView {
-  const html = getSearchPageHtml({ cspSource: 'vscode-webview://deckard' });
-  const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? '';
-  assert.notStrictEqual(script, '', 'the overview should render a script');
-
-  const app = createStubElement('main');
-  const listeners: Record<string, Array<(event: unknown) => void>> = {};
-  const posted: Array<Record<string, unknown>> = [];
-  const scope = globalThis as unknown as Record<string, unknown>;
-  const saved = {
-    document: scope.document,
-    window: scope.window,
-    NodeFilter: scope.NodeFilter,
-    acquireVsCodeApi: scope.acquireVsCodeApi,
-  };
-
-  const addListener = (type: string, handler: (event: unknown) => void) => {
-    listeners[type] = listeners[type] ?? [];
-    listeners[type].push(handler);
-  };
-
-  // Elements the script looks up by attribute are kept in one registry so a
-  // completion list can be inspected after it renders.
-  const registry = new Map<string, ReturnType<typeof createStubElement>>();
-  const lookup = (selector: string) => {
-    const existing = registry.get(selector);
-    if (existing) {
-      return existing;
-    }
-    if (
-      selector.startsWith('[data-suggestions=') ||
-      selector.startsWith('[data-suggest-key=')
-    ) {
-      const created = createStubElement('div');
-      registry.set(selector, created);
-      return created;
-    }
-    return null;
-  };
-
-  const stubs = {
-    document: {
-      addEventListener: addListener,
-      getElementById: (id: string) => (id === 'app' ? app : null),
-      querySelector: lookup,
-      querySelectorAll: () => [],
-      createElement: createStubElement,
-      body: createStubElement('body'),
-    },
-    window: {
-      addEventListener: addListener,
-      innerWidth: 1200,
-      innerHeight: 800,
-      scrollX: 0,
-      scrollY: 0,
-      scrollTo: () => undefined,
-    },
-    NodeFilter: { SHOW_TEXT: 4 },
-    acquireVsCodeApi: () => ({
-      postMessage: (message: Record<string, unknown>) => posted.push(message),
-      setState: () => undefined,
-    }),
-  };
-
-  /**
-   * The script's handlers reach for these globals long after it is evaluated,
-   * so the stubs are installed around every call into it and removed again
-   * afterwards rather than left in place for the rest of the suite.
-   */
-  const withStubs = <T>(run: () => T): T => {
-    Object.assign(scope, stubs);
-    try {
-      return run();
-    } finally {
-      Object.assign(scope, saved);
-    }
-  };
-
-  withStubs(() => new Function(script)());
-
-  const dispatch = (type: string, event: unknown): void => {
-    withStubs(() => {
-      (listeners[type] ?? []).forEach((handler) => handler(event));
-    });
-  };
-
-  return {
-    posted,
-    send: (state) => dispatch('message', { data: { type: 'state', data: state } }),
-    click: (dataset, modifiers = {}) => {
-      const target = Object.assign(createStubElement('button'), { dataset });
-      dispatch('click', {
-        target: {
-          closest: (selector: string) =>
-            selector === '[data-action]' ? target : null,
-        },
-        preventDefault: () => undefined,
-        ...modifiers,
-      });
-    },
-    key: (input, key) => {
-      const target = Object.assign(input, {
-        closest: (selector: string) =>
-          selector === '[data-suggest-key]' ? input : null,
-      });
-      dispatch('keydown', { target, key, preventDefault: () => undefined });
-    },
-    focus: (input, value) => {
-      const target = Object.assign(createStubElement('input'), input, { value });
-      registry.set(
-        `[data-suggest-key="${String((input.dataset as Record<string, string>).suggestKey)}"]`,
-        target,
-      );
-      dispatch('focusin', { target });
-    },
-    change: (input, value) => {
-      const target = Object.assign(createStubElement('select'), input, { value });
-      dispatch('change', { target });
-    },
-    html: () => app.innerHTML,
-    countRows: () => (app.innerHTML.match(/builder-set-value/g) ?? []).length,
-    countGroups: () =>
-      (app.innerHTML.match(/class="query-builder-group[ "]/g) ?? []).length,
-    type: (input: Record<string, unknown>, value: string) => {
-      const target = Object.assign(createStubElement('input'), input, { value });
-      registry.set(
-        `[data-suggest-key="${String((input.dataset as Record<string, string>).suggestKey)}"]`,
-        target,
-      );
-      dispatch('input', { target });
-      return target;
-    },
-    suggestionsFor: (key: string) =>
-      registry.get(`[data-suggestions="${key}"]`)?.innerHTML ?? '',
-  };
+function datasetSelector(dataset: Record<string, string>): string {
+  return Object.entries(dataset)
+    .map(([name, value]) => {
+      const attribute = name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      return `[data-${attribute}="${value.replace(/["\\]/g, '\\$&')}"]`;
+    })
+    .join('');
 }
 
-function createStubElement(tagName: string): any {
+/**
+ * Opens the search page in jsdom and drives it the way a reader would: each
+ * action finds the element its data attributes name and raises real events
+ * on it, so a control that renders but does nothing fails here.
+ *
+ * With `answerQueries`, each query the page runs is answered as the host
+ * would answer it, for a test that goes on to use what the answer draws.
+ * Without it, as for most tests, the host stays silent, so a test sees only
+ * what the page does on its own and what it posts.
+ */
+function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedView {
+  const page = openWebviewPage(renderPage('searchPage'));
+  const { window, document } = page;
+  const app = page.find('#app');
+  let shown: { query: { text: string } } | undefined;
+  const answered = new WeakSet<object>();
+  const show = (state: unknown): void => {
+    shown = JSON.parse(JSON.stringify(state)) as { query: { text: string } };
+    page.send(state);
+  };
+  /**
+   * Answers each query the page ran as the host would, with the state for
+   * that query, since the page draws a committed row only once the host has
+   * answered. Only the text changes: while it is what the page sent, the
+   * page keeps its own draft of the builder rather than the host's.
+   */
+  const answerHost = (): void => {
+    if (!options.answerQueries) {
+      return;
+    }
+    for (const message of page.posted) {
+      if (answered.has(message) || message.type !== 'setOverviewQuery' || !shown) {
+        continue;
+      }
+      answered.add(message);
+      show({ ...shown, query: { ...shown.query, text: String(message.query) } });
+    }
+  };
+  const element = (dataset: Record<string, string>): HTMLElement => {
+    const selector = datasetSelector(dataset);
+    const found = document.querySelector<HTMLElement>(selector);
+    if (!found) {
+      throw new Error(`The page has no ${selector}.`);
+    }
+    return found;
+  };
+  const raise = (target: Element, event: Event): boolean => {
+    target.dispatchEvent(event);
+    answerHost();
+    return event.defaultPrevented;
+  };
+  const fill = (target: HTMLElement, value: string): void => {
+    (target as HTMLInputElement).value = value;
+  };
+
   return {
-    tagName,
-    dataset: {} as Record<string, string>,
-    innerHTML: '',
-    hidden: false,
-    style: {},
-    classList: { contains: () => false, add: () => undefined, remove: () => undefined },
-    appendChild: (child: unknown) => child,
-    setAttribute: () => undefined,
-    removeAttribute: () => undefined,
-    getAttribute: () => null,
-    focus: () => undefined,
-    setSelectionRange: () => undefined,
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    closest: () => null,
-    getBoundingClientRect: () => ({ width: 0, height: 0 }),
+    posted: page.posted as Array<Record<string, unknown>>,
+    find: (selector) => page.find(selector),
+    findAll: (selector) => page.findAll(selector),
+    send: show,
+    click: (dataset, modifiers = {}) => {
+      raise(element(dataset), new window.MouseEvent('click', { bubbles: true, cancelable: true, ...modifiers }));
+    },
+    key: (input, key) =>
+      raise(input, new window.KeyboardEvent('keydown', { bubbles: true, cancelable: true, key })),
+    focus: (input, value) => {
+      const target = element(input.dataset);
+      fill(target, value);
+      target.focus();
+    },
+    change: (input, value) => {
+      const target = element(input.dataset);
+      fill(target, value);
+      raise(target, new window.Event('change', { bubbles: true }));
+    },
+    html: () => app.innerHTML,
+    countRows: () => app.querySelectorAll('[data-action="builder-set-value"]').length,
+    countGroups: () => app.querySelectorAll('.query-builder-group').length,
+    type: (input, value) => {
+      const target = element(input.dataset);
+      target.focus();
+      fill(target, value);
+      raise(target, new window.Event('input', { bubbles: true }));
+      return target;
+    },
+    suggestionsFor: (key) =>
+      document.querySelector(`[data-suggestions="${key}"]`)?.innerHTML ?? '',
   };
 }
 

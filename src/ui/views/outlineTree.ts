@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 
+import { Debouncer } from '../../shared/debounce';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { measure } from '../../core/timing';
-import { writeSetting } from '../commands/settings';
-import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { measure } from '../../shared/timing';
+import { settingTarget, writeSetting } from '../commands/settings';
+import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader';
 import {
   buildOutline,
   collectOutlineTags,
@@ -15,7 +16,7 @@ import {
   mapOutlineParents,
   OutlineNode,
 } from '../state/outlineState';
-import { getBacklinkIndex } from '../../core/workspace/backlinks';
+import { getBacklinkIndex } from '../../domain/index/backlinks';
 import { revealLine } from '../commands/navigation';
 import { reportFailure } from '../commands/notify';
 
@@ -29,6 +30,14 @@ const noHeadingsMessage = 'This file has no headings.';
 const unreadableMessage = 'Deckard could not read this file.';
 const rebuildDelayMs = 200;
 const followCursorDelayMs = 100;
+
+/** The settings that change what the Outline shows, so a change rebuilds it. */
+const OUTLINE_SETTINGS = [
+  'deckard.outline',
+  'deckard.zenMode',
+  'deckard.personMarker',
+  'deckard.entityNamespaceAliases',
+];
 
 /**
  * Shows the active Markdown file's headings as a tree the reader can pull into
@@ -53,8 +62,8 @@ export class OutlineTreeProvider
   private allRoots: OutlineNode[] = [];
   private parents = new Map<string, OutlineNode>();
   private documentUri: vscode.Uri | undefined;
-  private rebuildHandle: ReturnType<typeof setTimeout> | undefined;
-  private followHandle: ReturnType<typeof setTimeout> | undefined;
+  private readonly pendingRebuild = new Debouncer(rebuildDelayMs);
+  private readonly pendingFollow = new Debouncer(followCursorDelayMs);
   private rebuildPending = false;
   /**
    * The tag the Outline is narrowed to, kept across notes until it is
@@ -62,7 +71,11 @@ export class OutlineTreeProvider
    */
   private tagFilter: { key: string; label: string } | undefined;
 
-  public constructor(private readonly indexer: WorkspaceIndexer) {
+  /**
+   * Starts listening at once to the active editor, its text, its saves and
+   * cursor, the index, and the Outline's settings.
+   */
+  public constructor(private readonly indexer: IndexReader & IndexUpdates) {
     this.disposables.push(this.changeEmitter);
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.rebuildNow()),
@@ -92,15 +105,11 @@ export class OutlineTreeProvider
     this.disposables.push(indexer.onDidUpdate(() => this.scheduleRebuild()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.outline') ||
-          event.affectsConfiguration('deckard.zenMode') ||
-          event.affectsConfiguration('deckard.personMarker') ||
-          event.affectsConfiguration('deckard.entityNamespaceAliases')
-        ) {
-          void syncOutlineFollowCursorContext();
-          this.rebuildNow();
+        if (!OUTLINE_SETTINGS.some((section) => event.affectsConfiguration(section))) {
+          return;
         }
+        void syncOutlineFollowCursorContext();
+        this.rebuildNow();
       }),
     );
   }
@@ -120,6 +129,10 @@ export class OutlineTreeProvider
     this.rebuildNow();
   }
 
+  /**
+   * A heading's row: its tags and counts beside it as the settings say, its
+   * full text in the tooltip, and a click that reveals it in the editor.
+   */
   public getTreeItem(node: OutlineNode): vscode.TreeItem {
     const item = new vscode.TreeItem(
       node.label,
@@ -161,6 +174,7 @@ export class OutlineTreeProvider
     this.rebuildNow();
   }
 
+  /** The headings under a heading, or the top-level headings shown. */
   public getChildren(node?: OutlineNode): OutlineNode[] {
     return node ? node.children : this.roots;
   }
@@ -200,14 +214,8 @@ export class OutlineTreeProvider
    * Releases timers and listeners so a late rebuild cannot outlive the view.
    */
   public dispose(): void {
-    if (this.rebuildHandle) {
-      clearTimeout(this.rebuildHandle);
-      this.rebuildHandle = undefined;
-    }
-    if (this.followHandle) {
-      clearTimeout(this.followHandle);
-      this.followHandle = undefined;
-    }
+    this.pendingRebuild.dispose();
+    this.pendingFollow.dispose();
     this.view = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
@@ -220,20 +228,15 @@ export class OutlineTreeProvider
       this.rebuildPending = true;
       return;
     }
-    if (this.rebuildHandle) {
-      clearTimeout(this.rebuildHandle);
-    }
-    this.rebuildHandle = setTimeout(() => {
-      this.rebuildHandle = undefined;
-      this.rebuild();
-    }, rebuildDelayMs);
+    this.pendingRebuild.schedule(() => this.rebuild());
   }
 
+  /**
+   * Rebuilds at once, dropping any rebuild waiting for typing to pause; a
+   * hidden view only notes that it is owed one.
+   */
   private rebuildNow(): void {
-    if (this.rebuildHandle) {
-      clearTimeout(this.rebuildHandle);
-      this.rebuildHandle = undefined;
-    }
+    this.pendingRebuild.cancel();
     if (this.view && !this.view.visible) {
       this.rebuildPending = true;
       return;
@@ -271,21 +274,17 @@ export class OutlineTreeProvider
       );
       this.allRoots = roots;
       const shown = this.tagFilter ? filterOutline(roots, this.tagFilter.key) : roots;
-      this.publish(
-        shown,
-        document.uri,
-        roots.length === 0
-          ? noHeadingsMessage
-          : shown.length === 0 && this.tagFilter
-            ? `No heading in this note carries ${this.tagFilter.label}.`
-            : undefined,
-      );
+      this.publish(shown, document.uri, describeOutlineMessage(roots, shown, this.tagFilter));
       void this.followCursor();
     } catch {
       this.publish([], undefined, unreadableMessage);
     }
   }
 
+  /**
+   * Replaces the tree and the view's message, and fires one change for the
+   * whole tree. With no document, the unfiltered headings are forgotten too.
+   */
   private publish(
     roots: OutlineNode[],
     documentUri: vscode.Uri | undefined,
@@ -308,15 +307,13 @@ export class OutlineTreeProvider
    * Follows the cursor after a pause so a held arrow key does not thrash reveal.
    */
   private scheduleFollowCursor(): void {
-    if (this.followHandle) {
-      clearTimeout(this.followHandle);
-    }
-    this.followHandle = setTimeout(() => {
-      this.followHandle = undefined;
-      void this.followCursor();
-    }, followCursorDelayMs);
+    this.pendingFollow.schedule(() => void this.followCursor());
   }
 
+  /**
+   * Selects the heading the cursor is under, when the view is visible, the
+   * setting is on, and the active editor is the note the tree was built from.
+   */
   private async followCursor(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (
@@ -348,6 +345,7 @@ export class OutlineTreeProvider
     }
   }
 
+  /** Whether headings show their tags beside them, from `deckard.outline.showTags`. */
   private areTagsShown(): boolean {
     return vscode.workspace
       .getConfiguration('deckard')
@@ -363,6 +361,10 @@ export class OutlineTreeProvider
     );
   }
 
+  /**
+   * Whether a heading lists the tags it inherits from the headings and front
+   * matter above it, from `deckard.outline.inheritedTags` for the note's folder.
+   */
   private areInheritedTagsShown(uri: vscode.Uri): boolean {
     return vscode.workspace
       .getConfiguration('deckard', uri)
@@ -391,14 +393,13 @@ export async function syncOutlineFollowCursorContext(): Promise<void> {
 }
 
 /**
- * Turns following on or off for every window, matching how the setting reads.
+ * Turns following on or off where the value in force is set: the
+ * workspace's settings when they set it, else the user's. It was always
+ * written to the user's, so in a workspace that set it the toggle wrote,
+ * nothing changed, and the title kept offering the same button.
  */
 export async function setOutlineFollowCursor(enabled: boolean): Promise<void> {
-  const written = await writeSetting(
-    'outline.followCursor',
-    enabled,
-    vscode.ConfigurationTarget.Global,
-  );
+  const written = await writeSetting('outline.followCursor', enabled, settingTarget('outline.followCursor'));
   if (written) {
     await syncOutlineFollowCursorContext();
   }
@@ -427,6 +428,24 @@ export async function pickOutlineTag(
     { placeHolder },
   );
   return choice?.key;
+}
+
+/**
+ * What the view says above the tree: that the note has no headings, that
+ * none carries the tag it is narrowed to, or nothing when headings are shown.
+ */
+function describeOutlineMessage(
+  roots: readonly OutlineNode[],
+  shown: readonly OutlineNode[],
+  filter: { label: string } | undefined,
+): string | undefined {
+  if (roots.length === 0) {
+    return noHeadingsMessage;
+  }
+  if (shown.length === 0 && filter) {
+    return `No heading in this note carries ${filter.label}.`;
+  }
+  return undefined;
 }
 
 /**

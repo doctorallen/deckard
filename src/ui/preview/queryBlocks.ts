@@ -1,8 +1,8 @@
-import MarkdownIt = require('markdown-it');
+import type MarkdownIt from 'markdown-it';
 import * as vscode from 'vscode';
 
-import { measure } from '../../core/timing';
-import { WorkspaceIndex } from '../../core/types';
+import { QueryContext } from '../../domain/query/queryContext';
+import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   onIndexUpdateInTurn,
@@ -16,7 +16,11 @@ import {
 } from '../state/queryBlockState';
 import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
+import { readQueryContext } from '../commands/queryContext';
+import { WorkspaceIndex } from '../../domain/model';
+import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 
+/** The one thing the blocks need from the indexer: its published snapshots. */
 interface IndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
 }
@@ -39,6 +43,10 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
 
   public readonly onDidChangeCodeLenses = this.changeEmitter.event;
 
+  /**
+   * Starts listening at once: each published index is kept for the lenses
+   * and, once a preview has drawn a block, refreshes the open previews.
+   */
   public constructor(indexer: IndexSource) {
     this.disposables = [
       this.changeEmitter,
@@ -70,34 +78,39 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       onDidRender: () => {
         this.previewReadsIndex = true;
       },
-      getStatusNamespace: () =>
-        vscode.workspace
-          .getConfiguration('deckard')
-          .get<string>('board.statusNamespace', 'status')
-          .trim() || 'status',
+      getStatusNamespace: () => readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
+      getQueryContext: (now: number) => readQueryContext(now),
     };
     return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);
   }
 
+  /**
+   * The lenses above each query block in a Markdown note: its counts, or the
+   * error that stops it, and the action that opens it on a search page. Any
+   * other file gets none.
+   */
   public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
     if (!isMarkdownFile(document.uri)) {
       return [];
     }
+    const queryContext = readQueryContext();
     return measure(
       'Query block lenses',
       () =>
         findQueryBlocks(document.getText()).flatMap((block) =>
-          this.createCodeLenses(block),
+          this.createCodeLenses(block, queryContext),
         ),
       (lenses) => `${lenses.length} lenses`,
     );
   }
 
+  /** Stops listening to the indexer and unregisters the lens provider. */
   public dispose(): void {
     this.disposables.forEach((disposable) => disposable.dispose());
   }
 
-  private createCodeLenses(block: QueryBlockSource): vscode.CodeLens[] {
+  /** The lenses above one block, its query run in `queryContext`. */
+  private createCodeLenses(block: QueryBlockSource, queryContext: QueryContext): vscode.CodeLens[] {
     const range = new vscode.Range(block.startLine, 0, block.startLine, 0);
     const label = (title: string): vscode.CodeLens =>
       new vscode.CodeLens(range, { title, command: '' });
@@ -106,11 +119,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       return [label('Deckard is indexing the workspace…')];
     }
 
-    const snapshot = getQueryBlockSnapshot(
-      this.index,
-      block.query,
-      block.options,
-    );
+    const snapshot = getQueryBlockSnapshot(this.index, block.query, block.options, { queryContext });
     const warnings = snapshot.messages
       .filter((message) => message.severity === 'warning')
       .map((message) => label(`Warning: ${message.text}`));

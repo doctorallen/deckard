@@ -1,0 +1,14 @@
+/*
+ * Related Notes, in the sidebar: its rules, then the day panel, then
+ * the rules that come after the panel, since an @import must lead a sheet.
+ * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
+ */
+@import "../shared/base.css";
+@import "./notes.css";
+@import "../shared/calendarDay.css";
+
+/* Home's widgets to add, while Home is in front. */
+.home-widget-choices { display: grid; gap: var(--space-1); margin: var(--space-2) 0 var(--space-3); padding: 0; list-style: none; }
+.home-widget-choice { display: grid; gap: 2px; width: 100%; min-width: 0; padding: var(--space-2); text-align: left; }
+.home-widget-choice-label { font-weight: 650; }
+.home-widget-choice-detail { color: var(--muted); font-size: var(--text-xs); white-space: normal; text-transform: none; letter-spacing: normal; }

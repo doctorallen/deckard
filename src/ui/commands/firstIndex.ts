@@ -1,8 +1,11 @@
 import * as vscode from 'vscode';
 
-import { WorkspaceIndex } from '../../core/types';
+import { QueryContext } from '../../domain/query/queryContext';
+import { pluralize } from '../../shared/text';
 import { createAgenda } from '../state/agendaState';
 import { openSettingAction, settingLabel } from './notify';
+import { readQueryContext } from './queryContext';
+import { WorkspaceIndex } from '../../domain/model';
 
 /**
  * What a workspace's first index found, said once.
@@ -13,10 +16,12 @@ import { openSettingAction, settingLabel } from './notify';
  * and only for a workspace Deckard had never stored anything for.
  */
 
+/** The global-state key that records the summary was shown, so it is said only once. */
 export const FIRST_INDEX_SUMMARY_SHOWN = 'deckard.firstIndexSummaryShown';
 /** At this many notes, the summary also says how to leave folders out. */
 export const LARGE_WORKSPACE_NOTES = 3000;
 
+/** What the first index read: the numbers the summary sentence is made of. */
 export interface FirstIndexCounts {
   notes: number;
   openTasks: number;
@@ -24,20 +29,16 @@ export interface FirstIndexCounts {
   tags: number;
 }
 
-function count(value: number, one: string, many: string): string {
-  return `${value.toLocaleString('en-US')} ${value === 1 ? one : many}`;
-}
-
 /** One sentence: `Deckard read 412 notes: 1,204 open tasks (17 overdue) and 185 tags.` */
 export function describeFirstIndex(counts: FirstIndexCounts): string {
-  const notes = count(counts.notes, 'note', 'notes');
+  const notes = pluralize(counts.notes, 'note', 'notes', { locale: true });
   const tasks =
     counts.openTasks > 0
-      ? `${count(counts.openTasks, 'open task', 'open tasks')}${
+      ? `${pluralize(counts.openTasks, 'open task', 'open tasks', { locale: true })}${
           counts.overdue > 0 ? ` (${counts.overdue.toLocaleString('en-US')} overdue)` : ''
         }`
       : '';
-  const tags = counts.tags > 0 ? count(counts.tags, 'tag', 'tags') : '';
+  const tags = counts.tags > 0 ? pluralize(counts.tags, 'tag', 'tags', { locale: true }) : '';
   if (tasks && tags) {
     return `Deckard read ${notes}: ${tasks} and ${tags}.`;
   }
@@ -52,16 +53,21 @@ export function describeFirstIndex(counts: FirstIndexCounts): string {
 
 /**
  * The counts, with overdue as the Tasks view's Overdue group over every open
- * task, so a task long past its date that needs a new one is not counted.
+ * task on the context's today, so a task long past its date that needs a new
+ * one is not counted.
  */
-export function countFirstIndex(index: WorkspaceIndex, now: number): FirstIndexCounts {
+export function countFirstIndex(
+  index: WorkspaceIndex,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+): FirstIndexCounts {
   const open = [...index.tasks.values()].filter((task) => !task.completed);
   const overdue =
-    createAgenda(index, now, { tasks: open, upcomingDays: 7 }).find((group) => group.id === 'overdue')
+    createAgenda(index, context, { tasks: open, upcomingDays: 7 }).find((group) => group.id === 'overdue')
       ?.entries.length ?? 0;
   return { notes: index.files.size, openTasks: open.length, overdue, tags: index.tags.size };
 }
 
+/** The facts that decide whether the summary is shown at all. */
 export interface FirstIndexGate {
   /** Nothing was stored for this workspace before this activation. */
   newToDeckard: boolean;
@@ -97,7 +103,7 @@ export async function summarizeFirstIndex(
   if (!shouldSummarize({ ...gate, alreadyShown, notes: index.files.size })) {
     return false;
   }
-  const counts = countFirstIndex(index, options.now ?? Date.now());
+  const counts = countFirstIndex(index, readQueryContext(options.now));
   const large = counts.notes >= LARGE_WORKSPACE_NOTES && options.excludeIsEmpty;
   const text =
     describeFirstIndex(counts) +

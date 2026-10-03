@@ -4,9 +4,10 @@ import { request as httpRequest } from 'node:http';
 import * as vscode from 'vscode';
 
 import { readManifestTools } from '../core/mcp/mcpProtocol';
-import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { DeckardMcpServer, getClaudeCodeSetup } from '../ui/commands/mcpServer';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 
 suite('MCP server', () => {
   const secrets = new Map<string, string>();
@@ -17,20 +18,21 @@ suite('MCP server', () => {
     {},
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
-  const server = new DeckardMcpServer(
-    { ready: Promise.resolve(), getSnapshot: () => index },
-    {
+  const server = new DeckardMcpServer({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index },
+    history: new WorkspaceWriteHistory(),
+    secrets: {
       get: async (key) => secrets.get(key),
       store: async (key, value) => {
         secrets.set(key, value);
       },
     },
-    readManifestTools(
+    tools: readManifestTools(
       vscode.extensions.getExtension('esperinnovations.deckard-notes')?.packageJSON.contributes
         .languageModelTools,
     ),
-    '1.0.0',
-  );
+    version: '1.0.0',
+  });
   let port = 0;
   let token = '';
 

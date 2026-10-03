@@ -5,14 +5,10 @@ import { tmpdir } from 'node:os';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import {
-  CREATE_LINKED_NOTE_COMMAND,
-  createNoteNamed,
-  findLinkProblems,
-  LinkHealth,
-} from '../ui/commands/linkHealth';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { CREATE_LINKED_NOTE_COMMAND, createNoteNamed, LinkHealth } from '../ui/commands/linkHealth';
+import { findLinkProblems } from '../domain/links/linkProblems';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return {
@@ -124,7 +120,7 @@ suite('Link health', () => {
     try {
       const uri = await createNoteNamed(notes, 'Q3 Planning');
       assert.ok(uri);
-      assert.strictEqual(uri.fsPath, join(directory, 'notes', 'Q3 Planning.md'));
+      assert.strictEqual(uri.fsPath, vscode.Uri.file(join(directory, 'notes', 'Q3 Planning.md')).fsPath);
       assert.strictEqual(readFileSync(uri.fsPath, 'utf8'), '# Q3 Planning\n\n');
 
       writeFileSync(uri.fsPath, 'Kept');

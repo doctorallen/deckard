@@ -2,11 +2,11 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { Task, WorkspaceIndex } from '../core/types';
 import {
   TaskMetadataCompletionProvider,
   TaskMetadataSuggestionSettings,
-} from '../ui/commands/taskMetadataSuggestions';
+} from '../ui/providers/taskMetadataSuggestions';
+import { Task, WorkspaceIndex } from '../domain/model';
 
 /** Sunday 2026-09-13, mid-morning. */
 const now = new Date(2026, 8, 13, 9).getTime();

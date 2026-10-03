@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { reindexAction, reportFailure } from './notify';
+import { findWorkspaceFolderByKey } from '../../shared/paths';
 
 /**
  * Resolves a stored source key across absolute paths, URI schemes, and roots.
@@ -25,19 +26,17 @@ export async function resolveSourceUri(
   }
 
   const normalizedPath = filePath.replaceAll('\\', '/').replace(/^\.\//, '');
-  const candidates: vscode.Uri[] = [];
-
+  const pathParts = normalizedPath.split('/');
+  // The folder a multi-root key names comes first, so it is also the
+  // fallback when no candidate exists yet.
+  const named =
+    workspaceFolders && workspaceFolders.length > 1
+      ? findWorkspaceFolderByKey(workspaceFolders, pathParts[0])
+      : undefined;
+  const candidates: vscode.Uri[] = named
+    ? [vscode.Uri.joinPath(named.uri, ...pathParts.slice(1))]
+    : [];
   for (const workspaceFolder of workspaceFolders ?? []) {
-    const pathParts = normalizedPath.split('/');
-    if (
-      workspaceFolders &&
-      workspaceFolders.length > 1 &&
-      pathParts[0] === workspaceFolder.name
-    ) {
-      candidates.push(
-        vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts.slice(1)),
-      );
-    }
     candidates.push(vscode.Uri.joinPath(workspaceFolder.uri, ...pathParts));
   }
 
@@ -54,19 +53,61 @@ export async function resolveSourceUri(
 }
 
 /**
+ * The file a stored source key names, worked out from the key and the
+ * workspace folders alone, without checking the disk: enough to read the
+ * settings of the folder that holds it. A multi-root key names its folder
+ * first. Undefined when no open folder can hold a relative key.
+ */
+export function sourceScopeUri(
+  filePath: string,
+  workspaceFolders: readonly vscode.WorkspaceFolder[] | undefined = vscode
+    .workspace.workspaceFolders,
+): vscode.Uri | undefined {
+  if (isAbsoluteFilePath(filePath)) {
+    return vscode.Uri.file(filePath);
+  }
+  if (hasUriScheme(filePath)) {
+    try {
+      return vscode.Uri.parse(filePath);
+    } catch {
+      return undefined;
+    }
+  }
+  const pathParts = filePath.replaceAll('\\', '/').replace(/^\.\//, '').split('/');
+  const folders = workspaceFolders ?? [];
+  if (folders.length > 1) {
+    const folder = findWorkspaceFolderByKey(folders, pathParts[0]);
+    return folder ? vscode.Uri.joinPath(folder.uri, ...pathParts.slice(1)) : undefined;
+  }
+  return folders[0] ? vscode.Uri.joinPath(folders[0].uri, ...pathParts) : undefined;
+}
+
+/** A source line to open, and how to open it. */
+export interface OpenSourceOptions {
+  filePath: string;
+  /** One-based. */
+  line: number;
+  /** The folders a relative path is read against; the workspace's by default. */
+  workspaceFolders?: readonly vscode.WorkspaceFolder[];
+  /** Open in the column beside the active one rather than replacing it. */
+  beside?: boolean;
+  /** Open as a preview tab, which the next preview replaces. */
+  preview?: boolean;
+  /** Leave focus where it is, so a Quick Pick that opened it stays open. */
+  preserveFocus?: boolean;
+}
+
+/**
  * Opens a one-based source line and centers it without altering the document.
  */
-export async function openSourceAt(
-  filePath: string,
-  line: number,
-  workspaceFolders?: readonly vscode.WorkspaceFolder[],
-  /** Open in the column beside the active one rather than replacing it. */
+export async function openSourceAt({
+  filePath,
+  line,
+  workspaceFolders,
   beside = false,
-  /** Open as a preview tab, which the next preview replaces. */
   preview = false,
-  /** Leave focus where it is, so a Quick Pick that opened it stays open. */
   preserveFocus = false,
-): Promise<vscode.TextEditor | undefined> {
+}: OpenSourceOptions): Promise<vscode.TextEditor | undefined> {
   const uri = await resolveSourceUri(filePath, workspaceFolders);
   if (!uri) {
     void reportFailure({
@@ -115,13 +156,12 @@ export function openResultAt(
     vscode.workspace
       .getConfiguration('workbench.editor')
       .get<boolean>('enablePreview', true) !== false;
-  return openSourceAt(
+  return openSourceAt({
     filePath,
     line,
-    undefined,
-    how.beside === true,
-    previews && how.pin !== true,
-  );
+    beside: how.beside === true,
+    preview: previews && how.pin !== true,
+  });
 }
 
 /**
@@ -145,10 +185,13 @@ export function revealLine(editor: vscode.TextEditor, line: number): void {
 }
 
 /**
- * Recognizes URI-like source keys before treating them as workspace paths.
+ * Recognizes a source key that is a whole URI before treating it as a
+ * workspace path. It takes the `//` after the scheme: a note named
+ * "Meeting: Q3.md", or a folder named "Work: 2026", also starts with what
+ * reads as a scheme, but a path the index keys never holds `//`.
  */
 function hasUriScheme(value: string): boolean {
-  return /^[a-z][a-z\d+.-]*:/i.test(value);
+  return /^[a-z][a-z\d+.-]*:\/\//i.test(value);
 }
 
 /**

@@ -1,125 +1,10 @@
-import { GUIDE_IMAGE_BASE, GUIDE_PAGES, HELP_READ_MORE } from './guide';
-import * as vscode from 'vscode';
-
-import {
-  createNonce,
-  getBaseCss,
-  getPageTailCss,
-  zenBodyAttribute,
-} from './components';
-import { getFavoriteHeartAssetUris } from './icons';
-import { ENABLED } from './selectors';
+import { GUIDE_PAGES, HELP_READ_MORE } from './guide';
+import { createNonce, type PageChrome } from './components';
+import { buildPageShell, joinUnder, type ShellUri, type ShellWebview } from './host/pageShell';
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
-
-/**
- * What the Help page reads from the extension's own manifest.
- *
- * The commands and settings tables are built from what Deckard actually
- * contributes rather than from a copy of it, so a feature cannot ship with
- * the guide still describing the workspace before it.
- */
-export interface HelpManifest {
-  commands?: { command: string; title: string; category?: string }[];
-  configuration?: {
-    title?: string;
-    properties?: Record<
-      string,
-      { default?: unknown; description?: string; markdownDescription?: string }
-    >;
-  }[];
-  keybindings?: { command: string; key?: string; mac?: string; when?: string }[];
-  menus?: { commandPalette?: { command: string; when?: string }[] };
-}
-
-/** A Deckard command as Help names it, and whether Help can run it. */
-export interface HelpCommand {
-  command: string;
-  /** Runs from Help: it needs no note in the editor, and the palette offers it. */
-  runnable: boolean;
-  binding?: { key: string; mac?: string };
-}
-
-/** A palette `when` that needs a note in the editor to act on. */
-const EDITOR_CONTEXT = /\beditorLangId\b|\beditorTextFocus\b|\bdeckard\.onTaskLine\b|\bdeckard\.isNote\b/;
-
-/**
- * Every Deckard command by its title, with whether Help may run it: a
- * command the palette hides, or one that acts on the note in the editor,
- * would have nothing to act on from Help.
- */
-export function describeHelpCommands(manifest: HelpManifest): Map<string, HelpCommand> {
-  const when = new Map(
-    (manifest.menus?.commandPalette ?? []).map((entry) => [entry.command, entry.when]),
-  );
-  const bindings = new Map(
-    (manifest.keybindings ?? [])
-      .filter((binding) => binding.key)
-      .map((binding) => [binding.command, { key: binding.key!, ...(binding.mac ? { mac: binding.mac } : {}) }]),
-  );
-  const commands = new Map<string, HelpCommand>();
-  for (const command of manifest.commands ?? []) {
-    if (command.category !== 'Deckard' || commands.has(command.title)) {
-      continue;
-    }
-    const condition = when.get(command.command);
-    const binding = bindings.get(command.command);
-    commands.set(command.title, {
-      command: command.command,
-      runnable: condition !== 'false' && !EDITOR_CONTEXT.test(condition ?? ''),
-      ...(binding ? { binding } : {}),
-    });
-  }
-  return commands;
-}
-
-/** Whether a message from the Help page may run this command. */
-export function isRunnableFromHelp(manifest: HelpManifest, command: string): boolean {
-  return [...describeHelpCommands(manifest).values()].some(
-    (candidate) => candidate.runnable && candidate.command === command,
-  );
-}
-
-/** A key binding as this platform writes it: Cmd+Shift+Alt+F. */
-export function formatShortcut(
-  binding: { key: string; mac?: string },
-  platform: NodeJS.Platform,
-): string {
-  const keys = platform === 'darwin' ? binding.mac ?? binding.key : binding.key;
-  return keys
-    .split('+')
-    .map((part) => (part.length === 1 ? part.toUpperCase() : part[0].toUpperCase() + part.slice(1)))
-    .join('+');
-}
-
-/** A command's name as a button that runs it, or as code where it cannot. */
-function renderCommandName(
-  label: string,
-  command: HelpCommand | undefined,
-  platform: NodeJS.Platform,
-): string {
-  const name = command?.runnable
-    ? `<button type="button" class="command-link" data-command="${escapeHtml(command.command)}">${label}</button>`
-    : `<code>${label}</code>`;
-  return command?.binding
-    ? `${name} <kbd class="shortcut">${escapeHtml(formatShortcut(command.binding, platform))}</kbd>`
-    : name;
-}
-
-/**
- * Turns every `<code>Deckard: Title</code>` in the page's prose into the
- * command's button, with its shortcut beside it. A name the manifest does not
- * contribute is left as it was, and the Help test fails on it.
- */
-export function linkCommandNames(
-  html: string,
-  commands: ReadonlyMap<string, HelpCommand>,
-  platform: NodeJS.Platform,
-): string {
-  return html.replace(/<code>Deckard: ([^<]+)<\/code>/g, (whole, title: string) => {
-    const command = commands.get(title.replace(/&amp;/g, '&').replace(/’/g, "'"));
-    return command ? renderCommandName(`Deckard: ${title}`, command, platform) : whole;
-  });
-}
+import { escapeHtml } from '../../shared/html';
+import { GUIDE_IMAGE_BASE } from './pages/help/guideLinks';
+import { describeHelpCommands, type HelpManifest, linkCommandNames, renderCommandName } from './pages/help/helpManifest';
 
 /** A short line for what a command is for, beyond the name it goes by. */
 const COMMAND_NOTES: Readonly<Record<string, string>> = {
@@ -190,7 +75,8 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.renameHeading':
     'Renames the heading the cursor is in and carries its links along.',
   'deckard.undoLastChange': 'Puts the notes back as they were before the last write.',
-  'deckard.agenda.editQuery': 'What the Tasks view lists, opened on the Task Board to try and change.',
+  'deckard.agenda.editQuery':
+    'Opens the Task Board on what the Tasks view lists, to change it and keep it with Save to Tasks view.',
   'deckard.clearAgendaQuery': 'Lets the Tasks view list every open task again.',
   'deckard.agenda.setGrouping': 'What the Tasks view’s groups are.',
   'deckard.outline.enableFollowCursor': 'Selects the heading the cursor is in.',
@@ -270,7 +156,6 @@ function renderSettingsTables(manifest: HelpManifest): string {
     : '';
 }
 
-/** The escaping the page's own markup uses; nothing here is user content. */
 /** A Help section's way into the guide page that goes into detail. */
 function renderReadMore(section: string): string {
   const target = HELP_READ_MORE[section];
@@ -280,18 +165,9 @@ function renderReadMore(section: string): string {
   return `<p class="read-more"><a href="#" data-guide-page="${target.page}"${target.anchor ? ` data-guide-anchor="${target.anchor}"` : ''}>Read more: ${escapeHtml(GUIDE_PAGES[target.page])} →</a></p>`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/**
- * Builds a static, navigable Help page so guidance is available offline.
- */
+/** What a Help page is drawn for, beyond the manifest: the look it is drawn in, and what else it is given. */
 export interface HelpOptions {
+  /** The platform whose key bindings the command table shows; the running one without. */
   platform?: NodeJS.Platform;
   /** The shipped changelog's releases, for What's new. */
   releases?: readonly Release[];
@@ -299,17 +175,24 @@ export interface HelpOptions {
   newSince?: string;
   /** A section to scroll to once the page has loaded. */
   anchor?: string;
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome;
 }
 
+/**
+ * Builds a static, navigable Help page so guidance is available offline:
+ * every section is written into the page, and the command names in it are
+ * linked to what the manifest says they do.
+ */
 export function getHelpHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
-  extensionUri: vscode.Uri,
+  webview: ShellWebview,
+  extensionUri: ShellUri,
   manifest: HelpManifest = {},
-  options: HelpOptions = {},
+  options: HelpOptions,
 ): string {
   const platform = options.platform ?? process.platform;
   return linkCommandNames(
-    buildHelpHtml(webview, extensionUri, manifest, platform, options),
+    buildHelpHtml({ webview, extensionUri, manifest, platform, options }),
     describeHelpCommands(manifest),
     platform,
   );
@@ -338,129 +221,47 @@ export function renderWhatsNew(releases: readonly Release[], newSince?: string):
     .join('')}${changelog}`;
 }
 
-function buildHelpHtml(
-  webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
-  extensionUri: vscode.Uri,
-  manifest: HelpManifest,
-  platform: NodeJS.Platform,
-  options: HelpOptions,
-): string {
+/** What buildHelpHtml draws the page from. */
+interface HelpPageInputs {
+  webview: ShellWebview;
+  extensionUri: ShellUri;
+  manifest: HelpManifest;
+  /** The platform already resolved from the options, so both tables agree on it. */
+  platform: NodeJS.Platform;
+  options: HelpOptions;
+}
+
+/** The Help page's shell around its sections, before command names are linked. */
+function buildHelpHtml({ webview, extensionUri, manifest, platform, options }: HelpPageInputs): string {
   const nonce = createNonce();
   const logoUri = webview
-    .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
+    .asWebviewUri(joinUnder(extensionUri, 'resources', 'deckard.svg'))
     .toString();
-  const favoriteHeartUris = getFavoriteHeartAssetUris(webview, extensionUri);
-  const csp = `default-src 'none'; img-src ${webview.cspSource} ${new URL(GUIDE_IMAGE_BASE).origin}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="${csp}">
-<title>Deckard Help</title>
-<style nonce="${nonce}">${getBaseCss()}
-html { scroll-behavior: smooth; }
-nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--line); background: var(--panel); padding: 12px; }
-.nav-title, .step-number { font-family: var(--font-mono); }
-.nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
-nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
-nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: 2px solid transparent; }
-/* The section being read, marked in the rail so twenty links say where the reader is. */
-nav a[aria-current] { border-left-color: var(--amber); color: var(--text); }
-/* Prose here is full of inline code chips, each a border and a pixel of padding
-   taller than its text; a line box the chips fit inside keeps two on
-   neighboring lines from touching. */
-article { min-width: 0; line-height: 1.55; }
-h1, h2, h3 { line-height: 1.2; }
-p { margin: 0 0 12px; }
-.steps, .cards { display: grid; gap: 10px; }
-.steps { counter-reset: quick-start; }
-.step, .card { min-width: 0; border: 1px solid var(--line); background: var(--panel); padding: 14px; }
-.step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
-.step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: var(--text-xs); }
-.card p:last-child, .step p:last-child { margin-bottom: 0; }
-.card:target { border-color: var(--amber); }
-/* A card jumped to from the map is not hidden under the sticky navigation. */
-.card[id] { scroll-margin-top: 20px; }
-code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--text); font-size: .9em; }
-.inline-icon, .deckard-logo { display: inline-block; width: 16px; height: 16px; margin: 0 2px; vertical-align: -3px; }
-.dashboard-icon { fill: var(--green); }
-.favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
-.favorite-heart.filled { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
-pre { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--panel); padding: 12px; color: var(--text); }
-pre code { border: 0; padding: 0; color: inherit; background: transparent; }
-/* A cell breaks between words, never inside one, so a column is at least as
-   wide as its longest word — a setting's name, a command's — and the table
-   shares the rest by content. Broken anywhere, a column could be crushed to
-   five characters a line, and every column with a long sentence beside it was.
-   A table too wide for the page scrolls in .table-scroll instead. */
-th, td, table code { overflow-wrap: break-word; }
-ul { margin: 8px 0 0; padding-left: 20px; }
-li + li { margin-top: 5px; }
-.note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--text); }
-/* Reference tables: commands, markers, query fields, settings. */
-table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: var(--text-md); }
-caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: left; }
-th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-th { color: var(--cyan); font-size: var(--text-xs); }
-td:first-child { white-space: normal; }
-tbody tr:hover { background: var(--panel); }
-/* A group's name inside the settings table: a heading row, ruled under like
-   the column header, so a group starts somewhere the eye can find. */
-.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: var(--text-sm) var(--font-mono); }
-.table-group:hover { background: transparent; }
-.table-scroll { overflow-x: auto; }
-/* The navigation groups its sections, so a long guide stays scannable. */
-.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-nav a.nav-sub { padding-left: 16px; font-size: var(--text-sm); }
-section { scroll-margin-top: 20px; }
-/* A command named in the prose is a button that runs it: the code chip's
-   look, in the link color, underlined under the pointer and on focus. */
-.command-link { display: inline; min-height: 0; margin: 0; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--cyan); font: inherit; font-size: .9em; font-family: var(--font-mono); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
-.command-link:hover${ENABLED}, .command-link:focus-visible { text-decoration: underline; }
-.command-link:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
-td .command-link { display: inline-block; min-height: var(--control-height); }
-.whats-new-chip { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); color: var(--cyan); font: var(--text-xs) var(--font-mono); vertical-align: middle; }
-#whats-new h3 { margin-top: 16px; }
-kbd.shortcut { display: inline-block; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
-@media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
-
-/* Help is a two-column reference: navigation beside the article. */
-main {
-  display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(0, 800px);
-  gap: 32px;
-  max-width: 1120px;
-  padding: 30px 24px 48px;
-}
-header { display: block; padding-bottom: 20px; border-bottom: 2px solid var(--line); }
-h1 { font-size: 28px; line-height: 1.2; overflow-wrap: normal; }
-h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; line-height: 1.2; }
-h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
-.eyebrow { margin: 0 0 6px; }
-.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.card { cursor: default; }
-@media (max-width: 900px) {
-  main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
-  h1 { font-size: 24px; }
-  .cards { grid-template-columns: 1fr; }
-}
-/* Read more: the way from a section's quick glance into the guide page. */
-.read-more { margin-top: 12px; }
-.read-more a, .guide-back { color: var(--cyan); font-family: var(--font-mono); font-size: var(--text-sm); }
-/* A guide page in place of Help: the same measure, its screenshots fitted. */
-#guide-view img { max-width: 100%; height: auto; }
-#guide-view h1 { margin-top: 12px; }
-#guide-view h2, #guide-view h3, #guide-view h4 { scroll-margin-top: 20px; }
-#guide-view h3 { margin-top: 20px; }
-.guide-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-${getPageTailCss()}
-</style>
-</head>
-<body${zenBodyAttribute()}${options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : ''}>
+  return buildPageShell({
+    webview,
+    extensionUri,
+    page: 'help',
+    title: 'Deckard Help',
+    nonce,
+    theme: options.chrome.theme,
+    zen: options.chrome.zen,
+    csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
+    bodyAttributes: options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : '',
+    // src/webview/help/main.ts: the rail, the guide view, and the way back.
+    bundle: true,
+    body: `
 <main>
-  <nav aria-label="Help sections">
+${HELP_NAV}  <article>
+${HELP_HEADER}${renderStartSections(logoUri, options)}${renderWritingSections()}${renderTaskSections()}${renderFindingSections()}${renderKeepingSections()}${renderReferenceSections(manifest, platform)}    </article>
+  <div id="guide-view" hidden></div>
+</main>
+`,
+  });
+}
+
+/** The rail of section links down the side of Help, grouped as the sections are. */
+const HELP_NAV = `  <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
     <a href="#quick-start">Quick start</a>
     <a href="#whats-new">What's new</a>
@@ -489,15 +290,21 @@ ${getPageTailCss()}
     <a class="nav-sub" href="#assistants">AI assistants</a>
     <a class="nav-sub" href="#privacy">Privacy and safety</a>
   </nav>
-  <article>
-    <header>
+`;
+
+/** The page's title and lead, above the first section. */
+const HELP_HEADER = `    <header>
       <p class="eyebrow">DECKARD / FIELD GUIDE</p>
       <h1>Help</h1>
       <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
       <p class="read-more">This page is the quick glance; each section's <strong>Read more</strong> opens the <a href="#" data-guide-page="README">full guide</a>.</p>
     </header>
 
-    <section id="quick-start">
+`;
+
+/** The sections a first visit reads: Quick start, and What's new from the shipped changelog. */
+function renderStartSections(logoUri: string, options: HelpOptions): string {
+  return `    <section id="quick-start">
       <h2>Quick start</h2>
       <p><strong>New to Deckard?</strong> <code>Deckard: Get Started</code> opens the walkthrough: six steps, each checked off as you do it.</p>
       <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> writes a tour of Deckard, dated from the day you make it, and opens it. Its README leads through ten notes, one a topic, each holding what it explains and ending with what to try.</p>
@@ -515,14 +322,19 @@ ${getPageTailCss()}
       ${renderWhatsNew(options.releases ?? [], options.newSince)}
     </section>
 
-    <section id="tags">
+`;
+}
+
+/** The Writing group of the rail: tags and people, front matter, links, and what counts as a note. */
+function renderWritingSections(): string {
+  return `    <section id="tags">
       <h2>Tags and people</h2>
       <div class="cards">
         <div class="card"><h3>Lightweight tags</h3><p>A plain <code>#tag</code> on a heading, a task, or a line of prose is indexed with no setup. Tag names take letters, numbers, <code>_</code>, <code>-</code>, and <code>/</code> namespace segments; a number alone is not a tag, so a date such as <code>#2026</code> stays text.</p></div>
         <div class="card"><h3>People and entities</h3><p><code>@mara-vale</code> names a person. <code>#project/…</code>, <code>#topic/…</code>, <code>#organization/…</code>, and <code>#meeting/…</code> name entities; any other namespace becomes one on first use. <code>deckard.personMarker</code> changes the marker, and <code>deckard.entityNamespaceAliases</code> folds one namespace into another.</p></div>
         <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbors.</p></div>
         <div class="card"><h3>Associated tags</h3><p>Tags written together on one heading, task, or line are remembered as related, and tags that meet under a shared heading count more lightly. Related Notes and Refine both rank with that evidence, normalized so a common tag is not promoted for being common.</p></div>
-        <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu. Every context menu opens from the keyboard too, with Shift+F10, the menu key, or Alt+Enter on the focused row or tag.</p></div>
+        <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, moved one place with Alt+Up and Alt+Down on the focused tag, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu. Every context menu opens from the keyboard too, with Shift+F10, the menu key, or Alt+Enter on the focused row or tag.</p></div>
         <div class="card"><h3>On cards</h3><p>On search results, task rows, board cards, and Related Notes a tag is quiet monospace text that opens its page, or its menu with Shift+F10; the editor keeps its box.</p></div>
         <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
         <div class="card"><h3>The editor</h3><p>A note’s title bar carries Deckard’s button, which opens <code>Deckard: Note Actions…</code>: what can be done from where the cursor is. A daily note’s title bar also steps to the day before and after. Right-click the title bar to hide either. Right-click in a note for a <strong>Deckard</strong> submenu with the task on the line, the heading, Move to…, and Pin. Links, task dates, repeat rules, and block ids take your theme’s colors; <code>editor.tokenColorCustomizations</code> changes any scope ending in <code>.deckard</code>. A task’s metadata is drawn fainter than its words, and an open task that is overdue or due today says so at the end of its line (<code>deckard.editor.dimTaskMetadata</code>, <code>deckard.editor.taskDueHints</code>). The status bar counts the note’s words, or the selection’s, leaving out code, front matter, and task metadata.</p></div>
@@ -569,7 +381,12 @@ updated: 2026-09-20
       ${renderReadMore('boundaries')}
     </section>
 
-    <section id="tasks">
+`;
+}
+
+/** The Tasks group of the rail: writing tasks, their metadata, and the views that list them. */
+function renderTaskSections(): string {
+  return `    <section id="tasks">
       <h2>Writing tasks</h2>
       <div class="cards">
         <div class="card"><h3>Checklist tasks</h3><p>A task is an unordered checklist item: <code>- [ ] Send the proposal</code>, with <code>-</code>, <code>*</code>, or <code>+</code>, and <code>[x]</code> when it is done. Checking a box anywhere in Deckard writes the same checked edit into the note, including the ✅ date and the next occurrence of a repeating task, from the task editor as well.</p></div>
@@ -579,7 +396,7 @@ updated: 2026-09-20
         <div class="card"><h3>Done from the keyboard</h3><p><code>Deckard: Toggle Task Done</code> completes the tasks under every cursor, or reopens them when all of them are done, with the ✅ date and the next occurrence of a repeating task, as one edit that one Undo takes back. A repeat rule Deckard cannot read is underlined on an open task, since completing it would start no next one, and the lightbulb offers the nearest rules it can read.</p></div>
         <div class="card"><h3>Typing metadata</h3><p>Type <code>/</code> after a space inside a task to pick a due date, a priority, a repeat rule, or a dependency without remembering the markers. Suggestions use the format the task already uses, or <code>deckard.tasks.metadataFormat</code> for a task with none.</p></div>
         <div class="card"><h3>Who a task is for</h3><p>Write <code>👤 @dana</code> on a task — or <code>[assignee:: @dana]</code> in a Dataview vault — to say who it is for. A name in the words is a mention, not an assignment. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours — a task for nobody in particular is yours too.</p></div>
-        <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code>, or Cmd/Ctrl+Shift+Alt+C, adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note, the ones used last first, above that heading’s sub-headings. With words selected, Capture and Find start from them, and a capture from a note links back to it. It stays open when you click away, and brings back what you had typed if you close it.</p></div>
+        <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code>, or Cmd/Ctrl+Shift+Alt+N, adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note, the ones used last first, above that heading’s sub-headings. With words selected, Capture and Find start from them, and a capture from a note links back to it. It stays open when you click away, and brings back what you had typed if you close it.</p></div>
         <div class="card"><h3>Dependencies</h3><p><code>🆔 a1</code> names a task, and <code>⛔ a1</code> waits for it. A task is blocked while something it waits for is still open, which <code>is:blocked</code> and <code>is:blocking</code> search and the Tasks view says beneath the task. <code>is:waiting</code> is for people, not dependencies: a task marked <code>#status/waiting</code>, or for someone else.</p></div>
       </div>
       ${renderReadMore('tasks')}
@@ -606,15 +423,20 @@ updated: 2026-09-20
       <h2>Tasks view and Task board</h2>
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, person, or any tag namespace, such as #context, counting the tags a task inherits from its headings and front matter. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself. <strong>Overdue</strong> lists the most recently slipped first, five at a time, with <strong>Show N more</strong> for the rest; <strong>Upcoming</strong> has a group for each day, and a task dropped on one is due that day. <strong>Done today</strong>, folded at the end, lists what you finished today; unchecking one reopens it. <strong>Reschedule All…</strong> says how full each day is, and can spread a group over the next five weekdays or keep three for today. Parked tasks are not listed.</p></div>
-        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, person, or the tags of a namespace you choose, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list. Parked tasks stay off the board unless its search says <code>is:parked</code>. While few tasks carry a status, the board says so above the columns and offers the due-date grouping, which needs none. <strong>List in Tasks view</strong>, in the gear, makes the Tasks view list the board’s search; selected again, the view lists every open task again.</p></div>
-        <div class="card"><h3>The board from the keyboard</h3><p>The board is one Tab stop. Arrow keys move between cards; on a focused card, <kbd>x</kbd> completes it, <kbd>t</kbd> and <kbd>m</kbd> make it due today or tomorrow, <kbd>d</kbd> asks for a date, <kbd>1</kbd> to <kbd>5</kbd> set its priority, <kbd>[</kbd> and <kbd>]</kbd> move it a column, <kbd>e</kbd> opens the task editor, and <kbd>s</kbd> breaks it into steps. <kbd>?</kbd> on any page lists its keys. Each card's ⋯ menu checks what the task is now and shows the key for each choice; the keys work in the menu too.</p></div>
+        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, person, or the tags of a namespace you choose, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list. Parked tasks stay off the board unless its search says <code>is:parked</code>. While few tasks carry a status, the board says so above the columns and offers the due-date grouping, which needs none. The search icon in the Tasks view’s title opens the board to edit what the view lists: change the search, then select <strong>Save to Tasks view</strong>, which keeps what the box shows even before Enter runs it; <strong>Cancel</strong> leaves the view as it is. <strong>List in Tasks view</strong>, in the gear, makes the Tasks view list the board’s search from any board; selected again, the view lists every open task again.</p></div>
+        <div class="card"><h3>The board from the keyboard</h3><p>The board is one Tab stop. Arrow keys move between cards; on a focused card, <kbd>x</kbd> completes it, <kbd>t</kbd> and <kbd>m</kbd> make it due today or tomorrow, <kbd>d</kbd> asks for a date, <kbd>1</kbd> to <kbd>5</kbd> set its priority, <kbd>[</kbd> and <kbd>]</kbd> move it a column, <kbd>e</kbd> opens the task editor, <kbd>s</kbd> breaks it into steps, and <kbd>Enter</kbd> opens its line, beside the board with <kbd>Cmd</kbd> or <kbd>Ctrl</kbd>. <kbd>?</kbd> on any page lists its keys. Each card's ⋯ menu checks what the task is now and shows the key for each choice; the keys work in the menu too.</p></div>
         <div class="card"><h3>Editing many at once</h3><p><strong>Bulk edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>A task's due date is written by its distance from today with the date beside it, <strong>Overdue 15 days · 2026-09-08</strong>, wherever a task is listed. The status bar reads <strong>3 due today</strong> while anything is, <strong>2 overdue, 3 due today</strong> when something has slipped, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day, at the first moment VS Code is open on or after an hour you pick. A task more than 30 days overdue (<code>deckard.tasks.needsNewDateAfterDays</code>) leaves the count and the Overdue group for a folded <strong>Needs a new date</strong> group, until it is given one.</p></div>
       </div>
       ${renderReadMore('task-views')}
     </section>
 
-    <section id="search">
+`;
+}
+
+/** The Finding group of the rail: search, the query language, query blocks, and the connections between notes. */
+function renderFindingSections(): string {
+  return `    <section id="search">
       <h2>Search</h2>
       <div class="cards">
         <div class="card"><h3>Find</h3><p><code>Deckard: Find in Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page. With nothing typed it starts with your pinned notes, then the five you opened last. Cmd+Enter opens the highlighted result beside the editor and keeps Find open; Alt+Enter links it where the cursor was; Cmd+. lists everything it can do. A task can be completed or dated without leaving Find. Find learns which result you choose for what you type, and offers it first next time, never above an exact title. When nothing has every word, it offers to capture what you typed to today’s note. A note counts as opened when it stays in the editor a moment, however it was opened, so Find and Recently opened rank what you really read.</p></div>
@@ -687,7 +509,12 @@ tag = #project/atlas AND task = open
       ${renderReadMore('connections')}
     </section>
 
-    <section id="home">
+`;
+}
+
+/** The Keeping notes group of the rail: Home and pins, renaming and tidying, and the periodic notes. */
+function renderKeepingSections(): string {
+  return `    <section id="home">
       <h2>Home and pins</h2>
       <p>Three figures at the top say what is <strong>Overdue</strong>, <strong>Due today</strong>, and <strong>Open</strong>; each opens its search. The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, what has gone quiet — people, projects, or any namespace, with a next action for a project with nothing open — and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages. While Home is in front, the Context sidebar lists every widget it can add: a click adds it at the top of Home, outlined for a moment. <strong>Reset widgets…</strong> asks before it puts back the widgets Home starts with.</p>
       <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
@@ -719,7 +546,12 @@ tag = #project/atlas AND task = open
       ${renderReadMore('periodic')}
     </section>
 
-    <section id="zen">
+`;
+}
+
+/** The Reference group of the rail: zen mode, the commands and settings tables built from the manifest, assistants, and privacy. */
+function renderReferenceSections(manifest: HelpManifest, platform: NodeJS.Platform): string {
+  return `    <section id="zen">
       <h2>Zen mode</h2>
       <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
       <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from the zen button in the title bar of any Deckard page, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> above Zen in the same gear, shows each of the eight themes on the open pages as you move through them, and keeps the one you choose.</p>
@@ -760,106 +592,5 @@ tag = #project/atlas AND task = open
       <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export Favorites, Pins, and Searches</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import Favorites, Pins, and Searches</code> reads one back; each says what it holds and asks before replacing anything.</p>
       ${renderReadMore('privacy')}
     </section>
-    </article>
-  <div id="guide-view" hidden></div>
-</main>
-<script nonce="${nonce}">
-(function () {
-  // A command named in the guide runs from it; the host checks the id.
-  var vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
-  document.addEventListener('click', function (event) {
-    var target = event.target && event.target.closest ? event.target : null;
-    var button = target ? target.closest('.command-link') : null;
-    if (button && vscode) vscode.postMessage({ type: 'runCommand', command: button.getAttribute('data-command') });
-    if (target && target.closest('[data-action="open-changelog"]') && vscode) { event.preventDefault(); vscode.postMessage({ type: 'openChangelog' }); }
-    var guideLink = target ? target.closest('[data-guide-page], [data-guide-anchor]') : null;
-    if (guideLink) {
-      event.preventDefault();
-      var page = guideLink.getAttribute('data-guide-page');
-      var anchor = guideLink.getAttribute('data-guide-anchor') || undefined;
-      if (page && vscode) {
-        // Where Help was, for Back: the section the link sat in.
-        if (guideView.hidden) { var from = guideLink.closest('section'); returnTo = from ? from.id : undefined; }
-        vscode.postMessage(anchor ? { type: 'openGuide', page: page, anchor: anchor } : { type: 'openGuide', page: page });
-      } else if (anchor) {
-        revealIn(guideView, anchor);
-      }
-      return;
-    }
-    if (target && target.closest('[data-action="guide-back"]')) { event.preventDefault(); showHelp(returnTo); return; }
-    // The rail leads back to Help from a guide page.
-    var railLink = target ? target.closest('nav a[href^="#"]') : null;
-    if (railLink && !guideView.hidden) { event.preventDefault(); showHelp(railLink.getAttribute('href').slice(1)); }
-  });
-  var article = document.querySelector('main > article');
-  var guideView = document.getElementById('guide-view');
-  var returnTo;
-  function revealIn(root, anchor) {
-    var heading = anchor ? root.querySelector('[id="' + anchor.replace(/"/g, '') + '"]') : null;
-    if (heading && heading.scrollIntoView) heading.scrollIntoView({ block: 'start' });
-  }
-  /** A guide page in place of Help, with the way back first. */
-  function showGuide(message) {
-    guideView.innerHTML = '<div class="guide-bar"><a href="#" class="guide-back" data-action="guide-back">← Back to Help</a>'
-      + (message.page !== 'README' ? '<a href="#" class="guide-back" data-guide-page="README">All guide topics</a>' : '') + '</div>'
-      + message.html;
-    article.hidden = true;
-    guideView.hidden = false;
-    if (message.anchor) revealIn(guideView, message.anchor);
-    else window.scrollTo(0, 0);
-    var title = guideView.querySelector('h1');
-    if (title) { title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: Boolean(message.anchor) }); }
-  }
-  function showHelp(anchor) {
-    guideView.hidden = true;
-    guideView.innerHTML = '';
-    article.hidden = false;
-    if (anchor) reveal(anchor); else window.scrollTo(0, 0);
-  }
-  // Opened on a section, such as What's new, the page goes to it.
-  function reveal(anchor) {
-    var section = anchor ? document.getElementById(anchor) : null;
-    if (!section) return;
-    if (section.scrollIntoView) section.scrollIntoView({ block: 'start' });
-    var heading = section.querySelector('h2');
-    if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
-  }
-  window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'reveal') { if (!guideView.hidden) showHelp(); reveal(event.data.anchor); }
-    if (event.data && event.data.type === 'guide') showGuide(event.data);
-  });
-  reveal(document.body.getAttribute('data-anchor'));
-})();
-(function () {
-  // The rail marks the section under the top of the window as the reader
-  // scrolls, so a long page says where it is. A section counts as read once
-  // it crosses the band between a tenth and a third of the way down, and the
-  // last one counts when the page cannot scroll any further.
-  var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
-  var sections = links.map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); }).filter(Boolean);
-  if (!sections.length) return;
-  var current;
-  function mark(id) {
-    if (id === current) return;
-    current = id;
-    links.forEach(function (link) {
-      if (link.getAttribute('href') === '#' + id) link.setAttribute('aria-current', 'location');
-      else link.removeAttribute('aria-current');
-    });
-  }
-  mark(sections[0].id);
-  if (typeof IntersectionObserver !== 'function') return;
-  var crossing = {};
-  var observer = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) { crossing[entry.target.id] = entry.isIntersecting; });
-    var atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-    var first = atEnd ? sections[sections.length - 1] : sections.filter(function (section) { return crossing[section.id]; })[0];
-    if (first) mark(first.id);
-  }, { rootMargin: '-10% 0px -67% 0px' });
-  sections.forEach(function (section) { observer.observe(section); });
-})();
-</script>
-</body>
-</html>`;
+`;
 }
-

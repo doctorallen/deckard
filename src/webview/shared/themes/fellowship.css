@@ -1,0 +1,60 @@
+/*
+ * Fellowship.
+ *
+ * A theme sheet: linked after the page's own sheet and before the tail.
+ */
+:root {
+  /* The only light palette. Without this it keeps the base sheet's dark
+     scheme, so scrollbars and select popups render dark on parchment. */
+  color-scheme: light;
+  --bg-dark: #d6cda9;
+  --bg: #e6deb9;
+  --panel-bg: #f1e8c8;
+  --panel: #f1e8c8;
+  --panel-raised: #faf1d4;
+  /* The control ground was a mid tan that no accent could sit on at 4.5:1;
+     it is the buttons' own cream now, and the inks below are one step
+     deeper than before for the same reason. */
+  --panel-deep: #e9dfb7;
+  --text: #29341d;
+  --muted: #545c3c;
+  --slate-border: #7d8750;
+  --line: #9c9a5c;
+  --line-strong: #55713d;
+  --control-line: var(--line-strong);
+  --cyan-bright: #354a1f;
+  --cyan: #3f5626;
+  --amber-bright: #c28a32;
+  --amber: #664317;
+  --amber-dim: #6f542a;
+  /* Due dates, totals, and counts are green text on parchment, so the green
+     is deep enough to read at 4.5:1 on every ground, the page's included. */
+  --green: #4a6a32;
+  --toxic-green: #4a6a32;
+  --favorite-red: #9a4530;
+  --favorite: #8a5a14;
+  --warning-orange: #9a4530;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+body { background-image: none; }
+main { border-color: var(--slate-border); box-shadow: none; }
+header { border-color: var(--line-strong); }
+h1, h2, h3 { font-family: var(--font-display); color: #3d4d28; letter-spacing: .04em; }
+button, select, .tag-open, .view-options summary { border-color: var(--slate-border); border-radius: 5px; background: #e9dfb7; color: var(--text); }
+button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
+:root { --hover-bg: var(--green); --hover-fg: #fff7db; }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 5px; --corner-bl: 5px; --corner-br: 5px; background: #f1e8c8; box-shadow: inset 3px 0 0 var(--green); }
+.metric::before { border-bottom-color: var(--green); }
+.metric:nth-child(3n + 2)::before { border-bottom-color: var(--amber); }
+.metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--green); background: var(--panel-raised); box-shadow: inset 4px 0 0 var(--green), 0 0 0 1px rgba(85, 113, 61, .2); }
+/* The Notes Graph's status line sits on the darkest parchment, where the
+   muted ink read at 4.43:1; one step deeper, it reads at 4.76:1. */
+.status-line { color: #505739; }
+/* A day outside the month, hovered, sits on the green hover ground, where
+   the muted olive read at 1.14:1; it takes the page's parchment, 4.56:1. */
+.day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--bg); }
+/* The Notes Graph's note that it is simulating, on the same parchment, was
+   in the pale gold at 1.89:1; it takes Fellowship's amber, a deep brown, 5.53:1. */
+.status-line .sim-note { color: var(--amber); }

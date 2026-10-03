@@ -2,17 +2,17 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { noteTitle } from '../../core/workspace/backlinks';
-import { PersistedPreferences, WorkspaceIndex } from '../../core/types';
-import { Weekday } from '../../core/markdown/dates';
-import { findTagMergeCandidates } from '../state/tagHygiene';
+import { noteTitle } from '../../domain/index/backlinks';
+import { Weekday } from '../../domain/markdown/dates';
 import {
   chooseTryNext,
   TRY_NEXT_SNOOZE_MS,
   TryNextInput,
   TryNextSuggestion,
 } from '../state/tryNext';
-import { findPeriodicNoteNames, listDailyNotes } from './dailyNote';
+import { findPeriodicNoteNames, listDailyNotes } from '../../domain/notes/periodicNotes';
+import { findTagMergeCandidates } from '../../domain/ranking/tagHygiene';
+import { PersistedPreferences, WorkspaceIndex } from '../../domain/model';
 
 /**
  * What Home's Try next has been told: suggestions retired for good, and ones
@@ -22,17 +22,25 @@ import { findPeriodicNoteNames, listDailyNotes } from './dailyNote';
 export const TRY_NEXT_RETIRED = 'deckard.tryNext.retired';
 export const TRY_NEXT_SNOOZED = 'deckard.tryNext.snoozed';
 
+/**
+ * What Home's Try next has been told, read and written in the workspace's
+ * memento, so a suggestion taken up or put off stays that way across
+ * windows of the same workspace.
+ */
 export class TryNextLedger implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   /** Fires when a suggestion is retired or put off, so Home redraws. */
   public readonly onDidChange = this.changeEmitter.event;
 
+  /** Over the workspace's memento, under TRY_NEXT_RETIRED and TRY_NEXT_SNOOZED. */
   public constructor(private readonly state: vscode.Memento) {}
 
+  /** The suggestions never to offer again; a new set, so changing it writes nothing. */
   public retired(): Set<string> {
     return new Set(this.state.get<string[]>(TRY_NEXT_RETIRED, []));
   }
 
+  /** When each suggestion put off may be offered again, in epoch milliseconds. */
   public snoozed(): Record<string, number> {
     return this.state.get<Record<string, number>>(TRY_NEXT_SNOOZED, {});
   }
@@ -54,6 +62,7 @@ export class TryNextLedger implements vscode.Disposable {
     this.changeEmitter.fire();
   }
 
+  /** Stops onDidChange; what was stored stays. */
   public dispose(): void {
     this.changeEmitter.dispose();
   }
@@ -120,14 +129,18 @@ export function collectTryNextInput(
   };
 }
 
+/** What Home's suggestion is chosen from. */
+export interface TryNextSources {
+  /** The suggestions already taken up or put off. */
+  ledger: Pick<TryNextLedger, 'retired' | 'snoozed'>;
+  index: WorkspaceIndex;
+  preferences: PersistedPreferences;
+  weekStart: Weekday;
+  now: number;
+}
+
 /** The suggestion Home shows now, if any. */
-export function suggestTryNext(
-  ledger: Pick<TryNextLedger, 'retired' | 'snoozed'>,
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  weekStart: Weekday,
-  now: number,
-): TryNextSuggestion | undefined {
+export function suggestTryNext({ ledger, index, preferences, weekStart, now }: TryNextSources): TryNextSuggestion | undefined {
   return chooseTryNext(
     collectTryNextInput(index, preferences, weekStart, now),
     ledger.retired(),

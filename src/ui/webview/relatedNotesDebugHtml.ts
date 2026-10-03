@@ -1,32 +1,10 @@
-import * as vscode from 'vscode';
+import { createNonce, type PageChrome } from './components';
+import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShell';
+import { escapeHtml } from '../../shared/html';
+import type { EntryRelatedNotesDiagnostic } from '../state/relatedNotesRanking';
 
-import { EntryRelatedNotesDiagnostic } from './sidebarNotes';
-import {
-  createNonce,
-  getBaseCss,
-  getPageTailCss,
-  zenBodyAttribute,
-} from './components';
-
-export function getRelatedNotesDebugHtml(
-  webview: Pick<vscode.Webview, 'cspSource'>,
-  diagnostic: EntryRelatedNotesDiagnostic,
-): string {
-  const nonce = createNonce();
-  const selectedWeights = new Map(
-    diagnostic.tags.map((tag) => [tag.key, tag.weight]),
-  );
-  const totalSelectedWeight = diagnostic.tags.reduce(
-    (total, tag) => total + tag.weight,
-    0,
-  );
-  const selectedWeightCalculation = diagnostic.tags
-    .map((tag) => tag.weight.toFixed(2))
-    .join(' + ');
-  const selectedTags = diagnostic.tags.map((tag) =>
-    `<tr><td>${escapeHtml(tag.key)}</td><td>${tag.weight.toFixed(2)}</td><td>${escapeHtml(getTagContextLabel(tag.context))}</td><td>${escapeHtml(tag.source)}</td></tr>`,
-  ).join('');
-  const diagnosticGuide = `<section class="guide" aria-labelledby="debug-guide-title">
+/** What each term on the page means, shown above the candidates. */
+const DIAGNOSTIC_GUIDE = `<section class="guide" aria-labelledby="debug-guide-title">
 <h2 id="debug-guide-title">How to read this page</h2>
 <p class="lead">Start with the <strong>Contribution</strong> and <strong>Reasons</strong> rows in each candidate. The terms below explain the detailed association and text-matching evidence.</p>
 <div class="guide-grid">
@@ -36,53 +14,42 @@ export function getRelatedNotesDebugHtml(
 <div class="guide-card"><h3>BM25 lexical similarity</h3><p>BM25 (also written BM-25) is a search-style text comparison. It looks for meaningful words shared by the selected and candidate entries, gives rarer words more influence, accounts for repeated words and entry length, and caps the result below a direct tag match. The table lists each word's <strong>Text match (BM25)</strong> contribution.</p></div>
 </div>
 </section>`;
-  const candidates = diagnostic.snapshot.notes.map((note, index) => {
-    const evidence = note.relevanceEvidence;
-    const matchedTagRows = note.matchedTags.map((tag) => {
-      const selectedWeight = selectedWeights.get(tag.key) ?? 1;
-      return `<tr><td>${escapeHtml(tag.label)}</td><td>${selectedWeight.toFixed(2)}</td><td>2.00</td><td>${(selectedWeight * 2).toFixed(2)}</td></tr>`;
-    }).join('');
-    const associationRows = (note.associationMatches ?? []).map((match) =>
-      `<tr><td>${escapeHtml(match.selectedTag.label)}</td><td>${escapeHtml(match.candidateTag.label)}</td><td>${match.sourceUnitCount}</td><td>${match.selectedTagSourceUnitCount} / ${match.candidateTagSourceUnitCount} / ${match.totalSourceUnitCount}</td><td>${match.associationWeight.toFixed(2)}</td><td>${match.normalizedAssociationWeight.toFixed(2)}</td><td>${match.selectedWeight.toFixed(2)}</td><td>${match.contribution.toFixed(2)}</td></tr>`,
-    ).join('');
-    const associationCap = evidence
-      ? `<details class="calculation"><summary>How association weight is applied</summary><p class="lead">The selected tags provide the scale: <code>${selectedWeightCalculation} = ${totalSelectedWeight.toFixed(2)}</code>. This candidate has <code>${evidence.associationWeight.toFixed(2)}</code> raw association evidence and <code>${evidence.normalizedAssociationWeight.toFixed(2)}</code> adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p><p class="source">Calculation: <code>${totalSelectedWeight.toFixed(2)} x (${evidence.normalizedAssociationWeight.toFixed(2)} / (${evidence.normalizedAssociationWeight.toFixed(2)} + ${totalSelectedWeight.toFixed(2)})) = ${evidence.appliedAssociationWeight.toFixed(2)}</code></p></details>`
-      : '';
-    const weights = evidence
-      ? [
-          ['Shared tags', evidence.directTagWeight],
-          ['Associations', evidence.appliedAssociationWeight],
-          ['Direct entry link', evidence.entryLinkWeight],
-          ['File link', evidence.fileLinkWeight],
-          ['Lexical similarity', evidence.lexicalWeight],
-          ['Recency tie-breaker', evidence.recencyWeight],
-          ['Specificity adjustment', -evidence.specificityPenalty],
-        ].filter(([, value]) => value !== 0)
-      : [];
-    return `<article><h2>${index + 1}. ${escapeHtml(note.title)} <strong>${note.relevanceScore}%</strong></h2>
-<p class="source">${escapeHtml(note.filePath)} / line ${note.sourceLine}${note.dailyDate ? ` / daily note ${escapeHtml(note.dailyDate)}` : ''}</p>
-${note.headingPath.length ? `<p class="source">Heading path: ${escapeHtml(note.headingPath.join(' > '))}</p>` : ''}
-<h3>Matched tags</h3>${matchedTagRows
-  ? `<table><thead><tr><th title="A tag written on this candidate entry that exactly matches a selected tag.">Candidate tag</th><th title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight.">Selected weight</th><th title="The fixed strength applied to an exact shared tag.">Direct multiplier</th><th title="Selected weight multiplied by the direct-match multiplier.">Contribution</th></tr></thead><tbody>${matchedTagRows}</tbody></table>`
-  : '<p class="lead">No direct tag match; this result is connected by other evidence.</p>'}
-<h3>Association paths</h3>${associationRows
-  ? `<table><thead><tr><th>Selected tag</th><th>Candidate tag</th><th title="The number of distinct source units where both tags were observed.">Shared source units</th><th title="Selected tag / candidate tag / all source-unit counts.">Tag appearances<br><small>selected / candidate / all</small></th><th title="The starting co-occurrence and heading-proximity strength before adjustments.">Raw connection</th><th title="Raw connection adjusted for support and tag popularity.">Adjusted connection</th><th>Selected weight</th><th>Contribution</th></tr></thead><tbody>${associationRows}</tbody></table>`
-  : '<p class="lead">No tag-association evidence.</p>'}
-${associationCap}
-<h3>Lexical evidence</h3>${evidence?.lexicalTerms.length ? `<table><thead><tr><th>Shared term</th><th title="BM25 is a search-ranking formula that weights distinctive shared words more than common words.">Text match (BM25)</th></tr></thead><tbody>${evidence.lexicalTerms.map((term) => `<tr><td>${escapeHtml(term.term)}</td><td>${term.contribution.toFixed(2)}</td></tr>`).join('')}</tbody></table>` : '<p class="lead">No section-scoped lexical evidence.</p>'}
-<p><b>Reasons:</b> ${escapeHtml(note.reasons?.join(' | ') || 'None')}</p>
-<table><tbody>${weights.map(([label, value]) => `<tr><td>${escapeHtml(String(label))}</td><td>${Number(value).toFixed(2)}</td></tr>`).join('')}</tbody></table></article>`;
-  }).join('');
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}';">
-<style nonce="${nonce}">${getBaseCss()} body{font-size: var(--text-lg);line-height:1.5} main{max-width:960px;padding:28px} h1{color:var(--amber)} h2{margin:0 0 6px;color:var(--cyan);font-size:17px;text-transform:none} h3{margin:20px 0 8px;font-size:15px} article{margin:16px 0;padding:16px;border-left:4px solid var(--cyan);background:var(--panel)} .guide{margin:20px 0;padding:16px;border:1px solid var(--line);background:var(--panel)} .guide h2{margin-top:0} .guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px} .guide-card{padding:12px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 76%,var(--bg))} .guide-card h3{margin:0 0 5px;color:var(--amber);font-size: var(--text-lg)} .guide-card p{margin:0;color:var(--text)} .guide strong{color:var(--amber)} .calculation{margin-top:12px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 76%,var(--bg))} .calculation summary{padding:8px 10px;color:var(--cyan);cursor:pointer;font-weight:700} .calculation p{margin:0;padding:0 10px 10px} .calculation p + p{padding-top:0} article h2 strong{float:right;color:var(--amber)} table{width:100%;margin-top:10px;border:1px solid var(--line);border-collapse:separate;border-spacing:0;background:color-mix(in srgb,var(--panel) 82%,var(--bg))} th,td{padding:10px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--cyan);font-weight:700;text-align:left;background:color-mix(in srgb,var(--panel) 68%,var(--bg));white-space:nowrap} th small{color:var(--muted);font-size: var(--text-xs);font-weight:400;text-transform:none} th:last-child,td:last-child{border-right:0} tbody tr:last-child td{border-bottom:0} tbody tr:hover{background:color-mix(in srgb,var(--panel) 75%,var(--cyan))} td:last-child{font-family:var(--vscode-editor-font-family,monospace);color:var(--amber)} @media (max-width: 720px){main{padding:16px}.guide-grid{grid-template-columns:1fr}table{display:block;overflow-x:auto;white-space:nowrap}td,th{padding:8px 10px}} ${getPageTailCss()}</style></head>
-<body${zenBodyAttribute()}><main><p class="lead">Deckard / Related Notes diagnostic</p><h1>${escapeHtml(diagnostic.title)}</h1>
+
+/**
+ * The Related Notes diagnostic page: why each candidate ranked where it did
+ * for the selected entry, with every weight written out, so a ranking can be
+ * checked by hand.
+ */
+export function getRelatedNotesDebugHtml(
+  webview: ShellWebview,
+  /** The extension's folder, which the page's style sheet is under. */
+  extensionUri: ShellUri,
+  diagnostic: EntryRelatedNotesDiagnostic,
+  /** The look its host read: the theme, preview and all, and zen. */
+  chrome: PageChrome,
+): string {
+  const selectedTags = diagnostic.tags.map((tag) =>
+    `<tr><td>${escapeHtml(tag.key)}</td><td>${tag.weight.toFixed(2)}</td><td>${escapeHtml(getTagContextLabel(tag.context))}</td><td>${escapeHtml(tag.source)}</td></tr>`,
+  ).join('');
+  const scale = readSelectedScale(diagnostic);
+  const candidates = diagnostic.snapshot.notes.map((note, index) => renderCandidate(note, index, scale)).join('');
+  return buildPageShell({
+    webview,
+    extensionUri,
+    page: 'relatedNotesDebug',
+    nonce: createNonce(),
+    theme: chrome.theme,
+    zen: chrome.zen,
+    // The page runs no script, so its policy names none.
+    csp: { scripts: false },
+    body: `<main><p class="lead">Deckard / Related Notes diagnostic</p><h1>${escapeHtml(diagnostic.title)}</h1>
 <p class="source">${escapeHtml(diagnostic.filePath)} / line ${diagnostic.sourceLine}</p>
 <p class="lead">Tags written on the selected entry have full weight (1.00). Explicit tags on parent and child headings provide context at <code>0.5 / depth</code>; tagged child items start at two levels of decay. If a tag appears in more than one place, the strongest weight wins.</p>
-${diagnosticGuide}
-<h2>Selected tag weights</h2><table><thead><tr><th title="A tag used as context for the selected entry.">Tag</th><th title="The tag's relevance weight. Tags written on the selected entry are 1.00; parent and child heading tags decay by distance, while child items include an additional level.">Weight</th><th title="Whether the tag is written on the selected entry, inherited from parent ancestry, or found in a child heading or child item.">Context</th><th title="The source of this weight and the distance decay formula.">Why</th></tr></thead><tbody>${selectedTags}</tbody></table>
+${DIAGNOSTIC_GUIDE}
+<h2>Selected tag weights</h2><div class="table-scroll"><table><thead><tr><th title="A tag used as context for the selected entry.">Tag</th><th title="The tag's relevance weight. Tags written on the selected entry are 1.00; parent and child heading tags decay by distance, while child items include an additional level.">Weight</th><th title="Whether the tag is written on the selected entry, inherited from parent ancestry, or found in a child heading or child item.">Context</th><th title="The source of this weight and the distance decay formula.">Why</th></tr></thead><tbody>${selectedTags}</tbody></table></div>
 <h2>How candidate tags are evaluated</h2><p class="lead">Candidate tags do not receive a second ancestor-weighting pass. A candidate contributes only tags indexed on that displayed entry; the selected tag's weight determines the shared-tag contribution. The 2.00 direct multiplier is Deckard's base signal for an exact shared tag. Learned associations retain their raw evidence, then normalize it by support and tag prevalence before saturation. Entry-scoped Wiki links are stronger than file-level links; section-scoped BM25-style lexical similarity remains capped below direct tags.</p>
-<h2>Ranked candidates</h2>${candidates || '<p class="lead">No related entries found.</p>'}</main></body></html>`;
+<h2>Ranked candidates</h2>${candidates || '<p class="lead">No related entries found.</p>'}</main>`,
+  });
 }
 
 function getTagContextLabel(
@@ -100,9 +67,78 @@ function getTagContextLabel(
   }
 }
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character] ?? character);
+/** A diagnostic's candidate entry, as the ranking explained it. */
+type DiagnosticNote = EntryRelatedNotesDiagnostic['snapshot']['notes'][number];
+
+/** The evidence a candidate was ranked on, when the ranking kept it. */
+type DiagnosticEvidence = NonNullable<DiagnosticNote['relevanceEvidence']>;
+
+/** The selected entry's tag weights, which scale every candidate's contributions. */
+interface SelectedScale {
+  /** Each selected tag's weight, by key. */
+  weights: Map<string, number>;
+  /** The weights summed: the scale associations saturate against. */
+  total: number;
+  /** The sum written out, as the page shows it. */
+  calculation: string;
 }
 
+/** Reads the selected tags' weights once, for every candidate's tables. */
+function readSelectedScale(diagnostic: EntryRelatedNotesDiagnostic): SelectedScale {
+  const weights = new Map(
+    diagnostic.tags.map((tag) => [tag.key, tag.weight]),
+  );
+  const total = diagnostic.tags.reduce(
+    (sum, tag) => sum + tag.weight,
+    0,
+  );
+  const calculation = diagnostic.tags
+    .map((tag) => tag.weight.toFixed(2))
+    .join(' + ');
+  return { weights, total, calculation };
+}
+
+/** One ranked candidate's article: its tag matches, association paths, lexical evidence, and weights. */
+function renderCandidate(note: DiagnosticNote, index: number, scale: SelectedScale): string {
+  const evidence = note.relevanceEvidence;
+  const matchedTagRows = note.matchedTags.map((tag) => {
+    const selectedWeight = scale.weights.get(tag.key) ?? 1;
+    return `<tr><td>${escapeHtml(tag.label)}</td><td>${selectedWeight.toFixed(2)}</td><td>2.00</td><td>${(selectedWeight * 2).toFixed(2)}</td></tr>`;
+  }).join('');
+  const associationRows = (note.associationMatches ?? []).map((match) =>
+    `<tr><td>${escapeHtml(match.selectedTag.label)}</td><td>${escapeHtml(match.candidateTag.label)}</td><td>${match.sourceUnitCount}</td><td>${match.selectedTagSourceUnitCount} / ${match.candidateTagSourceUnitCount} / ${match.totalSourceUnitCount}</td><td>${match.associationWeight.toFixed(2)}</td><td>${match.normalizedAssociationWeight.toFixed(2)}</td><td>${match.selectedWeight.toFixed(2)}</td><td>${match.contribution.toFixed(2)}</td></tr>`,
+  ).join('');
+  const associationCap = evidence ? renderAssociationCap(evidence, scale) : '';
+  const weights = evidence ? candidateWeights(evidence) : [];
+  return `<article><h2>${index + 1}. ${escapeHtml(note.title)} <strong>${note.relevanceScore}%</strong></h2>
+<p class="source">${escapeHtml(note.filePath)} / line ${note.sourceLine}${note.dailyDate ? ` / daily note ${escapeHtml(note.dailyDate)}` : ''}</p>
+${note.headingPath.length ? `<p class="source">Heading path: ${escapeHtml(note.headingPath.join(' > '))}</p>` : ''}
+<h3>Matched tags</h3>${matchedTagRows
+  ? `<div class="table-scroll"><table><thead><tr><th title="A tag written on this candidate entry that exactly matches a selected tag.">Candidate tag</th><th title="The selected tag's direct, parent-ancestry, child-heading, or child-item weight.">Selected weight</th><th title="The fixed strength applied to an exact shared tag.">Direct multiplier</th><th title="Selected weight multiplied by the direct-match multiplier.">Contribution</th></tr></thead><tbody>${matchedTagRows}</tbody></table></div>`
+  : '<p class="lead">No direct tag match; this result is connected by other evidence.</p>'}
+<h3>Association paths</h3>${associationRows
+  ? `<div class="table-scroll"><table><thead><tr><th>Selected tag</th><th>Candidate tag</th><th title="The number of distinct source units where both tags were observed.">Shared source units</th><th title="Selected tag / candidate tag / all source-unit counts.">Tag appearances<br><small>selected / candidate / all</small></th><th title="The starting co-occurrence and heading-proximity strength before adjustments.">Raw connection</th><th title="Raw connection adjusted for support and tag popularity.">Adjusted connection</th><th>Selected weight</th><th>Contribution</th></tr></thead><tbody>${associationRows}</tbody></table></div>`
+  : '<p class="lead">No tag-association evidence.</p>'}
+${associationCap}
+<h3>Lexical evidence</h3>${evidence?.lexicalTerms.length ? `<div class="table-scroll"><table><thead><tr><th>Shared term</th><th title="BM25 is a search-ranking formula that weights distinctive shared words more than common words.">Text match (BM25)</th></tr></thead><tbody>${evidence.lexicalTerms.map((term) => `<tr><td>${escapeHtml(term.term)}</td><td>${term.contribution.toFixed(2)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="lead">No section-scoped lexical evidence.</p>'}
+<p><b>Reasons:</b> ${escapeHtml(note.reasons?.join(' | ') || 'None')}</p>
+<div class="table-scroll"><table><tbody>${weights.map(([label, value]) => `<tr><td>${escapeHtml(String(label))}</td><td>${Number(value).toFixed(2)}</td></tr>`).join('')}</tbody></table></div></article>`;
+}
+
+/** How the association evidence was saturated against the selected tags' scale, as a worked calculation. */
+function renderAssociationCap(evidence: DiagnosticEvidence, scale: SelectedScale): string {
+  return `<details class="calculation"><summary>How association weight is applied</summary><p class="lead">The selected tags provide the scale: <code>${scale.calculation} = ${scale.total.toFixed(2)}</code>. This candidate has <code>${evidence.associationWeight.toFixed(2)}</code> raw association evidence and <code>${evidence.normalizedAssociationWeight.toFixed(2)}</code> adjusted association evidence. Deckard applies diminishing returns, so more indirect evidence still helps but cannot outweigh direct shared tags.</p><p class="source">Calculation: <code>${scale.total.toFixed(2)} x (${evidence.normalizedAssociationWeight.toFixed(2)} / (${evidence.normalizedAssociationWeight.toFixed(2)} + ${scale.total.toFixed(2)})) = ${evidence.appliedAssociationWeight.toFixed(2)}</code></p></details>`;
+}
+
+/** The weights a candidate's score is the sum of, leaving out those that are zero. */
+function candidateWeights(evidence: DiagnosticEvidence): (string | number)[][] {
+  return [
+    ['Shared tags', evidence.directTagWeight],
+    ['Associations', evidence.appliedAssociationWeight],
+    ['Direct entry link', evidence.entryLinkWeight],
+    ['File link', evidence.fileLinkWeight],
+    ['Lexical similarity', evidence.lexicalWeight],
+    ['Recency tie-breaker', evidence.recencyWeight],
+    ['Specificity adjustment', -evidence.specificityPenalty],
+  ].filter(([, value]) => value !== 0);
+}

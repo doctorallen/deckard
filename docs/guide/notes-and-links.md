@@ -18,7 +18,7 @@ Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people
 - A task is its own entry under every setting.
 - Changing the setting reindexes the workspace automatically, and writes nothing to your notes.
 
-**Links.** A `[[link]]` names a note by its file name without `.md`, or by any name in its `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
+**Links.** A `[[link]]` names a note by its file name without `.md`, or by any name in its `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. `[[Atlas.md]]` works too, and opens `Atlas`. A name two notes share opens neither. A link in fenced code or inline code, such as `` `[[Atlas]]` ``, is an example: it links nothing. A link to an image or other attachment, such as `![[diagram.png]]`, is not a note, so it is never a missing one.
 
 After `#`, a link can name a heading, as `[[Check-in#Vendor review]]` does, or one line, as `[[Check-in#^lift-slip]]` does. A line is named by the `^marker` at its end ([Obsidian](https://obsidian.md) block-reference style):
 
@@ -63,6 +63,7 @@ Met with @alex-smith about [[Q3 planning]].
 - `#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs.
 - Any other namespaced tag, such as `#management/performance`, creates a namespace and appears as `Management: Performance`.
 - Unnamespaced tags such as `#follow-up` work too. All tags appear in the Dashboard's **Tags** catalog.
+- A tag's name is letters and digits of any language, `_`, and `-`, so `#café` and `#日本` are tags. A tag starts a word: the `#` in `café#latte` or in a web address such as `https://example.com/#install` is not one.
 - `@alex` and `#alex` are different tags.
 - Namespace aliases map a custom namespace to any built-in or custom namespace. You can change the people marker; `@name` then becomes a lightweight tag.
 
@@ -120,7 +121,7 @@ topics:
 - **Task dependencies** for a task using `⛔` or `🆔`: **Waiting on N open tasks** and **Blocks N open tasks**. A `⛔` name no task carries reads **No task has 🆔 name**. `deckard.editor.taskDependencies` turns these off.
 - **Daily notes** show **‹ 2026-09-21** and **2026-09-23 ›** on their first line. Today's note also offers **Carry in N unfinished tasks**, which runs **Deckard: Roll Unfinished Tasks Forward**. See [Daily notes](daily-notes.md#daily-notes). `deckard.editor.dailyNoteActions` turns these off.
 - **Broken [embeds](#embeds)** say why above their line, such as **Embed: Atlas has no heading "Decision"** or **Embed: Nothing in Atlas is marked ^choice**. `deckard.editor.embedProblems` turns these off.
-- **Unlinked mentions:** the first line shows **Mentioned in N notes without a link** when other notes write its title or an alias as plain text. **Link N mentions** turns each into a `[[link]]`, [previewed and undoable](search-pages.md#previewing-and-undoing-a-write). Names under three characters, and names another note also uses, are skipped. `deckard.editor.unlinkedMentions` turns these off.
+- **Unlinked mentions:** the first line shows **Mentioned in N notes without a link** when other notes write its title or an alias as plain text. **Link N mentions** turns each into a `[[link]]`, [previewed and undoable](search-pages.md#previewing-and-undoing-a-write). Names under three characters, and names another note also uses, are skipped. A note that cannot be opened is left as it is, and the message says how many there were. `deckard.editor.unlinkedMentions` turns these off.
 - **Hovering a tag** shows its note and task counts, its [hub note](search-pages.md#hub-notes), its five most recently updated entries, **Open overview**, and **Rename**. `deckard.editor.hoverPreviews` set to `false` turns previews off.
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](../images/editor-assistance.png)

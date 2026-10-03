@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { readFileSync } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -330,7 +331,11 @@ suite('Extension Test Suite', () => {
     const views = new Set<string>(
       Object.values(contributes.views as Record<string, Array<{ id: string }>>).flat().map((view) => `${view.id}.focus`),
     );
-    const compiled = (await import('fs')).readFileSync(path.join(root, 'out', 'extension.js'), 'utf8');
+    // The composition root sets the walkthrough's context keys, in its two
+    // halves.
+    const compiled = ['extension.js', path.join('composition', 'services.js')]
+      .map((file) => readFileSync(path.join(root, 'out', file), 'utf8'))
+      .join('\n');
     let total = 0;
     for (const step of steps) {
       for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {

@@ -1,0 +1,40 @@
+{
+    // The page code, which runs in the webview's browser, not in Node: it is
+    // type-checked against the DOM with no Node types, and esbuild bundles
+    // it (esbuild.js), so this config emits nothing. The root tsconfig.json
+    // leaves src/webview to it. The domain modules a page may import
+    // (docs/architecture/layers.md) are listed, so they are held to the
+    // browser's types before a page imports them.
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "lib": [
+            "ES2022",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "types": [],
+        "jsx": "react-jsx",
+        "jsxImportSource": "preact",
+        "isolatedModules": true,
+        "noEmit": true,
+        "strict": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitOverride": true
+    },
+    "files": [
+        "../domain/dashboard/widgetCatalog.ts",
+        "../domain/graph/communities.ts",
+        "../domain/markdown/calendar.ts",
+        "../domain/markdown/tagKeys.ts",
+        "../domain/tasks/taskColumns.ts"
+    ],
+    "include": [
+        "**/*.ts",
+        "**/*.tsx"
+    ]
+}

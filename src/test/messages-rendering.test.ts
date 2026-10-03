@@ -1,27 +1,18 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 
-import {
-  parseDashboardMessage,
-  parseSearchPageMessage,
-  parseSidebarMessage,
-} from '../ui/webview/messages';
-import { getDashboardHtml } from '../ui/webview/dashboardHtml';
-import { getHelpHtml } from '../ui/webview/helpHtml';
-import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
-import { renderMarkdown } from '../ui/webview/rendering';
-import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
-import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
-import { getHighContrastCss, getPageTailCss } from '../ui/webview/components';
-import { openWebviewPage } from './webviewPage';
-
-function assertWebviewScriptParses(html: string): void {
-  const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(script);
-  assert.doesNotThrow(() => new Function(script));
-}
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
+import { getDeckardTheme } from '../ui/webview/themes';
+import { readPageChrome } from '../ui/webview/host/pageChrome';
+import { createPreferences } from './preferenceServices';
+import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
+import { deckardThemes } from '../ui/webview/themeNames';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 
 /** Deckard's own manifest, which the Help page is built from. */
 function extension(): vscode.Extension<unknown> {
@@ -32,87 +23,25 @@ function extension(): vscode.Extension<unknown> {
   return found;
 }
 
+/**
+ * The Dashboard on its Tags tab, driven: its tags ranked by hand, and a
+ * search kept from an earlier visit, so the tab is marked.
+ */
+function openDrivenDashboard(): WebviewPage {
+  const index = buildWorkspaceIndex(new Map([
+    ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #risk/vendor\nProse.')],
+  ]));
+  const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+  const preferences = { ...store.reader.value, tagSortMode: 'custom' as const, dashboardViewState: { mode: 'browse' as const, tagSearchQuery: 'atlas' } };
+  const snapshot = createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) });
+  store.repository.dispose();
+  return openWebviewPage(renderPage('dashboard'), { ...snapshot, parkedTags: [] });
+}
+
 suite('Webview contracts', () => {
-  test('renders tag-clustered graph relationships', () => {
-    const html = getNotesGraphHtml({
-      cspSource: 'vscode-webview://deckard',
-    });
-
-    assertWebviewScriptParses(html);
-    // The graph's controls are driven in the Notes Graph behavior suite.
-    // What is left here is its clustering and force model, still held to its
-    // source text: the page draws into a canvas, which jsdom has no context
-    // for, and these functions are locked inside the page script where no
-    // test can call them. Lifting them into a module of their own is what
-    // turns these checks into tests of the algorithm.
-    assert.strictEqual(
-      html.includes('The graph uses prevalence-aware groups'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('var targetClusterSize = Math.max(3, Math.sqrt(sourceCount))'),
-      true,
-    );
-    assert.strictEqual(html.includes('primaryClusterSize[bestMembership.tagIndex] += 1'), true);
-    assert.strictEqual(html.includes('strength *= isPrimaryMembership ? 3 : 0.08'), true);
-    assert.strictEqual(html.includes('var clusterGravity ='), true);
-        assert.strictEqual(html.includes("node.kind === 'note' && !settings.showNotes"), true);
-                                                            [
-      'search',
-      'show-notes',
-      'show-tasks',
-      'show-tags',
-      'show-orphans',
-      'tag-search',
-      'clear-tags',
-      'node-size',
-      'link-thickness',
-      'link-density',
-      'tag-specificity',
-      'bridge-strength',
-      'show-all-links',
-      'label-threshold',
-      'center-strength',
-      'cluster-cohesion',
-      'community-spacing',
-      'repel-strength',
-      'link-strength',
-      'link-distance',
-      'zoom-out',
-      'zoom-in',
-      'zoom-fit',
-      'reset-graph-settings',
-    ].forEach((id) => {
-      assert.strictEqual(new RegExp(`id="${id}"[^>]*data-tip="[^"]+"`).test(html), true);
-    });
-        assert.strictEqual(
-      html.indexOf('id="reset-graph-settings"') >
-        html.indexOf('class="graph-zoom-controls"'),
-      true,
-    );
-    assert.strictEqual(html.includes('function resetGraphSettings()'), true);
-    assert.strictEqual(
-      html.includes("input[type='search']::-webkit-search-cancel-button { cursor: pointer; }"),
-      true,
-    );
-    assert.strictEqual(html.includes('vx.fill(0);'), true);
-    assert.strictEqual(html.includes('vy.fill(0);'), true);
-    assert.strictEqual(html.includes('reheat(1);'), true);
-    assert.strictEqual(html.includes('function selectSalientEdges('), true);
-    assert.strictEqual(html.includes('function tagMembershipScore('), true);
-    assert.strictEqual(html.includes('function buildCommunities('), true);
-    assert.strictEqual(html.includes('function isPhysicalNode('), true);
-    assert.strictEqual(html.includes('function tickCommunityAnchors('), true);
-    assert.strictEqual(html.includes('communityEdges = communityData.edges'), true);
-    assert.strictEqual(html.includes(' links drawn · '), true);
-    assert.strictEqual(html.includes("message.type === 'selectNode'"), true);
-    assert.strictEqual(html.includes('selectedNeighbors[index]'), true);
-  });
-
   test('distinguishes selected, parent, and child tag context in diagnostics', () => {
-    const html = getRelatedNotesDebugHtml(
-      { cspSource: 'test-csp' },
-      {
+    const html = renderPage('relatedNotesDebug', {
+      diagnostic: {
         filePath: 'notes/current.md',
         sourceLine: 2,
         title: 'Selected',
@@ -149,7 +78,7 @@ suite('Webview contracts', () => {
           state: 'noMatches',
         },
       },
-    );
+    });
 
     assert.strictEqual(html.includes('>Context</th>'), true);
     assert.strictEqual(html.includes('Selected entry'), true);
@@ -173,383 +102,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('child items start at two levels'), true);
   });
 
-  test('accepts valid dashboard messages and rejects malformed payloads', () => {
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setTaskFilter', filter: 'active' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: 'yes',
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({
-        type: 'openSource',
-        filePath: 'notes/a.md',
-        line: 0,
-      }),
-      undefined,
-    );
-    assert.strictEqual(parseDashboardMessage({ type: 'unknown' }), undefined);
-    // Home's widgets: a quick-add task is one line of text.
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'quickAdd', text: 'Call Ren', extra: 1 }),
-      { type: 'quickAdd', text: 'Call Ren' },
-    );
-    assert.strictEqual(parseDashboardMessage({ type: 'quickAdd', text: '  ' }), undefined);
-    assert.strictEqual(parseDashboardMessage({ type: 'quickAdd', text: 'a\nb' }), undefined);
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'unpinNote', filePath: 'notes/a.md' }),
-      { type: 'unpinNote', filePath: 'notes/a.md' },
-    );
-    assert.strictEqual(parseDashboardMessage({ type: 'pinNote', filePath: 7 }), undefined);
-    assert.strictEqual(parseDashboardMessage({ type: 'createTagHub', tagKey: '' }), undefined);
-    assert.deepStrictEqual(parseDashboardMessage({ type: 'openDailyNote' }), { type: 'openDailyNote' });
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'setTagSort', mode: 'custom' }),
-      { type: 'setTagSort', mode: 'custom' },
-    );
-    // Tasks are chosen on the Task Board now, not with a Dashboard tag picker.
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setTaskTags', tagKeys: ['work'] }),
-      undefined,
-    );
-    // The Search tab narrows notes with its search, not a tag picker.
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setNoteTags', tagKeys: ['work'] }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
-      { type: 'renameTag', tagKey: '#project/atlas' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({
-        type: 'openSavedFilter',
-        filterId: 'atlas-follow-up',
-      }),
-      { type: 'openSavedFilter', filterId: 'atlas-follow-up' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({
-        type: 'removeSavedFilter',
-        filterId: 'atlas-follow-up',
-      }),
-      { type: 'removeSavedFilter', filterId: 'atlas-follow-up' },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'openSavedFilter', filterId: '' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({
-        type: 'openSavedFilter',
-        filterId: 'atlas-follow-up',
-        tagKeys: ['#untrusted'],
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'renameTag', tagKey: '' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setTaskSort', mode: 'updated' }),
-      undefined,
-    );
-    // Notes are listed on search pages now, which sort and render them.
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setNoteSort', mode: 'access' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setRenderMode', mode: 'html' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'saveDashboardSearch' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setTaskSort', mode: 'random' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({
-        type: 'setDashboardColumns',
-        section: 'tags',
-        columns: 3,
-      }),
-      {
-        type: 'setDashboardColumns',
-        section: 'tags',
-        columns: 3,
-      },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({
-        type: 'setDashboardColumns',
-        section: 'tasks',
-        columns: 5,
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseDashboardMessage({
-        type: 'setDashboardColumns',
-        section: 'notes',
-        columns: 2,
-      }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'setDashboardMode', mode: 'home' }),
-      { type: 'setDashboardMode', mode: 'home' },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setDashboardMode', mode: 'notes' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({
-        type: 'setDashboardSearch',
-        field: 'tags',
-        query: 'atlas',
-      }),
-      { type: 'setDashboardSearch', field: 'tags', query: 'atlas' },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({
-        type: 'setDashboardSearch',
-        field: 'notes',
-        query: 'atlas',
-      }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({
-        type: 'setDashboardWidgets',
-        widgets: [
-          { id: 'a', kind: 'tasks', width: 'full', count: 3, query: 'is:open', extra: true },
-          { id: 'b', kind: 'unknown', width: 'half' },
-          'not a widget',
-        ],
-      }),
-      {
-        type: 'setDashboardWidgets',
-        widgets: [{ id: 'a', kind: 'tasks', width: 'full', count: 3, query: 'is:open' }],
-      },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'setDashboardWidgets', widgets: 'all' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'resetDashboardWidgets' }),
-      { type: 'resetDashboardWidgets' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'openSearch', query: '#project/atlas' }),
-      { type: 'openSearch', query: '#project/atlas' },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'openSearch', query: 42 }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'openTaskBoard', query: 'is:open' }),
-      { type: 'openTaskBoard', query: 'is:open' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'openTaskBoard' }),
-      { type: 'openTaskBoard' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'openView', view: 'agenda' }),
-      { type: 'openView', view: 'agenda' },
-    );
-    assert.strictEqual(
-      parseDashboardMessage({ type: 'openView', view: 'settings' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({
-        type: 'reorderTags',
-        tagKeys: ['work'],
-        tagKey: 'work',
-        isFavorite: false,
-      }),
-      {
-        type: 'reorderTags',
-        tagKeys: ['work'],
-        tagKey: 'work',
-        isFavorite: false,
-      },
-    );
-  });
-
-  test('accepts only supported search page messages', () => {
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setRenderMode', mode: 'html' }),
-      {
-        type: 'setRenderMode',
-        mode: 'html',
-      },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'saveTagOverviewFilter' }),
-      { type: 'saveTagOverviewFilter' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'tasks', page: 3 }),
-      { type: 'setResultPage', kind: 'tasks', page: 3 },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'everything', page: 3 }),
-      undefined,
-    );
-    // A page number is a whole number of at least one, whatever a page that
-    // had been tampered with might ask for.
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: 0 }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: 1.5 }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: '2' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'saveTagOverviewFilter',
-        tagKeys: ['#untrusted', '#browser-data'],
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setRenderMode', mode: 'unsafe' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: true,
-      }),
-      {
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: true,
-      },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'toggleTask',
-        taskId: 'task-1',
-        completed: 'yes',
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'active' }),
-      undefined,
-      'the search is the filter; the page keeps none of its own',
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'openTag', tagKey: 'other' }),
-      { type: 'openTag', tagKey: 'other' },
-    );
-    // Opening a tag opens its page; tags added to a search are in its text.
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', '#second'],
-      }),
-      { type: 'openTag', tagKey: '#focus' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'openTag', tagKey: '' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setOverviewRefinement', refinement: 'x' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setSearchColumns', section: 'notes', columns: 3 }),
-      { type: 'setSearchColumns', section: 'notes', columns: 3 },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({ type: 'setSearchColumns', section: 'tags', columns: 3 }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'clearOverviewQuery' }),
-      { type: 'clearOverviewQuery' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'renameTag',
-        tagKey: '#child',
-      }),
-      { type: 'renameTag', tagKey: '#child' },
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewSort',
-        mode: 'access',
-      }),
-      { type: 'setTagOverviewSort', mode: 'access' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewSort',
-        mode: 'random',
-      }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewLayout',
-        layout: 'split',
-      }),
-      { type: 'setTagOverviewLayout', layout: 'split' },
-    );
-    assert.strictEqual(
-      parseSearchPageMessage({
-        type: 'setTagOverviewLayout',
-        layout: 'stacked',
-      }),
-      undefined,
-    );
-  });
-
-  test('renders safe Markdown without executable HTML or unsafe links', () => {
-    const rendered = renderMarkdown(
-      '[bad](javascript:alert(1))\n\n<script>alert(1)</script>\n\n**safe**',
-    );
-
-    assert.strictEqual(rendered.includes('<script'), false);
-    assert.strictEqual(rendered.includes('href="javascript:'), false);
-    assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
-  });
-
   test('renders accessible Home and Tags dashboard modes with focused controls', () => {
-    const html = getDashboardHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-    );
+    const html = withSheets(renderPage('dashboard'));
 
     assert.strictEqual(html.includes('img-src vscode-webview://deckard;'), true);
     assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
@@ -584,7 +138,6 @@ suite('Webview contracts', () => {
       html.includes('.tag-namespace { color: var(--muted); }'),
       true,
     );
-            assertWebviewScriptParses(html);
         assert.strictEqual(
       html.includes(
         '.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }',
@@ -594,18 +147,29 @@ suite('Webview contracts', () => {
                                                                 // The mark is a filter icon, and the Search tab keeps it from another tab.
     // It is drawn with a class of its own: the shared icon's class places it
     // absolutely at a select's corner, which in a tab floated it over the page.
-    assert.strictEqual(html.includes('const TAB_MARK_ICON = \'<svg class="tab-search-mark-icon" viewBox="0 0 16 16"'), true);
-    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>\';'), true);
+    const page = openDrivenDashboard();
+    try {
+      const mark = page.find('.dashboard-tabs .tab-search-mark svg');
+      assert.strictEqual(mark.getAttribute('class'), 'tab-search-mark-icon');
+      assert.strictEqual(mark.getAttribute('viewBox'), '0 0 16 16');
+      assert.strictEqual(mark.querySelector('path')?.getAttribute('d'), 'M2 3h12L9 8v4l-2 1V8L2 3Z');
+      // The gear is the one every page draws, after the totals.
+      assert.deepStrictEqual(
+        [...page.find('.dashboard-header-actions').children].map((child) => child.className),
+        ['metrics', 'view-options'],
+      );
+      // Tags in their own rank are ranked rows: dragged, or moved from their menu.
+      const row = page.find('.tag-row[data-tag-key]');
+      assert.ok(row.classList.contains('is-draggable'));
+      row.dispatchEvent(new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+      assert.ok(page.find('#rank-context-menu [data-context-action="top"]'));
+    } finally {
+      page.dispose();
+    }
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
     // A tag on a card is written text, not a control chip.
     assert.strictEqual(html.includes('body .card button.tag-open:not(:hover):not(:focus-visible),'), true);
-                                                                                // The gear is the one every page draws, after the totals.
-    assert.strictEqual(
-      html.indexOf("const metrics = '<div class=\"metrics\"") <
-        html.indexOf('const dashboardOptions = renderViewOptions(['),
-      true,
-    );
                     assert.strictEqual(html.includes('.dashboard-header-actions .view-options { order: 2; }'), true);
                                             // A style attribute is refused by the page's policy, so columns are set by script.
     assert.strictEqual(html.includes('style="grid-template-columns: repeat('), false);
@@ -623,7 +187,6 @@ suite('Webview contracts', () => {
       html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }'),
       true,
     );
-                        assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
     // A hue carries one meaning: the state tokens, and the rules that use them.
@@ -679,7 +242,7 @@ suite('Webview contracts', () => {
   test('draws a tag the same way in every theme', () => {
     // A tag is a button, so a theme that shouts its controls shouted its tags.
     for (const theme of deckardThemes) {
-      const shouting = (getDeckardThemeCss(theme).match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
+      const shouting = (themeSheet(theme).match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
         (rule) =>
           /\.tag-open|\.inline-tag/.test(rule.slice(0, rule.indexOf('{'))) &&
           /text-transform:\s*uppercase/.test(rule.slice(rule.indexOf('{'))),
@@ -689,7 +252,7 @@ suite('Webview contracts', () => {
   });
 
   test('Corpo takes every color from the VS Code theme and drops the chrome', () => {
-    const corpo = getDeckardThemeCss('corpo');
+    const corpo = themeSheet('corpo');
     assert.strictEqual(corpo.includes('--bg: var(--vscode-editor-background);'), true);
     assert.strictEqual(corpo.includes('--text: var(--vscode-foreground);'), true);
     assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
@@ -725,138 +288,138 @@ suite('Webview contracts', () => {
       'cooper',
     ]);
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.note:hover, .note-row:hover { border-color: var(--amber); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('replicant').includes(
+      themeSheet('replicant').includes(
         '.card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes('#3fb6c9'),
+      themeSheet('oblivion').includes('#3fb6c9'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes(
+      themeSheet('oblivion').includes(
         '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes(
+      themeSheet('oblivion').includes(
         '.card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }',
       ),
       true,
     );
-    assert.strictEqual(getDeckardThemeCss('lcars').includes('#211b25'), true);
+    assert.strictEqual(themeSheet('lcars').includes('#211b25'), true);
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('border-radius: 0 15px 15px 0'),
+      themeSheet('lcars').includes('border-radius: 0 15px 15px 0'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         'border-left: 7px solid var(--amber)',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('background: var(--favorite-red)'),
+      themeSheet('lcars').includes('background: var(--favorite-red)'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('.metrics { gap: 0; }'),
+      themeSheet('lcars').includes('.metrics { gap: 0; }'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.dashboard-tabs-row { border-bottom-color: var(--line-strong); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.overview-tabs-row { border-bottom-color: var(--line-strong); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.metric::before { border-bottom-color: var(--amber); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.active-file .tag-list button { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.inline-tag, .note-title .inline-tag, .task-title .inline-tag { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.saved-filter-remove.saved-filter-remove { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.active-name .active-filter-tag { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0;',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.favorite-toggle { background: var(--cyan); color: #7a1f1f; }',
       ),
       true,
@@ -864,165 +427,165 @@ suite('Webview contracts', () => {
     // The heart is drawn in the toggle's own color, so no theme colors it
     // apart: a theme that did would strand it when the toggle is hovered.
     assert.strictEqual(
-      deckardThemes.some((theme) => getDeckardThemeCss(theme).includes('.favorite-heart {')),
+      deckardThemes.some((theme) => themeSheet(theme).includes('.favorite-heart {')),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.task-row .task-title, .task .task-title, .note-row .card-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source, .note-row .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         'section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.tag-filter summary, .tag-filter-search { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; } .tag-filter-search::placeholder { color: #050505; opacity: 1; } .tag-filter summary .control-icon-svg, .tag-filter-search-control .control-icon-svg, .tag-filter-clear { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover:where(:not(:disabled):not([aria-disabled="true"])), button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.overview-search, .catalog-search, .task-search, .note-search { border: 2px solid var(--cyan-bright); border-radius: 0 15px 15px 0; background: var(--panel); box-shadow: inset 0 0 0 1px var(--cyan-bright); color: var(--text); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.dashboard-tabs button { border-radius: 0; } .dashboard-tabs button:first-child { border-radius: 15px 0 0 0; } .dashboard-tabs button:last-child { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.save-filter.save-filter { border-color: var(--panel-deep); color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('.sidebar-toolbar'),
+      themeSheet('lcars').includes('.sidebar-toolbar'),
       false,
       'the sidebar\'s actions are in its view title bar, not the page',
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
+      themeSheet('lcars').includes(
         '.control-icon select:hover:where(:not(:disabled):not([aria-disabled="true"])) + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes('--bg-dark: #090713'),
+      themeSheet('synthwave').includes('--bg-dark: #090713'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes('repeating-linear-gradient'),
+      themeSheet('synthwave').includes('repeating-linear-gradient'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes(
+      themeSheet('synthwave').includes(
         'background: var(--cyan); color: var(--bg-dark);',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('synthwave').includes(
+      themeSheet('synthwave').includes(
         '.favorite-toggle.favorite { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes('--bg-dark: #010401'),
+      themeSheet('tomcat').includes('--bg-dark: #010401'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes('repeating-linear-gradient'),
+      themeSheet('tomcat').includes('repeating-linear-gradient'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes('inset 0 0 0 1px'),
+      themeSheet('tomcat').includes('inset 0 0 0 1px'),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes(
+      themeSheet('tomcat').includes(
         'box-shadow: inset 2px 0 0 var(--green)',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes(
+      themeSheet('tomcat').includes(
         '.favorite-toggle { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('--bg-dark: #d6cda9'),
+      themeSheet('fellowship').includes('--bg-dark: #d6cda9'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes(
+      themeSheet('fellowship').includes(
         "--font-display: Georgia, 'Times New Roman', serif",
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes(
+      themeSheet('fellowship').includes(
         'body { background-image: none; }',
       ),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('gradient'),
+      themeSheet('fellowship').includes('gradient'),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('border-radius: 5px'),
+      themeSheet('fellowship').includes('border-radius: 5px'),
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('fellowship').includes('inset 0 0 0 1px'),
+      themeSheet('fellowship').includes('inset 0 0 0 1px'),
       false,
     );
     assert.strictEqual(
-      getDeckardThemeCss('tomcat').includes(
+      themeSheet('tomcat').includes(
         '.favorite-toggle.favorite { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
       ),
       true,
     );
-    const cooper = getDeckardThemeCss('cooper');
+    const cooper = themeSheet('cooper');
     assert.strictEqual(cooper.includes('--bg-dark: #030405'), true);
     assert.strictEqual(cooper.includes('--amber: #dca24a'), true, "Gargantua's gold");
     // A tag's resting color never outranks the fill a theme gives it on hover.
@@ -1055,29 +618,23 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {
-    const html = getDashboardHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-    );
+    const css = pageSheets(renderPage('dashboard', { chrome: readPageChrome() }));
 
     // The shared shell centers main without a frame; the Dashboard widens it.
     assert.strictEqual(
-      html.includes(
+      css.includes(
         'main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }',
       ),
       true,
     );
     assert.strictEqual(
-      html.includes('main { width: 100%; max-width: 1400px; }'),
+      css.includes('main { width: 100%; max-width: 1400px; }'),
       true,
     );
     // A theme may restyle main; the page and the shared sheet give it no frame.
-    const themeCss = getDeckardThemeCss(getDeckardTheme());
-    assert.strictEqual(html.includes(themeCss), true);
-    const pageCss = html.replace(themeCss, '');
+    const themeCss = themeSheet(getDeckardTheme());
+    assert.strictEqual(css.includes(themeCss), true, 'the page links the theme it draws in');
+    const pageCss = css.replace(themeCss, '');
     assert.strictEqual(
       /(^|[\s}])main\s*\{[^}]*\bborder(-[a-z]+)?\s*:/.test(pageCss),
       false,
@@ -1085,16 +642,13 @@ suite('Webview contracts', () => {
   });
 
   test('renders search page tabs and side-by-side layouts', () => {
-    const html = getSearchPageHtml({
-      cspSource: 'vscode-webview://deckard',
-    });
+    const html = withSheets(renderPage('searchPage'));
 
-    assertWebviewScriptParses(html);
     assert.strictEqual(
       html.includes('grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);'),
       true,
     );
-                            assert.strictEqual(
+    assert.strictEqual(
       html.includes('.segmented > * + * { margin-left: calc(var(--edge) * -1); }'),
       true,
     );
@@ -1104,22 +658,7 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-                                                                                assert.strictEqual(
-      html.includes("vscode.postMessage({ type: 'createHubNote' })"),
-      true,
-    );
-    assert.deepStrictEqual(parseSearchPageMessage({ type: 'createHubNote' }), {
-      type: 'createHubNote',
-    });
     assert.strictEqual(
-      parseSearchPageMessage({ type: 'createHubNote', tagKey: '#other' }),
-      undefined,
-    );
-                        // The Notes and Tasks tabs are the shared result tabs.
-    assert.strictEqual(html.includes("{ id: 'notes', label: 'Notes', count: notesCount },"), true);
-    // Both tabs count what their pane shows.
-    assert.strictEqual(html.includes("{ id: 'tasks', label: 'Tasks', count: tasksCount },"), true);
-                    assert.strictEqual(
       html.includes('.segmented { display: inline-flex; }'),
       true,
     );
@@ -1129,18 +668,11 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-        assert.strictEqual(
+    assert.strictEqual(
       html.includes('.segmented > .active { position: relative; z-index: var(--z-raised); }'),
       true,
     );
-                            // The closer spelling a search page offers, and the batch it carries of
-    // a broad one, are held to what the page does: see the Search page
-    // behavior suite.
-    assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
-    assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
-        
-                
-            assert.strictEqual(
+    assert.strictEqual(
       html.includes(
         'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
       ),
@@ -1148,35 +680,83 @@ suite('Webview contracts', () => {
     );
     // A short header is tall enough to hold the gear.
     assert.strictEqual(html.includes('header > .toolbar { margin-top: 36px; }'), true);
-        assert.strictEqual(
+    assert.strictEqual(
       html.includes(
         'header > .toolbar { width: 100%; margin-top: 0; }',
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes(
-        'input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }',
-      ),
-      true,
-    );
-                                                                                                                                                                                    // Tasks are the shared task rows, marked so typed words can hide them.
-    assert.strictEqual(html.includes("renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })"), true);
-                assert.strictEqual(
-      html.includes(
-        '.task.completed .task-title { color: var(--muted); text-decoration: line-through; }',
-      ),
-      true,
-    );
+
+    // The page itself, driven. A tag no note describes offers a hub note.
+    const index = buildWorkspaceIndex(new Map([
+      ['notes/one.md', parseMarkdown('notes/one.md', '# One #risk/vendor\nProse.\n- [ ] Chase it #risk/vendor\n- [ ] And this #risk/vendor')],
+    ]));
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, '#risk/vendor', { queryContext: createQueryContext(Date.now()) });
+    const page = openWebviewPage(renderPage('searchPage'), { ...snapshot, originQuery: '#risk/vendor' });
+    try {
+      page.click('[data-action="create-hub"]');
+      assert.deepStrictEqual(page.lastPosted('createHubNote'), { type: 'createHubNote' });
+      // The Notes and Tasks tabs are the shared result tabs, and each counts
+      // what its pane shows.
+      const tabs = page.findAll('[role="tab"][data-action="set-result-tab"]');
+      assert.deepStrictEqual(tabs.map((tab) => tab.textContent), ['Notes (1)', 'Tasks (2)']);
+      assert.deepStrictEqual(tabs.map((tab) => tab.getAttribute('data-tab')), ['notes', 'tasks']);
+      // Clear returns the page to the search it was opened with, so it is
+      // held while the box holds only that.
+      assert.strictEqual(page.find('[data-action="clear-query"]').getAttribute('aria-disabled'), 'true');
+      // While the sidebar shows this search's Refine, the page says so in its place.
+      page.send({ ...snapshot, originQuery: '#risk/vendor', refineInSidebar: true });
+      assert.match(page.text('.query-facets') ?? '', /In the Context sidebar\./);
+      // Side by side, there are no tabs, and each pane's heading counts it.
+      page.send({ ...snapshot, layout: 'split' });
+      assert.strictEqual(page.findAll('[role="tab"]').length, 0);
+      assert.deepStrictEqual(page.findAll('.overview-split .overview-pane-heading').map((heading) => heading.textContent), ['Notes (1)', 'Tasks (2)']);
+    } finally {
+      page.dispose();
+      store.repository.dispose();
+    }
   });
 
   test('renders formatted related-note relevance explanations', () => {
-    const html = getSidebarNotesHtml(
-      { cspSource: 'vscode-webview://deckard' },
-      '1.0.0',
-    );
+    const html = withSheets(renderPage('sidebarNotes'));
 
-    assertWebviewScriptParses(html);
+    // Each result explains its score: the reasons, then each signal's
+    // weight to two places, and the adjustment for a common tag in points.
+    const page = openWebviewPage(renderPage('sidebarNotes'), {
+      activeFileName: 'today.md',
+      activeTags: [],
+      tagTitleDisplayMode: 'inline',
+      state: 'ready',
+      notes: [{
+        sectionId: 'section-1', filePath: 'notes/atlas.md', title: 'Actions', fileName: 'atlas.md', sourceLine: 12,
+        headingPath: ['Atlas', 'Harbor', 'Pier', 'Actions'], titleTags: [], matchedTags: [], matchCount: 1, totalTagCount: 1, overlap: 1,
+        relevanceScore: 84,
+        reasons: ['Shares #project/atlas', 'Linked from this note'],
+        relevanceEvidence: {
+          directTagWeight: 1.5, associationWeight: 0.4, normalizedAssociationWeight: 0.4, appliedAssociationWeight: 0.4,
+          entryLinkWeight: 0, fileLinkWeight: 0.25, lexicalWeight: 0, recencyWeight: 0, specificityPenalty: 0.2, lexicalTerms: [],
+        },
+      }],
+    });
+    try {
+      assert.deepStrictEqual(
+        page.findAll('.relevance-tooltip-header strong').map((cell) => cell.textContent),
+        ['Relevance score', '84%'],
+      );
+      assert.deepStrictEqual(page.findAll('.relevance-tooltip li').map((reason) => reason.textContent), ['Shares #project/atlas', 'Linked from this note']);
+      assert.deepStrictEqual(
+        page.findAll('.relevance-weights > *').map((cell) => cell.textContent),
+        ['Shared-tag weight', '1.50', 'Association weight', '0.40', 'File-link weight', '0.25', 'Specificity adjustment', '-20 pts'],
+      );
+      assert.strictEqual(page.text('.relevance-reason'), 'Shares #project/atlas', 'the first reason under the card');
+      // Where the result sits, with the file's own name and the entry's left
+      // off, each step joined by the chevron the rule below colors.
+      assert.strictEqual(page.text('.heading-path'), 'Harbor > Pier');
+      assert.strictEqual(page.findAll('.heading-path .heading-path-joiner').length, 1);
+    } finally {
+      page.dispose();
+    }
                                         // Writing a link to a result is held to what the sidebar does; see the
     // Related Notes behavior suite. The rule that keeps the button out of the
     // way is style, which only a rendered page can be asked about.
@@ -1228,12 +808,6 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes(
-        'renderHeadingPath(note.headingPath, fileName, note.title)',
-      ),
-      true,
-    );
                                                                                                                                                       });
 
   test('keeps the Help page in step with what Deckard contributes', () => {
@@ -1241,14 +815,7 @@ suite('Webview contracts', () => {
     // holds the page to it rather than to a copy of its words: a command or
     // a setting added later is in the guide the moment it is contributed.
     const manifest = extension().packageJSON.contributes;
-    const html = getHelpHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-      manifest,
-    );
+    const html = renderPage('help', { help: { manifest: manifest } });
 
     const commands: { command: string; title: string }[] =
       manifest?.commands ?? [];
@@ -1288,7 +855,7 @@ suite('Webview contracts', () => {
   });
 
   test('every theme defers to a high contrast editor theme', () => {
-    const contrast = getHighContrastCss();
+    const contrast = readSheet('shared/highContrast.css');
     const block = /body\.vscode-high-contrast, body\.vscode-high-contrast-light \{([^}]*)\}/.exec(contrast);
     assert.ok(block, 'a high contrast block');
     assert.ok(block[1].includes('--text: var(--vscode-foreground);'), 'the text is the editor\'s own');
@@ -1296,22 +863,20 @@ suite('Webview contracts', () => {
     assert.ok(!/#[0-9a-f]{3,6}\b/i.test(block[1]), 'the block names no color of its own');
     assert.ok(contrast.includes('@media (forced-colors: active)'), 'forced colors are tidied too');
     // Laid down after the theme, and before zen, which stays the last layer.
-    const tail = getPageTailCss();
-    assert.ok(tail.includes(contrast), 'every page carries the block');
-    assert.ok(tail.indexOf(contrast) > tail.indexOf(getDeckardThemeCss(getDeckardTheme())), 'after the theme');
-    assert.ok(tail.indexOf('body.vscode-high-contrast') < tail.indexOf('body.zen'), 'before zen');
+    const page = renderPage('stats', { chrome: readPageChrome() });
+    assert.ok(pageSheets(page).includes(contrast), 'every page carries the block');
+    const linked = linkedSheets(page);
+    assert.ok(linked.indexOf('tail.css') > linked.indexOf(`themes/${getDeckardTheme()}.css`), 'after the theme');
+    const tail = readSheet('shared/tail.css');
+    assert.ok(tail.indexOf('@import "./highContrast.css";') < tail.indexOf('@import "./zen.css";'), 'before zen');
     for (const theme of deckardThemes) {
-      assert.ok(!getDeckardThemeCss(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
+      assert.ok(!themeSheet(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
     }
   });
 
   test('the Help rail marks the section being read', () => {
     const page = openWebviewPage(
-      getHelpHtml(
-        { cspSource: 'vscode-webview://deckard', asWebviewUri: (resource) => resource },
-        vscode.Uri.file('/deckard'),
-        extension().packageJSON.contributes,
-      ),
+      renderPage('help', { help: { manifest: extension().packageJSON.contributes } }),
       undefined,
     );
     try {
@@ -1325,14 +890,7 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Help page as a reference, tables and all', () => {
-    const html = getHelpHtml(
-      {
-        cspSource: 'vscode-webview://deckard',
-        asWebviewUri: (resource) => resource,
-      },
-      vscode.Uri.file('/deckard'),
-      extension().packageJSON.contributes,
-    );
+    const html = renderPage('help', { help: { manifest: extension().packageJSON.contributes } });
 
     assert.ok(html.includes('<caption>Fields</caption>'), 'the query fields');
     assert.ok(
@@ -1343,101 +901,5 @@ suite('Webview contracts', () => {
     assert.ok(html.includes('resources/deckard.svg'), 'the logo it ships with');
     assert.ok(html.includes('Associated tags'), 'how tags relate');
     assert.ok(html.includes('#follow-up'), 'a tag anyone can write');
-  });
-
-  test('accepts only valid sidebar navigation messages', () => {
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'ready' }), {
-      type: 'ready',
-    });
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'openSource',
-        filePath: 'notes/related.md',
-        line: 4,
-      }),
-      { type: 'openSource', filePath: 'notes/related.md', line: 4 },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
-      { type: 'openTag', tagKey: 'work' },
-    );
-    // A tag opens its own page; the old filter arguments are dropped.
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', '#second'],
-      }),
-      { type: 'openTag', tagKey: '#focus' },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'renameTag', tagKey: '#work' }),
-      { type: 'renameTag', tagKey: '#work' },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({
-        type: 'refineActiveSearch',
-        facetId: 'related',
-        clause: '#team/harbor',
-        mode: 'exclude',
-        extra: 'dropped',
-      }),
-      {
-        type: 'refineActiveSearch',
-        facetId: 'related',
-        clause: '#team/harbor',
-        mode: 'exclude',
-      },
-    );
-    assert.strictEqual(
-      parseSidebarMessage({
-        type: 'refineActiveSearch',
-        facetId: 'related',
-        clause: '#team/harbor',
-        mode: 'replace',
-      }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSidebarMessage({ type: 'refineActiveSearch', facetId: 'related', clause: '', mode: 'and' }),
-      undefined,
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'setActiveSearch', query: '#project/atlas' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSidebarMessage({ type: 'setActiveSearch', query: 7 }),
-      undefined,
-    );
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openDashboard' }), {
-      type: 'openDashboard',
-    });
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'createDailyNote' }), {
-      type: 'createDailyNote',
-    });
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'openHelp' }), {
-      type: 'openHelp',
-    });
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'clearEntryRelatedNotes' }),
-      { type: 'clearEntryRelatedNotes' },
-    );
-    assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'setRelatedNotesSort', mode: 'access' }),
-      { type: 'setRelatedNotesSort', mode: 'access' },
-    );
-    assert.strictEqual(
-      parseSidebarMessage({ type: 'setRelatedNotesSort', mode: 'random' }),
-      undefined,
-    );
-    assert.strictEqual(
-      parseSidebarMessage({
-        type: 'openSource',
-        filePath: 'notes/a.md',
-        line: 0,
-      }),
-      undefined,
-    );
   });
 });

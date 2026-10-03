@@ -2,14 +2,11 @@ import * as assert from 'assert';
 
 import MarkdownIt = require('markdown-it');
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import {
-  addNoteEmbedRenderer,
-  resolveEmbed,
-  withoutFrontmatter,
-} from '../ui/preview/noteEmbeds';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { addNoteEmbedRenderer } from '../ui/preview/noteEmbeds';
+import { createSourceParser, resolveEmbed, withoutFrontmatter } from '../domain/notes/embeds';
+import { WorkspaceIndex } from '../domain/model';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -51,6 +48,30 @@ function render(source: string, snapshot = index): string {
 }
 
 suite('Note embeds', () => {
+  test('a source parser reads a note again only once it changes', () => {
+    const parse = createSourceParser();
+    const first = parse('# One\n\nText.');
+    assert.strictEqual(parse('# One\n\nText.'), first, 'the same note is read once');
+    const second = parse('# Two');
+    assert.notStrictEqual(second, first);
+    assert.deepStrictEqual(second.sections.map((section) => section.heading), ['Two']);
+    assert.notStrictEqual(createSourceParser()('# Two'), second, 'each parser keeps its own');
+  });
+
+  test('two preview engines each draw their own note\'s embeds of itself', () => {
+    const one = '# One\n\n## Part\n\nFirst.\n\n![[#Part]]';
+    const two = '# Two\n\n## Part\n\nSecond.\n\n![[#Part]]';
+    const first = addNoteEmbedRenderer(new MarkdownIt(), { getIndex: () => index });
+    const second = addNoteEmbedRenderer(new MarkdownIt(), { getIndex: () => index });
+    const embedded = (html: string): string => html.split('deckard-embed-body')[1] ?? '';
+    for (let turn = 0; turn < 2; turn += 1) {
+      const drawnOne = first.render(one);
+      const drawnTwo = second.render(two);
+      assert.ok(embedded(drawnOne).includes('First.') && !drawnOne.includes('Second.'), drawnOne);
+      assert.ok(embedded(drawnTwo).includes('Second.') && !drawnTwo.includes('First.'), drawnTwo);
+    }
+  });
+
   test('draws a section, and everything nested under it', () => {
     const html = render('Before\n\n![[Atlas#Decision]]\n\nAfter');
     assert.ok(html.includes('class="deckard-embed'), html);

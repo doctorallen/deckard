@@ -4,20 +4,20 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { WorkspaceIndex } from '../core/types';
+import { parseMarkdown } from '../domain/markdown/parser';
 import {
   buildBacklinkIndex,
   findWikiLinkAt,
-} from '../core/workspace/backlinks';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { EditorReferences } from '../ui/commands/editorReferences';
+} from '../domain/index/backlinks';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { EditorReferences } from '../ui/providers/editorReferences';
 import {
   countSharedTagEntries,
   createLinkPreview,
   createReferenceSummary,
   createTagSummary,
 } from '../ui/state/referenceState';
+import { WorkspaceIndex } from '../domain/model';
 
 suite('Editor references', () => {
   const index = createIndex();

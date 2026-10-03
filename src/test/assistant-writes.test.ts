@@ -1,12 +1,12 @@
 import * as assert from 'assert';
 
-import {
-  addedTaskLine,
-  changeTaskLine,
-  describeChange,
-  readAddTaskInput,
-  readChangeTaskInput,
-} from '../ui/commands/assistantWrites';
+import * as vscode from 'vscode';
+
+import { parseMarkdown } from '../domain/markdown/parser';
+import { addedTaskLine, addTask, changeTask, changeTaskLine, describeChange } from '../ui/commands/assistantWrites';
+import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { readAddTaskInput, readChangeTaskInput } from '../ui/state/assistantWriteInput';
 
 suite('Assistant writes', () => {
   const NOW = Date.UTC(2026, 8, 21, 12);
@@ -47,38 +47,97 @@ suite('Assistant writes', () => {
 
   test('changes touch only what they name, in the order Deckard writes fields', () => {
     const line = '- [ ] Call Ren about the budget 📅 2026-09-30 ⏫ #project/atlas';
-    assert.strictEqual(changeTaskLine(line, { due: '2026-10-02' }, NOW).text, '- [ ] Call Ren about the budget #project/atlas ⏫ 📅 2026-10-02');
-    assert.strictEqual(changeTaskLine(line, { priority: null }, NOW).text, '- [ ] Call Ren about the budget #project/atlas 📅 2026-09-30');
-    assert.strictEqual(changeTaskLine(line, { assignee: '@ren' }, NOW).text, '- [ ] Call Ren about the budget #project/atlas ⏫ 📅 2026-09-30 👤 @ren');
-    assert.strictEqual(changeTaskLine(line, { title: 'Call Ren' }, NOW).text, '- [ ] Call Ren ⏫ 📅 2026-09-30');
+    assert.strictEqual(changeTaskLine({ line, changes: { due: '2026-10-02' }, now: NOW }).text, '- [ ] Call Ren about the budget #project/atlas ⏫ 📅 2026-10-02');
+    assert.strictEqual(changeTaskLine({ line, changes: { priority: null }, now: NOW }).text, '- [ ] Call Ren about the budget #project/atlas 📅 2026-09-30');
+    assert.strictEqual(changeTaskLine({ line, changes: { assignee: '@ren' }, now: NOW }).text, '- [ ] Call Ren about the budget #project/atlas ⏫ 📅 2026-09-30 👤 @ren');
+    assert.strictEqual(changeTaskLine({ line, changes: { title: 'Call Ren' }, now: NOW }).text, '- [ ] Call Ren ⏫ 📅 2026-09-30');
   });
 
   test('completing writes the done date, reopening takes it away, and the same state is a no-op', () => {
     const open = '- [ ] Ship it 📅 2026-09-30';
-    const done = changeTaskLine(open, { complete: true }, NOW).text;
+    const done = changeTaskLine({ line: open, changes: { complete: true }, now: NOW }).text;
     assert.strictEqual(done, '- [x] Ship it 📅 2026-09-30 ✅ 2026-09-21');
-    assert.strictEqual(changeTaskLine(done, { complete: false }, NOW).text, open);
-    assert.strictEqual(changeTaskLine(open, { complete: false }, NOW).text, open, 'already open');
+    assert.strictEqual(changeTaskLine({ line: done, changes: { complete: false }, now: NOW }).text, open);
+    assert.strictEqual(changeTaskLine({ line: open, changes: { complete: false }, now: NOW }).text, open, 'already open');
   });
 
   test('completing a repeating task starts the next one above it', () => {
     const line = '- [ ] Water the plants 🔁 every week 📅 2026-09-21';
-    const written = changeTaskLine(line, { complete: true }, NOW, 'emoji', '\n');
+    const written = changeTaskLine({ line, changes: { complete: true }, now: NOW, fallbackFormat: 'emoji', eol: '\n' });
     assert.strictEqual(written.next, '- [ ] Water the plants 🔁 every week 📅 2026-09-28');
     assert.strictEqual(
       written.text,
       '- [ ] Water the plants 🔁 every week 📅 2026-09-28\n- [x] Water the plants 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
     );
     assert.strictEqual(
-      changeTaskLine(line, { complete: true }, NOW, 'emoji', '\n', false).text.split('\n')[1],
+      changeTaskLine({ line, changes: { complete: true }, now: NOW, fallbackFormat: 'emoji', eol: '\n', addDoneDate: false }).text.split('\n')[1],
       '- [x] Water the plants 🔁 every week 📅 2026-09-21',
       'no done date when the setting is off',
     );
   });
 
+  test('completing a repeating task gives the next one its steps back, unchecked', async () => {
+    const note = '/notes/review.md';
+    const lines = [
+      '# Review',
+      '- [ ] Weekly review 🔁 every week 📅 2026-09-21',
+      '  - [ ] Inbox zero',
+      '  - [x] Clear the desk ✅ 2026-09-14',
+      '',
+    ];
+    const index = buildWorkspaceIndex(new Map([[note, parseMarkdown(note, lines.join('\n'))]]));
+    const document = {
+      eol: vscode.EndOfLine.LF,
+      getText: () => lines.join('\n'),
+      lineAt: (line: number) => ({ text: lines[line], range: new vscode.Range(line, 0, line, lines[line].length) }),
+    };
+    const workspace = vscode.workspace as unknown as Record<string, unknown>;
+    const { openTextDocument } = workspace;
+    workspace.openTextDocument = async () => document;
+    let answer;
+    try {
+      answer = await changeTask(
+        { ready: Promise.resolve(), getSnapshot: () => index },
+        { write: async () => ({ applied: true }) } as unknown as WorkspaceWriteHistory,
+        { note, line: 2, complete: true },
+        NOW,
+      );
+    } finally {
+      workspace.openTextDocument = openTextDocument;
+    }
+    assert.strictEqual(answer.isError, undefined);
+    assert.ok(
+      answer.text.includes(
+        [
+          '- [ ] Weekly review 🔁 every week 📅 2026-09-28',
+          '  - [ ] Inbox zero',
+          '  - [ ] Clear the desk',
+          '- [x] Weekly review 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
+        ].join('\n'),
+      ),
+      answer.text,
+    );
+  });
+
   test('a Dataview line stays a Dataview line', () => {
     const line = '- [ ] Ship it [due:: 2026-09-30]';
-    assert.strictEqual(changeTaskLine(line, { priority: 'high' }, NOW).text, '- [ ] Ship it [priority:: high] [due:: 2026-09-30]');
+    assert.strictEqual(changeTaskLine({ line, changes: { priority: 'high' }, now: NOW }).text, '- [ ] Ship it [priority:: high] [due:: 2026-09-30]');
+  });
+
+  test('says when today\'s daily note cannot be made, rather than naming no note', async () => {
+    const index = buildWorkspaceIndex(new Map());
+    const history = new WorkspaceWriteHistory();
+    const answer = await addTask(
+      { ready: Promise.resolve(), getSnapshot: () => index },
+      history,
+      { text: 'Call Ren' },
+      () => Promise.reject(new Error('EACCES: permission denied')),
+    );
+    assert.deepStrictEqual(answer, {
+      text: "Today's daily note could not be made, so nothing was written.",
+      isError: true,
+    });
+    assert.strictEqual(history.lastWrite, undefined);
   });
 
   test('says what it is about to do, in words a preview can carry', () => {

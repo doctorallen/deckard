@@ -1,9 +1,9 @@
-import { findFencedLines } from '../../core/markdown/parser';
-import {
-  describeDueDate,
-  findTaskMetadataSpans,
-  parseIsoDate,
-} from '../../core/markdown/taskMetadata';
+import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
+import { matchTaskLine, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
+import { QueryContext } from '../../domain/query/queryContext';
+import { parseIsoDate } from '../../domain/markdown/calendar';
+import { findTaskMetadataSpans } from '../../domain/markdown/taskFields';
+import { describeDueDate } from '../../domain/markdown/dueWording';
 
 /** A stretch of one line, zero-based. */
 export interface LineSpan {
@@ -19,6 +19,7 @@ export interface TaskLineHint {
   tone: 'overdue' | 'hint';
 }
 
+/** What a note's editor draws over its task lines, as findTaskLineMarks finds it. */
 export interface TaskLineMarks {
   /** Metadata drawn fainter than the words. */
   dim: LineSpan[];
@@ -27,18 +28,14 @@ export interface TaskLineMarks {
   hints: TaskLineHint[];
 }
 
-/** A task line: its checkbox, and the text after it. */
-const TASK_LINE = /^(\s*[-*+][ \t]+\[([ xX])\][ \t]?)/;
+/** An open or done task line; one space or tab after its box belongs to the box. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
 /** A block id at the end of any line. */
 const BLOCK_ID = /[ \t]+(\^[A-Za-z0-9-]+)[ \t]*$/;
 
 /** The lines front matter takes, which hold no tasks. */
 function frontMatterLines(lines: readonly string[]): number {
-  if (lines[0]?.trim() !== '---') {
-    return 0;
-  }
-  const end = lines.findIndex((line, at) => at > 0 && /^(---|\.\.\.)\s*$/.test(line));
-  return end > 0 ? end + 1 : 0;
+  return (findFrontmatterEnd(lines) ?? -1) + 1;
 }
 
 /**
@@ -47,11 +44,11 @@ function frontMatterLines(lines: readonly string[]): number {
  * overdue date, which is drawn in the overdue color; and an open task that
  * is overdue, due today, or waiting for a new date says so after its line.
  * A block id on any line steps back too. Code and front matter are left
- * alone.
+ * alone. Today and when a date needs replacing are the context's.
  */
 export function findTaskLineMarks(
   lines: readonly string[],
-  now: number,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: { dim: boolean; hints: boolean },
 ): TaskLineMarks {
   const marks: TaskLineMarks = { dim: [], overdue: [], hints: [] };
@@ -61,39 +58,80 @@ export function findTaskLineMarks(
     if (line < skip || fenced.has(line)) {
       return;
     }
-    const task = TASK_LINE.exec(text);
-    if (!task) {
-      const blockId = BLOCK_ID.exec(text);
-      if (options.dim && blockId) {
-        const start = text.lastIndexOf(blockId[1]);
-        marks.dim.push({ line, start, end: start + blockId[1].length });
-      }
+    const task = matchTaskLine(text, TASK_LINE);
+    if (task) {
+      markTaskLine(marks, { text, line, task }, context, options);
       return;
     }
-    const offset = task[1].length;
-    const open = task[2] === ' ';
-    const spans = findTaskMetadataSpans(text.slice(offset));
-    const due = spans.find((span) => span.field === 'due');
-    const dueAt = open && due ? parseIsoDate(due.value) : undefined;
-    const described = dueAt === undefined ? undefined : describeDueDate(dueAt, now);
-    for (const span of spans) {
-      const at = { line, start: offset + span.start, end: offset + span.end };
-      if (span === due && described?.overdue) {
-        marks.overdue.push(at);
-      } else if (options.dim) {
-        marks.dim.push(at);
-      }
-    }
-    if (!options.hints || !described) {
-      return;
-    }
-    if (described.overdue) {
-      marks.hints.push({ line, text: described.relative, tone: 'overdue' });
-    } else if (described.stale) {
-      marks.hints.push({ line, text: 'needs a new date', tone: 'hint' });
-    } else if (described.days === 0) {
-      marks.hints.push({ line, text: 'due today', tone: 'hint' });
+    if (options.dim) {
+      markBlockId(marks, text, line);
     }
   });
   return marks;
+}
+
+/** One line the editor shows, matched as a task line. */
+interface TaskLineAt {
+  text: string;
+  line: number;
+  task: NonNullable<ReturnType<typeof matchTaskLine>>;
+}
+
+/** Steps back the block id at the end of a line that is not a task, when it has one. */
+function markBlockId(marks: TaskLineMarks, text: string, line: number): void {
+  const blockId = BLOCK_ID.exec(text);
+  if (!blockId) {
+    return;
+  }
+  const start = text.lastIndexOf(blockId[1]);
+  marks.dim.push({ line, start, end: start + blockId[1].length });
+}
+
+/**
+ * Marks one task line: its metadata dimmed, an open task's overdue date in
+ * the overdue color, and the hint after an open task with a due date.
+ */
+function markTaskLine(
+  marks: TaskLineMarks,
+  { text, line, task }: TaskLineAt,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  options: { dim: boolean; hints: boolean },
+): void {
+  const offset = task.head.length + task.gap.length;
+  const open = task.mark === ' ';
+  const spans = findTaskMetadataSpans(text.slice(offset));
+  const due = spans.find((span) => span.field === 'due');
+  const dueAt = open && due ? parseIsoDate(due.value) : undefined;
+  const described = dueAt === undefined ? undefined : describeDueDate(dueAt, context.now, context.taskPolicy);
+  for (const span of spans) {
+    const at = { line, start: offset + span.start, end: offset + span.end };
+    if (span === due && described?.overdue) {
+      marks.overdue.push(at);
+    } else if (options.dim) {
+      marks.dim.push(at);
+    }
+  }
+  if (!options.hints || !described) {
+    return;
+  }
+  const hint = hintFor(described);
+  if (hint) {
+    marks.hints.push({ line, ...hint });
+  }
+}
+
+/** What an open task says after its line: overdue, needs a new date, or due today; nothing otherwise. */
+function hintFor(
+  described: ReturnType<typeof describeDueDate>,
+): Omit<TaskLineHint, 'line'> | undefined {
+  if (described.overdue) {
+    return { text: described.relative, tone: 'overdue' };
+  }
+  if (described.stale) {
+    return { text: 'needs a new date', tone: 'hint' };
+  }
+  if (described.days === 0) {
+    return { text: 'due today', tone: 'hint' };
+  }
+  return undefined;
 }

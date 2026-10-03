@@ -1,15 +1,13 @@
 import * as assert from 'assert';
 
-import { parseMarkdown } from '../core/markdown/parser';
-import { evaluateQuery } from '../core/query/queryEvaluator';
-import { parseQuery } from '../core/query/queryParser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import {
-  DashboardWidgetConfig,
-  PersistedPreferences,
-  WorkspaceIndex,
-} from '../core/types';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { normalizeDashboardWidgets } from '../core/storage/preferencesSchema';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
+import { createQueryContext } from '../domain/query/queryContext';
+import { DashboardWidgetConfig, PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date(2026, 8, 16, 12).getTime();
@@ -70,7 +68,7 @@ function widgets(configs: DashboardWidgetConfig[], index = createIndex()) {
   return createDashboardWidgets(
     index,
     { ...preferences, dashboardWidgets: configs },
-    { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+    { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
   );
 }
 
@@ -88,6 +86,17 @@ suite('Dashboard Home widgets', () => {
     ]);
     assert.ok(broken.error, 'a search that does not parse says why');
     assert.deepStrictEqual(broken.tasks, []);
+  });
+
+  test('Gone quiet offers only namespaces Home keeps as the one to watch', () => {
+    const files = [parseMarkdown('notes/q.md', '# Plan #2026/q1\n# Ren #person/ren\n# Atlas #project/atlas\n')];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const [quiet] = widgets([{ id: 'q', kind: 'quietPeople', width: 'half', count: 5 }], index);
+    assert.deepStrictEqual(quiet.namespaces, ['person', 'project']);
+    for (const namespace of quiet.namespaces ?? []) {
+      const [kept] = normalizeDashboardWidgets([{ id: 'q', kind: 'quietPeople', width: 'half', namespace }]);
+      assert.strictEqual(kept.namespace ?? 'person', namespace);
+    }
   });
 
   test('the agenda leaves what needs a new date to a line under its list', () => {
@@ -203,7 +212,7 @@ suite('Dashboard Home widgets', () => {
     const [noNote] = createDashboardWidgets(
       index,
       { ...preferences, dashboardWidgets: [{ id: 'd', kind: 'todayNote', width: 'half' }] },
-      { now: now + DAY, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now + DAY), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
     );
     assert.deepStrictEqual(noNote.today, { date: '2026-09-17', openTaskCount: 0 });
   });
@@ -224,7 +233,7 @@ suite('Dashboard Home widgets', () => {
         ],
       },
       {
-        now,
+        queryContext: createQueryContext(now),
         upcomingDays: 7,
         tagTitleDisplayMode: 'inline',
         sourceNotePath: 'notes/old.md',
@@ -293,7 +302,7 @@ suite('Dashboard Home widgets', () => {
         ...preferences,
         dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 10 }],
       },
-      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
     );
 
     const listed = pairs.tagPairs ?? [];
@@ -325,14 +334,14 @@ suite('Dashboard Home widgets', () => {
         ...preferences,
         dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 20 }],
       },
-      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
     );
 
     // Pressing a row searches for both tags. The number beside it has to be
     // the number that search then shows, or the row argues with itself.
     for (const pair of pairs.tagPairs ?? []) {
       const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
-      const results = evaluateQuery(index, parseQuery(query).node);
+      const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
       assert.strictEqual(
         results.sections.length + results.files.length + results.tasks.length,
         pair.count,
@@ -358,7 +367,7 @@ suite('Dashboard Home widgets', () => {
           { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
         ],
       },
-      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
     );
     assert.deepStrictEqual(
       pairs.tagPairs?.map((pair) => pair.tags.map((tag) => tag.key)),

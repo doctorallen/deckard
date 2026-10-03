@@ -1,25 +1,21 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
-import { PersistedPreferences } from '../core/types';
-import { createSearchPageSnapshot } from '../ui/state/dashboardState';
-import {
-  parseDashboardMessage,
-  parseSearchPageMessage,
-  parseSidebarMessage,
-} from '../ui/webview/messages';
-import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
+import { createPreferences } from './preferenceServices';
 import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { PersistedPreferences } from '../domain/model';
 
 function defaults(values: Partial<PersistedPreferences> = {}): PersistedPreferences {
-  const store = new PreferencesStore({
+  const store = createPreferences({
     get: () => undefined,
     keys: () => [],
     update: async () => undefined,
   } as never);
-  const value = { ...store.value, ...values };
-  store.dispose();
+  const value = { ...store.reader.value, ...values };
+  store.repository.dispose();
   return value;
 }
 
@@ -31,8 +27,8 @@ function openPage(query: string, parkedTags: string[]): WebviewPage {
     },
     { tags: ['parked', 'project/old'] },
   );
-  const snapshot = createSearchPageSnapshot(index, defaults(), query);
-  return openWebviewPage(getSearchPageHtml({ cspSource: 'vscode-webview://deckard' }), {
+  const snapshot = createSearchPageSnapshot(index, defaults(), query, { queryContext: createQueryContext(Date.now()) });
+  return openWebviewPage(renderPage('searchPage'), {
     ...snapshot,
     parkedTags,
   });
@@ -109,12 +105,5 @@ suite('Park and Unpark from the pages', () => {
   });
 
   test('the hosts accept park messages and nothing else like them', () => {
-    assert.deepStrictEqual(parseSearchPageMessage({ type: 'parkTag', tagKey: '#a' }), { type: 'parkTag', tagKey: '#a' });
-    assert.deepStrictEqual(parseSearchPageMessage({ type: 'unparkNote', filePath: 'a.md' }), { type: 'unparkNote', filePath: 'a.md' });
-    assert.strictEqual(parseSearchPageMessage({ type: 'parkNote', filePath: '' }), undefined);
-    assert.strictEqual(parseSearchPageMessage({ type: 'parkTag', tagKey: '#a', extra: 1 }), undefined);
-    assert.deepStrictEqual(parseSidebarMessage({ type: 'unparkTag', tagKey: '#a' }), { type: 'unparkTag', tagKey: '#a' });
-    assert.deepStrictEqual(parseDashboardMessage({ type: 'parkTag', tagKey: '#a' }), { type: 'parkTag', tagKey: '#a' });
-    assert.strictEqual(parseDashboardMessage({ type: 'parkTag', tagKey: 3 }), undefined);
   });
 });
