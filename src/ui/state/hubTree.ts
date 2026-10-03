@@ -19,6 +19,11 @@ import { ParsedFile, WorkspaceIndex } from '../../domain/model';
  * the tag: what the whole note is about, not a line that mentions it in
  * passing. A note can name its parent outright with `up: "[[Atlas]]"` in
  * its front matter, which places it there alone, whatever its tags.
+ *
+ * A hub note goes under another only by `up:`. The tags in a hub's front
+ * matter are its properties, such as a team's regulars or a person's team,
+ * which describe it rather than file it; read as parents, a team listing a
+ * person and the person naming the team would each sit under the other.
  */
 
 /** One row of the tree: a namespace, or a note. */
@@ -85,7 +90,7 @@ export function buildHubGraph(index: WorkspaceIndex): HubGraph {
     const up = readUpTargets(file.content)
       .map((name) => resolveWikiTarget(titles, parseWikiTarget(name).note, filePath))
       .filter((target): target is string => target !== undefined && target !== filePath);
-    const found = up.length
+    const found = up.length || hubTags.has(filePath)
       ? up
       : noteTagKeys(file)
           .map((key) => hubByTag.get(key))
@@ -195,9 +200,27 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
     };
   };
 
+  // A hub whose parents never reach the top, as in a loop of `up:`, is
+  // listed at the top of its namespace rather than nowhere.
+  const placed = new Set<string>();
+  const reachable = (filePath: string, seen: Set<string>): boolean => {
+    if (placed.has(filePath)) {
+      return true;
+    }
+    if (seen.has(filePath)) {
+      return false;
+    }
+    seen.add(filePath);
+    const parents = graph.parents.get(filePath);
+    const found = !parents || parents.some((parent) => index.files.has(parent) && reachable(parent, seen));
+    if (found) {
+      placed.add(filePath);
+    }
+    return found;
+  };
   const namespaces = new Map<string, string[]>();
   for (const [filePath, tagKey] of graph.hubTags) {
-    if (graph.parents.has(filePath)) {
+    if (graph.parents.has(filePath) && reachable(filePath, new Set())) {
       continue;
     }
     const namespace = namespaceOf(tagKey);

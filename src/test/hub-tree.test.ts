@@ -82,12 +82,20 @@ suite('Notes under their hubs', () => {
     assert.deepStrictEqual(['project', 'person', 'company', 'status', 'follow-up'].map(namespaceLabel), ['Projects', 'People', 'Companies', 'Statuses', 'Follow Ups']);
   });
 
+  test('a hub’s own property tags describe it rather than file it', () => {
+    const teams = indexOf({
+      'Harbor.md': '---\ndescribes: team/harbor\nregulars: ["#person/sable-ortiz"]\n---\n# Harbor',
+      'Sable.md': '---\ndescribes: person/sable-ortiz\nteam: "#team/harbor"\n---\n# Sable Ortiz',
+    });
+    assert.deepStrictEqual(outline(buildHubTree(teams, Date.now())), ['People', '  Sable Ortiz', 'Teams', '  Harbor']);
+  });
+
   test('a cycle of up: stops rather than running away', () => {
     const looped = indexOf({
       'a.md': '---\ndescribes: project/a\nup: "[[b]]"\n---\n# A',
       'b.md': '---\nup: "[[a]]"\n---\n# B',
     });
-    assert.ok(buildHubTree(looped, Date.now()).length >= 0);
+    assert.ok(outline(buildHubTree(looped, Date.now())).some((line) => line.trim() === 'A'), 'the hub in the loop is still listed');
     assert.ok(findBreadcrumbs(looped, 'b.md').length <= 3);
   });
 });

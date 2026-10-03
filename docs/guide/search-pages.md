@@ -86,7 +86,7 @@ HUBS
 - Each tag namespace with a hub note heads a group: **Projects** for `#project/…`, **People** for `@` tags, and **Other tags** for a hub of a tag without one.
 - Under each hub are the notes about its tag: those whose front matter or first heading carries it. A line that mentions the tag in passing, such as in a daily note, does not file its note there; the tag's page still finds it.
 - A note can name its place outright with `up:` in its front matter, such as `up: "[[Ledger migration]]"` or a list of several. It is then filed only there, whatever its tags. A note named by `up:` that is no hub is listed under **Other notes**.
-- A hub under another hub, by its own tags or `up:`, nests under it. A note about two projects is under both.
+- A hub goes under another hub only when its `up:` names it, as a sub-project's does. The tags in a hub's own front matter, such as a team's `regulars:` or a person's `team:`, describe it and do not move it. A note about two projects is under both.
 - Select a note to open it. A hub shows how far along its tag's tasks are, and its tag button opens the tag's page.
 - **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
 
