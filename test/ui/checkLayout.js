@@ -304,7 +304,8 @@ parent.document.getElementById('layout-probe').textContent = JSON.stringify([{ f
  * The page as the webview shows it, with the VS Code bridge replaced. probe
  * is the script that measures it, the layout probe unless another is given,
  * run a moment after the state has drawn, or, with `options.at` set to
- * `once-drawn`, at once, as LAYOUT_TIMING=1 needs.
+ * `once-drawn`, at once, as LAYOUT_TIMING=1 needs. `options.css` is laid
+ * down with the settling rules, before the surface's own.
  */
 function buildPage(source, surface, probe = probeScript(surface), options = {}) {
   const html = allowHarnessScripts(source, readPageNonce(source));
@@ -335,7 +336,7 @@ ${state}${interactionScript(surface)}setTimeout(function () { ${probe} }, 50);
   // hidden canvas, comes after the settling rules.
   const inner = html
     // VS Code sets its tokens on the document; here a style block does.
-    .replace('<head>', () => `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}${surface.css || ''}</style>`)
+    .replace('<head>', () => `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}${options.css || ''}${surface.css || ''}</style>`)
     .replace(/<script/, () => `${bridge}<script`)
     .replace(/<\/body>/, () => `${drive}</body>`);
   const [width, height] = surface.viewport;

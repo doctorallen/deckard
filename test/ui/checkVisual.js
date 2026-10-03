@@ -54,24 +54,21 @@ const PIXEL_THRESHOLD = 0.1;
  */
 const FAIL_ABOVE = 0.0001;
 /**
- * Surfaces that still come to rest differently from one drawing to the
- * next, and the share of the page each may differ by instead.
+ * Every card on the Task Board drawn, as a reader sees it once it stops
+ * moving.
  *
- * Synthwave's Task Board, by status and by tag, sometimes settles with the
- * top of the next card showing at the foot of a column and sometimes
- * without it: 198 to 517 pixels, about 0.04% of the page, on dev as on
- * every branch, with transitions and the caret already settled. The board
- * with a card's menu open draws the same columns, and has been seen to
- * differ by the same 0.04% for the same reason. Until the column's scroll
- * settles the same way every time, these three may differ by a tenth of a
- * percent, which still fails any change to how the board looks that is
- * larger than a strip of one card.
+ * The board leaves a card off screen undrawn (`content-visibility: auto`,
+ * src/webview/shared/taskBoard.css) until it comes near the viewport, and
+ * Chrome decides that a frame after the card is laid out. A screenshot is
+ * taken at a frame Chrome picks, so a card at the foot of a column was
+ * sometimes caught as an empty frame: Synthwave's board, by status, by tag,
+ * in Tasks view mode, and with a card's menu open, differed by up to 0.34%
+ * from one run to the next with nothing changed. On screen such a card is
+ * always drawn once the page settles, so this draws every one at once. The
+ * containment `auto` brings with it stays, since it moves a faded card's
+ * text by a fraction of a pixel; the selector is the board's own.
  */
-const UNSETTLED = new Map([
-  ['synthwave-taskBoard', 0.001],
-  ['synthwave-taskBoardByTag', 0.001],
-  ['synthwave-taskBoardCardMenu', 0.001],
-]);
+const DRAWN = '.task-board .board-card:not(:hover):not(:focus-within):not(.dragging) { content-visibility: visible !important; contain: layout style paint !important; }';
 
 /**
  * Surfaces macOS draws differently from one run to the next, and the share
@@ -88,14 +85,10 @@ const DARWIN_UNSETTLED = new Map([
 /**
  * How much of a surface may differ before it fails.
  *
- * @param {string} name The baseline's name, `<theme>-<surface>`.
  * @param {string} surfaceName The surface's own name.
  * @returns {number} The share of the page.
  */
-function allowedShare(name, surfaceName) {
-  if (UNSETTLED.has(name)) {
-    return UNSETTLED.get(name);
-  }
+function allowedShare(surfaceName) {
   if (process.platform === 'darwin' && DARWIN_UNSETTLED.has(surfaceName)) {
     return DARWIN_UNSETTLED.get(surfaceName);
   }
@@ -158,7 +151,7 @@ function compareShot({ label, surfaceName, name }, drawn, baseline, { tally, log
   const differing = pixelmatch(expected.data, drawn.data, diff.data, drawn.width, drawn.height, { threshold: PIXEL_THRESHOLD });
   const share = differing / (drawn.width * drawn.height);
   tally.compared += 1;
-  if (share > allowedShare(name, surfaceName)) {
+  if (share > allowedShare(surfaceName)) {
     tally.failed += 1;
     const diffFile = path.join(dir, `${name}.diff.png`);
     writeFileSync(diffFile, PNG.sync.write(diff));
@@ -176,7 +169,7 @@ async function drawSurface(surface, { label, theme, zen, rendered }, tally, log)
   const surfaceName = surface.name || surface.page;
   const name = `${label}-${surfaceName}`;
   const file = path.join(dir, `${name}.html`);
-  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
+  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, undefined, { css: DRAWN }));
   const shot = path.join(dir, `${name}.png`);
   const baseline = path.join(BASELINES, `${name}.png`);
   let drawn;
