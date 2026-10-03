@@ -10,6 +10,12 @@
   on its first line in the editor, and Home's new **Progress** widget lists
   every project's, or any namespace's, unfinished first.
 
+- **Notes as a table.** A query block with `view=table` draws its notes as
+  a table as well as its tasks. `noteColumns=` picks the columns: how many
+  notes link to each, how far along its tasks are, its tags, its dates, or
+  one namespace's tags such as `#status`. Notes sort by any of them, so
+  `sort=links dir=desc` puts the most linked first.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

@@ -493,7 +493,7 @@ function renderFindingSections(): string {
       <pre><code>&#96;&#96;&#96;deckard sort=updated limit=10
 tag = #project/atlas AND task = open
 &#96;&#96;&#96;</code></pre>
-      <p><code>sort=</code> any task column such as <code>due</code> or <code>priority</code>, <code>dir=asc|desc</code>, <code>limit=10</code>, and <code>view=table columns=due,priority,for</code> for the tasks as a table follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
+      <p><code>sort=</code> any task column such as <code>due</code> or <code>priority</code>, <code>dir=asc|desc</code>, <code>limit=10</code>, and <code>view=table columns=due,priority,for</code> for the tasks as a table, with <code>noteColumns=links,tasks,#status</code> for the notes as one, follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
       ${renderReadMore('query-blocks')}
     </section>
 

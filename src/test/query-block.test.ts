@@ -2,9 +2,12 @@ import * as assert from 'assert';
 
 import MarkdownIt = require('markdown-it');
 
-import { addQueryBlockRenderer, renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
+import { addQueryBlockRenderer, describeNoteCell, renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
+import { parseMarkdown } from '../domain/markdown/parser';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
   createQueryBlockSnapshot,
+  formatQueryBlock,
   describeQueryBlockCounts,
   findQueryBlocks,
   isQueryBlockLine,
@@ -92,8 +95,51 @@ suite('Deckard query blocks', () => {
     );
     assert.ok(html.includes('href="/notes/Atlas%20plan.md#L'), 'the title still links to its line');
     assert.ok(html.includes('class="deckard-query-row is-done"'), 'a done task is struck');
-    assert.strictEqual(html.split('deckard-query-list').length, 2, 'one list: the notes, above the table');
-    assert.ok(html.indexOf('deckard-query-list') < html.indexOf('deckard-query-table'));
+    assert.ok(!html.includes('deckard-query-list'), 'the notes are a table too, not a list');
+    assert.ok(html.indexOf('deckard-query-notes') < html.indexOf('deckard-query-tasks'), 'the notes come first');
+    assert.ok(html.includes('<th scope="col">Entry</th><th scope="col">Note</th><th scope="col">Updated</th><th scope="col">Linked from</th><th scope="col">Tasks</th>'), 'the notes take their default columns');
+  });
+
+  test('reads a notes table’s columns, a namespace among them, and a sort only notes have', () => {
+    assert.deepStrictEqual(parseQueryBlockInfo('deckard view=table noteColumns=links,#Status,file sort=links dir=desc'), {
+      view: 'table',
+      noteColumns: ['title', 'links', '#status', 'note'],
+      sort: 'links',
+      direction: 'desc',
+      warnings: [],
+    });
+    const options = parseQueryBlockInfo('deckard noteColumns=links,color,#9');
+    assert.deepStrictEqual(options?.noteColumns, ['title', 'links']);
+    assert.match(options?.warnings[0] ?? '', /no "color", "#9"/);
+    assert.strictEqual(formatQueryBlock('#project/*', { view: 'table', noteColumns: ['links', '#status'] }), '```deckard view=table noteColumns=links,#status\n#project/*\n```\n');
+  });
+
+  test('draws notes as a table: what links to them, their tasks, and a namespace’s tags', () => {
+    const files = [
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas #status/doing\n- [x] Pick a vendor\n- [ ] Send the proposal\n  - [ ] A step'),
+      parseMarkdown('notes/borealis.md', '# Borealis #project/borealis #status/done'),
+      parseMarkdown('notes/review.md', '# Review\nSee [[atlas]] and [[atlas#Atlas]].'),
+      parseMarkdown('notes/plan.md', 'Also [[atlas]].'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const options = parseQueryBlockInfo('deckard view=table noteColumns=links,tasks,#status sort=links dir=desc')!;
+    const snapshot = createQueryBlockSnapshot(index, 'tag = #project/*', options, { queryContext: createQueryContext(Date.now()) });
+    assert.deepStrictEqual(snapshot.notes.map((note) => note.title), ['Atlas', 'Borealis'], 'most linked first');
+    const [atlas, borealis] = snapshot.notes;
+    assert.strictEqual(describeNoteCell(atlas, 'links'), '2', 'two notes link to it, however often');
+    assert.strictEqual(describeNoteCell(atlas, 'tasks'), '1 of 2 done', 'a step is part of its task');
+    assert.strictEqual(describeNoteCell(atlas, '#status'), 'doing');
+    assert.strictEqual(describeNoteCell(borealis, 'links'), '', 'nothing to show is an empty cell');
+    assert.strictEqual(describeNoteCell(borealis, 'tasks'), '');
+    assert.strictEqual(describeNoteCell(borealis, 'note'), 'borealis');
+
+    const html = renderQueryBlockHtml('tag = #project/*', options, index, { queryContext: createQueryContext(Date.now()) });
+    assert.ok(html.includes('<th scope="col">Entry</th><th scope="col">Linked from</th><th scope="col">Tasks</th><th scope="col">Status</th>'));
+    assert.ok(html.includes('<td>1 of 2 done</td><td>doing</td>'));
+    const ascending = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard view=table sort=#status')!, { queryContext: createQueryContext(Date.now()) });
+    assert.deepStrictEqual(ascending.notes.map((note) => note.title), ['Atlas', 'Borealis'], 'doing before done');
+    const list = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard')!, { queryContext: createQueryContext(Date.now()) });
+    assert.strictEqual(list.notes[0].linkCount, undefined, 'a list never counts links');
   });
 
   test('draws a task title\'s Markdown in the table, without nesting its links', () => {
