@@ -133,8 +133,9 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   private shownColumns = new Set<string>();
   /**
    * Whether the board was opened from the Tasks view's search icon to edit
-   * what the view lists. Only `enterTasksViewMode` sets it; Cancel, any
-   * other way of opening the board, and closing it clear it.
+   * what the view lists. Only `enterTasksViewMode` sets it, and a reload
+   * puts back what the page kept; Cancel, any other way of opening the
+   * board, and closing it clear it.
    */
   private tasksViewMode = false;
 

@@ -269,11 +269,11 @@ The page harness now seeds kept state: `openWebviewPage(html, state, { savedStat
 
 ### 21. Task Board
 
-- **Shape:** `{ query: string; scrollY?: number }`.
-- **Written:** `receiveState`, `src/webview/taskBoard/main.tsx` (since Phase 6 step 4.4; before, `src/ui/webview/taskBoardHtml.ts`), the search of each snapshot the host sends, with the `scrollY` kept before only while the search is the same; `rememberScroll` as the page scrolls.
+- **Shape:** `{ query: string; scrollY?: number; tasksViewMode?: true }`.
+- **Written:** `receiveState`, `src/webview/taskBoard/main.tsx` (since Phase 6 step 4.4; before, `src/ui/webview/taskBoardHtml.ts`), the search of each snapshot the host sends, with the `scrollY` kept before only while the search is the same, and `tasksViewMode: true` while the snapshot says the board edits what the Tasks view lists (since 1.24); `rememberScroll` as the page scrolls.
 - **Read by the page:** `scrollY` on its first snapshot (`restoreScroll`). Nothing else it was left with is read or kept.
-- **Read by the host:** `query`, when it is a string, in `restoreSearch` (`src/ui/webview/pages/taskBoard/taskBoardController.ts`), called from `TaskBoardPanel.restore`.
-- **Pinned by:** `taskBoard.e2e.js` restores the board with `{ query: 'is:open #project/atlas' }` and asserts the query it shows, and with shapes it ignores, which open on `is:open`. `webview-saved-state.test.ts` asserts the scroll kept only for its search, that anything else it was left with is not kept, and that it keeps where it was scrolled.
+- **Read by the host:** `query`, when it is a string, and `tasksViewMode`, the Tasks view mode only when it is `true`, in `restoreSearch` (`src/ui/webview/pages/taskBoard/taskBoardController.ts`), called from `TaskBoardPanel.restore`. A state without it, as every release before 1.24 wrote, opens a plain board.
+- **Pinned by:** `taskBoard.e2e.js` restores the board with `{ query: 'is:open #project/atlas' }` and asserts the query it shows, and with shapes it ignores, which open on `is:open`, and with `{ query, tasksViewMode: true }`, which opens in the mode and keeps it; `task-board-host.test.ts` holds the mode to `true` alone. `webview-saved-state.test.ts` asserts the scroll kept only for its search, that anything else it was left with is not kept, and that it keeps where it was scrolled.
 
 ### 22. Dashboard
 
