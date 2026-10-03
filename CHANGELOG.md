@@ -10,6 +10,14 @@
 - Over 230 fixes: zen mode and other settings work in a workspace that sets them, and saves made during a scan stay saved.
 - Tags in any script, such as #café and #日本, and keyboard, screen reader, and contrast fixes on every page.
 
+### Added
+
+- **Save a search to the Tasks view with one button.** The search icon in
+  the Tasks view's title opens the Task Board to edit what the view lists:
+  change the search, then select **Save to Tasks view**, which keeps what
+  the box shows even before Enter runs it. **Save as search** still saves
+  it as a search of its own, and **Cancel** leaves the view as it was.
+
 ### Changed
 
 - **A search's `text =` finds a whole word,** as the guide and the builder
@@ -20,6 +28,12 @@
   VS Code's own Copy Relative Path of Active File on macOS and Linux, which
   Deckard's shortcut took over. To keep the old one, bind `deckard.capture`
   to it in Keyboard Shortcuts.
+
+### Fixed
+
+- **A tip no longer covers what a card shows on hover,** such as a Related
+  Notes entry's relevance score or a Home row's counts: it opens beside
+  what the card shows instead.
 
 ## 1.23.1 - 2026-09-27
 
