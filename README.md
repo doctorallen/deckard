@@ -34,7 +34,7 @@
 | [**Search pages**](docs/guide/search-pages.md) | A tag's page collects everything that uses it; any search opens the same page, and one edit can change everything it found. |
 | [**Query blocks**](docs/guide/query-blocks.md) | A `deckard` code fence keeps a live list or table of a search's notes and tasks inside a note; tick a task right in the preview. |
 | [**Home and Stats**](docs/guide/home-and-stats.md) | What is overdue, due today, and open; a Home of widgets you arrange, with how far along each project is; the notes nothing links to and tags spelled two ways. |
-| [**Hubs**](docs/guide/search-pages.md#the-hubs-view) | Notes under the hub notes of the tags they are about, with breadcrumbs on each note's first line. |
+| [**Hubs**](docs/guide/search-pages.md#the-hubs-view) | A sidebar tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages in Notion; a note's first line shows where it sits, such as *Projects › Atlas › Vendor review*. |
 | [**Related notes and the graph**](docs/guide/connections.md) | A sidebar ranks the notes most related to the one you are editing, and says why; the Notes Graph maps every connection. |
 | [**Daily notes and reviews**](docs/guide/daily-notes.md) | Today's note from your template, yesterday's unfinished tasks carried in, weekly and monthly reviews written for you, a calendar page where you drag a task to another day, and your dated tasks in your own calendar app. |
 | [**Renaming and tidying**](docs/guide/organizing.md) | Rename a tag, note, or heading everywhere it is written; merge lookalike tags; park what you are not working on. |

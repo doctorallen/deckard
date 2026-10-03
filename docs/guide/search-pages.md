@@ -69,7 +69,7 @@ Migration of billing onto the new ledger.
 
 ### The Hubs view
 
-The **Hubs** view in the Deckard sidebar keeps notes under the hub notes of the tags they are about, as Notion's sidebar keeps pages under the pages they belong to. It starts collapsed; expand it, or drag it where you like.
+The **Hubs** view in the Deckard sidebar is a tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages under pages in Notion's sidebar. A topic appears once it has a [hub note](#hub-notes). It starts collapsed; expand it, or drag it where you like.
 
 ```
 HUBS
