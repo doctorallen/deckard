@@ -282,12 +282,14 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
+      # The whole profile: for an app, the ID may be under publicAlias
+      # rather than id. It holds no credential.
       - name: Show the identity the Marketplace sees
         run: |
           az rest \
             --uri "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1" \
             --resource 499b84ac-1321-427f-aa17-267ca6975798 \
-            --query "{id: id, displayName: displayName}" -o table
+            -o json
 
   sync-notes:
     if: github.event_name == 'workflow_dispatch' && inputs.task == 'sync-notes'
