@@ -26,7 +26,8 @@
 | | |
 | --- | --- |
 | [**Tags, people, and entities**](docs/guide/notes-and-links.md) | `#tags`, `@people`, and namespaced tags such as `#project/atlas`, on headings, lines, tasks, and front matter, become one index. |
-| [**Links and embeds**](docs/guide/notes-and-links.md#markdown-format) | `[[Note]]`, `[[Note#Heading]]`, and `[[Note#^line]]` complete and open; `![[Note#Heading]]` shows a section in place. |
+| [**Links and embeds**](docs/guide/notes-and-links.md#markdown-format) | `[[Note]]`, `[[Note#Heading]]`, and `[[Note#^line]]` complete and open; `![[Note#Heading]]` shows a section in place; **Copy as Plain Markdown** writes them out for a chat, an email, or a pull request. |
+| [**The / menu**](docs/guide/notes-and-links.md#editor-assistance) | A `/` at the start of a line offers a task, a heading, a link or an embed, a query block, a table of notes or tasks, or one of your templates. |
 | [**Tasks**](docs/guide/tasks.md) | Due, scheduled, and start dates, priorities, repeats, dependencies, steps, and who a task is for, in either Obsidian Tasks format — with a task editor that takes dates in plain words. |
 | [**Task board**](docs/guide/task-board.md) | Open tasks as columns by status, priority, due date, person, or any tag namespace; drag a card to rewrite the task. Or a ranked list, or a table. |
 | [**Search**](docs/guide/search.md) | Find in Notes searches notes, tasks, and tags as you type, and a small [query language](docs/guide/search.md#query-language) — `#project/atlas AND is:open AND due < 7d` — runs everywhere. |
