@@ -14,6 +14,7 @@ import {
   RolloverWriteOutcome,
 } from '../services/rolloverService';
 import { fileUri } from './fakeWorkspace';
+import { inTimeZone } from './timeZone';
 
 // RolloverService decides what a rollover carries and what it changes in
 // the notes the tasks came from; these run it over notes held in memory and
@@ -101,9 +102,7 @@ suite('Rollover plan', () => {
   test('looks back in calendar days, across a clock change', () => {
     // Clocks in New York go forward on 2026-03-08, so the week before
     // 2026-03-10 is an hour short of seven days of 24 hours.
-    const zone = process.env.TZ;
-    process.env.TZ = 'America/New_York';
-    try {
+    inTimeZone('America/New_York', () => {
       const plan = planRollover(
         indexOf({
           'notes/2026-03-02.md': '# 2026-03-02\n\n- [ ] Eight days back\n',
@@ -113,13 +112,7 @@ suite('Rollover plan', () => {
         7,
       );
       assert.deepStrictEqual(plan?.fromDates, ['2026-03-03']);
-    } finally {
-      if (zone === undefined) {
-        delete process.env.TZ;
-      } else {
-        process.env.TZ = zone;
-      }
-    }
+    });
   });
 });
 

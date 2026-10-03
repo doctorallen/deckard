@@ -24,6 +24,7 @@ import { resolveDateRange } from '../domain/query/queryDates';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { getEntityNamespaceAliases, parseMarkdown } from '../domain/markdown/parser';
 import { buildSearchFacets } from '../domain/search/facets';
+import { inTimeZone } from './timeZone';
 
 suite('Deckard query language', () => {
   test('parses a bare tag as a tag condition', () => {
@@ -683,9 +684,7 @@ suite('Deckard search page state', () => {
   test('a day ends at its next midnight, on a daylight-saving change as on any other', () => {
     // New York moves its clocks on 2026-03-08, a 23-hour day, and on
     // 2026-11-01, a 25-hour one.
-    const zone = process.env.TZ;
-    process.env.TZ = 'America/New_York';
-    try {
+    inTimeZone('America/New_York', () => {
       const now = new Date(2026, 0, 15, 12).getTime();
       for (const [day, next] of [['2026-03-08', '2026-03-09'], ['2026-11-01', '2026-11-02']]) {
         const range = resolveDateRange(day, now, 'future', 0);
@@ -699,13 +698,7 @@ suite('Deckard search page state', () => {
       assert.deepStrictEqual(titles('due = 2026-03-08'), [], 'the next day is not this one');
       assert.deepStrictEqual(titles('due < 2026-03-09'), []);
       assert.deepStrictEqual(titles('due = 2026-11-01'), ['Fall']);
-    } finally {
-      if (zone === undefined) {
-        delete process.env.TZ;
-      } else {
-        process.env.TZ = zone;
-      }
-    }
+    });
   });
 
   test('counts named days and windows in calendar days, across a daylight-saving change', () => {
@@ -1033,17 +1026,3 @@ function createTask(values: Partial<Task> & { id: string }): Task {
   };
 }
 
-/** Runs `run` with the process's time zone set to `zone`, and puts it back after. */
-function inTimeZone(zone: string, run: () => void): void {
-  const saved = process.env.TZ;
-  process.env.TZ = zone;
-  try {
-    run();
-  } finally {
-    if (saved === undefined) {
-      delete process.env.TZ;
-    } else {
-      process.env.TZ = saved;
-    }
-  }
-}
