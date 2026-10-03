@@ -137,9 +137,9 @@ function bareDrawnRows(body) {
  * application/json block, which is data.
  */
 function runnableScripts(html) {
-  return [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+  return [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)]
     .map(([, attributes, text]) => ({ attributes, text }))
-    .filter((block) => !/\btype="application\/json"/.test(block.attributes))
+    .filter((block) => !/\btype="application\/json"/i.test(block.attributes))
     .map((block) => block.text);
 }
 
@@ -240,8 +240,8 @@ function tokenAndPolicyProblems(html) {
   if (!nonce) {
     problems.push('the CSP names no nonce');
   }
-  const ungated = [...html.matchAll(/<(script|style)\b([^>]*)>/g)]
-    .filter(([, , attributes]) => !/\btype="application\/json"/.test(attributes))
+  const ungated = [...html.matchAll(/<(script|style)\b([^>]*)>/gi)]
+    .filter(([, , attributes]) => !/\btype="application\/json"/i.test(attributes))
     .filter(([, , attributes]) => !attributes.includes(`nonce="${nonce}"`));
   if (ungated.length) {
     problems.push(`${ungated.length} inline style or script without the page's nonce`);
