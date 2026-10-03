@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.23.2 - 2026-10-02
+
 ### Changed
 
 - **Capture's shortcut is Cmd/Ctrl+Shift+Alt+N.** Cmd/Ctrl+Shift+Alt+C is
