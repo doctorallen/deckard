@@ -1,5 +1,11 @@
 name: CI
 
+# Each commit is checked once. A push to dev or a refactor branch runs
+# here, and a pull request shows that run, since checks belong to the
+# commit; a pull request from dev, which the push already checked, skips
+# its own run. A push to master runs no CI of its own: the Release workflow
+# runs this whole job on it, through workflow_call, before it publishes
+# anything.
 on:
   pull_request:
     branches:
@@ -8,12 +14,9 @@ on:
   push:
     branches:
       - dev
-      - main
-      - master
       # Each phase of the refactor (docs/implementation/19-refactor.md) is a
       # branch that must pass the whole set before it lands on dev.
       - 'refactor/**'
-  # The Release workflow runs this whole job before it publishes anything.
   workflow_call:
 
 permissions:
@@ -27,6 +30,7 @@ concurrency:
 
 jobs:
   validate:
+    if: github.event_name != 'pull_request' || github.head_ref != 'dev'
     runs-on: ubuntu-latest
     # Phase 6 step 1 added ten surfaces, about 160 more screenshots and as
     # many more layouts, to the 15 minutes the job used to need.
