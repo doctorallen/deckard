@@ -247,10 +247,14 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
 
 /**
  * A note's breadcrumbs: from the namespace of its top hub down to the note
- * itself, by each of its parents, at most three ways, shortest first. A
- * note with no parent has none, a hub at the top of its namespace too.
+ * itself, by each of its parents, at most three ways, shortest first, with
+ * the note each step is. A note with no parent has none, a hub at the top of
+ * its namespace too.
  */
-export function findBreadcrumbs(index: WorkspaceIndex, filePath: string): Array<{ labels: string[]; parent: string }> {
+export function findBreadcrumbs(
+  index: WorkspaceIndex,
+  filePath: string,
+): Array<{ labels: string[]; parent: string; notes: string[] }> {
   const graph = getHubGraph(index);
   const paths: string[][] = [];
   const walk = (current: string, below: string[]): void => {
@@ -281,6 +285,8 @@ export function findBreadcrumbs(index: WorkspaceIndex, filePath: string): Array<
           ...path.map((note) => hubNoteLabel(index, note)),
         ],
         parent: path[path.length - 2],
+        // The note each step after the namespace is, by path, the note itself last.
+        notes: path,
       };
     });
 }

@@ -77,6 +77,7 @@ import { NotesGraphPanel, readNotesGraphOptions } from '../ui/webview/notesGraph
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
 import { StatsPanel } from '../ui/webview/stats';
+import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
@@ -148,6 +149,7 @@ export interface Pages {
   relatedNotesDebug: RelatedNotesDebugPanel;
   calendar: CalendarPanel;
   taskBoard: TaskBoardPanel;
+  notePage: NotePagePanel;
 }
 
 /**
@@ -258,7 +260,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
   const trees = createTreesAndCapture(context, core, preferences, writes);
   const built: Built = { core, preferences, writes, search, editor, assistance, calendar, home, sidebar, trees };
   holdUntilShutdown(context, shutdown, built);
@@ -331,6 +333,7 @@ function holdUntilShutdown(context: vscode.ExtensionContext, shutdown: DisposalO
     sidebar.stats,
     sidebar.help,
     sidebar.relatedNotesDebug,
+    sidebar.notePage,
     trees.outline,
     trees.queryBlocks,
     trees.agenda,
@@ -360,6 +363,7 @@ function listPages({ search, home, sidebar, calendar }: Built): Pages {
     relatedNotesDebug: sidebar.relatedNotesDebug,
     calendar: calendar.calendarPage,
     taskBoard: home.taskBoard,
+    notePage: sidebar.notePage,
   };
 }
 
@@ -870,9 +874,10 @@ interface SidebarParts {
   calendar: ReturnType<typeof createCalendar>;
   dashboard: DashboardPanel;
   whatsNew: WhatsNew;
+  writes: Omit<Writes, 'capture'>;
 }
 
-/** Related Notes in the sidebar, and Stats, Help, the Notes Graph, and the debug page. */
+/** Related Notes in the sidebar, and Stats, Help, the Notes Graph, the note page, and the debug page. */
 function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarParts) {
   const { indexer, history } = parts.core;
   const { repository, display, usage, tagRenames } = parts.preferences;
@@ -923,7 +928,16 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionUri: context.extensionUri,
     themePreview,
   });
-  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug };
+  const notePage = new NotePagePanel({
+    indexer,
+    writes: parts.writes.tasks,
+    extensionUri: context.extensionUri,
+    onOpenTag: async (tagKey) => {
+      await searchPanels.show(tagKey);
+    },
+    themePreview,
+  });
+  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage };
 }
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
@@ -1114,8 +1128,11 @@ function createLateContexts(context: vscode.ExtensionContext, core: Core, pages:
 
 /** Lets VS Code restore each page left open when the window closed. */
 function registerSerializers(context: vscode.ExtensionContext, pages: Pages): void {
-  const { dashboard, stats, help, notesGraph, calendar, taskBoard, search } = pages;
+  const { dashboard, stats, help, notesGraph, calendar, taskBoard, search, notePage } = pages;
   context.subscriptions.push(
+    vscode.window.registerWebviewPanelSerializer('deckard.notePage', {
+      deserializeWebviewPanel: (webviewPanel, state) => notePage.restore(webviewPanel, state),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.dashboard', {
       deserializeWebviewPanel: (webviewPanel) =>
         dashboard.restore(webviewPanel),

@@ -1,0 +1,220 @@
+import * as vscode from 'vscode';
+
+import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
+import { createNoteTitleMap, parseWikiTarget, resolveWikiTarget, findLinkedSection } from '../../../../domain/index/backlinks';
+import type { Task } from '../../../../domain/model';
+import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
+import type { NavigationService } from '../../../../services/navigationService';
+import type { NotePagePageToHost, NotePageSnapshot } from '../../../protocol/notePage';
+import { openResultAt } from '../../../commands/navigation';
+import { readQueryContext } from '../../../commands/queryContext';
+import type { TaskWrites } from '../../../commands/taskActions';
+import { createNotePageSnapshot } from '../../../state/notePageState';
+import type { PageChrome } from '../../components';
+import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
+import { PanelSurface } from '../../host/surface';
+import { openTag, toggleTask } from '../../host/sharedHandlers';
+import { getNotePageHtml } from '../../notePageHtml';
+import { narrowNotePageMessage } from './messages';
+
+/** A note the page has shown, and the line it was asked for at. */
+export interface NoteLocation {
+  filePath: string;
+  line?: number;
+}
+
+/** What the note page reads, and whom it asks to open a tag. */
+export interface NotePageControllerOptions {
+  indexer: IndexReader<vscode.Uri> & IndexScanStatus & IndexUpdates;
+  writes: TaskWrites;
+  navigation: NavigationService;
+  onOpenTag: (tagKey: string) => void | Promise<void>;
+  /** The extension's folder, which the page's style sheets are under. */
+  extensionUri: vscode.Uri;
+}
+
+/** How many notes Back holds, so a long reading leaves a bounded trail. */
+const HISTORY_LIMIT = 50;
+
+/**
+ * The note page: one note at a time, read in a Deckard page, its links,
+ * tags, tasks, and query blocks working. The page keeps a trail of the
+ * notes it has shown, for Back and Forward. It reads the note from the
+ * index, so it follows each save.
+ */
+export class NotePageController implements PageController<NotePageSnapshot, NotePagePageToHost> {
+  public readonly name = 'Note page';
+  public readonly options: PageOptions = {
+    retainContextWhenHidden: false,
+    enableFindWidget: true,
+    readsInertState: true,
+    restore: (state) => this.restoreFrom(state),
+  };
+  public readonly narrow = narrowNotePageMessage;
+  public readonly handlers: MessageHandlers<NotePagePageToHost>;
+  private current: NoteLocation | undefined;
+  private readonly back: NoteLocation[] = [];
+  private readonly forward: NoteLocation[] = [];
+  /** Counts the notes asked for, so the page tells a new one from a redraw of the same. */
+  private visit = 0;
+  private page: PageContext | undefined;
+
+  /** Reads from `notes.indexer`, and ticks tasks through `notes.writes`. */
+  public constructor(private readonly notes: NotePageControllerOptions) {
+    const { indexer, navigation } = notes;
+    this.handlers = {
+      openNote: (message, page) => this.open(page, { filePath: message.filePath, line: message.line }, message),
+      openWikiLink: (message, page) => this.openWikiLink(page, message.target, message),
+      openInEditor: (message) => this.openInEditor(message.line, message.beside === true),
+      openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: (tagKey) => notes.onOpenTag(tagKey) }),
+      toggleTask: toggleTask({ writes: notes.writes, findTask: (taskId): Task | undefined => indexer.getSnapshot().tasks.get(taskId) }),
+      navigateNoteHistory: (message, page) => this.step(page, message.direction),
+    };
+  }
+
+  /** The note shown, if any. */
+  public get location(): NoteLocation | undefined {
+    return this.current;
+  }
+
+  /**
+   * Shows a note, after the one shown now, which Back returns to; a note
+   * asked for again at another line moves to the line without adding to
+   * the trail.
+   */
+  public navigate(location: NoteLocation): void {
+    if (this.current && this.current.filePath !== location.filePath) {
+      this.back.push(this.current);
+      if (this.back.length > HISTORY_LIMIT) {
+        this.back.shift();
+      }
+      this.forward.length = 0;
+    }
+    this.current = location;
+    this.visit += 1;
+  }
+
+  /** The note page's HTML, carrying `state` for the page to draw at once when given one. */
+  public html(webview: vscode.Webview, chrome: PageChrome, state?: NotePageSnapshot): string {
+    return getNotePageHtml(webview, this.notes.extensionUri, chrome, state);
+  }
+
+  /** The note shown, drawn from the index as it is now. */
+  public buildSnapshot(): NotePageSnapshot | undefined {
+    if (!this.current) {
+      return undefined;
+    }
+    return createNotePageSnapshot(this.notes.indexer.getSnapshot(), this.current.filePath, {
+      queryContext: readQueryContext(),
+      statusNamespace: readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
+      ...(this.current.line === undefined ? {} : { focusLine: this.current.line }),
+      history: { back: this.back.length > 0, forward: this.forward.length > 0 },
+      visit: this.visit,
+    });
+  }
+
+  /** The tab says which note it shows. */
+  public onDidSendSnapshot(page: PageContext): void {
+    this.page = page;
+    const surface = page.surface;
+    const title = this.buildTitle();
+    if (surface instanceof PanelSurface && title) {
+      surface.panel.title = title;
+    }
+  }
+
+  /** Remembers the page, so a note asked for from elsewhere draws in it. */
+  public onDidAttach(page: PageContext): void {
+    this.page = page;
+  }
+
+  /** Forgets the trail when the reader closes the tab. */
+  public onDidDetach(): void {
+    this.page = undefined;
+    this.back.length = 0;
+    this.forward.length = 0;
+  }
+
+  /** The note's name, for the tab. */
+  private buildTitle(): string | undefined {
+    if (!this.current) {
+      return undefined;
+    }
+    const name = this.current.filePath.split('/').pop() ?? this.current.filePath;
+    return name.replace(/\.md$/i, '');
+  }
+
+  /**
+   * Opens a note from the page: here, or with Shift held in the editor,
+   * which is where the setting does not open notes when it opens them here.
+   */
+  private async open(page: PageContext, location: NoteLocation, how: { opposite?: true; beside?: true }): Promise<void> {
+    if (!this.notes.indexer.getSnapshot().files.has(location.filePath)) {
+      return;
+    }
+    if (how.opposite) {
+      await openResultAt(location.filePath, location.line ?? 1, { beside: how.beside === true });
+      return;
+    }
+    this.navigate(location);
+    page.refresh();
+  }
+
+  /** Follows a `[[link]]` to the note, heading, or line it names, when exactly one note has its name. */
+  private async openWikiLink(page: PageContext, target: string, how: { opposite?: true; beside?: true }): Promise<void> {
+    const index = this.notes.indexer.getSnapshot();
+    const link = parseWikiTarget(target);
+    const filePath = link.note
+      ? resolveWikiTarget(createNoteTitleMap(index), link.note, this.current?.filePath ?? '')
+      : this.current?.filePath;
+    const file = filePath ? index.files.get(filePath) : undefined;
+    if (!filePath || !file) {
+      void vscode.window.showInformationMessage(`No note is named "${link.note}" yet, or more than one is.`);
+      return;
+    }
+    const line = link.heading ? findLinkedSection(file, link.heading)?.startLine : blockLine(file.blockIds, link.block);
+    await this.open(page, { filePath, ...(line === undefined ? {} : { line }) }, how);
+  }
+
+  /** Opens the note shown in the editor, at the line asked, or its first. */
+  private async openInEditor(line: number | undefined, beside: boolean): Promise<void> {
+    if (this.current) {
+      await openResultAt(this.current.filePath, line ?? this.current.line ?? 1, { beside, pin: true });
+    }
+  }
+
+  /** Back or Forward through the trail. */
+  private step(page: PageContext, direction: 'back' | 'forward'): void {
+    const from = direction === 'back' ? this.back : this.forward;
+    const to = direction === 'back' ? this.forward : this.back;
+    const next = from.pop();
+    if (!next || !this.current) {
+      return;
+    }
+    to.push(this.current);
+    this.current = next;
+    this.visit += 1;
+    page.refresh();
+  }
+
+  /** The note a panel kept across a reload showed, if what it kept names one. */
+  private restoreFrom(state: unknown): void {
+    if (typeof state !== 'object' || state === null) {
+      return;
+    }
+    const kept = state as { filePath?: unknown; line?: unknown };
+    if (typeof kept.filePath === 'string' && kept.filePath) {
+      this.navigate({ filePath: kept.filePath, ...(typeof kept.line === 'number' && kept.line > 0 ? { line: kept.line } : {}) });
+    }
+  }
+
+  /** The page the controller draws in, while it is open. */
+  public get context(): PageContext | undefined {
+    return this.page;
+  }
+}
+
+/** The line a `^block` marker names in a note, if the link names one. */
+function blockLine(blockIds: Readonly<Record<string, number>> | undefined, block: string | undefined): number | undefined {
+  return block ? blockIds?.[block] : undefined;
+}

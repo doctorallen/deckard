@@ -48,6 +48,7 @@
     "onWebviewPanel:deckard.notesGraph",
     "onWebviewPanel:deckard.taskBoard",
     "onWebviewPanel:deckard.calendarPage",
+    "onWebviewPanel:deckard.notePage",
     "onStartupFinished",
     "onUri",
     "onLanguageModelTool:deckard_query",
@@ -457,6 +458,12 @@
         "command": "deckard.copyAsPlainMarkdown",
         "title": "Copy as Plain Markdown",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.openNotePage",
+        "title": "Open Note as Page",
+        "category": "Deckard",
+        "icon": "$(book)"
       },
       {
         "command": "deckard.showTagOverview",
@@ -879,6 +886,10 @@
           "when": "editorLangId == markdown"
         },
         {
+          "command": "deckard.openNotePage",
+          "when": "editorLangId == markdown"
+        },
+        {
           "command": "deckard.moveTo",
           "when": "editorLangId == markdown"
         },
@@ -1077,6 +1088,10 @@
         {
           "command": "deckard.copyAsPlainMarkdown",
           "group": "3_move@2"
+        },
+        {
+          "command": "deckard.openNotePage",
+          "group": "3_move@3"
         },
         {
           "command": "deckard.pinNote",

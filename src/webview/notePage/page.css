@@ -1,0 +1,97 @@
+/*
+ * The note page: one note, read as a document, in the reader's theme.
+ * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
+ */
+@import "../shared/base.css";
+
+main { max-width: 860px; }
+.note-toolbar { display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-3); }
+.note-toolbar .icon-button { min-width: var(--control-height); font-size: var(--text-lg); line-height: 1; }
+.note-toolbar button:last-child { margin-left: auto; }
+
+/* The header: what the note is called, where it sits, and its properties. */
+.note-header { display: grid; align-items: start; justify-content: stretch; gap: var(--space-2); }
+.note-header h1 { font-size: 26px; text-transform: none; }
+.note-breadcrumbs { display: grid; gap: 2px; }
+.note-breadcrumb { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.note-crumb { min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }
+button.note-crumb { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); cursor: pointer; }
+button.note-crumb:hover:where(:not(:disabled):not([aria-disabled="true"])), button.note-crumb:focus-visible { color: var(--hover-fg); text-decoration-color: currentColor; }
+.note-crumb.is-current { color: var(--text); }
+.note-hub { display: grid; grid-template-columns: auto minmax(80px, 200px) 1fr auto; align-items: center; gap: var(--space-2) var(--space-3); }
+.note-hub-label { color: var(--muted); font-size: var(--text-sm); }
+.tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+.note-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 0; }
+.note-properties div { display: flex; align-items: baseline; gap: 6px; }
+.note-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+.note-properties dd { margin: 0; }
+@media (max-width: 600px) { .note-hub { grid-template-columns: auto 1fr; } .note-hub-label, .note-hub .tag-note-action { grid-column: 1 / -1; } }
+
+/* The note itself, read as prose. */
+.note-body { margin-top: var(--space-4); line-height: 1.6; overflow-wrap: anywhere; }
+.note-body > :first-child { margin-top: 0; }
+.note-body p { margin: 0 0 var(--space-3); }
+.note-heading { margin: var(--space-5) 0 var(--space-2); }
+.note-body ul, .note-body ol { margin: 0 0 var(--space-3); padding-left: var(--space-5); }
+.note-body ul.has-tasks { padding-left: var(--space-2); list-style: none; }
+.note-body li > p { margin: 0; }
+.note-body blockquote { margin: 0 0 var(--space-3); padding: var(--space-1) var(--space-3); border-left: 3px solid var(--line-strong); color: var(--muted); }
+.note-body hr { margin: var(--space-4) 0; border: 0; border-top: 1px solid var(--line-strong); }
+.note-code { margin: 0 0 var(--space-3); padding: var(--space-3); overflow-x: auto; border: 1px solid var(--line); background: var(--panel); font-size: var(--text-sm); line-height: 1.45; white-space: pre; }
+.note-body :not(pre) > code { padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); font-size: .9em; }
+.note-body a { color: var(--cyan-bright); }
+.note-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--cyan-bright); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+.note-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-link:focus-visible { color: var(--hover-fg); }
+.note-body .inline-tag { vertical-align: baseline; }
+.note-table-scroll { margin: 0 0 var(--space-3); overflow-x: auto; }
+.note-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); line-height: 1.4; }
+.note-table th, .note-table td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.note-table th { background: var(--panel); color: var(--muted); font: var(--text-xs) var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.note-table tr.is-done .note-query-title { text-decoration: line-through; }
+
+/* A task: its box, then its words, struck through once done. */
+.note-task { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-2); margin: 2px 0; }
+.note-task-box { width: 16px; height: 16px; margin: 4px 0 0; accent-color: var(--accent); cursor: pointer; }
+.note-task.is-done > .note-task-body > .note-task-title { color: var(--muted); text-decoration: line-through; }
+.note-task-body > ul, .note-task-body > ol { margin-top: 2px; margin-bottom: 0; }
+
+/* A query block: its search, its counts, and its results, live. */
+.note-query { margin: 0 0 var(--space-4); padding: var(--space-3); border: 1px solid var(--line); border-left: 3px solid var(--cyan); background: var(--panel); }
+.note-query-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); padding: 0 0 var(--space-2); border-bottom: 1px solid var(--line); }
+.note-query-text { color: var(--text); font-size: var(--text-sm); }
+.note-query-counts { margin-left: auto; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.note-query-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.note-query-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); padding: 4px 0; }
+.note-query-row:not(:has(.note-task-box)) { grid-template-columns: minmax(0, 1fr); }
+.note-query-body { display: grid; }
+.note-query-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.note-query-title:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-query-title:focus-visible { color: var(--hover-fg); text-decoration: underline; }
+.note-query-row.is-done .note-query-title { color: var(--muted); text-decoration: line-through; }
+.note-query-detail, .note-query-more { color: var(--muted); font-size: var(--text-xs); }
+.note-query-more { margin: var(--space-2) 0 0; }
+.note-query-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: var(--text-sm); }
+.note-query .note-table-scroll { margin: var(--space-2) 0 0; }
+.note-query td .note-task-box { margin: 2px var(--space-2) 0 0; vertical-align: top; }
+
+/* An embed: what it names, under a title that opens it. */
+.note-embed { margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3) var(--space-1); border-left: 3px solid var(--line-strong); background: var(--panel); }
+.note-embed-header { margin-bottom: var(--space-2); }
+.note-embed-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); font: var(--text-xs) var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
+button.note-embed-title { cursor: pointer; }
+button.note-embed-title:hover:where(:not(:disabled):not([aria-disabled="true"])), button.note-embed-title:focus-visible { color: var(--hover-fg); }
+.note-embed-missing { margin: 0 0 var(--space-2); color: var(--muted); font-size: var(--text-sm); font-style: italic; }
+
+/* The line a note was opened at, marked for a moment. */
+.note-body [data-line] { scroll-margin: var(--space-6); }
+.note-body .is-focused { outline: 1px solid var(--accent); outline-offset: 4px; transition: outline-color 1.2s ease; }
+
+/* What links here. */
+.note-backlinks { margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--edge) solid var(--line-strong); }
+.note-backlinks > ul { display: grid; gap: var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.note-backlink-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--cyan-bright); font: inherit; font-weight: 600; cursor: pointer; }
+.note-backlink-title:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-backlink-title:focus-visible { color: var(--hover-fg); text-decoration: underline; }
+.note-backlink-more { color: var(--muted); font-size: var(--text-xs); }
+.note-backlink-lines { margin: 4px 0 0; padding: 0 0 0 var(--space-3); list-style: none; border-left: 1px solid var(--line); }
+.note-backlink-line { min-height: 0; padding: 2px 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.note-backlink-line:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-backlink-line:focus-visible { color: var(--hover-fg); }
+.note-missing, .note-empty { margin: var(--space-4) 0 0; color: var(--muted); }

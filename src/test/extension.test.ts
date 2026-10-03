@@ -163,6 +163,7 @@ suite('Extension Test Suite', () => {
         'deckard.moveTo',
         'deckard.extractHeading',
         'deckard.copyAsPlainMarkdown',
+        'deckard.openNotePage',
         'deckard.showTagOverview',
         'deckard.search',
         'deckard.insertQueryBlock',

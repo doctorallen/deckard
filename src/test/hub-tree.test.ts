@@ -60,14 +60,20 @@ suite('Notes under their hubs', () => {
 
   test('breadcrumbs run from the namespace down to the note, by up: first', () => {
     assert.deepStrictEqual(findBreadcrumbs(index, 'notes/cutover.md'), [
-      { labels: ['Projects', 'Atlas', 'Ledger migration', 'Cutover plan'], parent: 'hubs/Ledger.md' },
+      {
+        labels: ['Projects', 'Atlas', 'Ledger migration', 'Cutover plan'],
+        parent: 'hubs/Ledger.md',
+        notes: ['hubs/Atlas.md', 'hubs/Ledger.md', 'notes/cutover.md'],
+      },
     ]);
     assert.deepStrictEqual(
       findBreadcrumbs(index, 'notes/kickoff.md').map((crumbs) => crumbs.labels.join(' › ')).sort(),
       ['Projects › Atlas › Kickoff', 'Projects › Borealis › Kickoff'],
     );
     assert.deepStrictEqual(findBreadcrumbs(index, 'hubs/Atlas.md'), [], 'a hub at the top has none');
-    assert.deepStrictEqual(findBreadcrumbs(index, 'notes/child.md'), [{ labels: ['Plain', 'Child'], parent: 'notes/Plain.md' }]);
+    assert.deepStrictEqual(findBreadcrumbs(index, 'notes/child.md'), [
+      { labels: ['Plain', 'Child'], parent: 'notes/Plain.md', notes: ['notes/Plain.md', 'notes/child.md'] },
+    ]);
   });
 
   test('reads up: as a link, a name, or a list', () => {

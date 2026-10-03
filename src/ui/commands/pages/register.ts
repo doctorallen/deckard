@@ -6,8 +6,8 @@ import { registerCommand } from '../runCommand';
 
 /**
  * Opening the pages: Home, Stats, Help and What's new, the Notes Graph and
- * its nodes, the Calendar page, the Task Board, and Related Notes for one
- * entry.
+ * its nodes, the Calendar page, the Task Board, the note page, and Related
+ * Notes for one entry.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { indexer, whatsNew, tryNext } = services;
@@ -47,9 +47,35 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       await taskBoard.show();
       await tryNext.retire('taskBoard');
     }),
+    ...registerNotePageCommands(services),
     ...registerGraphNodeCommands(services),
     ...registerEntryRelatedNotes(services),
   );
+}
+
+/**
+ * Open Note as Page: a note it is given, at a line, or, from the palette,
+ * the note in the editor at the cursor's line.
+ */
+function registerNotePageCommands(services: Services): vscode.Disposable[] {
+  const { indexer } = services;
+  const { notePage } = services.pages;
+  return [
+    registerCommand('deckard.openNotePage', async (filePath?: unknown, line?: unknown, options?: unknown) => {
+      const beside = typeof options === 'object' && options !== null && (options as { beside?: unknown }).beside === true;
+      if (typeof filePath === 'string' && filePath) {
+        const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : undefined;
+        await notePage.show({ filePath, ...(at ? { line: at } : {}) }, beside);
+        return;
+      }
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !indexer.isNotesFile(editor.document.uri)) {
+        void vscode.window.showInformationMessage('Open a note to read it as a page.');
+        return;
+      }
+      await notePage.show({ filePath: indexer.getFilePath(editor.document.uri), line: editor.selection.active.line + 1 }, beside);
+    }),
+  ];
 }
 
 /** What the Notes Graph page runs on a node it was clicked or hovered on. */

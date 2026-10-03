@@ -61,6 +61,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.resetMcpToken': 'Makes a new token, so old setups stop working.',
   'deckard.moveTo': 'Moves this line, task, or selection under another heading, leaving a link.',
   'deckard.agenda.moveTo': 'Moves the task under another heading.',
+  'deckard.openNotePage': 'Opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working.',
   'deckard.copyAsPlainMarkdown':
     'Copies the note, or the selection, with its embeds, query results, and links written out for elsewhere.',
   'deckard.exportTaskCalendar': 'Writes your dated tasks to a calendar file for a calendar app.',
