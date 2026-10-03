@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
-import { createNotePageSnapshot } from '../ui/state/notePageState';
+import { createNotePageSnapshot, describeTagKind } from '../ui/state/notePageState';
 import { NoteBlock } from '../ui/protocol/notePage';
 import { WorkspaceIndex } from '../domain/model';
 
@@ -122,6 +122,8 @@ suite('The note page', () => {
     ]);
     assert.ok(page.tags.some((tag) => tag.label === '#topic/finance'));
     assert.strictEqual(page.hub?.tagKey, '#project/atlas');
+    assert.strictEqual(page.hub?.kind, 'Project');
+    assert.deepStrictEqual(['#team/harbor', '@dana', '#person/sable-ortiz', '#follow-up', '#area/home-office'].map(describeTagKind), ['Team', 'Person', 'Person', 'Tag', 'Area']);
     assert.match(page.hub?.label ?? '', /done/);
   });
 

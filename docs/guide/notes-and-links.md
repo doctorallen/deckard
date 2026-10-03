@@ -57,7 +57,7 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 - **Tasks** have working boxes, with **Undo** in the message, and steps sit under their task.
 - **Query blocks** draw their results live, a list or a table, and each row opens what it lists. **Embeds** draw what they name, with a title that opens it.
 - **Front matter** is a row of properties under the title, a tag among the values a button. A note under a [hub](search-pages.md#the-hubs-view) shows where it sits.
-- **Progress.** A note with tasks shows a **Tasks** bar under its title: how many of its own tasks are done, how many are overdue, and when the next is due, steps aside. A hub note shows a **Project** bar above it too, for every task its tag finds in any note, with a button to the tag's page.
+- **Progress.** A note with tasks shows a **Tasks** bar under its title: how many of its own tasks are done, how many are overdue, and when the next is due, steps aside. A hub note shows a bar above it too, for every task its tag finds in any note, labeled by what the tag names, such as **Project**, **Team**, or **Person**, with a button to the tag's page.
 - **Linked from** lists the notes that link here, each with the lines that do.
 - **Open in Editor** opens the note at the line in view, and a double-click on a paragraph, a task, or a block opens the editor at its line. Shift-click a link to open its note in the editor instead.
 

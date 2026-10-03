@@ -86,7 +86,7 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
 function HubLine({ hub }: { readonly hub: NonNullable<NotePageSnapshot['hub']> }) {
   return (
     <div class="note-progress">
-      <span class="eyebrow" data-tip={`Every task ${hub.tagLabel} finds, in any note`}>Project</span>
+      <span class="eyebrow" data-tip={`Every task ${hub.tagLabel} finds, in any note`}>{hub.kind}</span>
       <ProgressBar done={hub.done} total={hub.total} />
       <span class="note-progress-label">{hub.label}</span>
       <button type="button" class="tag-note-action" data-action="open-tag" data-tag-key={hub.tagKey} data-tip={`Open ${hub.tagLabel}'s page`}>{`Open ${hub.tagLabel}`}</button>

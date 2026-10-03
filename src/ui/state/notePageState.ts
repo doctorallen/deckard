@@ -1,6 +1,7 @@
 import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
+import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import { MarkdownToken, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { EMBED_LINE, resolveEmbed, createSourceParser } from '../../domain/notes/embeds';
@@ -486,11 +487,25 @@ function describeHub(index: WorkspaceIndex, file: ParsedFile, context: QueryCont
     hub: {
       tagKey: tag.key,
       tagLabel: index.tags.get(tag.key)?.label ?? tag.label,
+      kind: describeTagKind(tag.key),
       done: progress?.done ?? 0,
       total: progress?.total ?? 0,
       label: progress ? describeTagProgress(progress, context.now, context.taskPolicy) : 'No tasks yet',
     },
   };
+}
+
+/**
+ * What a hub's tag names, by its namespace, as its progress bar is labeled:
+ * Project for `#project/atlas`, Person for an `@` tag, and Tag for one
+ * with no namespace.
+ */
+export function describeTagKind(tagKey: string): string {
+  if (tagKey.startsWith('@')) {
+    return 'Person';
+  }
+  const namespace = readTagNamespace(tagKey);
+  return namespace ? formatKeyWords(namespace) : 'Tag';
 }
 
 /** How far along the note's own tasks are, as the index has them now. */
