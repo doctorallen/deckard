@@ -63,6 +63,22 @@ async function readNote(uri: vscode.Uri): Promise<string> {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
+/**
+ * The note's text once it reads as `expected`, or as it last read after five
+ * seconds. A write or an Undo started by answering a message runs after the
+ * answer, in the history's turn, and VS Code saves the note after that, so a
+ * fixed wait can read the note too early on a busy machine.
+ */
+async function noteReads(uri: vscode.Uri, expected: string): Promise<string> {
+  const until = Date.now() + 5000;
+  let text = await readNote(uri);
+  while (text !== expected && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    text = await readNote(uri);
+  }
+  return text;
+}
+
 suite('Break into Steps', () => {
   // Each test writes to a history of its own, so one test's Undo never
   // reaches another's write.
@@ -153,14 +169,12 @@ suite('Break into Steps', () => {
         assert.strictEqual(await addTaskSteps(createTaskWrites(history), task, ['Draft the email', 'Send the invite']), true);
         return messages;
       });
-      assert.strictEqual(
-        await readNote(uri),
-        '# Offsite\n\n- [ ] Plan the offsite 📅 2026-10-09\n  - [x] Book the venue\n    call first\n  - [ ] Draft the email\n  - [ ] Send the invite\n\nAfter.\n',
-      );
+      const written = '# Offsite\n\n- [ ] Plan the offsite 📅 2026-10-09\n  - [x] Book the venue\n    call first\n  - [ ] Draft the email\n  - [ ] Send the invite\n\nAfter.\n';
+      assert.strictEqual(await noteReads(uri, written), written);
       assert.deepStrictEqual(shown[0], ['Wrote 2 steps under "Plan the offsite".', 'Undo']);
       assert.strictEqual(history.lastWrite?.label, 'writing 2 steps under "Plan the offsite"');
       await history.undo();
-      assert.strictEqual(await readNote(uri), content);
+      assert.strictEqual(await noteReads(uri, content), content);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -176,7 +190,7 @@ suite('Break into Steps', () => {
         await settle();
       }, 'Undo');
       await settle();
-      assert.strictEqual(await readNote(uri), content, 'the note ends as it did, without a newline');
+      assert.strictEqual(await noteReads(uri, content), content, 'the note ends as it did, without a newline');
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -188,7 +202,7 @@ suite('Break into Steps', () => {
       const [task] = parseMarkdown(uri.fsPath, '- [ ] Plan the party\n').tasks;
       const written = await withMessages(() => addTaskSteps(createTaskWrites(history), task, ['One']));
       assert.strictEqual(written, false);
-      assert.strictEqual(await readNote(uri), '- [ ] Plan the offsite\n');
+      assert.strictEqual(await noteReads(uri, '- [ ] Plan the offsite\n'), '- [ ] Plan the offsite\n');
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
@@ -221,7 +235,7 @@ suite('Completing steps', () => {
         'Undo',
       ]);
       assert.strictEqual(
-        await readNote(uri),
+        await noteReads(uri, `- [ ] Plan the offsite\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`),
         `- [ ] Plan the offsite\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`,
         'nothing is completed for the reader',
       );
@@ -236,7 +250,7 @@ suite('Completing steps', () => {
         await settle();
       }, 'Complete Task');
       assert.strictEqual(
-        await readNote(uri),
+        await noteReads(uri, `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`),
         `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`,
       );
     } finally {
@@ -263,7 +277,7 @@ suite('Completing steps', () => {
         'Undo',
       ]);
       assert.strictEqual(
-        await readNote(uri),
+        await noteReads(uri, `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue ✅ ${today}\n  - [x] Pay\n  - [x] Draft the email ✅ ${today}\n- [ ] Next\n`),
         `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue ✅ ${today}\n  - [x] Pay\n  - [x] Draft the email ✅ ${today}\n- [ ] Next\n`,
       );
       assert.strictEqual(history.lastWrite?.label, 'completing 2 steps of "Plan the offsite"');
@@ -283,20 +297,18 @@ suite('Completing steps', () => {
       }, 'Undo');
       await settle();
       await settle();
-      assert.strictEqual(await readNote(uri), content, 'Undo takes back the next occurrence and its steps too');
+      assert.strictEqual(await noteReads(uri, content), content, 'Undo takes back the next occurrence and its steps too');
       await withMessages(() => toggleTask(createTaskWrites(history), task, true));
-      assert.strictEqual(
-        await readNote(uri),
-        [
-          '- [ ] Weekly review 📅 2026-09-17 🔁 every week',
-          '  - [ ] Inbox to zero',
-          '  - [ ] Plan the week',
-          `- [x] Weekly review 📅 2026-09-10 🔁 every week ✅ ${today}`,
-          '  - [x] Inbox to zero ✅ 2026-09-09',
-          '  - [ ] Plan the week',
-          '',
-        ].join('\n'),
-      );
+      const nextOccurrence = [
+        '- [ ] Weekly review 📅 2026-09-17 🔁 every week',
+        '  - [ ] Inbox to zero',
+        '  - [ ] Plan the week',
+        `- [x] Weekly review 📅 2026-09-10 🔁 every week ✅ ${today}`,
+        '  - [x] Inbox to zero ✅ 2026-09-09',
+        '  - [ ] Plan the week',
+        '',
+      ].join('\n');
+      assert.strictEqual(await noteReads(uri, nextOccurrence), nextOccurrence);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
