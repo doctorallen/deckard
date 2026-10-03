@@ -1,0 +1,54 @@
+name: CodeQL
+
+# GitHub's code scanning: the TypeScript and JavaScript the extension and its
+# pages are made of, and these workflows themselves, read for security
+# mistakes such as untrusted text reaching a script or a shell. Findings
+# appear in the repository's Security tab and on the pull request.
+#
+# A pull request is scanned, master is scanned after each merge, so GitHub
+# has the default branch to compare a pull request against, and once a week
+# a scan with CodeQL's newest queries runs on master.
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Neither language is compiled for the scan, so nothing is built.
+      - name: Set up CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - name: Scan
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: /language:${{ matrix.language }}
