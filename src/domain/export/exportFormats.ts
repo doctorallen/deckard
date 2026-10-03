@@ -105,16 +105,20 @@ export function csv(headers: readonly string[], rows: readonly (readonly string[
   return [headers, ...rows].map((row) => row.map(field).join(',')).join('\r\n') + '\r\n';
 }
 
-/** A pipe inside a cell would end it, and a line break would end the row. */
+/**
+ * A pipe inside a cell would end it, and a line break would end the row. A
+ * backslash is escaped first, so one already before a pipe does not turn
+ * the pipe's escape into a backslash of its own.
+ */
 export function markdownTable(headers: readonly string[], rows: readonly (readonly string[])[]): string {
-  const cell = (value: string): string => value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  const cell = (value: string): string => value.replace(/[\\|]/g, '\\$&').replace(/\r?\n/g, ' ');
   const line = (values: readonly string[]): string => `| ${values.map(cell).join(' | ')} |`;
   return [line(headers), `| ${headers.map(() => '---').join(' | ')} |`, ...rows.map(line)].join('\n') + '\n';
 }
 
-/** Text safe inside a Markdown link's words, on one line. */
+/** Text safe inside a Markdown link's words, on one line; a backslash is escaped with the brackets. */
 function escapeMarkdown(value: string): string {
-  return value.replace(/[[\]]/g, '\\$&').replace(/\r?\n/g, ' ');
+  return value.replace(/[\\[\]]/g, '\\$&').replace(/\r?\n/g, ' ');
 }
 
 /** The link to a line of a note, as a Markdown link target. */

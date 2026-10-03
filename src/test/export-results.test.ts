@@ -48,6 +48,14 @@ suite('Exporting results', () => {
     );
   });
 
+  test('a backslash already in a cell or a link is escaped too, so it does not undo the escape after it', () => {
+    // a\|b once came out as a\\|b: an escaped backslash, then a pipe that
+    // ended the cell. The backslash is now escaped first.
+    assert.strictEqual(markdownTable(['x'], [['a\\|b']]), '| x |\n| --- |\n| a\\\\\\|b |\n');
+    const list = formatNotes(noteRows([section({ heading: 'Plan \\]' })]), 'markdown-list');
+    assert.ok(list.startsWith('- [Plan \\\\\\]]('), list);
+  });
+
   test('notes go out with their title, tags, note, line and date', () => {
     const rows = noteRows([section()]);
     const table = formatNotes(rows, 'markdown-table');

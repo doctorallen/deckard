@@ -31,9 +31,18 @@ const clicks = (process.env.DECKARD_SCREENSHOT_CLICK ?? '')
   .map((selector) => selector.trim())
   .filter(Boolean);
 
+/**
+ * A string as a JavaScript literal that is safe to put in code run in the
+ * workbench: `<`, `>`, and the line and paragraph separators are escaped,
+ * so no value can end the code or a script around it.
+ */
+function jsString(value) {
+  return JSON.stringify(value).replace(/[<>\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
 /** A check, run in the workbench, that a side bar pane such as a tree view is expanded and lists rows. */
 function expandedPaneWithRows(title) {
-  return `[...document.querySelectorAll('.pane')].some((pane) => { const header = pane.querySelector('.pane-header'); return header?.getAttribute('aria-expanded') === 'true' && header.querySelector('.title')?.textContent?.trim() === ${JSON.stringify(title)} && pane.querySelectorAll('.pane-body .monaco-list-row').length > 2; })`;
+  return `[...document.querySelectorAll('.pane')].some((pane) => { const header = pane.querySelector('.pane-header'); return header?.getAttribute('aria-expanded') === 'true' && header.querySelector('.title')?.textContent?.trim() === ${jsString(title)} && pane.querySelectorAll('.pane-body .monaco-list-row').length > 2; })`;
 }
 
 /**

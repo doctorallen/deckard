@@ -245,10 +245,11 @@ const SETTLED = '*, *::before, *::after { transition-duration: 0s !important; tr
 
 /**
  * JSON that can sit inside a <script>: a `<` in it is written as an escape,
- * so no `</script>` in a message's text ends the script early.
+ * so no `</script>` in a message's text ends the script early, and so are
+ * the line and paragraph separators, which end a line inside a script.
  */
 function scriptJson(value) {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
+  return JSON.stringify(value).replace(/[<\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
 }
 
 /**
@@ -311,7 +312,7 @@ function buildPage(source, surface, probe = probeScript(surface), options = {}) 
   const html = allowHarnessScripts(source, readPageNonce(source));
   // Help draws without a state; every other page waits for one.
   const state = surface.snapshot
-    ? `window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(surface.snapshot())} } }));\n`
+    ? `window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${scriptJson(surface.snapshot())} } }));\n`
     : '';
   // The page keeps its Content-Security-Policy, which Chrome enforces as VS
   // Code does, so a page that needs something its policy blocks fails here
