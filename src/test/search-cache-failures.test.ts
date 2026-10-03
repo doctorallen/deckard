@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -189,11 +189,11 @@ suite('Opening a search cache that cannot be used', () => {
   });
 
   test('a cache that cannot be opened is kept in memory, and the log says so', () => {
-    // A folder where the cache file should be cannot be opened as one on
-    // any system; a read-only folder can be written on Windows, which
-    // ignores its mode.
-    const folder = join(base, 'blocked');
-    mkdirSync(join(folder, 'deckard-search.sqlite'), { recursive: true });
+    // A storage folder that is a file cannot hold the cache on any system;
+    // a read-only folder can be written on Windows, which ignores its mode,
+    // and SQLite asked to open a folder crashes the extension host on macOS.
+    const folder = join(base, 'not-a-folder');
+    writeFileSync(folder, 'a file where the storage folder should be');
     const log = captureLog();
     let store: SearchStore | undefined;
     try {

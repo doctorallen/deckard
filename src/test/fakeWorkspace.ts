@@ -1,9 +1,7 @@
 // A workspace in memory for the index's suites: URIs, folders, settings,
 // and change events that behave as VS Code's do for the parts the scanner
 // and indexer read, so those suites run under plain mocha.
-// The fake's paths are a URI's, with forward slashes on every system, so
-// they are joined and split as POSIX paths, also on Windows.
-import { posix as path } from 'path';
+import * as path from 'path';
 
 import { Emitter } from '../shared/emitter';
 import type { WorkspaceFileAccess } from '../core/workspace/scanner';
@@ -192,6 +190,15 @@ export class FakeWorkspaceEvents implements WorkspaceEvents {
  * to exist, and creating a folder creates its parents.
  */
 export class FakeFileSystem implements FileSystem {
+  /**
+   * A path as the maps hold it, with forward slashes on every system. Tests
+   * name files as /ws/notes/Atlas.md, while a path joined on Windows comes
+   * out with backslashes, so both are read the same way.
+   */
+  private static keyOf(uri: ResourceUri): string {
+    return uri.fsPath.replace(/\\/g, '/');
+  }
+
   /** Each file's bytes, by path. */
   public readonly files = new Map<string, Uint8Array>();
   /** Each folder, by path. */
@@ -204,50 +211,50 @@ export class FakeFileSystem implements FileSystem {
 
   /** A file's size and kind; times are zero. */
   public async stat(uri: ResourceUri): Promise<FileStat> {
-    const bytes = this.files.get(uri.fsPath);
+    const bytes = this.files.get(FakeFileSystem.keyOf(uri));
     if (bytes) {
       return { type: FileType.File, ctime: 0, mtime: 0, size: bytes.byteLength };
     }
-    if (this.folders.has(uri.fsPath)) {
+    if (this.folders.has(FakeFileSystem.keyOf(uri))) {
       return { type: FileType.Directory, ctime: 0, mtime: 0, size: 0 };
     }
-    throw new Error(`ENOENT: ${uri.fsPath}`);
+    throw new Error(`ENOENT: ${FakeFileSystem.keyOf(uri)}`);
   }
 
   /** A file's bytes; rejects for a missing file. */
   public async readFile(uri: ResourceUri): Promise<Uint8Array> {
-    const bytes = this.files.get(uri.fsPath);
+    const bytes = this.files.get(FakeFileSystem.keyOf(uri));
     if (!bytes) {
-      throw new Error(`ENOENT: ${uri.fsPath}`);
+      throw new Error(`ENOENT: ${FakeFileSystem.keyOf(uri)}`);
     }
     return bytes;
   }
 
   /** Writes a file whole; rejects when its folder does not exist. */
   public async writeFile(uri: ResourceUri, content: Uint8Array): Promise<void> {
-    if (!this.folders.has(path.dirname(uri.fsPath))) {
-      throw new Error(`ENOENT: ${path.dirname(uri.fsPath)}`);
+    if (!this.folders.has(path.posix.dirname(FakeFileSystem.keyOf(uri)))) {
+      throw new Error(`ENOENT: ${path.posix.dirname(FakeFileSystem.keyOf(uri))}`);
     }
-    this.files.set(uri.fsPath, Uint8Array.from(content));
+    this.files.set(FakeFileSystem.keyOf(uri), Uint8Array.from(content));
   }
 
   /** The files and folders directly in a folder; rejects for a missing one. */
   public async readDirectory(uri: ResourceUri): Promise<Array<[string, number]>> {
-    if (!this.folders.has(uri.fsPath)) {
-      throw new Error(`ENOENT: ${uri.fsPath}`);
+    if (!this.folders.has(FakeFileSystem.keyOf(uri))) {
+      throw new Error(`ENOENT: ${FakeFileSystem.keyOf(uri)}`);
     }
-    const inFolder = (candidate: string) => path.dirname(candidate) === uri.fsPath;
+    const inFolder = (candidate: string) => path.posix.dirname(candidate) === FakeFileSystem.keyOf(uri);
     return [
-      ...[...this.folders].filter(inFolder).map((folder): [string, number] => [path.basename(folder), FileType.Directory]),
-      ...[...this.files.keys()].filter(inFolder).map((file): [string, number] => [path.basename(file), FileType.File]),
+      ...[...this.folders].filter(inFolder).map((folder): [string, number] => [path.posix.basename(folder), FileType.Directory]),
+      ...[...this.files.keys()].filter(inFolder).map((file): [string, number] => [path.posix.basename(file), FileType.File]),
     ];
   }
 
   /** Creates a folder and its parents. */
   public async createDirectory(uri: ResourceUri): Promise<void> {
-    for (let folder = uri.fsPath; !this.folders.has(folder); folder = path.dirname(folder)) {
+    for (let folder = FakeFileSystem.keyOf(uri); !this.folders.has(folder); folder = path.posix.dirname(folder)) {
       this.folders.add(folder);
-      if (path.dirname(folder) === folder) {
+      if (path.posix.dirname(folder) === folder) {
         return;
       }
     }
@@ -255,8 +262,8 @@ export class FakeFileSystem implements FileSystem {
 
   /** Deletes a file; rejects for a missing one. */
   public async delete(uri: ResourceUri): Promise<void> {
-    if (!this.files.delete(uri.fsPath)) {
-      throw new Error(`ENOENT: ${uri.fsPath}`);
+    if (!this.files.delete(FakeFileSystem.keyOf(uri))) {
+      throw new Error(`ENOENT: ${FakeFileSystem.keyOf(uri)}`);
     }
   }
 }
