@@ -149,6 +149,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
     <article
       class={card.completed ? 'task board-card completed' : 'task board-card'}
       draggable={true}
+      data-tip-around=""
       tabIndex={tabStop ? 0 : -1}
       aria-label={cardName}
       aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"

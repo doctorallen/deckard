@@ -15,6 +15,8 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { deckardThemes } from '../ui/webview/themeNames';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createDeckardStatsSnapshot } from '../ui/state/statsState';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
+import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,
@@ -362,6 +364,106 @@ suite('Component primitives', () => {
         assert.strictEqual(found, undefined, `${surface} (as drawn): ${found?.outerHTML.slice(0, 120)}`);
       });
       assert.ok(read >= 22, `every surface's drawn DOM is read (${read})`);
+    });
+
+    /** A box in the window, and whether two share any of it. */
+    type Box = { left: number; top: number; width: number; height: number };
+    const overlaps = (a: Box, b: Box): boolean =>
+      a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height;
+    /**
+     * Draws the elements given where the boxes say, the tip 200 by 40, in a
+     * window 400 by 600, as a narrow sidebar is; jsdom lays nothing out.
+     */
+    const layOut = (target: WebviewPage, boxes: ReadonlyMap<Element, Box>): void => {
+      Object.defineProperty(target.window, 'innerWidth', { configurable: true, value: 400 });
+      Object.defineProperty(target.window, 'innerHeight', { configurable: true, value: 600 });
+      Object.defineProperty(target.window.Element.prototype, 'getBoundingClientRect', {
+        configurable: true,
+        value(this: Element) {
+          const box = this.id === 'deckard-tip' ? { left: 0, top: 0, width: 200, height: 40 } : boxes.get(this) ?? { left: 0, top: 0, width: 0, height: 0 };
+          return { x: box.left, y: box.top, ...box, right: box.left + box.width, bottom: box.top + box.height };
+        },
+      });
+    };
+    const tipBox = (target: WebviewPage): Box => {
+      const shown = tip(target) as HTMLElement;
+      assert.strictEqual(shown.hidden, false, 'the tip shows');
+      return { left: parseFloat(shown.style.left), top: parseFloat(shown.style.top), width: 200, height: 40 };
+    };
+
+    test('a Related Notes card\'s tip leaves its relevance breakdown to be read', () => {
+      // As David saw it: the breakdown hangs from the score past the card's
+      // foot, and the card's tip was drawn over it.
+      const index = buildWorkspaceIndex(new Map([
+        ['notes/a.md', parseMarkdown('notes/a.md', '# Requirements #project/ghostline-relay\nClassify only authorized relay traffic.\n')],
+        ['notes/b.md', parseMarkdown('notes/b.md', '# Relay drills #project/ghostline-relay\nThe pilot stays on relay traffic.\n')],
+      ]));
+      page = openWebviewPage(renderPage('sidebarNotes'), {
+        ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+        parkedTags: [],
+      });
+      const card = page.find('article.note') as HTMLElement;
+      const breakdown = card.querySelector('.relevance-tooltip') as Element;
+      assert.ok(breakdown, 'the card holds its breakdown');
+      const cardBox = { left: 10, top: 40, width: 380, height: 90 };
+      const breakdownBox = { left: 160, top: 70, width: 220, height: 130 };
+      layOut(page, new Map([[card, cardBox], [breakdown, breakdownBox]]));
+      keyFocus(page, 'article.note');
+      const placed = tipBox(page);
+      assert.match(String(tip(page)?.textContent), /^Open this entry/);
+      assert.ok(!overlaps(placed, breakdownBox), `the tip ${JSON.stringify(placed)} covers the breakdown`);
+      assert.ok(!overlaps(placed, cardBox), `the tip ${JSON.stringify(placed)} covers the card`);
+    });
+
+    test('a tag pair\'s tip leaves the count it folds under its row to be read', () => {
+      // As David saw it: the row's count opens under it on hover, in the
+      // row's frame carried down, and the row's tip was drawn over it.
+      const index = buildWorkspaceIndex(new Map(Array.from({ length: 3 }, (_, n) => [
+        `notes/n${n}.md`,
+        parseMarkdown(`notes/n${n}.md`, `# Shift ${n} #person/sable-ortiz #team/harbor\nOn the harbor shift.\n`),
+      ])));
+      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+      const preferences = {
+        ...store.reader.value,
+        dashboardViewState: { ...store.reader.value.dashboardViewState, mode: 'home' as const },
+        dashboardWidgets: [{ id: 'p', kind: 'tagPairs' as const, width: 'full' as const, count: 10 }],
+      };
+      const queryContext = createQueryContext(Date.now());
+      page = openWebviewPage(renderPage('dashboard'), {
+        ...createDashboardSnapshot({ index, preferences, queryContext }),
+        widgets: createDashboardWidgets(index, preferences, { queryContext, upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+      });
+      const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
+      const detail = row.querySelector('.home-row-detail') as Element;
+      const rowBox = { left: 10, top: 100, width: 380, height: 28 };
+      // Folded under the row, a line of 16 px, 2 px past its foot.
+      const detailBox = { left: 20, top: 130, width: 360, height: 16 };
+      layOut(page, new Map([[row, rowBox], [detail, detailBox]]));
+      keyFocus(page, '.home-row[data-query="#person/sable-ortiz AND #team/harbor"]');
+      const placed = tipBox(page);
+      assert.match(String(tip(page)?.textContent), /carry both.*Search for both\.$/);
+      assert.ok(!overlaps(placed, detailBox), `the tip ${JSON.stringify(placed)} covers the count`);
+      assert.ok(!overlaps(placed, rowBox), `the tip ${JSON.stringify(placed)} covers the row`);
+    });
+
+    test('every card or row that shows more of itself on hover says so to the tip', () => {
+      // provenance.css folds a line under each of these, and a saved
+      // search's criteria open under its row; the tip keeps off them only
+      // where the card says it shows them (data-tip-around).
+      const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
+      let seen = 0;
+      const read = readGoldens((surface, body) => {
+        // Help's cards and notes are callouts in prose: they fold nothing
+        // under them and hold no tip.
+        if (surface.startsWith('help')) {
+          return;
+        }
+        for (const card of body.querySelectorAll(opening)) {
+          seen += 1;
+          assert.ok(card.hasAttribute('data-tip-around'), `${surface}: ${card.outerHTML.slice(0, 120)}`);
+        }
+      });
+      assert.ok(read >= 22 && seen > 20, `every surface's drawn DOM is read (${read} surfaces, ${seen} cards)`);
     });
 
     test('the pointer waits 400 ms, and touch shows nothing', async () => {

@@ -24,7 +24,7 @@ interface HomeRowProps {
 /** A row that opens something: a tag, a search, or a note. */
 export function HomeRow({ action, attributes, label, detail }: HomeRowProps) {
   return (
-    <button type="button" class="row saved-filter-row home-row" data-action={action} {...attributes}>
+    <button type="button" class="row saved-filter-row home-row" data-action={action} data-tip-around="" {...attributes}>
       <span class="home-row-label">{label}</span>
       {detail ? <span class="home-row-detail">{detail}</span> : null}
     </button>
@@ -129,7 +129,7 @@ export function TagPairs({ pairs }: { readonly pairs: readonly DashboardWidgetTa
       {pairs.map((pair) => {
         const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
         return (
-          <button key={query} type="button" class="row saved-filter-row home-row" data-action="open-search" data-query={query} data-tip={`${pair.detail}. Search for both.`}>
+          <button key={query} type="button" class="row saved-filter-row home-row" data-action="open-search" data-query={query} data-tip-around="" data-tip={`${pair.detail}. Search for both.`}>
             <span class="home-row-label">
               <span class="home-tag-pair"><TagLabel label={pair.tags[0].label} /><span class="home-tag-pair-join">+</span><TagLabel label={pair.tags[1].label} /></span>
             </span>
@@ -165,7 +165,7 @@ export function SavedFilterRow({ filter }: { readonly filter: DashboardSavedFilt
   // The criteria are the row's own child, not wrapped with the name: the
   // frame they open in is inherited, and a wrapper has none to give.
   return (
-    <div class="row saved-filter-row" tabIndex={0} data-saved-filter-id={filter.id}>
+    <div class="row saved-filter-row" tabIndex={0} data-tip-around="" data-saved-filter-id={filter.id}>
       <div class="saved-filter-name">{filter.name}</div>
       <span class="saved-filter-actions">
         {/* A search Home does not list yet offers to list it there. */}

@@ -7,6 +7,9 @@
  *   data-tip-key       the key that does the same, drawn as <kbd>
  *   data-tip-disabled  why it cannot act, used while aria-disabled="true"
  *   data-tip-overflow  the whole of a tag or chip, shown only when cut short
+ *   data-tip-around    on a card or row that shows more of itself under the
+ *                      pointer or the focus: where it is written, folded
+ *                      under it, or a panel such as a relevance breakdown
  *
  * A keyboard focus shows the tip at once; the pointer after 400 ms, or at
  * once within 300 ms of another tip closing, so a run along a toolbar does
@@ -16,6 +19,12 @@
  * The tip is one element, `#deckard-tip`, appended to the body the first
  * time a tip shows, outside `#app`, so a page's redraw never takes it away;
  * what it says is drawn into it as a render root of its own.
+ *
+ * A tip goes under its control, or above it where there is no room below.
+ * Inside a card marked data-tip-around, it never covers what the card shows
+ * on hover: a button's tip stays by the button while that covers none of
+ * it, and otherwise, as the card's own tip always does, it goes under the
+ * card and all it shows, or above, or beside, whichever fits the window.
  */
 import { render } from 'preact';
 
@@ -115,19 +124,202 @@ function TipText({ text, keyName }: { readonly text: string; readonly keyName: s
   );
 }
 
-/** Places the tip under its control, or above it where there is no room below, inside the window. */
-function placeTip(element: HTMLElement, target: Element): void {
-  const at = target.getBoundingClientRect();
-  const size = element.getBoundingClientRect();
-  const width = window.innerWidth || document.documentElement.clientWidth || 0;
-  const height = window.innerHeight || document.documentElement.clientHeight || 0;
-  let top = at.bottom + 6;
-  if (height && top + size.height > height - 8) {
-    top = at.top - 6 - size.height;
+/** A box in the window, as `getBoundingClientRect` gives one. */
+interface Box {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
+/** Where the tip may go: its top left corner, and whether it was kept inside the window across already. */
+interface Spot {
+  readonly left: number;
+  readonly top: number;
+  readonly across: boolean;
+}
+
+/** How far the tip keeps from what it is placed by, and from the window's edges. */
+const GAP = 6;
+const MARGIN = 8;
+
+/** What a card shows over its neighbors when it opens one: a popover, a breakdown, a menu. */
+const SHOWN_SELECTOR = '.popover, [role="tooltip"], [role="dialog"], [role="menu"], [role="listbox"]';
+
+/** Where an element is drawn. */
+function boxOf(element: Element): Box {
+  const { top, right, bottom, left } = element.getBoundingClientRect();
+  return { top, right, bottom, left };
+}
+
+/** Whether a box is drawn at all: a folded line is a pixel, a hidden panel nothing. */
+function isDrawn(box: Box): boolean {
+  return box.right - box.left > 1 && box.bottom - box.top > 1;
+}
+
+/** The smallest box around all of the boxes given. */
+function boxAround(boxes: readonly Box[]): Box {
+  return {
+    top: Math.min(...boxes.map((box) => box.top)),
+    right: Math.max(...boxes.map((box) => box.right)),
+    bottom: Math.max(...boxes.map((box) => box.bottom)),
+    left: Math.min(...boxes.map((box) => box.left)),
+  };
+}
+
+/** Whether two boxes share any of the window. */
+function overlaps(a: Box, b: Box): boolean {
+  return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
+/** A length a card's style gives in pixels, or 0. */
+function pixelsOf(style: CSSStyleDeclaration, name: string): number {
+  const value = parseFloat(style.getPropertyValue(name));
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * How far a card's frame reaches down under it while it is under the
+ * pointer or holds the focus, to hold where its entry is written: the
+ * `--reach` of provenance.css, past its own frame. Nothing at rest.
+ */
+function reachOf(card: Element): number {
+  let open = false;
+  try {
+    open = card.matches(':hover') || card.matches(':focus-within');
+  } catch {
+    open = false;
   }
-  const left = at.left + at.width / 2 - size.width / 2;
-  element.style.left = `${Math.max(8, width ? Math.min(left, width - size.width - 8) : left)}px`;
-  element.style.top = `${Math.max(8, top)}px`;
+  if (!open) {
+    return 0;
+  }
+  const style = getComputedStyle(card);
+  const reach = pixelsOf(style, '--reach');
+  return reach ? reach + pixelsOf(style, '--frame') : 0;
+}
+
+/** What an open control in a card has opened outside it, as a menu it names in aria-controls. */
+function openedBy(control: Element, card: Element): Box[] {
+  const boxes: Box[] = [];
+  for (const id of String(control.getAttribute('aria-controls') || '').split(/\s+/).filter(Boolean)) {
+    const panel = document.getElementById(id);
+    const box = panel && !card.contains(panel) ? boxOf(panel) : null;
+    if (box && isDrawn(box)) {
+      boxes.push(box);
+    }
+  }
+  return boxes;
+}
+
+/**
+ * What a card shows now beyond what it is at rest: its frame carried down
+ * under it, what hangs past its top or foot, any popover or panel it holds,
+ * and what an open control in it has opened elsewhere.
+ */
+function shownBy(card: Element, cardBox: Box): Box[] {
+  const shown: Box[] = [];
+  const reach = reachOf(card);
+  if (reach) {
+    shown.push({ top: cardBox.bottom - 1, right: cardBox.right, bottom: cardBox.bottom + reach, left: cardBox.left });
+  }
+  for (const part of [card, ...Array.from(card.querySelectorAll('*'))]) {
+    if (part.getAttribute('aria-expanded') === 'true') {
+      shown.push(...openedBy(part, card));
+    }
+    if (part === card) {
+      continue;
+    }
+    const box = boxOf(part);
+    if (isDrawn(box) && (part.matches(SHOWN_SELECTOR) || box.bottom > cardBox.bottom + 1 || box.top < cardBox.top - 1)) {
+      shown.push(box);
+    }
+  }
+  return shown;
+}
+
+/** A width and a height. */
+interface Size {
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * The spots the tip, of `size`, may take in the window, of `view`, best
+ * first: by the control itself, while its card shows something the tip must
+ * keep off; then under, above, right of, and left of `around`. The spot
+ * above `around` is also where it goes when none fits.
+ */
+function spotsFor(at: Box, around: Box, byControl: boolean, { size, view }: { readonly size: Size; readonly view: Size }): { spots: Spot[]; above: Spot } {
+  const centered = (at.left + at.right) / 2 - size.width / 2;
+  const across = Math.max(MARGIN, view.width ? Math.min(centered, view.width - size.width - MARGIN) : centered);
+  const middle = (at.top + at.bottom) / 2 - size.height / 2;
+  const down = Math.max(MARGIN, view.height ? Math.min(middle, view.height - size.height - MARGIN) : middle);
+  /** Under and above a box, centered on the control, and kept inside the window across. */
+  const vertical = (box: Box): Spot[] => [
+    { left: across, top: box.bottom + GAP, across: true },
+    { left: across, top: box.top - GAP - size.height, across: true },
+  ];
+  const [under, above] = vertical(around);
+  return {
+    spots: [
+      ...(byControl ? vertical(at) : []),
+      under,
+      above,
+      { left: around.right + GAP, top: down, across: false },
+      { left: around.left - GAP - size.width, top: down, across: false },
+    ],
+    above,
+  };
+}
+
+/**
+ * Places the tip by its control, inside the window.
+ *
+ * A control in no card, or in one that shows nothing more, has its tip
+ * under it, or above it where there is no room below. A button in a card
+ * that shows more keeps its tip under or above itself while that covers
+ * none of what the card shows. Otherwise the tip goes by the card and
+ * everything it shows: under, then above, then right, then left, the first
+ * that fits the window; and above when none does.
+ */
+function placeTip(element: HTMLElement, target: Element): void {
+  // Measured where it cannot be squeezed by the window's right edge.
+  element.style.left = '0px';
+  element.style.top = '0px';
+  const { width, height } = element.getBoundingClientRect();
+  const view = {
+    width: window.innerWidth || document.documentElement.clientWidth || 0,
+    height: window.innerHeight || document.documentElement.clientHeight || 0,
+  };
+  const at = boxOf(target);
+  const card = target.closest('[data-tip-around]');
+  const cardBox = card ? boxOf(card) : null;
+  const shown = card && cardBox ? shownBy(card, cardBox) : [];
+  const around = cardBox && (card === target || shown.length) ? boxAround([cardBox, at, ...shown]) : at;
+  const { spots, above } = spotsFor(at, around, card !== target && shown.length > 0, { size: { width, height }, view });
+  const fits = (spot: Spot): boolean => {
+    const box = { left: spot.left, top: spot.top, right: spot.left + width, bottom: spot.top + height };
+    return box.top >= MARGIN && (!view.height || box.bottom <= view.height - MARGIN)
+      && (spot.across || (box.left >= MARGIN && (!view.width || box.right <= view.width - MARGIN)))
+      && !shown.some((part) => overlaps(box, part));
+  };
+  const spot = spots.find(fits) ?? above;
+  element.style.left = `${spot.left}px`;
+  element.style.top = `${Math.max(MARGIN, spot.top)}px`;
+}
+
+/** Places the tip again once the page has drawn what the pointer's move showed, as a card's breakdown. */
+function placeTipAgain(): void {
+  const again = (): void => {
+    if (tip.element && tip.target && !tip.element.hidden) {
+      placeTip(tip.element, tip.target);
+    }
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(again);
+  } else {
+    setTimeout(again, 0);
+  }
 }
 
 /** Shows the tip for a control, or hides it when the control has nothing to say or is gone. */
@@ -180,6 +372,8 @@ function onPointerOver(event: PointerEvent): void {
   if (!owner || owner === tip.target) {
     if (owner) {
       clearTimeout(tip.hideTimer);
+      // A move within the control can open more of its card under the tip.
+      placeTipAgain();
     }
     return;
   }

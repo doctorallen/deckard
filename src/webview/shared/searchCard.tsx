@@ -145,6 +145,7 @@ export function SearchCard({ card, position, display, opened }: SearchCardProps)
     <article
       class="card"
       tabIndex={0}
+      data-tip-around=""
       data-search-entry="notes"
       data-search-text={searchTextOf(card, fileName)}
       data-file-path={card.filePath}

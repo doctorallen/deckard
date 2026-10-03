@@ -93,7 +93,7 @@ function TagRow({ tag, draggable }: { readonly tag: DashboardTag; readonly dragg
   const display = formatTagDisplay(tag);
   const displayLabel = display.namespace ? `${display.name} ${display.namespace}` : display.name;
   return (
-    <div class={draggable ? 'row tag-row is-draggable' : 'row tag-row'} draggable={false} tabIndex={0} data-tag-key={tag.key}>
+    <div class={draggable ? 'row tag-row is-draggable' : 'row tag-row'} draggable={false} tabIndex={0} data-tip-around="" data-tag-key={tag.key}>
       <div class="tag-main"><span class="tag-name">{display.name}</span><span class="tag-count">{tag.count}</span></div>
       <div class="tag-actions">
         {display.namespace ? <span class="entity-kind">{display.namespace}</span> : null}

@@ -197,7 +197,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
   }
   const steps = trimHeadingPath(item.headingPath, item.fileName, '');
   return (
-    <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
+    <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-tip-around="" data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
       {leading === undefined
         ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${plainTitle(item.titleTokens) || task.title}`} />
         : leading}

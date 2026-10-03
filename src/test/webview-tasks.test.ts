@@ -160,7 +160,14 @@ suite('The shared task parts draw what the template script drew', () => {
     ];
     for (const [what, item] of items) {
       for (const [how, now] of options) {
-        assertSame(`task row ${what}, ${how}`, drawnNow(element('TaskListRow', { item, ...now })), `${what}, ${how}`);
+        const drawn = drawnNow(element('TaskListRow', { item, ...now }));
+        // The row now tells the tip to keep off the line it folds under it
+        // (data-tip-around), which the template's row never did: that is
+        // checked here, and the rest is held to the recording.
+        const row = drawn.querySelector('.task-row') as Element;
+        assert.strictEqual(row.getAttribute('data-tip-around'), '', `${what}, ${how}: the row keeps the tip off what it shows`);
+        row.removeAttribute('data-tip-around');
+        assertSame(`task row ${what}, ${how}`, drawn, `${what}, ${how}`);
       }
     }
   });
