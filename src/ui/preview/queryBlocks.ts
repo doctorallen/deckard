@@ -19,10 +19,26 @@ import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
 import { WorkspaceIndex } from '../../domain/model';
 import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
+import { TaskWrites, toggleTask } from '../commands/taskActions';
+import {
+  createSessionToken,
+  createTaskToggleHref,
+  readTaskToggleLink,
+} from './previewTaskLinks';
 
 /** The one thing the blocks need from the indexer: its published snapshots. */
 interface IndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
+}
+
+/**
+ * What lets a block's checkboxes act: the address of Deckard's URI handler,
+ * such as `vscode://esperinnovations.deckard-notes`, and the writes that
+ * complete a task.
+ */
+export interface QueryBlockActions {
+  readonly base: string;
+  readonly writes: TaskWrites;
 }
 
 /**
@@ -38,6 +54,8 @@ interface IndexSource {
 export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
   private index: WorkspaceIndex | undefined;
   private previewReadsIndex = false;
+  /** Known only to the previews this session draws, so no other page's link can tick a box. */
+  private readonly token = createSessionToken();
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   private readonly disposables: vscode.Disposable[];
 
@@ -47,8 +65,9 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
    * Starts listening at once: each published index is kept for the lenses
    * and, once a preview has drawn a block, refreshes the open previews.
    */
-  public constructor(indexer: IndexSource) {
+  public constructor(indexer: IndexSource, private readonly actions?: QueryBlockActions) {
     this.disposables = [
+      ...(actions ? [vscode.window.registerUriHandler({ handleUri: (uri) => this.handleUri(uri) })] : []),
       this.changeEmitter,
       indexer.onDidUpdate((index) => {
         this.index = index;
@@ -80,6 +99,16 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       },
       getStatusNamespace: () => readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       getQueryContext: (now: number) => readQueryContext(now),
+      ...(this.actions
+        ? {
+            getTaskHref: (item: { id: string; completed?: boolean }) =>
+              createTaskToggleHref(this.actions?.base ?? '', {
+                taskId: item.id,
+                completed: item.completed !== true,
+                token: this.token,
+              }),
+          }
+        : {}),
     };
     return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);
   }
@@ -102,6 +131,39 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
         ),
       (lenses) => `${lenses.length} lenses`,
     );
+  }
+
+  /**
+   * A checkbox's link, opened from a preview: completes or reopens the task
+   * it was drawn for, as its box on any page does. A link from an earlier
+   * session, or for a task since changed or gone, writes nothing and draws
+   * the previews again, so the next box selected is a current one.
+   */
+  public async handleUri(uri: vscode.Uri): Promise<void> {
+    const actions = this.actions;
+    const query = uri.toString().split('?')[1]?.split('#')[0] ?? '';
+    const link = readTaskToggleLink(uri.path, query, this.token);
+    if (!actions || link.kind === 'other') {
+      return;
+    }
+    if (link.kind === 'stale') {
+      void vscode.window.showInformationMessage(
+        'This preview was drawn before Deckard last started, so its checkbox changed nothing. It is drawn again now: select the box once more.',
+      );
+      await refreshMarkdownPreviews();
+      return;
+    }
+    const task = this.index?.tasks.get(link.request.taskId);
+    if (!task || task.completed === link.request.completed) {
+      if (!task) {
+        void vscode.window.showInformationMessage(
+          'That task has changed since the preview was drawn, so nothing was written. The preview is drawn again now.',
+        );
+      }
+      await refreshMarkdownPreviews();
+      return;
+    }
+    await toggleTask(actions.writes, task, link.request.completed);
   }
 
   /** Stops listening to the indexer and unregisters the lens provider. */

@@ -16,6 +16,10 @@
   one namespace's tags such as `#status`. Notes sort by any of them, so
   `sort=links dir=desc` puts the most linked first.
 
+- **Tick a task in a query block's preview.** Selecting a task's box in the
+  Markdown preview completes it, or reopens a done one, with Undo, as its
+  box on any page does. VS Code asks once whether Deckard may open the link.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

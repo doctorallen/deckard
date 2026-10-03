@@ -92,6 +92,22 @@
   align-items: baseline;
 }
 
+/* A checkbox that completes or reopens its task when selected. */
+a.deckard-query-checkbox.is-action {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.deckard-query-checkbox.is-action:hover {
+  color: var(--vscode-textLink-activeForeground, inherit);
+}
+
+a.deckard-query-checkbox.is-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, currentColor);
+  outline-offset: 1px;
+}
+
 .deckard-query-body {
   display: grid;
   row-gap: 0.1em;

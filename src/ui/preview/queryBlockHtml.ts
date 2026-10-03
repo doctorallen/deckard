@@ -42,6 +42,11 @@ export interface QueryBlockPreviewSource {
   getStatusNamespace?(): string;
   /** The settings a block is evaluated in, for a render made at `now`. */
   getQueryContext(now: number): QueryContext;
+  /**
+   * The link a task's checkbox opens, which puts the task in the state the
+   * box offers; without one, the box is drawn and does nothing.
+   */
+  getTaskHref?(item: QueryBlockItem): string | undefined;
 }
 
 /**
@@ -73,6 +78,7 @@ export function addQueryBlockRenderer(
       queryContext: source.getQueryContext(Date.now()),
       sourceLine: token.map?.[0],
       statusNamespace: source.getStatusNamespace?.(),
+      ...(source.getTaskHref ? { taskHref: (item: QueryBlockItem) => source.getTaskHref?.(item) } : {}),
     });
   };
   return md;
@@ -89,6 +95,8 @@ export interface QueryBlockRendering {
   sourceLine?: number;
   /** The namespace of status tags; `status` unless given. */
   statusNamespace?: string;
+  /** The link a task's checkbox opens; the box does nothing without one. */
+  taskHref?: (item: QueryBlockItem) => string | undefined;
 }
 
 /** Renders one block, in the rendering's context. */
@@ -124,7 +132,7 @@ export function renderQueryBlockHtml(
       snapshot.hasError ? undefined : describeQueryBlockCounts(snapshot),
     ),
     ...snapshot.messages.map(renderMessage),
-    ...(snapshot.hasError ? [] : renderResults(snapshot, options, queryContext)),
+    ...(snapshot.hasError ? [] : renderResults(snapshot, options, queryContext, rendering.taskHref)),
     '</div>',
   ].join('');
 }
@@ -159,6 +167,7 @@ function renderResults(
   snapshot: QueryBlockSnapshot,
   options: QueryBlockOptions,
   context: QueryContext,
+  taskHref?: (item: QueryBlockItem) => string | undefined,
 ): string[] {
   if (snapshot.noteCount === 0 && snapshot.taskCount === 0) {
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
@@ -171,10 +180,10 @@ function renderResults(
           renderNote,
         )),
     ...(options.view === 'table'
-      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context)
+      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context, taskHref)
       : renderGroup(
           { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount },
-          (item) => renderTask(item, context),
+          (item) => renderTask(item, context, taskHref),
         )),
   ];
 }
@@ -244,6 +253,7 @@ function renderTaskTable(
   snapshot: QueryBlockSnapshot,
   columns: readonly TaskColumnId[],
   context: QueryContext,
+  taskHref?: (item: QueryBlockItem) => string | undefined,
 ): string[] {
   if (snapshot.tasks.length === 0) {
     return [];
@@ -259,7 +269,7 @@ function renderTaskTable(
         .join(' ');
       const open = classes ? `<td class="${classes}">` : '<td>';
       if (columns[at] === 'title') {
-        return `${open}<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${done ? '☑' : '☐'}</span> ${renderLink(item)}</td>`;
+        return `${open}${renderCheckbox(item, taskHref?.(item))} ${renderLink(item)}</td>`;
       }
       return `${open}${escapeHtml(cell.text)}</td>`;
     });
@@ -341,7 +351,11 @@ function renderPriority(priority: string): string {
  * The checkbox sits in its own column so a wrapped title and its details line
  * up under the title rather than under the box.
  */
-function renderTask(item: QueryBlockItem, context: QueryContext): string {
+function renderTask(
+  item: QueryBlockItem,
+  context: QueryContext,
+  taskHref?: (item: QueryBlockItem) => string | undefined,
+): string {
   const done = item.completed === true;
   const details = [
     renderTaskDue(item, context),
@@ -355,13 +369,33 @@ function renderTask(item: QueryBlockItem, context: QueryContext): string {
     .join(' · ');
   return [
     `<li class="deckard-query-item deckard-query-task${done ? ' is-done' : ''}">`,
-    `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${done ? '☑' : '☐'}</span>`,
+    renderCheckbox(item, taskHref?.(item)),
     '<div class="deckard-query-body">',
     renderLink(item),
     renderMeta(item, details),
     '</div>',
     '</li>',
   ].join('');
+}
+
+/**
+ * A task's checkbox: with a link, one that completes or reopens the task
+ * when selected, named for what it does; without one, a picture of the
+ * task's state.
+ */
+function renderCheckbox(item: QueryBlockItem, href: string | undefined): string {
+  const done = item.completed === true;
+  const mark = done ? '☑' : '☐';
+  if (!href) {
+    return `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${mark}</span>`;
+  }
+  const action = `${done ? 'Reopen' : 'Complete'} ${plainTitle(item.title)}`;
+  return `<a class="deckard-query-checkbox is-action" href="${escapeHtml(href)}" role="checkbox" aria-checked="${done}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}">${mark}</a>`;
+}
+
+/** A title's words without its Markdown marks, for a label. */
+function plainTitle(title: string): string {
+  return title.replace(/[*_`~]+/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /**

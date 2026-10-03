@@ -19,6 +19,7 @@ tag = #project/atlas AND is:open
 ![A note's deckard query blocks beside the Markdown preview, which lists the tasks each query matches.](../images/query-blocks.png)
 
 - The Markdown preview shows the matches, notes first, then tasks, each linking to its source line. `markdown.preview.openMarkdownLinks` decides where links open.
+- **Tick a task in the preview.** Select a task's box to complete it, or a done task's box to reopen it, as its box on any page does, with **Undo** in the message. The first time, VS Code asks whether to let Deckard open the link; choose **Open**, and tick *Do not ask me again for this extension* to skip the question next time. A box drawn before Deckard last started, or for a task that has changed since, writes nothing and the preview is drawn again.
 - Notes are alphabetical. Tasks are open first, soonest due first, then in source order; done tasks are struck through and overdue dates highlighted.
 - `sort=` takes `title`, `due`, `scheduled`, `start`, `done`, `priority`, `for`, `status`, `note`, `created`, `updated`, or a notes table's `links`, `tasks`, `tags`, or `#namespace`, with `dir=asc` or `dir=desc`. Dates sort newest first by default, everything else ascending; empty values come last.
 - `limit=10` shows at most ten notes and ten tasks; the header still shows full totals.

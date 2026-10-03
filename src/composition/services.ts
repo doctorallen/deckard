@@ -928,7 +928,11 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
 function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
   const { indexer } = core;
   const outline = new OutlineTreeProvider(indexer);
-  const queryBlocks = new QueryBlocks(indexer);
+  // A query block's checkboxes link to Deckard's URI handler, which ticks them.
+  const queryBlocks = new QueryBlocks(indexer, {
+    base: `${vscode.env.uriScheme}://${context.extension.id}`,
+    writes: writes.tasks,
+  });
   // What the Tasks view lists, and what dropping or checking a task in it
   // writes, over the index and the settings.
   const agendaService = new AgendaService<AgendaGroup>({

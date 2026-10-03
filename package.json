@@ -49,6 +49,7 @@
     "onWebviewPanel:deckard.taskBoard",
     "onWebviewPanel:deckard.calendarPage",
     "onStartupFinished",
+    "onUri",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags"
   ],
