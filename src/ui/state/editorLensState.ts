@@ -1,4 +1,4 @@
-import { findDailyNoteDate } from '../../domain/markdown/parser';
+import { findDailyNoteDate, stripTags } from '../../domain/markdown/parser';
 import {
   createNoteTitleMap,
   parseWikiTarget,
@@ -249,4 +249,61 @@ export function findHubProgress(
       ? [{ tagKey: tag.key, tagLabel: tag.label, text: describeTagProgress(progress, context.now, context.taskPolicy) }]
       : [];
   });
+}
+
+/** How far along one task's steps are, for the lens above it. */
+export interface StepProgress {
+  /** Zero-based line of the task. */
+  line: number;
+  total: number;
+  done: number;
+  /** Zero-based line of the first open step, when one is open. */
+  nextLine?: number;
+  /** The first open step's words, without its tags. */
+  next?: string;
+}
+
+/**
+ * Each task in a note that has steps, with how many are done and which is
+ * next, in the order written. `file` is usually parsed from the editor, so
+ * the counts follow a box ticked a moment ago.
+ */
+export function findStepProgress(file: ParsedFile): StepProgress[] {
+  const byId = new Map(file.tasks.map((task) => [task.id, task]));
+  return file.tasks.flatMap((task) => {
+    const steps = task.steps;
+    if (!steps || steps.total === 0) {
+      return [];
+    }
+    const next = steps.ids.map((id) => byId.get(id)).find((step) => step && !step.completed);
+    return [
+      {
+        line: task.lineNumber - 1,
+        total: steps.total,
+        done: steps.done,
+        ...(next ? { nextLine: next.lineNumber - 1, next: stripTags(next.title).trim() || next.title } : {}),
+      },
+    ];
+  });
+}
+
+/**
+ * A bar of how far along something is, drawn in text for a lens, which
+ * cannot draw anything else: `███░░░░░░░` for 3 of 10, at `width` cells.
+ * A start counts one cell, and only all of it fills the bar, so neither
+ * none nor nearly all reads as done.
+ */
+export function formatProgressBar(done: number, total: number, width = 10): string {
+  if (total <= 0) {
+    return '';
+  }
+  const ratio = Math.min(1, Math.max(0, done / total));
+  let filled = Math.round(ratio * width);
+  if (done > 0 && filled === 0) {
+    filled = 1;
+  }
+  if (done < total && filled === width) {
+    filled = width - 1;
+  }
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
 }

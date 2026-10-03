@@ -2077,6 +2077,13 @@
             "description": "Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.",
             "order": 10
           },
+          "deckard.editor.stepProgress": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, above a task with steps, a bar of how many of its steps are done and which is next; selecting it goes to the next open step.",
+            "order": 10
+          },
           "deckard.editor.breadcrumbs": {
             "type": "boolean",
             "scope": "resource",

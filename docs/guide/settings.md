@@ -50,6 +50,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.hubProgress": true,
 	"deckard.editor.slashMenu": true,
 	"deckard.editor.breadcrumbs": true,
+	"deckard.editor.stepProgress": true,
 	"deckard.editor.dimTaskMetadata": true,
 	"deckard.editor.taskDueHints": true,
 	"deckard.editor.repeatDiagnostics": true,
@@ -128,6 +129,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.embedProblems` | `true` | Says above a broken `![[embed]]` which heading or `^marker` it is missing. |
 | `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, notes that name it without a link, with an action to link them. |
 | `deckard.editor.hubProgress` | `true` | Says, on a hub note's first line, how far along the tasks of the tag it describes are. |
+| `deckard.editor.stepProgress` | `true` | Shows, above a task with steps, a bar of how many are done and the next one. |
 | `deckard.editor.breadcrumbs` | `true` | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). |
 | `deckard.editor.slashMenu` | `true` | Offers, after a `/` alone at the start of a line, blocks and templates to write there. |
 | `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. |

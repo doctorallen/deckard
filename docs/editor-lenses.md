@@ -40,6 +40,7 @@ settings beside `deckard.editor.referenceCounts`:
 - `deckard.editor.unlinkedMentions`
 - `deckard.editor.hubProgress`
 - `deckard.editor.breadcrumbs`
+- `deckard.editor.stepProgress`
 
 **Lenses sit on headings, the first line, fences, embeds, and tasks that have
 dependencies** — never on every task line.

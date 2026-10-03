@@ -43,6 +43,10 @@
   outright with `up: "[[Atlas]]"`. A note's first line says where it sits,
   such as *Projects › Atlas › Vendor review*.
 
+- **A task's steps at a glance in the editor.** A lens above a task with
+  steps draws a bar of how many are done and names the next one; select it
+  to go there.
+
 - **The sample tour shows all of it.** `Deckard: Create a Sample Workspace`
   now includes a project with a sub-project and notes filed under both, a
   table of every project, and steps for each feature above. It also gives

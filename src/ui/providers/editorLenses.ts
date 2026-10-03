@@ -3,7 +3,14 @@ import * as vscode from 'vscode';
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { findDailyNoteActions, findEmbedProblems, findHubProgress, findTaskDependencies } from '../state/editorLensState';
+import {
+  findDailyNoteActions,
+  findEmbedProblems,
+  findHubProgress,
+  findStepProgress,
+  findTaskDependencies,
+  formatProgressBar,
+} from '../state/editorLensState';
 import { readQueryContext } from '../commands/queryContext';
 import { findBreadcrumbs } from '../state/hubTree';
 import { getPeriodicNoteUri } from '../commands/dailyNote';
@@ -50,7 +57,8 @@ interface LensGroup {
     | 'embedProblems'
     | 'unlinkedMentions'
     | 'hubProgress'
-    | 'breadcrumbs';
+    | 'breadcrumbs'
+    | 'stepProgress';
   provide(context: LensContext): LazyCodeLens[];
 }
 
@@ -72,6 +80,7 @@ export class EditorLenses
     { setting: 'unlinkedMentions', provide: provideUnlinkedMentionLenses },
     { setting: 'hubProgress', provide: provideHubProgressLenses },
     { setting: 'breadcrumbs', provide: provideBreadcrumbLenses },
+    { setting: 'stepProgress', provide: provideStepProgressLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -262,6 +271,31 @@ function provideDailyNoteLenses({
     );
   }
   return lenses;
+}
+
+/**
+ * Above a task with steps: a bar of how many are done, and the next one,
+ * which selecting the lens goes to. Once every step is done it says so,
+ * and does nothing.
+ */
+function provideStepProgressLenses({ document, file }: LensContext): LazyCodeLens[] {
+  return findStepProgress(file).map((progress) => {
+    const range = new vscode.Range(progress.line, 0, progress.line, 0);
+    const counts = `${progress.done} of ${pluralize(progress.total, 'step')} done`;
+    return new LazyCodeLens(range, () => {
+      const title = `${formatProgressBar(progress.done, progress.total)} ${counts}`;
+      if (progress.nextLine === undefined) {
+        return { title: `${title} · all done`, tooltip: 'Every step is done: the task can be completed', command: '' };
+      }
+      const next = new vscode.Range(progress.nextLine, 0, progress.nextLine, 0);
+      return {
+        title: `${title} · next: ${progress.next ?? ''}`,
+        tooltip: 'Go to the next open step',
+        command: 'vscode.open',
+        arguments: [document.uri, { selection: next }],
+      };
+    });
+  });
 }
 
 /**
