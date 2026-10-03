@@ -580,7 +580,7 @@ function buildProgressWidget({ index, options, config, widget, take }: WidgetBui
   const keys = new Set(
     [...index.tags.keys()].filter((key) => isInNamespace(key, namespace) && !isParkedOnlyTag(index, key)),
   );
-  const rows = [...collectTagProgress(index, now, keys)]
+  const rows = [...collectTagProgress(index, now, keys, taskPolicy)]
     .map(([key, progress]) => ({ tag: index.tags.get(key), progress }))
     .flatMap((row) => (row.tag ? [{ tag: row.tag, progress: row.progress }] : []))
     .sort((left, right) => compareProgress(left.progress, right.progress) || left.tag.label.localeCompare(right.tag.label));

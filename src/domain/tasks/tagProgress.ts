@@ -7,7 +7,7 @@ import { readTaskTagKeys } from '../query/queryEvaluator';
 import { describeDueDate } from '../markdown/dueWording';
 import { startOfDay } from '../markdown/calendar';
 import type { Task, WorkspaceIndex } from '../model';
-import type { TaskPolicy } from './taskPolicy';
+import { DEFAULT_TASK_POLICY, needsNewDate, type TaskPolicy } from './taskPolicy';
 
 /** The open task a tag's progress says is due next. */
 export interface TagProgressNextDue {
@@ -24,8 +24,13 @@ export interface TagProgress {
   /** Every task the tag finds, steps aside. */
   total: number;
   done: number;
-  /** Open tasks whose due date has passed. */
+  /**
+   * Open tasks whose due date has passed, those that need a new date aside,
+   * as Home's Overdue figure counts them.
+   */
   overdue: number;
+  /** Open tasks so far past their due date that they need a new one. */
+  needsDate: number;
   /** The open task due soonest, today or later. */
   nextDue?: TagProgressNextDue;
 }
@@ -41,6 +46,7 @@ export function collectTagProgress(
   index: WorkspaceIndex,
   now: number,
   tagKeys?: ReadonlySet<string>,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'> = DEFAULT_TASK_POLICY,
 ): Map<string, TagProgress> {
   const today = startOfDay(now);
   const progress = new Map<string, TagProgress>();
@@ -54,10 +60,10 @@ export function collectTagProgress(
       }
       let entry = progress.get(tagKey);
       if (!entry) {
-        entry = { total: 0, done: 0, overdue: 0 };
+        entry = { total: 0, done: 0, overdue: 0, needsDate: 0 };
         progress.set(tagKey, entry);
       }
-      countTask(entry, task, today);
+      countTask(entry, task, today, (dueAt) => needsNewDate(dueAt, now, taskPolicy));
     }
   }
   return progress;
@@ -68,12 +74,13 @@ export function computeTagProgress(
   index: WorkspaceIndex,
   tagKey: string,
   now: number,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'> = DEFAULT_TASK_POLICY,
 ): TagProgress | undefined {
-  return collectTagProgress(index, now, new Set([tagKey])).get(tagKey);
+  return collectTagProgress(index, now, new Set([tagKey]), taskPolicy).get(tagKey);
 }
 
 /** Adds one task to a tag's progress. */
-function countTask(entry: TagProgress, task: Task, today: number): void {
+function countTask(entry: TagProgress, task: Task, today: number, stale: (dueAt: number) => boolean): void {
   entry.total += 1;
   if (task.completed) {
     entry.done += 1;
@@ -83,7 +90,11 @@ function countTask(entry: TagProgress, task: Task, today: number): void {
     return;
   }
   if (task.dueAt < today) {
-    entry.overdue += 1;
+    if (stale(task.dueAt)) {
+      entry.needsDate += 1;
+    } else {
+      entry.overdue += 1;
+    }
     return;
   }
   if (!entry.nextDue || task.dueAt < entry.nextDue.dueAt) {
@@ -105,8 +116,9 @@ export function progressRatio(progress: Pick<TagProgress, 'done' | 'total'>): nu
 
 /**
  * A tag's progress in words, as a hub note's lens, a tag's page, and Home
- * say it: "3 of 8 done · 1 overdue · next due in 3 days". Each part after
- * the first is there only when it has something to say.
+ * say it: "3 of 8 done · 1 overdue · 1 needs a new date · next due in 3
+ * days". Each part after the first is there only when it has something to
+ * say.
  */
 export function describeTagProgress(
   progress: TagProgress,
@@ -116,6 +128,9 @@ export function describeTagProgress(
   const parts = [`${progress.done} of ${progress.total} done`];
   if (progress.overdue > 0) {
     parts.push(`${progress.overdue} overdue`);
+  }
+  if (progress.needsDate > 0) {
+    parts.push(`${progress.needsDate} ${progress.needsDate === 1 ? 'needs' : 'need'} a new date`);
   }
   if (progress.nextDue) {
     const due = describeDueDate(progress.nextDue.dueAt, now, taskPolicy, progress.nextDue.dueText);

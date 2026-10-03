@@ -244,7 +244,7 @@ export function findHubProgress(
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): HubProgress[] {
   return (file.hub?.describes ?? []).flatMap((tag) => {
-    const progress = computeTagProgress(index, tag.key, context.now);
+    const progress = computeTagProgress(index, tag.key, context.now, context.taskPolicy);
     return progress
       ? [{ tagKey: tag.key, tagLabel: tag.label, text: describeTagProgress(progress, context.now, context.taskPolicy) }]
       : [];

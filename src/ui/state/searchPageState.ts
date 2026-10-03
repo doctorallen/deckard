@@ -390,7 +390,7 @@ function describeTagProgressLine(
   tagKey: string,
   context: QueryContext,
 ): Pick<SearchPageTagNotes, 'progress'> {
-  const progress = computeTagProgress(index, tagKey, context.now);
+  const progress = computeTagProgress(index, tagKey, context.now, context.taskPolicy);
   if (!progress) {
     return {};
   }
@@ -400,7 +400,7 @@ function describeTagProgressLine(
       total: progress.total,
       overdue: progress.overdue,
       label: describeTagProgress(progress, context.now, context.taskPolicy),
-      ...(progress.overdue > 0 ? { overdueQuery: `${tagKey} is:overdue -is:step` } : {}),
+      ...(progress.overdue > 0 ? { overdueQuery: `${tagKey} is:overdue -is:needs-date -is:step` } : {}),
     },
   };
 }

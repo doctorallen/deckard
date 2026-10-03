@@ -34,6 +34,7 @@ suite('Tag progress', () => {
       '- [ ] Book the room 📅 2026-10-06',
       '- [ ] Call the lawyer 📅 2026-09-30',
       '- [ ] Write the brief',
+      '- [ ] Renew the lease 📅 2026-08-01',
       '  - [ ] Draft the outline',
       '  - [x] Gather notes',
     ].join('\n'),
@@ -45,7 +46,8 @@ suite('Tag progress', () => {
   test('counts a tag’s tasks by its headings and front matter, steps aside', () => {
     const atlas = computeTagProgress(index, '#project/atlas', now);
     assert.ok(atlas);
-    assert.strictEqual(atlas.total, 6, 'five in the note, one by front matter; two steps left out');
+    assert.strictEqual(atlas.total, 7, 'six in the note, one by front matter; two steps left out');
+    assert.strictEqual(atlas.needsDate, 1, 'a task two months past due needs a new date, and is not counted overdue');
     assert.strictEqual(atlas.done, 2);
     assert.strictEqual(atlas.overdue, 1);
     assert.strictEqual(atlas.nextDue?.title, 'Book the room');
@@ -64,15 +66,16 @@ suite('Tag progress', () => {
     const policy = DEFAULT_TASK_POLICY;
     const atlas = computeTagProgress(index, '#project/atlas', now);
     assert.ok(atlas);
-    assert.strictEqual(describeTagProgress(atlas, now, policy), '2 of 6 done · 1 overdue · next due in 3 days');
+    assert.strictEqual(describeTagProgress(atlas, now, policy), '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days');
     const borealis = computeTagProgress(index, '#project/borealis', now);
     assert.ok(borealis);
     assert.strictEqual(describeTagProgress(borealis, now, policy), '1 of 1 done · all done');
     assert.strictEqual(
-      describeTagProgress({ total: 2, done: 0, overdue: 0, nextDue: { taskId: 't', title: 'x', dueAt: new Date(2026, 11, 25).getTime(), filePath: 'a.md', lineNumber: 1 } }, now, policy),
+      describeTagProgress({ total: 2, done: 0, overdue: 0, needsDate: 0, nextDue: { taskId: 't', title: 'x', dueAt: new Date(2026, 11, 25).getTime(), filePath: 'a.md', lineNumber: 1 } }, now, policy),
       '0 of 2 done · next due 2026-12-25',
     );
-    assert.strictEqual(describeTagProgress({ total: 3, done: 1, overdue: 0 }, now, policy), '1 of 3 done');
+    assert.strictEqual(describeTagProgress({ total: 3, done: 1, overdue: 0, needsDate: 0 }, now, policy), '1 of 3 done');
+    assert.strictEqual(describeTagProgress({ total: 4, done: 0, overdue: 2, needsDate: 2 }, now, policy), '0 of 4 done · 2 overdue · 2 need a new date');
   });
 
   test('a ratio is the share done, and 0 for no tasks', () => {
@@ -84,10 +87,10 @@ suite('Tag progress', () => {
     const snapshot = createSearchPageSnapshot(index, normalizePreferences({}), '#project/atlas', { queryContext: createQueryContext(now) });
     assert.deepStrictEqual(snapshot.tagPage?.progress, {
       done: 2,
-      total: 6,
+      total: 7,
       overdue: 1,
-      label: '2 of 6 done · 1 overdue · next due in 3 days',
-      overdueQuery: '#project/atlas is:overdue -is:step',
+      label: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days',
+      overdueQuery: '#project/atlas is:overdue -is:needs-date -is:step',
     });
     const overdue = evaluateQuery(index, parseQuery(snapshot.tagPage?.progress?.overdueQuery ?? '').node, createQueryContext(now));
     assert.deepStrictEqual(overdue.tasks.map((task) => task.lineNumber), [5], 'the search finds the overdue task');
@@ -98,7 +101,7 @@ suite('Tag progress', () => {
   test('a hub note’s lens says how far along each tag it describes is', () => {
     const hub = parseMarkdown('hub.md', ['---', 'describes: [project/atlas, project/none]', '---', '# Atlas'].join('\n'));
     assert.deepStrictEqual(findHubProgress(hub, index, createQueryContext(now)), [
-      { tagKey: '#project/atlas', tagLabel: '#project/atlas', text: '2 of 6 done · 1 overdue · next due in 3 days' },
+      { tagKey: '#project/atlas', tagLabel: '#project/atlas', text: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days' },
     ]);
     assert.deepStrictEqual(findHubProgress(parseMarkdown('plain.md', '# Plain'), index, createQueryContext(now)), []);
   });
