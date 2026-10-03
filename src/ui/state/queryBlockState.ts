@@ -625,15 +625,16 @@ function directionOf(
 
 /**
  * Orders notes alphabetically unless a sort says otherwise: dates newest
- * first and every other column ascending, until `dir=` turns it around.
+ * first and every other column ascending, until `dir=` turns it around. A
+ * note with nothing in the sorted column comes last either way.
  */
 function createNoteComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
-  const sign = (direction ?? directionOf(sort, undefined)) === directionOf(sort, undefined) ? 1 : -1;
-  return (left, right) =>
-    sign * compareBySort(left, right, sort) || compareTitles(left, right);
+  const natural = directionOf(sort, undefined);
+  const sign = (direction ?? natural) === natural ? 1 : -1;
+  return (left, right) => compareBySort(left, right, sort, sign) || compareTitles(left, right);
 }
 
 /**
@@ -666,48 +667,55 @@ export function toTableTask(item: QueryBlockItem): TableTask {
 }
 
 /**
- * A note's part of a sort, before the direction is applied: dates newest
- * first, every other column of a note ascending, an empty value last. A
- * column only tasks have leaves the notes be.
+ * A note's part of a sort: an empty value last, then the values in the
+ * column's natural order (dates newest first, the rest ascending) turned
+ * by `sign`. A column only tasks have leaves the notes be.
  */
 function compareBySort(
   left: QueryBlockItem,
   right: QueryBlockItem,
   sort: QueryBlockSort | undefined,
+  sign: number,
 ): number {
-  if (sort === undefined) {
+  const read = sort === undefined ? undefined : noteSortValue(sort);
+  if (!read) {
     return 0;
   }
-  const namespace = noteColumnNamespace(sort as NoteColumnId);
-  if (namespace !== undefined) {
-    return compareText(namespaceValues(left, namespace).join(' '), namespaceValues(right, namespace).join(' '));
+  const [a, b] = [read(left), read(right)];
+  if (a === undefined || b === undefined) {
+    return (a === undefined ? 1 : 0) - (b === undefined ? 1 : 0);
   }
-  return Object.hasOwn(NOTE_SORTS, sort) ? NOTE_SORTS[sort as keyof typeof NOTE_SORTS](left, right) : 0;
+  const ascending =
+    typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+  const natural = sort === 'created' || sort === 'updated' ? -ascending : ascending;
+  return sign * natural;
 }
 
-/** How notes compare under each fixed column they have, before the direction is applied. */
-const NOTE_SORTS: Readonly<Record<Exclude<NoteColumnId, `#${string}`>, (left: QueryBlockItem, right: QueryBlockItem) => number>> = {
-  created: (left, right) => compareDescending(left.createdAt, right.createdAt),
-  updated: (left, right) => compareDescending(left.updatedAt, right.updatedAt),
-  title: (left, right) => left.title.localeCompare(right.title, undefined, { sensitivity: 'base' }),
-  note: (left, right) => left.fileName.localeCompare(right.fileName, undefined, { sensitivity: 'base' }),
-  links: (left, right) => compareAscending(left.linkCount, right.linkCount),
-  tasks: (left, right) => compareAscending(openTasksOf(left), openTasksOf(right)),
-  tags: (left, right) =>
-    compareText(left.noteTags?.map((tag) => tag.label).join(' '), right.noteTags?.map((tag) => tag.label).join(' ')),
+/** How a note's value in a sorted column is read; undefined for a column notes do not have. */
+function noteSortValue(sort: QueryBlockSort): ((item: QueryBlockItem) => number | string | undefined) | undefined {
+  const namespace = noteColumnNamespace(sort as NoteColumnId);
+  if (namespace !== undefined) {
+    return (item) => namespaceValues(item, namespace).join(' ') || undefined;
+  }
+  return Object.hasOwn(NOTE_SORTS, sort) ? NOTE_SORTS[sort as keyof typeof NOTE_SORTS] : undefined;
+}
+
+/** Each fixed column's value as notes sort by it; undefined is an empty cell. */
+const NOTE_SORTS: Readonly<Record<Exclude<NoteColumnId, `#${string}`>, (item: QueryBlockItem) => number | string | undefined>> = {
+  created: (item) => item.createdAt,
+  updated: (item) => item.updatedAt,
+  title: (item) => item.title,
+  note: (item) => item.fileName,
+  links: (item) => item.linkCount,
+  tasks: (item) => openTasksOf(item),
+  tags: (item) => item.noteTags?.map((tag) => tag.label).join(' ') || undefined,
 };
 
 /** A note's open tasks, or undefined when it has none, so a note without tasks sorts last. */
 function openTasksOf(item: QueryBlockItem): number | undefined {
   return item.taskTotal ? item.taskTotal - (item.taskDone ?? 0) : undefined;
-}
-
-/** Text alphabetically, ignoring case and accents, an empty value last. */
-function compareText(left: string | undefined, right: string | undefined): number {
-  if (!left || !right) {
-    return (left ? 0 : 1) - (right ? 0 : 1);
-  }
-  return left.localeCompare(right, undefined, { sensitivity: 'base' });
 }
 
 /** Titles alphabetically, ignoring case and accents, then source order. */
@@ -737,14 +745,6 @@ function compareAscending(left?: number, right?: number): number {
     return (left === undefined ? 1 : 0) - (right === undefined ? 1 : 0);
   }
   return left - right;
-}
-
-/** Newest first, with undated items still last. */
-function compareDescending(left?: number, right?: number): number {
-  if (left === undefined || right === undefined) {
-    return (left === undefined ? 1 : 0) - (right === undefined ? 1 : 0);
-  }
-  return right - left;
 }
 
 /** One cell of a table of notes, as text; empty when the entry has nothing to show there. */

@@ -139,6 +139,10 @@ suite('Deckard query blocks', () => {
     assert.ok(html.includes('<td>1 of 2 done</td><td>doing</td>'));
     const ascending = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard view=table sort=#status')!, { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(ascending.notes.map((note) => note.title), ['Atlas', 'Borealis'], 'doing before done');
+    for (const dir of ['asc', 'desc']) {
+      const byTasks = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo(`deckard view=table sort=tasks dir=${dir}`)!, { queryContext: createQueryContext(Date.now()) });
+      assert.deepStrictEqual(byTasks.notes.map((note) => note.title), ['Atlas', 'Borealis'], `a note with no tasks comes last, dir=${dir}`);
+    }
     const list = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard')!, { queryContext: createQueryContext(Date.now()) });
     assert.strictEqual(list.notes[0].linkCount, undefined, 'a list never counts links');
   });
