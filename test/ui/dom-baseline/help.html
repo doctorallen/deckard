@@ -751,6 +751,17 @@
           > <div
             class="card"
           ><h3
+            >The / menu</h3
+            ><p
+            >Type <code
+              >/</code
+              > alone at the start of a line for what to write there: a task, a heading, a link or an embed, today’s note, a query block, a table of notes or tasks, or one of your templates, its questions as tab stops. <code
+              >deckard.editor.slashMenu</code
+              > turns it off.</p
+            ></div
+          > <div
+            class="card"
+          ><h3
             >Typing metadata</h3
             ><p
             >Type <code
@@ -1684,7 +1695,9 @@
           >limit=10</code
           >, and <code
           >view=table columns=due,priority,for</code
-          > for the tasks as a table follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p
+          > for the tasks as a table, with <code
+          >noteColumns=links,tasks,#status</code
+          > for the notes as one, follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p
         > <p
           class="read-more"
         ><a
@@ -2507,6 +2520,14 @@
                 ></tr
               ><tr
               ><td
+                ><code
+                  >Copy as Plain Markdown</code
+                  ></td
+                ><td
+                >Copies the note, or the selection, with its embeds, query results, and links written out for elsewhere.</td
+                ></tr
+              ><tr
+              ><td
                 ><button
                     class="command-link"
                     data-command="deckard.showTagOverview"
@@ -2816,6 +2837,17 @@
                   ></td
                 ><td
                 ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.exportTaskCalendar"
+                    type="button"
+                  >Export Tasks as Calendar…</button
+                  ></td
+                ><td
+                >Writes your dated tasks to a calendar file for a calendar app.</td
                 ></tr
               ><tr
               ><td
@@ -3152,6 +3184,30 @@
                   ></td
                 ><td
                 >The day a week starts on: in the Calendar, in weekly notes and their reviews, in a search's this-week, last-week, and next-week, and in *next week* and *end of week* typed as a date. A weekly note written before a change still opens for the week it mostly covers.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.calendar.exportFile</code
+                  ></td
+                ><td
+                ><code
+                  >Empty</code
+                  ></td
+                ><td
+                >A calendar file (.ics) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to: each task an all-day event on its due date, or its scheduled date when it has no due date. A relative path is in the first workspace folder, such as .deckard/tasks.ics. Empty writes no file; Deckard: Export Tasks as Calendar… writes one once.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.calendar.exportQuery</code
+                  ></td
+                ><td
+                ><code
+                  >"is:open"</code
+                  ></td
+                ><td
+                >The search whose dated tasks the calendar file holds, such as is:open is:mine or #project/atlas is:open. Empty is every open task.</td
                 ></tr
               ><tr
               ><td
@@ -3566,6 +3622,42 @@
                   ></td
                 ><td
                 >Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.slashMenu</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.breadcrumbs</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.hubProgress</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Show, on a hub note's first line, how far along the tasks of the tag it describes are: how many are done, how many are overdue, and when the next is due. A tag with no task shows nothing.</td
                 ></tr
               ><tr
               ><td
