@@ -20,6 +20,11 @@
   Markdown preview completes it, or reopens a done one, with Undo, as its
   box on any page does. VS Code asks once whether Deckard may open the link.
 
+- **A / menu at the start of a line.** Type `/` alone on a line for what to
+  write there: a task, a heading, a list, a link or an embed, today's note
+  or date, a query block, a table of notes or tasks, or one of your
+  templates, whose `{ask:…}` questions become tab stops.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

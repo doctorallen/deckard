@@ -2008,6 +2008,13 @@
             "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
             "order": 10
           },
+          "deckard.editor.slashMenu": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.",
+            "order": 10
+          },
           "deckard.editor.hubProgress": {
             "type": "boolean",
             "scope": "resource",
