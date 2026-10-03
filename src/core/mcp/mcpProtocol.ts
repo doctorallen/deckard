@@ -90,10 +90,12 @@ export async function handleMcpMessage(
   if (!hasId) {
     return undefined;
   }
-  const answer = METHODS.get(message.method);
-  if (!answer) {
+  // Only a method METHODS names is answered: a Map holds no inherited names
+  // such as constructor, and the check says so where the call is made.
+  if (!METHODS.has(message.method)) {
     return failure(id, METHOD_NOT_FOUND, `Deckard does not answer ${message.method}.`);
   }
+  const answer = METHODS.get(message.method)!;
   return answer(id, message.params, handlers);
 }
 
