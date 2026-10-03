@@ -263,9 +263,15 @@ ${HELP_HEADER}${renderStartSections(logoUri, options)}${renderWritingSections()}
   });
 }
 
-/** The rail of section links down the side of Help, grouped as the sections are. */
+/**
+ * The rail of section links down the side of Help, grouped as the sections
+ * are. On a window too narrow for a side rail it sits above the guide,
+ * folded behind its Contents button.
+ */
 const HELP_NAV = `  <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="help-nav-links">Contents</button>
+    <div class="nav-links" id="help-nav-links">
     <a href="#quick-start">Quick start</a>
     <a href="#whats-new">What's new</a>
     <span class="nav-group">Writing</span>
@@ -292,6 +298,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
     <a class="nav-sub" href="#advanced">Settings</a>
     <a class="nav-sub" href="#assistants">AI assistants</a>
     <a class="nav-sub" href="#privacy">Privacy and safety</a>
+    </div>
   </nav>
 `;
 

@@ -227,13 +227,32 @@ function onClick(event: MouseEvent): void {
     showHelp(returnTo);
     return;
   }
+  const toggle = target.closest('.nav-toggle');
+  if (toggle) {
+    setMapOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    return;
+  }
   // The rail leads back to Help from a guide page.
   const railLink = target.closest('nav a[href^="#"]');
+  // Above the guide, the map folds away again once it has led somewhere.
+  if (railLink) {
+    setMapOpen(false);
+  }
   if (!railLink || !guideView || guideView.hidden) {
     return;
   }
   event.preventDefault();
   showHelp(railLink.getAttribute('href')?.slice(1));
+}
+
+/**
+ * Opens or folds the map where it sits above the guide, behind its Contents
+ * button. Beside the guide the button is not shown and the map is always
+ * open, whatever this says.
+ */
+function setMapOpen(open: boolean): void {
+  document.querySelector('nav')?.classList.toggle('is-open', open);
+  document.querySelector('.nav-toggle')?.setAttribute('aria-expanded', String(open));
 }
 
 /** What the host sends: a section to go to, or the guide page asked for. */
