@@ -39,8 +39,9 @@ export interface TagProgress {
  * Each tag's progress, by tag key, over the tasks a `tag:` search finds by
  * it: the task's own tags, its headings', and its note's front matter. A
  * step, a checkbox under another task, is part of its task rather than a
- * task of the project, so it is not counted. With `tagKeys`, only those
- * tags are counted; a tag with no task is left out.
+ * task of the project, so it is not counted, nor is a parked task, which is
+ * set aside. With `tagKeys`, only those tags are counted; a tag with no task
+ * is left out.
  */
 export function collectTagProgress(
   index: WorkspaceIndex,
@@ -51,7 +52,7 @@ export function collectTagProgress(
   const today = startOfDay(now);
   const progress = new Map<string, TagProgress>();
   for (const task of index.tasks.values()) {
-    if (task.parentTaskId) {
+    if (task.parentTaskId || index.parked?.tasks.has(task.id)) {
       continue;
     }
     for (const tagKey of readTaskTagKeys(index, task)) {

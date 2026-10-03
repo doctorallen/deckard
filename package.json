@@ -1334,7 +1334,7 @@
         },
         {
           "command": "deckard.hubs.openAsPage",
-          "when": "view == deckard.hubs && viewItem =~ /^hub(Child|Note)$/ && config.deckard.openNotesIn != page",
+          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild && config.deckard.openNotesIn != page)",
           "group": "deckard@2"
         },
         {

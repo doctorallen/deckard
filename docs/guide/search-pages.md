@@ -87,6 +87,7 @@ HUBS
 - Under each hub are the notes about its tag: those whose front matter or first heading carries it. A line that mentions the tag in passing, such as in a daily note, does not file its note there; the tag's page still finds it.
 - A note can name its place outright with `up:` in its front matter, such as `up: "[[Ledger migration]]"` or a list of several. It is then filed only there, whatever its tags. A note named by `up:` that is no hub is listed under **Other notes**.
 - A hub goes under another hub only when its `up:` names it, as a sub-project's does. The tags in a hub's own front matter, such as a team's `regulars:` or a person's `team:`, describe it and do not move it. A note about two projects is under both.
+- A [parked](organizing.md#parking-notes) note is left out of the tree, and a parked task out of a hub's count, as a search leaves them out.
 - Select a hub to open its tag's search page, with the hub note on top and everything the tag finds under it; the hub's **Open Hub Note** button opens the note's Markdown in the editor. Select any other note to open it. A hub shows how far along its tag's tasks are.
 - **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
 

@@ -78,7 +78,13 @@ export function buildHubGraph(index: WorkspaceIndex): HubGraph {
       hubByTag.set(tag.key, hub);
     }
   }
+  // A parked note is left out of the tree, as a search leaves it out: no
+  // hub, no parent, and filed under nothing.
+  const parked = (filePath: string): boolean => index.parked?.files.has(filePath) ?? false;
   for (const [filePath, file] of index.files) {
+    if (parked(filePath)) {
+      continue;
+    }
     const described = file.hub?.describes.find((tag) => hubByTag.get(tag.key) === filePath);
     if (described) {
       hubTags.set(filePath, described.key);
@@ -87,13 +93,16 @@ export function buildHubGraph(index: WorkspaceIndex): HubGraph {
   const titles = createNoteTitleMap(index);
   const parents = new Map<string, string[]>();
   for (const [filePath, file] of index.files) {
+    if (parked(filePath)) {
+      continue;
+    }
     const up = readUpTargets(file.content)
       .map((name) => resolveWikiTarget(titles, parseWikiTarget(name).note, filePath))
-      .filter((target): target is string => target !== undefined && target !== filePath);
+      .filter((target): target is string => target !== undefined && target !== filePath && !parked(target));
     const found = up.length || hubTags.has(filePath)
       ? up
       : noteTagKeys(file)
-          .map((key) => hubByTag.get(key))
+          .map((key) => (hubTags.has(hubByTag.get(key) ?? '') ? hubByTag.get(key) : undefined))
           .filter((hub): hub is string => hub !== undefined && hub !== filePath);
     if (found.length) {
       parents.set(filePath, [...new Set(found)]);
@@ -113,7 +122,8 @@ export function noteTagKeys(file: ParsedFile): string[] {
 
 /**
  * The notes a note's `up:` front matter names, as written: `up: "[[Atlas]]"`,
- * `up: Atlas`, `up: ["[[Atlas]]", "[[Borealis]]"]`, or a YAML list under it.
+ * `up: Atlas`, `up: ["[[Atlas]]", "[[Borealis]]"]`, or a YAML list under it,
+ * its items indented or not, a blank line or a comment among them skipped.
  */
 export function readUpTargets(content: string): string[] {
   const lines = content.split(/\r?\n/, 200);
@@ -127,8 +137,15 @@ export function readUpTargets(content: string): string[] {
   }
   const first = lines[at + 1].replace(/^up\s*:/i, '');
   const items = [first];
-  for (let line = at + 2; line < end && /^\s+-\s/.test(lines[line]); line += 1) {
-    items.push(lines[line].replace(/^\s+-\s+/, ''));
+  for (let line = at + 2; line < end; line += 1) {
+    const text = lines[line];
+    if (/^\s*(#.*)?$/.test(text)) {
+      continue;
+    }
+    if (!/^\s*-\s/.test(text)) {
+      break;
+    }
+    items.push(text.replace(/^\s*-\s+/, ''));
   }
   return items.flatMap((item) => {
     const links = [...item.matchAll(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g)].map((match) => match[1].trim());
@@ -142,46 +159,101 @@ export function hubNoteLabel(index: WorkspaceIndex, filePath: string): string {
   return (heading ? stripTags(heading.heading).trim() : '') || noteTitle(filePath);
 }
 
-/** A namespace as the tree heads it: its words, made plural, People for person. */
+/**
+ * A namespace as the tree heads it: its words, made plural unless they
+ * already are, People for person.
+ */
 export function namespaceLabel(namespace: string): string {
-  if (namespace === 'person') {
+  if (namespace === 'person' || namespace === 'people') {
     return 'People';
   }
   const words = formatKeyWords(namespace);
   if (/[^aeiou]y$/i.test(words)) {
     return `${words.slice(0, -1)}ies`;
   }
+  if (/s$/i.test(words) && !/(ss|us|is)$/i.test(words)) {
+    return words;
+  }
   return /(s|x|ch|sh)$/i.test(words) ? `${words}es` : `${words}s`;
 }
 
-/** The namespace a hub's tag files it under: `person` for an `@` tag, `other` for a tag with none. */
-function namespaceOf(tagKey: string): string {
+/** The namespace a hub's tag files it under: `person` for an `@` tag, and none for a tag without one. */
+function namespaceOf(tagKey: string): string | undefined {
   if (tagKey.startsWith('@')) {
     return 'person';
   }
-  return readTagNamespace(tagKey)?.toLowerCase() ?? 'other';
+  return readTagNamespace(tagKey)?.toLowerCase();
+}
+
+/**
+ * The group a note at the top goes in, by the tag it is the hub of: its
+ * namespace, Other tags for a tag with none, or Other notes for no hub. The
+ * ids of the last two start `group:`, which no namespace can.
+ */
+function groupOf(tagKey: string | undefined): [id: string, heading: string] {
+  if (!tagKey) {
+    return ['group:other-notes', 'Other notes'];
+  }
+  const namespace = namespaceOf(tagKey);
+  return namespace ? [`namespace:${namespace}`, namespaceLabel(namespace)] : ['group:other-tags', 'Other tags'];
+}
+
+/** One group at the top of the tree: its id, which no namespace can collide with, its heading, and its notes. */
+interface HubGroup {
+  id: string;
+  heading: string;
+  notes: string[];
+}
+
+/** Each note's children, by path: the notes whose parents name it. */
+function listChildren(graph: HubGraph): Map<string, string[]> {
+  const children = new Map<string, string[]>();
+  for (const [child, parents] of graph.parents) {
+    for (const parent of parents) {
+      const list = children.get(parent);
+      if (list) {
+        list.push(child);
+      } else {
+        children.set(parent, [child]);
+      }
+    }
+  }
+  return children;
+}
+
+/** A note's label, read once for each note, since sorting asks for it again and again. */
+function labelReader(index: WorkspaceIndex): (filePath: string) => string {
+  const labels = new Map<string, string>();
+  return (filePath) => {
+    let found = labels.get(filePath);
+    if (found === undefined) {
+      found = hubNoteLabel(index, filePath);
+      labels.set(filePath, found);
+    }
+    return found;
+  };
 }
 
 /**
  * The tree: each namespace with a hub at the top, its hubs that have no
  * parent of their own, and under every note the notes whose parent it is.
  * A note that is the parent of others but is no hub and has no parent is
- * listed under Other notes. Each level is alphabetical.
+ * listed under Other notes. A note the tree would otherwise never reach, in
+ * a loop of `up:` or below a chain deeper than it draws, is listed at the
+ * top too: a hub in its namespace, any other note under Other notes. Each
+ * level is alphabetical.
  */
 export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] {
   const graph = getHubGraph(index);
-  const children = new Map<string, string[]>();
-  for (const [child, parents] of graph.parents) {
-    for (const parent of parents) {
-      children.set(parent, [...(children.get(parent) ?? []), child]);
-    }
-  }
+  const children = listChildren(graph);
   const progress = collectTagProgress(index, now, new Set(graph.hubTags.values()));
-  const label = (filePath: string): string => hubNoteLabel(index, filePath);
-  const byLabel = (left: string, right: string): number =>
-    label(left).localeCompare(label(right), undefined, { sensitivity: 'base' }) || left.localeCompare(right);
+  const label = labelReader(index);
+  const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+  const byLabel = (left: string, right: string): number => collator.compare(label(left), label(right)) || left.localeCompare(right);
+  const reached = new Set<string>();
 
   const buildNote = (filePath: string, path: readonly string[]): HubTreeNode => {
+    reached.add(filePath);
     const id = [...path, filePath].join('\u0000');
     const tagKey = graph.hubTags.get(filePath);
     const counted = tagKey ? progress.get(tagKey) : undefined;
@@ -200,49 +272,47 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
     };
   };
 
-  // A hub whose parents never reach the top, as in a loop of `up:`, is
-  // listed at the top of its namespace rather than nowhere.
-  const placed = new Set<string>();
-  const reachable = (filePath: string, seen: Set<string>): boolean => {
-    if (placed.has(filePath)) {
-      return true;
+  const groups = new Map<string, HubGroup>();
+  const groupFor = (filePath: string): HubGroup => {
+    const [id, heading] = groupOf(graph.hubTags.get(filePath));
+    let group = groups.get(id);
+    if (!group) {
+      group = { id, heading, notes: [] };
+      groups.set(id, group);
     }
-    if (seen.has(filePath)) {
-      return false;
-    }
-    seen.add(filePath);
-    const parents = graph.parents.get(filePath);
-    const found = !parents || parents.some((parent) => index.files.has(parent) && reachable(parent, seen));
-    if (found) {
-      placed.add(filePath);
-    }
-    return found;
+    return group;
   };
-  const namespaces = new Map<string, string[]>();
-  for (const [filePath, tagKey] of graph.hubTags) {
-    if (graph.parents.has(filePath) && reachable(filePath, new Set())) {
-      continue;
-    }
-    const namespace = namespaceOf(tagKey);
-    namespaces.set(namespace, [...(namespaces.get(namespace) ?? []), filePath]);
-  }
-  const loose = [...children.keys()].filter(
-    (filePath) => index.files.has(filePath) && !graph.hubTags.has(filePath) && !graph.parents.has(filePath),
-  );
-  const groups: Array<[string, string, string[]]> = [
-    ...[...namespaces]
-      .filter(([namespace]) => namespace !== 'other')
-      .map(([namespace, hubs]): [string, string, string[]] => [namespace, namespaceLabel(namespace), hubs])
-      .sort((left, right) => left[1].localeCompare(right[1])),
-    ...(namespaces.has('other') ? [['other', 'Other tags', namespaces.get('other') ?? []] as [string, string, string[]]] : []),
-    ...(loose.length ? [['loose', 'Other notes', loose] as [string, string, string[]]] : []),
+  const tops: string[] = [
+    ...[...graph.hubTags.keys()].filter((filePath) => !graph.parents.has(filePath)),
+    ...[...children.keys()].filter((filePath) => index.files.has(filePath) && !graph.hubTags.has(filePath) && !graph.parents.has(filePath)),
   ];
-  return groups.map(([namespace, heading, hubs]) => ({
-    id: `namespace:${namespace}`,
-    kind: 'namespace' as const,
-    label: heading,
-    children: [...hubs].sort(byLabel).map((hub) => buildNote(hub, [`namespace:${namespace}`])),
-  }));
+  const built = new Map<string, HubTreeNode>();
+  const place = (filePath: string): void => {
+    groupFor(filePath).notes.push(filePath);
+    built.set(filePath, buildNote(filePath, [groupFor(filePath).id]));
+  };
+  [...tops].sort(byLabel).forEach(place);
+  // What no top reaches is listed at the top as well, hubs first, until every
+  // note the tree files is somewhere.
+  const filed = [...new Set([...graph.hubTags.keys(), ...graph.parents.keys()])].filter((filePath) => index.files.has(filePath));
+  for (let missing = filed.filter((filePath) => !reached.has(filePath)); missing.length; missing = missing.filter((filePath) => !reached.has(filePath))) {
+    const next = [...missing].sort((left, right) => Number(!graph.hubTags.has(left)) - Number(!graph.hubTags.has(right)) || byLabel(left, right))[0];
+    place(next);
+  }
+  const order = (group: HubGroup): [number, string] => {
+    if (group.id === 'group:other-notes') {
+      return [2, ''];
+    }
+    return group.id === 'group:other-tags' ? [1, ''] : [0, group.heading];
+  };
+  return [...groups.values()]
+    .sort((left, right) => order(left)[0] - order(right)[0] || collator.compare(order(left)[1], order(right)[1]))
+    .map((group) => ({
+      id: group.id,
+      kind: 'namespace' as const,
+      label: group.heading,
+      children: [...group.notes].sort(byLabel).map((filePath) => built.get(filePath) as HubTreeNode),
+    }));
 }
 
 /**
@@ -281,7 +351,7 @@ export function findBreadcrumbs(
       const namespace = top ? namespaceOf(top) : undefined;
       return {
         labels: [
-          ...(namespace && namespace !== 'other' ? [namespaceLabel(namespace)] : []),
+          ...(namespace ? [namespaceLabel(namespace)] : []),
           ...path.map((note) => hubNoteLabel(index, note)),
         ],
         parent: path[path.length - 2],

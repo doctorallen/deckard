@@ -400,7 +400,7 @@ function describeTagProgressLine(
       total: progress.total,
       overdue: progress.overdue,
       label: describeTagProgress(progress, context.now, context.taskPolicy),
-      ...(progress.overdue > 0 ? { overdueQuery: `${tagKey} is:overdue -is:needs-date -is:step` } : {}),
+      ...(progress.overdue > 0 ? { overdueQuery: `${tagKey} is:overdue -is:needs-date -is:step -is:parked` } : {}),
     },
   };
 }

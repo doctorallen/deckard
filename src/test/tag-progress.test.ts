@@ -101,7 +101,7 @@ suite('Tag progress', () => {
       total: 7,
       overdue: 1,
       label: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days',
-      overdueQuery: '#project/atlas is:overdue -is:needs-date -is:step',
+      overdueQuery: '#project/atlas is:overdue -is:needs-date -is:step -is:parked',
     });
     const overdue = evaluateQuery(index, parseQuery(snapshot.tagPage?.progress?.overdueQuery ?? '').node, createQueryContext(now));
     assert.deepStrictEqual(overdue.tasks.map((task) => task.lineNumber), [5], 'the search finds the overdue task');

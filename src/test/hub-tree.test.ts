@@ -4,6 +4,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { buildHubTree, findBreadcrumbs, HubTreeNode, namespaceLabel, readUpTargets } from '../ui/state/hubTree';
 import { WorkspaceIndex } from '../domain/model';
+import { computeParked } from '../domain/index/parked';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -103,5 +104,66 @@ suite('Notes under their hubs', () => {
     });
     assert.ok(outline(buildHubTree(looped, Date.now())).some((line) => line.trim() === 'A'), 'the hub in the loop is still listed');
     assert.ok(findBreadcrumbs(looped, 'b.md').length <= 3);
+  });
+
+  test('reads an up: list written without indent, or with a comment in it', () => {
+    assert.deepStrictEqual(readUpTargets('---\nup:\n- "[[A]]"\n- B\n---'), ['A', 'B']);
+    assert.deepStrictEqual(readUpTargets('---\nup:\n  # the parent\n  - "[[A]]"\n\n  - B\ntags: x\n---'), ['A', 'B']);
+  });
+
+  test('leaves parked notes out, and their tasks out of a hub’s count', () => {
+    const files = new Map([
+      ['H.md', parseMarkdown('H.md', '---\ndescribes: project/h\n---\n# H\n- [ ] Live task')],
+      ['Old.md', parseMarkdown('Old.md', '---\ntags: [parked, project/h]\n---\n# Old parked note\n- [ ] Parked task')],
+      ['P.md', parseMarkdown('P.md', '---\ndescribes: project/p\ntags: [parked]\n---\n# Parked hub')],
+    ]);
+    const parkedIndex = buildWorkspaceIndex(files);
+    parkedIndex.parked = computeParked(parkedIndex, { isParkedPath: () => false, hasFolders: false, tags: ['#parked'] });
+    assert.deepStrictEqual(outline(buildHubTree(parkedIndex, Date.now())), ['Projects', '  H: 0 of 1 done']);
+  });
+
+  test('gives every group an id no namespace can take, and does not pluralize what is plural', () => {
+    const odd = indexOf({
+      'L.md': '---\ndescribes: loose/x\n---\n# L',
+      'O.md': '---\ndescribes: other/y\n---\n# O',
+      'T.md': '---\ndescribes: follow-up\n---\n# T',
+      'child.md': '---\nup: "[[Plain]]"\n---\n# Child',
+      'Plain.md': '# Plain',
+    });
+    const tree = buildHubTree(odd, Date.now());
+    assert.deepStrictEqual(tree.map((group) => [group.id, group.label]), [
+      ['namespace:loose', 'Looses'],
+      ['namespace:other', 'Others'],
+      ['group:other-tags', 'Other tags'],
+      ['group:other-notes', 'Other notes'],
+    ]);
+    assert.deepStrictEqual(['projects', 'areas', 'people', 'status', 'focus'].map(namespaceLabel), ['Projects', 'Areas', 'People', 'Statuses', 'Focuses']);
+  });
+
+  test('lists a note no top reaches, in a loop or below a chain too deep to draw, rather than losing it', () => {
+    const loop = indexOf({
+      'N1.md': '---\nup: "[[N2]]"\n---\n# N1',
+      'N2.md': '---\nup: "[[N1]]"\n---\n# N2',
+    });
+    const labels = outline(buildHubTree(loop, Date.now())).map((line) => line.trim());
+    assert.ok(labels.includes('N1') && labels.includes('N2'), labels.join(' | '));
+    const chain: Record<string, string> = { 'R.md': '---\ndescribes: project/r\n---\n# R' };
+    for (let n = 1; n <= 12; n += 1) {
+      chain[`C${n}.md`] = `---\nup: "[[${n === 1 ? 'R' : `C${n - 1}`}]]"\n---\n# C${n}`;
+    }
+    const deep = outline(buildHubTree(indexOf(chain), Date.now())).map((line) => line.trim());
+    assert.ok(deep.includes('C12'), 'the bottom of the chain is listed somewhere');
+  });
+
+  test('builds a hub with many notes quickly', () => {
+    const many: Record<string, string> = { 'H.md': '---\ndescribes: project/h\n---\n# H' };
+    for (let n = 0; n < 3000; n += 1) {
+      many[`n/${n}.md`] = `# Note ${n} #project/h`;
+    }
+    const big = indexOf(many);
+    const started = Date.now();
+    const tree = buildHubTree(big, Date.now());
+    assert.strictEqual(tree[0].children[0].children.length, 3000);
+    assert.ok(Date.now() - started < 1500, `${Date.now() - started} ms`);
   });
 });
