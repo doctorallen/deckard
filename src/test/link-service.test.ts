@@ -15,7 +15,7 @@ import {
   NoteEdit,
   ReplaceOutcome,
 } from '../services/linkService';
-import { FakeFileSystem, fileUri } from './fakeWorkspace';
+import { FakeFileSystem, fileUri, joinUri } from './fakeWorkspace';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -247,7 +247,7 @@ suite('LinkNoteService', () => {
     const notes = new LinkNoteService(files);
 
     const created = await notes.createNoteNamed(folder, 'Q3 Planning');
-    assert.deepStrictEqual(plain(created), plain({ kind: 'created', uri: fileUri('/ws/notes/Q3 Planning.md') }));
+    assert.deepStrictEqual(plain(created), plain({ kind: 'created', uri: joinUri(folder, 'Q3 Planning.md') }));
     assert.strictEqual(text(files, '/ws/notes/Q3 Planning.md'), '# Q3 Planning\n\n');
 
     files.files.set('/ws/notes/Q3 Planning.md', new TextEncoder().encode('Kept'));
@@ -281,7 +281,7 @@ suite('LinkNoteService', () => {
       },
     );
 
-    assert.deepStrictEqual(plain(result), plain({ kind: 'extracted', noteUri: fileUri('/ws/notes/Lead.md') }));
+    assert.deepStrictEqual(plain(result), plain({ kind: 'extracted', noteUri: joinUri(folder, 'Lead.md') }));
     assert.deepStrictEqual(swaps, ['[[Lead]]']);
     assert.strictEqual(text(files, '/ws/notes/Lead.md'), section.rawContent);
   });
@@ -329,7 +329,7 @@ suite('LinkNoteService', () => {
 
     assert.deepStrictEqual(
       plain(result),
-      plain({ kind: 'exists', fileName: 'Lead.md', noteUri: fileUri('/ws/notes/Lead.md') }),
+      plain({ kind: 'exists', fileName: 'Lead.md', noteUri: joinUri(folder, 'Lead.md') }),
     );
     assert.strictEqual(text(files, '/ws/notes/Lead.md'), 'Mine');
   });

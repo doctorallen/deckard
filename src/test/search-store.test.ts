@@ -26,7 +26,7 @@ suite('Local search store', () => {
       assert.strictEqual(store.search('nonexistent').length, 0);
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -50,7 +50,7 @@ suite('Local search store', () => {
       assert.deepStrictEqual(paths('elevator'), [], 'the deleted note is gone');
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -73,7 +73,7 @@ suite('Local search store', () => {
       assert.strictEqual(store.search('staffing', 1000).length, 0, 'no old text is left');
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -100,7 +100,7 @@ suite('Local search store', () => {
       assert.strictEqual(store.search('elevator', 1000).length, 60);
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -131,7 +131,7 @@ suite('Local search store', () => {
       assert.strictEqual(asHeadings[0].line, 1, 'and it is the heading');
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -158,7 +158,7 @@ suite('Local search store', () => {
       );
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -223,7 +223,7 @@ suite('Local search store', () => {
       assert.deepStrictEqual(store.search('budget'), []);
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -252,7 +252,7 @@ suite('Local search store', () => {
       assert.deepStrictEqual(reopened.search('staffing').map((r) => r.filePath), ['atlas.md']);
     } finally {
       reopened.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -376,7 +376,7 @@ suite('Local search store', () => {
       assert.deepStrictEqual(store.readLastScan(), { found: 4, templates: 1, excluded: 0, read: 3 });
     } finally {
       store.dispose();
-      rmSync(directory, { recursive: true, force: true });
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });

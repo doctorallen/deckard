@@ -42,7 +42,8 @@ suite('Preference snapshots through the file-system port', () => {
       JSON.stringify(store.reader.value, null, 2),
     );
     const [listed] = await snapshots.list();
-    assert.strictEqual(listed.uri.fsPath, written[0]);
+    // The fake keys a file by its path with forward slashes, on Windows too.
+    assert.strictEqual(listed.uri.fsPath.replace(/\\/g, '/'), written[0]);
     assert.deepStrictEqual(await snapshots.read(listed), JSON.parse(JSON.stringify(store.reader.value)));
     snapshots.dispose();
     store.repository.dispose();
