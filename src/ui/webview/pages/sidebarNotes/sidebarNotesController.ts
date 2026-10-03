@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import type { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
+import { openNoteAt } from '../../../commands/noteOpening';
 import { whenPublished } from '../../../../core/workspace/publishing';
 import { isMarkdownFile } from '../../../../core/workspace/scanner';
 import { listedParkedTags } from '../../../../domain/index/parked';
@@ -21,7 +22,7 @@ import type {
 } from '../../../protocol/sidebarNotes';
 import { appendTagToLine } from '../../../commands/bulkEdit';
 import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
-import { openSourceAt, resolveSourceUri } from '../../../commands/navigation';
+import { resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
@@ -819,7 +820,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     }
     // A result used to replace the note it was ranked from, with no way
     // back but Ctrl+Tab. Cmd/Ctrl-click opens it alongside instead.
-    await openSourceAt({ filePath: location.filePath, line: location.line, beside: message.beside === true });
+    // A related note opens in a tab of its own, kept rather than previewed, as it always has.
+    await openNoteAt(location.filePath, location.line, { beside: message.beside === true, pin: true, opposite: message.opposite === true });
   }
 
   /**

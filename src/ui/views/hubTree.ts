@@ -80,7 +80,8 @@ export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vs
     if (node.tagKey) {
       item.command = { title: 'Open Tag Page', command: 'deckard.showTagOverview', arguments: [node.tagKey] };
     } else if (uri) {
-      item.command = { title: 'Open', command: 'vscode.open', arguments: [uri] };
+      // Where the reader reads notes, the editor or the note page.
+      item.command = { title: 'Open', command: 'deckard.openNote', arguments: [node.filePath] };
     }
     return item;
   }

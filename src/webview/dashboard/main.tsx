@@ -703,7 +703,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   'create-tag-hub': (target) => send({ type: 'createTagHub', tagKey: data(target, 'tagKey') }),
   'add-next-action': (target) => send({ type: 'addNextAction', tagKey: data(target, 'tagKey') }),
   'rename-tag': (target) => send({ type: 'renameTag', tagKey: data(target, 'tagKey') }),
-  'open-note': (target) => send({ type: 'openNote', filePath: data(target, 'filePath') }),
+  'open-note': (target, event) => send({ type: 'openNote', filePath: data(target, 'filePath'), ...(event?.shiftKey ? { opposite: true } : {}) }),
   'unpin-note': (target) => send({ type: 'unpinNote', filePath: target.dataset.filePath || ' ', pinKey: target.dataset.pinKey }),
   'open-search': (target) => send({ type: 'openSearch', query: target.dataset.query || '' }),
   'open-task-board': (target) => send({ type: 'openTaskBoard', query: target.dataset.query || '' }),

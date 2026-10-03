@@ -17,7 +17,7 @@ import type { SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { createHubNote } from '../../../commands/hubNote';
-import { openResultAt, ResultOpening } from '../../../commands/navigation';
+import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
@@ -568,7 +568,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private async openSource(
     filePath: string,
     line: number,
-    how: ResultOpening = {},
+    how: NoteOpening = {},
   ): Promise<void> {
     const snapshot = this.currentSnapshot();
     const hub = snapshot.hub;
@@ -576,7 +576,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       hub &&
       (filePath === hub.filePath || hub.otherFilePaths.includes(filePath))
     ) {
-      await openResultAt(filePath, line, how);
+      await openNoteAt(filePath, line, how);
       return;
     }
     const card = snapshot.sections.find(
@@ -586,7 +586,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       if (!card.id.startsWith('frontmatter:')) {
         await this.search.preferences.usage.recordSectionAccess(card.id);
       }
-      await openResultAt(card.filePath, card.startLine, how);
+      await openNoteAt(card.filePath, card.startLine, how);
       return;
     }
     const task = snapshot.tasks.find(
@@ -595,7 +595,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         candidate.task.lineNumber === line,
     );
     if (task) {
-      await openResultAt(task.task.filePath, task.task.lineNumber, how);
+      await openNoteAt(task.task.filePath, task.task.lineNumber, how);
     }
   }
 

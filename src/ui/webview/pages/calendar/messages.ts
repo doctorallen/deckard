@@ -66,7 +66,7 @@ const narrowOpenNote: Narrower<CalendarOpenNoteMessage> = (value) =>
   value.filePath.length > 0 &&
   value.filePath.length <= MAX_FILE_PATH_LENGTH &&
   Object.keys(value).length === 2
-    ? { type: 'openNote', filePath: value.filePath }
+    ? { type: 'openNote', filePath: value.filePath, ...(value.opposite === true ? { opposite: true } : {}) }
     : undefined;
 
 /** A task to open, by its id and nothing else. */

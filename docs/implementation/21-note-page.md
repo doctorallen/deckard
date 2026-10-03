@@ -1,6 +1,6 @@
 # The note page
 
-**Status: building.** A note read in a Deckard page rather than in the editor, and a setting that makes it where a note opens.
+**Status: built.** A note read in a Deckard page rather than in the editor, and a setting that makes it where a note opens.
 
 ## What it is
 

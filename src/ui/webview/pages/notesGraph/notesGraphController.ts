@@ -15,7 +15,7 @@ import type {
   NotesGraphWireSnapshot,
   SidebarGraphContext,
 } from '../../../protocol/notesGraph';
-import { openSourceAt } from '../../../commands/navigation';
+import { openNoteAt } from '../../../commands/noteOpening';
 import { NotesGraphKinds, selectShownNodes, toWire } from '../../../state/notesGraphState';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { openSource, openTag } from '../../host/sharedHandlers';
@@ -368,7 +368,7 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
       node.line !== undefined &&
       this.graph.navigation.resolveSourceLocation(this.graph.indexer.getSnapshot(), node.filePath, node.line, 'graphNodes').kind === 'open'
     ) {
-      await openSourceAt({ filePath: node.filePath, line: node.line });
+      await openNoteAt(node.filePath, node.line, { pin: true });
     }
   }
 

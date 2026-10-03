@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import type { Services } from '../../../composition/services';
 import { isMarkdownFile } from '../../../core/workspace/scanner';
 import { registerCommand } from '../runCommand';
+import { openNoteAt } from '../noteOpening';
 
 /**
  * Opening the pages: Home, Stats, Help and What's new, the Notes Graph and
@@ -61,6 +62,16 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
   const { indexer } = services;
   const { notePage } = services.pages;
   return [
+    // A note, opened where deckard.openNotesIn says, or the other way: for a
+    // tree row or a lens, which cannot read the keys a click held.
+    registerCommand('deckard.openNote', async (filePath?: unknown, line?: unknown, options?: unknown) => {
+      if (typeof filePath !== 'string' || !indexer.getSnapshot().files.has(filePath)) {
+        return;
+      }
+      const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : 1;
+      const opposite = typeof options === 'object' && options !== null && (options as { opposite?: unknown }).opposite === true;
+      await openNoteAt(filePath, at, { opposite });
+    }),
     registerCommand('deckard.openNotePage', async (filePath?: unknown, line?: unknown, options?: unknown) => {
       const beside = typeof options === 'object' && options !== null && (options as { beside?: unknown }).beside === true;
       if (typeof filePath === 'string' && filePath) {

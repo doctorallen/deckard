@@ -114,7 +114,8 @@ export function isSourceLocation(value: Record<string, unknown>): boolean {
     Number.isInteger(value.line) &&
     value.line > 0 &&
     (value.beside === undefined || typeof value.beside === 'boolean') &&
-    (value.pin === undefined || typeof value.pin === 'boolean')
+    (value.pin === undefined || typeof value.pin === 'boolean') &&
+    (value.opposite === undefined || typeof value.opposite === 'boolean')
   );
 }
 
@@ -127,9 +128,9 @@ export const narrowSetZenMode: Narrower<SetZenModeMessage> = (value) =>
     : undefined;
 
 /**
- * A line to open, with Beside and Keep only when they are on: everything
- * `openResultAt` and `openSourceAt` read, which treat a modifier that is
- * off and one that is absent alike.
+ * A line to open, with Beside, Keep, and the other place only when they are
+ * on: everything `openNoteAt` reads, which treats a modifier that is off
+ * and one that is absent alike.
  */
 export const narrowOpenSource: Narrower<OpenSourceMessage> = (value) =>
   isSourceLocation(value)
@@ -139,6 +140,7 @@ export const narrowOpenSource: Narrower<OpenSourceMessage> = (value) =>
         line: value.line as number,
         ...(value.beside === true ? { beside: true } : {}),
         ...(value.pin === true ? { pin: true } : {}),
+        ...(value.opposite === true ? { opposite: true } : {}),
       }
     : undefined;
 

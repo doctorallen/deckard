@@ -215,7 +215,9 @@ const narrowAddNextAction: Narrower<AddNextActionMessage> = (value) =>
 
 /** A note to open at its top. */
 const narrowOpenNote: Narrower<OpenNoteMessage> = (value) =>
-  typeof value.filePath === 'string' && value.filePath.length > 0 ? { type: 'openNote', filePath: value.filePath } : undefined;
+  typeof value.filePath === 'string' && value.filePath.length > 0
+    ? { type: 'openNote', filePath: value.filePath, ...(value.opposite === true ? { opposite: true } : {}) }
+    : undefined;
 
 /** Each message the Dashboard may send, and what it must hold. */
 export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {

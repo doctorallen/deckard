@@ -32,7 +32,6 @@ interface LensIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
-  getUri?(filePath: string): vscode.Uri | undefined;
   isNotesFile(uri: vscode.Uri): boolean;
   parse(uri: vscode.Uri, content: string): ParsedFile;
 }
@@ -44,8 +43,6 @@ interface LensContext {
   index: WorkspaceIndex;
   /** Whether the note is in the notes folder Deckard indexes. */
   isNotesFile: boolean;
-  /** The file an index path names, to open it. */
-  uriOf(filePath: string): vscode.Uri | undefined;
 }
 
 /** One group of lenses, and the `deckard.editor.*` setting that shows it. */
@@ -151,7 +148,6 @@ export class EditorLenses
           file: this.indexer.parse(document.uri, document.getText()),
           index: this.indexer.getSnapshot(),
           isNotesFile: this.indexer.isNotesFile(document.uri),
-          uriOf: (filePath) => this.indexer.getUri?.(filePath),
         };
         return groups.flatMap((group) => group.provide(context));
       },
@@ -303,7 +299,7 @@ function provideStepProgressLenses({ document, file }: LensContext): LazyCodeLen
  * down, as the Hubs view files it, which opens the note above it. A note no
  * hub holds has none.
  */
-function provideBreadcrumbLenses({ file, index, isNotesFile, uriOf }: LensContext): LazyCodeLens[] {
+function provideBreadcrumbLenses({ file, index, isNotesFile }: LensContext): LazyCodeLens[] {
   if (!isNotesFile) {
     return [];
   }
@@ -311,12 +307,11 @@ function provideBreadcrumbLenses({ file, index, isNotesFile, uriOf }: LensContex
   return findBreadcrumbs(index, file.filePath).map(
     (crumb) =>
       new LazyCodeLens(range, () => {
-        const parent = uriOf(crumb.parent);
         return {
           title: crumb.labels.join(' › '),
-          tooltip: `Open ${crumb.labels[crumb.labels.length - 2] ?? 'the note above this one'}`,
-          command: parent ? 'vscode.open' : '',
-          arguments: parent ? [parent] : [],
+          tooltip: `Open ${crumb.labels[crumb.labels.length - 2] ?? 'the note above this one'}, where your notes open: the editor or the note page`,
+          command: 'deckard.openNote',
+          arguments: [crumb.parent],
         };
       }),
   );

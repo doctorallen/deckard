@@ -62,6 +62,10 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 
 The page is one tab, reused for each note as VS Code's preview tab is, and it is reopened on the note it showed after a reload. It follows each save.
 
+**Opening every note there.** Set `deckard.openNotesIn` to `page` and a note or task opened from any Deckard page opens on the note page, scrolled to its line, which is marked for a moment: a search page's cards and tasks, Related Notes, Home, the Task Board, the calendars, Stats, the Notes Graph, Find, the Hubs view, and the breadcrumb lens. The default, `editor`, opens them in the editor as before.
+
+**The other way, one key away.** Whichever the setting says, **Shift**-click a note or a task to open it the other way, and **Shift+Enter** from the keyboard, Find included. **Cmd/Ctrl+Shift**-click opens it the other way beside the page. A tree row and a lens cannot tell which keys were held, so the Hubs view's notes offer the other way on their right-click menu, **Open in Editor** or **Open as Page**. A link followed in the editor, the Tasks view, and the Outline always stay in the editor.
+
 ### Copying a note for elsewhere
 
 Embeds, query blocks, and `[[links]]` mean something only to Deckard. `Deckard: Copy as Plain Markdown`, also in the editor's **Deckard** right-click menu, copies the note, or what is selected in it, written out for a chat, an email, or a pull request:

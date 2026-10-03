@@ -122,6 +122,8 @@ export interface OpenSourceMessage {
   beside?: boolean;
   /** Keep the tab, from a double-click, rather than previewing in it. */
   pin?: boolean;
+  /** Shift was held: open it where `deckard.openNotesIn` does not. */
+  opposite?: boolean;
 }
 
 /** Checks or unchecks a task's box. */

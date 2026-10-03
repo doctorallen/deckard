@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { openNoteAt } from '../../../commands/noteOpening';
 import { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { listedParkedTags } from '../../../../domain/index/parked';
@@ -14,7 +15,6 @@ import type {
   DashboardPageToHost,
   DashboardSnapshot,
 } from '../../../protocol/dashboard';
-import { openSourceAt } from '../../../commands/navigation';
 import { setPinned } from '../../../commands/pinNote';
 import { readQueryContext } from '../../../commands/queryContext';
 import type { TaskWrites } from '../../../commands/taskActions';
@@ -522,7 +522,7 @@ export class DashboardController implements PageController<DashboardPageState, D
       },
       openNote: async (message) => {
         if (indexer.getSnapshot().files.has(message.filePath)) {
-          await openSourceAt({ filePath: message.filePath, line: 1 });
+          await openNoteAt(message.filePath, 1, { pin: true, opposite: message.opposite === true });
         }
       },
       // Home lists pins; it does not make them, since the note being

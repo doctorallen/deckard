@@ -300,6 +300,8 @@ export interface AddNextActionMessage {
 export interface OpenNoteMessage {
   type: 'openNote';
   filePath: string;
+  /** Shift was held: open it where `deckard.openNotesIn` does not. */
+  opposite?: boolean;
 }
 
 /** Runs, puts off for a week, or retires Try next's suggestion. */

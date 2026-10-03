@@ -276,7 +276,7 @@ function toggleLinkSection(expand: HTMLElement): void {
 
 /** What Links and the gear's rows ask for, by `data-action`. */
 const LINK_ACTIONS: ReadonlyArray<readonly [string, (element: HTMLElement, event: MouseEvent) => void]> = [
-  ['open-link', (link, event) => send({ type: 'openSource', filePath: String(link.dataset.filePath), line: Number(link.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) })],
+  ['open-link', (link, event) => send({ type: 'openSource', filePath: String(link.dataset.filePath), line: Number(link.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey), ...(event.shiftKey ? { opposite: true } : {}) })],
   ['link-mention', (one) => send({ type: 'linkMention', filePath: String(one.dataset.filePath), line: Number(one.dataset.line), startColumn: Number(one.dataset.startColumn) })],
   ['toggle-link-section', toggleLinkSection],
   ['show-daily-notes', () => send({ type: 'setHideDailyNotes', hide: false })],
@@ -418,7 +418,7 @@ function openCard(element: Element, event: MouseEvent | KeyboardEvent): boolean 
   }
   // Cmd/Ctrl opens the result beside the note it was ranked from, the way
   // a graph node already did.
-  send({ type: 'openSource', filePath: String(note.dataset.filePath), line: Number(note.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) });
+  send({ type: 'openSource', filePath: String(note.dataset.filePath), line: Number(note.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey), ...(event.shiftKey ? { opposite: true } : {}) });
   return true;
 }
 

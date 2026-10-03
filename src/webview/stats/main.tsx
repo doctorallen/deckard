@@ -85,10 +85,11 @@ function shown(): DeckardStatsSnapshot | undefined {
 
 /**
  * A row posts the message the host projected for it, so the page never
- * decides what a tag or a line opens. A link that opens no note searches
- * for the links to it.
+ * decides what a tag or a line opens; Shift adds that a line opens where
+ * `deckard.openNotesIn` does not. A link that opens no note searches for
+ * the links to it.
  */
-function openRow(row: HTMLElement): void {
+function openRow(row: HTMLElement, event?: MouseEvent | KeyboardEvent): void {
   const missing = row.getAttribute('data-missing-index');
   if (missing !== null) {
     const target = (shown()?.missingLinkTargets || [])[Number(missing)];
@@ -101,7 +102,7 @@ function openRow(row: HTMLElement): void {
   const items = list && ROW_LISTS.includes(list) ? shown()?.[list] : undefined;
   const item = items?.[Number(row.getAttribute('data-index'))];
   if (item && item.open) {
-    send(item.open);
+    send(item.open.type === 'openSource' && event?.shiftKey ? { ...item.open, opposite: true } : item.open);
   }
 }
 
@@ -216,7 +217,7 @@ const app = document.getElementById('app') as HTMLElement;
 listenForActions(app, ACTIONS, (event) => {
   const row = findRow(event);
   if (row) {
-    openRow(row);
+    openRow(row, event);
   }
 });
 // The arrows walk the grid of pairs; Enter and Space open a row.
@@ -237,7 +238,7 @@ app.addEventListener('keydown', (event) => {
     return;
   }
   event.preventDefault();
-  openRow(row);
+  openRow(row, event);
 });
 onHostMessage<StateMessage<DeckardStatsSnapshot>>('state', (message) => store.update({ snapshot: message.data }));
 rememberScroll(keptState, (value) => vscodeApi().setState(value));

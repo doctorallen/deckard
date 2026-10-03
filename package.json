@@ -466,6 +466,24 @@
         "icon": "$(book)"
       },
       {
+        "command": "deckard.openNote",
+        "title": "Open Note",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.hubs.openInEditor",
+        "title": "Open in Editor"
+      },
+      {
+        "command": "deckard.hubs.openAsPage",
+        "title": "Open as Page"
+      },
+      {
+        "command": "deckard.quickFind.openOther",
+        "title": "Open the Other Way",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.showTagOverview",
         "title": "Open a Tag's Search Page…",
         "category": "Deckard"
@@ -795,6 +813,22 @@
         },
         {
           "command": "deckard.hubs.openHubNote",
+          "when": "false"
+        },
+        {
+          "command": "deckard.openNote",
+          "when": "false"
+        },
+        {
+          "command": "deckard.hubs.openInEditor",
+          "when": "false"
+        },
+        {
+          "command": "deckard.hubs.openAsPage",
+          "when": "false"
+        },
+        {
+          "command": "deckard.quickFind.openOther",
           "when": "false"
         },
         {
@@ -1294,6 +1328,16 @@
           "group": "deckard@1"
         },
         {
+          "command": "deckard.hubs.openInEditor",
+          "when": "view == deckard.hubs && viewItem == hubChild && config.deckard.openNotesIn == page",
+          "group": "deckard@2"
+        },
+        {
+          "command": "deckard.hubs.openAsPage",
+          "when": "view == deckard.hubs && viewItem =~ /^hub(Child|Note)$/ && config.deckard.openNotesIn != page",
+          "group": "deckard@2"
+        },
+        {
           "command": "deckard.outline.openTagOverview",
           "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
           "group": "deckard@1"
@@ -1435,6 +1479,11 @@
       {
         "command": "deckard.quickFind.insertLink",
         "key": "alt+enter",
+        "when": "inQuickOpen && deckard.quickFindOpen"
+      },
+      {
+        "command": "deckard.quickFind.openOther",
+        "key": "shift+enter",
         "when": "inQuickOpen && deckard.quickFindOpen"
       },
       {
@@ -1677,6 +1726,21 @@
             "scope": "resource",
             "description": "Optional workspace-relative folder containing Markdown notes. Leave empty to index all Markdown files in the workspace.",
             "order": 0
+          },
+          "deckard.openNotesIn": {
+            "type": "string",
+            "enum": [
+              "editor",
+              "page"
+            ],
+            "enumDescriptions": [
+              "A note or task opens in the editor, at its line.",
+              "A note or task opens on the note page, a Deckard page that draws the note with its links, tags, tasks, and query blocks working, scrolled to its line."
+            ],
+            "default": "editor",
+            "scope": "window",
+            "order": 1,
+            "markdownDescription": "Where a note or task opens from Deckard's pages, the Hubs view, Find, and the breadcrumb lens. **Shift**-click, or Shift+Enter, opens it the other way. A link followed in the editor, the Tasks view, and the Outline stay in the editor."
           },
           "deckard.theme": {
             "type": "string",
