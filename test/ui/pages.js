@@ -26,16 +26,20 @@ const modules = require('../harness/modules.js');
 const { loadPage } = require('../harness/loadPage.js');
 
 /**
- * What Help renders with: the shipped manifest, and the shipped changelog's
- * releases, so What's new is measured too. Every page renders against the
- * one stand-in webview of src/test/pageWebview.ts, as the mocha suites do.
+ * What Help renders with: the shipped manifest, and the releases of a frozen
+ * copy of the changelog, test/ui/fixtures/changelog.md, so What's new is
+ * measured too. The copy is frozen because a release cuts the changelog, and
+ * the release job runs every check on what it releases: drawn from the live
+ * changelog, Help's goldens and screenshots would change with each release
+ * and fail its own check. Every page renders against the one stand-in
+ * webview of src/test/pageWebview.ts, as the mocha suites do.
  */
 const pageOptions = {
   help: {
     manifest: require('../../package.json').contributes,
     options: {
       releases: modules.changelog.parseChangelog(
-        require('node:fs').readFileSync(path.join(__dirname, '..', '..', 'CHANGELOG.md'), 'utf8'),
+        require('node:fs').readFileSync(path.join(__dirname, 'fixtures', 'changelog.md'), 'utf8'),
       ),
       newSince: '1.20.0',
     },
