@@ -7,6 +7,7 @@ import {
   computeTagProgress,
   describeTagProgress,
   progressRatio,
+  summarizeTasks,
 } from '../domain/tasks/tagProgress';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
 import { normalizePreferences } from '../core/storage/preferencesSchema';
@@ -76,6 +77,16 @@ suite('Tag progress', () => {
     );
     assert.strictEqual(describeTagProgress({ total: 3, done: 1, overdue: 0, needsDate: 0 }, now, policy), '1 of 3 done');
     assert.strictEqual(describeTagProgress({ total: 4, done: 0, overdue: 2, needsDate: 2 }, now, policy), '0 of 4 done · 2 overdue · 2 need a new date');
+  });
+
+  test('sums up one note’s own tasks, steps aside, and nothing for none', () => {
+    const tasks = [...index.files.get('atlas.md')!.tasks];
+    const summary = summarizeTasks(tasks, now);
+    assert.deepStrictEqual(
+      summary && { total: summary.total, done: summary.done, overdue: summary.overdue, needsDate: summary.needsDate },
+      { total: 6, done: 1, overdue: 1, needsDate: 1 },
+    );
+    assert.strictEqual(summarizeTasks([], now), undefined);
   });
 
   test('a ratio is the share done, and 0 for no tasks', () => {

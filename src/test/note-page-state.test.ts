@@ -125,6 +125,12 @@ suite('The note page', () => {
     assert.match(page.hub?.label ?? '', /done/);
   });
 
+  test('says how far along the note’s own tasks are, steps aside, and nothing for a note with none', () => {
+    assert.deepStrictEqual(page.taskProgress, { done: 1, total: 2, label: '1 of 2 done · next due in 6 days' });
+    const plain = createNotePageSnapshot(index, 'notes/Kickoff.md', options);
+    assert.strictEqual(plain.taskProgress, undefined);
+  });
+
   test('lists what links to it, most links first, and where it sits', () => {
     assert.strictEqual(page.backlinkCount, 2);
     assert.deepStrictEqual(page.backlinks.map((link) => [link.filePath, link.count]), [['notes/Kickoff.md', 1], ['notes/Review.md', 1]], 'as many links each, by title');

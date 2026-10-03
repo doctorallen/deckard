@@ -106,8 +106,10 @@ export interface NotePageSnapshot {
   folder: string;
   properties: NoteProperty[];
   breadcrumbs: NoteBreadcrumb[];
-  /** For a hub note, its tag and how far along the tag's tasks are. */
+  /** For a hub note, its tag and how far along the tag's tasks are, wherever they are written. */
   hub?: { tagKey: string; tagLabel: string; done: number; total: number; label: string };
+  /** How far along the note's own tasks are, steps aside, when it has any. */
+  taskProgress?: { done: number; total: number; label: string };
   /** Every tag the note writes, by the words it writes them in, for the page to make buttons of. */
   tags: Array<{ key: string; label: string }>;
   blocks: NoteBlock[];

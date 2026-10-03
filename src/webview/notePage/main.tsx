@@ -82,14 +82,25 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
   );
 }
 
-/** For a hub note, how far along its tag's tasks are, and the way to its page. */
+/** For a hub note, how far along its tag's tasks are, wherever they are written, and the way to its page. */
 function HubLine({ hub }: { readonly hub: NonNullable<NotePageSnapshot['hub']> }) {
   return (
-    <div class="note-hub">
-      <span class="eyebrow">Progress</span>
+    <div class="note-progress">
+      <span class="eyebrow" data-tip={`Every task ${hub.tagLabel} finds, in any note`}>Project</span>
       <ProgressBar done={hub.done} total={hub.total} />
-      <span class="note-hub-label">{hub.label}</span>
+      <span class="note-progress-label">{hub.label}</span>
       <button type="button" class="tag-note-action" data-action="open-tag" data-tag-key={hub.tagKey} data-tip={`Open ${hub.tagLabel}'s page`}>{`Open ${hub.tagLabel}`}</button>
+    </div>
+  );
+}
+
+/** How far along the note's own tasks are. */
+function TaskLine({ progress }: { readonly progress: NonNullable<NotePageSnapshot['taskProgress']> }) {
+  return (
+    <div class="note-progress">
+      <span class="eyebrow" data-tip="The tasks written in this note, steps aside">Tasks</span>
+      <ProgressBar done={progress.done} total={progress.total} />
+      <span class="note-progress-label">{progress.label}</span>
     </div>
   );
 }
@@ -138,6 +149,7 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
         <h1>{snapshot.title}</h1>
         <Breadcrumbs crumbs={snapshot.breadcrumbs} />
         {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
+        {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
         <Properties properties={snapshot.properties} />
       </header>
       <article class="note-body" aria-label={snapshot.title}>

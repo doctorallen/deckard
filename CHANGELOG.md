@@ -46,8 +46,8 @@
 - **Read a note as a page.** `Deckard: Open Note as Page` draws the note on
   a Deckard page in your theme: its tags and `[[links]]` open what they
   name, with Back and Forward, its tasks tick, its query blocks and embeds
-  draw live, its front matter is a row of properties, and **Linked from**
-  lists what links to it. **Open in Editor**, or a double-click, goes to the
+  draw live, its front matter is a row of properties, a bar says how far
+  along its tasks are, and **Linked from** lists what links to it. **Open in Editor**, or a double-click, goes to the
   line. Set `deckard.openNotesIn` to `page` to open every note there from
   Deckard's pages, Find, and the Hubs view; **Shift**-click, or Shift+Enter,
   always opens a note the other way.

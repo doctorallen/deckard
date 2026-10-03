@@ -7,7 +7,7 @@ import { EMBED_LINE, resolveEmbed, createSourceParser } from '../../domain/notes
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 import { DEFAULT_NOTE_COLUMNS, noteColumnLabel } from '../../domain/notes/noteColumns';
 import { QueryContext } from '../../domain/query/queryContext';
-import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
+import { computeTagProgress, describeTagProgress, summarizeTasks } from '../../domain/tasks/tagProgress';
 import type { InlineToken, ParsedFile, WorkspaceIndex } from '../../domain/model';
 import type {
   NoteBacklink,
@@ -97,6 +97,7 @@ export function createNotePageSnapshot(
     properties: readProperties(file, lines, frontmatterEnd),
     breadcrumbs: findBreadcrumbs(index, filePath).map((crumb) => ({ labels: crumb.labels, notes: crumb.notes })),
     ...describeHub(index, file, options.queryContext),
+    ...describeNoteTasks(index, file, options.queryContext),
     tags: collectTags(file),
     blocks: withoutTitleHeading(blocks, title),
     backlinks,
@@ -490,6 +491,15 @@ function describeHub(index: WorkspaceIndex, file: ParsedFile, context: QueryCont
       label: progress ? describeTagProgress(progress, context.now, context.taskPolicy) : 'No tasks yet',
     },
   };
+}
+
+/** How far along the note's own tasks are, as the index has them now. */
+function describeNoteTasks(index: WorkspaceIndex, file: ParsedFile, context: QueryContext): Pick<NotePageSnapshot, 'taskProgress'> {
+  const tasks = file.tasks.map((task) => index.tasks.get(task.id) ?? task);
+  const progress = summarizeTasks(tasks, context.now, context.taskPolicy);
+  return progress
+    ? { taskProgress: { done: progress.done, total: progress.total, label: describeTagProgress(progress, context.now, context.taskPolicy) } }
+    : {};
 }
 
 /** Every tag the note writes, each by the words it is written in, longest first so `#a/b` is found before `#a`. */

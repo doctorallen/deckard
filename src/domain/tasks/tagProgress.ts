@@ -79,6 +79,26 @@ export function computeTagProgress(
   return collectTagProgress(index, now, new Set([tagKey]), taskPolicy).get(tagKey);
 }
 
+/**
+ * How far along a list of tasks is, as a tag's progress counts its tasks,
+ * steps aside: one note's own tasks, for its page. Undefined when there are
+ * none to count.
+ */
+export function summarizeTasks(
+  tasks: readonly Task[],
+  now: number,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'> = DEFAULT_TASK_POLICY,
+): TagProgress | undefined {
+  const today = startOfDay(now);
+  const entry: TagProgress = { total: 0, done: 0, overdue: 0, needsDate: 0 };
+  for (const task of tasks) {
+    if (!task.parentTaskId) {
+      countTask(entry, task, today, (dueAt) => needsNewDate(dueAt, now, taskPolicy));
+    }
+  }
+  return entry.total ? entry : undefined;
+}
+
 /** Adds one task to a tag's progress. */
 function countTask(entry: TagProgress, task: Task, today: number, stale: (dueAt: number) => boolean): void {
   entry.total += 1;

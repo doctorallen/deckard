@@ -12,7 +12,7 @@ A **note page** is a webview tab that draws one note the way Deckard's pages dra
 - **Query blocks** draw their results live, a list or a table, their tasks' boxes working and their rows opening what they list.
 - **Embeds** draw the note, heading, or line they name, three deep, with a link to where it came from.
 - **Front matter** is a row of properties above the note, a tag among the values a button.
-- **The header** has the note's title, its folder, its breadcrumbs from the Hubs view, and, for a hub note, the progress bar of its tag's tasks with a button to the tag's page.
+- **The header** has the note's title, its folder, its breadcrumbs from the Hubs view, a **Tasks** bar for the note's own tasks, and, for a hub note, a **Project** bar for every task its tag finds, with a button to the tag's page.
 - **Linked from** lists the notes that link to it, each with the lines that do.
 - **Open in Editor** opens the note at the line in view; a double-click on a block opens the editor at that block's line.
 
