@@ -5,9 +5,22 @@ on:
     branches:
       - main
       - master
-  # Rewrites every release's notes from its section of the changelog, for
-  # when an older section was corrected after it shipped.
+  # Run by hand, it does one of two things that publish nothing new.
   workflow_dispatch:
+    inputs:
+      task:
+        description: What to do
+        type: choice
+        default: sync-notes
+        options:
+          # Rewrites every release's notes from its section of the
+          # changelog, for when an older section was corrected after it
+          # shipped.
+          - sync-notes
+          # Signs in to Microsoft Entra from the marketplace environment and
+          # prints the ID the Marketplace knows the app by, which the
+          # publisher's Members page asks for. It publishes nothing.
+          - show-marketplace-identity
 
 # Each job asks for what it needs; the workflow grants nothing by default.
 permissions: {}
@@ -250,8 +263,34 @@ jobs:
           test -n "$vsix_path"
           npx vsce publish --packagePath "$vsix_path" --azure-credential
 
+  # Signs in as the release does and prints the ID to add, as a
+  # Contributor, under Members on the publisher's page. The ID names an
+  # identity, not a credential, so it is safe in the log.
+  marketplace-identity:
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'show-marketplace-identity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: marketplace
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Sign in to Microsoft Entra
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Show the identity the Marketplace sees
+        run: |
+          az rest \
+            --uri "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1" \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --query "{id: id, displayName: displayName}" -o table
+
   sync-notes:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'sync-notes'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
