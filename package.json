@@ -552,9 +552,9 @@
         "title": "Rename Tag…"
       },
       {
-        "command": "deckard.hubs.openTagPage",
-        "title": "Open Tag's Page",
-        "icon": "$(tag)"
+        "command": "deckard.hubs.openHubNote",
+        "title": "Open Hub Note",
+        "icon": "$(go-to-file)"
       },
       {
         "command": "deckard.agenda.editQuery",
@@ -787,7 +787,7 @@
           "when": "false"
         },
         {
-          "command": "deckard.hubs.openTagPage",
+          "command": "deckard.hubs.openHubNote",
           "when": "false"
         },
         {
@@ -1269,12 +1269,12 @@
       ],
       "view/item/context": [
         {
-          "command": "deckard.hubs.openTagPage",
+          "command": "deckard.hubs.openHubNote",
           "when": "view == deckard.hubs && viewItem == hubNote",
           "group": "inline"
         },
         {
-          "command": "deckard.hubs.openTagPage",
+          "command": "deckard.hubs.openHubNote",
           "when": "view == deckard.hubs && viewItem == hubNote",
           "group": "deckard@1"
         },

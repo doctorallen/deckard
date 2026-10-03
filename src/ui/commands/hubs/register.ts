@@ -7,7 +7,8 @@ import { registerCommand } from '../runCommand';
 
 /**
  * The Hubs view: notes under the hub notes of the tags they are about, and
- * the button on a hub that opens its tag's page.
+ * the button on a hub that opens the hub note itself, since selecting a hub
+ * opens its tag's page.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const provider = new HubTreeProvider(services.indexer);
@@ -16,8 +17,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   context.subscriptions.push(
     provider,
     view,
-    registerCommand('deckard.hubs.openTagPage', (node?: HubTreeNode) =>
-      node?.tagKey ? vscode.commands.executeCommand('deckard.showTagOverview', node.tagKey) : undefined,
-    ),
+    registerCommand('deckard.hubs.openHubNote', (node?: HubTreeNode) => {
+      const uri = node?.filePath ? services.indexer.getUri(node.filePath) : undefined;
+      return uri ? vscode.commands.executeCommand('vscode.open', uri) : undefined;
+    }),
   );
 }

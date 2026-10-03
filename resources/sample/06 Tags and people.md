@@ -114,7 +114,8 @@ figure its page and its first line in the editor give.
     relay's tasks are: *Progress: 3 of 23 done · 2 overdue · 1 needs a new
     date · next due today*. Selecting it opens the tag's page, where the same
     bar sits under the hub with **Show overdue**.
-11. Select the tag button beside **Wardens** in the Hubs view to open the
-    team's page.
+11. Select **Wardens** in the Hubs view: a hub opens its tag's search page.
+    The file button beside it (**Open Hub Note**) opens the Wardens note's
+    Markdown instead.
 
 Next: [[07 Links]]

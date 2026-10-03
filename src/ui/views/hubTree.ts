@@ -14,8 +14,9 @@ export interface HubTreeIndexSource extends ViewUpdateSource {
 /**
  * The Hubs view: each tag namespace with a hub note, its hubs, and under
  * each the notes about its tag or that name it in `up:`, as Notion's sidebar
- * keeps pages under the pages they belong to. A note opens on selection; a
- * hub's inline button opens its tag's page.
+ * keeps pages under the pages they belong to. Selecting a hub opens its
+ * tag's search page, and its inline button opens the hub note itself;
+ * selecting any other note opens it.
  */
 export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<HubTreeNode | undefined>();
@@ -76,7 +77,9 @@ export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vs
     item.contextValue = node.tagKey ? 'hubNote' : 'hubChild';
     item.iconPath = new vscode.ThemeIcon(node.tagKey ? 'tag' : 'note');
     item.tooltip = node.filePath;
-    if (uri) {
+    if (node.tagKey) {
+      item.command = { title: 'Open Tag Page', command: 'deckard.showTagOverview', arguments: [node.tagKey] };
+    } else if (uri) {
       item.command = { title: 'Open', command: 'vscode.open', arguments: [uri] };
     }
     return item;
