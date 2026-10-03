@@ -43,6 +43,11 @@
   outright with `up: "[[Atlas]]"`. A note's first line says where it sits,
   such as *Projects › Atlas › Vendor review*.
 
+- **The sample tour shows all of it.** `Deckard: Create a Sample Workspace`
+  now includes a project with a sub-project and notes filed under both, a
+  table of every project, and steps for each feature above. It also gives
+  Capture's shortcut as Cmd/Ctrl+Shift+Alt+N, which it still gave as C.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights
