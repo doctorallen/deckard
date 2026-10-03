@@ -31,7 +31,7 @@ The note page is one panel, reused like VS Code's preview tab: opening another n
 | `editor` *(default)* | in the editor, at its line, as today |
 | `page` | on the note page, scrolled to its line, which is marked for a moment |
 
-**The other way, one modifier away.** Shift-click, or Shift+Enter from the keyboard, opens where the setting does not. It combines with what is there: Cmd/Ctrl+Shift-click opens the other way beside the page, and a double-click still keeps the tab. A row's tip says both.
+**The other way, one modifier away.** Shift-click, or Shift+Enter from the keyboard, opens where the setting does not. It combines with what is there: Cmd/Ctrl+Shift-click opens the other way beside the page, and a double-click still keeps the tab. The note page's own links say so in their tip, and the guide and the setting's description say it for every page; a tip on every row of every page is left for later.
 
 Shift is free on every entry: Cmd/Ctrl opens beside, a double-click keeps the tab, and Alt does other work (Refine's exclude, the graph's beside, Alt+Enter for a card's menu). Shift is only read on Refine's facet chips, which open nothing.
 
@@ -40,6 +40,7 @@ Shift is free on every entry: Cmd/Ctrl opens beside, a double-click keeps the ta
 - the Hubs view's notes have **Open in Editor** and **Open as Page** on their right-click menu, the one the setting does not pick;
 - the breadcrumb lens follows the setting;
 - Find's Shift+Enter opens the other way, since it reads keys, through a keybinding.
+- The calendars' day panels, whose note rows post no modifiers, follow the setting without a Shift.
 
 **What follows the setting:** the search page's cards and tasks, Related Notes, Home's notes and tasks, the Task Board's cards, the Notes Graph, the calendars' notes, Stats' rows, Find, the Hubs view, and the breadcrumb lens. **What does not:** a link followed inside the editor, which is already where the reader is writing; the Tasks view and the Outline, which navigate the editor; and editing a task, which needs the editor.
 
