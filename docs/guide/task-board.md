@@ -18,6 +18,17 @@ Run `Deckard: Open Task Board`, or select the board icon in the title bar of the
 - **Can start now** narrows to `is:available`, leaving out tasks that are blocked, not started, or waiting or someday. Press it again for `is:open`.
 - **Save** keeps the search in the box, whether or not Enter has run it, as a saved search that reopens on the board. **List in Tasks view**, in the gear, makes the [Tasks view](tasks.md#tasks-view) list it; select it again to list every open task.
 
+## Editing what the Tasks view lists
+
+The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board on the view's search, with **Editing what the Tasks view lists** and **Cancel** above the search box.
+
+- Change the search, then select **Save to Tasks view**. The view lists what the box shows, whether or not Enter has run it, and the board runs it too. A notice says what the view lists now, such as **The Tasks view lists "#project/atlas" now.**
+- The board's own `is:open` is left out, as the view lists only open tasks; `is:open` alone lists every open task. The search is written to `deckard.agenda.query` in the workspace's settings when the workspace sets it, and in your user settings otherwise, as **List in Tasks view** writes it.
+- A search that does not parse is not saved: the box shows its error.
+- While the view lists the search in the box, **Save to Tasks view** is held and says so; change the search to save again. The board stays open, so you can go on refining.
+- **Save as search** keeps the search as a named saved search, as **Save** does on any board.
+- **Cancel** makes it a plain board again and leaves the Tasks view as it is. Opened any other way, such as with `Deckard: Open Task Board`, from Home, or from a saved search, the board is a plain one.
+
 ## Cards and columns
 
 - Due dates read by distance, such as **Overdue 15 days · 2026-09-08** or **Due tomorrow · 2026-09-24**; beyond a month only the date shows. A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue reads **was due 2026-07-01** in muted text.

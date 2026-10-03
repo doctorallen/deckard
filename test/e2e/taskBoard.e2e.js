@@ -47,7 +47,7 @@ function createIndex() {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function openBoard(prepare = async () => undefined, makeIndex = createIndex) {
+async function openBoard(prepare = async () => undefined, makeIndex = createIndex, open = (board) => board.show()) {
   vscode._test.createdPanels.length = 0;
   vscode._test.settings.clear();
   vscode._test.configurationUpdates.length = 0;
@@ -65,7 +65,7 @@ async function openBoard(prepare = async () => undefined, makeIndex = createInde
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
   });
-  await board.show();
+  await open(board);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
   const view = mountWebview(panel.webview.html, panel);
   panel._toWebview.forEach((message) => panel._deliver(message));
@@ -457,6 +457,86 @@ test('hands its search to the Tasks view, and says when the view has it', async 
   );
   assert.ok(vscode._test.shown.info.includes('The Tasks view lists every open task again.'));
   assert.strictEqual(button().getAttribute('aria-pressed'), 'false');
+});
+
+test('opened from the Tasks view\'s search icon, it edits what the view lists and saves what the box shows to it', async () => {
+  // The workspace's search is the one in force, so the save goes there.
+  vscode._test.workspaceSettings.set('deckard.agenda.query', '#project/beta');
+  try {
+    const { view, board } = await openBoard(undefined, undefined, (opened) => opened.editTasksViewSearch('#project/beta'));
+    const strip = () => view.find('.tasks-view-strip');
+    const save = () => view.find('[data-action="save-to-tasks-view"]');
+    assert.ok(strip(), 'the board says what it is editing');
+    assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), '#project/beta', "on the view's search");
+    assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'which the view lists already');
+    assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save as search');
+
+    view.press(view.find('[data-action="clear-query"]'));
+    await delay(10);
+    const bar = view.find('[data-action="query-input"]');
+    view.type(bar, '#project/atlas');
+    assert.strictEqual(save().getAttribute('aria-disabled'), null, 'a changed box can be saved');
+    view.press(save());
+    await delay(10);
+    assert.deepStrictEqual(
+      vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]),
+      [['deckard.agenda.query', '#project/atlas', vscode.ConfigurationTarget.Workspace]],
+      'typed and never run, it is written where the search in force is set',
+    );
+    assert.ok(vscode._test.shown.info.includes('The Tasks view lists "#project/atlas" now.'));
+    assert.strictEqual(view.find('#live-status').textContent, 'The Tasks view lists "#project/atlas" now.', 'and said on the page');
+    assert.ok(strip(), 'the board goes on editing the view');
+    assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), '#project/atlas', 'on the search it saved');
+    assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'which the view lists now');
+
+    // A search that does not parse is shown with its error, and not saved.
+    view.type(view.find('[data-action="query-input"]'), '(');
+    view.press(save());
+    await delay(10);
+    assert.strictEqual(vscode._test.configurationUpdates.length, 1);
+    assert.ok(view.find('.query-error'), 'its error is shown');
+
+    // Cancel: a plain board, and the view keeps its search.
+    view.press(view.find('[data-action="leave-tasks-view-mode"]'));
+    await delay(10);
+    assert.strictEqual(view.find('.tasks-view-strip'), null);
+    assert.strictEqual(view.find('[data-action="save-to-tasks-view"]'), null);
+    assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save');
+    assert.strictEqual(vscode._test.configurationUpdates.length, 1, 'Cancel writes nothing');
+    assert.strictEqual(vscode._test.workspaceSettings.get('deckard.agenda.query'), '#project/atlas');
+
+    // Opened any other way, the board is a plain one.
+    await board.editTasksViewSearch('#project/atlas');
+    await delay(10);
+    assert.ok(strip(), 'the search icon again');
+    await board.show();
+    await delay(10);
+    assert.strictEqual(view.find('.tasks-view-strip'), null, 'Open Task Board, a tag, or Home');
+    board.dispose();
+  } finally {
+    vscode._test.workspaceSettings.clear();
+  }
+});
+
+test('a board kept across a reload while it edited the Tasks view reopens doing so', async () => {
+  vscode._test.createdPanels.length = 0;
+  const index = createIndex();
+  const board = new TaskBoardPanel({
+    indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+    preferences: createPreferences(createGlobalState()),
+    extensionUri: vscode.Uri.file('/ext'),
+    openTag: async () => undefined,
+    activeSearch: new ActiveSearch(),
+    writes: modules.taskWrites.createTaskWrites(),
+    themePreview: new ThemePreview(),
+  });
+  const panel = vscode.window.createWebviewPanel('deckard.taskBoard', 'Saved', -1, {});
+  await board.restore(panel, { query: '#project/atlas', tasksViewMode: true });
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  assert.ok(view.find('.tasks-view-strip'));
+  assert.deepStrictEqual(view.state, { query: '#project/atlas', tasksViewMode: true }, 'and keeps that for the next reload');
+  board.dispose();
 });
 
 test('shows a line for Refine while the sidebar holds it', async () => {

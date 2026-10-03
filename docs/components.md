@@ -252,8 +252,8 @@ re-declare the same names.
 overdue and only overdue, and a theme that wants another mapping
 re-declares the meaning tokens rather than every rule. A negated search
 term is a dashed, struck chip in the muted color, not a red one. The one
-filled control on a page is the primary action (`.query-apply`); a chosen
-segment is marked, not filled.
+filled control on a page is the primary action (`.query-apply`, or a
+page's own `.query-primary`); a chosen segment is marked, not filled.
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and
@@ -724,7 +724,15 @@ events through the `handle*` methods. `options.resultKinds` names
 what the page can find, such as `['tasks']` on the Task Board, so the result
 count names only those. `options.refineElsewhere()` returns true while the
 Related Notes sidebar shows the page's Refine options, and `facets()`
-then draws a single line in their place.
+then draws a single line in their place. `options.actions(hasText)` draws
+the page's own buttons after Clear, such as the Task Board's Save; one that
+needs text carries `data-query-needs-text`. Search is the bar's filled
+button (`.query-apply`) unless `options.ownPrimary()` returns true: then a
+page's own button marked `.query-primary` is, and Search is drawn as the
+others are, as on the Task Board while it edits what the Tasks view lists.
+`.search-notice`, in the same sheet, is the line above a search that says
+what the reader is looking at, with a way out: the Tags tab's kept search,
+and the Task Board's Tasks view strip.
 
 The bar is a `.query-bar-shell` field of chips, as a multi-select is: each of
 the applied search's top-level terms is a `.query-chip` button with a

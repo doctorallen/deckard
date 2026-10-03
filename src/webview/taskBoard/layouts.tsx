@@ -1,6 +1,7 @@
 /**
- * The Task Board's other two layouts, a ranked list and a table, and the
- * controls under its search box and in its gear.
+ * The Task Board's other two layouts, a ranked list and a table, the
+ * controls under its search box and in its gear, and what it draws while it
+ * edits what the Tasks view lists.
  */
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
@@ -180,6 +181,74 @@ export function AgendaToggle({ snapshot }: { readonly snapshot: TaskBoardSnapsho
       List in Tasks view
     </button>
   );
+}
+
+/**
+ * Above the search box while the board edits what the Tasks view lists,
+ * having been opened from the view's search icon: what the board is for
+ * now, and Cancel, which makes it a plain board and leaves the view as it is.
+ */
+export function TasksViewStrip() {
+  return (
+    <section class="search-notice tasks-view-strip" aria-labelledby="tasks-view-strip-title">
+      <span>
+        <strong id="tasks-view-strip-title">Editing what the Tasks view lists</strong>
+        <span class="tasks-view-strip-note">Change the search, then choose Save to Tasks view.</span>
+      </span>
+      <button type="button" data-action="leave-tasks-view-mode" data-tip="Back to the plain board. The Tasks view keeps the search it has.">Cancel</button>
+    </section>
+  );
+}
+
+/**
+ * The bar's buttons while the board edits what the Tasks view lists: Save
+ * to Tasks view, the one the reader came for, then Save as search, the
+ * board's Save, named for what it does here. Save to Tasks view takes the
+ * box as it is, run or not, and is held while the view lists what the box
+ * shows; `syncSaveToTasksView` keeps that as the reader types.
+ */
+export function TasksViewActions({ listed, hasText }: { readonly listed: boolean; readonly hasText: boolean }) {
+  return (
+    <>
+      <button
+        class="query-primary"
+        data-action="save-to-tasks-view"
+        data-tip="Make the Tasks view list this search"
+        data-tip-disabled="The Tasks view lists this search"
+        aria-disabled={listed ? 'true' : undefined}
+      >
+        Save to Tasks view
+      </button>
+      <SaveSearchButton label="Save as search" hasText={hasText} />
+    </>
+  );
+}
+
+/**
+ * Save: names the search in the box and keeps it on Home, to reopen here.
+ * Held until there is a search to save.
+ */
+export function SaveSearchButton({ label, hasText }: { readonly label: string; readonly hasText: boolean }) {
+  return (
+    <button data-action="save-board-search" data-query-needs-text="" data-tip="Keep this search, named, on Home; it reopens on the Task Board" data-tip-disabled="Type a search to save it" aria-disabled={hasText ? undefined : 'true'}>{label}</button>
+  );
+}
+
+/**
+ * Holds Save to Tasks view, in place, while the view lists what the box
+ * shows, and lets it go once the box shows anything else: as the reader
+ * types, and after each draw, which may have drawn it from older text.
+ */
+export function syncSaveToTasksView(listed: boolean): void {
+  const button = document.querySelector('[data-action="save-to-tasks-view"]');
+  if (!button) {
+    return;
+  }
+  if (listed) {
+    button.setAttribute('aria-disabled', 'true');
+  } else {
+    button.removeAttribute('aria-disabled');
+  }
 }
 
 /** The gear's list of the table's columns, the title fixed. */

@@ -281,12 +281,13 @@ function createMenuSurfaces(surfaces) {
 }
 
 /**
- * The Task Board, by status and grouped by a tag namespace. Only the board's
+ * The Task Board, by status, grouped by a tag namespace, and opened from the
+ * Tasks view's search icon to edit what the view lists. Only the board's
  * surfaces carry steps, so no other page's pixels move with them.
  *
  * @param {object} boardIndex The workspace, with steps on the first task.
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The two board surfaces.
+ * @returns {object[]} The three board surfaces.
  */
 function createBoardSurfaces(boardIndex, preferences) {
   return [
@@ -320,6 +321,28 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+    },
+    {
+      // Editing what the Tasks view lists: the strip above the search box,
+      // and Save to Tasks view filled beside Save as search, a bar one
+      // button longer that must still wrap rather than push the page
+      // sideways at a narrower width.
+      name: 'taskBoardTasksView',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: () => ({
+        ...createTaskBoard({
+          index: boardIndex,
+          preferences: preferences.reader.value,
+          search: { query: '#project/atlas' },
+          options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+          tagTitleDisplayMode: 'inline',
+        }),
+        tasksViewMode: { listed: false },
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.query-bar-row .query-primary'],
     },
   ];
 }

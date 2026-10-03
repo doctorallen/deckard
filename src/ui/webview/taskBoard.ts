@@ -64,12 +64,25 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
 
   /**
    * Opens the board, on a search when one is given, such as the one a Home
-   * widget lists.
+   * widget lists. It opens as a plain board, even when it was editing what
+   * the Tasks view lists.
    */
   public async show(query?: string): Promise<void> {
     if (query !== undefined) {
       this.controller.applyQuery(query);
     }
+    this.controller.leaveTasksViewMode();
+    await this.page.show();
+  }
+
+  /**
+   * Opens the board on the Tasks view's search, to edit what the view lists:
+   * the Tasks view's search icon. The page says so, and its Save becomes
+   * Save to Tasks view, until Cancel or the board is opened another way.
+   */
+  public async editTasksViewSearch(query: string): Promise<void> {
+    this.controller.applyQuery(query);
+    this.controller.enterTasksViewMode();
     await this.page.show();
   }
 

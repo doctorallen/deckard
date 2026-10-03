@@ -30,7 +30,7 @@ function createStore() {
 const NOTE = '# Atlas #project/atlas\n- [ ] Send the audit #status/doing\n- [ ] Call Ren\n';
 
 /** The state messages a page was sent, oldest first. */
-type StateOf = { type: 'state'; data: { query: { text: string } } };
+type StateOf = { type: 'state'; data: { query: { text: string }; tasksViewMode?: { listed: boolean } } };
 
 /**
  * The Task Board over one note, attached to a fake panel in front: what the
@@ -116,6 +116,66 @@ async function recordOpens(run: () => Promise<void>): Promise<string[]> {
     [window.showTextDocument, workspace.openTextDocument] = originals;
   }
   return opened;
+}
+
+/** What a stand-in `deckard.agenda.query` holds at each level a reader sets it. */
+interface AgendaQueryLevels {
+  user?: string;
+  workspace?: string;
+}
+
+/**
+ * Runs `run` with `deckard.agenda.query` read from and written to `levels`
+ * rather than the settings, and with the information messages recorded
+ * rather than shown. Every other setting is read as it is. Returns what was
+ * written, as `[key, value, target]`, and the messages, in order.
+ */
+async function withAgendaQuery(
+  levels: AgendaQueryLevels,
+  run: () => Promise<void>,
+): Promise<{ writes: unknown[][]; shown: string[] }> {
+  const workspace = vscode.workspace as unknown as Record<string, unknown>;
+  const window = vscode.window as unknown as Record<string, unknown>;
+  const getConfiguration = vscode.workspace.getConfiguration;
+  const showInformationMessage = window.showInformationMessage;
+  const writes: unknown[][] = [];
+  const shown: string[] = [];
+  workspace.getConfiguration = (section?: string, scope?: vscode.ConfigurationScope) => {
+    const real = getConfiguration(section, scope);
+    if (section !== 'deckard') {
+      return real;
+    }
+    const isQuery = (key: string) => key === 'agenda.query';
+    return {
+      ...real,
+      has: (key: string) => (isQuery(key) ? true : real.has(key)),
+      get: (key: string, fallback?: unknown) =>
+        isQuery(key) ? (levels.workspace ?? levels.user ?? fallback) : real.get(key, fallback),
+      inspect: (key: string) =>
+        isQuery(key)
+          ? { key: 'deckard.agenda.query', defaultValue: '', globalValue: levels.user, workspaceValue: levels.workspace }
+          : real.inspect(key),
+      update: async (key: string, value: unknown, target: vscode.ConfigurationTarget) => {
+        if (!isQuery(key)) {
+          return real.update(key, value, target);
+        }
+        writes.push([key, value, target]);
+        if (target === vscode.ConfigurationTarget.Workspace) {
+          levels.workspace = value as string | undefined;
+        } else {
+          levels.user = value as string | undefined;
+        }
+      },
+    };
+  };
+  window.showInformationMessage = async (message: string) => void shown.push(message);
+  try {
+    await run();
+  } finally {
+    workspace.getConfiguration = getConfiguration;
+    window.showInformationMessage = showInformationMessage;
+  }
+  return { writes, shown };
 }
 
 suite('Task Board host', () => {
@@ -332,6 +392,110 @@ suite('Task Board host', () => {
         board.surface.webview.posted.map((message) => ((message as { type: string }).type === 'state' ? 'state' : message)),
         [{ type: 'toggleRefused', taskId: 'gone', completed: true }, 'state'],
       );
+    } finally {
+      board.dispose();
+    }
+  });
+
+  test('is a plain board until it is opened to edit what the Tasks view lists, and Cancel makes it one again', async () => {
+    const board = openBoard();
+    try {
+      await withAgendaQuery({ user: '#project/atlas' }, async () => {
+        board.controller.applyQuery('#project/atlas');
+        board.host.refresh();
+        assert.strictEqual(board.states().at(-1)?.data.tasksViewMode, undefined, 'a search alone does not put it in the mode');
+        board.controller.enterTasksViewMode();
+        board.host.refresh();
+        assert.deepStrictEqual(board.states().at(-1)?.data.tasksViewMode, { listed: true }, 'opened on the search the view lists');
+        await board.send({ type: 'setBoardQuery', query: 'is:done' });
+        assert.deepStrictEqual(board.states().at(-1)?.data.tasksViewMode, { listed: false }, 'a search run in it stays in it');
+        await board.send({ type: 'leaveTasksViewMode' });
+        assert.strictEqual(board.states().at(-1)?.data.tasksViewMode, undefined, 'Cancel leaves it');
+        assert.strictEqual(board.states().at(-1)?.data.query.text, 'is:done', 'with the search it had');
+      }).then(({ writes }) => assert.deepStrictEqual(writes, [], 'and the Tasks view is left alone'));
+    } finally {
+      board.dispose();
+    }
+  });
+
+  test('Save to Tasks view writes what the box shows, run or not, where the search in force is set', async () => {
+    for (const [levels, target] of [
+      [{}, vscode.ConfigurationTarget.Global],
+      [{ user: '#project/beta' }, vscode.ConfigurationTarget.Global],
+      [{ workspace: '#project/beta' }, vscode.ConfigurationTarget.Workspace],
+      [{ user: 'is:mine', workspace: '#project/beta' }, vscode.ConfigurationTarget.Workspace],
+    ] as const) {
+      const board = openBoard();
+      try {
+        const { writes, shown } = await withAgendaQuery({ ...levels }, async () => {
+          board.controller.enterTasksViewMode();
+          board.host.refresh();
+          // Typed after the board's own is:open and never run: the board
+          // has only searched is:open.
+          await board.send({ type: 'saveToTasksView', query: 'is:open AND #project/atlas' });
+        });
+        const name = JSON.stringify(levels);
+        assert.deepStrictEqual(writes, [['agenda.query', '#project/atlas', target]], `${name}: without the board's own is:open, as the gear's switch writes it`);
+        assert.deepStrictEqual(shown, ['The Tasks view lists "#project/atlas" now.'], name);
+        assert.deepStrictEqual(board.surface.webview.postedOf('savedToTasksView'), [{ type: 'savedToTasksView', query: '#project/atlas' }], `${name}: the page is told, to say so`);
+        const last = board.states().at(-1)?.data;
+        assert.strictEqual(last?.query.text, 'is:open AND #project/atlas', `${name}: the board runs what it saved`);
+        assert.deepStrictEqual(last?.tasksViewMode, { listed: true }, `${name}: and stays in the mode, saying the view lists it`);
+      } finally {
+        board.dispose();
+      }
+    }
+  });
+
+  test('Save to Tasks view with is:open alone lists every open task, and a search that does not parse is not saved', async () => {
+    const board = openBoard();
+    try {
+      const { writes, shown } = await withAgendaQuery({ user: '#project/atlas' }, async () => {
+        board.controller.enterTasksViewMode();
+        await board.send({ type: 'saveToTasksView', query: 'is:open' });
+        await board.send({ type: 'saveToTasksView', query: 'is:open AND (' });
+      });
+      assert.deepStrictEqual(writes, [['agenda.query', '', vscode.ConfigurationTarget.Global]]);
+      assert.deepStrictEqual(shown, ['The Tasks view lists every open task now.']);
+      assert.deepStrictEqual(board.surface.webview.postedOf('savedToTasksView'), [{ type: 'savedToTasksView', query: '' }]);
+      const last = board.states().at(-1)?.data as { query: { text: string; pending?: string }; tasksViewMode?: unknown } | undefined;
+      assert.strictEqual(last?.query.pending, 'is:open AND (', 'the box shows it with its error');
+      assert.strictEqual(last?.query.text, 'is:open', 'over the search that parsed');
+      assert.deepStrictEqual(last?.tasksViewMode, { listed: false }, 'and does not say the view lists it');
+    } finally {
+      board.dispose();
+    }
+  });
+
+  test('Save to Tasks view does nothing on a plain board', async () => {
+    const board = openBoard();
+    try {
+      const { writes } = await withAgendaQuery({}, async () => {
+        await board.send({ type: 'saveToTasksView', query: '#project/atlas' });
+      });
+      assert.deepStrictEqual(writes, []);
+      assert.deepStrictEqual(board.surface.webview.postedOf('savedToTasksView'), []);
+    } finally {
+      board.dispose();
+    }
+  });
+
+  test('a board kept across a reload in the mode reopens in it, and one closed forgets it', async () => {
+    const board = openBoard();
+    try {
+      await board.controller.options.restore?.({ query: '#project/atlas', tasksViewMode: true });
+      board.host.refresh();
+      assert.ok(board.states().at(-1)?.data.tasksViewMode, 'kept in the mode');
+      board.controller.onDidDetach();
+      board.host.refresh();
+      assert.strictEqual(board.states().at(-1)?.data.tasksViewMode, undefined, 'a closed board is a plain one when opened again');
+      for (const kept of [{ query: 'is:open' }, { query: 'is:open', tasksViewMode: 'yes' }, { tasksViewMode: true }]) {
+        await board.controller.options.restore?.(kept);
+        board.host.refresh();
+        const mode = board.states().at(-1)?.data.tasksViewMode;
+        assert.strictEqual(mode !== undefined, kept.tasksViewMode === true, JSON.stringify(kept));
+        board.controller.onDidDetach();
+      }
     } finally {
       board.dispose();
     }

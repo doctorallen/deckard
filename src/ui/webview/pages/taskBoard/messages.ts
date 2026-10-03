@@ -19,6 +19,7 @@ import type {
   PickTaskDateMessage,
   ReorderTasksMessage,
   SaveBoardSearchMessage,
+  SaveToTasksViewMessage,
   SetBoardGroupMessage,
   SetBoardQueryMessage,
   SetBoardStatusesMessage,
@@ -131,6 +132,12 @@ const narrowSaveBoardSearch: Narrower<SaveBoardSearchMessage> = (value) => {
     : undefined;
 };
 
+/** Save to Tasks view: the search the box shows, empty or not, no longer than a search may be, and nothing else. */
+const narrowSaveToTasksView: Narrower<SaveToTasksViewMessage> = (value) =>
+  typeof value.query === 'string' && value.query.length <= MAX_QUERY_LENGTH && Object.keys(value).length === 2
+    ? { type: 'saveToTasksView', query: value.query }
+    : undefined;
+
 /** A list, a board, or a table. */
 const narrowSetTaskLayout: Narrower<SetTaskLayoutMessage> = (value) =>
   value.layout === 'list' || value.layout === 'board' || value.layout === 'table'
@@ -178,6 +185,8 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   ready: onlyType('ready'),
   saveBoardSearch: narrowSaveBoardSearch,
   useSearchForAgenda: exactlyType('useSearchForAgenda'),
+  saveToTasksView: narrowSaveToTasksView,
+  leaveTasksViewMode: exactlyType('leaveTasksViewMode'),
   openSource: narrowOpenSource,
   openTag: narrowOpenTag,
   toggleTask: narrowToggleTask,

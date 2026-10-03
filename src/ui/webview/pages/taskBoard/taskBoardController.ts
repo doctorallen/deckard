@@ -9,6 +9,7 @@ import type { SearchRefineState } from '../../../protocol/shared';
 import type {
   MoveRefusedMessage,
   MoveTaskMessage,
+  SavedToTasksViewMessage,
   TaskBoardPageToHost,
   TaskBoardSnapshot,
   ToggleRefusedMessage,
@@ -130,6 +131,13 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
    * and each says how many are left.
    */
   private shownColumns = new Set<string>();
+  /**
+   * Whether the board was opened from the Tasks view's search icon to edit
+   * what the view lists. Only `enterTasksViewMode` sets it, and a reload
+   * puts back what the page kept; Cancel, any other way of opening the
+   * board, and closing it clear it.
+   */
+  private tasksViewMode = false;
 
   /** Reads and writes through `board`, and is the active search as `board.source`. */
   public constructor(private readonly board: TaskBoardControllerOptions) {
@@ -209,9 +217,13 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     this.updateActivity(page.surface?.active === true);
   }
 
-  /** A closed board forgets what it last drew and stops being the active search. */
+  /**
+   * A closed board forgets what it last drew, stops being the active search,
+   * and opens next as a plain board.
+   */
   public onDidDetach(): void {
     this.lastSnapshot = undefined;
+    this.tasksViewMode = false;
     this.board.activeSearch.release(this.board.source);
   }
 
@@ -266,15 +278,33 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     return true;
   }
 
-  /** Reopens a board VS Code kept across a reload on the search it was saved with. */
+  /**
+   * Makes the board the Tasks view's search editor: the page says so above
+   * its search box, and its Save becomes Save to Tasks view. The Tasks
+   * view's search icon is the only way in.
+   */
+  public enterTasksViewMode(): void {
+    this.tasksViewMode = true;
+  }
+
+  /** Makes the board a plain one again, leaving the Tasks view's search as it is. */
+  public leaveTasksViewMode(): void {
+    this.tasksViewMode = false;
+  }
+
+  /**
+   * Reopens a board VS Code kept across a reload on the search it was saved
+   * with, and as the Tasks view's search editor when it was one.
+   */
   private restoreSearch(state: unknown): void {
     if (typeof state !== 'object' || state === null) {
       return;
     }
-    const saved = state as { query?: unknown };
+    const saved = state as { query?: unknown; tasksViewMode?: unknown };
     if (typeof saved.query === 'string') {
       this.applyQuery(saved.query);
     }
+    this.tasksViewMode = saved.tasksViewMode === true;
   }
 
   /** Makes the board the active search, or stops it being one. */
@@ -292,6 +322,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
       configuration().get<unknown>('tagTitleDisplayMode', 'inline'),
     );
+    const listed = normalizeAgendaQuery(configuration().get<string>('agenda.query', ''));
+    const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
     return {
       ...createTaskBoard({
         index: this.board.indexer.getSnapshot(),
@@ -304,9 +336,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         tagTitleDisplayMode,
       }),
       refineInSidebar: this.board.activeSearch.isRefineInSidebar(this.board.source),
-      agendaListsThisSearch:
-        normalizeAgendaQuery(configuration().get<string>('agenda.query', '')) === normalizeAgendaQuery(this.query),
-      agendaQueryIsDefault: normalizeAgendaQuery(configuration().get<string>('agenda.query', '')) === '',
+      agendaListsThisSearch,
+      agendaQueryIsDefault: listed === '',
+      // A search that did not parse is in the box over the last one that
+      // did, and the view does not list what the box shows.
+      ...(this.tasksViewMode ? { tasksViewMode: { listed: agendaListsThisSearch && this.invalidQuery === undefined } } : {}),
     };
   }
 
@@ -339,6 +373,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'setBoardQuery'
     | 'saveBoardSearch'
     | 'useSearchForAgenda'
+    | 'saveToTasksView'
+    | 'leaveTasksViewMode'
     | 'setBoardStatuses'
     | 'setBoardStatusNamespace'
   > {
@@ -379,6 +415,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       setBoardQuery: (message, page) => this.applySearch(message.query, page),
       saveBoardSearch: (message) => this.saveSearch(message.query),
       useSearchForAgenda: (_message, page) => this.useSearchForAgenda(page),
+      saveToTasksView: (message, page) => this.saveToTasksView(message.query, page),
+      leaveTasksViewMode: (_message, page) => {
+        this.leaveTasksViewMode();
+        page.refresh();
+      },
       setBoardStatuses: (message) =>
         updateTaskBoardSetting('statuses', [...new Set(message.statuses.map((status) => status.toLowerCase()))]),
       setBoardStatusNamespace: (message) => updateTaskBoardSetting('statusNamespace', message.namespace.toLowerCase()),
@@ -507,25 +548,78 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     if (again && !listed) {
       return;
     }
-    const query = again ? '' : normalizeAgendaQuery(this.query);
-    // The value goes where it is already set, as the board's own settings do.
-    const target = settingTarget('agenda.query', configuration);
     if (again) {
-      if (await writeSetting('agenda.query', '', target, configuration)) {
+      // The value goes where it is already set, as the board's own settings do.
+      if (await writeSetting('agenda.query', '', settingTarget('agenda.query', configuration), configuration)) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
         page.refresh();
       }
       return;
     }
-    if (!(await writeSetting('agenda.query', query, target, configuration))) {
+    if (await this.listInTasksView(normalizeAgendaQuery(this.query))) {
+      page.refresh();
+    }
+  }
+
+  /**
+   * Save to Tasks view, while the board edits what the view lists: runs
+   * `typed`, the search the box shows, which may not have been run yet, and
+   * makes the Tasks view list it, as the gear's switch does. A search that
+   * does not parse is shown with its error and not saved. The board stays
+   * the view's search editor, so the reader can go on refining.
+   */
+  private async saveToTasksView(typed: string, page: PageContext): Promise<void> {
+    if (!this.tasksViewMode) {
+      // A page drawn before Cancel; the board no longer edits the view.
       return;
     }
+    if (!this.applyQuery(typed)) {
+      page.refresh();
+      return;
+    }
+    const query = normalizeAgendaQuery(this.query);
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    // What the view lists already is not written again: a write of the
+    // empty default would set it where it was not set.
+    const saved =
+      normalizeAgendaQuery(configuration.get<string>('agenda.query', '')) === query
+        ? this.confirmTasksViewSearch(query)
+        : await this.listInTasksView(query, configuration);
+    page.refresh();
+    if (saved) {
+      const said: SavedToTasksViewMessage = { type: 'savedToTasksView', query };
+      page.post(said);
+    }
+    if (this.query) {
+      await this.board.preferences.savedSearches.recordRecentQuery(this.query);
+    }
+  }
+
+  /**
+   * Writes `query` as the Tasks view's search, where the search in force is
+   * set, and says what the view lists now. Returns whether it was written.
+   * The gear's switch and Save to Tasks view both write through here.
+   */
+  private async listInTasksView(
+    query: string,
+    configuration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration('deckard'),
+  ): Promise<boolean> {
+    // The value goes where it is already set, as the board's own settings do.
+    const target = settingTarget('agenda.query', configuration);
+    if (!(await writeSetting('agenda.query', query, target, configuration))) {
+      return false;
+    }
+    return this.confirmTasksViewSearch(query);
+  }
+
+  /** Says what the Tasks view lists now: `query`, or every open task for none. Returns true. */
+  private confirmTasksViewSearch(query: string): boolean {
     void vscode.window.showInformationMessage(
       query
         ? `The Tasks view lists "${query}" now.`
         : 'The Tasks view lists every open task now.',
     );
-    page.refresh();
+    return true;
   }
 
   /**
