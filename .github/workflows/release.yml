@@ -9,11 +9,8 @@ on:
   # when an older section was corrected after it shipped.
   workflow_dispatch:
 
-permissions:
-  contents: write
-  # The Marketplace publish signs in to Microsoft Entra with GitHub's OIDC
-  # token, so no publishing secret is stored.
-  id-token: write
+# Each job asks for what it needs; the workflow grants nothing by default.
+permissions: {}
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -24,22 +21,35 @@ jobs:
   # was cancelled, or that CI never saw, is not released untested.
   validate:
     if: github.event_name == 'push'
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
 
-  release:
+  # Builds the VSIX once, and signs a statement of where it came from, which
+  # `gh attestation verify <file> --repo doctorallen/deckard` checks. The
+  # GitHub release and the Marketplace both take this one file.
+  build:
     if: github.event_name == 'push'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      released: ${{ steps.tag.outputs.exists }}
 
     steps:
       - name: Check out merged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.x
           cache: npm
@@ -68,16 +78,57 @@ jobs:
         if: steps.tag.outputs.exists != 'true'
         run: npm run package:vsix
 
+      - name: Attest where the VSIX came from
+        if: steps.tag.outputs.exists != 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: '*.vsix'
+
+      - name: Keep the VSIX for the release and the Marketplace
+        if: steps.tag.outputs.exists != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-vsix
+          path: '*.vsix'
+          if-no-files-found: error
+          retention-days: 30
+
+  # The GitHub release, with the changelog's section as its notes; a version
+  # already released has its notes brought in step with the changelog.
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out merged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+
       - name: Read the release notes from the changelog
         env:
-          VERSION: ${{ steps.version.outputs.value }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: node scripts/changelog.js notes "$VERSION" > "$RUNNER_TEMP/notes.md"
 
+      - name: Take the VSIX the build made
+        if: needs.build.outputs.released != 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-vsix
+
       - name: Create release and attach VSIX
-        if: steps.tag.outputs.exists != 'true'
+        if: needs.build.outputs.released != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: v${{ steps.version.outputs.value }}
+          TAG_NAME: v${{ needs.build.outputs.version }}
         run: |
           vsix_path="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
           test -n "$vsix_path"
@@ -94,12 +145,59 @@ jobs:
             --title "Deckard $TAG_NAME" \
             --repo "$GITHUB_REPOSITORY"
 
-      # The Marketplace is checked rather than the tag, so re-running a job
-      # whose release was made but whose publish failed still publishes.
+      # A version already released keeps its notes in step with its section
+      # of the changelog, which a later merge may have corrected.
+      - name: Update the release notes from the changelog
+        if: needs.build.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: v${{ needs.build.outputs.version }}
+        run: |
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "The changelog has no section for $TAG_NAME."
+            exit 0
+          fi
+          gh release view "$TAG_NAME" --json body --jq .body --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/current.md" || exit 0
+          if diff -q -B <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/current.md") <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/notes.md") > /dev/null; then
+            echo "$TAG_NAME already says what the changelog does."
+            exit 0
+          fi
+          gh release edit "$TAG_NAME" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+
+  # Publishes the release's VSIX to the Marketplace, from the marketplace
+  # environment: only master may deploy there, and the Microsoft Entra
+  # credential trusts that environment, not the repository as a whole. The
+  # Marketplace is checked rather than the tag, so re-running this job after
+  # a failed publish still publishes, taking the VSIX from the release.
+  marketplace:
+    needs: [build, github-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out merged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      # vsce at the version package-lock.json pins; no install script runs.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
       - name: Check whether the Marketplace has this version
         id: marketplace
         env:
-          VERSION: ${{ steps.version.outputs.value }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           published="$(npx vsce show esperinnovations.deckard-notes --json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).versions[0].version")"
           echo "Marketplace has $published; this build is $VERSION."
@@ -110,10 +208,11 @@ jobs:
           fi
 
       # The app registration esper-themes-publish trusts this repository's
-      # master branch; its IDs are repository variables, not secrets.
+      # marketplace environment; its IDs are repository variables, not
+      # secrets.
       - name: Sign in to Microsoft Entra
         if: steps.marketplace.outputs.needed == 'true'
-        uses: azure/login@v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -129,13 +228,19 @@ jobs:
             --resource 499b84ac-1321-427f-aa17-267ca6975798 \
             --query "{id: id, displayName: displayName}" -o table
 
-      # Publishes the same file the GitHub release carries. A re-run, which
-      # skips the build, takes it from the release.
+      - name: Take the VSIX the build made
+        if: steps.marketplace.outputs.needed == 'true' && needs.build.outputs.released != 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-vsix
+
+      # The file the GitHub release carries. A version released before, whose
+      # publish failed, is taken from its release.
       - name: Publish to the Marketplace
         if: steps.marketplace.outputs.needed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: v${{ steps.version.outputs.value }}
+          TAG_NAME: v${{ needs.build.outputs.version }}
         run: |
           vsix_path="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
           if [ -z "$vsix_path" ]; then
@@ -145,36 +250,19 @@ jobs:
           test -n "$vsix_path"
           npx vsce publish --packagePath "$vsix_path" --azure-credential
 
-      # A version already released keeps its notes in step with its section
-      # of the changelog, which a later merge may have corrected.
-      - name: Update the release notes from the changelog
-        if: steps.tag.outputs.exists == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: v${{ steps.version.outputs.value }}
-        run: |
-          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
-            echo "The changelog has no section for $TAG_NAME."
-            exit 0
-          fi
-          gh release view "$TAG_NAME" --json body --jq .body > "$RUNNER_TEMP/current.md" || exit 0
-          if diff -q -B <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/current.md") <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/notes.md") > /dev/null; then
-            echo "$TAG_NAME already says what the changelog does."
-            exit 0
-          fi
-          gh release edit "$TAG_NAME" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
-
   sync-notes:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.x
 
