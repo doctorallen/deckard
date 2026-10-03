@@ -1,7 +1,9 @@
 // A workspace in memory for the index's suites: URIs, folders, settings,
 // and change events that behave as VS Code's do for the parts the scanner
 // and indexer read, so those suites run under plain mocha.
-import * as path from 'path';
+// The fake's paths are a URI's, with forward slashes on every system, so
+// they are joined and split as POSIX paths, also on Windows.
+import { posix as path } from 'path';
 
 import { Emitter } from '../shared/emitter';
 import type { WorkspaceFileAccess } from '../core/workspace/scanner';
