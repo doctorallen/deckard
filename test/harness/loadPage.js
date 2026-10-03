@@ -166,7 +166,7 @@ function resolveSheetUrls(sheet, base) {
 function loadPage(html, options = {}) {
   const root = options.root ?? ROOT;
   const pageNonce = readPageNonce(html);
-  const withScripts = html.replace(/<script\b([^>]*)>\s*<\/script\s*>/gi, (whole, attributeText) => {
+  const withScripts = html.replace(/<script\b([^>]*)>\s*<\/script\b[^>]*>/gi, (whole, attributeText) => {
     const attributes = readAttributes(attributeText);
     if (!attributes.has('src')) {
       return whole;

@@ -137,7 +137,7 @@ function bareDrawnRows(body) {
  * application/json block, which is data.
  */
 function runnableScripts(html) {
-  return [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)]
+  return [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)]
     .map(([, attributes, text]) => ({ attributes, text }))
     .filter((block) => !/\btype="application\/json"/i.test(block.attributes))
     .map((block) => block.text);

@@ -110,13 +110,13 @@ function probeMeasures(surface) {
   }
   function report(label) {
     const out = { label, scrollers: [], clippers: [] };
-    for (const sel of ${JSON.stringify(surface.scrollers)}) {
+    for (const sel of ${scriptJson(surface.scrollers)}) {
       document.querySelectorAll(sel).forEach((el, i) => {
         const b = box(el);
         out.scrollers.push({ sel: sel + '#' + i, ...b, wide: b.scrollW > b.clientW ? wide(el) : [] });
       });
     }
-    for (const sel of ${JSON.stringify(surface.clippers)}) {
+    for (const sel of ${scriptJson(surface.clippers)}) {
       document.querySelectorAll(sel).forEach((el, i) => out.clippers.push({ sel: sel + '#' + i, ...box(el) }));
     }
     return out;
@@ -205,7 +205,7 @@ function probeRestingChecks() {
 function probeHover(surface) {
   return `  let target = null;
   let hoverTarget = '';
-  for (const sel of ${JSON.stringify(surface.hovered)}) {
+  for (const sel of ${scriptJson(surface.hovered)}) {
     target = document.querySelector(sel);
     if (target) { hoverTarget = sel; break; }
   }
@@ -270,7 +270,7 @@ function interactionScript(surface) {
   }
   const steps = [
     ...messages.map((message) => `window.dispatchEvent(new MessageEvent('message', { data: ${scriptJson(message)} }));`),
-    ...drive.map(([event, selector]) => `document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent(${JSON.stringify(event)}, { bubbles: true, cancelable: true, view: window }));`),
+    ...drive.map(([event, selector]) => `document.querySelector(${scriptJson(selector)}).dispatchEvent(new MouseEvent(${scriptJson(event)}, { bubbles: true, cancelable: true, view: window }));`),
   ];
   return `setTimeout(function () {\n${steps.join('\n')}\n}, 20);\n`;
 }
