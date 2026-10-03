@@ -2,9 +2,19 @@
 
 ## Unreleased
 
-## 1.23.2 - 2026-10-02
+## 2.0.0 - 2026-10-02
+
+### Highlights
+
+- Rebuilt inside on one shared, tested core for every page: the code loaded at start is nearly half the size, and pages behave alike.
+- Over 230 fixes: zen mode and other settings work in a workspace that sets them, and saves made during a scan stay saved.
+- Tags in any script, such as #café and #日本, and keyboard, screen reader, and contrast fixes on every page.
 
 ### Changed
+
+- **A search's `text =` finds a whole word,** as the guide and the builder
+  have always said: `text = plan` no longer finds "planning". `text:plan`
+  or a bare `plan` still finds any part of a word.
 
 - **Capture's shortcut is Cmd/Ctrl+Shift+Alt+N.** Cmd/Ctrl+Shift+Alt+C is
   VS Code's own Copy Relative Path of Active File on macOS and Linux, which
