@@ -12,6 +12,7 @@ import { findDailyNoteActions, findEmbedProblems, findTaskDependencies } from '.
 import { findUnlinkedMentions } from '../domain/search/mentions';
 import { findLinkProblems, findMissingNoteNames } from '../domain/links/linkProblems';
 import { ParsedFile, WorkspaceIndex } from '../domain/model';
+import { indexKeyOf } from './indexKeys';
 
 suite('Editor lenses', () => {
   suite('task dependencies', () => {
@@ -345,15 +346,15 @@ suite('Editor lenses', () => {
         Buffer.from('The atlas plan.\nThe atlas moved.\n', 'utf8'),
       );
       const snapshot = createIndex({
-        [atlas.fsPath]: '# Atlas\n',
-        [log.fsPath]: indexed,
+        [indexKeyOf(atlas)]: '# Atlas\n',
+        [indexKeyOf(log)]: indexed,
       });
       try {
         await linkMentions(
           {
             ready: Promise.resolve(),
             getSnapshot: () => snapshot,
-            parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+            parse: (uri, content) => parseMarkdown(indexKeyOf(uri), content),
             refresh: async () => undefined,
           },
           new WorkspaceWriteHistory(),
@@ -377,9 +378,9 @@ suite('Editor lenses', () => {
       await vscode.workspace.fs.writeFile(atlas, Buffer.from('# Atlas\n', 'utf8'));
       await vscode.workspace.fs.writeFile(log, Buffer.from('The atlas plan.\n', 'utf8'));
       const snapshot = createIndex({
-        [atlas.fsPath]: '# Atlas\n',
-        [gone.fsPath]: 'An atlas, once.\n',
-        [log.fsPath]: 'The atlas plan.\n',
+        [indexKeyOf(atlas)]: '# Atlas\n',
+        [indexKeyOf(gone)]: 'An atlas, once.\n',
+        [indexKeyOf(log)]: 'The atlas plan.\n',
       });
       const window = vscode.window as unknown as Record<string, unknown>;
       const original = window.showInformationMessage;
@@ -390,7 +391,7 @@ suite('Editor lenses', () => {
           {
             ready: Promise.resolve(),
             getSnapshot: () => snapshot,
-            parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+            parse: (uri, content) => parseMarkdown(indexKeyOf(uri), content),
             refresh: async () => undefined,
           },
           new WorkspaceWriteHistory(),

@@ -20,6 +20,7 @@ import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createPreferences } from './preferenceServices';
 import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
+import { indexKeyOf } from './indexKeys';
 
 /** An in-memory store for the preferences. */
 function createStore() {
@@ -175,9 +176,9 @@ async function openSidebar() {
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
-    getFilePath: (uri: vscode.Uri) => uri.fsPath,
+    getFilePath: indexKeyOf,
     onDidUpdate: (listener: () => void) => updates.event(listener),
-    parse: (uri: vscode.Uri, text: string) => parseMarkdown(uri.fsPath, text),
+    parse: (uri: vscode.Uri, text: string) => parseMarkdown(indexKeyOf(uri), text),
     refresh: async () => undefined,
   } as unknown as SidebarNotesViewOptions['indexer'];
   const preferences = createPreferences(createStore() as never);
@@ -344,9 +345,9 @@ function openController() {
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
-    getFilePath: (uri: vscode.Uri) => uri.fsPath,
+    getFilePath: indexKeyOf,
     onDidUpdate: (listener: () => void) => updates.event(listener),
-    parse: (uri: vscode.Uri, text: string) => parseMarkdown(uri.fsPath, text),
+    parse: (uri: vscode.Uri, text: string) => parseMarkdown(indexKeyOf(uri), text),
     refresh: async () => undefined,
   } as unknown as SidebarNotesViewOptions['indexer'];
   const preferences = createPreferences(createStore() as never);

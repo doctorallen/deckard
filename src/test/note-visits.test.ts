@@ -55,7 +55,7 @@ suite('A note counts as opened when it stays open', () => {
   });
   const indexer = {
     getSnapshot: () => index,
-    getFilePath: (uri: vscode.Uri) => uri.fsPath.replace('/ws/', ''),
+    getFilePath: (uri: vscode.Uri) => uri.path.replace('/ws/', ''),
     isNotesFile: () => true,
   };
   const next = [...index.sections.values()].find((section) => section.heading === 'Next')!;

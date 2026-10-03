@@ -14,6 +14,7 @@ import { planNoteRenameRewrites } from '../domain/links/linkRewrites';
 import type { LinkService } from '../services/linkService';
 import { WorkspaceIndex } from '../domain/model';
 import { useDiskWorkspace } from './diskWorkspace';
+import { indexKeyOf } from './indexKeys';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -32,7 +33,7 @@ suite('Link maintenance', () => {
     const write = async (name: string, content: string): Promise<string> => {
       const uri = vscode.Uri.joinPath(root, name);
       await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
-      return uri.fsPath;
+      return indexKeyOf(uri);
     };
     const logPath = await write('Log.md', 'Read [[Vendor review]] today.\n');
     const movedPath = await write('Moved.md', 'Read [[Vendor review]] too.\n');
@@ -88,13 +89,13 @@ suite('Link maintenance', () => {
       Buffer.from('# Vendor review\n', 'utf8'),
     );
     const snapshot = indexOf({
-      [logUri.fsPath]: 'Read [[Vendor review]] today.\n',
-      [reviewUri.fsPath]: '# Vendor review\n',
+      [indexKeyOf(logUri)]: 'Read [[Vendor review]] today.\n',
+      [indexKeyOf(reviewUri)]: '# Vendor review\n',
     });
     const maintenance = new LinkMaintenance({
       ready: Promise.resolve(),
       getSnapshot: () => snapshot,
-      getFilePath: (uri) => uri.fsPath,
+      getFilePath: indexKeyOf,
       isNotesFile: () => true,
     });
 
@@ -188,8 +189,8 @@ suite('Rename Heading', () => {
     await vscode.workspace.fs.writeFile(logUri, Buffer.from('Read [[Vendor review#Vendor review]] today.\n', 'utf8'));
     // The index can hold the text as read from disk, mark and all.
     const index = indexOf({
-      [reviewUri.fsPath]: '\uFEFFNotes\n# Vendor review\n',
-      [logUri.fsPath]: 'Read [[Vendor review#Vendor review]] today.\n',
+      [indexKeyOf(reviewUri)]: '\uFEFFNotes\n# Vendor review\n',
+      [indexKeyOf(logUri)]: 'Read [[Vendor review#Vendor review]] today.\n',
     });
     const document = await vscode.workspace.openTextDocument(reviewUri);
     const window = vscode.window as unknown as Record<string, unknown>;
@@ -210,7 +211,7 @@ suite('Rename Heading', () => {
         {
           ready: Promise.resolve(),
           getSnapshot: () => index,
-          getFilePath: (uri) => uri.fsPath,
+          getFilePath: indexKeyOf,
           isNotesFile: () => true,
           refresh: async () => undefined,
         },
