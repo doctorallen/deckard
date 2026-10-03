@@ -227,22 +227,34 @@ function onClick(event: MouseEvent): void {
     showHelp(returnTo);
     return;
   }
-  const toggle = target.closest('.nav-toggle');
-  if (toggle) {
-    setMapOpen(toggle.getAttribute('aria-expanded') !== 'true');
+  if (foldMap(target)) {
     return;
   }
   // The rail leads back to Help from a guide page.
   const railLink = target.closest('nav a[href^="#"]');
-  // Above the guide, the map folds away again once it has led somewhere.
-  if (railLink) {
-    setMapOpen(false);
-  }
   if (!railLink || !guideView || guideView.hidden) {
     return;
   }
   event.preventDefault();
   showHelp(railLink.getAttribute('href')?.slice(1));
+}
+
+/**
+ * The map's own clicks where it sits above the guide: its Contents button
+ * opens or folds it, and a link in it folds it again once it has led
+ * somewhere. True when the click was the button's, and nothing else is to
+ * be done with it.
+ */
+function foldMap(target: Element): boolean {
+  const toggle = target.closest('.nav-toggle');
+  if (toggle) {
+    setMapOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    return true;
+  }
+  if (target.closest('nav a[href^="#"]')) {
+    setMapOpen(false);
+  }
+  return false;
 }
 
 /**
