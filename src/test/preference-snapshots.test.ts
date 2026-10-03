@@ -1,5 +1,7 @@
 import * as assert from 'assert';
-import * as path from 'path';
+// The fake file system's paths are a URI's, with forward slashes on every
+// system, so the expected ones are built the same way.
+import { posix as path } from 'path';
 
 import { createPreferences } from './preferenceServices';
 import { PreferenceSnapshots, SNAPSHOTS_KEPT } from '../core/storage/preferenceSnapshots';
