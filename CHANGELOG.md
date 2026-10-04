@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.1.0 - 2026-10-03
+
 ### Highlights
 
 - Read any note as a page in your theme, its links, tasks, query blocks, and embeds working, from the unicorn in its title bar.
