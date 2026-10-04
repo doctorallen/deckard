@@ -14,7 +14,7 @@ import { ProgressWords } from '../shared/progressWords';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
-import { installViewOptions, themeOption, ViewOptions, zenOption } from '../shared/viewOptions';
+import { displayOptions, installViewOptions, themeOption, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from './body';
 
@@ -41,7 +41,7 @@ function Toolbar({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
       </span>
       <button type="button" data-action="open-in-editor" disabled={snapshot.missing} data-tip="Open this note in the editor · Cmd/Ctrl-click: beside">Open in Editor</button>
       <HelpButton anchor="links" />
-      <ViewOptions groups={[themeOption(), zenOption()]} />
+      <ViewOptions groups={[themeOption(), zenOption(), ...displayOptions()]} />
     </div>
   );
 }

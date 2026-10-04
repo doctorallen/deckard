@@ -96,6 +96,31 @@ export function zenOption(): ViewOptionGroup {
 }
 
 /**
+ * The gear's Cards and Tags rows, the same on every page that has a gear:
+ * raised cards or flat rows, and tags as chips or as text. What is chosen is
+ * read from the body's markers, which the page shell wrote from the
+ * settings, so no page carries it through its state builder.
+ */
+export function displayOptions(): ViewOptionGroup[] {
+  const flat = document.body.dataset.cards === 'flat';
+  const text = document.body.dataset.tags === 'text';
+  return [
+    {
+      label: 'Cards',
+      content: (
+        <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'cardFrames' }} choices={[['raised', 'Raised'], ['flat', 'Flat']]} selected={flat ? 'flat' : 'raised'} label="Cards" />
+      ),
+    },
+    {
+      label: 'Tags',
+      content: (
+        <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'tags' }} choices={[['chips', 'Chips'], ['text', 'Text']]} selected={text ? 'text' : 'chips'} label="Tags" />
+      ),
+    },
+  ];
+}
+
+/**
  * The name of the theme the page is drawn in, as its shell wrote it when the
  * page was built; a new theme builds the page again.
  */
@@ -136,6 +161,10 @@ export function installViewOptions(): void {
     }
     if (closest('[data-action="choose-theme"]')) {
       post({ type: 'chooseTheme' });
+    }
+    const display = closest('[data-action="set-display"]');
+    if (display && display.dataset.display && display.dataset.value) {
+      post({ type: 'setDisplay', setting: display.dataset.display, value: display.dataset.value });
     }
     const inside = closest('.view-options');
     document.querySelectorAll<HTMLDetailsElement>('.view-options[open]').forEach((options) => {

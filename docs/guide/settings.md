@@ -84,6 +84,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
 | `deckard.theme` | `corpo` | The style for Deckard's pages: `corpo`, which follows your VS Code theme, or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.zenMode` | `false` | Turns Deckard's chrome down in every page. No control, count, or tag is removed. See [Zen mode](themes-and-zen.md#zen-mode). |
+| `deckard.display.cardFrames` | `raised` | How cards and rows are drawn on every page: `raised` cards, or `flat` rows parted by a divider. Yours alone, the same in every workspace. See [Cards and tags](themes-and-zen.md#cards-and-tags). |
+| `deckard.display.tags` | `chips` | How tags are drawn on every page: framed `chips`, or plain `text`. See [Cards and tags](themes-and-zen.md#cards-and-tags). |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](search-pages.md#hub-notes) open at the top of its overview. |

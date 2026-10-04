@@ -15,6 +15,7 @@ import {
   narrowParkTag,
   narrowPinNote,
   narrowRenameTag,
+  narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -92,6 +93,17 @@ suite('Page message narrowing', () => {
       [{ type: 'goToPage', page: '../board' }, undefined],
       [{ type: 'goToPage', page: '' }, undefined],
       [{ type: 'goToPage' }, undefined],
+    ]);
+  });
+
+  test('the gear\'s Cards or Tags row: which setting, and a short lowercase value', () => {
+    const display = narrowWith<{ setDisplay: ReturnType<typeof narrowSetDisplay> }>({ setDisplay: narrowSetDisplay });
+    check(display, [
+      [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat', extra: 1 }, { type: 'setDisplay', setting: 'cardFrames', value: 'flat' }],
+      [{ type: 'setDisplay', setting: 'tags', value: 'text' }, { type: 'setDisplay', setting: 'tags', value: 'text' }],
+      [{ type: 'setDisplay', setting: 'theme', value: 'cooper' }, undefined],
+      [{ type: 'setDisplay', setting: 'tags', value: 'Text' }, undefined],
+      [{ type: 'setDisplay', setting: 'tags' }, undefined],
     ]);
   });
 

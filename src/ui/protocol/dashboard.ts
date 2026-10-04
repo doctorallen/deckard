@@ -35,6 +35,7 @@ import type {
   PinNoteMessage,
   RenameTagMessage,
   ResultPaging,
+  SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
   TagTitleDisplayMode,
@@ -374,6 +375,7 @@ export interface RecordRecentQueryMessage {
  */
 export interface DashboardPageToHost {
   setZenMode: SetZenModeMessage;
+  setDisplay: SetDisplayMessage;
   chooseTheme: ChooseThemeMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;

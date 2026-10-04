@@ -226,6 +226,13 @@ export interface ChooseThemeMessage {
   type: 'chooseTheme';
 }
 
+/** The gear's Cards or Tags row: how cards or tags are drawn on every page. */
+export interface SetDisplayMessage {
+  type: 'setDisplay';
+  setting: 'cardFrames' | 'tags';
+  value: string;
+}
+
 /** The gear's zen row, on every page that has a gear. */
 export interface SetZenModeMessage {
   type: 'setZenMode';

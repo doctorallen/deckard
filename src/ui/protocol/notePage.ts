@@ -11,6 +11,7 @@ import type {
   OpenGoToMessage,
   OpenHelpMessage,
   OpenTagMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   ToggleTaskMessage,
 } from './shared';
@@ -204,6 +205,7 @@ export interface NotePagePageToHost {
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
   setZenMode: SetZenModeMessage;
+  setDisplay: SetDisplayMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
 }

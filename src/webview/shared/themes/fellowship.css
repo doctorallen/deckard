@@ -38,6 +38,9 @@
   --due-today: #7a5a00;
   --font-display: Georgia, 'Times New Roman', serif;
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --divider: var(--line-strong);
+  /* Its muted green falls under 4.5:1 on the bare page, where a text tag sits. */
+  --tag-namespace: #4c5336;
 }
 body { background-image: none; }
 main { border-color: var(--slate-border); box-shadow: none; }

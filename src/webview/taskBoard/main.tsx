@@ -21,7 +21,14 @@ import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
 import { createUndoNotice } from '../shared/undoToast';
-import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
+import {
+  displayOptions,
+  installViewOptions,
+  themeOption,
+  ViewOptionChoices,
+  ViewOptions,
+  zenOption,
+} from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
@@ -159,6 +166,7 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
         themeOption(),
         zenOption(),
+        ...displayOptions(),
       ]}
     />
   );

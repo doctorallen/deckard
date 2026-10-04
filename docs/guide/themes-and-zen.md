@@ -21,6 +21,15 @@ In every theme, red means overdue or high priority, and nothing else.
 | **Cooper** | | |
 | <img src="../images/dashboard-cooper.png" alt="Cooper theme Dashboard." width="220"> | | |
 
+## Cards and tags
+
+Two looks you can turn on for every page, in any theme, from **Cards** and **Tags** in a page's gear, or in Settings:
+
+- **Flat cards** (`deckard.display.cardFrames`: `flat`): rows with a divider between them, in place of raised cards. Under the pointer or keyboard focus a row lifts onto the card surface, and its file and line show as they do on a card.
+- **Tags as text** (`deckard.display.tags`: `text`): each tag is plain text in the theme's tag color, its `#` or `@` kept, underlined under the pointer, with a focus ring from the keyboard. It still opens its page and has its menu.
+
+Both are yours alone: they're the same in every workspace, and a workspace's settings never change them. In every theme the divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
+
 ## Zen mode
 
 Zen turns Deckard's chrome down, in any theme. Turn it on with **Zen** in a page's gear, the zen button in a page's title bar, `Deckard: Enter Zen Mode`, or `deckard.zenMode`.

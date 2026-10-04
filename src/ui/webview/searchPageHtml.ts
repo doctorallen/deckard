@@ -23,6 +23,7 @@ export function getSearchPageHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     bundle: true,
     body: `
 ${loadingHtml('Loading search…')}

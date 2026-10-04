@@ -29,6 +29,7 @@
   --warning-orange: #ff8b55;
   --font-display: var(--vscode-font-family, 'Arial Narrow', 'Avenir Next Condensed', sans-serif);
   --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', monospace);
+  --divider: var(--line-strong);
 }
 body {
   background-color: var(--bg-dark);

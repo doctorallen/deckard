@@ -124,6 +124,9 @@ function createCalendarPageIndex() {
 
 const NOW = new Date(2026, 8, 21, 12).getTime();
 
+/** Flat cards and tags as text: the looks a reader turns on, drawn on a few surfaces. */
+const LOOKS = { cards: 'flat', tags: 'text' };
+
 /**
  * The Dashboard as the host sends it: Home with its widgets, or the Tags
  * mode, at one moment.
@@ -170,6 +173,8 @@ function createDashboardSurfaces(index, preferences) {
   });
   return [
     dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }),
+    // Flat cards and tags as text, the two looks a reader turns on.
+    { ...dashboard('dashboardHomeLooks', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: LOOKS },
     dashboard('dashboardTags', 'browse', { hovered: ['.tag-row', '.row'] }),
     dashboard('dashboardArranging', 'home', {
       drive: [['click', '[data-action="customize-home"]']],
@@ -573,6 +578,18 @@ function createSummarySurfaces(index, preferences) {
       clippers: [],
       hovered: ['.card'],
     },
+    {
+      name: 'searchPageLooks',
+      page: 'searchPage',
+      display: LOOKS,
+      viewport: [900, 900],
+      snapshot: () => createSearchPageSnapshot(index, preferences.reader.value, '#project/atlas', {
+        queryContext: createQueryContext(NOW),
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.card'],
+    },
   ];
 }
 
@@ -647,6 +664,20 @@ function createNotePageSurfaces() {
       clippers: [],
       hovered: ['.note-query-title'],
     },
+    {
+      name: 'notePageLooks',
+      page: 'notePage',
+      display: LOOKS,
+      viewport: [900, 1400],
+      snapshot: () => createNotePageSnapshot(index, 'projects/Atlas.md', {
+        queryContext: createQueryContext(NOW),
+        history: { back: true, forward: false },
+        visit: 1,
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note-query-title'],
+    },
   ];
 }
 
@@ -680,15 +711,20 @@ function createSurfaces() {
  * The page a surface draws, as its host renders it: the page every surface
  * of it shares, or one rendered with the surface's own page options.
  *
- * @param {{ page: string, pageOptions?: () => object }} surface Which page it draws, and any options of its own.
+ * @param {{ page: string, pageOptions?: () => object, display?: object }} surface Which page it draws, any options of its own, and any display choices it is drawn with.
  * @param {Map<string, string>} rendered Every page in this theme and zen state, by name.
  * @param {{ theme: string, zen: boolean }} chrome The theme and zen state the page is drawn in.
  * @returns {string} The page's HTML.
  */
 function surfaceHtml(surface, rendered, chrome) {
-  return surface.pageOptions
-    ? renderPage(surface.page, { ...chrome, pageOptions: surface.pageOptions() })
-    : rendered.get(surface.page);
+  if (surface.pageOptions || surface.display) {
+    return renderPage(surface.page, {
+      ...chrome,
+      ...(surface.display ? { display: surface.display } : {}),
+      ...(surface.pageOptions ? { pageOptions: surface.pageOptions() } : {}),
+    });
+  }
+  return rendered.get(surface.page);
 }
 
 module.exports = { createSurfaces, surfaceHtml, NOW };

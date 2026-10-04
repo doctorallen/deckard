@@ -33,6 +33,7 @@
   --warning-orange: #ff9a3c;
   --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --divider: var(--line-strong);
 }
 /* Graph paper rather than a dot screen: a fine grid inside a coarser one, both
    faint enough that the black ground still reads as empty space. */

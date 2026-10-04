@@ -27,6 +27,7 @@ export function getNotesGraphHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     bundle: true,
     body: '',
   });

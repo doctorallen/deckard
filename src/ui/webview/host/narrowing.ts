@@ -20,6 +20,7 @@ import type {
   ParkTagMessage,
   PinNoteMessage,
   RenameTagMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   ToggleTaskMessage,
 } from '../../protocol/shared';
@@ -119,6 +120,12 @@ export function isSourceLocation(value: Record<string, unknown>): boolean {
     (value.opposite === undefined || typeof value.opposite === 'boolean')
   );
 }
+
+/** The gear's Cards or Tags row: which, and a short lowercase value the host checks. */
+export const narrowSetDisplay: Narrower<SetDisplayMessage> = (value) =>
+  (value.setting === 'cardFrames' || value.setting === 'tags') && typeof value.value === 'string' && /^[a-z]{1,12}$/.test(value.value)
+    ? { type: 'setDisplay', setting: value.setting, value: value.value }
+    : undefined;
 
 /**
  * The gear's zen row: on or off.

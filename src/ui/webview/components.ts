@@ -10,13 +10,24 @@
 import { DeckardTheme } from './themeNames';
 
 /**
+ * How a reader chose to have cards and tags drawn, each named only when it
+ * isn't the default: flat rows rather than raised cards, and tags as text
+ * rather than chips (`deckard.display.cardFrames`, `deckard.display.tags`).
+ */
+export interface DisplayChoices {
+  readonly cards?: 'flat';
+  readonly tags?: 'text';
+}
+
+/**
  * The look a page is written in: the theme its host read, preview and all,
- * and whether zen mode is on. The host reads both as it writes the page;
- * a page builder is given them.
+ * whether zen mode is on, and how cards and tags are drawn. The host reads
+ * them as it writes the page; a page builder is given them.
  */
 export interface PageChrome {
   theme: DeckardTheme;
   zen: boolean;
+  display?: DisplayChoices;
 }
 
 /**
@@ -50,7 +61,11 @@ export interface PageTail {
    * holds control edges, provenance, high contrast, card tags, and zen.
    */
   readonly sheets: readonly string[];
-  /** The marker the zen sheet hangs on, ` class="zen"`, or nothing. */
+  /**
+   * The markers the tail's sheets hang on: ` class="zen"`, and
+   * ` data-cards="flat"` and ` data-tags="text"` for those choices, or
+   * nothing.
+   */
   readonly bodyAttribute: string;
 }
 
@@ -64,7 +79,11 @@ export interface PageTail {
 export function getPageTailCss(chrome: PageChrome): PageTail {
   return {
     sheets: [deckardThemeCss[chrome.theme], 'tail.css'],
-    bodyAttribute: chrome.zen ? ' class="zen"' : '',
+    bodyAttribute: [
+      chrome.zen ? ' class="zen"' : '',
+      chrome.display?.cards === 'flat' ? ' data-cards="flat"' : '',
+      chrome.display?.tags === 'text' ? ' data-tags="text"' : '',
+    ].join(''),
   };
 }
 

@@ -22,6 +22,7 @@ export function getDashboardHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     csp: { images: [] },
     bundle: true,
     body: `

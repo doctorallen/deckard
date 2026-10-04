@@ -250,6 +250,7 @@ function buildHelpHtml({ webview, extensionUri, manifest, platform, options }: H
     nonce,
     theme: options.chrome.theme,
     zen: options.chrome.zen,
+    display: options.chrome.display,
     csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
     bodyAttributes: options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : '',
     // src/webview/help/main.ts: the rail, the guide view, and the way back.

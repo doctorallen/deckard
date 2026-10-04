@@ -12,6 +12,14 @@
 
 ### Added
 
+- **Flat cards and tags as text.** Two looks for every page, in any theme,
+  from **Cards** and **Tags** in a page's gear: rows parted by a divider in
+  place of raised cards, lifting onto the card surface under the pointer
+  or keyboard focus; and tags as plain text in the theme's tag color, the
+  `#` or `@` kept, underlined under the pointer. Each is your own setting,
+  the same in every workspace (`deckard.display.cardFrames`,
+  `deckard.display.tags`).
+
 - **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
   the Task Board, the Calendar, today's note, the Notes Graph, Find, Stats,
   and Help, each a labeled row with a glyph of its own and a word on what is

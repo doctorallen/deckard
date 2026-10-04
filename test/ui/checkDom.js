@@ -159,7 +159,7 @@ function readsInertState(surface) {
 function checkEmbedded(entry, posted, options) {
   const { surface, name } = entry;
   const pageOptions = { ...(surface.pageOptions ? surface.pageOptions() : {}), state: surface.snapshot() };
-  const html = renderPage(surface.page, { ...options.chrome, pageOptions });
+  const html = renderPage(surface.page, { ...options.chrome, ...(surface.display ? { display: surface.display } : {}), pageOptions });
   let embedded;
   try {
     embedded = drawSurface({ ...surface, snapshot: undefined }, html, path.join(options.dir, `${name}.embedded.html`));

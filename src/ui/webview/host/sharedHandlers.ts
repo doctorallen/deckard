@@ -27,6 +27,7 @@ import type {
   OpenTagMessage,
   ParkTagMessage,
   RenameTagMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
   ToggleTaskMessage,
@@ -34,6 +35,7 @@ import type {
 import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { TaskWrites, toggleTask as writeTaskToggle } from '../../commands/taskActions';
+import { setDisplayChoice } from '../displayChoices';
 import { setZenMode as writeZenMode } from '../zenMode';
 import { DECKARD_PAGE_COMMANDS, DeckardPageId, isDeckardPageId } from '../../state/deckardPages';
 import { describeGoToMenu } from '../../views/pagesTree';
@@ -41,6 +43,11 @@ import { describeGoToMenu } from '../../views/pagesTree';
 /** The gear's Choose Theme…, which runs the command. */
 export function chooseTheme(): MessageHandler<ChooseThemeMessage> {
   return () => vscode.commands.executeCommand('deckard.chooseTheme');
+}
+
+/** The gear's Cards and Tags rows, written to the user's settings. */
+export function setDisplay(): MessageHandler<SetDisplayMessage> {
+  return (message) => setDisplayChoice(message.setting, message.value);
 }
 
 /** The gear's zen row, written where the setting is set. */

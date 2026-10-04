@@ -41,6 +41,7 @@ import {
   narrowParkTag,
   narrowPinNote,
   narrowRenameTag,
+  narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -223,6 +224,7 @@ const narrowOpenNote: Narrower<OpenNoteMessage> = (value) =>
 /** Each message the Dashboard may send, and what it must hold. */
 export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   setZenMode: narrowSetZenMode,
+  setDisplay: narrowSetDisplay,
   chooseTheme: onlyType('chooseTheme'),
   openGoTo: onlyType('openGoTo'),
   listGoTo: onlyType('listGoTo'),

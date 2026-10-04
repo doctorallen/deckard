@@ -183,7 +183,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       ['search', 'agenda', 'recentNotes', 'favoriteTags', 'savedSearches'],
     );
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
-    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Zen']);
+    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Zen', 'Cards', 'Tags']);
   }
 });
 

@@ -24,6 +24,7 @@ export function getTaskBoardHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     bundle: true,
     body: `
 ${loadingHtml('Loading tasks…')}

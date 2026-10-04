@@ -1,7 +1,7 @@
 import { posix } from 'path';
 
 import { escapeHtml } from '../../../shared/html';
-import { getPageTailCss } from '../components';
+import { DisplayChoices, getPageTailCss } from '../components';
 import { type DeckardTheme, deckardThemeNames } from '../themeNames';
 
 /**
@@ -90,6 +90,8 @@ export interface PageShellOptions {
   readonly theme: DeckardTheme;
   /** Whether zen mode is on, which marks the body. */
   readonly zen: boolean;
+  /** How cards and tags are drawn, which marks the body too. */
+  readonly display?: DisplayChoices;
   /** What the page's policy grants beyond the default; see `getContentSecurityPolicy`. */
   readonly csp?: ContentSecurityExtras;
   /** Attributes the body carries after the zen class, written as HTML, such as Help's anchor. */
@@ -143,8 +145,8 @@ function bundleTail(options: PageShellOptions): string {
  * if it has one, and its script.
  */
 export function buildPageShell(options: PageShellOptions): string {
-  const { webview, extensionUri, theme, zen } = options;
-  const tail = getPageTailCss({ theme, zen });
+  const { webview, extensionUri, theme, zen, display } = options;
+  const tail = getPageTailCss({ theme, zen, ...(display ? { display } : {}) });
   const links = [`${options.page}.css`, ...tail.sheets]
     .map((sheet) => `<link rel="stylesheet" href="${escapeHtml(pageAsset(webview, extensionUri, sheet))}">`);
   const policy = getContentSecurityPolicy(webview.cspSource, options.nonce, options.csp);

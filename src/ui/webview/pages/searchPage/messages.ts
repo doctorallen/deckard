@@ -34,6 +34,7 @@ import {
   narrowParkTag,
   narrowPinNote,
   narrowRenameTag,
+  narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -168,6 +169,7 @@ const narrowMergeTags: Narrower<MergeTagsMessage> = (value) =>
 export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   exportResults: narrowExportResults,
   setZenMode: narrowSetZenMode,
+  setDisplay: narrowSetDisplay,
   chooseTheme: onlyType('chooseTheme'),
   openSource: narrowOpenSource,
   previewSearch: narrowPreviewSearch,

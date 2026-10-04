@@ -29,7 +29,19 @@ import { formatQueryBlock } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { chooseTheme, goToPage, listGoTo, openGoTo, openHelp, openTag, parkTag, renameTag, setZenMode, toggleTask } from '../../host/sharedHandlers';
+import {
+  chooseTheme,
+  goToPage,
+  listGoTo,
+  openGoTo,
+  openHelp,
+  openTag,
+  parkTag,
+  renameTag,
+  setDisplay,
+  setZenMode,
+  toggleTask,
+} from '../../host/sharedHandlers';
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
@@ -145,6 +157,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const { indexer, navigation, preferences } = search;
     this.handlers = {
       setZenMode: setZenMode(),
+      setDisplay: setDisplay(),
       chooseTheme: chooseTheme(),
       setOverviewQuery: (message, page) => this.applyQuery(page, message.query, message.remember !== false),
       clearOverviewQuery: (_message, page) => this.applyQuery(page, this.originQuery, false),

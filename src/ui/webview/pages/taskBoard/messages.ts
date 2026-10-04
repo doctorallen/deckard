@@ -43,6 +43,7 @@ import {
   NarrowingTable,
   narrowOpenSource,
   narrowOpenTag,
+  narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -183,6 +184,7 @@ const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = 
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   exportResults: narrowExportResults,
   setZenMode: narrowSetZenMode,
+  setDisplay: narrowSetDisplay,
   chooseTheme: onlyType('chooseTheme'),
   ready: onlyType('ready'),
   saveBoardSearch: narrowSaveBoardSearch,

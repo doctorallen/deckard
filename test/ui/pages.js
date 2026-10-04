@@ -59,7 +59,7 @@ const { deckardThemes } = modules.themeNames;
  * each one rather than restyled after the fact.
  */
 function renderPagesForTheme(theme, options) {
-  const chrome = { theme, zen: Boolean(options && options.zen) };
+  const chrome = { theme, zen: Boolean(options && options.zen), ...(options && options.display ? { display: options.display } : {}) };
   return pages.map(([name, render]) => [name, render(chrome)]);
 }
 
@@ -72,7 +72,7 @@ function renderPage(name, options = {}) {
   if (!pages.some(([pageName]) => pageName === name)) {
     throw new Error(`No such page: ${name}`);
   }
-  const chrome = { theme: options.theme || DEFAULT_THEME, zen: Boolean(options.zen) };
+  const chrome = { theme: options.theme || DEFAULT_THEME, zen: Boolean(options.zen), ...(options.display ? { display: options.display } : {}) };
   return loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions, chrome }));
 }
 

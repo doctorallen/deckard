@@ -5,7 +5,7 @@
 import type { TaskGlance } from '../../ui/protocol/dashboard';
 import { Eyebrow } from '../shared/eyebrow';
 import { Metric } from '../shared/metric';
-import { themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
+import { displayOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { TabSearchMarkIcon } from './icons';
 import type { DashboardDraw } from './model';
 import type { TagFilter } from './tagNames';
@@ -59,6 +59,7 @@ function DashboardOptions({ snapshot, view }: DashboardDraw) {
         { label: 'Get started', content: <button type="button" data-action="open-view" data-view="walkthrough">Walkthrough</button> },
         themeOption(),
         zenOption(),
+        ...displayOptions(),
       ]}
     />
   );

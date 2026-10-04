@@ -23,6 +23,7 @@ import type {
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
   TagTitleDisplayMode,
@@ -384,6 +385,7 @@ export interface TaskBoardPageToHost {
   addTaskToColumn: AddTaskToColumnMessage;
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;
+  setDisplay: SetDisplayMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;
