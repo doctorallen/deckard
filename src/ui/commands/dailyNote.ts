@@ -12,6 +12,7 @@ import {
   listDailyNotes,
   NotePeriod,
   PeriodicNoteVariables,
+  WeekNaming,
 } from '../../domain/notes/periodicNotes';
 import { readWeekStart } from './datePrompt';
 import { resolveSourceUri } from './navigation';
@@ -102,16 +103,47 @@ export function fillPeriodicTemplate(
   );
 }
 
+/** `deckard.weeklyNote.naming`: `iso` names a week `2026-W40`, anything else by its days. */
+export function readWeekNaming(): WeekNaming {
+  return vscode.workspace.getConfiguration('deckard').get<string>('weeklyNote.naming', 'range') === 'iso' ? 'iso' : 'range';
+}
+
+/**
+ * `deckard.periodicNotes.folder` for a day, inside the notes folder:
+ * `journal/{yyyy}` as `journal/2026`; empty for the notes folder itself.
+ */
+export function readPeriodicFolder(targetFolder: vscode.WorkspaceFolder, day: Date): string {
+  const pattern = readFolderSetting(
+    vscode.workspace.getConfiguration('deckard', targetFolder.uri).get<unknown>('periodicNotes.folder', ''),
+    '',
+  );
+  return fillPeriodicFolder(pattern, day);
+}
+
+/** A folder pattern's `{yyyy}` and `{mm}` as a day's year and month. */
+export function fillPeriodicFolder(pattern: string, day: Date): string {
+  return pattern
+    .replace(/\{yyyy\}/g, String(day.getFullYear()))
+    .replace(/\{mm\}/g, String(day.getMonth() + 1).padStart(2, '0'));
+}
+
 /**
  * Where the note for the period containing a day belongs: the notes folder,
- * named for the period.
+ * and `deckard.periodicNotes.folder` inside it, named for the period.
  */
 export function getPeriodicNoteUri(
   targetFolder: vscode.WorkspaceFolder,
   period: NotePeriod,
   day: Date,
-  /** A name to use instead of the one this period would be given. */
-  name = getPeriodicNote(period, day, readWeekStart()).name,
+  {
+    name = getPeriodicNote(period, day, readWeekStart(), readWeekNaming()).name,
+    folder = readPeriodicFolder(targetFolder, day),
+  }: {
+    /** A name to use instead of the one this period would be given. */
+    name?: string;
+    /** The folder inside the notes folder; the setting's by default, '' for the notes folder itself. */
+    folder?: string;
+  } = {},
 ): vscode.Uri {
   // A value that is not text reads as the setting's default, the workspace
   // folder, as the scanner reads it.
@@ -125,7 +157,7 @@ export function getPeriodicNoteUri(
         ...notesFolder.split('/').filter(Boolean),
       )
     : targetFolder.uri;
-  return vscode.Uri.joinPath(notesUri, `${name}.md`);
+  return vscode.Uri.joinPath(notesUri, ...folder.split('/').filter(Boolean), `${name}.md`);
 }
 
 /**
@@ -140,19 +172,15 @@ export async function ensurePeriodicNote(
   weekStart: Weekday = readWeekStart(),
 ): Promise<vscode.Uri> {
   const { setting, fallback } = PERIOD_TEMPLATES[period];
-  const template = vscode.workspace
-    .getConfiguration('deckard', targetFolder.uri)
-    .get<string>(setting, fallback);
+  const template = await readPeriodicTemplate(
+    targetFolder,
+    vscode.workspace.getConfiguration('deckard', targetFolder.uri).get<string>(setting, fallback),
+  );
   // A note the workspace already keeps for this period is the note, whichever
   // name it goes by; only a period with none gets a new one.
   const noteUri =
     (await findExistingPeriodicNote(targetFolder, period, day, weekStart)) ??
-    getPeriodicNoteUri(
-      targetFolder,
-      period,
-      day,
-      getPeriodicNote(period, day, weekStart).name,
-    );
+    getPeriodicNoteUri(targetFolder, period, day, { name: getPeriodicNote(period, day, weekStart, readWeekNaming()).name });
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(noteUri, '..'));
   try {
@@ -174,16 +202,44 @@ export async function findExistingPeriodicNote(
   day: Date,
   weekStart: Weekday = readWeekStart(),
 ): Promise<vscode.Uri | undefined> {
-  for (const name of findPeriodicNoteNames(period, day, weekStart)) {
-    const candidate = getPeriodicNoteUri(targetFolder, period, day, name);
-    try {
-      await vscode.workspace.fs.stat(candidate);
-      return candidate;
-    } catch {
-      continue;
+  // In the periodic notes folder, then the notes folder itself, where every
+  // note was written before the folder could be set.
+  const folders = [...new Set([readPeriodicFolder(targetFolder, day), ''])];
+  for (const folder of folders) {
+    for (const name of findPeriodicNoteNames(period, day, weekStart, readWeekNaming())) {
+      const candidate = getPeriodicNoteUri(targetFolder, period, day, { name, folder });
+      try {
+        await vscode.workspace.fs.stat(candidate);
+        return candidate;
+      } catch {
+        continue;
+      }
     }
   }
   return undefined;
+}
+
+/**
+ * A periodic template as its setting holds it: the text itself, or the name
+ * of a Markdown file in the templates folder, such as `Daily.md`, read from
+ * there. A file that cannot be read is used as text, so the note is still
+ * made and says what was asked for.
+ */
+async function readPeriodicTemplate(targetFolder: vscode.WorkspaceFolder, value: string): Promise<string> {
+  const name = value.trim();
+  if (name.includes('\n') || !/\.md$/i.test(name)) {
+    return value;
+  }
+  const templatesFolder = readFolderSetting(
+    vscode.workspace.getConfiguration('deckard', targetFolder.uri).get<unknown>('templatesFolder', 'templates'),
+    'templates',
+  );
+  try {
+    const uri = vscode.Uri.joinPath(targetFolder.uri, ...templatesFolder.split('/').filter(Boolean), ...name.split('/'));
+    return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+  } catch {
+    return value;
+  }
 }
 
 /**

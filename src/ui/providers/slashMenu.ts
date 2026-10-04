@@ -76,7 +76,13 @@ export class SlashMenuProvider implements vscode.Disposable {
     const range = new vscode.Range(position.line, query.start, position.line, position.character);
     const now = this.now();
     const choices = [
-      ...listSlashChoices({ today: formatLocalDate(now) }),
+      ...listSlashChoices({
+        today: formatLocalDate(now),
+        time: {
+          local: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+          utc: now.toISOString().slice(11, 16),
+        },
+      }),
       ...(await this.listTemplateChoices(document, now)),
     ];
     return choices.map((choice, index) => toCompletionItem(choice, range, index));

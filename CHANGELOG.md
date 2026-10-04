@@ -4,6 +4,15 @@
 
 ### Added
 
+- **Daily notes where you keep them.** `deckard.periodicNotes.folder` puts
+  new daily, weekly, and monthly notes in a folder inside the notes folder,
+  such as `journal/{yyyy}`; notes already elsewhere are still found.
+  `deckard.weeklyNote.naming` set to `iso` names weekly notes `2026-W38`.
+  A template setting may name a file in the templates folder, such as
+  `Daily.md`, rather than hold the text. The / menu offers **Time** and
+  **Time (UTC)** for a log, and the guide says whose clock a day follows on
+  a remote host.
+
 - **A work sample.** `Deckard: Create a Work Sample` writes a week of a
   team lead's notes: standups, two 1:1s, a project hub with a live list of
   what is open, and two decision records linked from the notes that made

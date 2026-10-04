@@ -1836,19 +1836,19 @@
           "deckard.dailyNoteTemplate": {
             "type": "string",
             "default": "# {date}\n\n",
-            "description": "Template used when creating a daily note.",
+            "description": "Template used when creating a daily note: the text itself, or the name of a Markdown file in the templates folder, such as Daily.md.",
             "order": 4
           },
           "deckard.weeklyNoteTemplate": {
             "type": "string",
             "default": "# {week}\n\n",
-            "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.",
+            "description": "Template used when creating a weekly note, as text or as the name of a file in the templates folder. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.",
             "order": 5
           },
           "deckard.monthlyNoteTemplate": {
             "type": "string",
             "default": "# {month}\n\n",
-            "description": "Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
+            "description": "Template used when creating a monthly note, as text or as the name of a file in the templates folder. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
             "order": 6
           },
           "deckard.calendar.weekStart": {
@@ -1902,6 +1902,24 @@
             "scope": "window",
             "markdownDescription": "Show every date a repeating task falls on in the weeks the Calendar draws, not only its next one, marked ↻. They are projected from the task's rule and never written. A `when done` rule is shown on its next date only, since the dates after it depend on when it is done.",
             "order": 7
+          },
+          "deckard.periodicNotes.folder": {
+            "type": "string",
+            "scope": "resource",
+            "default": "",
+            "description": "The folder, inside the notes folder, that new daily, weekly, and monthly notes are written to, such as journal/{yyyy} for one folder a year ({mm} is the month). Empty writes them at the top of the notes folder. Notes already written elsewhere are still found and read.",
+            "order": 10
+          },
+          "deckard.weeklyNote.naming": {
+            "type": "string",
+            "enum": ["range", "iso"],
+            "enumDescriptions": [
+              "week-2026-09-13-2026-09-19: the week's first and last days.",
+              "2026-W38: the ISO week, as many journaling tools name it."
+            ],
+            "default": "range",
+            "description": "How a new weekly note is named. A week's note under either name is found and read.",
+            "order": 10
           },
           "deckard.periodicNote.review": {
             "type": "boolean",

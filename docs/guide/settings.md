@@ -87,7 +87,9 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](search-pages.md#hub-notes) open at the top of its overview. |
 | `deckard.tagOverview.includeHubLinks` | `true` | On a tag's page, also lists the entries that link to its [hub note](search-pages.md#hub-notes) without carrying the tag, each marked *Links the hub note*. |
-| `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
+| `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created: the text, or the name of a file in the templates folder, such as `Daily.md`. `{date}` becomes the local date in `YYYY-MM-DD` format. |
+| `deckard.periodicNotes.folder` | `""` | The folder inside the notes folder that new daily, weekly, and monthly notes go in, such as `journal/{yyyy}` (`{mm}` is the month). Notes already elsewhere are still found. |
+| `deckard.weeklyNote.naming` | `range` | How a new weekly note is named: `range`, `week-2026-09-13-2026-09-19`, or `iso`, `2026-W38`. Either name is found. |
 | `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its first day. |
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` (VS Code's display language). It sets the Calendar, weekly notes and reviews, `this-week`, `last-week`, and `next-week`, and typed dates such as *next week*. |
 | `deckard.calendar.exportFile` | `""` | A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to. A relative path is in the first workspace folder. See [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
