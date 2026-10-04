@@ -51,7 +51,7 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 
 ### Reading a note as a page
 
-`Deckard: Open Note as Page`, also in the editor's **Deckard** right-click menu, opens the note on a page of its own, drawn in Deckard's theme with the parts only Deckard understands working:
+`Deckard: Open Note as Page`, also the unicorn button in a note's title bar and in the editor's **Deckard** right-click menu, opens the note on a page of its own, drawn in Deckard's theme with the parts only Deckard understands working:
 
 - **Tags** open their page, and **`[[links]]`** open the note they name on the same page. **‹** and **›**, or the mouse's back and forward buttons, step through the notes it has shown.
 - **Tasks** have working boxes, with **Undo** in the message, and steps sit under their task.
@@ -132,7 +132,7 @@ topics:
 
 ## Editor assistance
 
-- **Title bar:** Deckard's button opens **Deckard: Note Actions…**. A daily note also has **‹** and **›** for the previous and next daily notes. Right-click the title bar to hide any of them.
+- **Title bar:** Deckard's button opens **Deckard: Note Actions…**, and the unicorn beside it opens the note as a page. A daily note also has **‹** and **›** for the previous and next daily notes. Right-click the title bar to hide any of them.
 - **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, Break into Steps…, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
 - **Theme colors:** in any Markdown file, wiki links, an embed's `!`, task dates (`📅 2026-10-02`, `[due:: 2026-10-02]`), repeat rules, priorities, Dataview keys, and a trailing `^block-id` use your theme's colors. To change one, add a rule to `editor.tokenColorCustomizations`, for example `{ "textMateRules": [{ "scope": "constant.numeric.date.deckard", "settings": { "foreground": "#7aa2f7" } }] }`. Scopes end in `.deckard`, such as `constant.numeric.date.due.deckard`, `string.other.repeat.deckard`, and `meta.link.wiki.deckard`.
 - **Task metadata** (dates, priority, repeat rule, ids, person) and any `^block-id` are dimmed (`deckard.editor.dimTaskMetadata`). An overdue task shows its due date in the overdue color and **overdue 5 days** at the line's end; one due today says **due today**; one more than 30 days overdue (`deckard.tasks.needsNewDateAfterDays`) says **needs a new date** (`deckard.editor.taskDueHints`). Change the colors in `workbench.colorCustomizations` as `deckard.overdueForeground` and `deckard.taskHintForeground`.

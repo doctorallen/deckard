@@ -80,14 +80,30 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
         await notePage.show({ filePath, ...(at ? { line: at } : {}) }, beside, beside && how.preserveFocus === true);
         return;
       }
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || !indexer.isNotesFile(editor.document.uri)) {
+      const location = readEditorNote(indexer, filePath);
+      if (!location) {
         void vscode.window.showInformationMessage('Open a note to read it as a page.');
         return;
       }
-      await notePage.show({ filePath: indexer.getFilePath(editor.document.uri), line: editor.selection.active.line + 1 }, beside);
+      await notePage.show(location, beside);
     }),
   ];
+}
+
+/**
+ * The note Open Note as Page reads when it is not named by path: the one
+ * whose title bar it was run from, which VS Code names and which need not be
+ * the editor with the focus, or else the active editor's, at its cursor when
+ * that editor shows it. Undefined when that is no note.
+ */
+function readEditorNote(indexer: Services['indexer'], given: unknown): { filePath: string; line?: number } | undefined {
+  const editor = vscode.window.activeTextEditor;
+  const uri = given instanceof vscode.Uri ? given : editor?.document.uri;
+  if (!uri || !indexer.isNotesFile(uri)) {
+    return undefined;
+  }
+  const shown = editor?.document.uri.toString() === uri.toString() ? editor : undefined;
+  return { filePath: indexer.getFilePath(uri), ...(shown ? { line: shown.selection.active.line + 1 } : {}) };
 }
 
 /** What the Notes Graph page runs on a node it was clicked or hovered on. */

@@ -43,7 +43,8 @@
   outright with `up: "[[Atlas]]"`. A note's first line says where it sits,
   such as *Projects › Atlas › Vendor review*.
 
-- **Read a note as a page.** `Deckard: Open Note as Page` draws the note on
+- **Read a note as a page.** `Deckard: Open Note as Page`, the unicorn button
+  in a note's title bar, draws the note on
   a Deckard page in your theme: its tags and `[[links]]` open what they
   name, with Back and Forward, its tasks tick, its query blocks and embeds
   draw live, its front matter is a row of properties, a bar says how far
