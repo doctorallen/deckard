@@ -2,7 +2,7 @@
 
 ## Renaming notes and headings
 
-- **Renaming a note in the Explorer** rewrites every `[[link]]` to its old title. One Undo takes back both. Links through an `aliases:` name, links to another note with the same name, and links in fenced code are left alone. Moving a note to another folder changes no links.
+- **Renaming a note in the Explorer** rewrites every `[[link]]` to its old title. When the links are in more than one note, VS Code asks first, with **Show Preview** to see each change, as `deckard.previewWorkspaceWrites` asks of every write that reaches several notes. One Undo takes back the rename and the links. Links through an `aliases:` name, links to another note with the same name, and links in fenced code are left alone. Moving a note to another folder changes no links.
 - A link's heading, `^marker`, and `|display text` are kept: `[[Vendor review#Terms|the terms]]` becomes `[[Supplier review#Terms|the terms]]`.
 - `deckard.updateLinksOnRename` turns this off.
 - **Deckard: Rename Heading** renames the heading the cursor is in and updates links to it: `[[Check-in#Vendor review]]` elsewhere and `[[#Vendor review]]` in the same note. Tags on the heading stay. Save the note first.

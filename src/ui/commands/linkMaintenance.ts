@@ -8,7 +8,7 @@ import { findHeadingAtLine } from '../../domain/notes/headingLookup';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { checkRewrites, LinkService } from '../../services/linkService';
 import { createLinkService, toWorkspaceEdit, vscodeLiveNotes } from './linkMaintenancePorts';
-import { WorkspaceWriteHistory } from './workspaceWrites';
+import { getWritePreview, shouldPreview, WorkspaceWriteHistory, WritePreview } from './workspaceWrites';
 import { WorkspaceIndex } from '../../domain/model';
 
 /**
@@ -38,6 +38,25 @@ export async function createLinkRewriteEdit(
   return { edit: toWorkspaceEdit(edits), applied };
 }
 
+/**
+ * What a rename's link edit carries: a request to be shown first when it
+ * reaches as many notes as `deckard.previewWorkspaceWrites` previews, as
+ * every other write that reaches several notes is. VS Code then asks
+ * whether to make the changes, with Show Preview, before the rename lands.
+ */
+export function renameEditMetadata(
+  notes: number,
+  preview: WritePreview,
+): vscode.WorkspaceEditEntryMetadata | undefined {
+  return shouldPreview(preview, notes)
+    ? {
+        needsConfirmation: true,
+        label: 'Update links to the renamed note',
+        description: `Links in ${pluralize(notes, 'note', 'notes')} name it by its old title.`,
+      }
+    : undefined;
+}
+
 /** The two rename events LinkMaintenance follows: VS Code's, or a test's. */
 export type RenameEvents = Pick<typeof vscode.workspace, 'onWillRenameFiles' | 'onDidRenameFiles'>;
 
@@ -49,7 +68,9 @@ type RenamedFiles = readonly { readonly oldUri: vscode.Uri; readonly newUri: vsc
  * title.
  *
  * The edit is handed back to VS Code as part of the rename, so the links and
- * the rename land together and one Undo takes back both. How many links it
+ * the rename land together and one Undo takes back both. An edit that
+ * reaches several notes asks to be shown first, as Deckard's other writes
+ * do. How many links it
  * rewrote is said once the rename is made, so a rename that is cancelled or
  * fails says nothing.
  */
@@ -128,7 +149,7 @@ export class LinkMaintenance implements vscode.Disposable {
     } else {
       this.unreported.delete(key);
     }
-    return toWorkspaceEdit(plan.edits);
+    return toWorkspaceEdit(plan.edits, renameEditMetadata(plan.notes, getWritePreview()));
   }
 
   /** A note as the editor has it, when it is open. */

@@ -36,6 +36,12 @@
 
 ### Changed
 
+- **Renaming a note shows its link changes first.** Renaming a note in the
+  Explorer rewrites the `[[links]]` that name it; when they are in more than
+  one note, VS Code now asks before making them, with **Show Preview**, as
+  every other Deckard write that reaches several notes does.
+  `deckard.previewWorkspaceWrites` decides, as it does for those.
+
 - **Install from the Marketplace.** Deckard is on the Visual Studio
   Marketplace as `esperinnovations.deckard-notes`, so the Extensions view
   finds it and VS Code keeps it up to date. Each GitHub release still

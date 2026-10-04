@@ -55,14 +55,21 @@ export function createLinkService(
   return new LinkService({ index, notes: vscodeLiveNotes, findUnlinkedMentions, linkStyle: readLinkStyle });
 }
 
-/** One workspace edit that makes every edit, in order. */
-export function toWorkspaceEdit(edits: readonly NoteEdit<vscode.Uri>[]): vscode.WorkspaceEdit {
+/**
+ * One workspace edit that makes every edit, in order, each carrying
+ * `metadata` when given, such as a request to show it before it lands.
+ */
+export function toWorkspaceEdit(
+  edits: readonly NoteEdit<vscode.Uri>[],
+  metadata?: vscode.WorkspaceEditEntryMetadata,
+): vscode.WorkspaceEdit {
   const edit = new vscode.WorkspaceEdit();
   edits.forEach((each) =>
     edit.replace(
       each.uri,
       new vscode.Range(each.line, each.startColumn, each.line, each.endColumn),
       each.text,
+      metadata,
     ),
   );
   return edit;

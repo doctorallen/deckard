@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { createLinkRewriteEdit, LinkMaintenance, renameHeadingCommand } from '../ui/commands/linkMaintenance';
+import { createLinkRewriteEdit, LinkMaintenance, renameEditMetadata, renameHeadingCommand } from '../ui/commands/linkMaintenance';
 import {
   WorkspaceWriteHistory,
 } from '../ui/commands/workspaceWrites';
@@ -168,6 +168,20 @@ suite('Link maintenance', () => {
       willRename.dispose();
       didRename.dispose();
     }
+  });
+});
+
+suite('Rename preview', () => {
+  test('asks for the preview when a rename rewrites links in several notes, as other writes do', () => {
+    assert.strictEqual(renameEditMetadata(1, 'severalNotes'), undefined);
+    assert.deepStrictEqual(renameEditMetadata(3, 'severalNotes'), {
+      needsConfirmation: true,
+      label: 'Update links to the renamed note',
+      description: 'Links in 3 notes name it by its old title.',
+    });
+    assert.strictEqual(renameEditMetadata(1, 'always')?.needsConfirmation, true);
+    assert.strictEqual(renameEditMetadata(5, 'never'), undefined);
+    assert.strictEqual(renameEditMetadata(0, 'always'), undefined);
   });
 });
 
