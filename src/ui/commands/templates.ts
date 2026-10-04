@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import type { NoteFiles } from '../../core/workspace/indexReader';
 import { findTemplatePrompts } from '../../domain/notes/templates';
+import { STARTER_TEMPLATES } from '../../domain/notes/starterTemplates';
 import { TemplateNoteResult, TemplateService } from '../../services/templateService';
 import { chooseTargetFolder } from './dailyNote';
 import { openNoteAction, openSettingAction, reportFailure, settingLabel } from './notify';
@@ -42,6 +43,23 @@ export async function listTemplates(
 }
 
 const TITLE = 'Deckard: New Note from Template';
+const CREATE_STARTERS = 'Create Starter Templates';
+
+/**
+ * Writes the starter templates into a templates folder, making it if it is
+ * missing, and never over a file already there.
+ */
+export async function writeStarterTemplates(templatesUri: vscode.Uri): Promise<void> {
+  await vscode.workspace.fs.createDirectory(templatesUri);
+  for (const template of STARTER_TEMPLATES) {
+    const uri = vscode.Uri.joinPath(templatesUri, template.fileName);
+    try {
+      await vscode.workspace.fs.stat(uri);
+    } catch {
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(template.content));
+    }
+  }
+}
 
 /**
  * Creates a note from a template in the templates folder, asking for its title
@@ -122,12 +140,17 @@ async function chooseTemplate(
       .then((choice) => (choice === open.title ? open.run() : undefined));
     return undefined;
   }
-  const templates = await listTemplates(templatesUri);
+  let templates = await listTemplates(templatesUri);
   if (templates.length === 0) {
-    void vscode.window.showInformationMessage(
-      `Add Markdown files to ${vscode.workspace.asRelativePath(templatesUri)} to use them as templates.`,
+    const choice = await vscode.window.showInformationMessage(
+      `${vscode.workspace.asRelativePath(templatesUri)} holds no templates yet. Deckard can write three to start from: a meeting, a 1:1, and a decision record. Any Markdown file you put there is a template too.`,
+      CREATE_STARTERS,
     );
-    return undefined;
+    if (choice !== CREATE_STARTERS) {
+      return undefined;
+    }
+    await writeStarterTemplates(templatesUri);
+    templates = await listTemplates(templatesUri);
   }
 
   const picked = await vscode.window.showQuickPick(

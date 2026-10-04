@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Starter templates.** New Note from Template, with no templates yet,
+  offers **Create Starter Templates**: a meeting, a 1:1, and a decision
+  record, written into the templates folder. `Deckard: Create Hub Note for
+  Tag…` lists the tags no hub note describes yet and makes one; a tag's
+  page offers the same as a button, where it was drawn as caption text. An
+  empty Task board column says how to fill it without dragging: *No tasks.
+  Drag a card here, or move one with its ⋯ menu.*
+
 - **Safe in a code repository.** With no notes folder set, Deckard reads
   every Markdown file and writes today's note at the workspace's top. In a
   folder that looks like a code repository, the status bar now says

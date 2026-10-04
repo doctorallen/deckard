@@ -161,7 +161,7 @@ topics:
 
 ## Templates
 
-Put Markdown files in a `templates` folder at the workspace root, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Choose a template and a title; Deckard creates the note in your notes folder and opens it. The templates folder is never indexed.
+Put Markdown files in a `templates` folder at the workspace root, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Choose a template and a title; Deckard creates the note in your notes folder and opens it. The templates folder is never indexed. With no templates yet, it offers **Create Starter Templates**: a meeting, a 1:1, and a decision record, which you can change or delete like any other file.
 
 To write into a specific folder, right-click it in the Explorer and choose **Deckard → New Note from Template Here…**. **Deckard: Create Daily Note** and **Deckard: New Note from Template** are also in **File → New File…** and on the Welcome page.
 

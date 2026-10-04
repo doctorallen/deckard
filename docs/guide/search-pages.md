@@ -59,7 +59,7 @@ Migration of billing onto the new ledger.
 
 - The `#project/atlas` overview shows the note first, with its other front-matter fields as properties. Tag values such as `@dana` open their own overviews. The hub's entries are not listed again below.
 - Write the tag without `#`, or quote it; YAML reads an unquoted `#` as a comment. Quote people: `describes: "@dana"`. A list such as `describes: [project/atlas, proj/atlas]` describes several tags.
-- An overview without a hub offers **Create hub note** under its title. It writes one to the notes folder, never overwriting a note, starting from a template named after the tag's namespace (such as `project.md`) if there is one; see [Templates](notes-and-links.md#templates).
+- An overview without a hub offers a **Create hub note** button under its title, and `Deckard: Create Hub Note for Tag…` does the same from the palette. It writes one to the notes folder, never overwriting a note, starting from a template named after the tag's namespace (such as `project.md`) if there is one; see [Templates](notes-and-links.md#templates).
 - When several notes describe a tag, the first by path leads and the others are listed beneath it.
 - Hovering the tag in the editor names its hub, renaming the tag updates `describes:`, and filtered and query views leave the hub out.
 - Select the hub's title row to collapse or expand it until the overview closes. `deckard.tagOverview.hubNoteExpanded` sets whether hubs start open (default: open).

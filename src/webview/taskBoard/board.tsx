@@ -231,7 +231,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       <div key="cards" class="board-cards">
         {cards.length
           ? cards.map((card) => <BoardCard key={boardCardKey(column.id, card.taskId)} card={card} columnId={column.id} columns={columns} />)
-          : <p class="board-empty">{column.droppable ? 'Drop a task here' : 'No tasks'}</p>}
+          : <p class="board-empty">{column.droppable ? 'No tasks. Drag a card here, or move one with its ⋯ menu.' : 'No tasks'}</p>}
       </div>
       {column.hiddenCount ? <p key="more" class="board-more"><button data-action="show-column-rest" data-column-id={column.id}>{`Show ${column.hiddenCount} more`}</button></p> : null}
       {/* One that does not take a drop says so while a card is dragged, and where to go instead. */}

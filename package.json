@@ -288,6 +288,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.createHubNoteForTag",
+        "title": "Create Hub Note for Tag…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.pauseHere",
         "title": "Pause in This Workspace",
         "category": "Deckard"

@@ -50,11 +50,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
 .hub-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-/* A tag with no hub note offers one in a line under its title: text, not a
-   panel, since it is an offer and not a part of the page. */
-.hub-offer { margin: var(--space-1) 0 0; }
-.hub-offer-button.hub-offer-button { min-height: 0; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-sm) var(--font-display); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
-.hub-offer-button.hub-offer-button:hover, .hub-offer-button.hub-offer-button:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
+/* A tag with no hub note offers one in a line under its title, as the
+   theme's own button: drawn as caption text, readers took it for a caption
+   and never pressed it. */
+.hub-offer { margin: var(--space-2) 0 0; }
 .hub > summary { cursor: pointer; list-style: none; }
 .hub > summary::-webkit-details-marker { display: none; }
 .hub > summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
