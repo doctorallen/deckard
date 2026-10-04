@@ -7,7 +7,7 @@ import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
+import { isZenModeEnabled } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { readPageChrome } from '../ui/webview/host/pageChrome';
@@ -42,15 +42,6 @@ class MemoryMemento implements vscode.Memento {
  * reach is the same with zen on as with it off.
  */
 suite('Zen mode', () => {
-  test('is written where the setting in force comes from', () => {
-    assert.strictEqual(zenModeTarget({}), vscode.ConfigurationTarget.Global);
-    assert.strictEqual(
-      zenModeTarget({ workspaceValue: true }),
-      vscode.ConfigurationTarget.Workspace,
-      'a workspace that sets it outranks the user settings the switch wrote to',
-    );
-  });
-
   const pages: WebviewPage[] = [];
   let store: TestPreferences | undefined;
 

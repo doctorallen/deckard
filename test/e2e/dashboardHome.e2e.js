@@ -998,11 +998,11 @@ test('the gear turns zen on through the host, and the page carries the marker', 
     view.click(view.find('[data-action="set-zen-mode"][data-value="on"]'));
     await delay(20);
 
-    // The page posts intent; the host is what writes the setting, globally,
-    // so every Deckard surface follows it rather than this page alone.
+    // The page posts intent; the host is what writes Display's step,
+    // globally, so every Deckard surface follows it rather than this page alone.
     assert.deepStrictEqual(
-      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.zenMode'),
-      [{ name: 'deckard.zenMode', value: true, target: vscode.ConfigurationTarget.Global }],
+      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.display.level'),
+      [{ name: 'deckard.display.level', value: 'zen', target: vscode.ConfigurationTarget.Global }],
     );
     // And the context key follows it, so the palette offers the other command.
     assert.deepStrictEqual(
@@ -1017,7 +1017,7 @@ test('the gear turns zen on through the host, and the page carries the marker', 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');
   } finally {
-    vscode._test.settings.delete('deckard.zenMode');
+    vscode._test.settings.delete('deckard.display.level');
     vscode._test.configurationUpdates.length = 0;
     vscode._test.executedCommands.length = 0;
   }

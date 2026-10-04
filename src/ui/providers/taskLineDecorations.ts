@@ -12,7 +12,6 @@ const DELAY_MS = 150;
 /** The settings a change to which redraws every visible note's marks. */
 const REDRAW_SETTINGS = [
   'deckard.editor',
-  'deckard.zenMode',
   'deckard.tasks.needsNewDateAfterDays',
   'deckard.notesFolder',
   'deckard.exclude',
@@ -20,14 +19,9 @@ const REDRAW_SETTINGS = [
 
 /** Reads the three settings the marks answer to, for one note. */
 function readOptions(uri: vscode.Uri): { dim: boolean; hints: boolean } {
-  const configuration = vscode.workspace.getConfiguration('deckard', uri);
   return {
     dim: readEditorToggle('dimTaskMetadata', uri),
-    // Zen quiets the editor: the hints go, the dimming stays, since dimming
-    // is itself a way of quieting.
-    hints:
-      readEditorToggle('taskDueHints', uri) &&
-      !configuration.get<boolean>('zenMode', false),
+    hints: readEditorToggle('taskDueHints', uri),
   };
 }
 

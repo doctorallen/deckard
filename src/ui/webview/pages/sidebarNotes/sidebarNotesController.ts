@@ -680,7 +680,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       tags,
       ...(settings.get<boolean>('outline.followCursor', true) ? { cursorLine: editor.selection.active.line + 1 } : {}),
       showTags: settings.get<boolean>('outline.showTags', true),
-      showCounts: settings.get<boolean>('outline.showCounts', true) && !settings.get<boolean>('zenMode', false),
+      showCounts: settings.get<boolean>('outline.showCounts', true),
     });
     this.sectionsActiveLine = sections.activeLine;
     return sections;

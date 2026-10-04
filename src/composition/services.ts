@@ -82,7 +82,7 @@ import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
-import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
+import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
@@ -166,8 +166,10 @@ export interface Pages {
 export interface PageCommands {
   /** What Show Notes Graph keeps of the options it was run with. */
   readNotesGraphOptions: typeof readNotesGraphOptions;
-  /** Turns zen on or off, where the setting is set. */
+  /** Goes to Zen, or back to the step the reader was on. */
   setZenMode: typeof setZenMode;
+  /** Into Zen, or back out of it. */
+  toggleZenMode: typeof toggleZenMode;
 }
 
 /** The sidebar views and the status bar that the commands reach. */
@@ -299,7 +301,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     links: { service: assistance.links, notes: assistance.linkNotes },
     themePreview: search.themePreview,
     pages,
-    pageCommands: { readNotesGraphOptions, setZenMode },
+    pageCommands: { readNotesGraphOptions, setZenMode, toggleZenMode },
     views: {
       sidebarNotes: sidebar.sidebarNotes,
       calendar: calendar.calendar,
@@ -1161,7 +1163,7 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  */
 function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
   void syncOutlineFollowCursorContext();
-  context.subscriptions.push(watchZenModeContext());
+  context.subscriptions.push(startZenMode(context.globalState, context.workspaceState));
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

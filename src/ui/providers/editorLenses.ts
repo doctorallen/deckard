@@ -118,22 +118,13 @@ export class EditorLenses
 
   /**
    * The groups of lenses a note's settings turn on, once the first index is
-   * published; zen drops the suggestion to link a note's mentions.
+   * published.
    */
   public provideCodeLenses(document: vscode.TextDocument): LazyCodeLens[] {
     if (!this.isReady || !isMarkdownFile(document.uri)) {
       return [];
     }
-    // Zen keeps the lenses that report a problem or act on today's note,
-    // and drops the suggestion to link a note's mentions.
-    const zen = vscode.workspace
-      .getConfiguration('deckard', document.uri)
-      .get<boolean>('zenMode', false);
-    const groups = this.groups.filter(
-      (group) =>
-        readEditorToggle(group.setting, document.uri) &&
-        !(zen && group.setting === 'unlinkedMentions'),
-    );
+    const groups = this.groups.filter((group) => readEditorToggle(group.setting, document.uri));
     if (groups.length === 0) {
       return [];
     }

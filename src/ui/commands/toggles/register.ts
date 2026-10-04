@@ -16,6 +16,8 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     ...listToggleCommands(SETTING_TOGGLES).map((command) =>
       registerCommand(command.id, () => writeToggle(command, services.pageCommands)),
     ),
+    // The Zen button's command: into Zen, or back to the step the reader was on.
+    registerCommand('deckard.toggleZen', () => services.pageCommands.toggleZenMode()),
   );
 }
 

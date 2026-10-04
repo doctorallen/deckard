@@ -34,7 +34,6 @@ const followCursorDelayMs = 100;
 /** The settings that change what the Outline shows, so a change rebuilds it. */
 const OUTLINE_SETTINGS = [
   'deckard.outline',
-  'deckard.zenMode',
   'deckard.personMarker',
   'deckard.entityNamespaceAliases',
 ];
@@ -377,13 +376,9 @@ export class OutlineTreeProvider
       .get<boolean>('outline.showTags', true);
   }
 
-  /** Counts are hidden in zen, like the reference counts above headings. */
+  /** Whether the Sections view counts each heading's tasks. */
   private areCountsShown(): boolean {
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    return (
-      configuration.get<boolean>('outline.showCounts', true) &&
-      !configuration.get<boolean>('zenMode', false)
-    );
+    return vscode.workspace.getConfiguration('deckard').get<boolean>('outline.showCounts', true);
   }
 
   /**

@@ -27,7 +27,6 @@ const decorationDelayMs = 150;
 const REDRAW_SETTINGS = [
   'deckard.parseInlineTags',
   'deckard.highlightNoteSections',
-  'deckard.zenMode',
   'deckard.entityNamespaceAliases',
   'deckard.personMarker',
   'deckard.notesFolder',
@@ -381,11 +380,7 @@ export class EditorTagDecorations implements vscode.Disposable {
   /** Whether the band and entry hovers are on for a note's folder. */
   private shouldHighlightNoteSections(document: vscode.TextDocument): boolean {
     const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
-    // Zen quiets the editor too: the band behind the section being edited goes.
-    return (
-      configuration.get<boolean>('highlightNoteSections', true) &&
-      !configuration.get<boolean>('zenMode', false)
-    );
+    return configuration.get<boolean>('highlightNoteSections', true);
   }
 }
 

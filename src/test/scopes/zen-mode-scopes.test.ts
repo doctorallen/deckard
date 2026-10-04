@@ -30,12 +30,12 @@ interface Path {
 }
 
 /**
- * Zen is a window setting, so VS Code reads it from the workspace's
- * settings when they set it, else the user's; in a multi-root workspace a
- * folder's value is ignored, and in a single folder the folder's
- * settings.json is the workspace's. Whatever is set where, turning zen on
- * or off has to change what the pages show, a second turn has to undo it,
- * and the palette has to offer the command that changes something.
+ * Zen mode is read as Display's Zen step until a step is set, from wherever
+ * VS Code reads it: the workspace's settings when they set it, else the
+ * user's. Whatever is set where, turning Zen on or off writes the step to
+ * the user's settings, which every Display setting is, has to change what
+ * the pages show, a second turn has to undo it, and the palette has to
+ * offer the command that changes something.
  */
 suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 'single folder'})`, () => {
   let contextKeys: ReturnType<typeof recordContextKeys>;
@@ -49,7 +49,10 @@ suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 
 
   suiteTeardown(() => contextKeys.dispose());
 
-  teardown(() => clearEverywhere('zenMode'));
+  teardown(async () => {
+    await clearEverywhere('zenMode');
+    await setAt('display.level', 'user', undefined);
+  });
 
   const offered = (): boolean => contextKeys.value(zenModeContextKey) === true;
 
@@ -68,14 +71,12 @@ suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 
     },
   ];
 
-  /** The level whose value is in force: the workspace's when it holds one, else the user's. */
-  const decidingLevel = (): Level => (levels('zenMode').workspace === undefined ? 'user' : 'workspace');
-
-  /** Asserts zen reads `expected` everywhere, was written at `level`, and the palette agrees. */
-  const assertZen = async (expected: boolean, level: Level, step: string): Promise<void> => {
-    assert.strictEqual(deckard().get('zenMode'), expected, `${step}: the window reads zen as ${expected}`);
-    assert.strictEqual(deckard(true).get('zenMode'), expected, `${step}: the folder reads zen as ${expected}`);
-    assert.strictEqual(levels('zenMode')[level], expected, `${step}: written in the ${level} settings, ${JSON.stringify(levels('zenMode'))}`);
+  /** Asserts Zen reads `expected`, the step was written to the user's settings, and the palette agrees. */
+  const assertZen = async (expected: boolean, step: string): Promise<void> => {
+    assert.strictEqual(isZenModeEnabled(), expected, `${step}: pages read Zen as ${expected}`);
+    const written = levels('display.level').user;
+    assert.strictEqual(written === 'zen', expected, `${step}: the user's step is ${String(written)}`);
+    assert.strictEqual(deckard().get('display.level') === 'zen', expected, `${step}: the window reads the step as Zen: ${expected}`);
     assert.ok(
       await settled(() => contextKeys.value(zenModeContextKey) === expected),
       `${step}: the context key says ${expected}, not ${String(contextKeys.value(zenModeContextKey))}`,
@@ -106,19 +107,18 @@ suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 
     for (const path of PATHS) {
       test(`${arrangement.name}: ${path.name} turns zen each way, and back`, async () => {
         const before = await arrange(arrangement);
-        const level = decidingLevel();
 
         await path.toggle();
-        await assertZen(!before, level, 'the first toggle');
+        await assertZen(!before, 'the first toggle');
         await path.toggle();
-        await assertZen(before, level, 'the second toggle');
+        await assertZen(before, 'the second toggle');
 
         await path.set(true);
-        await assertZen(true, level, 'enabling');
+        await assertZen(true, 'enabling');
         await path.set(false);
-        await assertZen(false, level, 'disabling');
+        await assertZen(false, 'disabling');
         await path.set(true);
-        await assertZen(true, level, 'enabling again');
+        await assertZen(true, 'enabling again');
       });
     }
   }

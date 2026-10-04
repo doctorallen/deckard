@@ -16,8 +16,9 @@
  * - `outline`: where set, through the Outline's own setter, which also sets
  *   the context key that picks which button the view's title offers
  *   (setOutlineFollowCursor).
- * - `zen`: where set, through zen's own setter, which also sets the
- *   context key that picks which command the palette offers (setZenMode).
+ * - `zen`: through Zen's own setter, which moves Display's step to Zen
+ *   or back to the step the reader was on, and sets the context key that
+ *   picks which command the palette offers (setZenMode).
  */
 export type ToggleTarget = 'where-set' | 'outline' | 'zen';
 

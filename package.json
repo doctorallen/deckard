@@ -655,15 +655,20 @@
       },
       {
         "command": "deckard.enableZenMode",
-        "title": "Enter Zen Mode",
+        "title": "Enter Zen",
         "category": "Deckard",
         "icon": "$(screen-normal)"
       },
       {
         "command": "deckard.disableZenMode",
-        "title": "Leave Zen Mode",
+        "title": "Leave Zen",
         "category": "Deckard",
         "icon": "$(screen-full)"
+      },
+      {
+        "command": "deckard.toggleZen",
+        "title": "Toggle Zen",
+        "category": "Deckard"
       },
       {
         "command": "deckard.tidyPreferences",
@@ -1717,7 +1722,8 @@
           "deckard.zenMode": {
             "type": "boolean",
             "default": false,
-            "description": "Turn Deckard's own chrome down: hide decorative labels and backdrops, thin the borders, fold each row's file and line out of sight until it is hovered or focused, and in the editor, drop the reference counts, the unlinked-mention lens, and the section highlight. Nothing is removed from a page, and it works with any theme.",
+            "description": "Replaced by Display: on reads as `deckard.display.level` Zen until a step is set.",
+            "markdownDeprecationMessage": "Zen mode is now **Display: Zen**. Set `#deckard.display.level#` instead; the editor settings Zen turned off are now each their own setting.",
             "order": 2
           },
           "deckard.display.level": {
@@ -2347,7 +2353,7 @@
             "type": "boolean",
             "default": true,
             "scope": "resource",
-            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\". Zen mode hides these.",
+            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\".",
             "order": 12
           },
           "deckard.editor.repeatDiagnostics": {
