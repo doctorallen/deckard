@@ -51,6 +51,36 @@ Protocol and Ghostline Relay in the projects folder.
 The Ashen Mirror project is written about in several daily notes but has no
 hub, so Home's **Tags without a hub** widget lists it, with **Create hub**.
 
+## Hubs, and where a note sits
+
+The **Hubs** view in the Deckard sidebar is a tree of the topics that have a
+hub note, each with the notes about it filed underneath:
+
+```text
+People
+  Sable Ortiz
+Projects
+  Argent Protocol            1 of 3 done
+  Ghostline Relay            3 of 23 done
+    Receiver firmware
+      Firmware bench log
+    Relay route survey
+Teams
+  Harbor                     0 of 2 done
+  Wardens                    3 of 21 done
+```
+
+A note is filed under a hub when its front matter or its first heading
+carries the hub's tag: the Relay route survey's front matter names the relay
+project. A note can also name its place outright with `up:` in its front
+matter. Receiver firmware is a hub of its own whose `up:` names Ghostline
+Relay, so it is a sub-project; the Firmware bench log carries no tag at all,
+and its `up:` names Receiver firmware.
+
+A line that mentions a tag in passing, as the daily notes do, does not file
+its note there. Each hub shows how far along its tag's tasks are, the same
+figure its page and its first line in the editor give.
+
 ## Try it
 
 1. Cmd/Ctrl-click `#team/harbor` on the Harbor check-in heading. Its page opens
@@ -76,5 +106,16 @@ hub, so Home's **Tags without a hub** widget lists it, with **Create hub**.
    people, busiest first. Home's **Gone quiet** widget, which you can add with
    **Customize → Add widget**, lists the people you have not written about
    for 30 days or more: nobody yet in a sample this new.
+9. Expand the **Hubs** view in the Deckard sidebar, then **Ghostline Relay**
+   and **Receiver firmware** under it. Select **Firmware bench log**: its
+   first line reads *Projects › Ghostline Relay › Receiver firmware ›
+   Firmware bench log*, and selecting that opens Receiver firmware.
+10. Open the Ghostline Relay note. Its first line says how far along the
+    relay's tasks are: *Progress: 3 of 23 done · 2 overdue · 1 needs a new
+    date · next due today*. Selecting it opens the tag's page, where the same
+    bar sits under the hub with **Show overdue**.
+11. Select **Wardens** in the Hubs view: a hub opens its tag's search page.
+    The file button beside it (**Open Hub Note**) opens the Wardens note's
+    Markdown instead.
 
 Next: [[07 Links]]

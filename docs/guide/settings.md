@@ -47,6 +47,11 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.linkProblems": true,
 	"deckard.editor.embedProblems": true,
 	"deckard.editor.unlinkedMentions": true,
+	"deckard.editor.hubProgress": true,
+	"deckard.editor.slashMenu": true,
+	"deckard.editor.breadcrumbs": true,
+	"deckard.openNotesIn": "editor",
+	"deckard.editor.stepProgress": true,
 	"deckard.editor.dimTaskMetadata": true,
 	"deckard.editor.taskDueHints": true,
 	"deckard.editor.repeatDiagnostics": true,
@@ -84,6 +89,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
 | `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its first day. |
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` (VS Code's display language). It sets the Calendar, weekly notes and reviews, `this-week`, `last-week`, and `next-week`, and typed dates such as *next week*. |
+| `deckard.calendar.exportFile` | `""` | A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to. A relative path is in the first workspace folder. See [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
+| `deckard.calendar.exportQuery` | `is:open` | The search whose dated tasks the calendar file holds. |
 | `deckard.calendar.dayPanel` | `false` | Shows the chosen day's daily note, tasks, and new notes under the Calendar. A click then chooses a day; a double-click or Enter opens its note. Set from **Open Day Panel** and **Close Day Panel** in the Calendar's `…` menu. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `September 2026`, and `{date}` its first day. |
 | `deckard.periodicNote.reviewSections` | `[]` | Sections of your own at the end of a review, each `{ "title": …, "query": … }`. See [Writing a review](daily-notes.md#writing-a-review). |
@@ -122,6 +129,11 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.linkProblems` | `true` | Counts a note's `[[Wiki links]]` that open no note on its first line, with an action to create them. |
 | `deckard.editor.embedProblems` | `true` | Says above a broken `![[embed]]` which heading or `^marker` it is missing. |
 | `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, notes that name it without a link, with an action to link them. |
+| `deckard.editor.hubProgress` | `true` | Says, on a hub note's first line, how far along the tasks of the tag it describes are. |
+| `deckard.openNotesIn` | `editor` | Where a note or task opens from Deckard: `editor`, at its line, or `page`, on the [note page](notes-and-links.md#reading-a-note-as-a-page). Shift-click, or Shift+Enter, opens it the other way. |
+| `deckard.editor.stepProgress` | `true` | Shows, above a task with steps, a bar of how many are done and the next one. |
+| `deckard.editor.breadcrumbs` | `true` | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). |
+| `deckard.editor.slashMenu` | `true` | Offers, after a `/` alone at the start of a line, blocks and templates to write there. |
 | `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. |
 | `deckard.editor.taskDueHints` | `true` | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. Zen mode hides these. |
 | `deckard.editor.repeatDiagnostics` | `true` | Marks an unreadable 🔁 repeat rule on an open task, with quick fixes. |

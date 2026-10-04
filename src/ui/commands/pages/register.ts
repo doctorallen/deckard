@@ -3,11 +3,13 @@ import * as vscode from 'vscode';
 import type { Services } from '../../../composition/services';
 import { isMarkdownFile } from '../../../core/workspace/scanner';
 import { registerCommand } from '../runCommand';
+import { openNoteAt } from '../noteOpening';
+import { findHubTagKey } from '../../state/hubTree';
 
 /**
  * Opening the pages: Home, Stats, Help and What's new, the Notes Graph and
- * its nodes, the Calendar page, the Task Board, and Related Notes for one
- * entry.
+ * its nodes, the Calendar page, the Task Board, the note page, and Related
+ * Notes for one entry.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { indexer, whatsNew, tryNext } = services;
@@ -47,9 +49,98 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       await taskBoard.show();
       await tryNext.retire('taskBoard');
     }),
+    ...registerNotePageCommands(services),
     ...registerGraphNodeCommands(services),
     ...registerEntryRelatedNotes(services),
   );
+}
+
+/**
+ * Open Note as Page: a note it is given, at a line, or, from the palette,
+ * the note in the editor at the cursor's line.
+ */
+function registerNotePageCommands(services: Services): vscode.Disposable[] {
+  const { indexer } = services;
+  return [
+    // A note, opened where deckard.openNotesIn says, or the other way: for a
+    // tree row or a lens, which cannot read the keys a click held.
+    registerCommand('deckard.openNote', async (filePath?: unknown, line?: unknown, options?: unknown) => {
+      if (typeof filePath !== 'string' || !indexer.getSnapshot().files.has(filePath)) {
+        return;
+      }
+      const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : 1;
+      const opposite = typeof options === 'object' && options !== null && (options as { opposite?: unknown }).opposite === true;
+      await openNoteAt(filePath, at, { opposite });
+    }),
+    registerCommand('deckard.openNotePage', async (filePath?: unknown, line?: unknown, options?: unknown) => {
+      const how = typeof options === 'object' && options !== null ? (options as { beside?: unknown; preserveFocus?: unknown }) : {};
+      const beside = how.beside === true;
+      if (typeof filePath === 'string' && filePath) {
+        const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : undefined;
+        await showAsPage(services, { filePath, ...(at ? { line: at } : {}) }, { beside, preserveFocus: how.preserveFocus === true });
+        return;
+      }
+      const location = readEditorNote(indexer, filePath);
+      if (!location) {
+        void vscode.window.showInformationMessage('Open a note to read it as a page.');
+        return;
+      }
+      // In the note's own group, in front of its editor, as Markdown's Open
+      // Preview opens there.
+      await showAsPage(services, location, { beside, ...(location.column ? { column: location.column } : {}) });
+    }),
+  ];
+}
+
+/**
+ * Shows a note as a page: a hub note as its tag's search page, which draws
+ * the note at its top with the tag's progress, notes, and tasks under it, so
+ * a page of the note alone would say less; any other note on the note page.
+ * The editor still opens a hub note's Markdown.
+ */
+async function showAsPage(
+  services: Services,
+  location: { filePath: string; line?: number },
+  how: Parameters<Services['pages']['notePage']['show']>[1],
+): Promise<void> {
+  const hubTag = findHubTagKey(services.indexer.getSnapshot(), location.filePath);
+  if (hubTag) {
+    await services.pages.search.show(hubTag);
+    return;
+  }
+  await services.pages.notePage.show(location, how);
+}
+
+/**
+ * The note Open Note as Page reads when it is not named by path: the one
+ * whose title bar it was run from, which VS Code names and which need not be
+ * the editor with the focus, or else the active editor's, at its cursor when
+ * that editor shows it. Undefined when that is no note.
+ */
+function readEditorNote(
+  indexer: Services['indexer'],
+  given: unknown,
+): { filePath: string; line?: number; column?: vscode.ViewColumn } | undefined {
+  const editor = vscode.window.activeTextEditor;
+  const uri = given instanceof vscode.Uri ? given : editor?.document.uri;
+  if (!uri || !indexer.isNotesFile(uri)) {
+    return undefined;
+  }
+  const shown = editor?.document.uri.toString() === uri.toString() ? editor : undefined;
+  const column = shown?.viewColumn ?? findTextTabColumn(uri);
+  return {
+    filePath: indexer.getFilePath(uri),
+    ...(shown ? { line: shown.selection.active.line + 1 } : {}),
+    ...(column ? { column } : {}),
+  };
+}
+
+/** The group a note's text tab is in, the active group first, when one holds it. */
+function findTextTabColumn(uri: vscode.Uri): vscode.ViewColumn | undefined {
+  const holds = (group: vscode.TabGroup): boolean =>
+    group.tabs.some((tab) => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === uri.toString());
+  const { activeTabGroup, all } = vscode.window.tabGroups;
+  return (holds(activeTabGroup) ? activeTabGroup : all.find(holds))?.viewColumn;
 }
 
 /** What the Notes Graph page runs on a node it was clicked or hovered on. */

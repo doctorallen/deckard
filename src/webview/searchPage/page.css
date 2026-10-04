@@ -67,6 +67,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
+/* How far along a tag's tasks are, under its hub. */
+.tag-progress { display: grid; grid-template-columns: auto minmax(80px, 200px) 1fr; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
+.tag-progress-label { color: var(--muted); font-size: var(--text-sm); }
+@media (max-width: 700px) { .tag-progress { grid-template-columns: auto 1fr; } .tag-progress-label { grid-column: 1 / -1; } }
 /* A tag's page's quiet lines under its hub, and what they mark on cards. */
 .tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
 .tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }

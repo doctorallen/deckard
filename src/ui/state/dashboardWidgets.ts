@@ -1,4 +1,5 @@
-import { isWatchableNamespace } from '../../domain/dashboard/widgetCatalog';
+import { isWatchableNamespace, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
+import { collectTagProgress, describeTagProgress, TagProgress } from '../../domain/tasks/tagProgress';
 import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
 import {
@@ -11,7 +12,7 @@ import { QueryContext } from '../../domain/query/queryContext';
 import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { createAgenda, selectAgendaTasks } from './agendaState';
 import { createDashboardSavedFilters, getSavedFilterQuery, sortTags } from './dashboardState';
-import { listQuietTags } from './peopleRecency';
+import { isInNamespace, listQuietTags } from './peopleRecency';
 import { rankRelatedNotes } from './relatedNotesRanking';
 import { sortRelatedNotes } from '../../domain/ranking/relatedNotesOrder';
 import { RelatedNotesRankingOptions } from '../../domain/ranking/relatedNotesContext';
@@ -80,6 +81,7 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   unhubbedTags: 'Tags without a hub',
   newTags: 'New tags',
   quietPeople: 'Gone quiet',
+  progress: 'Progress',
   pinnedNotes: 'Pinned notes',
   tryNext: 'Try next',
 };
@@ -537,16 +539,7 @@ function buildQuietPeopleWidget({ index, options, config, widget, take }: Widget
   });
   return {
     ...widget,
-    // What the gear offers: every namespace the index holds that the host
-    // keeps as the one to watch, so a choice is never silently dropped.
-    namespaces: [
-      ...new Set(
-        [...index.entities.values()].map((entity) => String(entity.kind).toLowerCase()),
-      ),
-      'person',
-    ]
-      .filter((name, at, all) => all.indexOf(name) === at && isWatchableNamespace(name))
-      .sort(),
+    namespaces: listWidgetNamespaces(index, 'person'),
     total: quiet.length,
     tags: take(quiet).map((person) => ({
       key: person.tag.key,
@@ -558,6 +551,59 @@ function buildQuietPeopleWidget({ index, options, config, widget, take }: Widget
       }`,
     })),
   };
+}
+
+/**
+ * What a namespace widget's gear offers: every namespace the index holds
+ * that the host keeps as the one to list, and the kind's default, so a
+ * choice is never silently dropped.
+ */
+function listWidgetNamespaces(index: WorkspaceIndex, fallback: string): string[] {
+  return [
+    ...new Set(
+      [...index.entities.values()].map((entity) => String(entity.kind).toLowerCase()),
+    ),
+    fallback,
+  ]
+    .filter((name, at, all) => all.indexOf(name) === at && isWatchableNamespace(name))
+    .sort();
+}
+
+/**
+ * Each tag of the widget's namespace that finds a task, with how far along
+ * its tasks are: the unfinished first, those with overdue tasks before the
+ * rest, then by the next due date; the finished last.
+ */
+function buildProgressWidget({ index, options, config, widget, take }: WidgetBuild): DashboardWidget {
+  const namespace = widgetNamespace(config);
+  const { now, taskPolicy } = options.queryContext;
+  const keys = new Set(
+    [...index.tags.keys()].filter((key) => isInNamespace(key, namespace) && !isParkedOnlyTag(index, key)),
+  );
+  const rows = [...collectTagProgress(index, now, keys, taskPolicy)]
+    .map(([key, progress]) => ({ tag: index.tags.get(key), progress }))
+    .flatMap((row) => (row.tag ? [{ tag: row.tag, progress: row.progress }] : []))
+    .sort((left, right) => compareProgress(left.progress, right.progress) || left.tag.label.localeCompare(right.tag.label));
+  return {
+    ...widget,
+    namespaces: listWidgetNamespaces(index, namespace),
+    total: rows.length,
+    tags: take(rows).map(({ tag, progress }) => ({
+      key: tag.key,
+      label: tag.label,
+      detail: describeTagProgress(progress, now, taskPolicy),
+      progress: { done: progress.done, total: progress.total },
+    })),
+  };
+}
+
+/** The order Progress lists tags in: unfinished first, overdue among them first, then soonest due. */
+function compareProgress(left: TagProgress, right: TagProgress): number {
+  const finished = (progress: TagProgress): number => (progress.done === progress.total ? 1 : 0);
+  // A task long past due wants attention as an overdue one does.
+  const overdue = (progress: TagProgress): number => (progress.overdue > 0 || progress.needsDate > 0 ? 0 : 1);
+  const nextDue = (progress: TagProgress): number => progress.nextDue?.dueAt ?? Number.MAX_SAFE_INTEGER;
+  return finished(left) - finished(right) || overdue(left) - overdue(right) || nextDue(left) - nextDue(right);
 }
 
 /** The pinned notes, each resolved against the index. */
@@ -596,6 +642,7 @@ const WIDGET_BUILDERS: { readonly [K in DashboardWidgetKind]: WidgetBuilder } = 
   unhubbedTags: buildUnhubbedTagsWidget,
   newTags: buildNewTagsWidget,
   quietPeople: buildQuietPeopleWidget,
+  progress: buildProgressWidget,
   pinnedNotes: buildPinnedNotesWidget,
   tryNext: buildTryNextWidget,
 };

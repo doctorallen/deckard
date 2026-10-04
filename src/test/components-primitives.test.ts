@@ -11,6 +11,7 @@ import { PAGES, renderablePages, renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { readGoldens } from '../../test/harness/domGoldens';
+import { createNotePageSnapshot } from '../ui/state/notePageState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { deckardThemes } from '../ui/webview/themeNames';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
@@ -210,6 +211,7 @@ suite('Component primitives', () => {
           ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
           parkedTags: [],
         },
+        notePage: createNotePageSnapshot(index, 'notes/a.md', { queryContext: createQueryContext(Date.now()), history: { back: false, forward: false }, visit: 1 }),
       };
       // A calendar and Related Notes still say they are ready when they load,
       // as they always have, so the host sends a snapshot newer than the one

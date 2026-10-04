@@ -114,6 +114,7 @@
 /* Each group is a labeled region, its label above its values and the
    groups a wide step apart, so where one group ends is a shape and not a
    word in the run. */
+.query-facets-lead { display: grid; gap: var(--space-1); grid-column: 1 / -1; padding-bottom: var(--space-2); border-bottom: 1px dashed var(--line); }
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
 .query-facets-count { align-self: center; color: var(--muted); font-size: var(--text-xs); line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: var(--text-xs); }

@@ -163,6 +163,8 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
       tone = 'overdue';
     } else if (item.stale) {
       tone = 'stale';
+    } else if (item.dueToday) {
+      tone = 'today';
     }
     due = <span key="due" class={`due-date ${tone}`}>{item.dueLabel}</span>;
   } else if (task.dueText) {

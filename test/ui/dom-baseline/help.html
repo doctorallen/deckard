@@ -5,104 +5,114 @@
     > <span
         class="nav-title"
       >Deckard Help</span
+      > <button
+        aria-controls="help-nav-links"
+        aria-expanded="false"
+        class="nav-toggle"
+        type="button"
+      >Contents</button
+      > <div
+        class="nav-links"
+        id="help-nav-links"
       > <a
-        aria-current="location"
-        href="#quick-start"
-      >Quick start</a
-      > <a
-        href="#whats-new"
-      >What's new</a
-      > <span
-        class="nav-group"
-      >Writing</span
-      > <a
-        class="nav-sub"
-        href="#tags"
-      >Tags and people</a
-      > <a
-        class="nav-sub"
-        href="#frontmatter"
-      >Front matter</a
-      > <a
-        class="nav-sub"
-        href="#links"
-      >Links and embeds</a
-      > <a
-        class="nav-sub"
-        href="#boundaries"
-      >What counts as a note</a
-      > <span
-        class="nav-group"
-      >Tasks</span
-      > <a
-        class="nav-sub"
-        href="#tasks"
-      >Writing tasks</a
-      > <a
-        class="nav-sub"
-        href="#task-metadata"
-      >Task metadata</a
-      > <a
-        class="nav-sub"
-        href="#task-views"
-      >Tasks view and board</a
-      > <span
-        class="nav-group"
-      >Finding</span
-      > <a
-        class="nav-sub"
-        href="#search"
-      >Search</a
-      > <a
-        class="nav-sub"
-        href="#query"
-      >Query language</a
-      > <a
-        class="nav-sub"
-        href="#query-blocks"
-      >Query blocks</a
-      > <a
-        class="nav-sub"
-        href="#connections"
-      >Related notes and the graph</a
-      > <span
-        class="nav-group"
-      >Keeping notes</span
-      > <a
-        class="nav-sub"
-        href="#home"
-      >Home and pins</a
-      > <a
-        class="nav-sub"
-        href="#tidy"
-      >Renaming and tidying</a
-      > <a
-        class="nav-sub"
-        href="#periodic"
-      >Days, weeks, months</a
-      > <span
-        class="nav-group"
-      >Reference</span
-      > <a
-        class="nav-sub"
-        href="#zen"
-      >Zen mode</a
-      > <a
-        class="nav-sub"
-        href="#commands"
-      >Commands</a
-      > <a
-        class="nav-sub"
-        href="#advanced"
-      >Settings</a
-      > <a
-        class="nav-sub"
-        href="#assistants"
-      >AI assistants</a
-      > <a
-        class="nav-sub"
-        href="#privacy"
-      >Privacy and safety</a
+          aria-current="location"
+          href="#quick-start"
+        >Quick start</a
+        > <a
+          href="#whats-new"
+        >What's new</a
+        > <span
+          class="nav-group"
+        >Writing</span
+        > <a
+          class="nav-sub"
+          href="#tags"
+        >Tags and people</a
+        > <a
+          class="nav-sub"
+          href="#frontmatter"
+        >Front matter</a
+        > <a
+          class="nav-sub"
+          href="#links"
+        >Links and embeds</a
+        > <a
+          class="nav-sub"
+          href="#boundaries"
+        >What counts as a note</a
+        > <span
+          class="nav-group"
+        >Tasks</span
+        > <a
+          class="nav-sub"
+          href="#tasks"
+        >Writing tasks</a
+        > <a
+          class="nav-sub"
+          href="#task-metadata"
+        >Task metadata</a
+        > <a
+          class="nav-sub"
+          href="#task-views"
+        >Tasks view and board</a
+        > <span
+          class="nav-group"
+        >Finding</span
+        > <a
+          class="nav-sub"
+          href="#search"
+        >Search</a
+        > <a
+          class="nav-sub"
+          href="#query"
+        >Query language</a
+        > <a
+          class="nav-sub"
+          href="#query-blocks"
+        >Query blocks</a
+        > <a
+          class="nav-sub"
+          href="#connections"
+        >Related notes and the graph</a
+        > <span
+          class="nav-group"
+        >Keeping notes</span
+        > <a
+          class="nav-sub"
+          href="#home"
+        >Home and pins</a
+        > <a
+          class="nav-sub"
+          href="#tidy"
+        >Renaming and tidying</a
+        > <a
+          class="nav-sub"
+          href="#periodic"
+        >Days, weeks, months</a
+        > <span
+          class="nav-group"
+        >Reference</span
+        > <a
+          class="nav-sub"
+          href="#zen"
+        >Zen mode</a
+        > <a
+          class="nav-sub"
+          href="#commands"
+        >Commands</a
+        > <a
+          class="nav-sub"
+          href="#advanced"
+        >Settings</a
+        > <a
+          class="nav-sub"
+          href="#assistants"
+        >AI assistants</a
+        > <a
+          class="nav-sub"
+          href="#privacy"
+        >Privacy and safety</a
+        > </div
       > </nav
     > <article
     > <header
@@ -747,6 +757,17 @@
                 class="shortcut"
               >Cmd+Shift+Alt+X</kbd
               > completes the tasks under every cursor, or reopens them when all of them are done, with the ✅ date and the next occurrence of a repeating task, as one edit that one Undo takes back. A repeat rule Deckard cannot read is underlined on an open task, since completing it would start no next one, and the lightbulb offers the nearest rules it can read.</p
+            ></div
+          > <div
+            class="card"
+          ><h3
+            >The / menu</h3
+            ><p
+            >Type <code
+              >/</code
+              > alone at the start of a line for what to write there: a task, a heading, a link or an embed, today’s note, a query block, a table of notes or tasks, or one of your templates, its questions as tab stops. <code
+              >deckard.editor.slashMenu</code
+              > turns it off.</p
             ></div
           > <div
             class="card"
@@ -1684,7 +1705,9 @@
           >limit=10</code
           >, and <code
           >view=table columns=due,priority,for</code
-          > for the tasks as a table follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p
+          > for the tasks as a table, with <code
+          >noteColumns=links,tasks,#status</code
+          > for the notes as one, follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p
         > <p
           class="read-more"
         ><a
@@ -2507,6 +2530,41 @@
                 ></tr
               ><tr
               ><td
+                ><code
+                  >Copy as Plain Markdown</code
+                  ></td
+                ><td
+                >Copies the note, or the selection, with its embeds, query results, and links written out for elsewhere.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >Open Note as Page</code
+                  ></td
+                ><td
+                >Opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >Open Note</code
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >Open the Other Way</code
+                  > <kbd
+                    class="shortcut"
+                  >Shift+Enter</kbd
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
                 ><button
                     class="command-link"
                     data-command="deckard.showTagOverview"
@@ -2821,6 +2879,17 @@
               ><td
                 ><button
                     class="command-link"
+                    data-command="deckard.exportTaskCalendar"
+                    type="button"
+                  >Export Tasks as Calendar…</button
+                  ></td
+                ><td
+                >Writes your dated tasks to a calendar file for a calendar app.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
                     data-command="deckard.exportPreferences"
                     type="button"
                   >Export Favorites, Pins, and Searches</button
@@ -3060,6 +3129,18 @@
               ><tr
               ><td
                 ><code
+                  >deckard.openNotesIn</code
+                  ></td
+                ><td
+                ><code
+                  >"editor"</code
+                  ></td
+                ><td
+                >Where a note or task opens from Deckard's pages, the Hubs view, Find, and the breadcrumb lens. **Shift**-click, or Shift+Enter, opens it the other way. A link followed in the editor, the Tasks view, and the Outline stay in the editor.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
                   >deckard.theme</code
                   ></td
                 ><td
@@ -3152,6 +3233,30 @@
                   ></td
                 ><td
                 >The day a week starts on: in the Calendar, in weekly notes and their reviews, in a search's this-week, last-week, and next-week, and in *next week* and *end of week* typed as a date. A weekly note written before a change still opens for the week it mostly covers.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.calendar.exportFile</code
+                  ></td
+                ><td
+                ><code
+                  >Empty</code
+                  ></td
+                ><td
+                >A calendar file (.ics) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to: each task an all-day event on its due date, or its scheduled date when it has no due date. A relative path is in the first workspace folder, such as .deckard/tasks.ics, and may not climb out of it; ~ is your home folder. It must end in .ics, and Deckard never writes over a file that is not a calendar. Empty writes no file; Deckard: Export Tasks as Calendar… writes one once.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.calendar.exportQuery</code
+                  ></td
+                ><td
+                ><code
+                  >"is:open"</code
+                  ></td
+                ><td
+                >The search whose dated tasks the calendar file holds, such as is:open is:mine or #project/atlas is:open. Empty is every open task.</td
                 ></tr
               ><tr
               ><td
@@ -3566,6 +3671,54 @@
                   ></td
                 ><td
                 >Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.slashMenu</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.stepProgress</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Show, above a task with steps, a bar of how many of its steps are done and which is next; selecting it goes to the next open step.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.breadcrumbs</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.editor.hubProgress</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Show, on a hub note's first line, how far along the tasks of the tag it describes are: how many are done, how many are overdue, and when the next is due. A tag with no task shows nothing.</td
                 ></tr
               ><tr
               ><td

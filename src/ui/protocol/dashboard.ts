@@ -119,6 +119,8 @@ export interface DashboardSnapshot {
 /** A tag a Home widget lists, with what searching for it finds. */
 export interface DashboardWidgetTag extends TagReference {
   detail: string;
+  /** For Progress, how many of the tag's tasks are done, of how many. */
+  progress?: { done: number; total: number };
 }
 
 /** A note a Home widget lists, which opens at its line. */
@@ -172,7 +174,7 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   queries?: string[];
   savedFilters?: DashboardSavedFilter[];
   agenda?: DashboardWidgetAgendaGroup[];
-  /** The namespaces Gone quiet can watch, for its gear. */
+  /** The namespaces Gone quiet or Progress can list, for its gear. */
   namespaces?: string[];
   /** Open tasks past `needsNewDateAfterDays`, which the agenda leaves out. */
   needsNewDate?: number;
@@ -298,6 +300,8 @@ export interface AddNextActionMessage {
 export interface OpenNoteMessage {
   type: 'openNote';
   filePath: string;
+  /** Shift was held: open it where `deckard.openNotesIn` does not. */
+  opposite?: boolean;
 }
 
 /** Runs, puts off for a week, or retires Try next's suggestion. */

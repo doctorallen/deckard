@@ -6,6 +6,7 @@ import type { ComponentChild } from 'preact';
 
 import type { TagReference } from '../../ui/protocol/shared';
 import { TagLabel } from './tagLabel';
+import { createTagLabelPattern } from './tagPattern';
 
 /**
  * A tag that opens its overview: its namespace dimmed before its value,
@@ -27,18 +28,9 @@ export function TagButton({ tag, className }: { readonly tag: TagReference; read
   );
 }
 
-/** A pattern that finds any of the tags' labels, longest first, or none when no tag has one. */
+/** A pattern that finds any of the tags' labels as whole tags, or none when no tag has one. */
 function labelPattern(tags: readonly TagReference[]): RegExp | undefined {
-  const labels = tags
-    .map((tag) => tag.label)
-    .filter(Boolean)
-    .sort((left, right) => right.length - left.length);
-  if (!labels.length) {
-    return undefined;
-  }
-  return new RegExp(labels.map((label) => String(label).split('').map((character) =>
-    ('[]{}()|^$+*?.-'.includes(character) || character === '\\' ? `\\${character}` : character),
-  ).join('')).join('|'), 'g');
+  return createTagLabelPattern(tags.map((tag) => tag.label));
 }
 
 /**

@@ -89,7 +89,7 @@ Run **Deckard: Break into Steps…** from the lightbulb, the palette, or the edi
 
 - A heading, code block, or unindented paragraph ends the steps; a blank line does not. A checkbox under a plain bullet is its own task.
 - `is:step` finds steps; `has:steps` finds tasks with them; `-is:step` leaves steps out of search pages.
-- A task with steps shows **2 of 5 steps · next: Draft the email**. On the Task board and in the Tasks view, steps ride on their task unless they have their own date, priority, person, or tag, or the task is done or not listed.
+- A task with steps shows **2 of 5 steps · next: Draft the email**. In the editor, a lens above it draws the same with a bar, **███░░░░░░░ 1 of 3 steps done · next: Draft the email**; select it to go to the next open step. `deckard.editor.stepProgress` turns it off. On the Task board and in the Tasks view, steps ride on their task unless they have their own date, priority, person, or tag, or the task is done or not listed.
 - Checking a task's last open step offers **Complete Task**. Completing a task with open steps offers **Complete Steps**, with its own **Undo**. Toggle Task Done, bulk edits, and the assistant complete only what they are given.
 
 ### Typing metadata

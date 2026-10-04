@@ -60,13 +60,14 @@ const narrowShowMonth: Narrower<CalendarShowMonthMessage> = (value) => {
     : undefined;
 };
 
-/** A note the day panel lists: a path, not too long, and nothing else. */
+/** A note the day panel lists: a path, not too long, Shift when it was held, and nothing else. */
 const narrowOpenNote: Narrower<CalendarOpenNoteMessage> = (value) =>
   typeof value.filePath === 'string' &&
   value.filePath.length > 0 &&
   value.filePath.length <= MAX_FILE_PATH_LENGTH &&
-  Object.keys(value).length === 2
-    ? { type: 'openNote', filePath: value.filePath }
+  (value.opposite === undefined || typeof value.opposite === 'boolean') &&
+  Object.keys(value).length === (value.opposite === undefined ? 2 : 3)
+    ? { type: 'openNote', filePath: value.filePath, ...(value.opposite === true ? { opposite: true } : {}) }
     : undefined;
 
 /** A task to open, by its id and nothing else. */

@@ -115,6 +115,8 @@ export interface SearchPageSnapshot {
 
 /** The quiet lines under a tag's page's hub. */
 export interface SearchPageTagNotes {
+  /** Set when the search narrows the tag with other terms; the hub starts folded and a part of the progress may be on. */
+  filtered?: true;
   /** Other spellings of the tag, most confusable first, at most three. */
   lookalikes: Array<{
     key: string;
@@ -128,6 +130,8 @@ export interface SearchPageTagNotes {
   hubLinkCount: number;
   /** The hub note they link to, by title. */
   hubTitle?: string;
+  /** How far along the tag's tasks are, when it finds any. */
+  progress?: SearchPageTagProgress;
   /** Entries that write the tag's name as a plain word, without the tag. */
   mention?: {
     word: string;
@@ -135,6 +139,17 @@ export interface SearchPageTagNotes {
     /** The search that lists them. */
     query: string;
   };
+}
+
+/** How far along a tag's tasks are, as its page draws the bar and the words beside it. */
+export interface SearchPageTagProgress {
+  done: number;
+  total: number;
+  overdue: number;
+  /** "3 of 8 done · 1 overdue · next due in 3 days". */
+  label: string;
+  /** The label's parts, in order, each with the search that lists the tasks it counts, when it counts any. */
+  parts: Array<{ text: string; query?: string; tip?: string; active?: true }>;
 }
 
 /** The hub note that describes a tag, as the top of the tag's page shows it. */

@@ -39,6 +39,8 @@ suite('Extension Test Suite', () => {
         '2_heading@2 deckard.extractHeading',
         '2_heading@3 deckard.focusSection',
         '3_move@1 deckard.moveTo',
+        '3_move@2 deckard.copyAsPlainMarkdown',
+        '3_move@3 deckard.openNotePage',
         '4_pin@1 deckard.pinNote',
         '4_pin@2 deckard.unpinNote',
         '4_pin@3 deckard.parkNote',
@@ -90,7 +92,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 73);
+    assert.strictEqual(Object.keys(settings).length, 80);
     assert.strictEqual(settings['deckard.calendar.dayPanel'].default, false);
     assert.strictEqual(settings['deckard.calendar.showRepeats'].default, true);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
@@ -161,6 +163,12 @@ suite('Extension Test Suite', () => {
         'deckard.resetMcpToken',
         'deckard.moveTo',
         'deckard.extractHeading',
+        'deckard.copyAsPlainMarkdown',
+        'deckard.openNotePage',
+        'deckard.openNote',
+        'deckard.hubs.openInEditor',
+        'deckard.hubs.openAsPage',
+        'deckard.quickFind.openOther',
         'deckard.showTagOverview',
         'deckard.search',
         'deckard.insertQueryBlock',
@@ -180,6 +188,7 @@ suite('Extension Test Suite', () => {
         'deckard.outline.revealSection',
         'deckard.outline.openTagOverview',
         'deckard.outline.renameTag',
+        'deckard.hubs.openHubNote',
         'deckard.agenda.editQuery',
         'deckard.clearAgendaQuery',
         'deckard.agenda.setGrouping',
@@ -193,6 +202,7 @@ suite('Extension Test Suite', () => {
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.tidyPreferences',
+        'deckard.exportTaskCalendar',
         'deckard.exportPreferences',
         'deckard.importPreferences',
         'deckard.restorePreferences',

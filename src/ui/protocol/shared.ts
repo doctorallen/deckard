@@ -37,6 +37,8 @@ export interface DashboardTask {
   overdue?: boolean;
   /** Whether it passed so long ago the task needs a new date; drawn muted. */
   stale?: boolean;
+  /** Whether it is due today, drawn in the theme's warning color, between the green of later and the red of overdue. */
+  dueToday?: boolean;
   /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
   stepsLabel?: string;
 }
@@ -122,6 +124,8 @@ export interface OpenSourceMessage {
   beside?: boolean;
   /** Keep the tab, from a double-click, rather than previewing in it. */
   pin?: boolean;
+  /** Shift was held: open it where `deckard.openNotesIn` does not. */
+  opposite?: boolean;
 }
 
 /** Checks or unchecks a task's box. */

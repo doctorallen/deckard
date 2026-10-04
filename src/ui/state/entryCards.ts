@@ -121,6 +121,7 @@ export function createDashboardTask(
           dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
           overdue: due.overdue,
           ...(due.stale ? { stale: true } : {}),
+          ...(due.days === 0 ? { dueToday: true } : {}),
         }
       : {}),
     ...(task.steps ? { stepsLabel: describeSteps(task.steps) } : {}),

@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.0.0",
+  "version": "2.1.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -48,7 +48,9 @@
     "onWebviewPanel:deckard.notesGraph",
     "onWebviewPanel:deckard.taskBoard",
     "onWebviewPanel:deckard.calendarPage",
+    "onWebviewPanel:deckard.notePage",
     "onStartupFinished",
+    "onUri",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags"
   ],
@@ -199,6 +201,10 @@
       }
     ],
     "viewsWelcome": [
+      {
+        "view": "deckard.hubs",
+        "contents": "Hub notes and the notes about their tags appear here, as pages under the pages they belong to.\n\nA hub note describes a tag with describes: in its front matter, such as describes: project/atlas. A note is filed under it when its front matter or first heading carries the tag, or when it says up: \"[[Atlas]]\".\n[Read about hub notes](https://deckard.esperinnovations.com/search-pages.html#hub-notes)"
+      },
       {
         "view": "deckard.outline",
         "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
@@ -449,6 +455,38 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.copyAsPlainMarkdown",
+        "title": "Copy as Plain Markdown",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.openNotePage",
+        "title": "Open Note as Page",
+        "category": "Deckard",
+        "icon": {
+          "light": "resources/editor/note-page-light.svg",
+          "dark": "resources/editor/note-page-dark.svg"
+        }
+      },
+      {
+        "command": "deckard.openNote",
+        "title": "Open Note",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.hubs.openInEditor",
+        "title": "Open in Editor"
+      },
+      {
+        "command": "deckard.hubs.openAsPage",
+        "title": "Open as Page"
+      },
+      {
+        "command": "deckard.quickFind.openOther",
+        "title": "Open the Other Way",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.showTagOverview",
         "title": "Open a Tag's Search Page…",
         "category": "Deckard"
@@ -542,6 +580,11 @@
         "title": "Rename Tag…"
       },
       {
+        "command": "deckard.hubs.openHubNote",
+        "title": "Open Hub Note",
+        "icon": "$(go-to-file)"
+      },
+      {
         "command": "deckard.agenda.editQuery",
         "title": "Edit What the Tasks View Lists…",
         "category": "Deckard",
@@ -616,6 +659,11 @@
       {
         "command": "deckard.tidyPreferences",
         "title": "Tidy Favorites, Pins, and Saved Searches",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.exportTaskCalendar",
+        "title": "Export Tasks as Calendar…",
         "category": "Deckard"
       },
       {
@@ -767,6 +815,26 @@
           "when": "false"
         },
         {
+          "command": "deckard.hubs.openHubNote",
+          "when": "false"
+        },
+        {
+          "command": "deckard.openNote",
+          "when": "false"
+        },
+        {
+          "command": "deckard.hubs.openInEditor",
+          "when": "false"
+        },
+        {
+          "command": "deckard.hubs.openAsPage",
+          "when": "false"
+        },
+        {
+          "command": "deckard.quickFind.openOther",
+          "when": "false"
+        },
+        {
           "command": "deckard.quickFind.complete",
           "when": "false"
         },
@@ -848,6 +916,14 @@
         },
         {
           "command": "deckard.extractHeading",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.copyAsPlainMarkdown",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.openNotePage",
           "when": "editorLangId == markdown"
         },
         {
@@ -992,6 +1068,11 @@
           "group": "navigation@12"
         },
         {
+          "command": "deckard.openNotePage",
+          "when": "resourceLangId == markdown && deckard.isNote",
+          "group": "navigation@13"
+        },
+        {
           "command": "deckard.enableZenMode",
           "when": "activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode",
           "group": "navigation@90"
@@ -1045,6 +1126,14 @@
         {
           "command": "deckard.moveTo",
           "group": "3_move@1"
+        },
+        {
+          "command": "deckard.copyAsPlainMarkdown",
+          "group": "3_move@2"
+        },
+        {
+          "command": "deckard.openNotePage",
+          "group": "3_move@3"
         },
         {
           "command": "deckard.pinNote",
@@ -1237,6 +1326,26 @@
       ],
       "view/item/context": [
         {
+          "command": "deckard.hubs.openHubNote",
+          "when": "view == deckard.hubs && viewItem == hubNote",
+          "group": "inline"
+        },
+        {
+          "command": "deckard.hubs.openHubNote",
+          "when": "view == deckard.hubs && viewItem == hubNote",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.hubs.openInEditor",
+          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn == page",
+          "group": "deckard@2"
+        },
+        {
+          "command": "deckard.hubs.openAsPage",
+          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn != page",
+          "group": "deckard@2"
+        },
+        {
           "command": "deckard.outline.openTagOverview",
           "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
           "group": "deckard@1"
@@ -1381,6 +1490,11 @@
         "when": "inQuickOpen && deckard.quickFindOpen"
       },
       {
+        "command": "deckard.quickFind.openOther",
+        "key": "shift+enter",
+        "when": "inQuickOpen && deckard.quickFindOpen"
+      },
+      {
         "command": "deckard.quickFind.actions",
         "key": "ctrl+.",
         "mac": "cmd+.",
@@ -1416,6 +1530,13 @@
           "name": "Tasks",
           "icon": "resources/views/tasks.svg",
           "contextualTitle": "Deckard Tasks"
+        },
+        {
+          "id": "deckard.hubs",
+          "name": "Hubs",
+          "icon": "resources/views/hubs.svg",
+          "contextualTitle": "Deckard Hubs",
+          "visibility": "collapsed"
         },
         {
           "id": "deckard.calendar",
@@ -1614,6 +1735,21 @@
             "description": "Optional workspace-relative folder containing Markdown notes. Leave empty to index all Markdown files in the workspace.",
             "order": 0
           },
+          "deckard.openNotesIn": {
+            "type": "string",
+            "enum": [
+              "editor",
+              "page"
+            ],
+            "enumDescriptions": [
+              "A note or task opens in the editor, at its line.",
+              "A note or task opens on the note page, a Deckard page that draws the note with its links, tags, tasks, and query blocks working, scrolled to its line."
+            ],
+            "default": "editor",
+            "scope": "window",
+            "order": 1,
+            "markdownDescription": "Where a note or task opens from Deckard's pages, the Hubs view, Find, and the breadcrumb lens. **Shift**-click, or Shift+Enter, opens it the other way. A link followed in the editor, the Tasks view, and the Outline stay in the editor."
+          },
           "deckard.theme": {
             "type": "string",
             "enum": [
@@ -1692,6 +1828,20 @@
             "scope": "window",
             "order": 6,
             "markdownDescription": "The day a week starts on: in the Calendar, in weekly notes and their reviews, in a search's `this-week`, `last-week`, and `next-week`, and in *next week* and *end of week* typed as a date. A weekly note written before a change still opens for the week it mostly covers."
+          },
+          "deckard.calendar.exportFile": {
+            "type": "string",
+            "default": "",
+            "scope": "window",
+            "order": 7,
+            "markdownDescription": "A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to: each task an all-day event on its due date, or its scheduled date when it has no due date. A relative path is in the first workspace folder, such as `.deckard/tasks.ics`, and may not climb out of it; `~` is your home folder. It must end in `.ics`, and Deckard never writes over a file that is not a calendar. Empty writes no file; `Deckard: Export Tasks as Calendar…` writes one once."
+          },
+          "deckard.calendar.exportQuery": {
+            "type": "string",
+            "default": "is:open",
+            "scope": "window",
+            "order": 8,
+            "markdownDescription": "The search whose dated tasks the calendar file holds, such as `is:open is:mine` or `#project/atlas is:open`. Empty is every open task."
           },
           "deckard.calendar.dayPanel": {
             "type": "boolean",
@@ -2005,6 +2155,34 @@
             "scope": "resource",
             "default": true,
             "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
+            "order": 10
+          },
+          "deckard.editor.slashMenu": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.",
+            "order": 10
+          },
+          "deckard.editor.stepProgress": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, above a task with steps, a bar of how many of its steps are done and which is next; selecting it goes to the next open step.",
+            "order": 10
+          },
+          "deckard.editor.breadcrumbs": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing.",
+            "order": 10
+          },
+          "deckard.editor.hubProgress": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, on a hub note's first line, how far along the tasks of the tag it describes are: how many are done, how many are overdue, and when the next is due. A tag with no task shows nothing.",
             "order": 10
           },
           "deckard.editor.dimTaskMetadata": {

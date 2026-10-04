@@ -9,7 +9,7 @@ Every search opens a **search page** in its own tab; a tag's overview is the sea
 - **One tag is its overview.** The page's title is the tag or the entity it names, with its [hub note](#hub-notes) above the entries.
 - **Anything more is a search.** Add another tag, words, or a condition such as `is:open`, and the title says **Search**; the [search box](search.md#the-search-box) and **Builder** show every filter. **Clear** returns to the original tag.
 - **Refine** shows five values of each kind, with **+N more**. On a page of one tag, or tags joined by AND, it offers related **Tags** first.
-- **Notes and Tasks** are two tabs or side by side. The Tasks list shows every task the search found, with checkboxes that update the Markdown.
+- **Notes and Tasks** are two tabs or side by side. The Tasks list shows every task the search found, with checkboxes that update the Markdown. A search that finds nothing on the tab shown and something on the other shows the other.
 - **Sort** notes alphabetically, by creation date, by update date, or by most accessed, under the search box.
 - Each result shows three lines, or the paragraph holding the searched words after a muted **…**. **Show all** opens the rest. The gear's **Preview** chooses **None**, **3 lines**, or **Full**.
 - Searched words are marked, and each result's header shows its file, line, and headings (folded in zen mode).
@@ -63,8 +63,34 @@ Migration of billing onto the new ledger.
 - When several notes describe a tag, the first by path leads and the others are listed beneath it.
 - Hovering the tag in the editor names its hub, renaming the tag updates `describes:`, and filtered and query views leave the hub out.
 - Select the hub's title row to collapse or expand it until the overview closes. `deckard.tagOverview.hubNoteExpanded` sets whether hubs start open (default: open).
-- **Untagged mentions.** For a tag name of three letters or more, the page says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
+- **Progress.** A tag with tasks shows a bar under its hub, and how far along they are: *2 of 6 done · 1 overdue · next due in 3 days*. Each part is a link that searches just those tasks: the done ones, the overdue ones, the ones that need a new date, or the ones due next. A task more than 30 days past due counts as needing a new date rather than overdue, as Home's Overdue figure counts it (`deckard.tasks.needsNewDateAfterDays`). Its tasks are those a search for the tag finds, steps aside. The hub note says the same on its first line in the editor (`deckard.editor.hubProgress`), and Home's [Progress widget](home-and-stats.md) lists every project's.
+- **Narrowing a tag's page.** A search that adds terms to one tag, such as *1 overdue* above or a Refine choice, is still that tag's page: the hub stays, folded so the results sit near the top, and the bar still counts all of the tag's tasks. The part of the words you searched is outlined; select it again to go back to the tag. A search of two tags, such as `#project/atlas @dana`, is a plain search. Entries that only link to the hub are listed on the tag's plain page alone.
+- **Untagged mentions.** For a tag name of three letters or more, the top of **Refine** says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
 - **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* **Leave them out** turns `deckard.tagOverview.includeHubLinks` off. While on, counts, tabs, pages, Bulk edit, and Export include them.
+
+### The Hubs view
+
+The **Hubs** view in the Deckard sidebar is a tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages under pages in Notion's sidebar. A topic appears once it has a [hub note](#hub-notes). It starts collapsed; expand it, or drag it where you like.
+
+```
+HUBS
+▾ People
+  ▸ Dana Reyes
+▾ Projects
+  ▾ Atlas                    1 of 2 done
+      Kickoff
+    ▸ Ledger migration
+      Vendor review
+  ▸ Borealis
+```
+
+- Each tag namespace with a hub note heads a group: **Projects** for `#project/…`, **People** for `@` tags, and **Other tags** for a hub of a tag without one.
+- Under each hub are the notes about its tag: those whose front matter or first heading carries it. A line that mentions the tag in passing, such as in a daily note, does not file its note there; the tag's page still finds it.
+- A note can name its place outright with `up:` in its front matter, such as `up: "[[Ledger migration]]"` or a list of several. It is then filed only there, whatever its tags. A note named by `up:` that is no hub is listed under **Other notes**.
+- A hub goes under another hub only when its `up:` names it, as a sub-project's does. The tags in a hub's own front matter, such as a team's `regulars:` or a person's `team:`, describe it and do not move it. A note about two projects is under both.
+- A [parked](organizing.md#parking-notes) note is left out of the tree, and a parked task out of a hub's count, as a search leaves them out.
+- Select a hub to open its tag's search page, with the hub note on top and everything the tag finds under it; the hub's **Open Hub Note** button opens the note itself, in the editor or on the note page as `deckard.openNotesIn` says, and its right-click menu offers the other way. Select any other note to open it. A hub shows how far along its tag's tasks are.
+- **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
 
 ### Merging tags
 

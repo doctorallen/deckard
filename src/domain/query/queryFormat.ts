@@ -144,6 +144,25 @@ export function getQueryTagIntersection(
   return tagKeys;
 }
 
+/**
+ * The one tag a search narrows, when it is not only tags: a search whose top
+ * level ANDs exactly one `tag =` term with anything else, such as
+ * `#project/atlas is:overdue` or `#project/atlas (is:today OR is:overdue)`,
+ * finds only that tag's entries, filtered. Undefined for a search of tags
+ * alone, which `getQueryTagIntersection` reads, for one with two tags or
+ * none at its top level, and for any search whose top is not an AND.
+ */
+export function getQueryNarrowedTag(node: QueryNode | undefined): string | undefined {
+  if (node?.type !== 'and') {
+    return undefined;
+  }
+  const tags = node.children.filter(
+    (child): child is Extract<QueryNode, { type: 'condition' }> =>
+      child.type === 'condition' && child.field === 'tag' && child.operator === 'eq' && !isWildcard(child.value),
+  );
+  return tags.length === 1 && tags.length < node.children.length ? tags[0].value : undefined;
+}
+
 /** The terms of a query that is one AND, or one condition alone; undefined otherwise. */
 function flatConditions(node: QueryNode): QueryNode[] | undefined {
   if (node.type === 'and') {

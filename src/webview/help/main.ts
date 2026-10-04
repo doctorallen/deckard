@@ -227,6 +227,9 @@ function onClick(event: MouseEvent): void {
     showHelp(returnTo);
     return;
   }
+  if (foldMap(target)) {
+    return;
+  }
   // The rail leads back to Help from a guide page.
   const railLink = target.closest('nav a[href^="#"]');
   if (!railLink || !guideView || guideView.hidden) {
@@ -234,6 +237,34 @@ function onClick(event: MouseEvent): void {
   }
   event.preventDefault();
   showHelp(railLink.getAttribute('href')?.slice(1));
+}
+
+/**
+ * The map's own clicks where it sits above the guide: its Contents button
+ * opens or folds it, and a link in it folds it again once it has led
+ * somewhere. True when the click was the button's, and nothing else is to
+ * be done with it.
+ */
+function foldMap(target: Element): boolean {
+  const toggle = target.closest('.nav-toggle');
+  if (toggle) {
+    setMapOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    return true;
+  }
+  if (target.closest('nav a[href^="#"]')) {
+    setMapOpen(false);
+  }
+  return false;
+}
+
+/**
+ * Opens or folds the map where it sits above the guide, behind its Contents
+ * button. Beside the guide the button is not shown and the map is always
+ * open, whatever this says.
+ */
+function setMapOpen(open: boolean): void {
+  document.querySelector('nav')?.classList.toggle('is-open', open);
+  document.querySelector('.nav-toggle')?.setAttribute('aria-expanded', String(open));
 }
 
 /** What the host sends: a section to go to, or the guide page asked for. */

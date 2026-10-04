@@ -28,7 +28,7 @@ import type {
   SidebarReadyMessage,
   ToggleTaskMessage,
 } from '../../protocol/shared';
-import { openResultAt } from '../../commands/navigation';
+import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { TaskWrites, toggleTask as writeTaskToggle } from '../../commands/taskActions';
 import { setZenMode as writeZenMode } from '../zenMode';
@@ -111,8 +111,9 @@ interface NavigationRule<TPolicy> {
 }
 
 /**
- * A row's line, opened as a result opens: previewed, kept, or beside the
- * page, as the click asked. The line opens only when the page's policy
+ * A row's line, opened as a result opens: in the editor or on the note
+ * page, as `deckard.openNotesIn` and Shift say, previewed, kept, or beside
+ * the page, as the click asked. The line opens only when the page's policy
  * accepts it in the index as it is now, and an entry's visit is counted
  * after it opens, under the policies that count one.
  */
@@ -126,7 +127,7 @@ export function openSource(open: NavigationRule<SourcePolicy> & {
     if (location.kind === 'unknown') {
       return;
     }
-    await openResultAt(location.filePath, location.line, message);
+    await openNoteAt(location.filePath, location.line, message);
     if (location.visit) {
       await open.usage?.recordSectionAccess(location.visit);
     }

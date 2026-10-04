@@ -5,6 +5,7 @@ import {
   collectQueryTagKeys,
   formatQuery,
   fromBuilderTree,
+  getQueryNarrowedTag,
   getQueryTagIntersection,
   toBuilderTree,
 } from '../domain/query/queryFormat';
@@ -33,6 +34,18 @@ suite('Deckard query language', () => {
     assert.deepStrictEqual(getQueryTagIntersection(parsed.node), [
       '#project/atlas',
     ]);
+  });
+
+  test('reads the one tag a search narrows with other terms, and none for two, none, or an OR', () => {
+    const narrowed = (text: string) => getQueryNarrowedTag(parseQuery(text).node);
+    assert.strictEqual(narrowed('#project/atlas is:overdue -is:needs-date'), '#project/atlas');
+    assert.strictEqual(narrowed('#project/atlas (is:today OR is:overdue)'), '#project/atlas');
+    assert.strictEqual(narrowed('#project/atlas -#urgent is:open'), '#project/atlas', 'a tag left out narrows nothing');
+    assert.strictEqual(narrowed('#project/atlas'), undefined, 'a tag alone is its intersection');
+    assert.strictEqual(narrowed('#project/atlas @dana is:open'), undefined, 'two tags');
+    assert.strictEqual(narrowed('#project/atlas OR is:open'), undefined);
+    assert.strictEqual(narrowed('is:open vendor'), undefined);
+    assert.strictEqual(narrowed('#project/* is:open'), undefined, 'a wildcard names no one tag');
   });
 
   test('parses a bare word as a text condition', () => {
@@ -501,7 +514,8 @@ suite('Deckard search page state', () => {
       '#project/atlas is:open',
       { queryContext: createQueryContext(Date.now()) },
     );
-    assert.strictEqual(narrowed.tag, undefined, 'anything more is a search');
+    assert.strictEqual(narrowed.tag?.key, '#project/atlas', 'narrowed with more terms, it is still the tag’s page');
+    assert.strictEqual(narrowed.tagPage?.filtered, true, 'filtered');
   });
 
   test('reads is:, has:, no:, and in: as shorthand conditions', () => {

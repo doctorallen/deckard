@@ -646,6 +646,16 @@ function frontmatterValueToTag(
   return slugToTag(field, slug, settings.personMarker);
 }
 
+/**
+ * The tag one front-matter value names under its field, as the index reads
+ * it: `owner: "@dana"` and `tags: [project/atlas]` name tags, `title: Atlas`
+ * none. Read with the default settings, so a namespace alias is left as
+ * written; its label is what the index's tag is labeled.
+ */
+export function readFrontmatterValueTag(field: string, value: string): TagReference | undefined {
+  return frontmatterValueToTag(getTagField(field.toLowerCase()), value, {});
+}
+
 /** A `namespace/name` path written under `tags:` without its `#`, as the tag it names. */
 function readNamespacedTagValue(
   field: string,

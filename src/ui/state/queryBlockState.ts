@@ -1,4 +1,5 @@
 import { getFileName } from '../../shared/paths';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
@@ -17,6 +18,15 @@ import {
   TaskColumnId,
 } from '../../domain/model';
 import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
+import { getBacklinkIndex } from '../../domain/index/backlinks';
+import { readTagNamespace } from '../../domain/markdown/tagKeys';
+import {
+  NOTE_COLUMNS,
+  NoteColumnId,
+  noteColumnNamespace,
+  parseNoteColumns,
+  readNoteColumn,
+} from '../../domain/notes/noteColumns';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -31,10 +41,10 @@ import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 export const QUERY_BLOCK_LANGUAGE = 'deckard';
 
 /**
- * What a block sorts by: any column a task has. Notes know only `title`,
- * `created`, and `updated`, and keep their order under any other.
+ * What a block sorts by: any column a task or a note has. Each list sorts
+ * by the columns it has, and keeps its own order under one it does not.
  */
-export type QueryBlockSort = TaskColumnId;
+export type QueryBlockSort = TaskColumnId | NoteColumnId;
 
 /** How a block shows its tasks: rows of text, or a table of columns. */
 export type QueryBlockView = 'list' | 'table';
@@ -53,10 +63,12 @@ export interface QueryBlockOptions {
   direction?: TableSortDirection;
   /** Most items shown in each list. The totals still count every match. */
   limit?: number;
-  /** Tasks as a table, with `columns`. Undefined is the list. */
+  /** Notes and tasks as tables, with `noteColumns` and `columns`. Undefined is the list. */
   view?: QueryBlockView;
-  /** The table's columns, in order; the defaults when omitted. */
+  /** The task table's columns, in order; the defaults when omitted. */
   columns?: TaskColumnId[];
+  /** The note table's columns, in order; the defaults when omitted. */
+  noteColumns?: NoteColumnId[];
   /**
    * Options that could not be understood. They are reported beside the
    * results instead of hiding them, so a typo never blanks the block.
@@ -110,6 +122,13 @@ export interface QueryBlockItem {
   dependencyId?: string;
   createdAt?: number;
   updatedAt?: number;
+  /** For a note, how many other notes link to the note it is in. */
+  linkCount?: number;
+  /** For a note, its tasks, steps aside, and how many of them are done. */
+  taskTotal?: number;
+  taskDone?: number;
+  /** For a note, every tag it carries, inherited ones too, as `{ key, label }`. */
+  noteTags?: Array<{ key: string; label: string }>;
 }
 
 /** A diagnostic or option warning shown beside a block's results. */
@@ -139,6 +158,7 @@ export interface QueryBlockWriteOptions {
   direction?: 'asc' | 'desc';
   view?: 'list' | 'table';
   columns?: readonly string[];
+  noteColumns?: readonly string[];
 }
 
 /**
@@ -152,6 +172,7 @@ export function formatQueryBlock(query: string, options: QueryBlockWriteOptions 
     QUERY_BLOCK_LANGUAGE,
     options.view ? `view=${options.view}` : '',
     options.columns?.length ? `columns=${options.columns.join(',')}` : '',
+    options.noteColumns?.length ? `noteColumns=${options.noteColumns.join(',')}` : '',
     options.sort ? `sort=${options.sort}` : '',
     options.direction ? `dir=${options.direction}` : '',
   ]
@@ -180,10 +201,13 @@ export function parseQueryBlockInfo(
     const read = name === undefined ? undefined : OPTION_READERS.get(name);
     const warning = read
       ? read(value, options)
-      : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, or columns=.`;
+      : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, columns=, or noteColumns=.`;
     if (warning) {
       options.warnings.push(warning);
     }
+  }
+  if (options.noteColumns && options.view !== 'table') {
+    options.warnings.push('noteColumns= draws only with view=table; add view=table to see the notes as a table.');
   }
   return options;
 }
@@ -197,10 +221,13 @@ type OptionReader = (value: string, options: QueryBlockOptions) => string | unde
 /** The options a query block's info string may set, by lowercased name. */
 const OPTION_READERS = new Map<string, OptionReader>([
   ['sort', (value, options) => {
-    if (!isTaskColumnId(value)) {
-      return `sort must be a column, such as title, due, priority, created, or updated, not "${value}".`;
+    // A task column by its id or a name it goes by, such as for, or a note's.
+    const named = parseTaskColumns(value).columns.find((id) => id !== 'title');
+    const column = isTaskColumnId(value) ? value : (named ?? readNoteColumn(value));
+    if (!column) {
+      return `sort must be a column, such as title, due, priority, created, updated, or links, not "${value}".`;
     }
-    options.sort = value;
+    options.sort = column;
     return undefined;
   }],
   ['dir', (value, options) => {
@@ -225,6 +252,14 @@ const OPTION_READERS = new Map<string, OptionReader>([
       return undefined;
     }
     return `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`;
+  }],
+  ['notecolumns', (value, options) => {
+    const parsed = parseNoteColumns(value);
+    options.noteColumns = parsed.columns;
+    if (parsed.unknown.length === 0) {
+      return undefined;
+    }
+    return `noteColumns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${NOTE_COLUMNS.map((column) => column.id).join(', ')}, or a namespace such as #status.`;
   }],
   ['limit', (value, options) => {
     if (!/^\d+$/.test(value) || Number(value) <= 0) {
@@ -412,9 +447,11 @@ export function createQueryBlockSnapshot(
   }
 
   const results = evaluateQuery(index, parsed.node, reading.queryContext);
+  // A table reads the note columns, and so does a sort by one only notes have.
+  const table = options.view === 'table' || isNoteOnlySort(options.sort);
   const notes = [
-    ...results.sections.map((section) => createSectionItem(section, index)),
-    ...results.files.map(createFileItem),
+    ...results.sections.map((section) => createSectionItem(section, index, table)),
+    ...results.files.map((file) => createFileItem(file, index, table)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
     .map((task) => createTaskItem(task, index, statusNamespace))
@@ -454,6 +491,7 @@ export function describeQueryBlockCounts(snapshot: QueryBlockSnapshot): string {
 function createSectionItem(
   section: Section,
   index: WorkspaceIndex,
+  table: boolean,
 ): QueryBlockItem {
   const fileName = getFileName(section.filePath);
   const parent = section.parentSectionId
@@ -470,13 +508,22 @@ function createSectionItem(
     line: section.startLine,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
+    ...(table
+      ? describeNoteColumns(index, section.filePath, {
+          tasks: (index.files.get(section.filePath)?.tasks ?? []).filter(
+            (task) => task.lineNumber > section.startLine && task.lineNumber <= section.endLine,
+          ),
+          tagKeys: collectSectionTagKeys(index, section),
+          labels: section.tagLabels,
+        })
+      : {}),
   };
 }
 
 /**
  * Represents a note that matched only through its front matter.
  */
-function createFileItem(file: ParsedFile): QueryBlockItem {
+function createFileItem(file: ParsedFile, index: WorkspaceIndex, table: boolean): QueryBlockItem {
   const fileName = getFileName(file.filePath);
   return {
     id: `frontmatter:${file.filePath}`,
@@ -487,7 +534,77 @@ function createFileItem(file: ParsedFile): QueryBlockItem {
     line: 1,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
+    ...(table
+      ? describeNoteColumns(index, file.filePath, {
+          tasks: file.tasks,
+          tagKeys: file.frontmatterTags.map((tag) => tag.key),
+          labels: Object.fromEntries(file.frontmatterTags.map((tag) => [tag.key, tag.label])),
+        })
+      : {}),
   };
+}
+
+/** Whether a sort names a column only notes have, which only the note columns can answer. */
+function isNoteOnlySort(sort: QueryBlockSort | undefined): boolean {
+  return sort === 'links' || sort === 'tasks' || sort === 'tags' || (typeof sort === 'string' && sort.startsWith('#'));
+}
+
+/**
+ * Every tag an entry carries as a search finds it: its own heading's, the
+ * headings' above it, and its note's front matter, as `noteTags` promises.
+ */
+function collectSectionTagKeys(index: WorkspaceIndex, section: Section): string[] {
+  const keys = new Set(section.tags);
+  const visited = new Set<string>();
+  for (let parentId = section.parentSectionId; parentId && !visited.has(parentId); ) {
+    visited.add(parentId);
+    const parent = index.sections.get(parentId);
+    if (!parent) {
+      break;
+    }
+    parent.tags.forEach((key) => keys.add(key));
+    parentId = parent.parentSectionId;
+  }
+  index.files.get(section.filePath)?.frontmatterTags.forEach((tag) => keys.add(tag.key));
+  return [...keys];
+}
+
+/**
+ * What a table of notes shows of one entry besides its title and dates: the
+ * notes that link to its note, its tasks and how many are done, and its tags.
+ * Only a table reads them, so a list never pays for the links.
+ */
+function describeNoteColumns(
+  index: WorkspaceIndex,
+  filePath: string,
+  entry: { tasks: readonly Task[]; tagKeys: readonly string[]; labels: Readonly<Record<string, string>> },
+): Pick<QueryBlockItem, 'linkCount' | 'taskTotal' | 'taskDone' | 'noteTags'> {
+  const sources = new Set(getBacklinkIndex(index).toNote(filePath).map((link) => link.sourcePath));
+  const tasks = entry.tasks
+    .map((task) => index.tasks.get(task.id) ?? task)
+    .filter((task) => !task.parentTaskId);
+  return {
+    linkCount: sources.size,
+    taskTotal: tasks.length,
+    taskDone: tasks.filter((task) => task.completed).length,
+    noteTags: entry.tagKeys.map((key) => ({ key, label: entry.labels[key] ?? index.tags.get(key)?.label ?? key })),
+  };
+}
+
+/**
+ * The names an entry's tags in one namespace give, as a `#status` column
+ * shows them: `doing` for `#status/doing`, in the order written.
+ */
+export function namespaceValues(item: Pick<QueryBlockItem, 'noteTags'>, namespace: string): string[] {
+  const wanted = namespace.toLowerCase();
+  return (item.noteTags ?? []).flatMap((tag) => {
+    const found = readTagNamespace(tag.key);
+    if (found?.toLowerCase() !== wanted) {
+      return [];
+    }
+    const label = tag.label.replace(/^#/, '');
+    return [label.slice(label.indexOf('/') + 1)];
+  });
 }
 
 /** A matched task as a row, with the status its `#<statusNamespace>/` tag names. */
@@ -538,15 +655,17 @@ function directionOf(
 }
 
 /**
- * Orders notes alphabetically unless a date sort puts the newest first.
+ * Orders notes alphabetically unless a sort says otherwise: dates newest
+ * first and every other column ascending, until `dir=` turns it around. A
+ * note with nothing in the sorted column comes last either way.
  */
 function createNoteComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
-  const sign = direction === 'asc' ? -1 : 1;
-  return (left, right) =>
-    sign * compareBySort(left, right, sort) || compareTitles(left, right);
+  const natural = directionOf(sort, undefined);
+  const sign = (direction ?? natural) === natural ? 1 : -1;
+  return (left, right) => compareBySort(left, right, sort, sign) || compareTitles(left, right);
 }
 
 /**
@@ -558,8 +677,9 @@ function createTaskComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
+  // A column only notes have leaves the tasks in their own order.
   const byColumn =
-    sort === undefined
+    sort === undefined || !isTaskColumnId(sort)
       ? undefined
       : compareTasksByColumn({ column: sort, direction: directionOf(sort, direction) });
   return (left, right) =>
@@ -578,21 +698,55 @@ export function toTableTask(item: QueryBlockItem): TableTask {
 }
 
 /**
- * A note's part of a sort: its dates, newest first before the direction is
- * applied. A note has no other column, so any other sort leaves it be.
+ * A note's part of a sort: an empty value last, then the values in the
+ * column's natural order (dates newest first, the rest ascending) turned
+ * by `sign`. A column only tasks have leaves the notes be.
  */
 function compareBySort(
   left: QueryBlockItem,
   right: QueryBlockItem,
   sort: QueryBlockSort | undefined,
+  sign: number,
 ): number {
-  if (sort === 'created') {
-    return compareDescending(left.createdAt, right.createdAt);
+  const read = sort === undefined ? undefined : noteSortValue(sort);
+  if (!read) {
+    return 0;
   }
-  if (sort === 'updated') {
-    return compareDescending(left.updatedAt, right.updatedAt);
+  const [a, b] = [read(left), read(right)];
+  if (a === undefined || b === undefined) {
+    return (a === undefined ? 1 : 0) - (b === undefined ? 1 : 0);
   }
-  return 0;
+  const ascending =
+    typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+  const natural = sort === 'created' || sort === 'updated' ? -ascending : ascending;
+  return sign * natural;
+}
+
+/** How a note's value in a sorted column is read; undefined for a column notes do not have. */
+function noteSortValue(sort: QueryBlockSort): ((item: QueryBlockItem) => number | string | undefined) | undefined {
+  const namespace = noteColumnNamespace(sort as NoteColumnId);
+  if (namespace !== undefined) {
+    return (item) => namespaceValues(item, namespace).join(' ') || undefined;
+  }
+  return Object.hasOwn(NOTE_SORTS, sort) ? NOTE_SORTS[sort as keyof typeof NOTE_SORTS] : undefined;
+}
+
+/** Each fixed column's value as notes sort by it; undefined is an empty cell. */
+const NOTE_SORTS: Readonly<Record<Exclude<NoteColumnId, `#${string}`>, (item: QueryBlockItem) => number | string | undefined>> = {
+  created: (item) => item.createdAt,
+  updated: (item) => item.updatedAt,
+  title: (item) => item.title,
+  note: (item) => item.fileName,
+  links: (item) => item.linkCount,
+  tasks: (item) => openTasksOf(item),
+  tags: (item) => item.noteTags?.map((tag) => tag.label).join(' ') || undefined,
+};
+
+/** A note's open tasks, or undefined when it has none, so a note without tasks sorts last. */
+function openTasksOf(item: QueryBlockItem): number | undefined {
+  return item.taskTotal ? item.taskTotal - (item.taskDone ?? 0) : undefined;
 }
 
 /** Titles alphabetically, ignoring case and accents, then source order. */
@@ -624,10 +778,26 @@ function compareAscending(left?: number, right?: number): number {
   return left - right;
 }
 
-/** Newest first, with undated items still last. */
-function compareDescending(left?: number, right?: number): number {
-  if (left === undefined || right === undefined) {
-    return (left === undefined ? 1 : 0) - (right === undefined ? 1 : 0);
+/** One cell of a table of notes, as text; empty when the entry has nothing to show there. */
+export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId): string {
+  switch (column) {
+    case 'title':
+      return item.title;
+    case 'note':
+      return item.fileName.replace(/\.md$/i, '');
+    case 'created':
+      return item.createdAt === undefined ? '' : formatIsoDate(item.createdAt);
+    case 'updated':
+      return item.updatedAt === undefined ? '' : formatIsoDate(item.updatedAt);
+    case 'links':
+      return item.linkCount ? String(item.linkCount) : '';
+    case 'tasks':
+      return item.taskTotal ? `${item.taskDone ?? 0} of ${item.taskTotal} done` : '';
+    case 'tags':
+      return (item.noteTags ?? []).map((tag) => tag.label).join(' ');
+    default: {
+      const namespace = noteColumnNamespace(column);
+      return namespace === undefined ? '' : namespaceValues(item, namespace).join(', ');
+    }
   }
-  return right - left;
 }

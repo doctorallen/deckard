@@ -20,6 +20,8 @@ import {
   sampleFileName,
   takeSampleReadme,
 } from '../ui/commands/sampleWorkspace';
+import { buildHubTree, findBreadcrumbs } from '../ui/state/hubTree';
+import { computeTagProgress, describeTagProgress } from '../domain/tasks/tagProgress';
 import { createAgenda } from '../ui/state/agendaState';
 import { rankSimilarWording } from '../ui/state/relatedNotesRanking';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -169,7 +171,7 @@ suite('Sample workspace', () => {
     for (const value of QUERY_HAS_VALUES) {
       assert.ok(used.has(`has:${value}`), `a search uses has:${value}`);
     }
-    assert.strictEqual(blocks, 5, 'the Query blocks note has five blocks');
+    assert.strictEqual(blocks, 6, 'the Query blocks note has six blocks');
   });
 
   test('finds what each tour note says it finds', async () => {
@@ -301,10 +303,39 @@ suite('Sample workspace', () => {
       '#person/sable-ortiz',
       '#project/argent-protocol',
       '#project/ghostline-relay',
+      '#project/receiver-firmware',
       '#team/harbor',
       '#team/wardens',
     ]);
     assert.ok((index.tags.get('#project/ashen-mirror')?.count ?? 0) >= 3, 'Ashen Mirror is used enough to want a hub');
+
+    // The Hubs view, as the Tags note draws it: a sub-project by up:, a note
+    // under it by up: alone, and a note under the relay by its tag.
+    const tree = (nodes: ReturnType<typeof buildHubTree>, depth = 0): string[] =>
+      nodes.flatMap((node) => [`${'  '.repeat(depth)}${node.label}${node.description ? `: ${node.description}` : ''}`, ...tree(node.children, depth + 1)]);
+    assert.deepStrictEqual(tree(buildHubTree(index, Date.now())), [
+      'People',
+      '  Sable Ortiz',
+      'Projects',
+      '  Argent Protocol: 1 of 3 done',
+      '  Ghostline Relay: 3 of 23 done',
+      '    Receiver firmware',
+      '      Firmware bench log',
+      '    Relay route survey',
+      'Teams',
+      '  Harbor: 0 of 2 done',
+      '  Wardens: 3 of 21 done',
+    ]);
+    assert.deepStrictEqual(findBreadcrumbs(index, 'projects/Firmware bench log.md').map((crumb) => crumb.labels.join(' › ')), [
+      'Projects › Ghostline Relay › Receiver firmware › Firmware bench log',
+    ]);
+    const relay = computeTagProgress(index, '#project/ghostline-relay', Date.now());
+    assert.ok(relay);
+    assert.strictEqual(
+      describeTagProgress(relay, Date.now(), createQueryContext(Date.now()).taskPolicy),
+      '3 of 23 done · 2 overdue · 1 needs a new date · next due today',
+      'the progress the Tags note quotes',
+    );
     // A tag is written only where the tour means one: every tag is
     // namespaced, but for the parked tag and two headings of the log.
     const stray = [...index.tags.keys()].filter(
