@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Highlights
+
+- Every page is one click away: a Pages view in the sidebar, Go to… on Cmd/Ctrl+Shift+Alt+P, and a DECKARD ▾ menu at the top of every page.
+- Safe in a code repository: Deckard says when it reads the whole workspace, asks before its first note, and can be paused per workspace.
+- Markdown links count as links, a work sample shows Deckard on a team lead's week, and Capture reads who a task is for.
+
 ### Added
 
 - **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
