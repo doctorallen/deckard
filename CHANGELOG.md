@@ -170,6 +170,13 @@
 
 ### Fixed
 
+- **Home's cards stand out from their widget.** In every theme a task,
+  saved search, or tag row in a Home widget sits on the raised surface, a
+  step above the widget, as well as inside its border. LCARS's widget
+  descriptions in Customize Home take the button's ink rather than a gray
+  that vanished into it, and a card's file and line, carried down below it,
+  no longer bands Synthwave's glow across the card.
+
 - **Citations are not people.** A Pandoc citation such as
   `[@smith2020; @lee2019]` made each key a person, and Stats offered to
   merge keys that looked alike. A person marker inside a bracketed citation

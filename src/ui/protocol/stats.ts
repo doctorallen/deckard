@@ -45,6 +45,11 @@ export interface StatsUnreadableItem extends UnreadableNote {
 export interface DeckardStatsSnapshot {
   updatedAt: number;
   /**
+   * When the snapshot was built, which "5 minutes ago" is measured from:
+   * the page is drawn from it at once and says nothing that ticks.
+   */
+  builtAt: number;
+  /**
    * Notes the last scan or update could not read, so they are not indexed.
    * A search that misses one of these looks like a bad search; this is
    * where it is said instead.

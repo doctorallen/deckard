@@ -6,7 +6,15 @@
     ><div
       ><p
           class="eyebrow"
-        >DECKARD / TASK BOARD</p
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          > / TASK BOARD</p
         ><h1
         >Task Board</h1
         ></div
@@ -430,7 +438,7 @@
           ><span
             class="query-facet-values"
           ><button
-              aria-label="Due: Overdue, 40. Enter adds AND is:overdue, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+              aria-label="Due: Overdue, 6. Enter adds AND is:overdue, Alt-Enter adds AND NOT, Shift-Enter adds OR."
               class="query-facet-value"
               data-action="facet"
               data-clause="is:overdue"
@@ -439,10 +447,22 @@
               data-tip-overflow="Overdue"
             >Overdue<span
                 class="query-facet-count"
-              >40</span
+              >6</span
               ></button
             ><button
-              aria-label="Due: Later, 12. Enter adds AND due >= 7d, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+              aria-label="Due: Next 7 days, 10. Enter adds AND (due >= today AND due < 7d), Alt-Enter adds AND NOT, Shift-Enter adds OR."
+              class="query-facet-value"
+              data-action="facet"
+              data-clause="(due >= today AND due < 7d)"
+              data-facet-id="due"
+              data-tip="Click — AND (due >= today AND due < 7d): keep only results that match it&#10;Alt-click — AND NOT (due >= today AND due < 7d): leave those results out&#10;Shift-click — OR (due >= today AND due < 7d): widen the last value chosen here, so either matches"
+              data-tip-overflow="Next 7 days"
+            >Next 7 days<span
+                class="query-facet-count"
+              >10</span
+              ></button
+            ><button
+              aria-label="Due: Later, 36. Enter adds AND due >= 7d, Alt-Enter adds AND NOT, Shift-Enter adds OR."
               class="query-facet-value"
               data-action="facet"
               data-clause="due >= 7d"
@@ -451,7 +471,7 @@
               data-tip-overflow="Later"
             >Later<span
                 class="query-facet-count"
-              >12</span
+              >36</span
               ></button
             ><button
               aria-label="Due: No date, 2. Enter adds AND no:due, Alt-Enter adds AND NOT, Shift-Enter adds OR."
@@ -532,6 +552,7 @@
     ><div
         aria-label="Task board"
         class="board task-board"
+        role="group"
       ><section
           aria-label="No status, 13 tasks"
           class="board-column"
@@ -554,9 +575,11 @@
             type="button"
           >+ Add task</button
           ><div
+            aria-label="No status"
             class="board-cards"
+            role="list"
           ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 1, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -565,6 +588,7 @@
               data-task-id="task-pg15go-pwocl3"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="0"
             ><input
                 aria-label="Complete Later task 1"
@@ -638,7 +662,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 2, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -647,6 +671,7 @@
               data-task-id="task-ov6q2g-1ppollx"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 2"
@@ -720,7 +745,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 3, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -729,6 +754,7 @@
               data-task-id="task-45ajmg-16kc8qr"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 3"
@@ -802,7 +828,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 4, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -811,6 +837,7 @@
               data-task-id="task-gklmtk-169cnat"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 4"
@@ -884,7 +911,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 5, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -893,6 +920,7 @@
               data-task-id="task-xqm8pk-1gmxvj"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 5"
@@ -966,7 +994,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 6, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -975,6 +1003,7 @@
               data-task-id="task-ugjnsd-1jpuxok"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 6"
@@ -1048,7 +1077,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 7, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -1057,6 +1086,7 @@
               data-task-id="task-9qnhcd-9ofrza"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 7"
@@ -1130,7 +1160,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 8, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -1139,6 +1169,7 @@
               data-task-id="task-az8p3n-yohk9w"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 8"
@@ -1212,7 +1243,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 9, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -1221,6 +1252,7 @@
               data-task-id="task-vp4vjn-1gjd4gi"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 9"
@@ -1294,7 +1326,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 10, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -1303,6 +1335,7 @@
               data-task-id="task-e8hp96-1d2bnjv"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 10"
@@ -1376,7 +1409,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 11, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -1385,6 +1418,7 @@
               data-task-id="task-keeplw-vw1zcn"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 11"
@@ -1458,7 +1492,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Later task 12, No status, due 2026-12-01"
               class="board-card task"
               data-card-column="status:"
@@ -1467,6 +1501,7 @@
               data-task-id="task-fzsxi6-m08wy7"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Later task 12"
@@ -1540,7 +1575,7 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Undated task, No status"
               class="board-card task"
               data-card-column="status:"
@@ -1549,6 +1584,7 @@
               data-task-id="task-o1mm8r-nx6pgq"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Undated task"
@@ -1643,11 +1679,11 @@
             class="board-cards"
           ><p
               class="board-empty"
-            >Drop a task here</p
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
             ></div
           ></section
         ><section
-          aria-label="Doing, 40 tasks, 40 overdue"
+          aria-label="Doing, 40 tasks, 6 overdue"
           class="board-column"
           data-column-id="status:doing"
           data-droppable="true"
@@ -1658,7 +1694,7 @@
             >Doing</span
             ><span
               class="board-count"
-            >40 · 40 overdue</span
+            >40 · 6 overdue</span
             ></h2
           ><button
             class="board-add"
@@ -1668,17 +1704,20 @@
             type="button"
           >+ Add task</button
           ><div
+            aria-label="Doing"
             class="board-cards"
+            role="list"
           ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Chase the replicant through the neon market and file the report before the rain, Doing, overdue 20 days · 2026-09-01, 1 of 2 steps"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report before the rain, Doing, overdue 6 days · 2026-09-15, 1 of 2 steps"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="3"
-              data-task-id="task-sdpvw2-16k9oi3"
+              data-task-id="task-84k6vj-elap6m"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Complete Chase the replicant through the neon market and file the report before the rain"
@@ -1697,9 +1736,9 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 20 days · <span
+                  >overdue 6 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-15</span
                     ></span
                   ></p
                 ><p
@@ -1762,18 +1801,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 2, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 2, Doing, overdue 5 days · 2026-09-16"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="6"
-              data-task-id="task-ykjd1b-176qwlw"
+              data-task-id="task-w0wf19-6ga1pk"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 2"
+                aria-label="Complete Board task 2"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -1784,14 +1824,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 2</div
+                >Board task 2</div
                 ><p
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 20 days · <span
+                  >overdue 5 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-16</span
                     ></span
                   ></p
                 ><span
@@ -1803,7 +1843,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 2: status, priority, or due date"
+                  aria-label="Change Board task 2: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -1845,18 +1885,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 3, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 3, Doing, overdue 4 days · 2026-09-17"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="7"
-              data-task-id="task-t346u7-1yrilhi"
+              data-task-id="task-k4oaq-1aovw8l"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 3"
+                aria-label="Complete Board task 3"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -1867,14 +1908,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 3</div
+                >Board task 3</div
                 ><p
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 20 days · <span
+                  >overdue 4 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-17</span
                     ></span
                   ></p
                 ><span
@@ -1886,7 +1927,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 3: status, priority, or due date"
+                  aria-label="Change Board task 3: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -1928,18 +1969,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 4, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 4, Doing, overdue 3 days · 2026-09-18"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="8"
-              data-task-id="task-nlp0n3-8oxzs0"
+              data-task-id="task-x55rmp-50zryy"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 4"
+                aria-label="Complete Board task 4"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -1950,14 +1992,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 4</div
+                >Board task 4</div
                 ><p
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 20 days · <span
+                  >overdue 3 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-18</span
                     ></span
                   ></p
                 ><span
@@ -1969,7 +2011,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 4: status, priority, or due date"
+                  aria-label="Change Board task 4: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2011,18 +2053,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 5, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 5, Doing, overdue 2 days · 2026-09-19"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="9"
-              data-task-id="task-i49ufz-53ao0e"
+              data-task-id="task-5ax70g-1fb32hr"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 5"
+                aria-label="Complete Board task 5"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2033,14 +2076,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 5</div
+                >Board task 5</div
                 ><p
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 20 days · <span
+                  >overdue 2 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-19</span
                     ></span
                   ></p
                 ><span
@@ -2052,7 +2095,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 5: status, priority, or due date"
+                  aria-label="Change Board task 5: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2094,18 +2137,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 6, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 6, Doing, overdue 1 day · 2026-09-20"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="10"
-              data-task-id="task-u517ao-1eg8d81"
+              data-task-id="task-u8wnvd-1qvaths"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 6"
+                aria-label="Complete Board task 6"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2116,14 +2160,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 6</div
+                >Board task 6</div
                 ><p
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 20 days · <span
+                  >overdue 1 day · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-20</span
                     ></span
                   ></p
                 ><span
@@ -2135,7 +2179,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 6: status, priority, or due date"
+                  aria-label="Change Board task 6: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2177,18 +2221,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 7, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 7, Doing, due today · 2026-09-21"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="11"
-              data-task-id="task-onm13k-948l3r"
+              data-task-id="task-876ars-1wk0kwx"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 7"
+                aria-label="Complete Board task 7"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2199,14 +2244,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 7</div
+                >Board task 7</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                    class="due-today"
+                  >due today · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-21</span
                     ></span
                   ></p
                 ><span
@@ -2218,7 +2263,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 7: status, priority, or due date"
+                  aria-label="Change Board task 7: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2260,18 +2305,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 8, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 8, Doing, due today · 2026-09-21"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="12"
-              data-task-id="task-j66uwg-1rm60xx"
+              data-task-id="task-lpp6zs-85vs23"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 8"
+                aria-label="Complete Board task 8"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2282,14 +2328,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 8</div
+                >Board task 8</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                    class="due-today"
+                  >due today · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-21</span
                     ></span
                   ></p
                 ><span
@@ -2301,7 +2347,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 8: status, priority, or due date"
+                  aria-label="Change Board task 8: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2343,18 +2389,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 9, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 9, Doing, due today · 2026-09-21"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="13"
-              data-task-id="task-doropc-1d9sr1j"
+              data-task-id="task-z8837s-1iohyo1"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 9"
+                aria-label="Complete Board task 9"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2365,14 +2412,14 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 9</div
+                >Board task 9</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                    class="due-today"
+                  >due today · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-21</span
                     ></span
                   ></p
                 ><span
@@ -2384,7 +2431,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 9: status, priority, or due date"
+                  aria-label="Change Board task 9: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2426,18 +2473,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 10, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 10, Doing, due tomorrow · 2026-09-22"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="14"
-              data-task-id="task-f19947-jzjceu"
+              data-task-id="task-rhzoks-1tfib2x"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 10"
+                aria-label="Complete Board task 10"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2448,14 +2496,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 10</div
+                >Board task 10</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                  >due tomorrow · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-22</span
                     ></span
                   ></p
                 ><span
@@ -2467,7 +2514,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 10: status, priority, or due date"
+                  aria-label="Change Board task 10: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2509,18 +2556,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 11, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 11, Doing, due in 2 days · 2026-09-23"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="15"
-              data-task-id="task-1mnxxz-1cqc652"
+              data-task-id="task-ek1utt-12cttbm"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 11"
+                aria-label="Complete Board task 11"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2531,14 +2579,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 11</div
+                >Board task 11</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                  >due in 2 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-23</span
                     ></span
                   ></p
                 ><span
@@ -2550,7 +2597,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 11: status, priority, or due date"
+                  aria-label="Change Board task 11: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2592,18 +2639,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 12, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 12, Doing, due in 3 days · 2026-09-24"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="16"
-              data-task-id="task-ial505-fyz33a"
+              data-task-id="task-ef0nqq-cry4gb"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 12"
+                aria-label="Complete Board task 12"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2614,14 +2662,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 12</div
+                >Board task 12</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                  >due in 3 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-24</span
                     ></span
                   ></p
                 ><span
@@ -2633,7 +2680,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 12: status, priority, or due date"
+                  aria-label="Change Board task 12: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2675,18 +2722,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 13, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 13, Doing, due in 4 days · 2026-09-25"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="17"
-              data-task-id="task-yyic2b-gzzbgm"
+              data-task-id="task-rn0vnv-ue48yk"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 13"
+                aria-label="Complete Board task 13"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2697,14 +2745,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 13</div
+                >Board task 13</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                  >due in 4 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-25</span
                     ></span
                   ></p
                 ><span
@@ -2716,7 +2763,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 13: status, priority, or due date"
+                  aria-label="Change Board task 13: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2758,18 +2805,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 14, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 14, Doing, due in 5 days · 2026-09-26"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="18"
-              data-task-id="task-jeoiun-1uxxcxq"
+              data-task-id="task-1c1mwo-7dimit"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 14"
+                aria-label="Complete Board task 14"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2780,14 +2828,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 14</div
+                >Board task 14</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue"
-                  >overdue 20 days · <span
+                  >due in 5 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-26</span
                     ></span
                   ></p
                 ><span
@@ -2799,7 +2846,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 14: status, priority, or due date"
+                  aria-label="Change Board task 14: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2841,18 +2888,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 15, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 15, Doing, due in 5 days · 2026-09-26"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="19"
-              data-task-id="task-2qrbsh-zhuj7y"
+              data-task-id="task-5dk322-1j6vjzx"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 15"
+                aria-label="Complete Board task 15"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2863,14 +2911,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 15</div
+                >Board task 15</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 5 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-26</span
                     ></span
                   ></p
                 ><span
@@ -2882,7 +2929,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 15: status, priority, or due date"
+                  aria-label="Change Board task 15: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -2924,18 +2971,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 16, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 16, Doing, due in 6 days · 2026-09-27"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="20"
-              data-task-id="task-yoqfpk-eduelz"
+              data-task-id="task-kkv26q-1jn60bv"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 16"
+                aria-label="Complete Board task 16"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -2946,14 +2994,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 16</div
+                >Board task 16</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 6 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-27</span
                     ></span
                   ></p
                 ><span
@@ -2965,7 +3012,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 16: status, priority, or due date"
+                  aria-label="Change Board task 16: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3007,18 +3054,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 17, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 17, Doing, due in 7 days · 2026-09-28"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="21"
-              data-task-id="task-i0t8ne-5f560n"
+              data-task-id="task-lh6h7v-4oh0mq"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 17"
+                aria-label="Complete Board task 17"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3029,14 +3077,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 17</div
+                >Board task 17</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 7 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-28</span
                     ></span
                   ></p
                 ><span
@@ -3048,7 +3095,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 17: status, priority, or due date"
+                  aria-label="Change Board task 17: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3090,18 +3137,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 18, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 18, Doing, due in 8 days · 2026-09-29"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="22"
-              data-task-id="task-1cw1l8-1lh4icb"
+              data-task-id="task-7hw1co-1w949u5"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 18"
+                aria-label="Complete Board task 18"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3112,14 +3160,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 18</div
+                >Board task 18</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 8 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-29</span
                     ></span
                   ></p
                 ><span
@@ -3131,7 +3178,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 18: status, priority, or due date"
+                  aria-label="Change Board task 18: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3173,18 +3220,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 19, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 19, Doing, due in 9 days · 2026-09-30"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="23"
-              data-task-id="task-fb15gy-g30mnv"
+              data-task-id="task-878h1s-mala3"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 19"
+                aria-label="Complete Board task 19"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3195,14 +3243,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 19</div
+                >Board task 19</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 9 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-09-30</span
                     ></span
                   ></p
                 ><span
@@ -3214,7 +3261,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 19: status, priority, or due date"
+                  aria-label="Change Board task 19: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3256,18 +3303,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 20, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 20, Doing, due in 10 days · 2026-10-01"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="24"
-              data-task-id="task-4cjfx7-mj3nd2"
+              data-task-id="task-4xb4tn-wzjcv8"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 20"
+                aria-label="Complete Board task 20"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3278,14 +3326,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 20</div
+                >Board task 20</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 10 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-01</span
                     ></span
                   ></p
                 ><span
@@ -3297,7 +3344,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 20: status, priority, or due date"
+                  aria-label="Change Board task 20: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3339,18 +3386,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 21, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 21, Doing, due in 10 days · 2026-10-01"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="25"
-              data-task-id="task-l0gmzd-1y3sdou"
+              data-task-id="task-vsoo9-1prrf2c"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 21"
+                aria-label="Complete Board task 21"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3361,14 +3409,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 21</div
+                >Board task 21</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 10 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-01</span
                     ></span
                   ></p
                 ><span
@@ -3380,7 +3427,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 21: status, priority, or due date"
+                  aria-label="Change Board task 21: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3422,18 +3469,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 22, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 22, Doing, due in 11 days · 2026-10-02"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="26"
-              data-task-id="task-xcq7xl-1bdadde"
+              data-task-id="task-s39twa-1si5w1l"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 22"
+                aria-label="Complete Board task 22"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3444,14 +3492,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 22</div
+                >Board task 22</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 11 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-02</span
                     ></span
                   ></p
                 ><span
@@ -3463,7 +3510,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 22: status, priority, or due date"
+                  aria-label="Change Board task 22: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3505,18 +3552,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 23, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 23, Doing, due in 12 days · 2026-10-03"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="27"
-              data-task-id="task-got0vf-1ish5si"
+              data-task-id="task-dyrpib-gdh5sq"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 23"
+                aria-label="Complete Board task 23"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3527,14 +3575,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 23</div
+                >Board task 23</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 12 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-03</span
                     ></span
                   ></p
                 ><span
@@ -3546,7 +3593,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 23: status, priority, or due date"
+                  aria-label="Change Board task 23: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3588,18 +3635,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 24, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 24, Doing, due in 13 days · 2026-10-04"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="28"
-              data-task-id="task-vtt9-1u49nwm"
+              data-task-id="task-f0at28-1iehzzz"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 24"
+                aria-label="Complete Board task 24"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3610,14 +3658,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 24</div
+                >Board task 24</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 13 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-04</span
                     ></span
                   ></p
                 ><span
@@ -3629,7 +3676,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 24: status, priority, or due date"
+                  aria-label="Change Board task 24: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3671,18 +3718,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 25, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 25, Doing, due in 14 days · 2026-10-05"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="29"
-              data-task-id="task-gn1d8x-5tpl9a"
+              data-task-id="task-r1qqcd-zwmfps"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 25"
+                aria-label="Complete Board task 25"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3693,14 +3741,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 25</div
+                >Board task 25</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 14 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-05</span
                     ></span
                   ></p
                 ><span
@@ -3712,7 +3759,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 25: status, priority, or due date"
+                  aria-label="Change Board task 25: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3754,18 +3801,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 26, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 26, Doing, due in 15 days · 2026-10-06"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="30"
-              data-task-id="task-faxqo6-1s35gmh"
+              data-task-id="task-bufr7p-zerp1e"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 26"
+                aria-label="Complete Board task 26"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3776,14 +3824,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 26</div
+                >Board task 26</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 15 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-06</span
                     ></span
                   ></p
                 ><span
@@ -3795,7 +3842,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 26: status, priority, or due date"
+                  aria-label="Change Board task 26: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3837,18 +3884,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 27, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 27, Doing, due in 15 days · 2026-10-06"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="31"
-              data-task-id="task-1czge0-5ccdwp"
+              data-task-id="task-7sxb2b-icr2ua"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 27"
+                aria-label="Complete Board task 27"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3859,14 +3907,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 27</div
+                >Board task 27</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 15 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-06</span
                     ></span
                   ></p
                 ><span
@@ -3878,7 +3925,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 27: status, priority, or due date"
+                  aria-label="Change Board task 27: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -3920,18 +3967,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 28, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 28, Doing, due in 16 days · 2026-10-07"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="32"
-              data-task-id="task-i0wng6-o5ldsx"
+              data-task-id="task-l657i8-1nnb2q9"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 28"
+                aria-label="Complete Board task 28"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -3942,14 +3990,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 28</div
+                >Board task 28</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 16 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-07</span
                     ></span
                   ></p
                 ><span
@@ -3961,7 +4008,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 28: status, priority, or due date"
+                  aria-label="Change Board task 28: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4003,18 +4050,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 29, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 29, Doing, due in 17 days · 2026-10-08"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="33"
-              data-task-id="task-yotuic-1fg4wdl"
+              data-task-id="task-kvwbwd-zgo0hg"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 29"
+                aria-label="Complete Board task 29"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4025,14 +4073,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 29</div
+                >Board task 29</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 17 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-08</span
                     ></span
                   ></p
                 ><span
@@ -4044,7 +4091,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 29: status, priority, or due date"
+                  aria-label="Change Board task 29: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4086,18 +4133,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 30, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 30, Doing, due in 18 days · 2026-10-09"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="34"
-              data-task-id="task-nqc4yl-11cayja"
+              data-task-id="task-zbiyp1-107e9po"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 30"
+                aria-label="Complete Board task 30"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4108,14 +4156,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 30</div
+                >Board task 30</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 18 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-09</span
                     ></span
                   ></p
                 ><span
@@ -4127,7 +4174,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 30: status, priority, or due date"
+                  aria-label="Change Board task 30: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4169,18 +4216,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 31, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 31, Doing, due in 19 days · 2026-10-10"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="35"
-              data-task-id="task-umupyd-iug8ea"
+              data-task-id="task-k0gkvn-13z0yze"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 31"
+                aria-label="Complete Board task 31"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4191,14 +4239,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 31</div
+                >Board task 31</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 19 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-10</span
                     ></span
                   ></p
                 ><span
@@ -4210,7 +4257,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 31: status, priority, or due date"
+                  aria-label="Change Board task 31: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4252,18 +4299,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 32, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 32, Doing, due in 20 days · 2026-10-11"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="36"
-              data-task-id="task-dyxiw7-v7fa8m"
+              data-task-id="task-m1kyiy-vuclh"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 32"
+                aria-label="Complete Board task 32"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4274,14 +4322,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 32</div
+                >Board task 32</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 20 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-11</span
                     ></span
                   ></p
                 ><span
@@ -4293,7 +4340,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 32: status, priority, or due date"
+                  aria-label="Change Board task 32: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4335,18 +4382,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 33, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 33, Doing, due in 20 days · 2026-10-11"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="37"
-              data-task-id="task-2ozo5z-1ij95h6"
+              data-task-id="task-i02idk-1mxg2mp"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 33"
+                aria-label="Complete Board task 33"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4357,14 +4405,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 33</div
+                >Board task 33</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 20 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-11</span
                     ></span
                   ></p
                 ><span
@@ -4376,7 +4423,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 33: status, priority, or due date"
+                  aria-label="Change Board task 33: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4418,18 +4465,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 34, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 34, Doing, due in 21 days · 2026-10-12"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="38"
-              data-task-id="task-jcwv85-1ygmhcu"
+              data-task-id="task-az006z-1mo5hto"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 34"
+                aria-label="Complete Board task 34"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4440,14 +4488,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 34</div
+                >Board task 34</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 21 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-12</span
                     ></span
                   ></p
                 ><span
@@ -4459,7 +4506,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 34: status, priority, or due date"
+                  aria-label="Change Board task 34: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4501,18 +4548,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 35, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 35, Doing, due in 22 days · 2026-10-13"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="39"
-              data-task-id="task-z09zot-13h052q"
+              data-task-id="task-v31j7m-sd0b3z"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 35"
+                aria-label="Complete Board task 35"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4523,14 +4571,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 35</div
+                >Board task 35</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 22 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-13</span
                     ></span
                   ></p
                 ><span
@@ -4542,7 +4589,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 35: status, priority, or due date"
+                  aria-label="Change Board task 35: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4584,18 +4631,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 36, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 36, Doing, due in 23 days · 2026-10-14"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="40"
-              data-task-id="task-42uyd8-1c8b1wb"
+              data-task-id="task-fvqk2y-vcvefj"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 36"
+                aria-label="Complete Board task 36"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4606,14 +4654,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 36</div
+                >Board task 36</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 23 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-14</span
                     ></span
                   ></p
                 ><span
@@ -4625,7 +4672,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 36: status, priority, or due date"
+                  aria-label="Change Board task 36: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4667,18 +4714,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 37, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 37, Doing, due in 24 days · 2026-10-15"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="41"
-              data-task-id="task-kqs5fe-scx1kn"
+              data-task-id="task-d3byhl-1kfkbck"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 37"
+                aria-label="Complete Board task 37"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4689,14 +4737,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 37</div
+                >Board task 37</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 24 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-15</span
                     ></span
                   ></p
                 ><span
@@ -4708,7 +4755,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 37: status, priority, or due date"
+                  aria-label="Change Board task 37: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4750,18 +4797,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 38, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 38, Doing, due in 25 days · 2026-10-16"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="42"
-              data-task-id="task-xmephk-rpkstr"
+              data-task-id="task-sypkx0-1m4d90l"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 38"
+                aria-label="Complete Board task 38"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4772,14 +4820,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 38</div
+                >Board task 38</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 25 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-16</span
                     ></span
                   ></p
                 ><span
@@ -4791,7 +4838,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 38: status, priority, or due date"
+                  aria-label="Change Board task 38: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4833,18 +4880,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 39, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 39, Doing, due in 25 days · 2026-10-16"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="43"
-              data-task-id="task-gyhife-9svht7"
+              data-task-id="task-ox74rm-1bm6gpd"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 39"
+                aria-label="Complete Board task 39"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4855,14 +4903,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 39</div
+                >Board task 39</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 25 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-16</span
                     ></span
                   ></p
                 ><span
@@ -4874,7 +4921,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 39: status, priority, or due date"
+                  aria-label="Change Board task 39: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -4916,18 +4963,19 @@
                 ></div
               ></article
             ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
-              aria-label="Overdue task 40, Doing, overdue 20 days · 2026-09-01"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Board task 40, Doing, due in 26 days · 2026-10-17"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
               data-line="44"
-              data-task-id="task-rwz7z5-1ichuxi"
+              data-task-id="task-voaaeu-3mysun"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Overdue task 40"
+                aria-label="Complete Board task 40"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -4938,14 +4986,13 @@
                 class="task-summary"
               ><div
                   class="task-title"
-                >Overdue task 40</div
+                >Board task 40</div
                 ><p
                   class="board-details source"
                 ><span
-                    class="overdue quiet"
-                  >overdue 20 days · <span
+                  >due in 26 days · <span
                       class="board-date"
-                    >2026-09-01</span
+                    >2026-10-17</span
                     ></span
                   ></p
                 ><span
@@ -4957,7 +5004,7 @@
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Overdue task 40: status, priority, or due date"
+                  aria-label="Change Board task 40: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -5015,9 +5062,11 @@
             >1</span
             ></h2
           ><div
+            aria-label="Done"
             class="board-cards"
+            role="list"
           ><article
-              aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Finished task, Done"
               class="board-card completed task"
               data-card-column="done"
@@ -5026,6 +5075,7 @@
               data-task-id="task-pmzt6q-tfv9dl"
               data-tip-around=""
               draggable="true"
+              role="listitem"
               tabindex="-1"
             ><input
                 aria-label="Reopen Finished task"

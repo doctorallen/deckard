@@ -3,14 +3,27 @@
 > <main
     id="app"
   ><header
-    ><p
-        class="eyebrow"
-      >DECKARD / LOCAL TELEMETRY</p
-      ><h1
-      >Workspace Stats</h1
+    ><div
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          > / STATS</p
+        ><h1
+        >Workspace Stats</h1
+        ></div
       ><p
         class="updated"
-      >Index last refreshed: Not indexed yet <button
+      >Index last refreshed: <span
+          title="9/21/2026, 11:55:00 AM"
+        >5 minutes ago</span
+        > <button
           class="reindex"
           data-action="reindex"
           data-tip="Read every note again"
@@ -128,42 +141,6 @@
               ><div
                 ><div
                     class="label"
-                  >note-10</div
-                  ><div
-                    class="detail"
-                  >notes/note-10.md</div
-                  ></div
-                ></div
-              ></li
-            ><li
-            ><div
-                class="row stat-row"
-                data-index="4"
-                data-list="orphanNotes"
-                data-tip="Open note"
-                role="button"
-                tabindex="0"
-              ><div
-                ><div
-                    class="label"
-                  >note-11</div
-                  ><div
-                    class="detail"
-                  >notes/note-11.md</div
-                  ></div
-                ></div
-              ></li
-            ><li
-            ><div
-                class="row stat-row"
-                data-index="5"
-                data-list="orphanNotes"
-                data-tip="Open note"
-                role="button"
-                tabindex="0"
-              ><div
-                ><div
-                    class="label"
                   >note-2</div
                   ><div
                     class="detail"
@@ -174,7 +151,7 @@
             ><li
             ><div
                 class="row stat-row"
-                data-index="6"
+                data-index="4"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -192,7 +169,7 @@
             ><li
             ><div
                 class="row stat-row"
-                data-index="7"
+                data-index="5"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -210,7 +187,7 @@
             ><li
             ><div
                 class="row stat-row"
-                data-index="8"
+                data-index="6"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -228,7 +205,7 @@
             ><li
             ><div
                 class="row stat-row"
-                data-index="9"
+                data-index="7"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -244,10 +221,9 @@
                 ></div
               ></li
             ><li
-              class="is-more"
             ><div
                 class="row stat-row"
-                data-index="10"
+                data-index="8"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -263,10 +239,9 @@
                 ></div
               ></li
             ><li
-              class="is-more"
             ><div
                 class="row stat-row"
-                data-index="11"
+                data-index="9"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -285,7 +260,7 @@
               class="is-more"
             ><div
                 class="row stat-row"
-                data-index="12"
+                data-index="10"
                 data-list="orphanNotes"
                 data-tip="Open note"
                 role="button"
@@ -297,6 +272,44 @@
                   ><div
                     class="detail"
                   >notes/note-9.md</div
+                  ></div
+                ></div
+              ></li
+            ><li
+              class="is-more"
+            ><div
+                class="row stat-row"
+                data-index="11"
+                data-list="orphanNotes"
+                data-tip="Open note"
+                role="button"
+                tabindex="0"
+              ><div
+                ><div
+                    class="label"
+                  >note-10</div
+                  ><div
+                    class="detail"
+                  >notes/note-10.md</div
+                  ></div
+                ></div
+              ></li
+            ><li
+              class="is-more"
+            ><div
+                class="row stat-row"
+                data-index="12"
+                data-list="orphanNotes"
+                data-tip="Open note"
+                role="button"
+                tabindex="0"
+              ><div
+                ><div
+                    class="label"
+                  >note-11</div
+                  ><div
+                    class="detail"
+                  >notes/note-11.md</div
                   ></div
                 ></div
               ></li
@@ -341,11 +354,11 @@
         >14</strong
         ></article
       ><button
-        aria-label="Notes, 29, No change in the last 7 days. Open a search for every note"
+        aria-label="Notes, 29, No change in the last 7 days. Open a search for every note. Each heading, and each tagged line, is a note, so a file can hold several"
         class="metric metric-open"
         data-action="open-search"
         data-query="is:note"
-        data-tip="Open a search for every note. The line counts notes by the date each note was written, over the last 12 weeks."
+        data-tip="Open a search for every note. Each heading, and each tagged line, is a note, so a file can hold several. The line counts notes by the date each note was written, over the last 12 weeks."
         type="button"
       ><span
           class="metric-label"
@@ -828,7 +841,7 @@
         class="metric"
       ><span
           class="metric-label"
-        >Wiki links</span
+        >Links</span
         ><strong
           class="metric-value"
         >0</strong

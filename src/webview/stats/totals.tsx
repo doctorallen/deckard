@@ -31,7 +31,7 @@ export function describeAge(milliseconds: number): string {
  * 7:58:24 PM" asked a reader to subtract it from now. Reindex reads every
  * note again.
  */
-export function StatsHeader({ updatedAt }: { readonly updatedAt: number }) {
+export function StatsHeader({ updatedAt, builtAt }: { readonly updatedAt: number; readonly builtAt: number }) {
   return (
     <header>
       <div>
@@ -40,7 +40,7 @@ export function StatsHeader({ updatedAt }: { readonly updatedAt: number }) {
       </div>
       <p class="updated">
         {updatedAt
-          ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(Date.now() - updatedAt)}</span>, ' ']
+          ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(builtAt - updatedAt)}</span>, ' ']
           : 'Index last refreshed: Not indexed yet '}
         <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button>
       </p>

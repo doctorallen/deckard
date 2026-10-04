@@ -6,7 +6,15 @@
     ><div
       ><p
           class="eyebrow"
-        >DECKARD / WORKSPACE INDEX</p
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          > / WORKSPACE INDEX</p
         ><h1
         >Dashboard: Tags</h1
         ></div
@@ -17,25 +25,10 @@
           class="metrics"
           role="group"
         ><button
-            aria-label="Overdue, 40. Search the overdue tasks"
+            aria-label="Due today, 3. Search what is due today"
             class="metric metric-open"
             data-action="open-search"
-            data-code="TSK.OVR // 01"
-            data-query="is:overdue -is:needs-date"
-            data-tip="Search the overdue tasks"
-            type="button"
-          ><span
-              class="metric-label"
-            >Overdue</span
-            ><strong
-              class="metric-value"
-            >40</strong
-            ></button
-          ><button
-            aria-label="Due today, 0. Search what is due today"
-            class="metric metric-open"
-            data-action="open-search"
-            data-code="TSK.DUE // 02"
+            data-code="TSK.DUE // 01"
             data-query="is:today"
             data-tip="Search what is due today"
             type="button"
@@ -44,22 +37,37 @@
             >Due today</span
             ><strong
               class="metric-value"
-            >0</strong
+            >3</strong
             ></button
           ><button
-            aria-label="Open, 53. Search every open task"
+            aria-label="Overdue, 6. Search the overdue tasks"
             class="metric metric-open"
             data-action="open-search"
-            data-code="TSK.OPN // 03"
-            data-query="is:open"
-            data-tip="Search every open task"
+            data-code="TSK.OVR // 02"
+            data-query="is:overdue -is:needs-date"
+            data-tip="Search the overdue tasks"
             type="button"
           ><span
               class="metric-label"
-            >Open</span
+            >Overdue</span
             ><strong
               class="metric-value"
-            >53</strong
+            >6</strong
+            ></button
+          ><button
+            aria-label="Done this week, 0. Search the tasks finished this week"
+            class="metric metric-open"
+            data-action="open-search"
+            data-code="TSK.DON // 03"
+            data-query="done >= this-week"
+            data-tip="Search the tasks finished this week"
+            type="button"
+          ><span
+              class="metric-label"
+            >Done this week</span
+            ><strong
+              class="metric-value"
+            >0</strong
             ></button
           ></div
         ><details

@@ -33,6 +33,7 @@ export function createDeckardStatsSnapshot(
   return {
     trends: createStatsTrends(index, now),
     updatedAt: index.updatedAt,
+    builtAt: now,
     unreadable: unreadable.map((note) => ({
       ...note,
       open: { type: 'openSource', filePath: note.filePath, line: 1 },

@@ -539,7 +539,6 @@ function createRelatedNotesSurfaces(index, files) {
  * @returns {object[]} The Stats and search page surfaces.
  */
 function createSummarySurfaces(index, preferences) {
-  const refreshedAt = Date.now() - 5 * 60 * 1000;
   return [
     // Zen folds each card's file and line away and reveals it on hover, so a
     // hovered result is the one row that grows. The search page is where that
@@ -556,10 +555,9 @@ function createSummarySurfaces(index, preferences) {
           ...preferences.reader.value,
           tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
         }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
-        // Five minutes before the run, which the page says as "5 minutes
-        // ago". Read once, so the snapshot the shell carries and the one
-        // posted to it name the same second.
-        updatedAt: refreshedAt,
+        // Five minutes before the snapshot was built, at NOW, which the
+        // page says as "5 minutes ago" without reading the wall clock.
+        updatedAt: NOW - 5 * 60 * 1000,
       }),
       scrollers: ['html'],
       clippers: [],
@@ -580,14 +578,15 @@ function createSummarySurfaces(index, preferences) {
 
 /**
  * The note page's own notes, so no other surface's pixels move with it: a
- * hub with front matter, a heading, a task with steps, a query block drawn
- * as a table, an embed, code, a table, and two notes that link to it.
+ * project note with front matter, a heading, a task with steps, a query
+ * block drawn as a table, an embed, code, a table, and two notes that link
+ * to it. It is not a hub: a hub note opens as its tag's search page, so the
+ * note page never shows one.
  */
 function createNotePageIndex() {
   const files = new Map([
     ['projects/Atlas.md', parseMarkdown('projects/Atlas.md', [
       '---',
-      'describes: project/atlas',
       'status: active',
       'owner: "@dana"',
       '---',
@@ -632,7 +631,7 @@ function createNotePageIndex() {
   return buildWorkspaceIndex(files);
 }
 
-/** The note page: a hub note with every kind of block, opened at its Decision heading. */
+/** The note page: a note with every kind of block, opened at its Decision heading. */
 function createNotePageSurfaces() {
   const index = createNotePageIndex();
   return [

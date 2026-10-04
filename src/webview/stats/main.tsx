@@ -26,7 +26,7 @@ function StatsPage({ state }: { readonly state: DrawnStats }) {
   const snapshot = state.snapshot;
   return (
     <>
-      <StatsHeader updatedAt={snapshot.updatedAt} />
+      <StatsHeader updatedAt={snapshot.updatedAt} builtAt={snapshot.builtAt} />
       <AttentionSection state={state} />
       <StatsMetrics snapshot={snapshot} />
       <ParkedLine parked={snapshot.parked} />
