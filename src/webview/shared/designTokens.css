@@ -32,6 +32,9 @@
   --amber-dim: #7A5400;
   --favorite-red: #E05232;
   --warning-orange: #FF5500;
+  /* A task due today: a warning in yellow-orange, between a later date's
+     green and an overdue one's red. A theme whose amber is neither says so. */
+  --due-today: var(--amber);
   --slate-olive: #3E4A42;
   --grid-line: rgba(62, 212, 232, .05);
   --font-display: var(--vscode-font-family, ui-sans-serif, sans-serif);

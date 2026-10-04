@@ -386,15 +386,18 @@ function renderTaskDue(item: QueryBlockItem, context: QueryContext): string {
     return '';
   }
   const overdue = item.dueAt < startOfDay(now) && !due.stale;
-  return `<span class="deckard-query-due${dueClass(overdue, due.stale)}">${escapeHtml(due.label)}</span>`;
+  return `<span class="deckard-query-due${dueClass(overdue, due.stale, due.days === 0)}">${escapeHtml(due.label)}</span>`;
 }
 
-/** The class a due date adds: overdue wins over stale, and neither adds none. */
-function dueClass(overdue: boolean, stale: boolean | undefined): string {
+/** The class a due date adds: overdue, stale, or due today; none for a later date. */
+function dueClass(overdue: boolean, stale: boolean | undefined, today: boolean): string {
   if (overdue) {
     return ' is-overdue';
   }
-  return stale ? ' is-stale' : '';
+  if (stale) {
+    return ' is-stale';
+  }
+  return today ? ' is-today' : '';
 }
 
 /** An item's title, linked to its line in the source so a click opens it there. */

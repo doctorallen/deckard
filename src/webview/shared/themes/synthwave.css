@@ -24,6 +24,8 @@
   --green: #7ce3ec;
   --toxic-green: #7ce3ec;
   --favorite-red: #f2559e;
+  /* The amber here is red or pink, so a task due today takes the warning orange. */
+  --due-today: var(--warning-orange);
   --warning-orange: #ff8b55;
   --font-display: var(--vscode-font-family, 'Arial Narrow', 'Avenir Next Condensed', sans-serif);
   --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', monospace);

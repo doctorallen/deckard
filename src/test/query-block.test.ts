@@ -392,6 +392,13 @@ suite('Deckard query blocks', () => {
       html.includes('<span class="deckard-query-due">due in 7 days · 2026-09-20</span>'),
       'a coming date says how far off it is',
     );
+    const onTheDay = renderQueryBlockHtml('tag = #project/atlas', { warnings: [] }, createIndex(), {
+      queryContext: createQueryContext(new Date(2026, 8, 20, 9).getTime()),
+    });
+    assert.ok(
+      onTheDay.includes('<span class="deckard-query-due is-today">due today · 2026-09-20</span>'),
+      'a date due today is marked, for the warning color',
+    );
     assert.ok(html.includes('deckard-query-task is-done'));
   });
 

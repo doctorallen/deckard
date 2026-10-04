@@ -93,13 +93,16 @@ function withDates(detail: string): ComponentChild[] {
   return drawn;
 }
 
-/** The class of a detail: an overdue date, quietly or not, or a stale one. */
+/** The class of a detail: an overdue date, quietly or not, one due today, or a stale one. */
 function detailClass(card: TaskBoardCard, detail: string): string | undefined {
   // The host words the due date, "overdue 15 days · 2026-09-08", so the
   // state is in the text; the page only colors it.
   const overdue = card.overdue && detail.startsWith('overdue');
   if (overdue) {
     return card.overdueTone === 'quiet' ? 'overdue quiet' : 'overdue';
+  }
+  if (detail.startsWith('due today')) {
+    return 'due-today';
   }
   return card.stale && detail.startsWith('was due') ? 'stale' : undefined;
 }

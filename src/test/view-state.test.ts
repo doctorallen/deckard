@@ -606,9 +606,17 @@ suite('Dashboard state', () => {
     assert.strictEqual(openItem.dueLabel, 'Overdue 15 days · 2026-09-08');
     assert.strictEqual(openItem.overdue, true);
 
+    assert.strictEqual(openItem.dueToday, undefined);
+
     const doneItem = createDashboardTask(index.tasks.get('done')!, index.sections, createQueryContext(now));
     assert.strictEqual(doneItem.dueLabel, undefined, 'a done task is not overdue');
     assert.strictEqual(doneItem.overdue, undefined);
+
+    const today = { ...open, id: 'today', dueAt: new Date(2026, 8, 23).getTime(), dueText: '2026-09-23' };
+    const todayItem = createDashboardTask(createIndex([today]).tasks.get('today')!, index.sections, createQueryContext(now));
+    assert.strictEqual(todayItem.dueLabel, 'Due today · 2026-09-23');
+    assert.strictEqual(todayItem.dueToday, true, 'due today, for the warning color');
+    assert.strictEqual(todayItem.overdue, false);
   });
 
   test('projects task title tags alongside rendered Markdown', () => {

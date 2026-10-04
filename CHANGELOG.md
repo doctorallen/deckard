@@ -6,9 +6,10 @@
 
 - **See how far along a project is.** A tag's page shows a bar under its
   hub and says how many of its tasks are done, how many are overdue, and
-  when the next is due, with **Show overdue**. The hub note says the same
-  on its first line in the editor, and Home's new **Progress** widget lists
-  every project's, or any namespace's, unfinished first.
+  when the next is due, each a link that searches just those tasks. The
+  hub note says the same on its first line in the editor, and Home's new
+  **Progress** widget lists every project's, or any namespace's, unfinished
+  first.
 
 - **Notes as a table.** A query block with `view=table` draws its notes as
   a table as well as its tasks. `noteColumns=` picks the columns: how many
@@ -64,6 +65,24 @@
   now includes a project with a sub-project and notes filed under both, a
   table of every project, and steps for each feature above. It also gives
   Capture's shortcut as Cmd/Ctrl+Shift+Alt+N, which it still gave as C.
+
+### Changed
+
+- **A search page shows the tab with results.** A new search that finds
+  nothing on the tab shown, Notes or Tasks, and something on the other,
+  shows the other, so a link to a tag's overdue tasks lands on them. A
+  redraw of the same search keeps the tab you chose.
+- **A tag page's untagged mentions** are said at the top of Refine, where
+  they are not lost among the lines under the hub.
+- **A task due today is drawn as a warning,** in each theme's yellow or
+  orange, between a later date's green and an overdue one's red, in task
+  rows, board cards, and the preview's query blocks. In LCARS, overdue is a
+  red rather than the favorites' lavender, so it reads as the most urgent.
+- **LCARS reads in VS Code's font,** not Arial Narrow.
+- **A note page's progress words are links,** as on a tag's page: "1
+  overdue", "next due today", and the rest each open a search page of their
+  own for just those tasks. A hub's link to its tag's page sits on a line of
+  its own, and a hub note followed from the page opens its tag's page.
 
 ## 2.0.0 - 2026-10-03
 

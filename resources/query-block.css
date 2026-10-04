@@ -123,6 +123,11 @@ a.deckard-query-checkbox.is-action:focus-visible {
   color: var(--vscode-errorForeground, #e51400);
 }
 
+/* Due today: a warning, between a later date and an overdue one. */
+.deckard-query-due.is-today {
+  color: var(--vscode-editorWarning-foreground, #bf8803);
+}
+
 /* A task past needsNewDateAfterDays: "was due …", muted, not red. */
 .deckard-query-due.is-stale {
   color: var(--vscode-descriptionForeground);

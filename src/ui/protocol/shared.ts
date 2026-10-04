@@ -37,6 +37,8 @@ export interface DashboardTask {
   overdue?: boolean;
   /** Whether it passed so long ago the task needs a new date; drawn muted. */
   stale?: boolean;
+  /** Whether it is due today, drawn in the theme's warning color, between the green of later and the red of overdue. */
+  dueToday?: boolean;
   /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
   stepsLabel?: string;
 }
