@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### Added
+
+- **Display: Full, Quiet, or Zen, in place of Zen mode.** Turn Deckard's
+  own chrome down a step at a time from **Display** in a page's gear or
+  `Deckard: Choose Display…`, which previews each step on the open pages.
+  Quiet takes off each theme's decoration and the lines that teach at the
+  usual spacing; Zen also tightens it, and draws pages as Zen mode did with
+  DECKARD ▾ kept. Theme styling, Help text, and Density follow the step while
+  they're Auto; the gear says how many you changed and puts the step's
+  values back. The title bar's Zen button goes to Zen and back to the step
+  you were on.
+- **Counts, File & line, and Dates.** Three preferences for what a page
+  writes: the counts beside names shown or hidden, an entry's file and line
+  on hover, always, or never, and a due date both ways, only how far off, or
+  only the date. A screen reader still hears every part.
+- **Page width.** Keep pages to a column, or use the panel's whole width,
+  from its own row in the gear.
+- **Flat cards and tags as text.** Two looks for every page, in any theme,
+  from **Cards** and **Tags** in a page's gear: rows parted by a divider in
+  place of raised cards, lifting onto the card surface under the pointer
+  or keyboard focus; and tags as plain text in the theme's tag color, the
+  `#` or `@` kept, underlined under the pointer. Each is your own setting,
+  the same in every workspace (`deckard.display.cardFrames`,
+  `deckard.display.tags`).
+
+### Changed
+
+- **Zen mode is now Display's Zen step.** `deckard.zenMode` is read as Zen
+  until a step is set, and a reader who had it on is moved over once, with
+  one notice. What it turned off in the editor (the counts above headings,
+  the unlinked-mention lens, the due hints, the section highlight, and the
+  Sections counts) is now each its own setting, turned off where it wasn't
+  set.
+
 ## 2.2.0 - 2026-10-04
 
 ### Highlights
@@ -11,20 +45,6 @@
 - Markdown links count as links, a work sample shows Deckard on a team lead's week, and Capture reads who a task is for.
 
 ### Added
-
-- **Display: Full, Quiet, or Zen.** `deckard.display.level` turns Deckard's
-  own chrome down a step at a time. Quiet takes off each theme's decoration
-  and the lines that teach at the usual spacing; Zen also tightens it, and
-  draws pages as Zen mode did with DECKARD ▾ kept. Theme styling, Help text,
-  and Density follow the step while they're Auto, and each can be set on its
-  own.
-- **Flat cards and tags as text.** Two looks for every page, in any theme,
-  from **Cards** and **Tags** in a page's gear: rows parted by a divider in
-  place of raised cards, lifting onto the card surface under the pointer
-  or keyboard focus; and tags as plain text in the theme's tag color, the
-  `#` or `@` kept, underlined under the pointer. Each is your own setting,
-  the same in every workspace (`deckard.display.cardFrames`,
-  `deckard.display.tags`).
 
 - **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
   the Task Board, the Calendar, today's note, the Notes Graph, Find, Stats,

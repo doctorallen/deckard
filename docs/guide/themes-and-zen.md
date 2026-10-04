@@ -1,4 +1,4 @@
-# Themes and Zen mode
+# Themes and Display
 
 ## Themes
 
@@ -42,7 +42,7 @@ Both are yours alone: they're the same in every workspace, and a workspace's set
 
 ## Display
 
-How much of Deckard's own chrome a page draws is a scale of three steps, set with `deckard.display.level`:
+How much of Deckard's own chrome a page draws is a scale of three steps. Pick one with **Display** in a page's gear, `Deckard: Choose Display…`, which shows each step on the open pages as you move through the list, or `deckard.display.level`:
 
 | Step | Theme styling | Help text | Density |
 | --- | --- | --- | --- |
@@ -54,15 +54,22 @@ How much of Deckard's own chrome a page draws is a scale of three steps, set wit
 - **Help text** (`deckard.display.helpText`): the lines that teach, such as the search box's line of syntax and Home's key bar. A search that fails to parse always says so.
 - **Density** (`deckard.display.density`): *comfortable* or *compact* spacing.
 
-Each of the three follows the step while it's `auto`; set one and it stays as you set it at every step. None of them changes a color, and none removes a button, filter, count, or tag. Like the looks above, they're yours alone.
+Each of the three follows the step while it's `auto`; set one and it stays as you set it at every step. The gear then says so, such as *Quiet · 2 changed*, with **Use Quiet's values** to put them back, and **Customize…** opens Settings on Display, where each one you changed shows as Modified with its own Reset. None of them changes a color, and none removes a button, filter, count, or tag.
 
-## Zen mode
+Every Display setting is yours alone: it's the same in every workspace, and a workspace's settings never change how your pages look.
 
-Zen turns Deckard's chrome down, in any theme. Turn it on with **Zen** in a page's gear, the zen button in a page's title bar, `Deckard: Enter Zen Mode`, or `deckard.zenMode`.
+**Page width** (`deckard.display.pageWidth`), its own row in the gear under Theme, keeps pages to a 1000px `column`, or makes them `wide`, the panel's whole width, for a wide monitor or a board of many columns.
 
-- **Hidden:** decorative labels, the grid backdrop, and the search box's line of syntax; in the editor, the counts above headings, the unlinked-mention lens, the section highlight, and overdue hints.
-- **Folded:** each row's file, heading, and line, which come back on hover or focus.
+## Zen
+
+Zen is Display's last step, one click away from any page: the Zen button in a page's title bar, `Deckard: Toggle Zen`, or `Deckard: Enter Zen` and `Deckard: Leave Zen`. Leaving goes back to the step you were on, or to Full.
+
+- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, and the search box's line of syntax. DECKARD ▾ stays.
 - **Kept:** every button, filter, count, checkbox, and tag, and a task's due date, priority, and overdue marker.
+
+### Moving from Zen mode
+
+`deckard.zenMode` is replaced by Display. If you had it on, your pages look the same: it becomes the Zen step. What Zen mode also turned off in the editor is now five settings of its own, turned off for you where you hadn't set them, so you can turn any back on: `deckard.editor.referenceCounts` (the counts above headings), `deckard.editor.unlinkedMentions` (the mention lens), `deckard.editor.taskDueHints` (the overdue and due-today hints), `deckard.highlightNoteSections` (the band behind the section being edited), and `deckard.outline.showCounts` (the task counts in the Sections view). One notice says so, once.
 
 ---
 

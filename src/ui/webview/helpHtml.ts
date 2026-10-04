@@ -295,7 +295,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
     <a class="nav-sub" href="#tidy">Renaming and tidying</a>
     <a class="nav-sub" href="#periodic">Days, weeks, months</a>
     <span class="nav-group">Reference</span>
-    <a class="nav-sub" href="#zen">Zen mode</a>
+    <a class="nav-sub" href="#zen">Display</a>
     <a class="nav-sub" href="#commands">Commands</a>
     <a class="nav-sub" href="#advanced">Settings</a>
     <a class="nav-sub" href="#assistants">AI assistants</a>
@@ -562,12 +562,12 @@ function renderKeepingSections(): string {
 `;
 }
 
-/** The Reference group of the rail: zen mode, the commands and settings tables built from the manifest, assistants, and privacy. */
+/** The Reference group of the rail: Display, the commands and settings tables built from the manifest, assistants, and privacy. */
 function renderReferenceSections(manifest: HelpManifest, platform: NodeJS.Platform): string {
   return `    <section id="zen">
-      <h2>Zen mode</h2>
-      <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
-      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from the zen button in the title bar of any Deckard page, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> above Zen in the same gear, shows each of the eight themes on the open pages as you move through them, and keeps the one you choose.</p>
+      <h2>Display</h2>
+      <p><strong>Display turns Deckard’s own chrome down a step at a time without taking anything away.</strong> <strong>Full</strong> is Deckard as it ships. <strong>Quiet</strong> takes off each theme’s decoration and the lines that teach, such as the search box’s line of syntax, at the usual spacing. <strong>Zen</strong> also tightens the spacing. Every button, filter, count, and tag stays where it was, and DECKARD ▾ stays at every step.</p>
+      <p>Pick a step from <strong>Display</strong> in the gear on any page that has one, from <code>Deckard: Choose Display…</code>, which shows each step on the open pages as you move through them, or with <code>deckard.display.level</code>. The Zen button in the title bar of any Deckard page goes to Zen and back to the step you were on. Theme styling, Help text, and Density each follow the step until you set one yourself; <strong>Customize…</strong> in the gear opens them in Settings, beside Counts, File &amp; line, Dates, and Page width. Display works with whichever theme you use: it decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> at the top of the same gear, shows each of the eight themes on the open pages as you move through them.</p>
       <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
       ${renderReadMore('zen')}
     </section>

@@ -81,3 +81,22 @@ plan that builds it.
 - The sidebar views follow Density, keeping 24px targets.
 - Flat cards and text tags ship as looks a reader turns on (David's choice
   B for both), with the fixes above.
+- Counts, File & line, and Dates are set in Settings only, reached from the
+  gear's Customize…; the gear keeps its rows to Theme, Page width, Display,
+  Cards, and Tags. File & line "never" has no tip on keyboard focus: a
+  screen reader reads the folded text.
+- A home row's readout and a tag row's count fold under the pointer as
+  before; File & line governs only an entry's file and line.
+- A due date is split into its parts in the page (webview/shared/dueParts.ts)
+  from the host's wording, which a unit test holds to every wording the host
+  gives, rather than carried as new snapshot fields.
+- A workspace's `deckard.zenMode` is read as the Zen step for that workspace
+  and never rewritten; its editor half is turned off in that workspace's
+  settings. The user's is moved to `display.level` and removed.
+- The title bar's button is named Enter Zen or Leave Zen; VS Code titles are
+  fixed, so it can't say which step Leave goes back to.
+- Choosing a step from the gear or Choose Display… doesn't touch the step the
+  Zen button returns to; only the Zen button and its commands do.
+- The gear's Zen row and its template parity check are gone; a test of the
+  Display row replaces the check.
+

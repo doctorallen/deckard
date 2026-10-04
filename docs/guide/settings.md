@@ -83,7 +83,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parked.folders` | `{}` | Glob patterns of folders and notes to park, written like `deckard.exclude`. A parked note stays searchable with `is:parked` but is left out of to-do lists. `deckard.exclude` wins. |
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
 | `deckard.theme` | `corpo` | The style for Deckard's pages: `corpo`, which follows your VS Code theme, or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
-| `deckard.zenMode` | `false` | Turns Deckard's chrome down in every page. No control, count, or tag is removed. See [Zen mode](themes-and-zen.md#zen-mode). |
+| `deckard.zenMode` | `false` | Replaced by `deckard.display.level`: on reads as the Zen step until a step is set. See [Moving from Zen mode](themes-and-zen.md#moving-from-zen-mode). |
 | `deckard.display.level` | `full` | How much of Deckard's own chrome every page draws: `full`, `quiet` (each theme's decoration and the helper lines off), or `zen` (also compact spacing). The three settings below follow it while they are `auto`. Yours alone, the same in every workspace. See [Display](themes-and-zen.md#display). |
 | `deckard.display.themeStyling` | `auto` | `styled` keeps each theme's grid, corners, glow, codes, and display headings; `plain` draws thin frames and sentence-case headings. `auto` follows the step: plain from Quiet. |
 | `deckard.display.helpText` | `auto` | `shown` or `hidden`: the lines that teach, such as the search hint and Home's key bar. A search that fails to parse always says so. `auto` follows the step: hidden from Quiet. |
@@ -153,7 +153,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.breadcrumbs` | `true` | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). |
 | `deckard.editor.slashMenu` | `true` | Offers, after a `/` alone at the start of a line, blocks and templates to write there. |
 | `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. |
-| `deckard.editor.taskDueHints` | `true` | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. Zen mode hides these. |
+| `deckard.editor.taskDueHints` | `true` | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. |
 | `deckard.editor.repeatDiagnostics` | `true` | Marks an unreadable 🔁 repeat rule on an open task, with quick fixes. |
 | `deckard.updateLinksOnRename` | `true` | Rewrites `[[Wiki links]]` to a note's old title when it is renamed. See [Renaming notes and headings](organizing.md#renaming-notes-and-headings). |
 | `deckard.moveTo.leaveBehind` | `link` | What Move to… leaves where the lines were: a task becomes `- [>] … → [[where it went]]` and anything else a `[[link]]`; `nothing` takes the lines out. |
