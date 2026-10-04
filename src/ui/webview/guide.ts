@@ -28,6 +28,9 @@ export const GUIDE_PAGES: Readonly<Record<string, string>> = {
   commands: 'Commands',
   settings: 'Settings',
   'privacy-and-troubleshooting': 'Privacy, source safety, and troubleshooting',
+  security: 'For your security reviewer',
+  'what-deckard-writes': 'What Deckard writes',
+  accessibility: 'Accessibility and keyboard',
 };
 
 /** The guide page, and the heading on it, each Help section's Read more opens. */

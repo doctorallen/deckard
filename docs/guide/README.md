@@ -34,4 +34,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 - [Commands](commands.md)
 - [Settings](settings.md)
 - [Privacy, source safety, and troubleshooting](privacy-and-troubleshooting.md)
+- [For your security reviewer](security.md): what Deckard sends, stores, and runs, for approving it at work.
+- [What Deckard writes](what-deckard-writes.md): every change it makes to your files, and the setting that controls it.
+- [Accessibility and keyboard](accessibility.md): screen readers, keys, high contrast, zoom, and motion.
 - [Changelog](../../CHANGELOG.md)

@@ -4,6 +4,13 @@
 
 ### Added
 
+- **Three pages for approving and using Deckard.** The guide gains *For
+  your security reviewer* (what Deckard sends, stores, and runs, and over
+  Remote-SSH), *What Deckard writes* (every change it makes to your files,
+  what starts it, and its setting), and *Accessibility and keyboard*
+  (screen readers, keys, high contrast, zoom, and motion). Help and the
+  README link to them.
+
 - **Starter templates.** New Note from Template, with no templates yet,
   offers **Create Starter Templates**: a meeting, a 1:1, and a decision
   record, written into the templates folder. `Deckard: Create Hub Note for

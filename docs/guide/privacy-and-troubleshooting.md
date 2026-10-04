@@ -45,4 +45,4 @@ Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and
 
 ---
 
-← [Settings](settings.md) · [All topics](README.md)
+← [Settings](settings.md) · [All topics](README.md) · [For your security reviewer](security.md) →

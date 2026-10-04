@@ -14,12 +14,12 @@
 
 ## Why Deckard
 
-- **Your notes stay yours.** Plain Markdown is the source of truth. Deckard writes to a note only when you ask it to, shows a change that reaches several notes before making it, and can take the last one back.
+- **Your notes stay yours.** Plain Markdown is the source of truth. Deckard writes to a note only when you ask it to, shows a change that reaches several notes before making it, and can take the last one back. [What Deckard writes](docs/guide/what-deckard-writes.md) lists every change, and [For your security reviewer](docs/guide/security.md) says what it sends and stores: nothing leaves your machine unless you use an AI feature.
 - **Everything is connected.** A tag, a person, or a project gathers every note section and task that mentions it, wherever it was written.
 - **Tasks where you wrote them.** Checklist items become a Tasks view, a Kanban board, and a status bar count; completing one ticks the box in its note.
 - **Fast on big workspaces.** The first scan says what it read, later starts check only what changed, and editing never waits on indexing.
 - **Designed to be used, not just to work.** Deckard's pages are laid out to be read at a glance and to feel at home in VS Code: the default look takes its colors and fonts from your VS Code theme, a Task board card moves by drag, menu, or key, dates can be typed in plain words, and a Zen mode turns the chrome down when you want to write.
-- **Accessible by default.** Every text pair in every theme meets WCAG AA contrast, and every theme gives way to a high contrast editor theme. Every right-click menu opens from the keyboard, the Task board and Notes Graph work from it too, and focus stays put through a redraw. A screen reader hears what changed, and pages hold still when your system asks for reduced motion.
+- **Accessible by default.** Every text pair in every theme meets WCAG AA contrast, and every theme gives way to a high contrast editor theme. Every right-click menu opens from the keyboard, the Task board and Notes Graph work from it too, and focus stays put through a redraw. A screen reader hears what changed, and pages hold still when your system asks for reduced motion. See [Accessibility and keyboard](docs/guide/accessibility.md).
 
 ## Features
 
