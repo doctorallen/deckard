@@ -4,6 +4,16 @@
 
 ### Added
 
+- **Safe in a code repository.** With no notes folder set, Deckard reads
+  every Markdown file and writes today's note at the workspace's top. In a
+  folder that looks like a code repository, the status bar now says
+  **Deckard: whole workspace**, with a notes folder, folders left out, or a
+  pause a click away; the first note Deckard would make there asks once
+  where to write; and the first scan's summary offers **Not a Notes
+  Workspace**. `Deckard: Pause in This Workspace` stops Deckard reading and
+  writing there until it is resumed. Capture's message names the folder and
+  workspace: *Added it to notes/2026-10-07.md in deckard-work.*
+
 - **Checkbox lines that are not tasks are counted.** Only `- [ ]` and
   `- [x]` lines are tasks, so an Obsidian vault's `- [/]` and `- [-]` lines
   were left out of every task count with nothing saying so. The first scan

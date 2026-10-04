@@ -15,6 +15,7 @@ import {
 } from '../../domain/notes/periodicNotes';
 import { readWeekStart } from './datePrompt';
 import { resolveSourceUri } from './navigation';
+import { confirmNotesWrite } from './writeTarget';
 
 /**
  * Opens the daily note before or after the one in the editor, or before or
@@ -59,7 +60,9 @@ export async function openAdjacentDailyNote(
 export async function createDailyNote(
   workspaceFolder?: vscode.WorkspaceFolder,
 ): Promise<vscode.Uri | undefined> {
-  const targetFolder = workspaceFolder ?? (await chooseWorkspaceFolder());
+  const targetFolder = workspaceFolder
+    ? await writableOrNothing(workspaceFolder)
+    : await chooseWorkspaceFolder();
   if (!targetFolder) {
     return undefined;
   }
@@ -189,6 +192,20 @@ export async function findExistingPeriodicNote(
 export async function chooseWorkspaceFolder(): Promise<
   vscode.WorkspaceFolder | undefined
 > {
+  return writableOrNothing(await pickWorkspaceFolder());
+}
+
+/** A folder Deckard may make notes in, asking where it should when that is unsettled; undefined otherwise. */
+async function writableOrNothing(
+  folder: vscode.WorkspaceFolder | undefined,
+): Promise<vscode.WorkspaceFolder | undefined> {
+  return folder && (await confirmNotesWrite(folder)) ? folder : undefined;
+}
+
+/** The only workspace folder, or the one the reader picks. */
+async function pickWorkspaceFolder(): Promise<
+  vscode.WorkspaceFolder | undefined
+> {
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (folders.length === 0) {
     void reportNeedsFolder();
@@ -217,8 +234,8 @@ export async function chooseTargetFolder(): Promise<
   vscode.WorkspaceFolder | undefined
 > {
   const uri = vscode.window.activeTextEditor?.document.uri;
-  return (
+  return writableOrNothing(
     (uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined) ??
-    chooseWorkspaceFolder()
+      (await pickWorkspaceFolder()),
   );
 }

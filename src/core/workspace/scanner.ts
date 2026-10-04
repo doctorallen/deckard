@@ -38,6 +38,11 @@ export interface WorkspaceFileAccess<U extends ResourceUri = ResourceUri>
    * scan cannot tell an unchanged note from a changed one.
    */
   stat?(uri: U): PromiseLike<FileStat>;
+  /**
+   * Whether Deckard is paused in this workspace. Optional: without it,
+   * never. While paused, no file is a note, so nothing is read or watched.
+   */
+  isPaused?(): boolean;
 }
 
 /**
@@ -150,7 +155,8 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    */
   private async listNoteEntries(): Promise<NoteListing<U>> {
     const listing: NoteListing<U> = { entries: [], found: 0, templates: 0, excluded: 0 };
-    for (const workspaceFolder of this.access.workspaceFolders ?? []) {
+    const folders = this.access.isPaused?.() ? [] : (this.access.workspaceFolders ?? []);
+    for (const workspaceFolder of folders) {
       const pattern = this.createPattern(workspaceFolder);
       const excludePatterns = this.getExcludePatterns(workspaceFolder);
       // Leaving the excluded folders out of the search itself means a code
@@ -345,6 +351,9 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    * Returns the watcher patterns for all roots using their current settings.
    */
   public getPatterns(): Array<FolderPattern<U>> {
+    if (this.access.isPaused?.()) {
+      return [];
+    }
     return (this.access.workspaceFolders ?? []).map((workspaceFolder) =>
       this.createPattern(workspaceFolder),
     );
@@ -469,7 +478,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
    * exclude settings, so watchers and editors agree with the full scan.
    */
   public isNotesFile(uri: U): boolean {
-    if (!isMarkdownFile(uri)) {
+    if (!isMarkdownFile(uri) || this.access.isPaused?.()) {
       return false;
     }
 

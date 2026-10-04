@@ -30,6 +30,15 @@ Deckard refreshes when saved notes are added, edited, or deleted. The first time
 
 In a code repository, Deckard's editor features apply only to notes: a README outside `deckard.notesFolder`, or under `node_modules`, is left alone.
 
+**A code repository with no notes folder.** With `deckard.notesFolder` empty, Deckard reads every Markdown file in the workspace and writes today's note at its top level. When the folder looks like a code repository (it has `.git`, `package.json`, `go.mod`, or the like at its top):
+
+- The status bar says **Deckard: whole workspace**. Select it to choose a notes folder, leave folders out, pause Deckard here, or keep reading everything, which hides it.
+- Before the first note Deckard makes there, it asks once: **Write Here**, **Choose a Folder…**, which sets the notes folder, or **Pause Deckard Here**. Dismissing it writes nothing.
+- The first scan's summary offers **Not a Notes Workspace**, which pauses Deckard.
+- Capture says where it wrote, such as *Added it to notes/2026-10-07.md in deckard-work.*
+
+**Paused**, Deckard reads and writes nothing in the workspace, and the status bar says **Deckard paused**; select it, or run `Deckard: Resume in This Workspace`, to start again. `Deckard: Pause in This Workspace` pauses any workspace. Both answers are kept in VS Code's storage for the workspace, not in a file in the repository.
+
 `Deckard: Reindex Workspace` reads and parses every note again. A rescan after a settings change rereads only the notes whose size or saved time changed.
 
 ## Help

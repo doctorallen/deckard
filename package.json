@@ -291,6 +291,21 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.pauseHere",
+        "title": "Pause in This Workspace",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.resumeHere",
+        "title": "Resume in This Workspace",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.chooseScope",
+        "title": "Choose What Deckard Reads…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
         "category": "Deckard",
@@ -786,6 +801,18 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "deckard.pauseHere",
+          "when": "workspaceFolderCount > 0 && !deckard.paused"
+        },
+        {
+          "command": "deckard.resumeHere",
+          "when": "deckard.paused"
+        },
+        {
+          "command": "deckard.chooseScope",
+          "when": "workspaceFolderCount > 0"
+        },
         {
           "command": "deckard.clearAgendaQuery",
           "when": "deckard.agendaQuerySet"

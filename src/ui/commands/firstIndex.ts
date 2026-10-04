@@ -5,6 +5,7 @@ import { pluralize } from '../../shared/text';
 import { createAgenda } from '../state/agendaState';
 import { openSettingAction, settingLabel } from './notify';
 import { readQueryContext } from './queryContext';
+import { pauseHere } from './writeTarget';
 import { WorkspaceIndex } from '../../domain/model';
 
 /**
@@ -18,6 +19,8 @@ import { WorkspaceIndex } from '../../domain/model';
 
 /** The global-state key that records the summary was shown, so it is said only once. */
 export const FIRST_INDEX_SUMMARY_SHOWN = 'deckard.firstIndexSummaryShown';
+/** The button that pauses Deckard in a code repository it should not read. */
+export const NOT_NOTES = 'Not a Notes Workspace';
 /** At this many notes, the summary also says how to leave folders out. */
 export const LARGE_WORKSPACE_NOTES = 3000;
 
@@ -93,7 +96,13 @@ export async function summarizeFirstIndex(
   context: Pick<vscode.ExtensionContext, 'workspaceState'>,
   index: WorkspaceIndex,
   gate: Omit<FirstIndexGate, 'alreadyShown' | 'notes'>,
-  options: { excludeHintShownKey: string; excludeIsEmpty: boolean; now?: number },
+  options: {
+    excludeHintShownKey: string;
+    excludeIsEmpty: boolean;
+    now?: number;
+    /** A folder is read whole although it looks like a code repository, so pausing is offered. */
+    wholeRepository?: boolean;
+  },
 ): Promise<boolean> {
   const alreadyShown = context.workspaceState.get<boolean>(FIRST_INDEX_SUMMARY_SHOWN) === true;
   if (!gate.newToDeckard || !gate.hasFolder || alreadyShown || gate.isSample) {
@@ -113,7 +122,12 @@ export async function summarizeFirstIndex(
   if (large) {
     await context.workspaceState.update(options.excludeHintShownKey, true);
   }
-  const buttons = ['Open Dashboard', 'Get Started', ...(large ? ['Leave Folders Out…'] : [])];
+  const buttons = [
+    'Open Dashboard',
+    'Get Started',
+    ...(large ? ['Leave Folders Out…'] : []),
+    ...(options.wholeRepository ? [NOT_NOTES] : []),
+  ];
   void vscode.window.showInformationMessage(text, ...buttons).then(async (choice) => {
     if (choice === 'Open Dashboard') {
       await vscode.commands.executeCommand('deckard.showDashboard');
@@ -121,6 +135,8 @@ export async function summarizeFirstIndex(
       await vscode.commands.executeCommand('deckard.openWalkthrough');
     } else if (choice === 'Leave Folders Out…') {
       await openSettingAction('exclude').run();
+    } else if (choice === NOT_NOTES) {
+      await pauseHere();
     }
   });
   return large;

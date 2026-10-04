@@ -86,6 +86,8 @@ import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
+import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
+import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
 import { countOtherCheckboxes, noticeOtherCheckboxesOnce } from '../ui/commands/otherCheckboxes';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
@@ -457,8 +459,11 @@ function createCore(context: vscode.ExtensionContext): Core {
   // takes back, and the notes it has just saved, which the index reads back
   // at once. Every command that writes is handed this one.
   const history = new WorkspaceWriteHistory();
+  // Whether Deckard is paused in this workspace, and where it may write,
+  // kept in VS Code's storage for the workspace; read before the scanner is.
+  initWriteTarget(context.workspaceState);
   // The index reads the workspace through ports; this is VS Code's.
-  const workspace = createVscodeWorkspace();
+  const workspace = createVscodeWorkspace({ isPaused: isPausedHere });
   const scanner = new WorkspaceScanner(workspace);
   const indexer = createWorkspaceIndex({
     scanner,
@@ -471,6 +476,15 @@ function createCore(context: vscode.ExtensionContext): Core {
     progress: createVscodeProgress(),
     ownWrites: history.ownWrites,
   });
+  // Pausing or resuming reads the workspace again: nothing, or the notes.
+  context.subscriptions.push(
+    onDidChangePaused(() => {
+      void indexer.refresh().catch((error: unknown) => reportError('Could not read the workspace again', error));
+    }),
+  );
+  const scope = new ScopeStatusBar(context.workspaceState);
+  context.subscriptions.push(scope);
+  void scope.refresh();
   return { history, workspace, scanner, indexer };
 }
 
@@ -652,6 +666,16 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
 }
 
+/** Whether a workspace folder with no notes folder set looks like a code repository. */
+async function readsWholeRepository(): Promise<boolean> {
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    if (!readNotesFolder(folder) && (await looksLikeCodeRepository(folder))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * A workspace's first index says what it read, once; a very large one is
  * worth one word about leaving folders out, said once, and only when nothing
@@ -674,7 +698,11 @@ function offerExcludeHint(
         hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
         isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.toString() === sample),
       },
-      { excludeHintShownKey: EXCLUDE_HINT_SHOWN, excludeIsEmpty: Object.keys(exclude ?? {}).length === 0 },
+      {
+        excludeHintShownKey: EXCLUDE_HINT_SHOWN,
+        excludeIsEmpty: Object.keys(exclude ?? {}).length === 0,
+        wholeRepository: await readsWholeRepository(),
+      },
     );
     if (
       summarized ||

@@ -6,10 +6,12 @@ import { checkSetup } from '../checkSetup';
 import { chooseTheme, createChooseThemeDeps } from '../chooseTheme';
 import { createSampleWorkspace } from '../sampleWorkspace';
 import { registerCommand } from '../runCommand';
+import { chooseScope, pauseHere, resumeHere } from '../writeTarget';
 
 /**
  * Setup and diagnostics: Show Log, Check Setup, the sample workspace, Choose
- * Theme…, the walkthrough, and Reindex Workspace.
+ * Theme…, the walkthrough, Reindex Workspace, and pausing Deckard in a
+ * workspace.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { log, indexer, scanner, themePreview } = services;
@@ -32,6 +34,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       ),
     ),
     registerCommand('deckard.reindexWorkspace', () => reindexWorkspace(indexer)),
+    registerCommand('deckard.pauseHere', () => pauseHere()),
+    registerCommand('deckard.resumeHere', () => resumeHere()),
+    registerCommand('deckard.chooseScope', () => chooseScope()),
   );
 }
 
